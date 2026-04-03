@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="个人主页" />
+    <title>你的名字 · 个人主页</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="logo" href="index.html">你的名字</a>
+      <nav class="nav" aria-label="主导航">
+        <a href="#about">关于</a>
+        <a href="#projects">作品</a>
+        <a href="#contact">联系</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <p class="hero-kicker">你好，我是</p>
+        <h1 id="hero-title" class="hero-title">你的名字</h1>
+        <p class="hero-lead">
+          用一句话介绍自己：例如开发者、设计师，或正在学习的内容。
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#contact">联系我</a>
+          <a class="btn btn-ghost" href="#projects">查看作品</a>
+        </div>
+      </section>
+
+      <section id="about" class="section" aria-labelledby="about-title">
+        <h2 id="about-title" class="section-title">关于</h2>
+        <div class="section-content">
+          <p>
+            在这里写一段介绍：背景、技能、兴趣，或你正在专注的事情。两三段即可，保持简洁易读。
+          </p>
+        </div>
+      </section>
+
+      <section id="projects" class="section section-alt" aria-labelledby="projects-title">
+        <h2 id="projects-title" class="section-title">作品</h2>
+        <ul class="card-list">
+          <li class="card">
+            <h3 class="card-title">项目标题一</h3>
+            <p class="card-desc">简短说明这个项目做了什么、用了什么技术。</p>
+            <a class="card-link" href="#">查看详情 →</a>
+          </li>
+          <li class="card">
+            <h3 class="card-title">项目标题二</h3>
+            <p class="card-desc">可以稍后替换为真实链接与截图。</p>
+            <a class="card-link" href="#">查看详情 →</a>
+          </li>
+        </ul>
+      </section>
+
+      <section id="contact" class="section" aria-labelledby="contact-title">
+        <h2 id="contact-title" class="section-title">联系</h2>
+        <p class="contact-intro">欢迎通过以下方式与我交流。</p>
+        <ul class="contact-list">
+          <li><a href="mailto:you@example.com">邮箱</a></li>
+          <li><a href="https://github.com/" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>© <span id="year"></span> 你的名字. 保留所有权利。</p>
+    </footer>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>
