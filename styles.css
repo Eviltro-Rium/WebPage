@@ -194,6 +194,29 @@ main {
   color: var(--text-muted);
 }
 
+.section-content p + p {
+  margin-top: 0.65rem;
+}
+
+.section-content .puzzle-code {
+  margin: 0.65rem 0 0;
+  padding: 0.85rem 1rem;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #1e293b;
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: 10px;
+  tab-size: 2;
+}
+
+.section-content .puzzle-code code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  white-space: pre;
+}
+
 .card-list {
   list-style: none;
   margin: 0;
@@ -311,8 +334,8 @@ main {
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 0.65rem;
   margin: 0;
   padding: 0;
   user-select: none;
@@ -331,12 +354,15 @@ main {
   box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
   background: rgba(0, 0, 0, 0.06);
   line-height: 0;
+  aspect-ratio: 1 / 1;
 }
 
 .gallery-frame img {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
   -webkit-user-drag: none;
   user-select: none;
   pointer-events: none;
