@@ -35,8 +35,48 @@
         <h2 id="about-title" class="section-title">关于</h2>
         <div class="section-content">
           <p>
-            爱好：编程，游泳，打羽毛球，国际象棋♟️，电子音乐，剪视频，洛克王国
+            爱好：编程，游泳，打羽毛球，国际象棋♟️（真的捞），电子音乐，剪视频，洛克王国（UID：476610）
           </p>
+          <p>
+            MBTI：INFP-T
+          </p>
+          <p>
+            生产日期：读懂下面代码/注释，求出正整数 Y、M、D，再写成「YYYY年MM月DD日」。
+          </p>
+          <pre class="puzzle-code" tabindex="0"><code>// C++ 伪代码
+// 年 Y：4020025 为完全平方数
+int Y = static_cast&lt;int&gt;(sqrt(4020025));
+
+// 月 M：埃拉托斯特尼筛法
+int month() {
+  const int N = 100;
+  vector&lt;bool&gt; is_prime(N, true);
+  is_prime[0] = is_prime[1] = false;
+  for (int i = 2; i * i &lt; N; ++i) {
+    if (!is_prime[i]) continue;
+    for (int j = i * i; j &lt; N; j += i)
+      is_prime[j] = false;
+  }
+  int cnt = 0;
+  for (int i = 2; i &lt; N; ++i) {
+    if (!is_prime[i]) continue;
+    if (++cnt == 5) return i;
+  }
+  return -1;
+}
+int M = month();
+
+// 日 D：最小完全数
+int first_perfect() {
+  for (int n = 2; n &lt; 32; ++n) {
+    int s = 0;
+    for (int k = 1; k &lt; n; ++k)
+      if (n % k == 0) s += k;
+    if (s == n) return n;
+  }
+  return -1;
+}
+int D = first_perfect();</code></pre>
         </div>
       </section>
 
@@ -47,7 +87,7 @@
       >
         <h2 id="gallery-title" class="section-title">相册</h2>
         <p class="gallery-intro">
-          我的崽子uwu
+          我的崽子，不可以放大截图，或者下载私用哦。uwu
         </p>
         <div
           class="gallery-grid"
@@ -60,6 +100,7 @@
                 src="Img_files/2EC180203E6B6A348066F2285FE67DD7.png"
                 alt=""
                 loading="lazy"
+                fetchpriority="low"
                 decoding="async"
                 draggable="false"
               />
@@ -72,6 +113,7 @@
                 src="Img_files/331F6755446256983F42935B646B31AB.png"
                 alt=""
                 loading="lazy"
+                fetchpriority="low"
                 decoding="async"
                 draggable="false"
               />
@@ -84,6 +126,7 @@
                 src="Img_files/3F9606C1A81F461D5560C6C42D555692.png"
                 alt=""
                 loading="lazy"
+                fetchpriority="low"
                 decoding="async"
                 draggable="false"
               />
@@ -96,6 +139,7 @@
                 src="Img_files/4B3C1460B9EBD9656CB8BBB089811EBC.png"
                 alt=""
                 loading="lazy"
+                fetchpriority="low"
                 decoding="async"
                 draggable="false"
               />
@@ -108,6 +152,7 @@
                 src="Img_files/54B7B20E6AB9E43069C2B8D838AF3641.png"
                 alt=""
                 loading="lazy"
+                fetchpriority="low"
                 decoding="async"
                 draggable="false"
               />
@@ -120,6 +165,7 @@
                 src="Img_files/722CCDF7F9F9AA72B2A2DDBB279495DA.png"
                 alt=""
                 loading="lazy"
+                fetchpriority="low"
                 decoding="async"
                 draggable="false"
               />
@@ -132,6 +178,7 @@
                 src="Img_files/87E710229EC18539122C0C55E09C8D9B.png"
                 alt=""
                 loading="lazy"
+                fetchpriority="low"
                 decoding="async"
                 draggable="false"
               />
@@ -144,6 +191,7 @@
                 src="Img_files/A1B9EB4620707C7C3970D1A63F1A0017.png"
                 alt=""
                 loading="lazy"
+                fetchpriority="low"
                 decoding="async"
                 draggable="false"
               />
@@ -156,6 +204,7 @@
                 src="Img_files/C725C097E58F1A9B2E8141160EC55CCE.png"
                 alt=""
                 loading="lazy"
+                fetchpriority="low"
                 decoding="async"
                 draggable="false"
               />
@@ -168,6 +217,7 @@
                 src="Img_files/C72A070EDFDE61E6B17D0C27C8BA178D.png"
                 alt=""
                 loading="lazy"
+                fetchpriority="low"
                 decoding="async"
                 draggable="false"
               />
@@ -180,6 +230,7 @@
                 src="Img_files/E049723B5BB843002C55B2105B84A8DA.png"
                 alt=""
                 loading="lazy"
+                fetchpriority="low"
                 decoding="async"
                 draggable="false"
               />
@@ -192,6 +243,7 @@
                 src="Img_files/E75114A64A8C7FC0F13E09AFE44807F2.png"
                 alt=""
                 loading="lazy"
+                fetchpriority="low"
                 decoding="async"
                 draggable="false"
               />
