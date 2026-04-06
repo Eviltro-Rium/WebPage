@@ -417,6 +417,19 @@ main .section-gallery.section-alt {
   margin-bottom: 0.35rem;
 }
 
+.main-guestbook {
+  padding-top: 1.5rem;
+}
+
+.guestbook-back {
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+}
+
+.guestbook-back a {
+  font-weight: 600;
+}
+
 .section-guestbook .guestbook-intro {
   margin: 0 0 1rem;
   font-size: 0.9375rem;

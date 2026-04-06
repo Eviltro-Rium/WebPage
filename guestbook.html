@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="留言板 · GitHub Discussions" />
+    <title>留言 · Rium</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=ZCOOL+KuaiLe&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="page-guestbook">
+    <header class="site-header">
+      <a class="logo" href="index.html">Rium</a>
+      <nav class="nav" aria-label="主导航">
+        <a href="index.html#about">关于</a>
+        <a href="index.html#gallery">相册</a>
+        <a href="index.html#projects">作品</a>
+        <a href="index.html#contact">联系</a>
+        <a href="guestbook.html" aria-current="page">留言</a>
+      </nav>
+    </header>
+
+    <main class="main-guestbook">
+      <section
+        id="guestbook"
+        class="section section-alt section-guestbook"
+        aria-labelledby="guestbook-title"
+      >
+        <p class="guestbook-back">
+          <a href="index.html">← 返回主页</a>
+        </p>
+        <h2 id="guestbook-title" class="section-title">留言</h2>
+        <p class="guestbook-intro">
+          使用 <strong>GitHub 账号</strong>登录后即可留言，内容保存在本仓库的
+          <strong>Discussions</strong>（由
+          <a href="https://giscus.app/zh-CN" target="_blank" rel="noopener noreferrer"
+            >giscus</a
+          >
+          嵌入；本页单独对应一条讨论串，便于在 GitHub 里管理）。
+        </p>
+        <div class="giscus"></div>
+        <script
+          src="https://giscus.app/client.js"
+          data-repo="Eviltro-Rium/WebPage"
+          data-repo-id="R_kgDOR4lMvQ"
+          data-category="General"
+          data-category-id="DIC_kwDOR4lMvc4C6J_G"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="bottom"
+          data-theme="light_high_contrast"
+          data-lang="zh-CN"
+          crossorigin="anonymous"
+          async
+        ></script>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>© <span id="year"></span> Rium. AI帮我保留所有权利。（雾）</p>
+    </footer>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>
