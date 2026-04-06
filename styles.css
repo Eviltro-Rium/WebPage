@@ -9,8 +9,9 @@
   --green-hover: #059669;
   --border: rgba(3, 105, 161, 0.22);
   --radius: 12px;
-  --font-sans: "SF Pro SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+  --font-body: "SF Pro SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
     system-ui, sans-serif;
+  --font-display: "ZCOOL KuaiLe", "Nunito", var(--font-body);
   --max-width: 720px;
 }
 
@@ -27,7 +28,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 1rem;
   line-height: 1.6;
   color: var(--text);
@@ -63,6 +64,18 @@ a:hover {
   border-bottom: 1px solid rgba(255, 255, 255, 0.45);
   background: rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(10px);
+}
+
+h1,
+h2,
+h3,
+.logo,
+.hero-kicker,
+.hero-title,
+.section-title,
+.card-title,
+.thanks-subtitle {
+  font-family: var(--font-display);
 }
 
 .logo {
@@ -179,6 +192,11 @@ main {
   border-radius: var(--radius);
   backdrop-filter: blur(12px);
   box-shadow: 0 8px 32px rgba(14, 116, 144, 0.12);
+}
+
+/* 相册与作品：两个卡片区块之间留出空隙，避免贴在一起 */
+main .section-gallery.section-alt {
+  margin-bottom: 2.5rem;
 }
 
 .section-title {
@@ -397,6 +415,71 @@ main {
 
 .contact-list li {
   margin-bottom: 0.35rem;
+}
+
+.section-guestbook .guestbook-intro {
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.section-guestbook .guestbook-intro a {
+  font-weight: 600;
+}
+
+.section-guestbook .giscus {
+  margin-top: 0.25rem;
+  min-height: 120px;
+}
+
+.section-thanks {
+  text-align: left;
+}
+
+.section-thanks .section-title {
+  text-align: left;
+}
+
+.thanks-subtitle {
+  margin: 1rem 0 0.45rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.section-thanks .thanks-subtitle:first-of-type {
+  margin-top: 0.35rem;
+}
+
+.thanks-list {
+  margin: 0 0 0.85rem;
+  padding-left: 0;
+  text-align: left;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.thanks-list--stack {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem 0.65rem;
+  align-items: start;
+}
+
+.thanks-list--stack li {
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  line-height: 1.5;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.thanks-list:last-of-type {
+  margin-bottom: 0;
 }
 
 .site-footer {
