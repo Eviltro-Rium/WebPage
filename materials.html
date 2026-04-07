@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="学习资料 · PDF 下载" />
+    <title>学习资料 · Rium</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=ZCOOL+KuaiLe&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="page-materials">
+    <header class="site-header">
+      <a class="logo" href="index.html">Rium</a>
+      <nav class="nav" aria-label="主导航">
+        <a href="index.html#about">关于</a>
+        <a href="index.html#gallery">相册</a>
+        <a href="projects.html">作品</a>
+        <a href="materials.html" aria-current="page">学习资料</a>
+        <a href="index.html#contact">联系</a>
+        <a href="guestbook.html">留言</a>
+      </nav>
+    </header>
+
+    <main class="main-materials">
+      <section
+        id="materials"
+        class="section section-alt"
+        aria-labelledby="materials-title"
+      >
+        <p class="guestbook-back">
+          <a href="index.html">← 返回主页</a>
+        </p>
+        <h2 id="materials-title" class="section-title">学习资料</h2>
+        <ul class="card-list">
+          <li class="card card-downloads">
+            <p class="card-desc">
+              主包自己写的一些学习资料，仅供学习参考。
+            </p>
+            <ul class="download-list">
+              <li class="download-item">
+                <a
+                  class="download-link"
+                  href="Txt_files/VerilogHDL.pdf"
+                  download
+                  >VerilogHDL.pdf</a
+                >
+              </li>
+              <li class="download-item">
+                <a
+                  class="download-link"
+                  href="Txt_files/Verilog%E4%BB%A3%E7%A0%81%E8%AE%BE%E8%AE%A1.pdf"
+                  download
+                  >Verilog代码设计.pdf</a
+                >
+              </li>
+              <li class="download-item">
+                <a
+                  class="download-link"
+                  href="Txt_files/%E6%95%B0%E5%80%BC%E8%AE%A1%E7%AE%97%E4%B8%8E%E6%9C%80%E4%BC%98%E5%8C%96%E7%AE%97%E6%B3%95.pdf"
+                  download
+                  >数值计算与最优化算法.pdf</a
+                >
+              </li>
+              <li class="download-item">
+                <a
+                  class="download-link"
+                  href="Txt_files/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E6%B1%87%E6%80%BB%EF%BC%88%E4%B8%8A%EF%BC%89.pdf"
+                  download
+                  >数据结构汇总（上）.pdf</a
+                >
+              </li>
+              <li class="download-item">
+                <a
+                  class="download-link"
+                  href="Txt_files/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E6%B1%87%E6%80%BB%EF%BC%88%E4%B8%8B%EF%BC%89.pdf"
+                  download
+                  >数据结构汇总（下）.pdf</a
+                >
+              </li>
+              <li class="download-item">
+                <a
+                  class="download-link"
+                  href="Txt_files/%E6%A6%82%E7%8E%87%E8%AE%BA%E4%B8%8E%E6%95%B0%E7%90%86%E7%BB%9F%E8%AE%A1%EF%BC%88by%E4%B8%9C%E4%B8%9C%EF%BC%89.pdf"
+                  download
+                  >概率论与数理统计（by东东）.pdf</a
+                >
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>© <span id="year"></span> Rium. AI帮我保留所有权利。（雾）</p>
+    </footer>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>

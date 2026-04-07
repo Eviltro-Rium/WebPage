@@ -417,8 +417,21 @@ main .section-gallery.section-alt {
   margin-bottom: 0.35rem;
 }
 
-.main-guestbook {
+.main-guestbook,
+.main-projects,
+.main-materials {
   padding-top: 1.5rem;
+}
+
+.section-content .projects-teaser {
+  margin: 0 0 1rem;
+  max-width: 36rem;
+  line-height: 1.65;
+}
+
+.projects-teaser-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
 }
 
 .guestbook-back {

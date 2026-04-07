@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="作品 · 项目与音乐" />
+    <title>作品 · Rium</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=ZCOOL+KuaiLe&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="page-projects">
+    <header class="site-header">
+      <a class="logo" href="index.html">Rium</a>
+      <nav class="nav" aria-label="主导航">
+        <a href="index.html#about">关于</a>
+        <a href="index.html#gallery">相册</a>
+        <a href="projects.html" aria-current="page">作品</a>
+        <a href="materials.html">学习资料</a>
+        <a href="index.html#contact">联系</a>
+        <a href="guestbook.html">留言</a>
+      </nav>
+    </header>
+
+    <main class="main-projects">
+      <section
+        id="projects"
+        class="section section-alt"
+        aria-labelledby="projects-title"
+      >
+        <p class="guestbook-back">
+          <a href="index.html">← 返回主页</a>
+        </p>
+        <h2 id="projects-title" class="section-title">作品</h2>
+        <ul class="card-list">
+          <li class="card">
+            <h3 class="card-title">MedSAM2 with multi-organ-moe</h3>
+            <p class="card-desc">快做好了</p>
+            <a class="card-link" href="#">查看详情 →</a>
+          </li>
+          <li class="card card-audio">
+            <h3 class="card-title">音乐作品</h3>
+            <p class="card-desc">
+              有些音乐是很早之前做的，所以混音听起来很烂orz
+            </p>
+            <ul class="audio-list">
+              <li class="audio-item">
+                <span class="audio-label">lava chicken</span>
+                <audio
+                  controls
+                  controlslist="nodownload"
+                  preload="metadata"
+                  src="Audio_files/lava%20chicken.mp3"
+                ></audio>
+              </li>
+              <li class="audio-item">
+                <span class="audio-label">For Yu</span>
+                <audio
+                  controls
+                  controlslist="nodownload"
+                  preload="metadata"
+                  src="Audio_files/For%20Yu.mp3"
+                ></audio>
+              </li>
+              <li class="audio-item">
+                <span class="audio-label">For 景和</span>
+                <audio
+                  controls
+                  controlslist="nodownload"
+                  preload="metadata"
+                  src="Audio_files/For%E6%99%AF%E5%92%8C.mp3"
+                ></audio>
+              </li>
+              <li class="audio-item">
+                <span class="audio-label">Lazarus Drug（Remix）</span>
+                <audio
+                  controls
+                  controlslist="nodownload"
+                  preload="metadata"
+                  src="Audio_files/Lazarus%20Drug%20%EF%BC%88Remix%EF%BC%89.mp3"
+                ></audio>
+              </li>
+              <li class="audio-item">
+                <span class="audio-label">The Seal Lullaby (Remix)</span>
+                <audio
+                  controls
+                  controlslist="nodownload"
+                  preload="metadata"
+                  src="Audio_files/The%20Seal%20Lullaby%20%28Remix%29.mp3"
+                ></audio>
+              </li>
+              <li class="audio-item">
+                <span class="audio-label">Ylang Ylang (feat.Hajimi)</span>
+                <audio
+                  controls
+                  controlslist="nodownload"
+                  preload="metadata"
+                  src="Audio_files/Ylang%20Ylang%20%28feat.Hajimi%29.mp3"
+                ></audio>
+              </li>
+              <li class="audio-item">
+                <span class="audio-label">好想变成兽人 (Remix)</span>
+                <audio
+                  controls
+                  controlslist="nodownload"
+                  preload="metadata"
+                  src="Audio_files/%E5%A5%BD%E6%83%B3%E5%8F%98%E6%88%90%E5%85%BD%E4%BA%BA%20%28Remix%29.mp3"
+                ></audio>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>© <span id="year"></span> Rium. AI帮我保留所有权利。（雾）</p>
+    </footer>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>
