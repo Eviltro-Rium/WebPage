@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=ZCOOL+KuaiLe&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
@@ -66,6 +66,47 @@
 
     <script>
       document.getElementById("year").textContent = new Date().getFullYear();
+
+      (function () {
+        var body = document.body;
+        var tx = window.innerWidth * 0.5;
+        var ty = window.innerHeight * 0.5;
+        var x = tx;
+        var y = ty;
+        var ticking = false;
+
+        function paint() {
+          x += (tx - x) * 0.5;
+          y += (ty - y) * 0.5;
+          body.style.setProperty("--gx", x + "px");
+          body.style.setProperty("--gy", y + "px");
+          body.style.setProperty("--lx", x + "px");
+          body.style.setProperty("--ly", y + "px");
+
+          if (Math.abs(tx - x) > 0.2 || Math.abs(ty - y) > 0.2) {
+            requestAnimationFrame(paint);
+          } else {
+            ticking = false;
+          }
+        }
+
+        function onPointer(e) {
+          tx = e.clientX;
+          ty = e.clientY;
+          body.classList.add("liquid-global-active");
+          if (!ticking) {
+            ticking = true;
+            requestAnimationFrame(paint);
+          }
+        }
+
+        window.addEventListener("pointermove", onPointer, { passive: true });
+        window.addEventListener("pointerrawupdate", onPointer, { passive: true });
+
+        window.addEventListener("pointerleave", function () {
+          body.classList.remove("liquid-global-active");
+        });
+      })();
     </script>
   </body>
 </html>
