@@ -895,6 +895,17 @@ main .section-gallery.section-alt {
   color: var(--text-main);
 }
 
+.launch-pad-btn--loading {
+  border-color: rgba(251, 191, 36, 0.5);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.2);
+  animation: launchpad-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes launchpad-pulse {
+  from { opacity: 0.7; transform: scale(1); }
+  to   { opacity: 1;   transform: scale(1.04); }
+}
+
 .metronome-float__meta {
   margin: 0 0 0.65rem;
   text-align: center;

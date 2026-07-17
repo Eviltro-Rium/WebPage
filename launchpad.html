@@ -297,6 +297,17 @@
           statusEl.classList.toggle("launchpad-audio-status--error", !!isError);
         }
 
+        function clickFeedback(button, loading) {
+          if (!button) return;
+          if (loading) {
+            button.classList.add("launch-pad-btn--loading");
+            button.setAttribute("aria-busy", "true");
+          } else {
+            button.classList.remove("launch-pad-btn--loading");
+            button.setAttribute("aria-busy", "false");
+          }
+        }
+
         if (window.location.protocol === "file:") {
           setStatus(
             "当前为 file:// 打开，浏览器无法加载音源。请用本地服务器访问，例如：python3 -m http.server 8080",
@@ -328,6 +339,10 @@
                 throw new Error("无法加载 " + url + "（HTTP " + response.status + "）");
               }
               return response.arrayBuffer();
+            });
+            fetchCache[url] = fetchCache[url].catch(function (err) {
+              delete fetchCache[url];
+              throw err;
             });
           }
           return fetchCache[url];
@@ -555,6 +570,7 @@
         }
 
         function playInGroup(groupName, id, src, button) {
+          clickFeedback(button, true);
           unlockAudioContext()
             .then(function () {
               if (!audioReady || !bufferCache[src]) {
@@ -562,10 +578,13 @@
               }
             })
             .then(function () {
+              clickFeedback(button, false);
               playInGroupNow(groupName, id, src, button);
             })
             .catch(function (err) {
+              clickFeedback(button, false);
               console.error(err);
+              setStatus("播放失败：" + err.message, true);
             });
         }
 
