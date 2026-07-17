@@ -21,6 +21,8 @@
         <a href="index.html#gallery">相册</a>
         <a href="projects.html" aria-current="page">作品</a>
         <a href="materials.html">学习资料</a>
+        <a href="launchpad.html">Launch Pad</a>
+        <a href="game/index.html">游戏</a>
         <a href="index.html#contact">联系</a>
         <a href="guestbook.html">留言</a>
       </nav>
@@ -36,15 +38,20 @@
           <a href="index.html">⬅️返回主页</a>
         </p>
         <h2 id="projects-title" class="section-title">作品</h2>
-        <ul class="card-list">
-          <li class="card">
-            <h3 class="card-title">MedSAM2 with multi-organ-moe</h3>
-            <p class="card-desc">快做好了</p>
-            <a class="card-link" href="#">查看详情 →</a>
+        <ul class="content-list">
+          <li class="content-block">
+            <h3 class="content-title">Furry Battle</h3>
+            <p class="content-desc">浏览器单机回合制卡牌游戏 · 8 名角色 · 3 种模式 · 无需安装</p>
+            <a class="content-link" href="game/index.html">开始游玩 →</a>
           </li>
-          <li class="card card-audio">
-            <h3 class="card-title">音乐作品</h3>
-            <p class="card-desc">
+          <li class="content-block">
+            <h3 class="content-title">MedSAM2 with multi-organ-moe</h3>
+            <p class="content-desc">快做好了</p>
+            <a class="content-link" href="#">查看详情 →</a>
+          </li>
+          <li class="content-block content-block-audio">
+            <h3 class="content-title">音乐作品</h3>
+            <p class="content-desc">
               有些音乐是很早之前做的，所以混音听起来很烂orz
             </p>
             <ul class="audio-list">
@@ -162,6 +169,19 @@
 
         window.addEventListener("pointerleave", function () {
           body.classList.remove("liquid-global-active");
+        });
+      })();
+
+      (function () {
+        var audios = document.querySelectorAll("audio");
+        audios.forEach(function (audio) {
+          audio.addEventListener("play", function () {
+            audios.forEach(function (other) {
+              if (other !== audio) {
+                other.pause();
+              }
+            });
+          });
         });
       })();
     </script>

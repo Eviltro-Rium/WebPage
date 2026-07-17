@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Furry Battle 是一款可直接在浏览器游玩的单机回合制卡牌游戏。">
+    <title>Furry Battle · Rium</title>
+    <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+    <a class="game-home-link" href="../index.html" aria-label="返回 Rium 主页">← Rium</a>
+    <div id="game-container">
+        <div id="select-screen" class="active"></div>
+        <div id="rules-screen"></div>
+        <div id="char-detail-screen"></div>
+        <div id="game-screen"></div>
+    </div>
+    <script src="js/engine.js"></script>
+    <script src="js/engine_1v2.js"></script>
+    <script src="js/engine_lord.js"></script>
+    <script src="js/bridge.js"></script>
+    <script src="js/skills.js"></script>
+    <script src="js/dialogs.js"></script>
+    <script src="js/rules.js"></script>
+    <script src="js/char_detail.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/ui_1v2.js"></script>
+    <script src="js/ui_lord.js"></script>
+    <script>
+        const ui = new GameUI();
+        ui.init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Launch Pad · 节拍器" />
+    <title>Launch Pad · Rium</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="page-launchpad">
+    <header class="site-header">
+      <a class="logo" href="index.html">Rium</a>
+      <nav class="nav" aria-label="主导航">
+        <a href="index.html#about">关于</a>
+        <a href="index.html#gallery">相册</a>
+        <a href="projects.html">作品</a>
+        <a href="materials.html">学习资料</a>
+        <a href="launchpad.html" aria-current="page">Launch Pad</a>
+        <a href="game/index.html">游戏</a>
+        <a href="index.html#contact">联系</a>
+        <a href="guestbook.html">留言</a>
+      </nav>
+    </header>
+
+    <main class="main-launchpad">
+      <section
+        id="launchpad"
+        class="section section-alt section-launchpad"
+        aria-labelledby="launchpad-title"
+      >
+        <p class="guestbook-back">
+          <a href="index.html">⬅️返回主页</a>
+        </p>
+        <h2 id="launchpad-title" class="section-title">Launch Pad</h2>
+        <p class="page-intro launchpad-intro">
+          两组音源独立循环，同组同时仅一条；再次按下同一按钮停止。
+        </p>
+        <p
+          id="launchpad-audio-status"
+          class="launchpad-audio-status"
+          role="status"
+          aria-live="polite"
+        ></p>
+
+        <div class="launch-pad-groups">
+          <section class="launch-pad-group-block" aria-labelledby="group-drums-title">
+            <h3 id="group-drums-title" class="launch-pad-group-title">Basic Drums</h3>
+            <div class="launch-pad-group" data-group="basic_drums">
+              <button
+                type="button"
+                class="launch-pad-btn"
+                data-id="drum_01"
+                data-src="Launch_pad/basic_drums/drum_01.opus"
+              >
+                <span class="launch-pad-btn__fill" aria-hidden="true"></span>
+                <span class="launch-pad-btn__label">drum_01</span>
+              </button>
+              <button
+                type="button"
+                class="launch-pad-btn"
+                data-id="drum_02"
+                data-src="Launch_pad/basic_drums/drum_02.opus"
+              >
+                <span class="launch-pad-btn__fill" aria-hidden="true"></span>
+                <span class="launch-pad-btn__label">drum_02</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="launch-pad-group-block" aria-labelledby="group-cymbals-title">
+            <h3 id="group-cymbals-title" class="launch-pad-group-title">Cymbals</h3>
+            <div class="launch-pad-group" data-group="cymbals">
+              <button
+                type="button"
+                class="launch-pad-btn"
+                data-id="cymbals_01"
+                data-src="Launch_pad/cymbals/cymbals_01.opus"
+              >
+                <span class="launch-pad-btn__fill" aria-hidden="true"></span>
+                <span class="launch-pad-btn__label">cymbals_01</span>
+              </button>
+              <button
+                type="button"
+                class="launch-pad-btn"
+                data-id="cymbals_02"
+                data-src="Launch_pad/cymbals/cymbals_02.opus"
+              >
+                <span class="launch-pad-btn__fill" aria-hidden="true"></span>
+                <span class="launch-pad-btn__label">cymbals_02</span>
+              </button>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <aside
+      class="metronome-float section-alt"
+      aria-label="8 拍节拍器"
+    >
+      <p class="metronome-float__meta">
+        8 拍 · 每拍两灯交替 ·
+        <span id="launchpad-bpm-display">128</span> BPM
+      </p>
+      <div class="metronome-float__controls">
+        <div
+          class="beat-pad-grid"
+          id="beat-pad-grid"
+          role="group"
+          aria-label="8 拍节拍灯"
+        >
+          <div class="beat-pad" data-beat="0" aria-label="第 1 拍"><span>1</span></div>
+          <div class="beat-pad" data-beat="1" aria-label="第 2 拍"><span>2</span></div>
+          <div class="beat-pad" data-beat="2" aria-label="第 3 拍"><span>3</span></div>
+          <div class="beat-pad" data-beat="3" aria-label="第 4 拍"><span>4</span></div>
+          <div class="beat-pad" data-beat="4" aria-label="第 5 拍"><span>5</span></div>
+          <div class="beat-pad" data-beat="5" aria-label="第 6 拍"><span>6</span></div>
+          <div class="beat-pad" data-beat="6" aria-label="第 7 拍"><span>7</span></div>
+          <div class="beat-pad" data-beat="7" aria-label="第 8 拍"><span>8</span></div>
+        </div>
+        <button
+          type="button"
+          class="launchpad-clear"
+          id="launchpad-clear"
+          aria-label="停止所有音源"
+        >
+          Clear
+        </button>
+      </div>
+    </aside>
+
+    <footer class="site-footer">
+      <p>© <span id="year"></span> Rium. AI帮我保留所有权利。（雾）</p>
+    </footer>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+
+      (function () {
+        var body = document.body;
+        var tx = window.innerWidth * 0.5;
+        var ty = window.innerHeight * 0.5;
+        var x = tx;
+        var y = ty;
+        var ticking = false;
+
+        function paint() {
+          x += (tx - x) * 0.5;
+          y += (ty - y) * 0.5;
+          body.style.setProperty("--gx", x + "px");
+          body.style.setProperty("--gy", y + "px");
+          body.style.setProperty("--lx", x + "px");
+          body.style.setProperty("--ly", y + "px");
+
+          if (Math.abs(tx - x) > 0.2 || Math.abs(ty - y) > 0.2) {
+            requestAnimationFrame(paint);
+          } else {
+            ticking = false;
+          }
+        }
+
+        function onPointer(e) {
+          tx = e.clientX;
+          ty = e.clientY;
+          body.classList.add("liquid-global-active");
+          if (!ticking) {
+            ticking = true;
+            requestAnimationFrame(paint);
+          }
+        }
+
+        window.addEventListener("pointermove", onPointer, { passive: true });
+        window.addEventListener("pointerrawupdate", onPointer, { passive: true });
+
+        window.addEventListener("pointerleave", function () {
+          body.classList.remove("liquid-global-active");
+        });
+      })();
+
+      (function () {
+        var BPM = 128;
+        var BEATS = 8;
+        var beatMs = 60000 / BPM;
+        var halfBeatMs = beatMs / 2;
+        var pads = Array.prototype.slice.call(
+          document.querySelectorAll(".beat-pad")
+        );
+        var anchorPerfMs = performance.now();
+        var visualStep = -1;
+        var rafId = null;
+
+        function clearPads() {
+          pads.forEach(function (pad) {
+            pad.classList.remove("beat-pad--on", "beat-pad--alt");
+          });
+        }
+
+        function stepAt(perfMs) {
+          var elapsed = Math.max(0, perfMs - anchorPerfMs);
+          return Math.floor(elapsed / halfBeatMs);
+        }
+
+        function renderStep(step) {
+          var beatIndex = Math.floor(step / 2) % BEATS;
+          var subStep = step % 2;
+          var active = subStep === 0 ? beatIndex : (beatIndex + 1) % BEATS;
+
+          clearPads();
+          pads[active].classList.add(
+            subStep === 0 ? "beat-pad--on" : "beat-pad--alt"
+          );
+        }
+
+        function draw() {
+          var step = stepAt(performance.now());
+          if (step !== visualStep) {
+            visualStep = step;
+            renderStep(step);
+          }
+          rafId = requestAnimationFrame(draw);
+        }
+
+        function resetClock() {
+          anchorPerfMs = performance.now();
+          visualStep = -1;
+        }
+
+        document.addEventListener("visibilitychange", function () {
+          if (document.hidden) {
+            if (rafId !== null) {
+              cancelAnimationFrame(rafId);
+              rafId = null;
+            }
+            return;
+          }
+          resetClock();
+          if (rafId === null) {
+            rafId = requestAnimationFrame(draw);
+          }
+        });
+
+        rafId = requestAnimationFrame(draw);
+
+        window.launchpadClock = {
+          bpm: BPM,
+          beatMs: beatMs,
+          halfBeatMs: halfBeatMs,
+          getAnchorPerfMs: function () {
+            return anchorPerfMs;
+          },
+          getElapsedSeconds: function () {
+            return Math.max(0, (performance.now() - anchorPerfMs) / 1000);
+          },
+          getPhaseSeconds: function (durationSeconds) {
+            if (!durationSeconds || durationSeconds <= 0) {
+              return 0;
+            }
+            return this.getElapsedSeconds() % durationSeconds;
+          },
+          snapVisualToCurrentStep: function () {
+            visualStep = stepAt(performance.now());
+            renderStep(visualStep);
+          },
+          reset: resetClock,
+        };
+      })();
+
+      (function () {
+        var audioCtx = null;
+        var bufferCache = Object.create(null);
+        var fetchCache = Object.create(null);
+        var groups = Object.create(null);
+        var audioReady = false;
+        var preloadPromise = null;
+        var statusEl = document.getElementById("launchpad-audio-status");
+        var progressFrameId = null;
+
+        var allSrcs = Array.prototype.map.call(
+          document.querySelectorAll(".launch-pad-btn[data-src]"),
+          function (btn) {
+            return btn.getAttribute("data-src");
+          }
+        );
+
+        function setStatus(message, isError) {
+          if (!statusEl) return;
+          statusEl.textContent = message;
+          statusEl.classList.toggle("launchpad-audio-status--error", !!isError);
+        }
+
+        if (window.location.protocol === "file:") {
+          setStatus(
+            "当前为 file:// 打开，浏览器无法加载音源。请用本地服务器访问，例如：python3 -m http.server 8080",
+            true
+          );
+        } else {
+          setStatus("点击任意音源按钮开始（首次点击会预加载音源）");
+        }
+
+        function getAudioContext() {
+          if (!audioCtx) {
+            var Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) throw new Error("当前浏览器不支持 Web Audio");
+            audioCtx = new Ctx({ latencyHint: "interactive" });
+          }
+          return audioCtx;
+        }
+
+        function unlockAudioContext() {
+          var ctx = getAudioContext();
+          if (ctx.state === "suspended") return ctx.resume();
+          return Promise.resolve(ctx);
+        }
+
+        function fetchRaw(url) {
+          if (!fetchCache[url]) {
+            fetchCache[url] = fetch(url).then(function (response) {
+              if (!response.ok) {
+                throw new Error("无法加载 " + url + "（HTTP " + response.status + "）");
+              }
+              return response.arrayBuffer();
+            });
+          }
+          return fetchCache[url];
+        }
+
+        if (window.location.protocol !== "file:") {
+          allSrcs.forEach(fetchRaw);
+        }
+
+        function decodeBuffer(url, arrayBuffer) {
+          var ctx = getAudioContext();
+          return new Promise(function (resolve, reject) {
+            ctx.decodeAudioData(
+              arrayBuffer.slice(0),
+              function (decoded) {
+                bufferCache[url] = decoded;
+                resolve(decoded);
+              },
+              function (err) {
+                reject(err || new Error("decodeAudioData failed: " + url));
+              }
+            );
+          });
+        }
+
+        function preloadAll() {
+          if (audioReady) return Promise.resolve();
+          if (preloadPromise) return preloadPromise;
+
+          if (window.location.protocol === "file:") {
+            return Promise.reject(new Error("file:// 协议下无法 fetch 音源"));
+          }
+
+          preloadPromise = unlockAudioContext()
+            .then(function () {
+              setStatus("正在预加载音源…");
+              return Promise.all(
+                allSrcs.map(function (url) {
+                  if (bufferCache[url]) return bufferCache[url];
+                  return fetchRaw(url).then(function (raw) {
+                    return decodeBuffer(url, raw);
+                  });
+                })
+              );
+            })
+            .then(function () {
+              audioReady = true;
+              document.body.classList.add("launchpad-audio-ready");
+              setStatus("音源已就绪，可以播放");
+            })
+            .catch(function (err) {
+              preloadPromise = null;
+              setStatus("音源加载失败：" + err.message, true);
+              throw err;
+            });
+
+          return preloadPromise;
+        }
+
+        function getGroup(name) {
+          if (!groups[name]) {
+            var ctx = getAudioContext();
+            var gain = ctx.createGain();
+            gain.gain.value = 1;
+            gain.connect(ctx.destination);
+            groups[name] = {
+              activeId: null,
+              source: null,
+              gain: gain,
+              sourceStartTime: 0,
+              sourceOffset: 0,
+              loopDuration: 0,
+              activeButton: null,
+              lastStoppedId: null,
+            };
+          }
+          return groups[name];
+        }
+
+        function setButtonProgress(button, progress) {
+          if (!button) return;
+          var value = Math.max(0, Math.min(1, progress));
+          button.style.setProperty("--loop-progress", value.toFixed(4));
+        }
+
+        function resetGroupButtonProgress(groupName) {
+          document
+            .querySelectorAll(
+              '.launch-pad-group[data-group="' + groupName + '"] .launch-pad-btn'
+            )
+            .forEach(function (btn) {
+              setButtonProgress(btn, 0);
+            });
+        }
+
+        function updateLoopProgress() {
+          if (!audioCtx) {
+            progressFrameId = requestAnimationFrame(updateLoopProgress);
+            return;
+          }
+
+          document.querySelectorAll(".launch-pad-group").forEach(function (groupEl) {
+            var groupName = groupEl.getAttribute("data-group");
+            var group = groups[groupName];
+            if (!group || !group.source || !group.loopDuration || !group.activeButton) {
+              resetGroupButtonProgress(groupName);
+              return;
+            }
+
+            var elapsed = Math.max(0, audioCtx.currentTime - group.sourceStartTime);
+            var progress =
+              ((elapsed + group.sourceOffset) % group.loopDuration) /
+              group.loopDuration;
+
+            groupEl.querySelectorAll(".launch-pad-btn").forEach(function (btn) {
+              setButtonProgress(btn, btn === group.activeButton ? progress : 0);
+            });
+          });
+
+          progressFrameId = requestAnimationFrame(updateLoopProgress);
+        }
+
+        function startProgressLoop() {
+          if (progressFrameId === null) {
+            progressFrameId = requestAnimationFrame(updateLoopProgress);
+          }
+        }
+
+        function stopGroupSource(name) {
+          var group = groups[name];
+          if (!group) return;
+          if (group.activeButton) setButtonProgress(group.activeButton, 0);
+          if (group.source) {
+            try {
+              group.source.stop(0);
+            } catch (err) {
+              /* already stopped */
+            }
+            group.source.disconnect();
+            group.source = null;
+          }
+          group.activeId = null;
+          group.sourceStartTime = 0;
+          group.sourceOffset = 0;
+          group.loopDuration = 0;
+          group.activeButton = null;
+        }
+
+        function clearActiveButton(groupName) {
+          document
+            .querySelectorAll(
+              '.launch-pad-group[data-group="' + groupName + '"] .launch-pad-btn'
+            )
+            .forEach(function (btn) {
+              btn.classList.remove("launch-pad-btn--active");
+              btn.setAttribute("aria-pressed", "false");
+            });
+        }
+
+        function stopAll() {
+          document.querySelectorAll(".launch-pad-group").forEach(function (groupEl) {
+            var groupName = groupEl.getAttribute("data-group");
+            var group = groups[groupName];
+            if (group) {
+              group.lastStoppedId = null;
+            }
+            stopGroupSource(groupName);
+            clearActiveButton(groupName);
+          });
+        }
+
+        function alignedOffsetFor(buffer) {
+          var clock = window.launchpadClock;
+          if (!clock || !clock.getPhaseSeconds) return 0;
+          return clock.getPhaseSeconds(buffer.duration);
+        }
+
+        function startGroupSource(groupName, id, src, button, fromHead) {
+          var ctx = getAudioContext();
+          var group = getGroup(groupName);
+          var buffer = bufferCache[src];
+          if (!buffer) throw new Error("音源未解码：" + src);
+
+          var offset = fromHead ? 0 : alignedOffsetFor(buffer);
+          var startAt = ctx.currentTime;
+          var source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.loop = true;
+          source.connect(group.gain);
+          source.start(startAt, offset);
+
+          group.source = source;
+          group.activeId = id;
+          group.sourceStartTime = startAt;
+          group.sourceOffset = offset;
+          group.loopDuration = buffer.duration;
+          group.activeButton = button;
+          setButtonProgress(button, offset / buffer.duration);
+
+          if (window.launchpadClock && window.launchpadClock.snapVisualToCurrentStep) {
+            window.launchpadClock.snapVisualToCurrentStep();
+          }
+        }
+
+        function playInGroupNow(groupName, id, src, button) {
+          var group = groups[groupName] || getGroup(groupName);
+
+          if (group.activeId === id) {
+            group.lastStoppedId = id;
+            stopGroupSource(groupName);
+            button.classList.remove("launch-pad-btn--active");
+            button.setAttribute("aria-pressed", "false");
+            return;
+          }
+
+          var fromHead = group.lastStoppedId === id;
+          group.lastStoppedId = null;
+
+          stopGroupSource(groupName);
+          clearActiveButton(groupName);
+          startGroupSource(groupName, id, src, button, fromHead);
+
+          button.classList.add("launch-pad-btn--active");
+          button.setAttribute("aria-pressed", "true");
+        }
+
+        function playInGroup(groupName, id, src, button) {
+          unlockAudioContext()
+            .then(function () {
+              if (!audioReady || !bufferCache[src]) {
+                return preloadAll().then(unlockAudioContext);
+              }
+            })
+            .then(function () {
+              playInGroupNow(groupName, id, src, button);
+            })
+            .catch(function (err) {
+              console.error(err);
+            });
+        }
+
+        document.querySelectorAll(".launch-pad-group").forEach(function (groupEl) {
+          var groupName = groupEl.getAttribute("data-group");
+          groupEl.querySelectorAll(".launch-pad-btn").forEach(function (button) {
+            button.setAttribute("aria-pressed", "false");
+            button.addEventListener("click", function () {
+              var id = button.getAttribute("data-id");
+              var src = button.getAttribute("data-src");
+              playInGroup(groupName, id, src, button);
+            });
+          });
+        });
+
+        document
+          .getElementById("launchpad-clear")
+          .addEventListener("click", function () {
+            stopAll();
+          });
+
+        startProgressLoop();
+      })();
+
+    </script>
+  </body>
+</html>
