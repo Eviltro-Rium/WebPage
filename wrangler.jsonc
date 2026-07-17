@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "riumfurry",
+  "compatibility_date": "2026-07-17",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": ".",
+    "exclude": [
+      ".git",
+      ".gitignore",
+      ".gitattributes",
+      ".cloudflareignore",
+      "*.md",
+      "wrangler.jsonc",
+      "start.txt",
+      "node_modules",
+      ".DS_Store"
+    ]
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
