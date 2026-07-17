@@ -6,18 +6,7 @@
     "enabled": true
   },
   "assets": {
-    "directory": ".",
-    "exclude": [
-      ".git",
-      ".gitignore",
-      ".gitattributes",
-      ".cloudflareignore",
-      "*.md",
-      "wrangler.jsonc",
-      "start.txt",
-      "node_modules",
-      ".DS_Store"
-    ]
+    "directory": "."
   },
   "compatibility_flags": [
     "nodejs_compat"

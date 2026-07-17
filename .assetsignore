@@ -1,0 +1,24 @@
+# Repository and local tooling
+.git/
+.git/**
+.agents/
+.arts/
+.claude/
+.codeartsdoer/
+node_modules/
+.wrangler/
+.wrangler-dry-run/
+
+# Deployment and development files
+.assetsignore
+.cloudflareignore
+.gitignore
+.gitattributes
+wrangler.jsonc
+start.txt
+*.md
+*.zip
+
+# Operating-system metadata
+.DS_Store
+**/.DS_Store
