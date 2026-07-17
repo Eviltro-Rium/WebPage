@@ -746,17 +746,17 @@ class GameUI {
             { key: 'freeze', stacks: ch.frozen ? 1 : 0, icon: 'freeze' },
             { key: 'bleed', stacks: ch.bleed, icon: 'bleed' },
             { key: 'guard', stacks: ch.guard, icon: 'guard' },
-            { key: 'chaos_red', stacks: ch.chaos_red ? 1 : 0, icon: 'chaos_red', label: '混沌红', hideCount: true, colorClass: 'chaos-red-buff' },
-            { key: 'chaos_yellow', stacks: ch.chaos_yellow ? 1 : 0, icon: 'chaos_yellow', label: '混沌黄', hideCount: true, colorClass: 'chaos-yellow-buff' },
-            { key: 'chaos_blue', stacks: ch.chaos_blue ? 1 : 0, icon: 'chaos_blue', label: '混沌蓝', hideCount: true, colorClass: 'chaos-blue-buff' },
-            { key: 'chaos_green', stacks: ch.chaos_green ? 1 : 0, icon: 'chaos_green', label: '混沌绿', hideCount: true, colorClass: 'chaos-green-buff' }
+            { key: 'chaos_red', stacks: ch.chaos_red ? 1 : 0, icon: 'chaos_red', hideCount: true, colorClass: 'chaos-red-buff' },
+            { key: 'chaos_yellow', stacks: ch.chaos_yellow ? 1 : 0, icon: 'chaos_yellow', hideCount: true, colorClass: 'chaos-yellow-buff' },
+            { key: 'chaos_blue', stacks: ch.chaos_blue ? 1 : 0, icon: 'chaos_blue', hideCount: true, colorClass: 'chaos-blue-buff' },
+            { key: 'chaos_green', stacks: ch.chaos_green ? 1 : 0, icon: 'chaos_green', hideCount: true, colorClass: 'chaos-green-buff' }
         ];
         if (ch.bloodthirst) buffs.push({ key: 'bloodthirst', stacks: 1, path: 'icons/ui_icons/blood_thirsty.png', label: '嗜血', hideCount: true });
         for (const b of buffs) {
             if (b.stacks > 0) {
                 const path = b.path || `icons/buff_icons/${b.icon}.png`;
                 const title = b.label || ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', guard: '守护', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
-                html += `<div class="buff-icon-wrap ${b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.colorClass || ''}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}${b.label ? `<span class="buff-name" style="${b.colorClass === 'chaos-red-buff' ? 'color:#ff6666' : b.colorClass === 'chaos-yellow-buff' ? 'color:#ffdd44' : b.colorClass === 'chaos-blue-buff' ? 'color:#66aaff' : b.colorClass === 'chaos-green-buff' ? 'color:#44cc44' : ''}">${b.label}</span>` : ''}</div>`;
+                html += `<div class="buff-icon-wrap ${b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.colorClass || ''}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}${b.label ? `<span class="buff-name">${b.label}</span>` : ''}</div>`;
             }
         }
         container.innerHTML = html;

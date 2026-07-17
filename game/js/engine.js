@@ -74,7 +74,7 @@
     chooseMozeGuardUse(guard,damage,hp){if(damage>=hp)return Math.min(guard,damage);if(damage<=2)return 0;if(guard>=3&&damage>=5)return Math.min(guard,damage);if(guard>=2&&damage>=4)return Math.min(guard,damage);if(hp<=30)return Math.min(guard,damage);return 0}
     askGuard(d,bleed=0){this.s.pendingGuardDamage=Math.max(0,d);this.s.pendingGuardBleed=bleed;this.s.pendingDefenseDamage=Math.max(0,d);this.s.pendingDialog='guard';this.s.phase='GUARD_CHOICE';this.s.busy=false}
     deferSettlement(kind,damage,bleed=0){this.s.pendingDefenseDamage=Math.max(0,damage);this.s.busy=true;this.pendingSettlement={kind,damage:Math.max(0,damage),bleed:Math.max(0,bleed),afterEventId:this.ver}}
-    acknowledgeEvents(through){this.events=this.events.filter(e=>(e.id||0)>through);let bridge=this.s.pendingAIBridge;if(bridge&&through>=bridge.afterEventId){this.s.pendingAIBridge=null;if(bridge.mode==='defense')this.later(()=>this.aiDefend(bridge.attackCard,bridge.damage),220);else this.later(()=>this.aiTurn(),220)}let continuation=this.s.pendingAIContinue;if(continuation&&through>=continuation.afterEventId){this.s.pendingAIContinue=null;this.continueAIAttack();return}let p=this.pendingSettlement;if(!p||through<p.afterEventId)return;this.pendingSettlement=null;this.s.pendingDefenseDamage=0;if(p.kind==='PLAYER_ATTACK'){let forceEnd=!!this.s.forceEndPlayerTurn;this.s.forceEndPlayerTurn=false;let dmg=p.damage;if(this.name(this.s.ai)==='Moze'&&this.s.ai.guard&&dmg>0){let q=this.chooseMozeGuardUse(this.s.ai.guard,dmg,this.s.ai.hp);this.s.ai.guard-=q;dmg-=q;if(q)this.emit('desc',`AI Moze消耗${q}层[守护]，减免${q}点伤害`)}this.hurt(this.s.ai,dmg);if(p.bleed>0)this.hurt(this.s.ai,p.bleed,true);this.resolveSerenityHalf();this.afterAttack();if(forceEnd)this.startAITurn();this.check();return}let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;this.hurt(this.s.player,p.damage);if(p.bleed>0)this.hurt(this.s.player,p.bleed,true);this.resolveSerenityHalf();if(forceEnd)this.endAi();else this.continueAIAttack()}
+    acknowledgeEvents(through){this.events=this.events.filter(e=>(e.id||0)>through);let bridge=this.s.pendingAIBridge;if(bridge&&through>=bridge.afterEventId){this.s.pendingAIBridge=null;if(bridge.mode==='defense')this.later(()=>this.aiDefend(bridge.attackCard,bridge.damage),220);else this.later(()=>this.aiTurn(),220)}let continuation=this.s.pendingAIContinue;if(continuation&&through>=continuation.afterEventId){this.s.pendingAIContinue=null;this.continueAIAttack();return}let p=this.pendingSettlement;if(!p||through<p.afterEventId)return;this.pendingSettlement=null;this.s.pendingDefenseDamage=0;if(p.kind==='PLAYER_ATTACK'){let forceEnd=!!this.s.forceEndPlayerTurn;this.s.forceEndPlayerTurn=false;let dmg=p.damage;if(this.s.ai.guard>0&&dmg>0){let q=this.chooseMozeGuardUse(this.s.ai.guard,dmg,this.s.ai.hp);this.s.ai.guard-=q;dmg-=q;if(q)this.emit('desc',`${this.s.ai.name}消耗${q}层[守护]，减免${q}点伤害`)}this.hurt(this.s.ai,dmg);if(p.bleed>0)this.hurt(this.s.ai,p.bleed,true);this.resolveSerenityHalf();this.afterAttack();if(forceEnd)this.startAITurn();this.check();return}let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;this.hurt(this.s.player,p.damage);if(p.bleed>0)this.hurt(this.s.player,p.bleed,true);this.resolveSerenityHalf();this._grantChaosIfKnight('ai');if(forceEnd)this.endAi();else this.continueAIAttack()}
     continueAIAttack(){if(!this.s)return;if(!this.s.player.alive||!this.s.ai.alive){this.check();return}this.s.phase='AI_TURN';this.s.busy=true;this.s.pendingAttack=null;this.s.pendingDefenseDamage=0;this.s.attackDebuffSnapshot=null;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];this.later(()=>this.aiTurn(),220);return this.check()}
     resolveSerenityHalf(){let key=this.s.serenityHalfTarget;if(!key)return;let x=this.s[key],before=x.hp;x.hp=Math.ceil(x.hp/2);x.alive=x.hp>0;this.s.serenityHalfTarget=null;this.emit('desc',`Serenity 0牌：攻防结束，${key==='player'?'玩家':'AI'}生命减半（-${before-x.hp}）`)}
     chooseGuard(stacks){let incoming=this.s.pendingGuardDamage||0,use=Math.max(0,Math.min(stacks||0,this.s.player.guard,incoming)),remaining=Math.max(0,incoming-use),bleed=this.s.pendingGuardBleed||0,defCard=this.s.defCard,bleedActive=defCard&&defCard.isNumberCard&&defCard.value<=3?bleed:0;this.s.player.guard-=use;this.s.pendingDialog=null;this.s.pendingGuardDamage=0;this.s.pendingGuardBleed=0;this.s.phase='AI_TURN';this.emit('desc',`消耗${use}层[守护]，减免${use}点[伤害]，剩余${remaining}点待结算`);this.deferSettlement('AI_ATTACK',remaining,bleedActive);return this.check()}
@@ -292,7 +292,7 @@
       else{b=c.isNumberCard?(c.value===1?Math.ceil(d/2):c.value===3?Math.floor(d/2):0):0;remaining=Math.max(0,d-b);desc=`AI抵消${b}点伤害，剩余${remaining}点待结算`}
       if(!judged)this.emit('desc',desc);this.deferSettlement('PLAYER_ATTACK',remaining,c.isNumberCard&&c.value<=3?this.s.ai.bleed:0)}else{this.emit('desc',frozen?'AI处于冷冻状态，无法防御蓝色攻击':'AI根据防御策略选择跳过');this.deferSettlement('PLAYER_ATTACK',d,0)}return this.check()}
     afterAttack(){let optionalDiscard=!!this.s.mayDiscardAfterSkill;if(this.s.atkOwner)this._grantChaosIfKnight(this.s.atkOwner);this.s.pendingAttack=null;this.s.pendingFiveChoice=false;this.s.fiveChoiceCard=null;this.s.pendingNumberJudge=null;this.s.attackDebuffSnapshot=null;this.s.defenseSkipped=false;this.s.phase=optionalDiscard?'PLAYER_DISCARD':'PLAYER_PLAY';this.s.busy=false;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];if(optionalDiscard){this.s.forcedDiscard=false;this.s.selectedCard=-1;this.s.selectedCards=[]}}
-    _grantChaosIfKnight(who){let ch=this.s[who];if(!ch||!ch.alive||this.name(ch)!=='Knight')return;let atkCard=this.s.atkCard;if(!atkCard||atkCard.isBlack||atkCard.isWhite||atkCard.isItemCard)return;let color=this.effective(atkCard);if(!C.includes(color))return;let key='chaos_'+color.toLowerCase();ch[key]=true;this.emit('desc',ch.name+'获得[混沌-'+this.colorName(color)+']',atkCard)}
+    _grantChaosForCard(ch,card){if(!ch||!ch.alive||this.name(ch)!=='Knight')return;if(!card||card.isBlack||card.isWhite||card.isItemCard)return;let color=this.effective(card);if(!C.includes(color))return;let key='chaos_'+color.toLowerCase();if(ch[key])return;ch[key]=true;this.emit('desc',ch.name+'获得[混沌-'+this.colorName(color)+']',card)}_grantChaosIfKnight(who){this._grantChaosForCard(this.s[who],this.s.atkCard);let defWho=this.s.defOwner;if(defWho&&defWho!==who)this._grantChaosForCard(this.s[defWho],this.s.defCard)}
     fillHands(isPlayerPhase){let limit=this.s.handLimit;this.draw('player',Math.max(0,limit-this.h.player.length),true);this.draw('ai',Math.max(0,5-this.h.ai.length),true);if(isPlayerPhase)this.emit('desc','回合结束：双方手牌补至5张')}
     trimAI(){while(this.h.ai.length>5){let worst=0;for(let i=1;i<this.h.ai.length;i++)if(this.h.ai[i].value<this.h.ai[worst].value)worst=i;let card=this.h.ai.splice(worst,1)[0];this.emit('desc',`AI手牌超限，自动弃掉${this.cardText(card)}`)}}
     startAITurn(){this.fillHands(true);this.s.phase='AI_TURN';this.s.busy=true;this.s.activeAttacker='ai';this.s.forceEndAITurn=false;this.s.pendingAIContinue=null;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.selectedCards=[];this.later(()=>this.aiTurn());return this.check()}
@@ -314,7 +314,7 @@
       if(n==='Moze'&&v===5){let drawn=pull('Moze 5牌抽取玩家手牌');if(!drawn)return{d:0,skip:true,unblock:false};this.h.ai.push(drawn);let hit=drawn.isBlack||drawn.isWhite||this.effective(drawn)==='GREEN';if(hit){this.emit('desc',`Moze 5牌判定${this.cardText(drawn)}：造成4点伤害`);return{d:4,skip:false,unblock:false}}this.heal(a,2);a.guard=Math.min(5,a.guard+1);this.emit('desc',`Moze 5牌判定${this.cardText(drawn)}：恢复2点并获得1层[守护]`);return{d:0,skip:true,unblock:false}}
       if(n==='Moze'&&v===7){let bonus=a.burn+a.bleed+(a.frozen?1:0);a.burn=0;a.bleed=0;a.frozen=false;this.emit('desc',`Moze AI清除${bonus}层debuff，造成${3+bonus}点伤害`);return{d:3+bonus,skip:false,unblock:false}}
       return null}
-    aiTurn(){if(!this.s.aiTurnStarted){this.turnStart('ai');this.s.aiTurnStarted=true;this.s.aiHasPlayed=false}let top=this.s.discardTop,chosen=this.chooseAIPlay(top);if(!chosen){if(!this.s.aiHasPlayed&&this.h.ai.length){let count=this.h.ai.length;this.h.ai=[];this.emit('desc',`AI无牌可出，弃掉全部${count}张手牌`)}return this.later(()=>this.endAi(),700)}let i=this.h.ai.indexOf(chosen),c=this.h.ai.splice(i,1)[0];this.setAIWildColor(c,top,false);this.s.aiHasPlayed=true;this.s.atkCard=cp(c);this.s.atkOwner='ai';this.setDiscardTop(c);this.rememberAttackDebuffs('player');this.applySaikiPassive(this.s.ai,this.s.player,c);this.emit('aiPlay',`AI ${this.name(this.s.ai)} 按角色策略出牌`,c);this.announceAIColor(c);if(c.isItemCard){let kind=this.itemKind(c);this.emit('itemEffect',this.itemEffectDesc(c,'ai'),c,{effect:kind,who:'ai'});this.useItem(c,this.s.ai,this.s.player,'ai');this.s.pendingAIBridge={mode:'attack',afterEventId:this.ver,effect:kind};return this.check()}let r=this.aiSpecialEffect(this.name(this.s.ai),c.value,c)||this.effect(this.name(this.s.ai),c.value,c,this.s.ai,this.s.player);this.s.pendingAttack={damage:r.d,unblock:r.unblock};if(r.d&&!r.skip&&!r.unblock){this.s.phase='PLAYER_DEFEND';this.s.busy=false;return}if(!r.d)this.emit('desc',`AI ${this.name(this.s.ai)} 本次技能分支未造成伤害，跳过防御`,c);if(r.d&&this.name(this.s.player)==='Moze'&&this.s.player.guard){this.askGuard(r.d);return}this.hurt(this.s.player,r.d);this.s.phase='AI_TURN';this.s.busy=true;this.s.pendingAIContinue={afterEventId:this.ver};return this.check()}
+    aiTurn(){if(!this.s.aiTurnStarted){this.turnStart('ai');this.s.aiTurnStarted=true;this.s.aiHasPlayed=false}let top=this.s.discardTop,chosen=this.chooseAIPlay(top);if(!chosen){if(!this.s.aiHasPlayed&&this.h.ai.length){let count=this.h.ai.length;this.h.ai=[];this.emit('desc',`AI无牌可出，弃掉全部${count}张手牌`)}return this.later(()=>this.endAi(),700)}let i=this.h.ai.indexOf(chosen),c=this.h.ai.splice(i,1)[0];this.setAIWildColor(c,top,false);this.s.aiHasPlayed=true;this.s.atkCard=cp(c);this.s.atkOwner='ai';this.setDiscardTop(c);this.rememberAttackDebuffs('player');this.applySaikiPassive(this.s.ai,this.s.player,c);this.emit('aiPlay',`AI ${this.name(this.s.ai)} 按角色策略出牌`,c);this.announceAIColor(c);if(c.isItemCard){let kind=this.itemKind(c);this.emit('itemEffect',this.itemEffectDesc(c,'ai'),c,{effect:kind,who:'ai'});this.useItem(c,this.s.ai,this.s.player,'ai');this.s.pendingAIBridge={mode:'attack',afterEventId:this.ver,effect:kind};return this.check()}let r=this.aiSpecialEffect(this.name(this.s.ai),c.value,c)||this.effect(this.name(this.s.ai),c.value,c,this.s.ai,this.s.player);this.s.pendingAttack={damage:r.d,unblock:r.unblock};if(r.d&&!r.skip&&!r.unblock){this.s.phase='PLAYER_DEFEND';this.s.busy=false;return}if(!r.d)this.emit('desc',`AI ${this.name(this.s.ai)} 本次技能分支未造成伤害，跳过防御`,c);if(r.d&&this.s.player.guard>0){this.askGuard(r.d);return}this.hurt(this.s.player,r.d);this.s.phase='AI_TURN';this.s.busy=true;this.s.pendingAIContinue={afterEventId:this.ver};return this.check()}
     defend(skip=false){
       let d=this.s.pendingAttack.damage;
       let triggeredDefense=!skip;
@@ -390,7 +390,7 @@
         else{b=c.value===1?Math.ceil(d/2):c.value===3?Math.floor(d/2):0;d=Math.max(0,d-b);desc=`抵消${b}点伤害，剩余${d}点待结算`}
         if(!judged)this.emit('desc',desc);
       }
-      if(d&&this.name(this.s.player)==='Moze'&&this.s.player.guard){this.askGuard(d,this.s.player.bleed);return this.check()}
+      if(d&&this.s.player.guard>0){this.askGuard(d,this.s.player.bleed);return this.check()}
       this.s.phase='AI_TURN';
       this.deferSettlement('AI_ATTACK',d,triggeredDefense&&this.s.defCard&&this.s.defCard.isNumberCard&&this.s.defCard.value<=3?this.s.player.bleed:0);
       return this.check();
@@ -422,7 +422,7 @@
   const origHurt=Engine.prototype.hurt;
   Engine.prototype.hurt=function(x,n,bleed=false,bypassGuard=false){
     if(this.s&&this.s.is1v2){
-      if(this.name(x)==='Moze'&&!bleed&&!bypassGuard&&n>0){
+      if(x.guard>0&&!bleed&&!bypassGuard&&n>0){
         let who=this._who(x),use=who==='player'?Math.min(x.guard,n):this.chooseMozeGuardUse(x.guard,n,x.hp);
         x.guard-=use;n-=use;
         if(use)this.emit('desc',x.name+'消耗'+use+'层[守护]，减免'+use+'点伤害')
@@ -657,7 +657,7 @@
     this.s.pendingAttack={damage:r.d,unblock:r.unblock};
     if(r.d&&!r.skip&&!r.unblock){this.s.phase='PLAYER_DEFEND';this.s.busy=false;return}
     if(!r.d)this.emit('desc',ch.name+' 本次技能分支未造成伤害，跳过防御',c);
-    if(r.d&&this.name(this.s.player)==='Moze'&&this.s.player.guard){this.askGuard(r.d);return}
+    if(r.d&&this.s.player.guard>0){this.askGuard(r.d);return}
     this.hurt(this.s.player,r.d);this.s.phase=key.toUpperCase()+'_TURN';this.s.busy=true;
     this.s.pendingAIContinue={afterEventId:this.ver};return this.check()
   };
@@ -876,7 +876,7 @@
       else{b=c.value===1?Math.ceil(d/2):c.value===3?Math.floor(d/2):0;d=Math.max(0,d-b);desc='抵消'+b+'点伤害，剩余'+d+'点待结算'}
       if(!judged)this.emit('desc',desc)
     }
-    if(d&&this.name(this.s.player)==='Moze'&&this.s.player.guard){this.askGuard(d,this.s.player.bleed);return this.check()}
+    if(d&&this.s.player.guard>0){this.askGuard(d,this.s.player.bleed);return this.check()}
     let curAIKey=this._curAI();
     this.s.phase=curAIKey.toUpperCase()+'_TURN';
     this.deferSettlement('AI_ATTACK',d,triggeredDefense&&this.s.defCard&&this.s.defCard.isNumberCard&&this.s.defCard.value<=3?this.s.player.bleed:0);
@@ -990,6 +990,7 @@
     this.hurt(this.s.player,p.damage,false,true);
     for(let i=0;i<p.bleed;i++)this.hurt(this.s.player,1,true);
     this.resolveSerenityHalf();
+    this._grantChaosIfKnight('ai');
     if(forceEnd)this.endAi1v2();else this.continueAIAttack()
   };
 

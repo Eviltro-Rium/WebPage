@@ -3,14 +3,11 @@ class Bridge {
 
     static async _detectMode() {
         if (this._mode !== null) return this._mode;
-        // The published game ships its browser engine with the page. Prefer it
-        // immediately so static hosts never make a stray /api request or
-        // mistake an HTML fallback response for a game server.
-        if (window.furryBattle) { this._mode = 'local'; return 'local'; }
         try {
             const resp = await fetch('/api/state', { signal: AbortSignal.timeout(2000) });
             if (resp.ok) { this._mode = 'http'; return 'http'; }
         } catch (e) {}
+        if (window.furryBattle) { this._mode = 'local'; return 'local'; }
         this._mode = 'http';
         return 'http';
     }
