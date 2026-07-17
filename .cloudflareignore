@@ -1,0 +1,8 @@
+.git/
+.gitignore
+.cloudflareignore
+.gitattributes
+.DS_Store
+*.md
+node_modules/
+start.txt
