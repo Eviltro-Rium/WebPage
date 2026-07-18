@@ -1072,20 +1072,27 @@ class GameUI {
 
     _showGameMenu() {
         const existing = document.getElementById('game-menu-overlay');
-        if (existing) { existing.remove(); return; }
+        if (existing) { this._closeGameMenu(existing); return; }
         const overlay = document.createElement('div');
         overlay.id = 'game-menu-overlay';
         overlay.className = 'game-menu-overlay';
         overlay.innerHTML = `
             <div class="game-menu-box">
-                <div class="game-menu-title">菜单</div>
-                <button class="game-menu-btn game-menu-skills" id="gm-skills">查看技能</button>
-                <button class="game-menu-btn game-menu-quit" id="gm-quit">退出对局</button>
-                <button class="game-menu-btn game-menu-cancel" id="gm-cancel">继续游戏</button>
+                <div class="game-menu-title">⛭ 菜单</div>
+                <button class="game-menu-btn game-menu-skills" id="gm-skills">📖 查看技能</button>
+                <button class="game-menu-btn game-menu-quit" id="gm-quit">🚪 退出对局</button>
+                <button class="game-menu-btn game-menu-cancel" id="gm-cancel">✕ 继续游戏</button>
             </div>`;
         document.body.appendChild(overlay);
-        document.getElementById('gm-cancel').addEventListener('click', () => overlay.remove());
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+        const doClose = () => this._closeGameMenu(overlay);
+
+        document.getElementById('gm-cancel').addEventListener('click', doClose);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) doClose(); });
+
+        const escHandler = (e) => { if (e.key === 'Escape') { doClose(); document.removeEventListener('keydown', escHandler); } };
+        document.addEventListener('keydown', escHandler);
+
         document.getElementById('gm-skills').addEventListener('click', () => {
             overlay.remove();
             this._showSkillOverlay();
@@ -1100,6 +1107,15 @@ class GameUI {
             this._selectedPlayerChar = null; this._selectedAIChar = null;
             this._buildSelectScreen();
         });
+    }
+
+    _closeGameMenu(overlay) {
+        if (!overlay) return;
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.15s ease';
+        const box = overlay.querySelector('.game-menu-box');
+        if (box) { box.style.transform = 'scale(0.92) translateY(8px)'; box.style.opacity = '0'; box.style.transition = 'all 0.15s ease'; }
+        setTimeout(() => overlay.remove(), 150);
     }
 
     _showSkillOverlay() {
