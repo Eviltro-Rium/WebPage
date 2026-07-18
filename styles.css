@@ -48,13 +48,34 @@ body {
     #2dd4bf 58%,
     #4ade80 100%
   );
-  background-size: 400% 400%;
   background-attachment: fixed;
-  animation: bgShift 22s ease-in-out infinite alternate;
   -webkit-font-smoothing: antialiased;
 }
 
-/* ---- 动态浮动光斑（纯 CSS） ---- */
+/* ---- 自定义光标 ---- */
+.cursor-dot,
+.cursor-ring {
+  position: fixed;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  will-change: left, top;
+  transition: opacity 0.15s;
+}
+.cursor-dot {
+  width: 6px; height: 6px;
+  background: #fff;
+}
+.cursor-ring {
+  width: 28px; height: 28px;
+  border: 1.5px solid rgba(255,255,255,0.45);
+}
+.cursor-dot.cursor-hidden,
+.cursor-ring.cursor-hidden {
+  opacity: 0;
+}
 
 /* 光斑 A：跟随鼠标的浅色高光 */
 body::before {
@@ -78,40 +99,13 @@ body.liquid-global-active::before {
   opacity: 1;
 }
 
-/* 光斑 B / C / D：自动漂浮的彩色柔光，box-shadow 模拟多个光斑 */
-body::after {
-  content: "";
+/* 光球 canvas 画布 */
+#bg-orbs {
   position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
   pointer-events: none;
   z-index: 0;
-  filter: blur(90px);
-  opacity: 0.38;
-  width: 320px; height: 320px;
-  border-radius: 50%;
-  top: 55%; left: 65%;
-  background: radial-gradient(circle at 30% 35%, rgba(34,211,238,0.55), transparent 70%);
-  box-shadow:
-    420px -280px 0 100px rgba(45,212,191,0.38),
-    -380px -200px 0 140px rgba(56,189,248,0.32),
-    180px -440px 0 160px rgba(74,222,128,0.28);
-  animation: blobAL 18s ease-in-out infinite alternate;
-}
-
-/* 光斑漂移动画（错相位，创造自然灵动感） */
-@keyframes blobAL {
-  0%   { transform: translate(0, 0) scale(1); }
-  33%  { transform: translate(-5%, 3%) scale(1.08); }
-  66%  { transform: translate(4%, -2%) scale(0.94); }
-  100% { transform: translate(-2%, -3%) scale(1.04); }
-}
-
-/* 背景渐变色缓慢漂移 */
-@keyframes bgShift {
-  0%   { background-position: 0% 50%; }
-  25%  { background-position: 50% 30%; }
-  50%  { background-position: 100% 50%; }
-  75%  { background-position: 50% 70%; }
-  100% { background-position: 0% 50%; }
 }
 
 a {

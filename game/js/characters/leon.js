@@ -11,13 +11,13 @@
       const { burn, takeReveal, draw } = helpers;
       let d = 0, skip = false, unblock = false;
       if (v === 1) {
-        burn(t, 2);
+        burn(2);
         skip = true;
       } else if (v === 2) {
         d = 4;
       } else if (v === 3) {
         d = 3;
-        burn(t, 1);
+        burn(1);
       } else if (v === 4) {
         d = 5;
         skip = !!t.burn;
@@ -29,12 +29,12 @@
           d = r.value;
         } else {
           draw(owner, 1, true);
-          burn(t, 2);
+          burn(2);
           skip = true;
         }
       } else if (v === 7) {
         d = 6;
-        burn(t, 2);
+        burn(2);
         let oh = eng.h[target];
         if (oh.length) {
           let dropped = oh.splice(Math.floor(Math.random() * oh.length), 1)[0];
@@ -43,7 +43,7 @@
         }
       } else if (v === 0) {
         d = 7;
-        burn(t, 1);
+        burn(1);
         unblock = true;
         let oh = eng.h[target], dc = Math.min(2, oh.length);
         for (let i = 0; i < dc; i++) oh.splice(Math.floor(Math.random() * oh.length), 1);
@@ -121,8 +121,7 @@
           eng.emit('reveal', label, card, { who: 'player' });
           return card;
         };
-        burn(t, 2);
-        let drawn = pull('Leon 7牌随机弃掉玩家手牌');
+        burn(2);        let drawn = pull('Leon 7牌随机弃掉玩家手牌');
         if (drawn) {
           eng.emit('desc', `Leon AI弃掉${eng.cardText(drawn)}`);
         }

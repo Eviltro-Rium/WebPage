@@ -2,7 +2,7 @@
   const C = CharacterRegistry;
   C.register({
     name: 'Ryan',
-    hp: 80,
+    hp: 70,
     type: '战士',
     passive: '进攻回合开始前恢复1点生命',
     init() { return {}; },

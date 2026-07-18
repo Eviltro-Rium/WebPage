@@ -18,7 +18,7 @@
       if (v === 1) {
         d = 1; unblock = true;
         if (cg) { heal(a, 1); guard(1); }
-        if (cr) burn(t, 2);
+        if (cr) burn(2);
         if (cb) eng.freeze(t);
         if (cy) bleed(1);
       } else if (v === 2) {
