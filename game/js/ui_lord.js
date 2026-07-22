@@ -62,6 +62,7 @@
       <div class="error-hint" id="error-hint"></div>
       <div class="player-hand-zone"><div class="zone-title">你的手牌</div><div class="hand-row" id="player-hand"></div></div>
       <div class="lord-turn-hint" id="lord-turn-hint" style="display:none"></div>
+
       <div class="action-desc" id="action-desc"></div>
       <div class="controls" id="controls"></div>`;
     this.gameScreen.innerHTML=html

@@ -1370,6 +1370,19 @@ body {
     justify-content: center;
 }
 
+.lord-turn-hint {
+    text-align: center;
+    padding: 6px 16px;
+    margin: 4px auto;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, rgba(30,27,46,0.9), rgba(45,38,64,0.9));
+    border: 1px solid rgba(168,85,247,0.4);
+    border-radius: 12px;
+    max-width: 360px;
+}
+
 .lord-dice-label {
     font-size: 0.85rem; font-weight: 700;
     color: #c084fc;

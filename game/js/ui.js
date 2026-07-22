@@ -1662,7 +1662,11 @@ class GameUI {
             } else if (evt.type === 'gameOver') {
                 this.playFloatingText(evt.desc || '游戏结束', '#ffd700', 'player');
                 await wait(1500);
-              }
+            } else if (evt.type === 'dualDice') {
+                if (typeof this._playDualDiceAnimation === 'function') {
+                    await this._playDualDiceAnimation(evt.roll, evt.target);
+                }
+            }
             } catch (error) {
                 console.error('[Animation] skipped event', evt && evt.id, error);
                 this.showError('动画已跳过，游戏继续');
