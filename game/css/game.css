@@ -662,6 +662,28 @@ body {
     100% { transform: translateX(0); filter: brightness(1); }
 }
 
+.hand-swap-active {
+    position: relative;
+    border-color: rgba(196,181,253,0.82) !important;
+    box-shadow: inset 0 0 18px rgba(139,92,246,0.18), 0 0 16px rgba(196,181,253,0.2);
+}
+
+.hand-swap-active .card-canvas {
+    opacity: 0.18;
+    filter: saturate(0.55) blur(0.5px);
+    transition: opacity 0.16s ease, filter 0.16s ease;
+}
+
+.hand-swap-arrive {
+    animation: handSwapArrive 0.46s cubic-bezier(0.2, 0.9, 0.25, 1.3) both;
+}
+
+@keyframes handSwapArrive {
+    0% { transform: scale(0.96); filter: brightness(1.65); }
+    58% { transform: scale(1.025); filter: brightness(1.22); }
+    100% { transform: scale(1); filter: brightness(1); }
+}
+
 .btn-play { background: rgba(190,24,93,0.78); border-color: #fda4af; }
 .btn-defend { background: rgba(29,78,216,0.78); border-color: #93c5fd; }
 .color-btn { min-width: 36px; text-shadow: 0 1px 2px rgba(0,0,0,0.3); font-weight: 900; }
@@ -673,17 +695,19 @@ body {
 
 .floating-text {
     position: fixed; pointer-events: none;
-    font-size: 1.2rem; font-weight: 800;
-    z-index: 1000; white-space: nowrap;
-    animation: floatUp 2s ease-out forwards;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    min-width: max-content; max-width: min(260px, 72vw);
+    font-size: 1.05rem; font-weight: 850; line-height: 1.2;
+    z-index: 1000; white-space: nowrap; text-align: center;
+    animation: floatUp 1.75s cubic-bezier(0.16, 0.78, 0.26, 1) forwards;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.72), 0 0 10px rgba(255,255,255,0.16);
+    will-change: transform, opacity;
 }
 .floating-text .ft-seg { display: inline; }
 @keyframes floatUp {
-    0% { opacity: 1; transform: translateY(0) scale(0.85); }
-    10% { transform: translateY(-5px) scale(1.05); }
-    60% { opacity: 1; }
-    100% { opacity: 0; transform: translateY(-70px) scale(0.95); }
+    0% { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.76); }
+    12% { opacity: 1; transform: translateX(-50%) translateY(-3px) scale(1.06); }
+    68% { opacity: 1; transform: translateX(calc(-50% + var(--float-drift-x, 0px))) translateY(-42px) scale(1); }
+    100% { opacity: 0; transform: translateX(calc(-50% + var(--float-drift-x, 0px))) translateY(-78px) scale(0.94); }
 }
 
 .error-hint {
@@ -763,6 +787,21 @@ body {
 }
 .discard-zone .zone-title { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); margin-bottom: 3px; }
 .discard-card-area { display: flex; justify-content: center; align-items: center; min-height: 70px; }
+
+.discard-zone.discard-catching {
+    border-color: rgba(253,230,138,0.92);
+    box-shadow: inset 0 1px 0 var(--glass-highlight), 0 0 20px rgba(250,204,21,0.34);
+}
+
+.discard-zone.discard-impact .discard-card-area {
+    animation: discardStackImpact 0.26s cubic-bezier(0.2, 0.9, 0.28, 1.3);
+}
+
+@keyframes discardStackImpact {
+    0% { transform: translateY(0) scale(1); filter: brightness(1); }
+    42% { transform: translateY(4px) scale(0.94); filter: brightness(1.55); }
+    100% { transform: translateY(0) scale(1); filter: brightness(1); }
+}
 
 .back-link { position: fixed; top: 12px; left: 16px; z-index: 100; }
 .back-link a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; }
@@ -868,6 +907,32 @@ body {
     z-index: 3000;
     will-change: transform, opacity;
     filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+}
+
+.discard-fly-card {
+    z-index: 3050;
+    filter: drop-shadow(0 7px 15px rgba(15,23,42,0.58)) drop-shadow(0 0 9px rgba(253,230,138,0.28));
+}
+
+.swap-fly-card {
+    z-index: 3070;
+    filter: drop-shadow(0 8px 18px rgba(15,23,42,0.62)) drop-shadow(0 0 11px rgba(196,181,253,0.42));
+}
+
+.discard-source-hidden {
+    opacity: 0 !important;
+    transform: translateY(8px) scale(0.88) !important;
+    transition: opacity 0.16s ease, transform 0.16s ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hand-swap-arrive,
+    .discard-zone.discard-impact .discard-card-area,
+    .floating-text {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+    .hand-swap-active .card-canvas { opacity: 1; filter: none; }
 }
 
 .card-canvas.pop-in {

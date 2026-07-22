@@ -33,7 +33,7 @@
           if (!cb) {
             let idx = eng.h[owner].indexOf(r);
             if (idx >= 0) eng.h[owner].splice(idx, 1);
-            eng.discardToBottom(r);
+            eng.discardWithEvent(r, owner, { from: 'reveal', faceUp: true, desc: `Knight 4牌将${eng.cardText(r)}置于弃牌库底` });
           }
         }
       } else if (v === 5) {
@@ -80,74 +80,15 @@
         let p = defender, chaosCount = [p.chaos_red, p.chaos_yellow, p.chaos_blue, p.chaos_green].filter(Boolean).length;
         let drain = chaosCount * 2;
         if (chaosCount >= 4) {
-          remaining = 0; hurt(opponent, drain); heal(defender, drain, 'drain');
+          remaining = 0; hurt(opponent, drain, 'drain'); heal(defender, drain, 'drain');
           desc = `Knight 0牌：4种混沌，免疫所有伤害+吸取${drain}点`;
         } else {
-          hurt(opponent, drain); heal(defender, drain, 'drain');
+          hurt(opponent, drain, 'drain'); heal(defender, drain, 'drain');
           desc = `Knight 0牌：${chaosCount}种混沌，吸取${drain}点+补齐4种混沌`;
         }
         p.chaos_red = true; p.chaos_yellow = true; p.chaos_blue = true; p.chaos_green = true;
       }
       return { remaining, desc };
-    },
-    aiAttackScore(eng, v, c, x) {
-      let cc = x.chaosCount || 0;
-      if (v === 0) return cc >= 4 ? 85 : 78;
-      if (v === 7 && cc >= 3) return 80;
-      if (v === 7 && cc >= 2) return 72;
-      if (v === 5 && x.chaos_red) return 68;
-      if (v === 6 && x.chaos_green) return 65;
-      if (v === 1 && cc >= 2) return 60;
-      if (v === 1 && cc >= 1) return 52;
-      if (v === 4) return 55;
-      if (v === 2) return 42;
-      if (v === 3) return 40;
-      return null;
-    },
-    aiDefendScore(eng, v, c, top, x) {
-      let cc = x.chaosCount || 0;
-      if (v === 0 && cc >= 4) return 88;
-      if (v === 0) return 80;
-      if (v === 3 && x.chaos_red) return 65;
-      if (v === 2 && x.chaos_blue) return 62;
-      if (v === 1 && x.chaos_yellow) return 58;
-      if (v === 1) return 50;
-      if (v === 2) return 45;
-      if (v === 3) return 42;
-      return null;
-    },
-    aiSkip(eng, c, x) {
-      if (c.value === 0 && !x.chaos) return true;
-      return false;
-    },
-    aiAttackPriority(eng, v, c, x) {
-      let cc = x.chaosCount || 0;
-      if (v === 0) return cc >= 4 ? 85 : 78;
-      if (v === 7 && cc >= 3) return 80;
-      if (v === 7 && cc >= 2) return 72;
-      if (v === 5 && x.chaos_red) return 68;
-      if (v === 6 && x.chaos_green) return 65;
-      if (v === 1 && cc >= 2) return 60;
-      if (v === 1 && cc >= 1) return 52;
-      if (v === 4) return 55;
-      if (v === 2) return 42;
-      if (v === 3) return 40;
-      return null;
-    },
-    aiDefendPriority(eng, v, c, top, x) {
-      let cc = x.chaosCount || 0;
-      if (v === 0 && cc >= 4) return 88;
-      if (v === 0) return 80;
-      if (v === 3 && x.chaos_red) return 65;
-      if (v === 2 && x.chaos_blue) return 62;
-      if (v === 1 && x.chaos_yellow) return 58;
-      if (v === 1) return 50;
-      if (v === 2) return 45;
-      if (v === 3) return 42;
-      return null;
-    },
-    aiSpecialEffect(eng, n, v, c, a, t, owner, helpers) {
-      return null;
     }
   });
 })();

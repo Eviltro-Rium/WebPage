@@ -88,52 +88,6 @@
         }
       }
       return { remaining, desc };
-    },
-    aiAttackScore(eng, v, c, x) {
-      let bt = x.hpPct < 30;
-      if (v === 0) return bt ? 82 : 60;
-      if (v === 7) return bt ? 78 : 50;
-      if (v === 6) return bt ? 75 : 55;
-      if (v === 4) return bt ? 72 : 48;
-      if (v === 2) return bt ? 68 : 42;
-      if (v === 1 && bt) return 65;
-      if (v === 1 && x.hpPct < 60) return 52;
-      if (v === 5) return 45;
-      if (v === 3) return 40;
-      return null;
-    },
-    aiDefendScore(eng, v, c, top, x) {
-      if (v === 0) return 80;
-      if (v === 2 && x.oppBleed) return 62;
-      if (v === 3 && x.hpPct < 30) return 58;
-      if (v === 1 && x.hpPct < 30) return 55;
-      return null;
-    },
-    aiSkip(eng, c, x) {
-      return false;
-    },
-    aiAttackPriority(eng, v, c, x) {
-      let bt = x.hpPct < 30;
-      if (v === 0) return bt ? 82 : 60;
-      if (v === 7) return bt ? 78 : 50;
-      if (v === 6) return bt ? 75 : 55;
-      if (v === 4) return bt ? 72 : 48;
-      if (v === 2) return bt ? 68 : 42;
-      if (v === 1 && bt) return 65;
-      if (v === 1 && x.hpPct < 60) return 52;
-      if (v === 5) return 45;
-      if (v === 3) return 40;
-      return null;
-    },
-    aiDefendPriority(eng, v, c, top, x) {
-      if (v === 0) return 80;
-      if (v === 2 && x.oppBleed) return 62;
-      if (v === 3 && x.hpPct < 30) return 58;
-      if (v === 1 && x.hpPct < 30) return 55;
-      return null;
-    },
-    aiSpecialEffect(eng, n, v, c, a, t, owner, helpers) {
-      return null;
     }
   });
 })();

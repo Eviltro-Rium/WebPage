@@ -1,106 +1,194 @@
 (function () {
-  // 游戏页面有自己的背景，不重复注入
-  if (document.getElementById('game-container')) return;
-  if (document.getElementById('bg-orbs')) return;
+  // The game owns its own particle canvas.
+  if (document.getElementById("game-container")) return;
+  if (document.getElementById("bg-orbs")) return;
 
-  var canvas = document.createElement('canvas');
-  canvas.id = 'bg-orbs';
+  var canvas = document.createElement("canvas");
+  canvas.id = "bg-orbs";
+  canvas.setAttribute("aria-hidden", "true");
   document.body.prepend(canvas);
 
-  var ctx = canvas.getContext('2d');
+  var isHomepage = document.body.classList.contains("page-home");
+
+  var ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  // ---------- 配色：取自网站背景渐变 ----------
-  var PALETTE = [
-    { r: 56,  g: 189, b: 248 },  // sky-400
-    { r: 34,  g: 211, b: 238 },  // cyan-400
-    { r: 45,  g: 212, b: 191 },  // teal-400
-    { r: 74,  g: 222, b: 128 },  // green-400
-    { r: 255, g: 255, b: 255 },  // white highlight
+  // Keep the site's original sky / cyan / teal / green palette.
+  var palette = [
+    { r: 56, g: 189, b: 248 },
+    { r: 34, g: 211, b: 238 },
+    { r: 45, g: 212, b: 191 },
+    { r: 74, g: 222, b: 128 },
   ];
 
-  var w, h;
-  var ORB_COUNT = 10;
+  // Homepage particles stay white; the larger ambient orbs retain the site palette.
+  var particlePalette = [
+    { r: 255, g: 255, b: 255, minAlpha: 0.34, maxAlpha: 0.58 },
+  ];
 
-  function resize() {
-    w = canvas.width  = window.innerWidth;
-    h = canvas.height = window.innerHeight;
+  var width = 0;
+  var height = 0;
+  var orbs = [];
+  var particles = [];
+  var frameId = 0;
+  var previousTime = 0;
+  var motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  function random(min, max) {
+    return min + Math.random() * (max - min);
   }
 
-  // ---------- 光球对象 ----------
   function makeOrb() {
-    var c = PALETTE[Math.floor(Math.random() * PALETTE.length)];
     return {
-      x:  Math.random() * w,
-      y:  Math.random() * h,
-      r:  50 + Math.random() * 70,           // 半径 50-120px
-      vx: (Math.random() - 0.5) * 0.25,       // 水平漂移速度
-      vy: (Math.random() - 0.5) * 0.2,        // 垂直漂移速度
-      phase:     Math.random() * Math.PI * 2,
-      wobbleAmp: 15 + Math.random() * 30,      // 上下浮动幅度
-      wobbleSpd: 0.3 + Math.random() * 0.4,
-      baseAlpha: 0.06 + Math.random() * 0.07,  // 峰值透明度
-      color: c,
+      x: random(0, width),
+      y: random(0, height),
+      radius: isHomepage ? random(90, 210) : random(70, 150),
+      vx: random(-7, 7),
+      vy: random(-4, 4),
+      phase: random(0, Math.PI * 2),
+      wobble: random(12, 34),
+      alpha: isHomepage ? random(0.055, 0.11) : random(0.04, 0.075),
+      color: palette[Math.floor(Math.random() * palette.length)],
     };
   }
 
-  var orbs = [];
+  function makeParticle() {
+    var color = particlePalette[Math.floor(Math.random() * particlePalette.length)];
+
+    return {
+      x: random(0, width),
+      y: random(0, height),
+      size: random(1.5, 4.2),
+      speed: random(11, 30),
+      phase: random(0, Math.PI * 2),
+      sway: random(5, 17),
+      alpha: random(color.minAlpha, color.maxAlpha),
+      color: color,
+    };
+  }
+
+  function rebuildScene() {
+    var orbCount = isHomepage ? (width < 640 ? 7 : 11) : (width < 640 ? 6 : 8);
+    var particleCount = isHomepage
+      ? (width < 640 ? 22 : Math.min(38, Math.round(width / 42)))
+      : 0;
+
+    orbs = [];
+    particles = [];
+
+    for (var i = 0; i < orbCount; i += 1) orbs.push(makeOrb());
+    for (var j = 0; j < particleCount; j += 1) particles.push(makeParticle());
+  }
+
+  function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+
+    var ratio = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+    canvas.style.width = width + "px";
+    canvas.style.height = height + "px";
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+    rebuildScene();
+    if (motionQuery.matches) draw(0, 0);
+  }
+
+  function wrap(item, padding) {
+    if (item.x < -padding) item.x = width + padding;
+    if (item.x > width + padding) item.x = -padding;
+    if (item.y < -padding) item.y = height + padding;
+    if (item.y > height + padding) item.y = -padding;
+  }
+
+  function drawOrb(orb, time, delta) {
+    orb.x += orb.vx * delta;
+    orb.y += orb.vy * delta;
+    wrap(orb, orb.radius);
+
+    var pulse = 1 + Math.sin(time * 0.00035 + orb.phase) * 0.08;
+    var x = orb.x + Math.sin(time * 0.00022 + orb.phase) * orb.wobble;
+    var y = orb.y + Math.cos(time * 0.00018 + orb.phase) * orb.wobble;
+    var radius = orb.radius * pulse;
+    var color = orb.color;
+    var gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+
+    gradient.addColorStop(
+      0,
+      "rgba(" + color.r + "," + color.g + "," + color.b + "," + orb.alpha + ")"
+    );
+    gradient.addColorStop(
+      0.42,
+      "rgba(" + color.r + "," + color.g + "," + color.b + "," + orb.alpha * 0.42 + ")"
+    );
+    gradient.addColorStop(1, "rgba(" + color.r + "," + color.g + "," + color.b + ",0)");
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawParticle(particle, time, delta) {
+    particle.x += particle.speed * delta;
+    if (particle.x > width + 20) particle.x = -20;
+
+    var y = particle.y + Math.sin(time * 0.00065 + particle.phase) * particle.sway;
+    var shimmer = 0.72 + Math.sin(time * 0.001 + particle.phase) * 0.28;
+    var alpha = particle.alpha * shimmer;
+    var color = particle.color;
+
+    ctx.shadowBlur = particle.size * 2.8;
+    ctx.shadowColor =
+      "rgba(" + color.r + "," + color.g + "," + color.b + "," + alpha * 0.55 + ")";
+    ctx.fillStyle =
+      "rgba(" + color.r + "," + color.g + "," + color.b + "," + alpha + ")";
+    ctx.beginPath();
+    ctx.arc(particle.x, y, particle.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  function draw(time, delta) {
+    ctx.clearRect(0, 0, width, height);
+    ctx.globalCompositeOperation = isHomepage ? "source-over" : "screen";
+
+    for (var i = 0; i < orbs.length; i += 1) drawOrb(orbs[i], time, delta);
+
+    ctx.globalCompositeOperation = "source-over";
+    for (var j = 0; j < particles.length; j += 1) drawParticle(particles[j], time, delta);
+  }
+
+  function animate(time) {
+    var delta = previousTime ? Math.min((time - previousTime) / 1000, 0.05) : 0;
+    previousTime = time;
+    draw(time, delta);
+    frameId = window.requestAnimationFrame(animate);
+  }
+
+  function start() {
+    window.cancelAnimationFrame(frameId);
+    frameId = 0;
+    previousTime = 0;
+
+    if (motionQuery.matches || document.hidden) {
+      draw(performance.now(), 0);
+      return;
+    }
+
+    frameId = window.requestAnimationFrame(animate);
+  }
+
+  window.addEventListener("resize", resize, { passive: true });
+  document.addEventListener("visibilitychange", start);
+
+  if (typeof motionQuery.addEventListener === "function") {
+    motionQuery.addEventListener("change", start);
+  } else if (typeof motionQuery.addListener === "function") {
+    motionQuery.addListener(start);
+  }
+
   resize();
-  for (var i = 0; i < ORB_COUNT; i++) orbs.push(makeOrb());
-
-  window.addEventListener('resize', resize);
-
-  // ---------- 绘制一个发光球 ----------
-  function drawOrb(orb) {
-    var cx = orb.x;
-    var cy = orb.y;
-    var r  = orb.r;
-    var c  = orb.color;
-
-    // 3 层同心圆，从内到外递减透明度
-    var layers = [
-      { ratio: 0.25, alphaMul: 1 },
-      { ratio: 0.55, alphaMul: 0.5 },
-      { ratio: 0.85, alphaMul: 0.2 },
-      { ratio: 1.0,  alphaMul: 0.05 },
-    ];
-
-    for (var i = 0; i < layers.length; i++) {
-      var lr   = r * layers[i].ratio;
-      var alpha = orb.baseAlpha * layers[i].alphaMul;
-      var grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, lr);
-      grad.addColorStop(0, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + alpha + ')');
-      grad.addColorStop(1, 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, lr, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  // ---------- 动画循环 ----------
-  function tick(now) {
-    var t = now * 0.001;  // 秒
-    ctx.clearRect(0, 0, w, h);
-
-    for (var i = 0; i < orbs.length; i++) {
-      var o = orbs[i];
-
-      // 漂移
-      o.x += o.vx;
-      o.y += Math.sin(t * o.wobbleSpd + o.phase) * o.wobbleAmp * 0.1;
-
-      // 环绕屏幕（从左边出去就从右边进来）
-      if (o.x < -o.r)      o.x = w + o.r;
-      if (o.x > w + o.r)   o.x = -o.r;
-      if (o.y < -o.r)      o.y = h + o.r;
-      if (o.y > h + o.r)   o.y = -o.r;
-
-      drawOrb(o);
-    }
-
-    requestAnimationFrame(tick);
-  }
-
-  requestAnimationFrame(tick);
+  start();
 })();

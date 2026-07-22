@@ -18,8 +18,8 @@
       player:this.character(p),ai:this.character(a1,true),ai2:Object.assign(this.character(a2,true),{name:'AI2 '+a2}),
       currentAITarget:0,attackTarget:null,eliminatedHandled:{ai:false,ai2:false},
       atkCard:null,atkOwner:null,defCard:null,defOwner:null,revealCards:[],
-      lordNextAI:0};
-    this._pendingLordDice=null;
+      lordPlayerTargetIdx:0};
+    this.s.attackTarget='ai';
     this.draw('player',7);this.draw('ai',5);this.draw('ai2',5);
     this.turnStart('player');return this.state()
   };
@@ -30,33 +30,75 @@
     let who=this.name(this.s.player);
     if(who==='Leon'&&c.value===0)return false;
     if(who==='Serenity'&&c.value===7)return false;
-    return true;
+    return true
   };
 
-  E.prototype._lordRollTarget=function(card){
-    let alive1=this.s.ai.alive,alive2=this.s.ai2&&this.s.ai2.alive;
-    if(!alive1||!alive2){
-      this.s.attackTarget=alive1?'ai':(alive2?'ai2':'ai');
-      return this.play1v2()
+  E.prototype._lordFixedTarget=function(){
+    let idx=this.s.lordPlayerTargetIdx||0;
+    let keys=['ai','ai2'];
+    let key=keys[idx];
+    if(!this.s[key]||!this.s[key].alive){
+      key=keys[1-idx];
+      this.s.lordPlayerTargetIdx=1-idx
     }
-    let roll=Math.floor(Math.random()*6)+1;
-    this.s.attackTarget=roll<=3?'ai':'ai2';
-    // The play event must be visible first.  play1v2() emits playerPlay and the
-    // emit wrapper below inserts this queued dice event immediately after it.
-    this._pendingLordDice={roll,target:this.s.attackTarget,card};
-    return this.play1v2()
+    this.s.attackTarget=key;
+    let targetName=key==='ai2'?this.s.ai2.name:this.s.ai.name;
+    this.emit('lordFixed','领主轮转 → '+targetName,null,{target:key})
   };
 
-  const origEmit=E.prototype.emit;
-  E.prototype.emit=function(type,desc,card,extra={}){
-    const id=origEmit.call(this,type,desc,card,extra);
-    if(this.s&&this.s.isLord&&type==='playerPlay'&&this._pendingLordDice){
-      const pending=this._pendingLordDice;
-      this._pendingLordDice=null;
-      origEmit.call(this,'lordDice','骰子：'+pending.roll+' → '+(pending.target==='ai2'?this.s.ai2.name:this.s.ai.name),pending.card,
-        {roll:pending.roll,target:pending.target});
+  const origAcknowledge=E.prototype.acknowledgeEvents;
+  E.prototype.acknowledgeEvents=function(through){
+    if(!this.s||!this.s.isLord)return origAcknowledge.call(this,through);
+    this.events=this.events.filter(e=>(e.id||0)>through);
+    let bridge=this.s.pendingAIBridge;
+    if(bridge&&through>=bridge.afterEventId){
+      this.s.pendingAIBridge=null;
+      if(bridge.mode==='defense')this.later(()=>this.aiDefend1v2(bridge.attackCard,bridge.damage),220);
+      else this.later(()=>this.aiTurn1v2(),220)
     }
-    return id
+    let continuation=this.s.pendingAIContinue;
+    if(continuation&&through>=continuation.afterEventId){
+      this.s.pendingAIContinue=null;
+      this.continueAIAttack();return
+    }
+    let p=this.pendingSettlement;
+    if(!p||through<p.afterEventId)return;
+    this.pendingSettlement=null;this.s.pendingDefenseDamage=0;
+    if(p.kind==='PLAYER_ATTACK'){
+      let forceEnd=!!this.s.forceEndPlayerTurn;this.s.forceEndPlayerTurn=false;
+      let dmg=p.damage;
+      let targetKey=this.s.attackTarget||'ai';
+      let target=this.s[targetKey];
+      if(target&&target.guard>0&&dmg>0){
+        let q=this.chooseMozeGuardUse(target.guard,dmg,target.hp);
+        target.guard-=q;dmg-=q;
+        if(q)this.emit('desc',target.name+'消耗'+q+'层[守护]，减免'+q+'点伤害')
+      }
+      this.hurt(target,dmg);
+      if(p.bleed>0)this.hurt(target,p.bleed,true);
+      this.resolveSerenityHalf();this.afterAttack();
+      if(forceEnd)this._lordStartNextAI();
+      this.check();return
+    }
+    let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;
+    this.hurt(this.s.player,p.damage);
+    if(p.bleed>0)this.hurt(this.s.player,p.bleed,true);
+    this.resolveSerenityHalf();this._grantChaosIfKnight('ai');
+    if(forceEnd)this.endAi1v2();else this.continueAIAttack()
+  };
+
+  const origAfterAttack=E.prototype.afterAttack;
+  E.prototype.afterAttack=function(){
+    if(!this.s||!this.s.isLord)return origAfterAttack.call(this);
+    let targetKey=this.s.attackTarget||'ai';
+    let target=this.s[targetKey];
+    origAfterAttack.call(this);
+    if(target&&!target.alive){
+      this._handleEliminated1v2();
+      this.emit('desc',target.name+'被击败！玩家回合结束，另一方进攻');
+      this.s.lordPlayerTargetIdx=1-(this.s.lordPlayerTargetIdx||0);
+      this._lordStartNextAI()
+    }
   };
 
   const origDispatch=E.prototype.dispatch;
@@ -67,14 +109,11 @@
     }
     if(!this.s||!this.s.isLord)return origDispatch.call(this,m,p);
     if(m==='doPlay'){
-      if(this.s.phase==='TARGET_CHOICE')return this.state();
       let c=this.h.player[this.s.selectedCard];
       if(!c||!this.legal(c))return this.state();
       this.s.attackTarget=null;
       if(this._lordNeedsTarget(c)){
-        let alive1=this.s.ai.alive,alive2=this.s.ai2&&this.s.ai2.alive;
-        if(alive1&&alive2)return this._lordRollTarget(c);
-        this.s.attackTarget=alive1?'ai':(alive2?'ai2':'ai');
+        this._lordFixedTarget()
       }
       return this.play1v2()
     }
@@ -110,11 +149,12 @@
     if(this.s.player.burn){let dmg=this.s.player.burn;this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',amount:dmg});this.hurt(this.s.player,dmg)}}
     this.check();if(this.s.phase==='GAME_OVER')return this.state();
 
-    let nextIdx=this.s.lordNextAI||0;
-    let keys=['ai','ai2'];
-    let key=keys[nextIdx];
-    if(!this.s[key]||!this.s[key].alive){key=keys[1-nextIdx];nextIdx=1-nextIdx}
-    this.s.lordNextAI=1-nextIdx;
+    let idx=this.s.lordPlayerTargetIdx||0;
+    let key=['ai','ai2'][idx];
+    if(!this.s[key]||!this.s[key].alive){
+      key=['ai','ai2'][1-idx];
+      if(!this.s[key]||!this.s[key].alive)return this.endAi1v2()
+    }
 
     this.s.currentAITarget=key==='ai2'?1:0;
     this.s.phase=key==='ai2'?'AI2_TURN':'AI_TURN';
@@ -135,6 +175,12 @@
     this.check();if(this.s.phase==='GAME_OVER')return;
 
     this._handleEliminated1v2();
+
+    this.s.lordPlayerTargetIdx=1-(this.s.lordPlayerTargetIdx||0);
+    let nextIdx=this.s.lordPlayerTargetIdx;
+    let nextKey=['ai','ai2'][nextIdx];
+    if(!this.s[nextKey]||!this.s[nextKey].alive)nextKey=['ai','ai2'][1-nextIdx];
+    this.s.attackTarget=nextKey;
 
     this.s.turn++;
     this.s.phase='PLAYER_PLAY';this.s.busy=false;this.s.activeAttacker='player';
@@ -168,7 +214,8 @@
       while(this.h[key].length>5){
         let worst=0;
         for(let i=1;i<this.h[key].length;i++)if(this.h[key][i].value<this.h[key][worst].value)worst=i;
-        this.discardToBottom(this.h[key].splice(worst,1)[0])
+        const card=this.h[key].splice(worst,1)[0];
+        this.discardWithEvent(card,key,{handIndex:worst,desc:this.s[key].name+'手牌超限，弃掉'+this.cardText(card)})
       }
       this.draw(key,Math.max(0,5-this.h[key].length),true)
     }

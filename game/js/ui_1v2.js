@@ -66,6 +66,11 @@
       </div>
       <div class="error-hint" id="error-hint"></div>
       <div class="player-hand-zone"><div class="zone-title">你的手牌</div><div class="hand-row" id="player-hand"></div></div>
+      <div class="dual-dice-inline" id="dual-dice-inline" style="display:none">
+        <div class="lord-dice-label">骰子索敌</div>
+        <div class="lord-dice" id="dual-dice-num">?</div>
+        <div class="lord-dice-result" id="dual-dice-result"></div>
+      </div>
       <div class="action-desc" id="action-desc"></div>
       <div class="controls" id="controls"></div>`;
     this.gameScreen.innerHTML=html
@@ -98,8 +103,25 @@
     if(document.getElementById('ai2-hp-section'))document.getElementById('ai2-hp-section').classList.toggle('active-attacker',activeAttacker==='ai2');
     document.getElementById('ai-hp-section').classList.toggle('selected-target',s.attackTarget==='ai'&&s.activeAttacker==='player');
     if(document.getElementById('ai2-hp-section'))document.getElementById('ai2-hp-section').classList.toggle('selected-target',s.attackTarget==='ai2'&&s.activeAttacker==='player');
+    if(s.isLord){
+      let hint=document.getElementById('lord-turn-hint');
+      if(hint){
+        if(s.phase==='PLAYER_PLAY'&&s.attackTarget){
+          let targetName=s.attackTarget==='ai2'?(s.ai2?s.ai2.name:'AI2'):(s.ai?s.ai.name:'AI1');
+          hint.textContent='本轮进攻目标：'+targetName;
+          hint.style.display='block';
+          hint.style.color=s.attackTarget==='ai2'?'#c084fc':'#f87171'
+        }else{
+          hint.style.display='none'
+        }
+      }
+    }
     if(prev){
       this._detectAndPlayAnimations(prev,s);
+      if(!s.isLord){
+        let diceEvt=s.events&&s.events.find(e=>e.type==='dualDice'&&(!prev||e.id>(prev._lastEventId||0)));
+        if(diceEvt)this._playDualDiceAnimation(diceEvt.roll,diceEvt.target);
+      }
       if(prev.ai2&&s.ai2){
         if(s.ai2.burn>prev.ai2.burn)this.playFloatingText(`+${s.ai2.burn-prev.ai2.burn}[灼烧]`,'#ff8800','ai2');
         if(s.ai2.bleed>prev.ai2.bleed)this.playFloatingText(`+${s.ai2.bleed-prev.ai2.bleed}[流血]`,'#cc2222','ai2');
@@ -172,5 +194,34 @@
 
   GameUI.prototype._renderControls1v2=function(){
     return _origRenderControls.call(this)
+  }
+
+  GameUI.prototype._playDualDiceAnimation=function(roll,target){
+    return new Promise(resolve=>{
+      const container=document.getElementById('dual-dice-inline');
+      const dice=document.getElementById('dual-dice-num');
+      const result=document.getElementById('dual-dice-result');
+      if(!container||!dice||!result){resolve();return}
+      container.style.display='flex';
+      dice.textContent='?';
+      dice.className='lord-dice';
+      result.textContent='';
+      let count=0;
+      const maxCount=12;
+      const interval=setInterval(()=>{
+        dice.textContent=Math.floor(Math.random()*6)+1;
+        dice.classList.add('lord-dice-spin');
+        count++;
+        if(count>=maxCount){
+          clearInterval(interval);
+          dice.textContent=roll;
+          dice.className='lord-dice lord-dice-landed';
+          const targetName=target==='ai2'?(this.state.ai2?this.state.ai2.name:'AI2'):(this.state.ai?this.state.ai.name:'AI1');
+          result.textContent=roll+' → '+targetName;
+          result.style.color=target==='ai2'?'#c084fc':'#f87171';
+          setTimeout(()=>{container.style.display='none';resolve()},1200);
+        }
+      },80);
+    });
   }
 })();

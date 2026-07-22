@@ -10,7 +10,7 @@ const CARD_COLORS = {
 
 const TAG_COLORS = {
     '[生命]': '#86efac', '[伤害]': '#fda4af', '[灼烧]': '#fdba74',
-    '[冷冻]': '#93c5fd', '[流血]': '#fb7185', '[牌]': '#c4b5fd',
+    '[冷冻]': '#93c5fd', '[流血]': '#fb7185', '[吸血]': '#86efac', '[牌]': '#c4b5fd',
     '[战斗]': '#fcd34d', '[交换]': '#c4b5fd', '[洗入]': '#c4b5fd',
     '[净化]': '#ddd6fe', '[解冻]': '#bae6fd',
     '[红]': '#fda4af', '[黄]': '#fde047', '[蓝]': '#93c5fd',
@@ -344,6 +344,149 @@ class AnimLayer {
             requestAnimationFrame(tick);
         });
     }
+
+    discardCard(card, fromEl, toEl, faceUp = true) {
+        return new Promise(resolve => {
+            if (!fromEl || !toEl) { resolve(); return; }
+            const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const discardZone = toEl.closest('.discard-zone') || toEl;
+            if (reducedMotion) {
+                discardZone.classList.add('discard-impact');
+                setTimeout(() => discardZone.classList.remove('discard-impact'), 180);
+                resolve();
+                return;
+            }
+
+            const fromRect = fromEl.getBoundingClientRect();
+            const toRect = toEl.getBoundingClientRect();
+            const width = CARD_W - 8;
+            const height = CARD_H - 12;
+            const flyEl = document.createElement('div');
+            flyEl.className = 'fly-card discard-fly-card';
+            flyEl.appendChild(faceUp ? renderCard(card, width, height, false) : renderCardBack(width, height));
+            document.body.appendChild(flyEl);
+
+            const sx = fromRect.left + fromRect.width / 2 - width / 2;
+            const sy = fromRect.top + fromRect.height / 2 - height / 2;
+            const ex = toRect.left + toRect.width / 2 - width / 2;
+            const ey = toRect.top + toRect.height / 2 - height / 2 + 6;
+            const distance = Math.hypot(ex - sx, ey - sy);
+            const arc = Math.max(46, Math.min(118, distance * 0.24));
+            const turn = ex >= sx ? 1 : -1;
+            const duration = 520;
+            const start = performance.now();
+
+            if (fromEl.classList && fromEl.classList.contains('card-canvas')) {
+                fromEl.classList.add('discard-source-hidden');
+            }
+            discardZone.classList.add('discard-catching');
+
+            const tick = now => {
+                const t = Math.min(1, (now - start) / duration);
+                const ease = t < 0.72
+                    ? 1 - Math.pow(1 - t / 0.72, 3)
+                    : 1;
+                const x = sx + (ex - sx) * ease;
+                const y = sy + (ey - sy) * ease - Math.sin(ease * Math.PI) * arc;
+                const sink = Math.max(0, (t - 0.72) / 0.28);
+                const scale = 1 + Math.sin(ease * Math.PI) * 0.1 - sink * 0.36;
+                const rotate = turn * (Math.sin(ease * Math.PI) * 8 + sink * 14);
+                flyEl.style.transform = `translate(${x}px, ${y + sink * 13}px) scale(${scale}) rotate(${rotate}deg)`;
+                flyEl.style.opacity = t < 0.08 ? t / 0.08 : sink ? 1 - sink : 1;
+                if (t < 1) {
+                    requestAnimationFrame(tick);
+                    return;
+                }
+                flyEl.remove();
+                discardZone.classList.remove('discard-catching');
+                discardZone.classList.add('discard-impact');
+                setTimeout(() => discardZone.classList.remove('discard-impact'), 260);
+                resolve();
+            };
+            requestAnimationFrame(tick);
+        });
+    }
+
+    swapHands(playerEl, opponentEl, playerCards, opponentCount) {
+        return new Promise(resolve => {
+            if (!playerEl || !opponentEl) { resolve(); return; }
+            const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (reducedMotion) { resolve(); return; }
+
+            const playerRect = playerEl.getBoundingClientRect();
+            const opponentRect = opponentEl.getBoundingClientRect();
+            const playerSet = (playerCards || []).slice(0, 7);
+            const opponentTotal = Math.min(7, Math.max(0, opponentCount || 0));
+            const ghosts = [];
+            const width = Math.max(36, Math.min(48, CARD_W - 10));
+            const height = Math.round(width * 1.43);
+
+            const pointFor = (rect, index, total) => {
+                const spacing = Math.min(30, Math.max(12, (rect.width - width) / Math.max(1, total - 1)));
+                const totalWidth = width + spacing * Math.max(0, total - 1);
+                return {
+                    x: rect.left + rect.width / 2 - totalWidth / 2 + index * spacing,
+                    y: rect.top + rect.height / 2 - height / 2
+                };
+            };
+
+            const addGhost = (card, faceUp, fromRect, toRect, index, total, direction) => {
+                const el = document.createElement('div');
+                el.className = 'fly-card swap-fly-card';
+                el.appendChild(faceUp ? renderCard(card, width, height, false) : renderCardBack(width, height));
+                document.body.appendChild(el);
+                ghosts.push({
+                    el,
+                    start: pointFor(fromRect, index, total),
+                    end: pointFor(toRect, index, total),
+                    direction,
+                    delay: index * 34
+                });
+            };
+
+            playerSet.forEach((card, index) => addGhost(card, true, playerRect, opponentRect, index, playerSet.length, -1));
+            for (let i = 0; i < opponentTotal; i++) {
+                addGhost(null, false, opponentRect, playerRect, i, opponentTotal, 1);
+            }
+            if (!ghosts.length) { resolve(); return; }
+
+            playerEl.classList.add('hand-swap-active');
+            opponentEl.classList.add('hand-swap-active');
+            const dx = opponentRect.left - playerRect.left;
+            const dy = opponentRect.top - playerRect.top;
+            const distance = Math.max(1, Math.hypot(dx, dy));
+            const normalX = -dy / distance;
+            const normalY = dx / distance;
+            const arc = Math.max(42, Math.min(104, distance * 0.18));
+            const duration = 650 + Math.max(...ghosts.map(ghost => ghost.delay));
+            const start = performance.now();
+
+            const tick = now => {
+                let done = true;
+                for (const ghost of ghosts) {
+                    const t = Math.max(0, Math.min(1, (now - start - ghost.delay) / 650));
+                    if (t < 1) done = false;
+                    const ease = 0.5 - Math.cos(t * Math.PI) / 2;
+                    const curve = Math.sin(ease * Math.PI) * arc * ghost.direction;
+                    const x = ghost.start.x + (ghost.end.x - ghost.start.x) * ease + normalX * curve;
+                    const y = ghost.start.y + (ghost.end.y - ghost.start.y) * ease + normalY * curve;
+                    const scale = 0.9 + Math.sin(ease * Math.PI) * 0.16;
+                    const rotate = ghost.direction * Math.sin(ease * Math.PI) * 10;
+                    ghost.el.style.transform = `translate(${x}px, ${y}px) scale(${scale}) rotate(${rotate}deg)`;
+                    ghost.el.style.opacity = t < 0.08 ? t / 0.08 : t > 0.9 ? (1 - t) / 0.1 : 1;
+                }
+                if (!done && now - start < duration + 80) {
+                    requestAnimationFrame(tick);
+                    return;
+                }
+                ghosts.forEach(ghost => ghost.el.remove());
+                playerEl.classList.remove('hand-swap-active');
+                opponentEl.classList.remove('hand-swap-active');
+                resolve();
+            };
+            requestAnimationFrame(tick);
+        });
+    }
 }
 
 class GameUI {
@@ -363,6 +506,7 @@ class GameUI {
         this._isConsumingEvents = false;
         this._lastAnimatedAIDefenseKey = null;
         this._animatedPlayerDraws = 0;
+        this._floatingTextLanes = { player: [], ai: [], ai2: [] };
         this.anim = new AnimLayer();
         this.dialogs = new DialogManager((method, params) => this._apiAction(method, params));
     }
@@ -1394,16 +1538,17 @@ class GameUI {
             } else if (evt.type === 'itemEffect') {
                 this._showZoneDesc('reveal-desc', evt.desc || '道具效果立即结算');
                 if (evt.effect === 'swap') {
+                    await this._playHandSwapAnimation(evt);
                     this._renderPlayerHand();
                     if (this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2();
                     else this._renderAIHand();
                     const playerHand = document.getElementById('player-hand');
                     const aiHand = document.getElementById(evt.target === 'ai2' || evt.who === 'ai2' ? 'ai2-hand' : 'ai-hand');
-                    if (playerHand) playerHand.classList.add('hand-swap-pulse');
-                    if (aiHand) aiHand.classList.add('hand-swap-pulse');
-                    await wait(620);
-                    if (playerHand) playerHand.classList.remove('hand-swap-pulse');
-                    if (aiHand) aiHand.classList.remove('hand-swap-pulse');
+                    if (playerHand) playerHand.classList.add('hand-swap-arrive');
+                    if (aiHand) aiHand.classList.add('hand-swap-arrive');
+                    await wait(460);
+                    if (playerHand) playerHand.classList.remove('hand-swap-arrive');
+                    if (aiHand) aiHand.classList.remove('hand-swap-arrive');
                 } else {
                     const side = evt.who === 'ai2' ? 'ai2' : evt.who === 'ai' ? 'ai' : 'player';
                     if (this.state[side]) {
@@ -1471,6 +1616,14 @@ class GameUI {
                 await wait(500);
                 this._showCardSkillDesc('def-desc', evt.card, 'player', true);
                 await wait(800);
+            } else if (evt.type === 'discardMany' && evt.cards && evt.cards.length) {
+                await this._playDiscardManyAnimation(evt);
+                this._showZoneDesc('reveal-desc', evt.desc || `${evt.cards.length}张牌已放入弃牌库底`);
+                await wait(180);
+            } else if (evt.type === 'discard' && evt.card) {
+                await this._playDiscardAnimation(evt);
+                this._showZoneDesc('reveal-desc', evt.desc || '卡牌已放入弃牌库底');
+                await wait(220);
             } else if (evt.type === 'desc') {
                 this._showZoneDesc('reveal-desc', evt.desc);
                 await wait(1500);
@@ -1594,6 +1747,66 @@ class GameUI {
         if (actionDesc) actionDesc.textContent = '';
     }
 
+    async _playDiscardAnimation(evt) {
+        const discard = document.getElementById('discard-top');
+        if (!discard) return;
+
+        const owner = evt.who === 'ai2' ? 'ai2' : evt.who === 'ai' ? 'ai' : 'player';
+        const hand = document.getElementById(owner === 'player' ? 'player-hand' : `${owner}-hand`);
+        let source = null;
+
+        if (evt.from === 'reveal') {
+            source = document.querySelector('#reveal-cards .card-canvas') ||
+                document.querySelector('.ai-revealed-card');
+        }
+        if (!source && hand && Number.isInteger(evt.handIndex)) {
+            source = hand.querySelector(`[data-index="${evt.handIndex}"]`) || hand.children[evt.handIndex];
+        }
+        if (!source && hand) {
+            source = hand.querySelector('.selected') || hand.lastElementChild || hand;
+        }
+        if (!source) source = document.getElementById('reveal-cards') || document.getElementById('deck-area');
+
+        const faceUp = evt.faceUp === true || owner === 'player';
+        await this.anim.discardCard(evt.card, source, discard, faceUp);
+    }
+
+    async _playDiscardManyAnimation(evt) {
+        const discard = document.getElementById('discard-top');
+        if (!discard) return;
+        const owner = evt.who === 'ai2' ? 'ai2' : evt.who === 'ai' ? 'ai' : 'player';
+        const hand = document.getElementById(owner === 'player' ? 'player-hand' : `${owner}-hand`);
+        const sources = hand ? Array.from(hand.querySelectorAll('.card-canvas')) : [];
+        const cards = Array.from(evt.cards || []);
+        const faceUp = evt.faceUp === true || owner === 'player';
+        const animations = cards.map((card, index) => (async () => {
+            if (index) await new Promise(resolve => setTimeout(resolve, index * 54));
+            const source = sources[index] || hand || document.getElementById('reveal-cards');
+            await this.anim.discardCard(card, source, discard, faceUp);
+        })());
+        await Promise.all(animations);
+    }
+
+    async _playHandSwapAnimation(evt) {
+        const playerHand = document.getElementById('player-hand');
+        const opponentKey = evt.who === 'ai2' || evt.target === 'ai2' ? 'ai2' : 'ai';
+        const opponentHand = document.getElementById(`${opponentKey}-hand`);
+        if (!playerHand || !opponentHand) return;
+
+        let playerCards = this._prevState && this._prevState.playerHand
+            ? this._prevState.playerHand.slice()
+            : [];
+        if (evt.who === 'player' && this._prevState) {
+            const playedIndex = this._prevState.selectedCard;
+            if (playedIndex >= 0 && playerCards[playedIndex] && playerCards[playedIndex].swapHand) {
+                playerCards.splice(playedIndex, 1);
+            }
+        }
+
+        const opponentCount = opponentHand.querySelectorAll('.card-canvas').length || opponentHand.children.length;
+        await this.anim.swapHands(playerHand, opponentHand, playerCards, opponentCount);
+    }
+
     async _playAICardAnimation(card, who = 'ai') {
         const aiHand = document.getElementById(who === 'ai2' ? 'ai2-hand' : 'ai-hand');
         const atkZone = document.getElementById('atk-cards');
@@ -1698,8 +1911,29 @@ class GameUI {
     }
 
     playFloatingText(text, color, target) {
+        target = target === 'player' || target === 'ai2' ? target : 'ai';
+        const layouts = [
+            { x: 0, y: 0 },
+            { x: -48, y: -28 },
+            { x: 48, y: -28 },
+            { x: -68, y: -58 },
+            { x: 68, y: -58 },
+            { x: 0, y: -86 }
+        ];
+        const active = (this._floatingTextLanes[target] || []).filter(entry => entry.el.isConnected);
+        this._floatingTextLanes[target] = active;
+        if (active.length >= layouts.length) {
+            const oldest = active.shift();
+            if (oldest && oldest.el) oldest.el.remove();
+        }
+        const used = new Set(active.map(entry => entry.lane));
+        const lane = layouts.findIndex((_, index) => !used.has(index));
+        const layout = layouts[Math.max(0, lane)];
+
         const el = document.createElement('div');
         el.className = 'floating-text';
+        el.dataset.target = target;
+        el.dataset.lane = String(lane);
         const segs = parseSegments(text, color);
         for (const seg of segs) {
             const span = document.createElement('span');
@@ -1714,10 +1948,19 @@ class GameUI {
         const hpSection = document.getElementById(hpId);
         if (!hpSection) return;
         const rect = hpSection.getBoundingClientRect();
-        el.style.left = (rect.left + rect.width / 2 - 60) + 'px';
-        el.style.top = (rect.top - 10) + 'px';
+        const laneY = rect.top < 150 ? Math.abs(layout.y) : layout.y;
+        const centerX = rect.left + rect.width / 2 + layout.x;
+        const top = Math.max(12, Math.min(window.innerHeight - 72, rect.top + rect.height / 2 - 14 + laneY));
+        el.style.left = Math.max(72, Math.min(window.innerWidth - 72, centerX)) + 'px';
+        el.style.top = top + 'px';
+        el.style.setProperty('--float-drift-x', `${layout.x === 0 ? 0 : layout.x > 0 ? 12 : -12}px`);
         document.body.appendChild(el);
-        setTimeout(() => el.remove(), 2100);
+        active.push({ el, lane });
+        setTimeout(() => {
+            el.remove();
+            this._floatingTextLanes[target] = (this._floatingTextLanes[target] || [])
+                .filter(entry => entry.el !== el && entry.el.isConnected);
+        }, 1850);
     }
 
     shakeScreen(intensity, duration) {

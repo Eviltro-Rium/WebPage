@@ -6,7 +6,7 @@
     type: '谋士',
     passive: '进攻回合开始前抽1张牌',
     init() { return {}; },
-    turnStart(eng, ch, w) { eng.draw(w, 1); },
+    turnStart(eng, ch, w) { eng.draw(w, 1, true); },
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs } = helpers;
       let d = 0, skip = false, unblock = false;
@@ -71,86 +71,6 @@
         desc = `Chan 0牌：防御所有伤害并反击${cd}点，进攻方回合结束`;
       }
       return { remaining, desc };
-    },
-    aiAttackScore(eng, v, c, x) {
-      if (v === 0) return 72;
-      if (v === 4 && (x.oppBleed || x.oppBurn)) return 70;
-      if (v === 6) return 62;
-      if (v === 7 && eng.h.ai.length >= 3) return 60;
-      if (v === 5 && x.hpPct > 30) return 55;
-      if (v === 2) return 40;
-      if (v === 3) return 38;
-      if (v === 1 && x.hpPct <= 50) return 50;
-      return null;
-    },
-    aiDefendScore(eng, v, c, top, x) {
-      if (v === 0) return 85;
-      if (v === 2) return 55;
-      if (v === 3) return 45;
-      return null;
-    },
-    aiSkip(eng, c, x) {
-      return false;
-    },
-    aiAttackPriority(eng, v, c, x) {
-      if (v === 0) return 72;
-      if (v === 4 && (x.oppBleed || x.oppBurn)) return 70;
-      if (v === 6) return 62;
-      if (v === 7 && eng.h.ai.length >= 3) return 60;
-      if (v === 5 && x.hpPct > 30) return 55;
-      if (v === 2) return 40;
-      if (v === 3) return 38;
-      if (v === 1 && x.hpPct <= 50) return 50;
-      return null;
-    },
-    aiDefendPriority(eng, v, c, top, x) {
-      if (v === 0) return 85;
-      if (v === 2) return 55;
-      if (v === 3) return 45;
-      return null;
-    },
-    aiSpecialEffect(eng, n, v, c, a, t, owner, helpers) {
-      const { heal, bleed, burn, draw } = helpers;
-      const pull = label => {
-        if (!eng.h.player.length) return null;
-        let card = eng.h.player.splice(Math.floor(Math.random() * eng.h.player.length), 1)[0];
-        eng.s.revealCards = [JSON.parse(JSON.stringify(card))];
-        eng.emit('reveal', label, card, { who: 'player' });
-        return card;
-      };
-      if (v === 4) {
-        let drawn = pull('Chan 4牌抽取玩家手牌');
-        if (!drawn) return { d: 2, skip: true, unblock: false };
-        let swap = null;
-        if (drawn.isItemCard || drawn.value === 0) {
-          for (const x of eng.h.ai) {
-            if (!x.isItemCard && x.value !== 0 && (!swap || x.value < swap.value)) swap = x;
-          }
-        } else {
-          for (const x of eng.h.ai) {
-            if (!x.isItemCard && x.value !== 0 && x.color === drawn.color && x.value < drawn.value && (!swap || x.value < swap.value)) swap = x;
-          }
-        }
-        if (swap) {
-          eng.h.ai.splice(eng.h.ai.indexOf(swap), 1);
-          eng.h.player.push(swap);
-          eng.h.ai.push(drawn);
-          eng.emit('desc', `Chan AI保留${eng.cardText(drawn)}，用${eng.cardText(swap)}交换`);
-          return { d: 0, skip: true, unblock: false };
-        }
-        eng.emit('desc', `Chan AI弃掉${eng.cardText(drawn)}，造成2点伤害并跳过防御`);
-        return { d: 2, skip: true, unblock: false };
-      }
-      if (v === 7) {
-        let drawn = pull('Chan 7牌抽取玩家手牌');
-        if (drawn) {
-          let keep = drawn.isItemCard || drawn.value === 0 || drawn.value >= 4;
-          if (keep) eng.h.ai.push(drawn);
-          eng.emit('desc', `Chan AI${keep ? '保留' : '弃掉'}${eng.cardText(drawn)}`);
-        }
-        return { d: 6, skip: false, unblock: false };
-      }
-      return null;
     }
   });
 })();

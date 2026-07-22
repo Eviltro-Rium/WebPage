@@ -22,3 +22,6 @@ start.txt
 # Operating-system metadata
 .DS_Store
 **/.DS_Store
+
+# Local regression tests
+game/tests/

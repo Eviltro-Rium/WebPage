@@ -61,44 +61,9 @@
       </div>
       <div class="error-hint" id="error-hint"></div>
       <div class="player-hand-zone"><div class="zone-title">你的手牌</div><div class="hand-row" id="player-hand"></div></div>
-      <div class="lord-dice-inline" id="lord-dice-inline" style="display:none">
-        <div class="lord-dice-label">领主骰子</div>
-        <div class="lord-dice" id="lord-dice-num">?</div>
-        <div class="lord-dice-result" id="lord-dice-result"></div>
-      </div>
+      <div class="lord-turn-hint" id="lord-turn-hint" style="display:none"></div>
       <div class="action-desc" id="action-desc"></div>
       <div class="controls" id="controls"></div>`;
     this.gameScreen.innerHTML=html
-  };
-
-  GameUI.prototype._playDiceAnimation=function(roll,target){
-    return new Promise(resolve=>{
-      const container=document.getElementById('lord-dice-inline');
-      const dice=document.getElementById('lord-dice-num');
-      const result=document.getElementById('lord-dice-result');
-      if(!container||!dice||!result){resolve();return}
-
-      container.style.display='flex';
-      dice.textContent='?';
-      dice.className='lord-dice';
-      result.textContent='';
-
-      let count=0;
-      const maxCount=12;
-      const interval=setInterval(()=>{
-        dice.textContent=Math.floor(Math.random()*6)+1;
-        dice.classList.add('lord-dice-spin');
-        count++;
-        if(count>=maxCount){
-          clearInterval(interval);
-          dice.textContent=roll;
-          dice.className='lord-dice lord-dice-landed';
-          const targetName=target==='ai2'?(this.state.ai2?this.state.ai2.name:'AI2'):(this.state.ai?this.state.ai.name:'AI1');
-          result.textContent=roll+' → '+targetName;
-          result.style.color=target==='ai2'?'#c084fc':'#f87171';
-          setTimeout(()=>{container.style.display='none';resolve()},1200);
-        }
-      },80);
-    });
   };
 })();

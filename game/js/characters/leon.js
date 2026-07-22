@@ -79,55 +79,6 @@
         desc = `Leon 0牌：弃攻击方所有牌+双方各受${d}点伤害`;
       }
       return { remaining, desc };
-    },
-    aiAttackScore(eng, v, c, x) {
-      if (v === 4 && x.oppBurn) return 78;
-      if (v === 7 && x.oppBurn >= 2) return 73;
-      if (v === 0) return x.hpPct > 60 ? 12 : x.hpPct > 40 ? 25 : 40;
-      if (v === 2 && !x.oppBurn) return 45;
-      if (v === 3 && !x.oppBurn) return 42;
-      return null;
-    },
-    aiDefendScore(eng, v, c, top, x) {
-      if (v === 0 && x.hpPct <= 33) return 85;
-      if (v === 1 && x.oppBurn < 4) return 55;
-      return null;
-    },
-    aiSkip(eng, c, x) {
-      if (x.full && c.value === 2) return true;
-      if (c.value === 1 && x.oppBurn >= 4) return true;
-      return false;
-    },
-    aiAttackPriority(eng, v, c, x) {
-      if (v === 4 && x.oppBurn) return 78;
-      if (v === 7 && x.oppBurn >= 2) return 73;
-      if (v === 0) return x.hpPct > 60 ? 12 : x.hpPct > 40 ? 25 : 40;
-      if (v === 2 && !x.oppBurn) return 45;
-      if (v === 3 && !x.oppBurn) return 42;
-      return null;
-    },
-    aiDefendPriority(eng, v, c, top, x) {
-      if (v === 0 && x.hpPct <= 33) return 85;
-      if (v === 1 && x.oppBurn < 4) return 55;
-      return null;
-    },
-    aiSpecialEffect(eng, n, v, c, a, t, owner, helpers) {
-      if (v === 7) {
-        const { burn, draw } = helpers;
-        const pull = label => {
-          if (!eng.h.player.length) return null;
-          let card = eng.h.player.splice(Math.floor(Math.random() * eng.h.player.length), 1)[0];
-          eng.s.revealCards = [JSON.parse(JSON.stringify(card))];
-          eng.emit('reveal', label, card, { who: 'player' });
-          return card;
-        };
-        burn(2);        let drawn = pull('Leon 7牌随机弃掉玩家手牌');
-        if (drawn) {
-          eng.emit('desc', `Leon AI弃掉${eng.cardText(drawn)}`);
-        }
-        return { d: 6, skip: false, unblock: false };
-      }
-      return null;
     }
   });
 })();
