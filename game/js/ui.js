@@ -1211,7 +1211,7 @@ class GameUI {
         bind('btn-back-select', restartFn);
 
         const menuBtn = document.getElementById('menu-btn');
-        if (menuBtn) menuBtn.addEventListener('click', () => this._showGameMenu());
+        if (menuBtn && !menuBtn._menuBound) { menuBtn._menuBound = true; menuBtn.addEventListener('click', () => this._showGameMenu()); }
     }
 
     _showGameMenu() {

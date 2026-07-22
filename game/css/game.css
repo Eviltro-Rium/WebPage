@@ -1363,11 +1363,16 @@ body {
     gap: 12px;
     padding: 8px 16px;
     margin: 4px auto;
-    background: linear-gradient(135deg, rgba(30,27,46,0.9), rgba(45,38,64,0.9));
+    background: linear-gradient(135deg, rgba(30,27,46,0.95), rgba(45,38,64,0.95));
     border: 1px solid rgba(168,85,247,0.4);
     border-radius: 12px;
     max-width: 360px;
     justify-content: center;
+    position: fixed;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
 }
 
 .lord-turn-hint {
