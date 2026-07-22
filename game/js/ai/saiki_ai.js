@@ -92,7 +92,8 @@
 
         helpers.selfHand.splice(helpers.selfHand.indexOf(judge), 1);
         if (judge.isWhite) judge.chosenColor = eng.effective(c);
-        eng.setDiscardTop(judge);
+        eng.discardToBottom(judge);
+        eng.emit('discard', `Saiki 6牌将${eng.cardText(judge)}置于弃牌库底`, judge, { who: owner, from: 'reveal', destination: 'bottom' });
         eng.s.revealCards = [helpers.copy(judge)];
         eng.emit('reveal', 'Saiki 6牌数字判定', judge, { who: owner });
         if (eng.effective(judge) === 'YELLOW') helpers.bleedTarget(1);

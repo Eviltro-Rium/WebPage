@@ -30,6 +30,7 @@
         } else {
           d = 5;
         }
+        if (r) eng.discardWithEvent(r, owner, { from: 'reveal', faceUp: true, desc: `Serenity 5牌将${eng.cardText(r)}置于弃牌库底` });
       } else if (v === 6) {
         d = 6;
         unblock = bt;

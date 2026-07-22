@@ -106,9 +106,9 @@
     chooseAIDiscard(hand=this.h.ai){let worst=-1,score=Infinity;for(let i=0;i<hand.length;i++){let value=this.aiKeepScore(hand[i]);if(value<score){score=value;worst=i}}return worst}
     defenseJudge(owner,card,incoming){let defender=this.s[owner],opponentKey=owner==='player'?(this.s.is1v2&&this.s.atkOwner&&this.s.atkOwner!=='player'?this.s.atkOwner:'ai'):'player',opponent=this.s[opponentKey],name=this.name(defender),v=card.value;if(!((name==='Chan'&&v===3)||(name==='Saiki'&&v===3)||(name==='Blaze'&&v===2)||(name==='Serenity'&&v===0)))return null;let r=this.reveal(`${name} ${v}牌防御判定`);if(!r)return{remaining:incoming};let remaining=incoming;
       if(name==='Chan'){let heal=r.isItemCard?0:Math.ceil(r.value/2);this.heal(defender,heal);this.h[owner].push(r);this.emit('desc',`Chan 3牌判定：${this.cardText(r)}，恢复${heal}点并加入手牌`)}
-      if(name==='Saiki'){let success=r.isBlack||r.isWhite||this.effective(r)==='YELLOW';if(success)remaining=0;else this.h[owner].push(r);this.emit('desc',success?'Saiki 3牌判定成功：防御所有伤害（不免疫debuff）':`Saiki 3牌判定失败：${this.cardText(r)}加入手牌`)}
+      if(name==='Saiki'){let success=r.isBlack||r.isWhite||this.effective(r)==='YELLOW';if(success){remaining=0;this.discardWithEvent(r,owner,{from:'reveal',faceUp:true,desc:`Saiki 3牌判定成功：${this.cardText(r)}置于弃牌库底，防御所有伤害`})}else{this.h[owner].push(r);this.emit('desc',`Saiki 3牌判定失败：${this.cardText(r)}加入手牌`)}}
       if(name==='Blaze'&&v===2){let counter=r.isItemCard?4:r.value;this.h[owner].push(r);this.hurt(opponent,counter);if(r.isItemCard)this.burn(opponent,1);this.emit('desc',`Blaze 2牌判定：反击${counter}点${r.isItemCard?'并施加1层灼烧':''}，判定牌加入手牌`)}
-      if(name==='Serenity'){remaining=0;let yellow=this.effective(r)==='YELLOW';if(yellow){this.s.serenityHalfTarget=opponentKey;this.emit('desc','Serenity 0牌判定黄牌：防御伤害，攻防结束后进攻方生命减半')}else{this.cancelAttackDebuffs(owner,false);this.emit('desc','Serenity 0牌判定非黄牌：免疫所有伤害和debuff')}}
+      if(name==='Serenity'){remaining=0;let yellow=this.effective(r)==='YELLOW';if(yellow){this.s.serenityHalfTarget=opponentKey;this.emit('desc','Serenity 0牌判定黄牌：防御伤害，攻防结束后进攻方生命减半')}else{this.cancelAttackDebuffs(owner,false);this.emit('desc','Serenity 0牌判定非黄牌：免疫所有伤害和debuff')}this.discardWithEvent(r,owner,{from:'reveal',faceUp:true,desc:`Serenity 0牌将${this.cardText(r)}置于弃牌库底`})}
       return{remaining}}
     opponentChoiceSkill(name,value){return (name==='Chan'&&(value===4||value===7))||(name==='Saiki'&&value===3)||(name==='Blaze'&&value===4)||(name==='Moze'&&value===5)}
     finishOpponentAttack(p,d,skip=false,unblock=false){let targetKey=this.s.is1v2?(this.s.attackTarget||'ai'):'ai',target=this.s[targetKey];this.s.pendingOpponentSkill=null;this.s.pendingAttack={damage:d,unblock};if(d&&!skip&&!unblock){this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>this.aiDefend(p.attackCard,d))}else{this.hurt(target,d);this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this.afterAttack();this.check()},1700)}return this.check()}
@@ -243,7 +243,8 @@
         this.later(()=>{this.afterAttack();this.check()},1700);
         return this.check()
       }
-      this.setDiscardTop(second);
+      this.discardToBottom(second);
+      this.emit('discard',`Saiki 6牌将${this.cardText(second)}置于弃牌库底`,second,{who:'player',from:'reveal',destination:'bottom'});
       let judgeTarget=this.s.is1v2?this.s[this.s.attackTarget||'ai']:this.s.ai;if(this.effective(second)==='YELLOW')this.bleed(judgeTarget,1);
       let damage=Math.ceil(second.value*1.5);
       this.s.pendingAttack={damage,unblock:false};
