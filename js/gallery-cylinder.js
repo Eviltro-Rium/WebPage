@@ -1,5 +1,6 @@
 /**
- * 相册：上下两层圆柱，照片等高缩放，层内边缘等距，第二层反向旋转。
+ * 相册：上下两层圆柱，照片切竖条贴合柱面形成曲面；
+ * 等高缩放，层内边缘等距，第二层反向旋转。
  */
 (function () {
   var viewport = document.querySelector(".gallery-cylinder-viewport");
@@ -19,12 +20,33 @@
 
   function metrics(vw) {
     if (vw < 560) {
-      return { radius: 250, targetH: 190, rowGap: 24, glassPad: 8, minEdgeGap: 6 };
+      return {
+        radius: 250,
+        targetH: 190,
+        rowGap: 24,
+        glassPad: 8,
+        minEdgeGap: 6,
+        strips: 6
+      };
     }
     if (vw < 900) {
-      return { radius: 370, targetH: 255, rowGap: 30, glassPad: 10, minEdgeGap: 8 };
+      return {
+        radius: 370,
+        targetH: 255,
+        rowGap: 30,
+        glassPad: 10,
+        minEdgeGap: 8,
+        strips: 7
+      };
     }
-    return { radius: 490, targetH: 310, rowGap: 36, glassPad: 12, minEdgeGap: 10 };
+    return {
+      radius: 490,
+      targetH: 310,
+      rowGap: 36,
+      glassPad: 12,
+      minEdgeGap: 10,
+      strips: 8
+    };
   }
 
   function photoAt(src, targetH) {
@@ -100,7 +122,59 @@
     return out;
   }
 
-  function buildLayer(photos, radius, circumference, y, glassPad, minEdgeGap, layerIdx) {
+  // 把宽度 w 切成 n 条，按柱面切线铺开。相邻片带轻微重叠，且重叠区映射到同一组源图像像素，
+  // 既不会漏出背景缝，也不会出现重影。
+  function buildStrips(opts) {
+    var n = opts.strips;
+    var arcW = opts.w / n;                 // 每条对应的弧长
+    var angleStepRad = arcW / opts.radius; // 每条对应的圆心角(弧度)
+    var angleStepDeg = angleStepRad * (180 / Math.PI);
+    var chordW = 2 * opts.radius * Math.sin(angleStepRad / 2); // 切线片宽
+    var overlap = opts.overlap || 1.5;     // 屏幕重叠像素
+    var displayW = chordW + overlap;       // 实际渲染宽度
+    var bgW = chordW * n + overlap;         // 背景图总宽，使重叠区共享同一像素
+    var html = "";
+    var s;
+
+    for (s = 0; s < n; s++) {
+      var subAngle = (s - (n - 1) / 2) * angleStepDeg;
+      var edgeClass = "";
+      if (s === 0) edgeClass = " is-first";
+      else if (s === n - 1) edgeClass = " is-last";
+
+      html +=
+        '<span class="' +
+        opts.className +
+        edgeClass +
+        '" style="width:' +
+        displayW.toFixed(2) +
+        "px;height:" +
+        opts.h +
+        "px;margin-left:" +
+        (-displayW / 2).toFixed(2) +
+        "px;margin-top:" +
+        (-opts.h / 2) +
+        "px;" +
+        opts.styleExtra +
+        "background-size:" +
+        bgW.toFixed(2) +
+        "px " +
+        opts.h +
+        "px;background-position:" +
+        (-(s * chordW - overlap / 2)).toFixed(2) +
+        "px 0;transform:rotateY(" +
+        subAngle.toFixed(4) +
+        "deg) translateZ(" +
+        opts.radius +
+        "px) translateY(" +
+        opts.y +
+        'px)"></span>';
+    }
+
+    return html;
+  }
+
+  function buildLayer(photos, radius, circumference, y, glassPad, minEdgeGap, strips, layerIdx) {
     var n = photos.length;
     var j;
     var glassWidths = [];
@@ -119,8 +193,10 @@
     var cursor = 0;
     var reverse = layerIdx === 1;
 
-    html += '<div class="gallery-cylinder-ring' +
-      (reverse ? " gallery-cylinder-ring--reverse" : "") + '">';
+    html +=
+      '<div class="gallery-cylinder-ring' +
+      (reverse ? " gallery-cylinder-ring--reverse" : "") +
+      '">';
 
     for (j = 0; j < n; j++) {
       var p = photos[j];
@@ -130,19 +206,32 @@
       var angle = centerLinear * (360 / circumference);
       var glassRadius = radius - 2;
 
-      html += '<figure class="gallery-panel" role="listitem" style="transform:rotateY(' +
-        angle.toFixed(3) + 'deg)">';
+      html +=
+        '<figure class="gallery-panel" role="listitem" style="transform:rotateY(' +
+        angle.toFixed(3) +
+        'deg)">';
 
-      html += '<span class="gallery-glass" style="width:' + gW +
-        "px;height:" + gH + "px;margin-left:" + (-gW / 2) +
-        "px;margin-top:" + (-gH / 2) + "px;transform:translateZ(" +
-        glassRadius + "px) translateY(" + y + 'px)"></span>';
+      html += buildStrips({
+        className: "gallery-glass",
+        strips: strips,
+        w: gW,
+        h: gH,
+        radius: glassRadius,
+        y: y,
+        overlap: 0.75,
+        styleExtra: ""
+      });
 
-      html += '<span class="gallery-photo" style="width:' + p.w +
-        "px;height:" + p.h + "px;margin-left:" + (-p.w / 2) +
-        "px;margin-top:" + (-p.h / 2) + "px;background-image:url('" +
-        p.src + "');background-size:" + p.w + "px " + p.h +
-        "px;transform:translateZ(" + radius + "px) translateY(" + y + 'px)"></span>';
+      html += buildStrips({
+        className: "gallery-photo",
+        strips: strips,
+        w: p.w,
+        h: p.h,
+        radius: radius,
+        y: y,
+        overlap: 1.5,
+        styleExtra: "background-image:url('" + p.src + "');"
+      });
 
       html += "</figure>";
       cursor += gW + edgeGap;
@@ -189,6 +278,7 @@
         y,
         m.glassPad,
         minEdgeGap,
+        m.strips,
         r
       );
     }
