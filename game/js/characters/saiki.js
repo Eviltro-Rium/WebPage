@@ -34,7 +34,7 @@
             let drawn = oh.splice(Math.floor(Math.random() * oh.length), 1)[0];
             eng.h[owner].push(drawn);
             eng.s.revealCards = [JSON.parse(JSON.stringify(drawn))];
-            eng.emit('reveal', 'Saiki 5牌抽取对手手牌', drawn, { who: target });
+            eng.emit('reveal', 'Saiki 5牌抽取对手手牌', drawn, { who: target, from: 'hand' });
           }
         }
       } else if (v === 7) {

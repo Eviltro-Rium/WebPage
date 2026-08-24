@@ -71,7 +71,7 @@
         helpers.selfHand.splice(helpers.selfHand.indexOf(second), 1);
         if (second.isWhite) second.chosenColor = eng.effective(c);
         eng.s.revealCards = [helpers.copy(second)];
-        eng.emit('reveal', `Ryan 5牌追加${eng.cardText(second)}并置于弃牌库底`, second, { who: owner });
+        eng.emit('reveal', `Ryan 5牌追加${eng.cardText(second)}并置于弃牌库底`, second, { who: owner, from: 'hand' });
         eng.discardWithEvent(second, owner, { from: 'reveal', faceUp: true, desc: `Ryan 5牌将${eng.cardText(second)}置于弃牌库底` });
 
         if (chooseDamage) {

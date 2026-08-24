@@ -46,7 +46,7 @@
           const index = Math.floor(Math.random() * helpers.targetHand.length);
           const dropped = helpers.targetHand.splice(index, 1)[0];
           eng.s.revealCards = [helpers.copy(dropped)];
-          eng.emit('reveal', 'Leon 7牌弃掉目标手牌', dropped, { who: 'player' });
+          eng.emit('reveal', 'Leon 7牌弃掉目标手牌', dropped, { who: 'player', from: 'hand' });
           eng.discardWithEvent(dropped, 'player', { from: 'reveal', faceUp: true, desc: `Leon 7牌弃掉${eng.cardText(dropped)}` });
           eng.emit('desc', `Leon AI弃掉${eng.cardText(dropped)}`);
         }

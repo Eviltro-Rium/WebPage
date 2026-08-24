@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Furry Trial 地牢冒险模式 —— 单层肉鸽玩法框架。">
+    <title>地牢冒险 · Furry Trial</title>
+    <link rel="stylesheet" href="../css/game.css">
+    <link rel="stylesheet" href="css/adventure.css">
+    <style>
+        #castle-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: url('../backgrounds/Castle.png') center/cover no-repeat; display: none; }
+        #adventure-container, #game-container, .game-status-badge { position: relative; z-index: 1; }
+    </style>
+</head>
+<body>
+    <div id="castle-bg"></div>
+    <div class="adv-menu-bar" id="adv-menu-bar">
+        <button class="adv-menu-btn" id="adv-menu-toggle">菜单</button>
+        <div class="adv-menu-dropdown" id="adv-menu-dropdown">
+            <button class="adv-menu-item" id="adv-menu-exit">退出游戏</button>
+            <button class="adv-menu-item" id="adv-menu-skills">查看角色技能</button>
+            <button class="adv-menu-item" id="adv-menu-log">打开日志</button>
+        </div>
+    </div>
+    <span class="game-status-badge">冒险模式</span>
+    <div id="adventure-container"></div>
+    <div id="game-container" style="display:none">
+        <div id="select-screen"></div>
+        <div id="rules-screen"></div>
+        <div id="char-detail-screen"></div>
+        <div id="game-screen"></div>
+    </div>
+
+    <script src="../js/characters/registry.js"></script>
+    <script src="../js/characters/ryan.js"></script>
+    <script src="../js/characters/leon.js"></script>
+    <script src="../js/characters/chan.js"></script>
+    <script src="../js/characters/saiki.js"></script>
+    <script src="../js/characters/blaze.js"></script>
+    <script src="../js/characters/serenity.js"></script>
+    <script src="../js/characters/moze.js"></script>
+    <script src="../js/characters/knight.js"></script>
+    <script src="../js/characters/otto.js"></script>
+
+    <script src="../js/ai/registry.js"></script>
+    <script src="../js/ai/knight_ai.js"></script>
+    <script src="../js/ai/leon_ai.js"></script>
+    <script src="../js/ai/ryan_ai.js"></script>
+    <script src="../js/ai/blaze_ai.js"></script>
+    <script src="../js/ai/serenity_ai.js"></script>
+    <script src="../js/ai/saiki_ai.js"></script>
+    <script src="../js/ai/moze_ai.js"></script>
+    <script src="../js/ai/chan_ai.js"></script>
+    <script src="../js/ai/otto_ai.js"></script>
+
+    <script src="../js/engine.js"></script>
+    <script src="../js/engine_lord.js"></script>
+    <script src="../js/bridge.js"></script>
+    <script src="../js/skills.js"></script>
+    <script src="../js/dialogs.js"></script>
+    <script src="../js/card_style.js"></script>
+    <script src="../js/ui.js"></script>
+    <script src="../js/ui_1v2.js"></script>
+
+    <script src="js/adventure_registry.js"></script>
+    <script src="js/currency.js"></script>
+    <script src="js/room.js"></script>
+    <script src="js/monster.js"></script>
+    <script src="js/monsters/castle.js"></script>
+    <script src="js/boss.js"></script>
+    <script src="js/monster_registry.js"></script>
+    <script src="js/items/item_defs.js"></script>
+    <script src="js/csv_loader.js"></script>
+    <script src="js/map_data.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/adventure_deck.js"></script>
+    <script src="js/npc_strategy.js"></script>
+    <script src="js/adventure_engine.js"></script>
+    <script src="js/adventure_battle_engine.js"></script>
+    <script src="js/card_render.js"></script>
+    <script src="js/combat_bridge.js"></script>
+    <script src="js/adventure_ui.js"></script>
+
+
+    <script>
+        (function () {
+
+            const container = document.getElementById('adventure-container');
+            const ui = new AdventureUI(container);
+            ui.bindActions();
+
+            let currentChar = null;
+
+            const menuToggle = document.getElementById('adv-menu-toggle');
+            const menuDropdown = document.getElementById('adv-menu-dropdown');
+            const menuExit = document.getElementById('adv-menu-exit');
+            const menuSkills = document.getElementById('adv-menu-skills');
+            const menuLog = document.getElementById('adv-menu-log');
+
+            menuToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menuDropdown.classList.toggle('open');
+            });
+            document.addEventListener('click', () => menuDropdown.classList.remove('open'));
+
+            menuExit.addEventListener('click', () => { window.location.href = '../index.html'; });
+
+            menuSkills.addEventListener('click', () => {
+                menuDropdown.classList.remove('open');
+
+                const playerName = (currentChar
+                    || (ui.eng && ui.eng.s && ui.eng.s.player && ui.eng.s.player.name)
+                    || '').replace(/^AI\d*\s+/, '');
+                if (!playerName) {
+                    const tip = document.createElement('div');
+                    tip.className = 'adv-toast';
+                    tip.textContent = '请先选择角色并开始冒险';
+                    (document.getElementById('adventure-container') || document.body).appendChild(tip);
+                    setTimeout(() => tip.remove(), 1500);
+                    return;
+                }
+
+                const existing = document.getElementById('skill-overlay');
+                if (existing) { existing.remove(); return; }
+
+                const skillData = window.SKILL_DATA || (typeof SKILL_DATA !== 'undefined' ? SKILL_DATA : null);
+                if (!skillData) return;
+
+                const chars = [{ name: playerName, label: '玩家', color: '#3b82f6' }];
+
+                let enemyName = null;
+                let enemyStage = (ui.eng && ui.eng.s && ui.eng.s.stage) || 1;
+                if (window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine()) {
+                    const abe = window.AdventureCombatBridge.activeEngine();
+                    if (abe.s && abe.s.ai) enemyName = abe.s.ai.name.replace(/^AI\d*\s+/, '');
+                }
+                if (!enemyName && ui.eng && ui.eng.s && ui.eng.s.combat && ui.eng.s.combat.enemy) {
+                    enemyName = ui.eng.s.combat.enemy.name;
+                }
+                if (enemyName) chars.push({ name: enemyName, label: '敌人', color: '#ef4444', stage: enemyStage });
+
+                const SKILL_GRID = [
+                    { atkKey: 0, defKey: 0, label: '1' }, { atkKey: 1, defKey: 1, label: '2' },
+                    { atkKey: 2, defKey: 2, label: '3' }, { atkKey: 7, defKey: 3, label: '0' },
+                    { atkKey: 3, defKey: -1, label: '4' }, { atkKey: 4, defKey: -1, label: '5' },
+                    { atkKey: 5, defKey: -1, label: '6' }, { atkKey: 6, defKey: -1, label: '7' }
+                ];
+                const stripPrefix = t => (t || '').replace(/^\d+\s*/, '');
+                const colorize = t => {
+                    if (typeof parseSegments !== 'function') return t;
+                    const segs = parseSegments(t, '');
+                    return segs.map(sg => sg.color ? '<span style="color:' + sg.color + '">' + sg.text + '</span>' : sg.text).join('');
+                };
+
+                const overlay = document.createElement('div');
+                overlay.id = 'skill-overlay';
+                overlay.className = 'skill-overlay';
+                let html = '<div class="skill-overlay-inner">';
+                html += '<div class="skill-overlay-header"><button class="rules-back-btn" id="skill-back">&larr; 返回</button><h1 class="rules-title">角色技能</h1></div>';
+
+                for (const ch of chars) {
+                    let atk = (skillData.attack && skillData.attack[ch.name]) || [];
+                    let def = (skillData.defend && skillData.defend[ch.name]) || [];
+                    if (ch.stage && ch.stage > 1 && skillData.castleStageMods) {
+                        const modTable = skillData.castleStageMods[ch.name];
+                        if (modTable && modTable[ch.stage]) {
+                            if (modTable[ch.stage].attack) atk = modTable[ch.stage].attack;
+                            if (modTable[ch.stage].defend) def = modTable[ch.stage].defend;
+                        }
+                    }
+                    if (!atk.length && !def.length) continue;
+                    const labelExtra = (ch.stage && ch.stage > 1) ? (' (第' + ch.stage + '层)') : '';
+                    html += '<div class="skill-overlay-char"><span class="skill-overlay-char-label" style="color:' + ch.color + '">' +
+                        ch.label + '：' + ch.name + labelExtra + '</span></div>';
+                    html += '<div class="skill-grid">';
+                    for (const row of SKILL_GRID) {
+                        const atkDesc = atk[row.atkKey] ? colorize(stripPrefix(atk[row.atkKey])) : '—';
+                        const defDesc = row.defKey >= 0 && def[row.defKey]
+                            ? colorize(stripPrefix(def[row.defKey]))
+                            : (row.defKey >= 0 ? '无防御效果' : '');
+                        html += '<div class="skill-row"><div class="skill-cell skill-atk">' + atkDesc + '</div><div class="skill-num">' + row.label + '</div>';
+                        html += row.defKey >= 0
+                            ? '<div class="skill-cell skill-def">' + defDesc + '</div>'
+                            : '<div class="skill-cell skill-def skill-no-def"></div>';
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                }
+
+                html += '</div>';
+                overlay.innerHTML = html;
+                document.body.appendChild(overlay);
+                document.getElementById('skill-back').addEventListener('click', () => overlay.remove());
+                overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+            });
+
+            let logVisible = false;
+            menuLog.textContent = '打开日志';
+            menuLog.addEventListener('click', () => {
+                menuDropdown.classList.remove('open');
+                logVisible = !logVisible;
+                ui.logVisible = logVisible;
+                const logBox = document.getElementById('adventure-log-box');
+                if (logBox) logBox.style.display = logVisible ? '' : 'none';
+                menuLog.textContent = logVisible ? '关闭日志' : '打开日志';
+            });
+
+            const params = new URLSearchParams(window.location.search);
+            const presetChar = params.get('char');
+
+            if (presetChar) {
+                currentChar = presetChar;
+                const bg = document.getElementById('castle-bg'); if (bg) bg.style.display = 'block';
+                ui.start('maps/stage_01_castle_' + (1 + Math.floor(Math.random() * 3)) + '.csv', presetChar);
+                return;
+            }
+
+            const screen = document.createElement('div');
+            screen.className = 'adv-select-screen';
+            screen.innerHTML =
+                '<h2>地牢冒险 · 选择主角</h2>' +
+                '<div class="adv-char-grid" id="adv-char-grid"></div>' +
+                '<button class="adv-start-btn" id="adv-start" disabled>进入地牢</button>';
+            container.appendChild(screen);
+
+            const grid = screen.querySelector('#adv-char-grid');
+            const startBtn = screen.querySelector('#adv-start');
+            let picked = null;
+
+            const charAvatar = { Ryan: '../avatars/Ryan.jpg', Leon: '../avatars/Leon.png', Chan: '../avatars/Chan.png', Saiki: '../avatars/Saiki.png', Blaze: '../avatars/Blaze.png', Serenity: '../avatars/Serenity.jpg', Moze: '../avatars/Moze.jpg', Knight: '../avatars/Knight.png', Otto: '../avatars/Otto.png' };
+
+            CharacterRegistry.all().filter(mod => !mod.adventureNpc).forEach(mod => {
+                const btn = document.createElement('button');
+                btn.className = 'adv-char-pick';
+                const avatar = charAvatar[mod.name];
+                if (avatar) {
+                    btn.innerHTML = '<img class="adv-char-avatar" src="' + avatar + '" alt="' + mod.name + '"><div class="adv-char-pick-name">' + mod.name + '</div><div class="adv-char-pick-type">' + mod.type + '</div>';
+                } else {
+                    btn.innerHTML = '<div class="adv-char-pick-name">' + mod.name + '</div><div class="adv-char-pick-type">' + mod.type + '</div>';
+                }
+                btn.addEventListener('click', () => {
+                    grid.querySelectorAll('.adv-char-pick').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    picked = mod.name;
+                    startBtn.disabled = false;
+                });
+                grid.appendChild(btn);
+            });
+
+            startBtn.addEventListener('click', () => {
+                if (!picked) return;
+                currentChar = picked;
+                container.innerHTML = '';
+                const bg = document.getElementById('castle-bg'); if (bg) bg.style.display = 'block';
+                ui.start('maps/stage_01_castle_' + (1 + Math.floor(Math.random() * 3)) + '.csv', picked);
+            });
+        })();
+    </script>
+</body>
+</html>

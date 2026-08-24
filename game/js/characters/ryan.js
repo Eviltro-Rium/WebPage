@@ -42,7 +42,7 @@
           let r = eng.deck.pop();
           cards.push(r);
           eng.h[owner].push(r);
-          eng.emit('reveal', `Ryan 0牌公示第${i + 1}张`, r);
+          eng.emit('reveal', `Ryan 0牌公示第${i + 1}张`, r, { from: 'deck' });
         }
         eng.s.revealCards = JSON.parse(JSON.stringify(cards));
         d = cards.reduce((sum, x) => sum + (x.isNumberCard ? x.value : 4), 0);

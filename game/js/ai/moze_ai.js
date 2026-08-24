@@ -57,7 +57,7 @@
         helpers.selfHand.splice(helpers.selfHand.indexOf(chosen), 1);
         if (chosen.isWhite) chosen.chosenColor = eng.effective(c);
         eng.s.revealCards = [helpers.copy(chosen)];
-        eng.emit('reveal', 'Moze 4牌守护判定', chosen, { who: owner });
+        eng.emit('reveal', 'Moze 4牌守护判定', chosen, { who: owner, from: 'hand' });
         eng.discardWithEvent(chosen, owner, { from: 'reveal', faceUp: true, desc: `Moze 4牌将${eng.cardText(chosen)}置于弃牌库底` });
         a.guard = Math.min(5, a.guard + chosen.value);
         eng.emit('desc', `Moze AI使用${eng.cardText(chosen)}并放入弃牌库底，守护提升至${a.guard}层`);
@@ -68,7 +68,7 @@
         if (!helpers.targetHand.length) return { d: 0, skip: true, unblock: false };
         const drawn = helpers.targetHand.splice(Math.floor(Math.random() * helpers.targetHand.length), 1)[0];
         eng.s.revealCards = [helpers.copy(drawn)];
-        eng.emit('reveal', 'Moze 5牌抽取玩家手牌', drawn, { who: 'player' });
+        eng.emit('reveal', 'Moze 5牌抽取玩家手牌', drawn, { who: 'player', from: 'hand' });
         helpers.selfHand.push(drawn);
 
         const hit = drawn.isBlack || drawn.isWhite || eng.effective(drawn) === 'GREEN';

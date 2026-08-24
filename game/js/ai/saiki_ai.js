@@ -49,7 +49,7 @@
         if (!helpers.targetHand.length) return null;
         const card = helpers.targetHand.splice(Math.floor(Math.random() * helpers.targetHand.length), 1)[0];
         eng.s.revealCards = [helpers.copy(card)];
-        eng.emit('reveal', label, card, { who: 'player' });
+        eng.emit('reveal', label, card, { who: 'player', from: 'hand' });
         return card;
       };
 
@@ -95,7 +95,7 @@
         eng.discardToBottom(judge);
         eng.emit('discard', `Saiki 6牌将${eng.cardText(judge)}置于弃牌库底`, judge, { who: owner, from: 'reveal', destination: 'bottom' });
         eng.s.revealCards = [helpers.copy(judge)];
-        eng.emit('reveal', 'Saiki 6牌数字判定', judge, { who: owner });
+        eng.emit('reveal', 'Saiki 6牌数字判定', judge, { who: owner, from: 'hand' });
         if (eng.effective(judge) === 'YELLOW') helpers.bleedTarget(1);
         const damage = Math.ceil(judge.value * 1.5);
         eng.emit('desc', `Saiki AI选择${eng.cardText(judge)}，造成${damage}点伤害${eng.effective(judge) === 'YELLOW' ? '并施加1层流血' : ''}`);

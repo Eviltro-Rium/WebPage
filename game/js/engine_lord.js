@@ -66,16 +66,12 @@
     this.pendingSettlement=null;this.s.pendingDefenseDamage=0;
     if(p.kind==='PLAYER_ATTACK'){
       let forceEnd=!!this.s.forceEndPlayerTurn;this.s.forceEndPlayerTurn=false;
-      let dmg=p.damage;
       let targetKey=this.s.attackTarget||'ai';
       let target=this.s[targetKey];
-      if(target&&target.guard>0&&dmg>0){
-        let q=this.chooseMozeGuardUse(target.guard,dmg,target.hp);
-        target.guard-=q;dmg-=q;
-        if(q)this.emit('desc',target.name+'消耗'+q+'层[守护]，减免'+q+'点伤害')
-      }
+      let dmg=this.applyDefenderAvoidance(target,p.damage);
       this.hurt(target,dmg);
       if(p.bleed>0)this.hurt(target,p.bleed,true);
+      this._restoreAttackBuffs();
       this.resolveSerenityHalf();this.afterAttack();
       if(forceEnd)this._lordStartNextAI();
       this.check();return
@@ -83,6 +79,7 @@
     let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;
     this.hurt(this.s.player,p.damage);
     if(p.bleed>0)this.hurt(this.s.player,p.bleed,true);
+    this._restoreAttackBuffs();
     this.resolveSerenityHalf();this._grantChaosIfKnight('ai');
     if(forceEnd)this.endAi1v2();else this.continueAIAttack()
   };
@@ -94,7 +91,7 @@
     let target=this.s[targetKey];
     origAfterAttack.call(this);
     if(target&&!target.alive){
-      this._handleEliminated1v2();
+      this._on1v2OpponentEliminated(targetKey);
       this.emit('desc',target.name+'被击败！玩家回合结束，另一方进攻');
       this.s.lordPlayerTargetIdx=1-(this.s.lordPlayerTargetIdx||0);
       this._lordStartNextAI()
@@ -135,7 +132,9 @@
       return this.s.phase==='PLAYER_DEFEND'?this.defend1v2():this.play1v2()
     }
     if(m==='chooseGuard')return this.chooseGuard(p.stacks);
-    if(m==='choosePurify'){this.clean(this.s.player,false,p.kind);this.s.pendingDialog=null;this.emit('desc','净化移除一层'+({burn:'灼烧',freeze:'冷冻',bleed:'流血'}[p.kind]||'buff'));return this.state()}
+    if(m==='chooseFly')return this.chooseFly();
+    if(m==='chooseFlyContinue')return this.chooseFlyContinue(!!p.again);
+    if(m==='choosePurify'){this.clean(this.s.player,false,p.kind);this.s.pendingDialog=null;this.emit('desc','净化移除一层'+({burn:'灼烧',freeze:'冷冻',bleed:'流血',poison:'中毒'}[p.kind]||'buff'));return this.state()}
     if(m==='selectCard')return this.select(p.index);
     if(m==='clearEvents'){let through=Number(p.throughId);if(Number.isFinite(through))this.acknowledgeEvents(through);else this.events=[];return{ok:true,remaining:this.events.length}}
     if(m==='restart'){clearTimeout(this.timer);this.pendingSettlement=null;this.s=null;this.h={player:[],ai:[]};this.events=[];return{ok:true}}
@@ -237,12 +236,17 @@
   };
 
   const origHandleElim=E.prototype._handleEliminated1v2;
-  E.prototype._handleEliminated1v2=function(){
-    if(!this.s||!this.s.isLord)return origHandleElim.call(this);
-    let keys=['ai','ai2'];
-    for(const dk of keys){
-      if(this.s[dk]&&!this.s[dk].alive&&!this.s.eliminatedHandled[dk]){
-        this.s.eliminatedHandled[dk]=true;
+  E.prototype._handleEliminated1v2=function(defeatedKey){
+    if(!this.s||!this.s.isLord){
+      if(typeof origHandleElim==='function')return origHandleElim.call(this,defeatedKey);
+      return;
+    }
+    if(defeatedKey)this._on1v2OpponentEliminated(defeatedKey);
+    else{
+      for(const dk of ['ai','ai2']){
+        if(this.s[dk]&&!this.s[dk].alive&&!this.s.eliminatedHandled[dk]){
+          this._on1v2OpponentEliminated(dk);
+        }
       }
     }
   };
@@ -250,7 +254,7 @@
   const origState=E.prototype.state;
   E.prototype.state=function(){
     if(!this.s||!this.s.isLord)return origState.call(this);
-    Object.assign(this.s,{deck:this.deck.length,discard:1+this.discardBottom.length,discardBottomCount:this.discardBottom.length,playerHand:this.h.player,aiHandSize:this.h.ai.length,ai2HandSize:this.h.ai2?this.h.ai2.length:0,eventLogVersion:this.ver,events:clone(this.events)});
+    Object.assign(this.s,{deck:this.deck.length,discard:1+this.discardBottom.length,discardBottomCount:this.discardBottom.length,playerHand:this.h.player,aiHandSize:this.h.ai.length,ai2HandSize:this.h.ai2?this.h.ai2.length:0,aiHand:this.s.revealAIHand?clone(this.h.ai):null,ai2Hand:this.s.revealAIHand&&this.h.ai2?clone(this.h.ai2):null,eventLogVersion:this.ver,events:clone(this.events)});
     return clone(this.s)
   };
 
@@ -262,5 +266,11 @@
     }
     if(!this.s.player.alive||(!this.s.ai.alive&&(!this.s.ai2||!this.s.ai2.alive))){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer)}
     return this.state()
+  };
+
+  const origStartAITurn=E.prototype.startAITurn;
+  E.prototype.startAITurn=function(){
+    if(this.s&&this.s.isLord)return this._lordStartNextAI();
+    return origStartAITurn.call(this);
   };
 })();

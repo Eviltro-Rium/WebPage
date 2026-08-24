@@ -50,6 +50,7 @@
       <div class="ai-area">
         <div class="ai-hand-zone"><div class="zone-title">AI1 手牌</div><div class="ai-hand-row" id="ai-hand"></div></div>
         <div class="ai-hand-zone" style="border-color:#a855f7"><div class="zone-title" style="color:#c084fc">AI2 手牌</div><div class="ai-hand-row" id="ai2-hand"></div></div>
+        <div class="npc-deck-info" id="npc-deck-info">NPC牌库: 0 | 弃牌库: 0</div>
         <div class="play-zone"><div class="play-zone-row">
           <div class="attack-zone"><div class="zone-title">进攻</div><div class="zone-cards" id="atk-cards"><span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待出牌</span></div><div class="zone-desc" id="atk-desc"></div></div>
           <div class="defend-zone"><div class="zone-title">防御</div><div class="zone-cards" id="def-cards"><span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待防御</span></div><div class="zone-desc" id="def-desc"></div></div>
@@ -66,6 +67,7 @@
       </div>
       <div class="error-hint" id="error-hint"></div>
       <div class="player-hand-zone"><div class="zone-title">你的手牌</div><div class="hand-row" id="player-hand"></div></div>
+      <div class="adventure-item-bar" id="adventure-item-bar" style="display:none"></div>
       <div class="dual-dice-inline" id="dual-dice-inline" style="display:none">
         <div class="lord-dice-label">骰子索敌</div>
         <div class="lord-dice" id="dual-dice-num">?</div>
@@ -142,15 +144,36 @@
     this._renderZones();
     this._renderReveal();
     this._renderControls1v2();
-    if(s.pendingDialog==='purify')this.dialogs.showPurifyChoice(s.player,kind=>this._apiAction('choosePurify',{kind}));
+    this._renderAdventureItemBar(s);
+    const npcDeckEl=document.getElementById('npc-deck-info');
+    if(npcDeckEl){
+      const deckCount=s.aiDeckCount!=null?s.aiDeckCount:0;
+      const discardCount=s.aiDiscardCount!=null?s.aiDiscardCount:0;
+      npcDeckEl.textContent='NPC共享牌库: '+deckCount+' | 弃牌库: '+discardCount;
+    }
+    if(s.pendingDialog==='purify')this.dialogs.showPurifyChoice(s.player,picked=>{const kind=picked&&picked.kind?picked.kind:picked;this._apiAction('choosePurify',{kind})});
     else if(s.pendingDialog==='superPurify'){const targets=[{key:'player',label:'自己',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+' (对手)',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+' (对手)',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseSuperPurifyTarget',{target}))}
-    else if(s.pendingDialog==='guard')this.dialogs.showGuardChoice(s.player,s.pendingGuardDamage,stacks=>this._apiAction('chooseGuard',{stacks}));
+    else if(s.pendingDialog==='guard')this.dialogs.showGuardChoice(s.player,s.pendingGuardDamage,choice=>{
+      if(choice&&typeof choice==='object'){
+        if(choice.action==='fly')return this._apiAction('chooseFly');
+        if(choice.action==='guard')return this._apiAction('chooseGuard',{stacks:choice.stacks});
+        return this._apiAction('chooseGuard',{stacks:0});
+      }
+      return this._apiAction('chooseGuard',{stacks:choice});
+    });
+    else if(s.pendingDialog==='flyRetry')this.dialogs.showFlyRetryChoice(s.player,s.pendingGuardDamage,again=>this._apiAction('chooseFlyContinue',{again}));
+    if(s.phase==='ATTACK_MOD_CHOICE')this._ensureAttackModChoicePrompt(s);
+    else{this._attackModPromptOpen=false;this._attackModActive=false;}
     if(s.phase==='GAME_OVER')this._showGameOver();
     this._prevState=JSON.parse(JSON.stringify(s))
   };
 
-  GameUI.prototype._renderAIHand1v2=function(){
+  GameUI.prototype._renderAIHand1v2=function(options){
+    options=options||{};
+    const hideTrailing=Math.max(0,Number(options.hideTrailing)||0);
+    const hideWho=options.who||null;
     const s=this.state;if(!s)return;
+    const revealFace=!!(s.revealAIHand||s.isAdventure);
     const canSelect=s.phase==='OPPONENT_CARD_CHOICE'||(s.phase==='PLAYER_SEVEN_CHOICE'&&!s.chanFourSwapMode&&!s.chanSevenKeepMode)||(s.phase==='SAIKI_THREE_CHOICE'&&!s.saikiThreeDrawn);
     const leonZeroDiscard=!!s.pendingLeonZeroDiscard;
     const selectedTarget=s.attackTarget||(s.ai.alive?'ai':'ai2');
@@ -167,7 +190,19 @@
     if(aiEl){
       aiEl.innerHTML='';
       if(s.ai.alive){
-        for(let i=0;i<(s.aiHandSize||0);i++){let cv=renderCardBack(40,58);decorateSelectable(cv,i,'ai');aiEl.appendChild(cv)}
+        const size=s.aiHandSize||0;
+        const handCards=revealFace&&Array.isArray(s.aiHand)?s.aiHand:null;
+        for(let i=0;i<size;i++){
+          let cv;
+          if(handCards&&handCards[i]){
+            cv=renderCard(handCards[i],40,58,false);
+          }else{
+            cv=renderCardBack(40,58);
+          }
+          if(hideTrailing&&(!hideWho||hideWho==='ai')&&i>=size-hideTrailing)cv.classList.add('card-draw-pending');
+          decorateSelectable(cv,i,'ai');
+          aiEl.appendChild(cv);
+        }
         if(leonZeroDiscard)leonZeroOffset=s.aiHandSize||0;
       }else{
         aiEl.innerHTML='<div style="color:#ef4444;font-size:0.8rem;padding:8px">'+s.ai.name+' 已出局</div>';
@@ -177,9 +212,18 @@
     if(ai2El&&s.ai2){
       ai2El.innerHTML='';
       if(s.ai2.alive){
-        for(let i=0;i<(s.ai2HandSize||0);i++){
-          let cv=renderCardBack(40,58);
-          cv.style.filter='hue-rotate(240deg)';
+        const size=s.ai2HandSize||0;
+        const handCards=revealFace&&Array.isArray(s.ai2Hand)?s.ai2Hand:null;
+        for(let i=0;i<size;i++){
+          let cv;
+          if(handCards&&handCards[i]){
+            cv=renderCard(handCards[i],40,58,false);
+            cv.style.filter='hue-rotate(240deg)';
+          }else{
+            cv=renderCardBack(40,58);
+            cv.style.filter='hue-rotate(240deg)';
+          }
+          if(hideTrailing&&(!hideWho||hideWho==='ai2')&&i>=size-hideTrailing)cv.classList.add('card-draw-pending');
           decorateSelectable(cv,i,'ai2');
           ai2El.appendChild(cv);
         }

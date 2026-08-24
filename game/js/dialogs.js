@@ -100,22 +100,16 @@ class DialogManager {
         const row = document.createElement('div');
         row.style.display = 'flex'; row.style.gap = '12px'; row.style.marginTop = '12px';
         const colors = [
-            { key: 'RED', label: '红', bg: '#ff1e28' },
-            { key: 'YELLOW', label: '黄', bg: '#ffc300' },
-            { key: 'BLUE', label: '蓝', bg: '#0082ff' },
-            { key: 'GREEN', label: '绿', bg: '#00c83c' }
+            { key: 'RED', label: '红', bg: '#E31837', ink: '#FFFFFF' },
+            { key: 'YELLOW', label: '黄', bg: '#FFCD00', ink: '#1A1A1A' },
+            { key: 'BLUE', label: '蓝', bg: '#0072BB', ink: '#FFFFFF' },
+            { key: 'GREEN', label: '绿', bg: '#00A651', ink: '#FFFFFF' }
         ];
         for (const c of colors) {
             const btn = document.createElement('button');
             btn.className = 'color-choice-btn';
-            btn.style.background = c.bg;
-            btn.style.color = '#fff';
-            btn.style.border = 'none';
-            btn.style.borderRadius = '8px';
-            btn.style.padding = '10px 20px';
-            btn.style.fontSize = '1rem';
-            btn.style.cursor = 'pointer';
-            btn.style.fontWeight = 'bold';
+            btn.style.setProperty('--cc-bg', c.bg);
+            btn.style.setProperty('--cc-ink', c.ink);
             btn.textContent = c.label;
             btn.addEventListener('click', async () => {
                 overlay.remove();
@@ -128,23 +122,73 @@ class DialogManager {
         document.body.appendChild(overlay);
     }
 
-    showPurifyChoice(ch, onChoose) {
+    collectPurifyChoices(ch, maxCount, onDone, extra) {
+        extra = extra || {};
+        const selfSnap = {
+            burn: ch.burn || 0, bleed: ch.bleed || 0, poison: ch.poison || 0, frozen: !!ch.frozen,
+            guard: ch.guard || 0, fly: ch.fly || 0, crit: ch.crit || 0
+        };
+        const opp = extra.opponent || null;
+        const oppSnap = opp ? {
+            burn: opp.burn || 0, bleed: opp.bleed || 0, poison: opp.poison || 0, frozen: !!opp.frozen,
+            guard: opp.guard || 0, fly: opp.fly || 0, crit: opp.crit || 0
+        } : null;
+        const hasAny = snap => snap && (snap.burn > 0 || snap.bleed > 0 || snap.poison > 0 || snap.frozen ||
+            snap.guard > 0 || snap.fly > 0 || snap.crit > 0);
+        const applyLocal = (snap, kind) => {
+            if (kind === 'burn') snap.burn = Math.max(0, snap.burn - 1);
+            else if (kind === 'bleed') snap.bleed = Math.max(0, snap.bleed - 1);
+            else if (kind === 'poison') snap.poison = Math.max(0, snap.poison - 1);
+            else if (kind === 'freeze') snap.frozen = false;
+            else if (kind === 'guard') snap.guard = Math.max(0, snap.guard - 1);
+            else if (kind === 'fly') snap.fly = Math.max(0, snap.fly - 1);
+            else if (kind === 'crit') snap.crit = Math.max(0, snap.crit - 1);
+        };
+        const choices = [];
+        const step = () => {
+            if (choices.length >= maxCount || (!hasAny(selfSnap) && !hasAny(oppSnap))) {
+                onDone(choices);
+                return;
+            }
+            this.showPurifyChoice(selfSnap, picked => {
+                choices.push(picked);
+                applyLocal(picked.who === 'opp' ? oppSnap : selfSnap, picked.kind);
+                step();
+            }, { opponent: oppSnap, allowOpponent: !!oppSnap });
+        };
+        if (!hasAny(selfSnap) && !hasAny(oppSnap)) { onDone([]); return; }
+        step();
+    }
+
+    showPurifyChoice(ch, onChoose, extra) {
+        extra = extra || {};
         if (document.getElementById('purify-choice-dialog')) return;
         const overlay = document.createElement('div');
         overlay.id = 'purify-choice-dialog'; overlay.className = 'dialog-overlay';
         const box = document.createElement('div'); box.className = 'dialog-box compact-choice-box';
         box.innerHTML = '<h3>净化 · 选择移除一层 Buff</h3>';
-        const choices = [];
-        if (ch.burn > 0) choices.push(['burn', `灼烧 ×${ch.burn}`, 'burn']);
-        if (ch.frozen) choices.push(['freeze', '冷冻', 'freeze']);
-        if (ch.bleed > 0) choices.push(['bleed', `流血 ×${ch.bleed}`, 'bleed']);
         const list = document.createElement('div'); list.className = 'choice-list';
-        for (const [kind,label,icon] of choices) {
-            const btn = document.createElement('button'); btn.className = 'choice-row';
-            btn.innerHTML = `<img src="icons/buff_icons/${icon}.png" alt=""><span>${label}</span>`;
-            btn.addEventListener('click', async()=>{ overlay.remove(); await onChoose(kind); });
-            list.appendChild(btn);
-        }
+        const addGroup = (snap, who, prefix) => {
+            if (!snap) return;
+            const rows = [];
+            if (snap.burn > 0) rows.push(['burn', `灼烧 ×${snap.burn}`, 'burn']);
+            if (snap.frozen) rows.push(['freeze', '冷冻', 'freeze']);
+            if (snap.bleed > 0) rows.push(['bleed', `流血 ×${snap.bleed}`, 'bleed']);
+            if (snap.poison > 0) rows.push(['poison', `中毒 ×${snap.poison}`, 'poison']);
+            if (snap.guard > 0) rows.push(['guard', `守护 ×${snap.guard}`, 'guard']);
+            if (snap.fly > 0) rows.push(['fly', `飞翔 ×${snap.fly}`, 'guard']);
+            if (snap.crit > 0) rows.push(['crit', `暴击 ×${snap.crit}`, 'crit']);
+            for (const [kind, label, icon] of rows) {
+                const btn = document.createElement('button');
+                btn.className = 'choice-row';
+                const iconPath = window.gameAssetUrl ? window.gameAssetUrl(`icons/buff_icons/${icon}.png`) : `icons/buff_icons/${icon}.png`;
+                btn.innerHTML = `<img src="${iconPath}" alt=""><span>${prefix}${label}</span>`;
+                btn.addEventListener('click', async () => { overlay.remove(); await onChoose({ who, kind }); });
+                list.appendChild(btn);
+            }
+        };
+        addGroup(ch, 'self', extra.allowOpponent ? '自己 · ' : '');
+        if (extra.allowOpponent) addGroup(extra.opponent, 'opp', '对手 · ');
         box.appendChild(list); overlay.appendChild(box); document.body.appendChild(overlay);
     }
 
@@ -155,13 +199,15 @@ class DialogManager {
         const box = document.createElement('div'); box.className = 'dialog-box compact-choice-box';
         box.innerHTML = '<h3>超级净化 · 选择目标</h3>';
         const list = document.createElement('div'); list.className = 'choice-list';
+        const buffIcon = name => window.gameAssetUrl ? window.gameAssetUrl(`icons/buff_icons/${name}.png`) : `icons/buff_icons/${name}.png`;
         for (const t of targets) {
             const btn = document.createElement('button'); btn.className = 'choice-row';
             const buffs = [];
-            if (t.ch.burn > 0) buffs.push(`灼烧×${t.ch.burn}`);
-            if (t.ch.bleed > 0) buffs.push(`流血×${t.ch.bleed}`);
-            if (t.ch.frozen) buffs.push('冷冻');
-            if (t.ch.guard > 0) buffs.push(`守护×${t.ch.guard}`);
+            if (t.ch.burn > 0) buffs.push(`<img src="${buffIcon('burn')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>灼烧×${t.ch.burn}</span>`);
+            if (t.ch.bleed > 0) buffs.push(`<img src="${buffIcon('bleed')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>流血×${t.ch.bleed}</span>`);
+            if (t.ch.poison > 0) buffs.push(`<img src="${buffIcon('poison')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>中毒×${t.ch.poison}</span>`);
+            if (t.ch.frozen) buffs.push(`<img src="${buffIcon('freeze')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>冷冻</span>`);
+            if (t.ch.guard > 0) buffs.push(`<img src="${buffIcon('guard')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>守护×${t.ch.guard}</span>`);
             const buffText = buffs.length ? buffs.join(' ') : '无buff';
             btn.innerHTML = `<span style="font-weight:700">${t.label}</span><span style="color:#aaa;font-size:0.85rem;margin-left:8px">${buffText}</span>`;
             btn.addEventListener('click', async () => { overlay.remove(); await onChoose(t.key); });
@@ -170,18 +216,89 @@ class DialogManager {
         box.appendChild(list); overlay.appendChild(box); document.body.appendChild(overlay);
     }
 
+    showBuffTransferChoice(ch, onChoose, extra) {
+        extra = extra || {};
+        if (document.getElementById('buff-transfer-choice-dialog')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'buff-transfer-choice-dialog';
+        overlay.className = 'dialog-overlay';
+        const box = document.createElement('div');
+        box.className = 'dialog-box compact-choice-box';
+        box.innerHTML = '<h3>魔法转移 · 选择转移一层 Buff</h3>';
+        const list = document.createElement('div');
+        list.className = 'choice-list';
+        const addRows = (target, from, prefix) => {
+            if (!target) return;
+            const rows = [];
+            if (target.burn > 0) rows.push(['burn', `灼烧 ×${target.burn}`, 'burn']);
+            if (target.bleed > 0) rows.push(['bleed', `流血 ×${target.bleed}`, 'bleed']);
+            if ((target.poison || 0) > 0) rows.push(['poison', `中毒 ×${target.poison}`, 'poison']);
+            if (target.frozen) rows.push(['freeze', '冷冻', 'freeze']);
+            if (target.guard > 0) rows.push(['guard', `守护 ×${target.guard}`, 'guard']);
+            if ((target.fly || 0) > 0) rows.push(['fly', `飞翔 ×${target.fly}`, 'guard']);
+            if ((target.crit || 0) > 0) rows.push(['crit', `暴击 ×${target.crit}`, 'crit']);
+            for (const [kind, label, icon] of rows) {
+                const btn = document.createElement('button');
+                btn.className = 'choice-row';
+                const iconPath = window.gameAssetUrl ? window.gameAssetUrl(`icons/buff_icons/${icon}.png`) : `icons/buff_icons/${icon}.png`;
+                btn.innerHTML = `<img src="${iconPath}" alt=""><span>${prefix}${label}</span>`;
+                btn.addEventListener('click', async () => { overlay.remove(); await onChoose({ from, kind }); });
+                list.appendChild(btn);
+            }
+        };
+        addRows(ch, 'self', '');
+        box.appendChild(list);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+    }
+
     showGuardChoice(ch, damage, onChoose) {
+        this.showGuardOrFlyChoice(ch, damage, onChoose);
+    }
+
+    showGuardOrFlyChoice(ch, damage, onChoose) {
         if (document.getElementById('guard-choice-dialog')) return;
         const overlay=document.createElement('div'); overlay.id='guard-choice-dialog'; overlay.className='dialog-overlay';
         const box=document.createElement('div'); box.className='dialog-box compact-choice-box';
-        box.innerHTML=`<h3>守护 ×${ch.guard} · 即将受到 ${damage} 点伤害</h3>`;
+        const fly = ch.fly || 0;
+        const guard = ch.guard || 0;
+        box.innerHTML=`<h3>即将受到 ${damage} 点伤害</h3>`;
         const list=document.createElement('div'); list.className='choice-list';
-        const max=Math.min(ch.guard,damage);
-        for(let i=0;i<=max;i++){
-            const use=i,btn=document.createElement('button'); btn.className='choice-row';
-            btn.innerHTML=`<img src="icons/buff_icons/guard.png" alt=""><span>${use===0?'不使用守护':`使用 ${use} 层（剩余伤害 ${damage-use}）`}</span>`;
-            btn.addEventListener('click',async()=>{overlay.remove();await onChoose(use)});list.appendChild(btn);
+        const addBtn = (html, payload) => {
+            const btn=document.createElement('button'); btn.className='choice-row';
+            btn.innerHTML=html;
+            btn.addEventListener('click',async()=>{overlay.remove();await onChoose(payload)});
+            list.appendChild(btn);
+        };
+        const flyIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/guard.png') : 'icons/buff_icons/guard.png';
+        const guardIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/guard.png') : 'icons/buff_icons/guard.png';
+        if (fly > 0) {
+            addBtn(`<img src="${flyIcon}" alt=""><span>使用 1 层飞翔躲避（50%，剩余 ${fly - 1}）</span>`, { action: 'fly' });
         }
+        if (guard > 0) {
+            const max=Math.min(guard,damage);
+            for(let i=1;i<=max;i++){
+                addBtn(`<img src="${guardIcon}" alt=""><span>使用 ${i} 层守护（剩余伤害 ${damage-i}）</span>`, { action: 'guard', stacks: i });
+            }
+        }
+        addBtn(`<span>不使用</span>`, { action: 'none' });
+        box.appendChild(list);overlay.appendChild(box);document.body.appendChild(overlay);
+    }
+
+    showFlyRetryChoice(ch, damage, onChoose) {
+        if (document.getElementById('fly-retry-choice-dialog')) return;
+        const overlay=document.createElement('div'); overlay.id='fly-retry-choice-dialog'; overlay.className='dialog-overlay';
+        const box=document.createElement('div'); box.className='dialog-box compact-choice-box';
+        box.innerHTML=`<h3>飞翔躲避失败 · 仍将受到 ${damage} 点伤害</h3>`;
+        const list=document.createElement('div'); list.className='choice-list';
+        const addBtn = (label, again) => {
+            const btn=document.createElement('button'); btn.className='choice-row';
+            btn.innerHTML=`<span>${label}</span>`;
+            btn.addEventListener('click',async()=>{overlay.remove();await onChoose(again)});
+            list.appendChild(btn);
+        };
+        if ((ch.fly || 0) > 0) addBtn(`继续使用 1 层飞翔躲避（剩余 ${ch.fly}）`, true);
+        addBtn('不再躲避，承受伤害', false);
         box.appendChild(list);overlay.appendChild(box);document.body.appendChild(overlay);
     }
 }

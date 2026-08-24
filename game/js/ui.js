@@ -1,12 +1,21 @@
 const CARD_W = 70, CARD_H = 100;
-const CARD_COLORS = {
-    RED: { top: '#ff1e28', bot: '#b3141c' },
-    YELLOW: { top: '#ffc300', bot: '#b38a00' },
-    BLUE: { top: '#0082ff', bot: '#005bb3' },
-    GREEN: { top: '#00c83c', bot: '#008c2a' },
-    BLACK: { top: '#3a3545', bot: '#22202a' },
-    WHITE: { top: '#e8e8ed', bot: '#b8b8c2' }
+const CARD_COLORS = window.CardStyle ? window.CardStyle.CARD_COLORS : {
+    RED: { fill: '#E31837', dark: '#B51228', ink: '#E31837' },
+    YELLOW: { fill: '#FFCD00', dark: '#D4A900', ink: '#1A1A1A' },
+    BLUE: { fill: '#0072BB', dark: '#005A94', ink: '#0072BB' },
+    GREEN: { fill: '#00A651', dark: '#008542', ink: '#00A651' },
+    BLACK: { fill: '#1A1A1A', dark: '#000000', ink: '#FFFFFF' },
+    WHITE: { fill: '#F0F0F0', dark: '#D0D0D0', ink: '#333333' }
 };
+
+const GAME_ASSET_ROOT = (() => {
+    if (typeof document === 'undefined' || !document.currentScript || !document.currentScript.src) return '';
+    return new URL('../', document.currentScript.src).href;
+})();
+function gameAssetUrl(path) {
+    return GAME_ASSET_ROOT ? new URL(path, GAME_ASSET_ROOT).href : path;
+}
+window.gameAssetUrl = gameAssetUrl;
 
 const TAG_COLORS = {
     '[生命]': '#86efac', '[伤害]': '#fda4af', '[灼烧]': '#fdba74',
@@ -15,30 +24,30 @@ const TAG_COLORS = {
     '[净化]': '#ddd6fe', '[解冻]': '#bae6fd',
     '[红]': '#fda4af', '[黄]': '#fde047', '[蓝]': '#93c5fd',
     '[绿]': '#86efac', '[白]': '#f8fafc', '[黑]': '#cbd5e1',
-    '[守护]': '#67e8f9'
+    '[守护]': '#67e8f9', '[飞翔]': '#a5b4fc'
 };
 
 const ICON_PATHS = {
-    black: 'icons/card_icons/color_palette.png',
-    potion: 'icons/card_icons/potion.png',
-    draw_three: 'icons/card_icons/draw_cards.png',
-    purify: 'icons/card_icons/purify.png',
-    super_purify: 'icons/card_icons/super_purify.png',
-    swap: 'icons/card_icons/swap_cards.png',
-    shuffle: 'icons/card_icons/shuffle.png',
-    burn: 'icons/buff_icons/burn.png',
-    freeze: 'icons/buff_icons/freeze.png',
-    bleed: 'icons/buff_icons/bleed.png',
-    guard: 'icons/buff_icons/guard.png',
-    sparkling: 'icons/ui_icons/sparkling.png'
+    black: gameAssetUrl('icons/card_icons/color_palette.png'),
+    potion: gameAssetUrl('icons/card_icons/potion.png'),
+    draw_three: gameAssetUrl('icons/card_icons/draw_cards.png'),
+    purify: gameAssetUrl('icons/card_icons/purify.png'),
+    super_purify: gameAssetUrl('icons/card_icons/super_purify.png'),
+    swap: gameAssetUrl('icons/card_icons/swap_cards.png'),
+    shuffle: gameAssetUrl('icons/card_icons/shuffle.png'),
+    burn: gameAssetUrl('icons/buff_icons/burn.png'),
+    freeze: gameAssetUrl('icons/buff_icons/freeze.png'),
+    bleed: gameAssetUrl('icons/buff_icons/bleed.png'),
+    guard: gameAssetUrl('icons/buff_icons/guard.png'),
+    sparkling: gameAssetUrl('icons/ui_icons/sparkling.png')
 };
 
 const PHASE_NAMES = {
     PLAYER_PLAY: '出牌阶段', PLAYER_DISCARD: '弃牌阶段',
-    PLAYER_DEFEND: '防御阶段', PLAYER_FIVE_CHOICE: '选择5效果',
+    PLAYER_DEFEND: '防御阶段', ATTACK_MOD_CHOICE: '攻击修正', PLAYER_FIVE_CHOICE: '选择5效果',
     PLAYER_SEVEN_CHOICE: '选择对手牌', SAIKI_THREE_CHOICE: '选择对手牌',
     SAIKI_SIX_JUDGE: '判定选择', AI_TURN: 'AI回合', AI2_TURN: 'AI2回合',
-    AI_DEFEND: 'AI防御中', CHAN_FIVE_REORDER: '排列牌库顶', OPPONENT_CARD_CHOICE: '选择对手手牌', GUARD_CHOICE: '选择守护', TARGET_CHOICE: '选择目标', GAME_OVER: '游戏结束'
+    AI_DEFEND: 'AI防御中', CHAN_FIVE_REORDER: '排列牌库顶', OPPONENT_CARD_CHOICE: '选择对手手牌', GUARD_CHOICE: '选择守护', TARGET_CHOICE: '选择目标', PURIFY_CRYSTAL_CHOICE: '净化水晶', GAME_OVER: '游戏结束'
 };
 
 const iconCache = {};
@@ -60,142 +69,17 @@ function cardLabel(card) {
 }
 
 function renderCard(card, w, h, selected) {
-    const c = document.createElement('canvas');
-    c.width = w; c.height = h;
-    c.className = 'card-canvas' + (selected ? ' selected' : '');
-    const g = c.getContext('2d');
-    const col = CARD_COLORS[card.color] || CARD_COLORS.BLACK;
-    const hasChosen = card.chosenColor && (card.isBlack || card.isWhite);
-    const chosenCol = hasChosen ? CARD_COLORS[card.chosenColor] : null;
-    const useDarkInk = card.color === 'YELLOW' || card.color === 'WHITE';
-
-    g.save(); g.beginPath(); roundRect(g, 2, 2, w - 5, h - 5, 10); g.clip();
-    const grad = g.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0, col.top); grad.addColorStop(1, col.bot);
-    g.fillStyle = grad; g.fillRect(0, 0, w, h);
-
-    if (hasChosen && card.isBlack) {
-        g.globalAlpha = 0.4;
-        const cg = g.createLinearGradient(0, 0, w, h);
-        cg.addColorStop(0, chosenCol.top); cg.addColorStop(1, chosenCol.bot);
-        g.fillStyle = cg; g.fillRect(0, 0, w, h); g.globalAlpha = 1;
-        g.save(); g.translate(w / 2, h / 2); g.rotate(-0.5);
-        const sw = w * 0.38, sh = h * 0.28;
-        const sg = g.createLinearGradient(-sw, -sh / 2, sw, sh / 2);
-        sg.addColorStop(0, lighten(chosenCol.top, 30)); sg.addColorStop(1, chosenCol.bot);
-        g.fillStyle = sg; roundRect(g, -sw, -sh / 2, sw * 2, sh, 4); g.fill();
-        g.fillStyle = 'rgba(255,255,255,0.15)'; g.fillRect(-sw, -sh / 2, sw * 2, sh * 0.35);
-        g.restore();
-        g.strokeStyle = 'rgba(0,0,0,0.1)'; g.lineWidth = 1;
-        roundRect(g, 5, 5, w - 12, h - 12, 8); g.stroke();
-    } else if (hasChosen && card.isWhite) {
-        g.globalAlpha = 0.3;
-        const cg = g.createLinearGradient(0, 0, w, h);
-        cg.addColorStop(0, chosenCol.top); cg.addColorStop(1, chosenCol.bot);
-        g.fillStyle = cg; g.fillRect(0, 0, w, h); g.globalAlpha = 1;
-        const bandH = h * 0.16, bandY = h - bandH - 6;
-        const bg = g.createLinearGradient(0, bandY, 0, bandY + bandH);
-        bg.addColorStop(0, lighten(chosenCol.top, 30)); bg.addColorStop(1, chosenCol.bot);
-        g.fillStyle = bg; roundRect(g, 5, bandY, w - 12, bandH, 5); g.fill();
-        g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(5, bandY, w - 12, bandH / 2);
-        const topH = h * 0.10, topY = 6;
-        g.globalAlpha = 0.5; g.fillStyle = cg; roundRect(g, 5, topY, w - 12, topH, 5); g.fill();
-        g.fillStyle = 'rgba(255,255,255,0.2)'; g.fillRect(5, topY, w - 12, topH / 2);
-        g.globalAlpha = 1;
-    }
-    g.restore();
-
-    if (hasChosen) {
-        g.strokeStyle = chosenCol.top; g.lineWidth = 2.5; g.globalAlpha = 0.7;
-        roundRect(g, 3, 3, w - 7, h - 7, 10); g.stroke(); g.globalAlpha = 1;
-    } else {
-        g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 2;
-        roundRect(g, 2, 2, w - 5, h - 5, 10); g.stroke();
-    }
-    const shine = g.createLinearGradient(0, 0, 0, h / 2);
-    shine.addColorStop(0, 'rgba(255,255,255,0.25)'); shine.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = shine; g.beginPath(); roundRect(g, 4, 4, w - 10, h / 2, 8); g.fill();
-
-    let iconName = null, textVal = null;
-    if (card.isBlack) { iconName = card.shuffleToDeck ? 'shuffle' : card.drawTwo ? 'draw_three' : 'black'; }
-    else if (card.superPurify) iconName = 'super_purify';
-    else if (card.purify) iconName = 'purify';
-    else if (card.potion) iconName = 'potion';
-    else if (card.drawThree) iconName = 'draw_three';
-    else if (card.swapHand) iconName = 'swap';
-    else textVal = String(card.value);
-
-    if (iconName) {
-        const img = loadIcon(iconName);
-        if (img.complete && img.naturalWidth > 0) {
-            const iw = w * 0.45; g.drawImage(img, (w - iw) / 2, (h - iw) / 2, iw, iw);
-        } else {
-            g.font = `bold ${w * 0.35}px Arial`; g.textAlign = 'center'; g.textBaseline = 'middle';
-            const label = card.isBlack ? (card.shuffleToDeck ? '洗' : card.drawTwo ? '+2' : '黑') :
-                card.superPurify ? '超净' : card.purify ? '净' : card.potion ? '药' :
-                card.drawThree ? '+3' : '换';
-            g.fillStyle = useDarkInk ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.65)';
-            g.fillText(label, w / 2 + 1, h / 2 + 1);
-            g.fillStyle = useDarkInk ? '#172033' : '#fff'; g.fillText(label, w / 2, h / 2);
-        }
-    } else if (textVal) {
-        const fs = w > 80 ? 42 : 32;
-        g.font = `bold ${fs}px Arial`; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillStyle = useDarkInk ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)';
-        g.fillText(textVal, w / 2 + 1, h / 2 + 1);
-        g.fillStyle = useDarkInk ? '#172033' : '#fff'; g.fillText(textVal, w / 2, h / 2);
-    }
-
-    let cornerIcon = null, cornerText = null;
-    if (card.isBlack) cornerIcon = 'black';
-    else if (card.superPurify) cornerIcon = 'super_purify';
-    else if (card.purify) cornerIcon = 'purify';
-    else if (card.potion) cornerIcon = 'potion';
-    else if (card.swapHand) cornerIcon = 'swap';
-    else if (card.drawThree) cornerIcon = 'draw_three';
-    else cornerText = String(card.value);
-
-    if (cornerIcon) {
-        const img = loadIcon(cornerIcon);
-        if (img.complete && img.naturalWidth > 0) g.drawImage(img, 4, 3, 14, 14);
-    } else if (cornerText) {
-        g.font = `bold ${w > 80 ? 13 : 10}px Arial`; g.textAlign = 'left'; g.textBaseline = 'top';
-        g.fillStyle = useDarkInk ? '#172033' : 'rgba(255,255,255,0.95)';
-        g.fillText(cornerText, 5, 3);
-    }
-
-    if (selected) {
-        g.strokeStyle = 'rgba(160,80,220,0.7)'; g.lineWidth = 3;
-        roundRect(g, 1, 1, w - 3, h - 3, 10); g.stroke();
-        g.strokeStyle = 'rgba(160,80,220,0.25)'; g.lineWidth = 7;
-        roundRect(g, 1, 1, w - 3, h - 3, 10); g.stroke();
-    }
-    return c;
+    if (window.CardStyle && window.CardStyle.renderCard) return window.CardStyle.renderCard(card, w, h, selected);
+    return document.createElement('canvas');
 }
 
 function renderCardBack(w, h) {
-    const c = document.createElement('canvas');
-    c.width = w; c.height = h; c.className = 'card-back-canvas';
-    const g = c.getContext('2d');
-    const grad = g.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0, '#4682f0'); grad.addColorStop(1, '#1e50c8');
-    g.fillStyle = grad; roundRect(g, 1, 1, w - 3, h - 3, 10); g.fill();
-    g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1.5;
-    roundRect(g, 1, 1, w - 3, h - 3, 10); g.stroke();
-    g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(3, 3, w - 7, h / 2);
-    g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 1;
-    roundRect(g, 6, 6, w - 14, h - 14, 7); g.stroke();
-    const img = loadIcon('sparkling');
-    if (img.complete && img.naturalWidth > 0) {
-        const iw = w * 0.35; g.drawImage(img, (w - iw) / 2, (h - iw) / 2, iw, iw);
-    } else {
-        g.font = `bold ${w * 0.4}px Arial`; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillText('?', w / 2, h / 2);
-    }
-    return c;
+    if (window.CardStyle && window.CardStyle.renderCardBack) return window.CardStyle.renderCardBack(w, h);
+    return document.createElement('canvas');
 }
 
 function roundRect(ctx, x, y, w, h, r) {
+    if (window.CardStyle && window.CardStyle.roundRect) return window.CardStyle.roundRect(ctx, x, y, w, h, r);
     ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
     ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r);
     ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h);
@@ -230,7 +114,13 @@ function parseSegments(text, defaultColor) {
 }
 
 function cardId(card) {
-    return `${card.color}_${card.value}_${card.isBlack}_${card.isWhite}_${card.potion}_${card.purify}_${card.superPurify}_${card.swapHand}_${card.shuffleToDeck}_${card.drawThree}_${card.chosenColor || ''}`;
+    return `${card.color}_${card.value}_${card.isBlack}_${card.isWhite}_${card.potion}_${card.purify}_${card.superPurify}_${card.swapHand}_${card.shuffleToDeck}_${card.drawThree}`;
+}
+
+/** 匹配用手牌身份（忽略 chosenColor，避免 AI 出牌染色后找不到源牌） */
+function cardMatchKey(card) {
+    if (!card) return '';
+    return `${card.color}_${card.value}_${!!card.isBlack}_${!!card.isWhite}_${!!card.potion}_${!!card.purify}_${!!card.superPurify}_${!!card.swapHand}_${!!card.shuffleToDeck}_${!!card.drawThree}`;
 }
 
 class AnimLayer {
@@ -345,14 +235,18 @@ class AnimLayer {
         });
     }
 
-    discardCard(card, fromEl, toEl, faceUp = true) {
+    discardCard(card, fromEl, toEl, faceUp = true, opts = {}) {
         return new Promise(resolve => {
             if (!fromEl || !toEl) { resolve(); return; }
+            const landsOnTop = opts.landsOnTop === true;
             const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             const discardZone = toEl.closest('.discard-zone') || toEl;
             if (reducedMotion) {
-                discardZone.classList.add('discard-impact');
-                setTimeout(() => discardZone.classList.remove('discard-impact'), 180);
+                if (landsOnTop) {
+                    discardZone.classList.add('discard-impact');
+                    setTimeout(() => discardZone.classList.remove('discard-impact'), 180);
+                }
+                if (fromEl.classList && fromEl.classList.contains('card-canvas')) fromEl.remove();
                 resolve();
                 return;
             }
@@ -368,18 +262,19 @@ class AnimLayer {
 
             const sx = fromRect.left + fromRect.width / 2 - width / 2;
             const sy = fromRect.top + fromRect.height / 2 - height / 2;
-            const ex = toRect.left + toRect.width / 2 - width / 2;
-            const ey = toRect.top + toRect.height / 2 - height / 2 + 6;
+            // Cards going to the discard-bottom must not look like they replace the shared top.
+            const ex = toRect.left + toRect.width / 2 - width / 2 + (landsOnTop ? 0 : 18);
+            const ey = toRect.top + toRect.height / 2 - height / 2 + (landsOnTop ? 6 : 28);
             const distance = Math.hypot(ex - sx, ey - sy);
-            const arc = Math.max(46, Math.min(118, distance * 0.24));
+            const arc = Math.max(40, Math.min(100, distance * 0.22));
             const turn = ex >= sx ? 1 : -1;
-            const duration = 520;
+            const duration = landsOnTop ? 520 : 440;
             const start = performance.now();
 
             if (fromEl.classList && fromEl.classList.contains('card-canvas')) {
-                fromEl.classList.add('discard-source-hidden');
+                fromEl.remove();
             }
-            discardZone.classList.add('discard-catching');
+            if (landsOnTop) discardZone.classList.add('discard-catching');
 
             const tick = now => {
                 const t = Math.min(1, (now - start) / duration);
@@ -389,18 +284,20 @@ class AnimLayer {
                 const x = sx + (ex - sx) * ease;
                 const y = sy + (ey - sy) * ease - Math.sin(ease * Math.PI) * arc;
                 const sink = Math.max(0, (t - 0.72) / 0.28);
-                const scale = 1 + Math.sin(ease * Math.PI) * 0.1 - sink * 0.36;
-                const rotate = turn * (Math.sin(ease * Math.PI) * 8 + sink * 14);
-                flyEl.style.transform = `translate(${x}px, ${y + sink * 13}px) scale(${scale}) rotate(${rotate}deg)`;
-                flyEl.style.opacity = t < 0.08 ? t / 0.08 : sink ? 1 - sink : 1;
+                const scale = 1 + Math.sin(ease * Math.PI) * 0.08 - sink * (landsOnTop ? 0.36 : 0.5);
+                const rotate = turn * (Math.sin(ease * Math.PI) * 6 + sink * 10);
+                flyEl.style.transform = `translate(${x}px, ${y + sink * (landsOnTop ? 13 : 20)}px) scale(${scale}) rotate(${rotate}deg)`;
+                flyEl.style.opacity = t < 0.08 ? t / 0.08 : (landsOnTop ? (sink ? 1 - sink : 1) : (1 - sink));
                 if (t < 1) {
                     requestAnimationFrame(tick);
                     return;
                 }
                 flyEl.remove();
-                discardZone.classList.remove('discard-catching');
-                discardZone.classList.add('discard-impact');
-                setTimeout(() => discardZone.classList.remove('discard-impact'), 260);
+                if (landsOnTop) {
+                    discardZone.classList.remove('discard-catching');
+                    discardZone.classList.add('discard-impact');
+                    setTimeout(() => discardZone.classList.remove('discard-impact'), 260);
+                }
                 resolve();
             };
             requestAnimationFrame(tick);
@@ -501,11 +398,15 @@ class GameUI {
         this._selectedAI2Char = null;
         this._is1v2 = false;
         this._isLord = false;
+        this._isAdventure = false;
+        this._modeChosen = false;
         this._isPollingAI = false;
         this._isHandlingAction = false;
         this._isConsumingEvents = false;
         this._lastAnimatedAIDefenseKey = null;
         this._animatedPlayerDraws = 0;
+        this._npcHandFocusIndex = -1;
+        this._selectedCombatItem = null;
         this._floatingTextLanes = { player: [], ai: [], ai2: [] };
         this.anim = new AnimLayer();
         this.dialogs = new DialogManager((method, params) => this._apiAction(method, params));
@@ -562,36 +463,81 @@ class GameUI {
         const chars = this.characters;
         const charColors = { Ryan: '#e74c3c', Leon: '#3498db', Chan: '#2ecc71',
             Saiki: '#9b59b6', Blaze: '#e67e22', Serenity: '#1abc9c', Moze: '#7f8c8d', Knight: '#8e44ad' };
-        const charAvatar = { Ryan: 'avatars/Ryan.jpg', Leon: 'avatars/Leon.png', Chan: 'avatars/Chan.png', Saiki: 'avatars/Saiki.png', Blaze: 'avatars/Blaze.png', Serenity: 'avatars/Serenity.jpg', Moze: 'avatars/Moze.jpg', Knight: 'avatars/Knight.png' };
+        const charAvatar = { Ryan: 'avatars/Ryan.jpg', Leon: 'avatars/Leon.png', Chan: 'avatars/Chan.png', Saiki: 'avatars/Saiki.png', Blaze: 'avatars/Blaze.png', Serenity: 'avatars/Serenity.jpg', Moze: 'avatars/Moze.jpg', Knight: 'avatars/Knight.png', Otto: 'avatars/Otto.png' };
 
-        this._assignMode = 1;
-        this._selectedPlayerChar = null;
-        this._selectedAIChar = null;
-        this._selectedAI2Char = null;
+        let html = `<div class="home-shell${this._modeChosen ? ' home-shell-select' : ''}">`;
+        html += `<header class="home-hero"><div class="game-title">Furry Trial</div>`;
+        html += `<p class="home-tagline">${this._modeChosen ? (this._isAdventure ? '选择你的冒险主角' : '分配角色并开始对战') : '回合制卡牌对战 · 冒险启程'}</p></header>`;
 
-        let html = `<div class="game-title">Furry Battle</div>`;
-        html += `<div class="mode-toggle"><button class="mode-btn${!this._is1v2&&!this._isLord?' active':''}" id="mode-1v1">1v1 单挑</button><button class="mode-btn${this._is1v2&&!this._isLord?' active':''}" id="mode-1v2">1v2 双雄</button><button class="mode-btn${this._isLord?' active':''}" id="mode-lord">领主模式</button></div>`;
-        html += `<div class="assign-bar"><button class="assign-btn active" id="assign-player" style="--ac:#3b82f6">玩家</button><button class="assign-btn" id="assign-bot1" style="--ac:#ef4444">Bot1</button>${(this._is1v2||this._isLord)?'<button class="assign-btn" id="assign-bot2" style="--ac:#a855f7">Bot2</button>':''}</div>`;
-        html += `<div class="game-subtitle" id="assign-status">点击角色分配给 玩家</div>`;
+        if (!this._modeChosen) {
+            html += `<div class="home-panel home-panel-menu">`;
+            html += `<button class="home-cta home-cta-adventure${this._isAdventure?' active':''}" id="adventure-start-btn" type="button">`;
+            html += `<span class="home-cta-glow" aria-hidden="true"></span><span class="home-cta-icon" aria-hidden="true">⚔</span>`;
+            html += `<span class="home-cta-copy"><span class="home-cta-label">开始冒险</span><span class="home-cta-hint">Roguelike 地牢探索</span></span></button>`;
+            html += `<div class="home-section-label">对战模式</div>`;
+            html += `<div class="mode-toggle home-mode-grid"><button class="mode-btn home-mode-btn${!this._is1v2&&!this._isLord&&!this._isAdventure?' active':''}" id="mode-1v1" type="button"><span class="home-mode-name">1v1</span><span class="home-mode-desc">单挑</span></button>`;
+            html += `<button class="mode-btn home-mode-btn${this._is1v2&&!this._isLord?' active':''}" id="mode-1v2" type="button"><span class="home-mode-name">1v2</span><span class="home-mode-desc">双雄</span></button>`;
+            html += `<button class="mode-btn home-mode-btn${this._isLord?' active':''}" id="mode-lord" type="button"><span class="home-mode-name">领主</span><span class="home-mode-desc">模式</span></button></div>`;
+            html += `<div class="home-section-label">资料库</div>`;
+            html += `<div class="home-secondary-row">`;
+            html += `<button class="home-secondary-btn rules-entry-btn" id="rules-entry-btn" type="button"><span class="home-secondary-icon" aria-hidden="true">📖</span><span>规则介绍</span></button>`;
+            html += `<button class="home-secondary-btn char-entry-btn" id="char-entry-btn" type="button"><span class="home-secondary-icon" aria-hidden="true">🎭</span><span>角色详情</span></button>`;
+            html += `<button class="home-secondary-btn codex-entry-btn" id="codex-entry-btn" type="button"><span class="home-secondary-icon" aria-hidden="true">🗺</span><span>冒险图鉴</span></button>`;
+            html += `</div></div></div>`;
+            this.selectScreen.innerHTML = html;
+            const m1 = document.getElementById('mode-1v1');
+            const m2 = document.getElementById('mode-1v2');
+            const mL = document.getElementById('mode-lord');
+            if (m1) m1.addEventListener('click', () => { this._is1v2 = false; this._isLord = false; this._isAdventure = false; this._modeChosen = true; this._resetSelection(); this._buildSelectScreen(); });
+            if (m2) m2.addEventListener('click', () => { this._is1v2 = true; this._isLord = false; this._isAdventure = false; this._modeChosen = true; this._resetSelection(); this._buildSelectScreen(); });
+            if (mL) mL.addEventListener('click', () => { this._is1v2 = false; this._isLord = true; this._isAdventure = false; this._modeChosen = true; this._resetSelection(); this._buildSelectScreen(); });
+            const advBtn = document.getElementById('adventure-start-btn');
+            if (advBtn) advBtn.addEventListener('click', () => { this._is1v2 = false; this._isLord = false; this._isAdventure = true; this._modeChosen = true; this._resetSelection(); this._buildSelectScreen(); });
+            const rulesBtn0 = document.getElementById('rules-entry-btn');
+            if (rulesBtn0) rulesBtn0.addEventListener('click', () => {
+                if (window.RulesPage) { window.RulesPage.build(); this.selectScreen.classList.remove('active'); document.getElementById('rules-screen').classList.add('active'); }
+            });
+            const charBtn0 = document.getElementById('char-entry-btn');
+            if (charBtn0) charBtn0.addEventListener('click', () => {
+                if (window.CharDetailPage) { window.CharDetailPage.show(document.getElementById('char-detail-screen')); this.selectScreen.classList.remove('active'); }
+            });
+            const codexBtn0 = document.getElementById('codex-entry-btn');
+            if (codexBtn0) codexBtn0.addEventListener('click', () => {
+                if (window.AdventureCodex) { window.AdventureCodex.show(document.getElementById('char-detail-screen')); this.selectScreen.classList.remove('active'); }
+            });
+            return;
+        }
+
+        html += `<div class="home-panel home-panel-select">`;
+        html += `<button class="back-to-mode-btn" id="back-to-mode" type="button"><span aria-hidden="true">←</span> 返回模式选择</button>`;
+        if (this._isAdventure) {
+            html += `<div class="game-subtitle home-assign-status" id="assign-status">选择主角</div>`;
+        } else {
+            html += `<div class="assign-bar home-assign-bar"><button class="assign-btn active" id="assign-player" style="--ac:#3b82f6" type="button">玩家</button><button class="assign-btn" id="assign-bot1" style="--ac:#ef4444" type="button">Bot1</button>${(this._is1v2||this._isLord)?'<button class="assign-btn" id="assign-bot2" style="--ac:#a855f7" type="button">Bot2</button>':''}</div>`;
+            html += `<div class="game-subtitle home-assign-status" id="assign-status">点击角色分配给 玩家</div>`;
+        }
         html += `<div class="select-section"><div class="char-grid" id="char-grid">`;
         for (const ch of chars) {
             const avatar = charAvatar[ch.name];
-            const iconHtml = avatar ? `<img class="char-avatar" src="${avatar}" alt="${ch.name}">` : `<div class="char-icon" style="background:${charColors[ch.name] || '#888'}">${ch.name[0]}</div>`;
+            const iconHtml = avatar ? `<img class="char-avatar" src="${gameAssetUrl(avatar)}" alt="${ch.name}">` : `<div class="char-icon" style="background:${charColors[ch.name] || '#888'}">${ch.name[0]}</div>`;
             html += `<div class="char-card" data-name="${ch.name}">${iconHtml}<div class="char-name">${ch.name}</div><div class="char-type">${ch.type}</div><div class="char-hp">HP: ${ch.hp}</div><div class="char-passive">${ch.passive}</div><div class="char-role-label"></div></div>`;
         }
         html += `</div></div>`;
-        html += `<button class="start-btn" id="start-btn" disabled>开始对战</button>`;
-        html += `<button class="start-btn rules-entry-btn" id="rules-entry-btn">规则介绍</button>`;
-        html += `<button class="start-btn char-entry-btn" id="char-entry-btn">角色详情</button>`;
+        html += `<button class="start-btn home-start-btn" id="start-btn" type="button" disabled><span class="home-start-shine" aria-hidden="true"></span>开始游戏</button>`;
+        html += `</div></div>`;
+
         this.selectScreen.innerHTML = html;
 
         const updateAssignBtns = () => {
-            document.getElementById('assign-player').classList.toggle('active', this._assignMode === 1);
-            document.getElementById('assign-bot1').classList.toggle('active', this._assignMode === 2);
+            const ap = document.getElementById('assign-player');
+            if (ap) ap.classList.toggle('active', this._assignMode === 1);
+            const b1 = document.getElementById('assign-bot1');
+            if (b1) b1.classList.toggle('active', this._assignMode === 2);
             const b2 = document.getElementById('assign-bot2');
             if (b2) b2.classList.toggle('active', this._assignMode === 3);
             const labels = { 1: '玩家', 2: 'Bot1', 3: 'Bot2' };
-            document.getElementById('assign-status').textContent = '点击角色分配给 ' + labels[this._assignMode];
+            const status = document.getElementById('assign-status');
+            if (status && !this._isAdventure) status.textContent = '点击角色分配给 ' + labels[this._assignMode];
         };
 
         const updateCardStyles = () => {
@@ -614,23 +560,27 @@ class GameUI {
         };
 
         const checkReady = () => {
-            const ready = this._selectedPlayerChar && this._selectedAIChar && (!(this._is1v2||this._isLord) || this._selectedAI2Char);
+            const ready = this._isAdventure ? !!this._selectedPlayerChar : (this._selectedPlayerChar && this._selectedAIChar && (!(this._is1v2||this._isLord) || this._selectedAI2Char));
             document.getElementById('start-btn').disabled = !ready;
-            if (ready) {
+            if (ready && !this._isAdventure) {
                 const s = this._selectedPlayerChar + ' (玩家)  vs  ' + this._selectedAIChar + ' (Bot1)';
                 document.getElementById('assign-status').textContent = (this._is1v2||this._isLord) ? s + ' & ' + this._selectedAI2Char + ' (Bot2)' : s;
             }
         };
 
-        document.getElementById('assign-player').addEventListener('click', () => { this._assignMode = 1; updateAssignBtns(); });
-        document.getElementById('assign-bot1').addEventListener('click', () => { this._assignMode = 2; updateAssignBtns(); });
+        const apBtn = document.getElementById('assign-player');
+        if (apBtn) apBtn.addEventListener('click', () => { this._assignMode = 1; updateAssignBtns(); });
+        const b1Btn = document.getElementById('assign-bot1');
+        if (b1Btn) b1Btn.addEventListener('click', () => { this._assignMode = 2; updateAssignBtns(); });
         const b2Btn = document.getElementById('assign-bot2');
         if (b2Btn) b2Btn.addEventListener('click', () => { this._assignMode = 3; updateAssignBtns(); });
 
         this.selectScreen.querySelectorAll('.char-card').forEach(el => {
             el.addEventListener('click', () => {
                 const name = el.dataset.name;
-                if (this._assignMode === 1) this._selectedPlayerChar = name;
+                if (this._isAdventure) {
+                    this._selectedPlayerChar = name;
+                } else if (this._assignMode === 1) this._selectedPlayerChar = name;
                 else if (this._assignMode === 2) this._selectedAIChar = name;
                 else if (this._assignMode === 3) this._selectedAI2Char = name;
                 updateCardStyles();
@@ -639,6 +589,10 @@ class GameUI {
         });
 
         document.getElementById('start-btn').addEventListener('click', () => {
+            if (this._isAdventure) {
+                if (this._selectedPlayerChar) window.location.href = 'adventure/adventure.html?char=' + encodeURIComponent(this._selectedPlayerChar);
+                return;
+            }
             console.log('[Start] isLord:', this._isLord, 'is1v2:', this._is1v2, 'player:', this._selectedPlayerChar, 'ai:', this._selectedAIChar, 'ai2:', this._selectedAI2Char);
             if (this._isLord) {
                 if (this._selectedPlayerChar && this._selectedAIChar && this._selectedAI2Char) { console.log('[Start] calling _startGameLord, exists:', !!this._startGameLord); this._startGameLord ? this._startGameLord() : this._startGame1v2(); }
@@ -650,25 +604,24 @@ class GameUI {
         });
         const mode1v1Btn = document.getElementById('mode-1v1');
         const mode1v2Btn = document.getElementById('mode-1v2');
-        if (mode1v1Btn) mode1v1Btn.addEventListener('click', () => { this._is1v2 = false; this._isLord = false; this._selectedAI2Char = null; this._buildSelectScreen(); });
-        if (mode1v2Btn) mode1v2Btn.addEventListener('click', () => { this._is1v2 = true; this._isLord = false; this._selectedAI2Char = null; this._buildSelectScreen(); });
+        if (mode1v1Btn) mode1v1Btn.addEventListener('click', () => { this._is1v2 = false; this._isLord = false; this._isAdventure = false; this._resetSelection(); this._buildSelectScreen(); });
+        if (mode1v2Btn) mode1v2Btn.addEventListener('click', () => { this._is1v2 = true; this._isLord = false; this._isAdventure = false; this._resetSelection(); this._buildSelectScreen(); });
         const modeLordBtn = document.getElementById('mode-lord');
-        if (modeLordBtn) modeLordBtn.addEventListener('click', () => { this._is1v2 = false; this._isLord = true; this._selectedAI2Char = null; this._buildSelectScreen(); });
-        const rulesBtn = document.getElementById('rules-entry-btn');
-        if (rulesBtn) rulesBtn.addEventListener('click', () => {
-            if (window.RulesPage) {
-                window.RulesPage.build();
-                this.selectScreen.classList.remove('active');
-                document.getElementById('rules-screen').classList.add('active');
-            }
+        if (modeLordBtn) modeLordBtn.addEventListener('click', () => { this._is1v2 = false; this._isLord = true; this._isAdventure = false; this._resetSelection(); this._buildSelectScreen(); });
+        const backBtn = document.getElementById('back-to-mode');
+        if (backBtn) backBtn.addEventListener('click', () => { this._modeChosen = false; this._isAdventure = false; this._buildSelectScreen(); });
+
+        const adventureBtn = document.getElementById('adventure-start-btn');
+        if (adventureBtn) adventureBtn.addEventListener('click', () => {
+            this._is1v2 = false; this._isLord = false; this._isAdventure = true; this._resetSelection(); this._buildSelectScreen();
         });
-        const charBtn = document.getElementById('char-entry-btn');
-        if (charBtn) charBtn.addEventListener('click', () => {
-            if (window.CharDetailPage) {
-                window.CharDetailPage.show(document.getElementById('char-detail-screen'));
-                this.selectScreen.classList.remove('active');
-            }
-        });
+    }
+
+    _resetSelection() {
+        this._assignMode = 1;
+        this._selectedPlayerChar = null;
+        this._selectedAIChar = null;
+        this._selectedAI2Char = null;
     }
 
     async _startGame() {
@@ -715,6 +668,7 @@ class GameUI {
                 <div class="hp-bar-outer"><div class="hp-bar-inner" id="ai-hp-bar" style="width:100%"></div>
                 <span class="hp-text" id="ai-hp-text">100/100</span></div>
                 <div class="buff-icons" id="ai-buffs"></div>
+                <div class="ai-deck-info" id="ai-deck-info" style="display:none"></div>
             </div>
             <div class="ai-area">
                 <div class="ai-hand-zone"><div class="zone-title">AI 手牌</div>
@@ -742,8 +696,10 @@ class GameUI {
                 <div class="buff-icons" id="player-buffs"></div>
             </div>
             <div class="error-hint" id="error-hint"></div>
+            <div class="adventure-info-bar" id="adventure-info-bar" style="display:none"></div>
             <div class="player-hand-zone"><div class="zone-title">你的手牌</div>
                 <div class="hand-row" id="player-hand"></div></div>
+            <div class="adventure-item-bar" id="adventure-item-bar" style="display:none"></div>
             <div class="action-desc" id="action-desc"></div>
             <div class="controls" id="controls"></div>`;
         this.gameScreen.innerHTML = html;
@@ -753,18 +709,21 @@ class GameUI {
         const s = this.state;
         if (!s || !s.player) return;
         const prev = this._prevState;
+        if (prev && prev.phase !== s.phase) this._selectedCombatItem = null;
 
         document.getElementById('deck-info').textContent = `牌堆: ${s.deck}`;
         this._drawDeckIcon(s.deck);
         document.getElementById('turn-info').textContent = `回合 ${s.turn}`;
-        document.getElementById('phase-info').textContent = s.phase === 'AI_DEFEND' && s.defenseSkipped ? '跳过防御' : (PHASE_NAMES[s.phase] || s.phase);
+        let phaseText = s.phase === 'AI_DEFEND' && s.defenseSkipped ? '跳过防御' : (PHASE_NAMES[s.phase] || s.phase);
+        if (s.isAdventure) phaseText = String(phaseText).replace(/AI2/g, '对手2').replace(/AI/g, '对手');
+        document.getElementById('phase-info').textContent = phaseText;
 
         this._updateHpBar('player', s.player);
         this._updateHpBar('ai', s.ai);
         this._updateBuffs('player', s.player);
         this._updateBuffs('ai', s.ai);
-        document.getElementById('player-name').textContent = s.player.name;
-        document.getElementById('ai-name').textContent = s.ai.name;
+        document.getElementById('player-name').textContent = this._combatDisplayName(s.player.name);
+        document.getElementById('ai-name').textContent = this._combatDisplayName(s.ai.name);
         this._updateAvatar('player', s.player.name);
         this._updateAvatar('ai', s.ai.name);
         const activeAttacker = s.activeAttacker || (['AI_TURN', 'PLAYER_DEFEND', 'GUARD_CHOICE'].includes(s.phase) ? 'ai' : 'player');
@@ -779,53 +738,54 @@ class GameUI {
         this._renderZones();
         this._renderReveal();
         this._renderControls();
+        this._updateAdventureInfo(s);
+        this._renderAdventureItemBar(s);
+        this._syncHandSkillTooltip();
+        this._updateAdventureNpcLabels(s);
 
         if (s.pendingDialog === 'purify') {
-            this.dialogs.showPurifyChoice(s.player, kind => this._apiAction('choosePurify', { kind }));
+            this.dialogs.showPurifyChoice(s.player, picked => {
+                const kind = picked && picked.kind ? picked.kind : picked;
+                this._apiAction('choosePurify', { kind });
+            });
         } else if (s.pendingDialog === 'superPurify') {
             const targets = [{ key: 'player', label: '自己', ch: s.player }];
             if (s.ai && s.ai.alive) targets.push({ key: 'ai', label: s.ai.name + ' (对手)', ch: s.ai });
             if (s.is1v2 && s.ai2 && s.ai2.alive) targets.push({ key: 'ai2', label: s.ai2.name + ' (对手)', ch: s.ai2 });
             this.dialogs.showSuperPurifyChoice(targets, target => this._apiAction('chooseSuperPurifyTarget', { target }));
         } else if (s.pendingDialog === 'guard') {
-            this.dialogs.showGuardChoice(s.player, s.pendingGuardDamage, stacks => this._apiAction('chooseGuard', { stacks }));
+            this.dialogs.showGuardChoice(s.player, s.pendingGuardDamage, choice => {
+                if (choice && typeof choice === 'object') {
+                    if (choice.action === 'fly') return this._apiAction('chooseFly');
+                    if (choice.action === 'guard') return this._apiAction('chooseGuard', { stacks: choice.stacks });
+                    return this._apiAction('chooseGuard', { stacks: 0 });
+                }
+                return this._apiAction('chooseGuard', { stacks: choice });
+            });
+        } else if (s.pendingDialog === 'flyRetry') {
+            this.dialogs.showFlyRetryChoice(s.player, s.pendingGuardDamage, again => this._apiAction('chooseFlyContinue', { again }));
+        } else if (s.pendingDialog === 'purifyCrystal') {
+            const oppKey = s.is1v2 ? (s.attackTarget || 'ai') : 'ai';
+            const opponent = s[oppKey];
+            this.dialogs.showPurifyChoice(s.player, picked => {
+                this._apiAction('choosePurifyCrystal', { choice: picked });
+            }, { opponent, allowOpponent: true });
         }
+
+        if (s.phase === 'ATTACK_MOD_CHOICE') this._ensureAttackModChoicePrompt(s);
+        else { this._attackModPromptOpen = false; this._attackModActive = false; }
 
         if (s.phase === 'GAME_OVER') this._showGameOver();
         this._prevState = JSON.parse(JSON.stringify(s));
     }
 
     _detectAndPlayAnimations(prev, curr) {
-        const prevHandIds = (prev.playerHand || []).map(cardId);
-        const currHandIds = (curr.playerHand || []).map(cardId);
-
-        const unmatchedPrevious = [...prevHandIds];
-        const drawnIds = [];
-        for (const id of currHandIds) {
-            const previousIndex = unmatchedPrevious.indexOf(id);
-            if (previousIndex >= 0) unmatchedPrevious.splice(previousIndex, 1);
-            else drawnIds.push(id);
-        }
-
-
-        const detectedDraws = Math.max(0, drawnIds.length - this._animatedPlayerDraws);
+        // Draw fly-ins are owned exclusively by 'draw' events. Speculative
+        // detection here raced with hand re-render and caused duplicate cards.
         this._animatedPlayerDraws = 0;
-        if (detectedDraws > 0) {
-            const handEl = document.getElementById('player-hand');
-            if (handEl) {
-                this.anim.drawCards(detectedDraws, true, handEl);
-            }
-        }
-
-
-        const prevPlayerHp = prev.player ? prev.player.hp : 0;
-        const currPlayerHp = curr.player ? curr.player.hp : 0;
-
-        const prevAiHp = prev.ai ? prev.ai.hp : 0;
-        const currAiHp = curr.ai ? curr.ai.hp : 0;
 
         if (curr.player && prev.player) {
-            if (curr.player.guard > prev.player.guard) this.playFloatingText(`+${curr.player.guard - prev.player.guard}[守护]`, '#00bcd4', 'player');
+            if (!curr.isAdventure && curr.player.guard > prev.player.guard) this.playFloatingText(`+${curr.player.guard - prev.player.guard}[守护]`, '#00bcd4', 'player');
             if (curr.player.bloodthirst && !prev.player.bloodthirst) this.playFloatingText('[嗜血触发]', '#ff315f', 'player');
             if (!curr.player.bloodthirst && prev.player.bloodthirst) this.playFloatingText('[退出嗜血]', '#f5b6c5', 'player');
             if (curr.player.chaos_red && !prev.player.chaos_red) this.playFloatingText('[混沌-红]', '#ff4444', 'player');
@@ -838,7 +798,7 @@ class GameUI {
             if (!curr.player.chaos_green && prev.player.chaos_green) this.playFloatingText('[清除混沌绿]', '#88ee88', 'player');
         }
         if (curr.ai && prev.ai) {
-            if (curr.ai.guard > prev.ai.guard) this.playFloatingText(`+${curr.ai.guard - prev.ai.guard}[守护]`, '#00bcd4', 'ai');
+            if (!curr.isAdventure && curr.ai.guard > prev.ai.guard) this.playFloatingText(`+${curr.ai.guard - prev.ai.guard}[守护]`, '#00bcd4', 'ai');
             if (curr.ai.bloodthirst && !prev.ai.bloodthirst) this.playFloatingText('[嗜血触发]', '#ff315f', 'ai');
             if (!curr.ai.bloodthirst && prev.ai.bloodthirst) this.playFloatingText('[退出嗜血]', '#f5b6c5', 'ai');
             if (curr.ai.chaos_red && !prev.ai.chaos_red) this.playFloatingText('[混沌-红]', '#ff4444', 'ai');
@@ -869,8 +829,16 @@ class GameUI {
         const charName = (name || '').replace(/^AI\d*\s+/, '');
         if (charName && charName !== el.dataset.char) {
             el.dataset.char = charName;
-            el.src = `avatars/${charName}.png`;
-            el.onerror = () => { el.src = `avatars/${charName}.jpg`; el.onerror = null; };
+            const monsterDef = window.AdventureRegistry && window.AdventureRegistry.getMonster(charName);
+            const bossDef = window.AdventureRegistry && window.AdventureRegistry.getBoss(charName);
+            const advDef = monsterDef || bossDef;
+            if (advDef && advDef.icon) {
+                el.src = advDef.icon;
+                el.onerror = null;
+            } else {
+                el.src = gameAssetUrl(`avatars/${charName}.png`);
+                el.onerror = () => { el.src = gameAssetUrl(`avatars/${charName}.jpg`); el.onerror = null; };
+            }
         }
     }
 
@@ -889,29 +857,32 @@ class GameUI {
             { key: 'burn', stacks: ch.burn, icon: 'burn' },
             { key: 'freeze', stacks: ch.frozen ? 1 : 0, icon: 'freeze' },
             { key: 'bleed', stacks: ch.bleed, icon: 'bleed' },
+            { key: 'poison', stacks: ch.poison || 0, icon: 'poison' },
             { key: 'guard', stacks: ch.guard, icon: 'guard' },
+            { key: 'fly', stacks: ch.fly || 0, icon: 'guard', label: '飞翔', colorClass: 'fly-buff' },
+            { key: 'crit', stacks: ch.crit || 0, label: '暴击', colorClass: 'crit-buff' },
             { key: 'chaos_red', stacks: ch.chaos_red ? 1 : 0, icon: 'chaos_red', hideCount: true, colorClass: 'chaos-red-buff' },
             { key: 'chaos_yellow', stacks: ch.chaos_yellow ? 1 : 0, icon: 'chaos_yellow', hideCount: true, colorClass: 'chaos-yellow-buff' },
             { key: 'chaos_blue', stacks: ch.chaos_blue ? 1 : 0, icon: 'chaos_blue', hideCount: true, colorClass: 'chaos-blue-buff' },
             { key: 'chaos_green', stacks: ch.chaos_green ? 1 : 0, icon: 'chaos_green', hideCount: true, colorClass: 'chaos-green-buff' }
         ];
-        if (ch.bloodthirst) buffs.push({ key: 'bloodthirst', stacks: 1, path: 'icons/ui_icons/blood_thirsty.png', label: '嗜血', hideCount: true });
+        if (ch.bloodthirst) buffs.push({ key: 'bloodthirst', stacks: 1, path: gameAssetUrl('icons/ui_icons/blood_thirsty.png'), label: '嗜血', hideCount: true });
         for (const b of buffs) {
             if (b.stacks > 0) {
-                const path = b.path || `icons/buff_icons/${b.icon}.png`;
-                const title = b.label || ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', guard: '守护', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
+                const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.png`);
+                const title = b.label || ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', guard: '守护', fly: '飞翔', crit: '暴击', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
                 html += `<div class="buff-icon-wrap ${b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.colorClass || ''}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}${b.label ? `<span class="buff-name">${b.label}</span>` : ''}</div>`;
             }
         }
         container.innerHTML = html;
     }
 
-    _renderPlayerHand() {
+    _renderPlayerHand(options = {}) {
         const s = this.state;
         const container = document.getElementById('player-hand');
         container.innerHTML = '';
-        this._hideTooltip();
         if (!s.playerHand) return;
+        const hideTrailing = Math.max(0, Number(options.hideTrailing) || 0);
         const canInteract = ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
             'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD'].includes(s.phase);
         const isDefend = s.phase === 'PLAYER_DEFEND';
@@ -920,33 +891,51 @@ class GameUI {
             const sel = i === s.selectedCard || ((s.selectedCards || []).includes(i));
             const cv = renderCard(card, CARD_W, CARD_H, sel);
             if (!canInteract) cv.classList.add('disabled');
+            if (hideTrailing && i >= s.playerHand.length - hideTrailing) cv.classList.add('card-draw-pending');
             cv.dataset.index = i;
+            cv.dataset.cardId = cardId(card);
             cv.addEventListener('click', async () => {
                 if (cv.classList.contains('disabled')) return;
+                this._npcHandFocusIndex = -1;
                 const result = await Bridge.call('selectCard', { index: parseInt(cv.dataset.index) });
                 if (result && !result.error) { this.state = result; this.updateDisplay(); }
             });
             if (sel && canInteract) {
-                cv.addEventListener('mouseenter', () => this._showTooltip(card, cv, isDefend));
-                cv.addEventListener('mouseleave', () => this._hideTooltip());
+                cv.addEventListener('mouseenter', () => {
+                    if (this._npcHandFocusIndex >= 0) return;
+                    this._showTooltip(card, cv, isDefend);
+                });
+                cv.addEventListener('mouseleave', () => this._syncHandSkillTooltip());
             }
             container.appendChild(cv);
-        }
-        if (s.selectedCard >= 0 && canInteract) {
-            const card = s.playerHand[s.selectedCard];
-            if (card) this._showTooltip(card, null, isDefend);
         }
         if (s.chanFiveCards && s.chanFiveCards.length > 0) {
             this.dialogs.showChanFiveDialog(s);
         }
     }
 
-    _showTooltip(card, anchorEl, isDefend) {
+    _resolveHandSkillDesc(charName, card, isDefend, adventureOpts) {
+        let desc = '';
+        if (adventureOpts) {
+            const bridge = window.AdventureMonsterBridge;
+            if (bridge && typeof bridge.getAdventureNpcSkillDesc === 'function') {
+                desc = bridge.getAdventureNpcSkillDesc(charName, card, isDefend, adventureOpts) || '';
+            }
+        }
+        if (!desc && typeof getSkillDesc === 'function') {
+            desc = getSkillDesc(charName, card, isDefend) || '';
+        }
+        return desc;
+    }
+
+    _showTooltip(card, anchorEl, isDefend, opts = {}) {
         this._hideTooltip();
         const s = this.state;
-        if (!s || !s.player) return;
-        const charName = s.player.name.replace("AI ", "");
-        const desc = getSkillDesc(charName, card, isDefend);
+        if (!s || !card) return;
+        const charName = opts.charName || (s.player ? s.player.name.replace(/^AI\d*\s+/, '') : '');
+        if (!charName) return;
+        let desc = this._resolveHandSkillDesc(charName, card, isDefend, opts.adventureOpts);
+        if (!desc && opts.adventureOpts) desc = isDefend ? '无防御效果' : '无进攻效果';
         if (!desc) return;
 
         const tip = document.createElement('div');
@@ -985,20 +974,107 @@ class GameUI {
         if (el) el.remove();
     }
 
-    _renderAIHand() {
+    /** 玩家/NPC 手牌技能说明共用 card-tooltip，二者互斥 */
+    _syncHandSkillTooltip() {
+        this._hideTooltip();
+        const legacy = document.getElementById('ai-hand-skills');
+        if (legacy) legacy.remove();
+
+        const s = this.state;
+        if (!s) return;
+
+        if (s.isAdventure && this._npcHandFocusIndex >= 0 && Array.isArray(s.aiHand)) {
+            const card = s.aiHand[this._npcHandFocusIndex];
+            const showDefend = s.phase === 'PLAYER_PLAY';
+            const showAttack = s.phase === 'PLAYER_DEFEND';
+            if (card && (showDefend || showAttack)) {
+                const charName = this._combatDisplayName(s.ai && s.ai.name);
+                const adventureOpts = {
+                    stage: s.adventureStage || s.stage || 1,
+                    playerHandSize: (s.playerHand && s.playerHand.length) || 0,
+                    incomingDamage: s.pendingDefenseDamage || 0
+                };
+                this._showTooltip(card, null, showDefend, { charName, adventureOpts });
+                return;
+            }
+        }
+
+        const canInteract = ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
+            'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD'].includes(s.phase);
+        if (s.selectedCard >= 0 && canInteract && s.playerHand) {
+            const card = s.playerHand[s.selectedCard];
+            if (card) this._showTooltip(card, null, s.phase === 'PLAYER_DEFEND');
+        }
+    }
+
+    _combatDisplayName(name) {
+        return String(name || '').replace(/^AI\d*\s+/, '');
+    }
+
+    _updateAdventureNpcLabels(s) {
+        const zone = document.querySelector('.ai-hand-zone > .zone-title');
+        if (!zone) return;
+        if (s && s.isAdventure) {
+            const nm = this._combatDisplayName(s.ai && s.ai.name);
+            zone.textContent = (nm || '对手') + ' 手牌';
+        } else {
+            zone.textContent = 'AI 手牌';
+        }
+    }
+
+    _findHandCardElement(handEl, card) {
+        if (!handEl || !card) return null;
+        const wantId = cardId(card);
+        const wantMatch = cardMatchKey(card);
+        const nodes = Array.from(handEl.querySelectorAll('.card-canvas'));
+        let match = nodes.find(el => el.dataset && el.dataset.cardId === wantId);
+        if (match) return match;
+        match = nodes.find(el => el.dataset && el.dataset.cardMatch === wantMatch);
+        if (match) return match;
+        return null;
+    }
+
+    _renderAIHand(options = {}) {
         const s = this.state;
         const container = document.getElementById('ai-hand');
         container.innerHTML = '';
         const canSelect = s.phase === 'OPPONENT_CARD_CHOICE' || (s.phase === 'PLAYER_SEVEN_CHOICE' && !s.chanFourSwapMode && !s.chanSevenKeepMode) || (s.phase === 'SAIKI_THREE_CHOICE' && !s.saikiThreeDrawn);
         const handSize = s.aiHandSize || 0;
+        const hideTrailing = Math.max(0, Number(options.hideTrailing) || 0);
+        const revealMode = !!s.aiHand && Array.isArray(s.aiHand);
+        const canPeekSkill = !!(s.isAdventure && revealMode && (s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND'));
+        if (!canPeekSkill) this._npcHandFocusIndex = -1;
+        else if (this._npcHandFocusIndex >= handSize) this._npcHandFocusIndex = -1;
+
         for (let i = 0; i < handSize; i++) {
-            const cv = renderCardBack(40, 58);
+            const card = revealMode ? s.aiHand[i] : null;
+            const focused = canPeekSkill && i === this._npcHandFocusIndex;
+            const cv = revealMode ? renderCard(card, 40, 58, focused) : renderCardBack(40, 58);
+            if (revealMode && card) {
+                cv.dataset.cardId = cardId(card);
+                cv.dataset.cardMatch = cardMatchKey(card);
+            }
+            cv.dataset.aiIndex = i;
+            if (hideTrailing && i >= handSize - hideTrailing) cv.classList.add('card-draw-pending');
             if (canSelect) {
                 cv.style.cursor = 'pointer'; cv.classList.add('selectable-ai-card');
                 if (i === s.selectedAICard) cv.style.border = '3px solid #ffdc3c';
-                cv.dataset.aiIndex = i;
                 cv.addEventListener('click', async () => {
-                    await this._apiAction('chooseAICard', { index: parseInt(cv.dataset.aiIndex) });
+                    await this._apiAction('chooseAICard', { index: parseInt(cv.dataset.aiIndex, 10) });
+                });
+            } else if (canPeekSkill) {
+                cv.style.cursor = 'pointer';
+                cv.classList.add('selectable-ai-card');
+                if (focused) cv.style.border = '3px solid #a78bfa';
+                cv.addEventListener('click', async () => {
+                    const idx = parseInt(cv.dataset.aiIndex, 10);
+                    this._npcHandFocusIndex = this._npcHandFocusIndex === idx ? -1 : idx;
+                    const selected = this.state && this.state.selectedCard;
+                    if (this._npcHandFocusIndex >= 0 && selected >= 0) {
+                        const result = await Bridge.call('selectCard', { index: selected });
+                        if (result && !result.error) this.state = result;
+                    }
+                    this.updateDisplay();
                 });
             }
             container.appendChild(cv);
@@ -1008,6 +1084,203 @@ class GameUI {
             revealed.classList.add('ai-revealed-card');
             revealed.style.marginLeft = '8px';
             container.appendChild(revealed);
+        }
+    }
+
+    _canUseAdventureCombatItem(s, def) {
+        if (!s || !s.isAdventure || !def) return false;
+        if (s.busy) return false;
+        if (s.needColorChoice) return false;
+        if (def.combatUse === 'attackMod') return false;
+        const scene = def.useScene || 'combat';
+        if (scene !== 'combat' && scene !== 'both') return false;
+        if (def.combatUse === 'dodge' || def.defendOnly) {
+            return s.phase === 'PLAYER_DEFEND' && !!s.pendingAttack;
+        }
+        // 仅在可选出牌/防御牌时（含不可防御跳过窗口）；其他子阶段不可用
+        return s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND';
+    }
+
+    _showCardMasterChoice(onChoose) {
+        if (document.getElementById('card-master-choice-dialog')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'card-master-choice-dialog';
+        overlay.className = 'dialog-overlay';
+        overlay.innerHTML = '<div class="dialog-box" style="max-width:360px">' +
+            '<div class="dialog-title">卡牌大师</div>' +
+            '<div class="dialog-body" style="color:rgba(255,255,255,0.8);font-size:0.85rem;margin-bottom:12px">选择一项效果</div>' +
+            '<div class="dialog-buttons" style="display:flex;flex-direction:column;gap:6px">' +
+            '<button class="ctrl-btn btn-play" id="cm-draw2" style="width:100%">抽取两张牌</button>' +
+            '<button class="ctrl-btn btn-discard" id="cm-mulligan" style="width:100%">弃掉全部手牌并重抽同等数量</button>' +
+            '<button class="ctrl-btn btn-skip" id="cm-cancel" style="width:100%">取消</button>' +
+            '</div></div>';
+        document.body.appendChild(overlay);
+        const close = () => overlay.remove();
+        overlay.querySelector('#cm-draw2').addEventListener('click', () => { close(); onChoose('draw2'); });
+        overlay.querySelector('#cm-mulligan').addEventListener('click', () => { close(); onChoose('mulligan'); });
+        overlay.querySelector('#cm-cancel').addEventListener('click', close);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    }
+
+    _renderAdventureItemBar(s) {
+        const bar = document.getElementById('adventure-item-bar');
+        if (!bar) return;
+        const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine && window.AdventureCombatBridge.activeEngine()._adventureEngine;
+        if (!s.isAdventure || !advEngine) { bar.style.display = 'none'; return; }
+        const snap = advEngine.snapshot();
+        const consumables = snap.consumables || [];
+        const slots = snap.consumableSlots || 9;
+        bar.style.display = 'flex';
+        const inAttackMod = s.phase === 'ATTACK_MOD_CHOICE';
+
+        let html = '<div class="adv-item-bar-title">道具</div><div class="adv-combat-item-slots">';
+        for (let i = 0; i < slots; i++) {
+            const item = consumables[i];
+            if (!item) {
+                html += '<div class="adv-combat-item-slot empty" title="空道具槽"></div>';
+                continue;
+            }
+            const def = window.AdventureRegistry.getItem(item.name);
+            const isAttackModItem = def && def.combatUse === 'attackMod';
+            const canUse = this._canUseAdventureCombatItem(s, def);
+            const selectable = inAttackMod && this._isAttackModSelectableIndex(i, s);
+            const selected = selectable && this._attackModSelectedItem === i;
+            const itemSelected = !inAttackMod && canUse && this._selectedCombatItem === i;
+            let cls = 'adv-combat-item-slot filled adv-combat-item';
+            if (selectable) cls += ' attack-mod-selectable';
+            if (selected) cls += ' attack-mod-selected';
+            if (itemSelected) cls += ' item-selected';
+            if (!canUse && !selectable) cls += ' disabled';
+            let modBadge = '';
+            if (isAttackModItem && def.attackModUnblock) modBadge = '<span class="adv-combat-item-bonus">破防</span>';
+            else if (isAttackModItem && def.attackModBonus) modBadge = '<span class="adv-combat-item-bonus">+' + def.attackModBonus + '</span>';
+            html += '<button class="' + cls + '" data-item-index="' + i + '" title="' + (item.description || item.displayName) + '"' + ((!canUse && !selectable) ? ' disabled' : '') + '>' +
+                (item.icon ? '<img src="' + item.icon + '" alt="' + item.displayName + '">' : '') +
+                '<span class="adv-combat-item-name">' + item.displayName + '</span>' +
+                modBadge +
+                '</button>';
+        }
+        html += '</div>';
+        bar.innerHTML = html;
+
+        bar.querySelectorAll('[data-item-index]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const idx = parseInt(btn.getAttribute('data-item-index'), 10);
+                const item = consumables[idx];
+                const def = item && window.AdventureRegistry.getItem(item.name);
+                if (inAttackMod && def && def.combatUse === 'attackMod' && this._isAttackModSelectableIndex(idx, s)) {
+                    this._attackModSelectedItem = (this._attackModSelectedItem === idx) ? null : idx;
+                    this._renderAdventureItemBar(this.state);
+                    const confirmBtn = document.getElementById('btn-attack-mod-confirm');
+                    if (confirmBtn) confirmBtn.disabled = this._attackModSelectedItem == null;
+                    return;
+                }
+                if (btn.classList.contains('disabled')) return;
+                this._selectedCombatItem = (this._selectedCombatItem === idx) ? null : idx;
+                this._renderAdventureItemBar(this.state);
+                this._updateUseItemButton();
+            });
+        });
+    }
+
+    _updateUseItemButton() {
+        const btn = document.getElementById('btn-use-item');
+        if (!btn) return;
+        const idx = this._selectedCombatItem;
+        if (idx == null) { btn.disabled = true; btn.textContent = '使用道具'; return; }
+        const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine && window.AdventureCombatBridge.activeEngine()._adventureEngine;
+        const snap = advEngine && advEngine.snapshot();
+        const item = snap && (snap.consumables || [])[idx];
+        btn.disabled = false;
+        btn.textContent = item ? '使用[' + item.displayName + ']' : '使用道具';
+    }
+
+    async _useSelectedCombatItem() {
+        const idx = this._selectedCombatItem;
+        if (idx == null) return;
+        const s = this.state;
+        const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine && window.AdventureCombatBridge.activeEngine()._adventureEngine;
+        if (!advEngine || !s) return;
+        const snap = advEngine.snapshot();
+        const consumables = snap.consumables || [];
+        const item = consumables[idx];
+        const def = item && window.AdventureRegistry.getItem(item.name);
+        if (!item || !def) { this._selectedCombatItem = null; return; }
+        if (!this._canUseAdventureCombatItem(s, def)) return;
+        const run = async (choice) => {
+            const payload = { itemIndex: idx };
+            if (choice != null) {
+                if (Array.isArray(choice)) payload.choices = choice;
+                else payload.choice = choice;
+            }
+            const result = await Bridge.call('useAdventureCombatItem', payload);
+            if (result && !result.error) {
+                this._prevState = this.state;
+                this.state = result;
+                if (result.events && result.events.length) {
+                    await this._consumeEvents(result.events);
+                }
+                this.updateDisplay();
+            }
+        };
+        this._selectedCombatItem = null;
+        if (def.combatUse === 'cardMaster') {
+            this._showCardMasterChoice(choice => { void run(choice); });
+            return;
+        }
+        if (def.combatUse === 'purify') {
+            const player = s.player;
+            const oppKey = s.attackTarget || (s.activeAttacker === 'ai2' ? 'ai2' : 'ai');
+            const opponent = s[oppKey] && s[oppKey].alive ? s[oppKey] : (s.ai && s.ai.alive ? s.ai : null);
+            const hasBuff = ch => ch && ((ch.burn || 0) > 0 || (ch.bleed || 0) > 0 ||
+                (ch.poison || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
+            if (!hasBuff(player) && !hasBuff(opponent)) return;
+            this.dialogs.collectPurifyChoices(player, def.purifyCount || 1, choices => {
+                if (!choices.length) return;
+                void run(choices);
+            }, { opponent });
+            return;
+        }
+        if (def.combatUse === 'buffTransfer') {
+            const player = s.player;
+            const hasBuff = ch => ch && ((ch.burn || 0) > 0 || (ch.bleed || 0) > 0 ||
+                (ch.poison || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
+            if (!hasBuff(player)) return;
+            this.dialogs.showBuffTransferChoice(player, choice => { void run(choice); });
+            return;
+        }
+        await run(null);
+    }
+
+    _updateAdventureInfo(s) {
+        const bar = document.getElementById('adventure-info-bar');
+        if (!bar) return;
+        if (!s.isAdventure) { bar.style.display = 'none'; return; }
+        bar.style.display = 'flex';
+        const AC = window.AdventureCurrency;
+        let html = '';
+        if (AC && AC.GOLD_ICON && s.adventureGold != null) {
+            html += '<span class="adv-info-currency"><img src="' + AC.GOLD_ICON + '" class="adv-info-icon" alt="金币">' + s.adventureGold + '</span>';
+        }
+        if (AC && AC.BEAST_ICON && s.adventureBeastTokens) {
+            const tokens = s.adventureBeastTokens;
+            for (const k of AC.ALL_BEAST_TYPES) {
+                if (tokens[k] > 0) {
+                    html += '<span class="adv-info-currency"><img src="' + AC.BEAST_ICON[k] + '" class="adv-info-icon" alt="' + (AC.BEAST_LABEL[k] || k) + '">' + tokens[k] + '</span>';
+                }
+            }
+        }
+        bar.innerHTML = html;
+
+        const deckInfo = document.getElementById('ai-deck-info');
+        if (deckInfo) {
+            if (s.aiDeckCount != null) {
+                deckInfo.style.display = '';
+                deckInfo.innerHTML = '<span class="ai-deck-count">牌库 ' + s.aiDeckCount + '</span>' +
+                    (s.aiDiscardCount != null ? '<span class="ai-discard-count">弃牌 ' + s.aiDiscardCount + '</span>' : '');
+            } else {
+                deckInfo.style.display = 'none';
+            }
         }
     }
 
@@ -1101,6 +1374,7 @@ class GameUI {
 
             } else {
                 html += `<button class="ctrl-btn btn-play" id="btn-play" ${!hasCard ? 'disabled' : ''}>出牌</button>`;
+                html += `<button class="ctrl-btn btn-use-item" id="btn-use-item" ${this._selectedCombatItem == null ? 'disabled' : ''}>使用道具</button>`;
                 html += `<button class="ctrl-btn btn-discard" id="btn-discard" ${s.hasPlayedThisTurn ? 'disabled' : ''}>弃牌</button>`;
                 html += `<button class="ctrl-btn btn-end" id="btn-end">结束回合</button>`;
             }
@@ -1112,16 +1386,29 @@ class GameUI {
                 html += `<button class="ctrl-btn color-btn" id="btn-color-BLUE" style="background:#0082ff">蓝</button>`;
                 html += `<button class="ctrl-btn color-btn" id="btn-color-GREEN" style="background:#00c83c">绿</button>`;
             } else {
-                if (s.hasPlayedBlackDefend) {
-                    html += `<span class="ctrl-hint">搭桥完成：请选择一张数字≤3的牌触发防御技能</span>`;
+                if (s.unblockDefend) {
+                    html += `<span class="ctrl-hint" style="color:#fca5a5">无法防御！</span>`;
+                    html += `<button class="ctrl-btn btn-use-item" id="btn-use-item" ${this._selectedCombatItem == null ? 'disabled' : ''}>使用道具</button>`;
+                    html += `<button class="ctrl-btn btn-skip" id="btn-skip">跳过</button>`;
+                } else {
+                    if (s.hasPlayedBlackDefend) {
+                        html += `<span class="ctrl-hint">搭桥完成：请选择一张数字≤3的牌触发防御技能</span>`;
+                    }
+                    html += `<button class="ctrl-btn btn-defend" id="btn-defend" ${!hasCard ? 'disabled' : ''}>防御</button>`;
+                    html += `<button class="ctrl-btn btn-use-item" id="btn-use-item" ${this._selectedCombatItem == null ? 'disabled' : ''}>使用道具</button>`;
+                    html += `<button class="ctrl-btn btn-skip" id="btn-skip">${s.hasPlayedBlackDefend ? '放弃防御' : '跳过'}</button>`;
                 }
-                html += `<button class="ctrl-btn btn-defend" id="btn-defend" ${!hasCard ? 'disabled' : ''}>防御</button>`;
-                html += `<button class="ctrl-btn btn-skip" id="btn-skip">${s.hasPlayedBlackDefend ? '放弃防御' : '跳过'}</button>`;
             }
         } else if (phase === 'PLAYER_DISCARD') {
             html += `<span class="ctrl-hint">${s.forcedDiscard ? `手牌超限：需弃至 ${s.handLimit || 5} 张` : s.mayDiscardAfterSkill ? 'Ryan 3牌：可选择1张牌弃掉，也可取消' : '可同时选择多张牌弃掉'}</span>`;
             html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!hasDiscardCards ? 'disabled' : ''}>确认弃牌 (${(s.selectedCards || []).length})</button>`;
             if (!s.forcedDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
+        } else if (phase === 'ATTACK_MOD_CHOICE') {
+            const dmg = s.pendingAttack && s.pendingAttack.damage != null ? s.pendingAttack.damage : 0;
+            const hasSelection = this._attackModSelectedItem != null;
+            html += `<span class="ctrl-hint">已确认 ${dmg} 点伤害，请点击道具栏中的攻击修正道具选择</span>`;
+            html += `<button class="ctrl-btn btn-play" id="btn-attack-mod-confirm" ${!hasSelection ? 'disabled' : ''}>确认修正</button>`;
+            html += `<button class="ctrl-btn btn-skip" id="btn-attack-mod-skip">不修正</button>`;
         } else if (phase === 'PLAYER_FIVE_CHOICE') {
             html += `<span class="ctrl-hint">请选择一张数字牌：恢复牌面生命，或造成1.5倍伤害</span>`;
             html += `<button class="ctrl-btn btn-play" id="btn-five-heal" ${!hasNumberCard ? 'disabled' : ''}>恢复${hasNumberCard ? ` ${selectedCard.value}` : ''}</button>`;
@@ -1131,7 +1418,13 @@ class GameUI {
             html += `<span class="ctrl-hint">${skill ? `${skill.name} ${skill.value}牌：` : ''}点击一张对手手牌</span>`;
             html += `<button class="ctrl-btn btn-play" id="btn-opponent-confirm" ${!hasAICard ? 'disabled' : ''}>确认选择</button>`;
         } else if (phase === 'PLAYER_SEVEN_CHOICE') {
-            if (s.chanFourSwapMode && s.chanFourSwapDrawn) {
+            if (s.ottoFourPhase === 'selectOwn') {
+                html += `<span class="ctrl-hint">4牌: 请选择自己的一张手牌</span>`;
+                html += `<button class="ctrl-btn btn-play" id="btn-otto-four-confirm" ${!hasCard ? 'disabled' : ''}>确认出牌</button>`;
+            } else if (s.ottoFourOpponentCard) {
+                html += `<span class="ctrl-hint">4牌: 请选择自己的一张手牌同时翻开</span>`;
+                html += `<button class="ctrl-btn btn-play" id="btn-otto-four-confirm" ${!hasCard ? 'disabled' : ''}>确认翻开</button>`;
+            } else if (s.chanFourSwapMode && s.chanFourSwapDrawn) {
                 html += `<span class="ctrl-hint">4牌: ${cardLabel(s.chanFourSwapDrawn)}，选手牌交换或弃掉</span>`;
                 html += `<button class="ctrl-btn btn-play" id="btn-four-swap" ${!hasCard ? 'disabled' : ''}>确认交换</button>`;
                 html += `<button class="ctrl-btn btn-discard" id="btn-four-discard">弃掉+2伤害</button>`;
@@ -1166,10 +1459,11 @@ class GameUI {
             html += `<button class="ctrl-btn btn-play" id="btn-restart">再来一局</button>`;
             html += `<button class="ctrl-btn btn-skip" id="btn-back-select">重新选择</button>`;
         } else if (phase === 'AI_TURN' || phase === 'AI_DEFEND' || phase === 'AI2_TURN') {
-            html += `<span class="ctrl-hint">${phase === 'AI_DEFEND' && s.defenseSkipped ? '本技能分支未造成伤害，已跳过防御，正在结算...' : 'AI思考中...'}</span>`;
+            html += `<span class="ctrl-hint">${phase === 'AI_DEFEND' && s.defenseSkipped ? '本技能分支未造成伤害，已跳过防御，正在结算...' : (s.isAdventure ? '对手行动中...' : 'AI思考中...')}</span>`;
         }
         container.innerHTML = html;
         this._bindControls();
+        this._updateUseItemButton();
     }
 
     async _bindControls() {
@@ -1179,11 +1473,15 @@ class GameUI {
         bind('btn-end', async () => { await this._apiAction('doEndTurn'); });
         bind('btn-defend', async () => { await this._apiAction('doDefend'); });
         bind('btn-skip', async () => { await this._apiAction('doSkipDefend'); });
+        bind('btn-attack-mod-confirm', () => { this._confirmAttackMod(); });
+        bind('btn-attack-mod-skip', () => { this._skipAttackMod(); });
+        bind('btn-use-item', async () => { await this._useSelectedCombatItem(); });
         bind('btn-confirm-discard', async () => { await this._apiAction('doConfirmDiscard'); });
         bind('btn-cancel-discard', async () => { await this._apiAction('doCancelDiscard'); });
         bind('btn-five-heal', async () => { await this._apiAction('doFiveHeal'); });
         bind('btn-five-damage', async () => { await this._apiAction('doFiveDamage'); });
         bind('btn-seven-confirm', async () => { await this._apiAction('doSevenConfirm'); });
+        bind('btn-otto-four-confirm', async () => { await this._apiAction('doOttoFourConfirm'); });
         bind('btn-opponent-confirm', async () => { await this._apiAction('doOpponentCardConfirm'); });
         bind('btn-seven-keep', async () => { await this._apiAction('doChanSevenKeep'); });
         bind('btn-seven-discard', async () => { await this._apiAction('doChanSevenDiscard'); });
@@ -1269,8 +1567,18 @@ class GameUI {
         if (!s || !s.player) return;
         const chars = [];
         chars.push({ name: s.player.name.replace(/^AI\d*\s+/, ''), label: '玩家', color: '#3b82f6' });
-        chars.push({ name: s.ai.name.replace(/^AI\d*\s+/, ''), label: 'AI', color: '#ef4444' });
-        if (s.ai2 && s.ai2.name) chars.push({ name: s.ai2.name.replace(/^AI\d*\s+/, ''), label: 'AI2', color: '#a855f7' });
+        chars.push({
+            name: s.ai.name.replace(/^AI\d*\s+/, ''),
+            label: s.isAdventure ? '对手' : 'AI',
+            color: '#ef4444'
+        });
+        if (s.ai2 && s.ai2.name) {
+            chars.push({
+                name: s.ai2.name.replace(/^AI\d*\s+/, ''),
+                label: s.isAdventure ? '对手2' : 'AI2',
+                color: '#a855f7'
+            });
+        }
 
         const overlay = document.createElement('div');
         overlay.id = 'skill-overlay';
@@ -1309,6 +1617,88 @@ class GameUI {
         document.body.appendChild(overlay);
         document.getElementById('skill-back').addEventListener('click', () => overlay.remove());
         overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    }
+
+    _getAvailableAttackMods(s) {
+        const state = s || this.state;
+        const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine &&
+            window.AdventureCombatBridge.activeEngine()._adventureEngine;
+        if (!advEngine || !state) return [];
+        const consumables = (advEngine.snapshot().consumables) || [];
+        const mod = state.pendingAttackMod || {};
+        const defensible = !mod.skip && !mod.unblock;
+        const attackMods = [];
+        consumables.forEach((item, i) => {
+            const def = window.AdventureRegistry.getItem(item.name);
+            if (!def || def.combatUse !== 'attackMod') return;
+            if (def.attackModUnblock && !defensible) return;
+            attackMods.push({ index: i, item, def });
+        });
+        return attackMods;
+    }
+
+    _isAttackModSelectableIndex(index, s) {
+        return this._getAvailableAttackMods(s).some(a => a.index === index);
+    }
+
+    async _ensureAttackModChoicePrompt(s) {
+        if (this._attackModPromptOpen) return;
+        const attackMods = this._getAvailableAttackMods(s);
+        if (!attackMods.length) {
+            this._attackModPromptOpen = true;
+            const run = async () => {
+                try {
+                    await this._apiAction('resolveAttackModChoice', { bonus: 0 });
+                } finally {
+                    this._attackModPromptOpen = false;
+                }
+            };
+            if (this._isHandlingAction) Promise.resolve().then(run);
+            else await run();
+            return;
+        }
+        if (!this._attackModActive) {
+            this._attackModSelectedItem = null;
+            this._attackModActive = true;
+        }
+    }
+
+    _confirmAttackMod() {
+        const attackMods = this._getAvailableAttackMods();
+        const idx = this._attackModSelectedItem;
+        if (idx == null) return;
+        const am = attackMods.find(a => a.index === idx);
+        if (!am) return;
+        const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine &&
+            window.AdventureCombatBridge.activeEngine()._adventureEngine;
+        this._attackModPromptOpen = true;
+        (async () => {
+            try {
+                if (advEngine && advEngine.s && Array.isArray(advEngine.s.consumables)) {
+                    advEngine.s.consumables.splice(idx, 1);
+                }
+                this._attackModSelectedItem = null;
+                await this._apiAction('resolveAttackModChoice', {
+                    bonus: am.def.attackModBonus || 0,
+                    unblock: !!am.def.attackModUnblock
+                });
+            } finally {
+                this._attackModPromptOpen = false;
+            }
+        })();
+    }
+
+    _skipAttackMod() {
+        if (this._attackModPromptOpen) return;
+        this._attackModPromptOpen = true;
+        (async () => {
+            try {
+                this._attackModSelectedItem = null;
+                await this._apiAction('resolveAttackModChoice', { bonus: 0 });
+            } finally {
+                this._attackModPromptOpen = false;
+            }
+        })();
     }
 
     async _apiAction(method, params) {
@@ -1350,16 +1740,16 @@ class GameUI {
             'doFiveHeal', 'doFiveDamage', 'doSevenConfirm', 'doOpponentCardConfirm',
             'doChanSevenKeep', 'doChanSevenDiscard', 'doSaikiThreeKeep',
             'doSaikiThreeDiscard', 'doChanFourDiscard', 'doChanFourSwap',
-            'doSaikiSixConfirm', 'chooseTarget', 'chooseColor', 'choosePurify',
-            'chooseSuperPurifyTarget', 'chooseGuard', 'chanFiveReorder'
+            'doSaikiSixConfirm', 'resolveAttackModChoice', 'chooseTarget', 'chooseColor', 'choosePurify',
+            'chooseSuperPurifyTarget', 'chooseGuard', 'chanFiveReorder', 'choosePurifyCrystal'
         ]).has(method);
     }
 
     _isInteractiveDecisionPhase(phase) {
         return new Set([
             'PLAYER_FIVE_CHOICE', 'OPPONENT_CARD_CHOICE', 'PLAYER_SEVEN_CHOICE',
-            'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD',
-            'CHAN_FIVE_REORDER', 'GUARD_CHOICE', 'TARGET_CHOICE'
+            'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'ATTACK_MOD_CHOICE', 'PLAYER_DISCARD',
+            'CHAN_FIVE_REORDER', 'GUARD_CHOICE', 'TARGET_CHOICE', 'PURIFY_CRYSTAL_CHOICE'
         ]).has(phase);
     }
 
@@ -1390,7 +1780,7 @@ class GameUI {
             doChanSevenKeep: '正在加入手牌', doChanSevenDiscard: '正在弃掉卡牌',
             doSaikiThreeKeep: '正在加入手牌', doSaikiThreeDiscard: '正在弃掉卡牌',
             doChanFourSwap: '正在交换卡牌', doChanFourDiscard: '正在弃牌并结算伤害',
-            doSaikiSixConfirm: '正在结算数字判定', chooseTarget: '正在确认目标',
+            doSaikiSixConfirm: '正在结算数字判定', resolveAttackModChoice: '正在应用攻击修正', chooseTarget: '正在确认目标',
             chooseColor: '正在指定颜色', choosePurify: '正在执行净化', chooseSuperPurifyTarget: '正在执行超级净化',
             chooseGuard: '正在结算守护', chanFiveReorder: '正在确认牌库顺序',
             doEndTurn: '正在结束回合', doEnterDiscard: '正在进入弃牌阶段'
@@ -1570,15 +1960,29 @@ class GameUI {
                 this._showCardSkillDesc('def-desc', evt.card, who, true);
                 await wait(800);
             } else if (evt.type === 'draw') {
+                const count = evt.count || 1;
                 const drawTarget = evt.who === 'player' ? 'player-hand' : evt.who === 'ai2' ? 'ai2-hand' : 'ai-hand';
                 const target = document.getElementById(drawTarget);
                 this._showZoneDesc('reveal-desc', evt.desc || '抽牌');
-                if (target) await this.anim.drawCards(evt.count || 1, evt.who === 'player', target);
-                if (evt.who === 'player') this._animatedPlayerDraws += evt.count || 1;
+                // Keep newly drawn cards invisible until the fly-in finishes,
+                // so they do not pop into the hand while backs are still flying.
+                if (evt.who === 'player') {
+                    this._animatedPlayerDraws += count;
+                    this._renderPlayerHand({ hideTrailing: count });
+                } else if (evt.who === 'ai2' && this._renderAIHand1v2) {
+                    this._renderAIHand1v2({ hideTrailing: count, who: 'ai2' });
+                } else if (this.state && this.state.is1v2 && this._renderAIHand1v2) {
+                    this._renderAIHand1v2({ hideTrailing: count, who: 'ai' });
+                } else {
+                    this._renderAIHand({ hideTrailing: count });
+                }
+                if (typeof this.state.deck === 'number') this._drawDeckIcon(this.state.deck);
+                if (target) await this.anim.drawCards(count, evt.who === 'player', target);
                 if (evt.who === 'player') this._renderPlayerHand();
-                else if (this.state && this.state.is1v2) this._renderAIHand1v2 ? this._renderAIHand1v2() : this._renderAIHand();
+                else if (evt.who === 'ai2' && this._renderAIHand1v2) this._renderAIHand1v2();
+                else if (this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2();
                 else this._renderAIHand();
-                await wait(260);
+                await wait(120);
             } else if (evt.type === 'reveal' && evt.card) {
                 if (this._isDefenseJudgmentEvent(evt)) {
                     // Some backends can return the defense play and its reveal in
@@ -1598,9 +2002,9 @@ class GameUI {
                         }
                     }
                 }
-                await this._playRevealAnimation(evt.card, evt.who);
+                await this._playRevealAnimation(evt.card, evt.who, evt.from);
                 this._showZoneDesc('reveal-desc', evt.desc || '判定');
-                if (evt.who === 'player') this._renderPlayerHand();
+                if (evt.who === 'player' || evt.from === 'deck') this._renderPlayerHand();
                 await wait(1200);
             } else if (evt.type === 'lordDice' && Number.isFinite(Number(evt.roll))) {
                 if (typeof this._playDiceAnimation === 'function') {
@@ -1619,11 +2023,11 @@ class GameUI {
             } else if (evt.type === 'discardMany' && evt.cards && evt.cards.length) {
                 await this._playDiscardManyAnimation(evt);
                 this._showZoneDesc('reveal-desc', evt.desc || `${evt.cards.length}张牌已放入弃牌库底`);
-                await wait(180);
+                await wait(120);
             } else if (evt.type === 'discard' && evt.card) {
                 await this._playDiscardAnimation(evt);
-                this._showZoneDesc('reveal-desc', evt.desc || '卡牌已放入弃牌库底');
-                await wait(220);
+                this._showZoneDesc('reveal-desc', evt.desc || (evt.destination === 'top' ? '卡牌成为弃牌库顶' : '卡牌已放入弃牌库底'));
+                await wait(140);
             } else if (evt.type === 'desc') {
                 this._showZoneDesc('reveal-desc', evt.desc);
                 await wait(1500);
@@ -1636,22 +2040,49 @@ class GameUI {
                 this.playFloatingText(evt.desc || '', '', evt.who || 'player');
                 await wait(400);
             } else if (evt.type === 'burnSettle') {
-                this.playFloatingText(evt.desc || '', '#ff8800', evt.who || 'ai');
-                const side = evt.who === 'player' ? 'player' : (evt.who === 'ai2' ? 'ai2' : 'ai');
+                this.playFloatingText(evt.desc || '', '#ff8800', this._eventSide(evt.who));
+                const side = this._eventSide(evt.who);
                 if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
                 if (evt.amount > 0) { this.shakeScreen(Math.min(evt.amount * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,136,0,0.8)', Math.min(evt.amount * 3, 20)); } }
                 await wait(500);
+            } else if (evt.type === 'poisonSettle') {
+                this.playFloatingText(evt.desc || '', '#84cc16', this._eventSide(evt.who));
+                const side = this._eventSide(evt.who);
+                if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+                if (evt.amount > 0) { this.shakeScreen(Math.min(evt.amount * 2, 10), 300); }
+                await wait(500);
             } else if (evt.type === 'hurt') {
-                this.playFloatingText(evt.desc || '', evt.bleed ? '#cc2222' : '#ff4444', evt.who || 'ai');
-                const side = evt.who === 'player' ? 'player' : (evt.who === 'ai2' ? 'ai2' : 'ai');
+                this.playFloatingText(evt.desc || '', evt.poison ? '#84cc16' : (evt.bleed ? '#cc2222' : '#ff4444'), this._eventSide(evt.who));
+                const side = this._eventSide(evt.who);
                 if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
                 if (evt.amount > 0) { this.shakeScreen(evt.who === 'player' ? Math.min(evt.amount * 2, 10) : Math.min(evt.amount, 6), evt.who === 'player' ? 300 : 200); if (evt.who === 'player') { const hpEl = document.getElementById('player-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,60,60,0.8)', Math.min(evt.amount * 3, 20)); } } }
                 await wait(400);
+            } else if (evt.type === 'buffSettle') {
+                const bleed = String(evt.desc || '').includes('[流血]');
+                const poison = String(evt.desc || '').includes('[中毒]');
+                const color = bleed ? '#cc2222' : poison ? '#84cc16' : '#ff8800';
+                const side = this._eventSide(evt.who);
+                this.playFloatingText(evt.desc || '', color, side);
+                if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+                if (evt.amount > 0) { this.shakeScreen(Math.min(evt.amount * 2, 10), 300); }
+                await wait(500);
             } else if (evt.type === 'buff') {
-                const colors = { burn: '#ff8800', bleed: '#cc2222', freeze: '#44aaff', guard: '#00bcd4' };
-                this.playFloatingText(evt.desc || '', colors[evt.kind] || '#c4b5fd', evt.who || 'ai');
-                const side = evt.who === 'player' ? 'player' : (evt.who === 'ai2' ? 'ai2' : 'ai');
-                if (this.state[side]) { this._updateBuffs(side, this.state[side]); }
+                const side = this._eventSide(evt.who);
+                const colors = { burn: '#ff8800', bleed: '#cc2222', freeze: '#44aaff', guard: '#00bcd4', poison: '#84cc16', crit: '#fbbf24' };
+                this.playFloatingText(evt.desc || '', colors[evt.kind] || '#c4b5fd', side);
+                if (this.state[side]) {
+                    let ch = this.state[side];
+                    if (evt.stacks != null && evt.kind) {
+                        const preview = Object.assign({}, ch);
+                        if (evt.kind === 'freeze') preview.frozen = evt.stacks > 0;
+                        else if (evt.kind === 'guard') preview.guard = evt.stacks;
+                        else if (evt.kind === 'crit') preview.crit = evt.stacks;
+                        else if (evt.kind.startsWith('chaos_')) preview[evt.kind] = evt.stacks > 0;
+                        else preview[evt.kind] = evt.stacks;
+                        ch = preview;
+                    }
+                    this._updateBuffs(side, ch);
+                }
                 await wait(350);
             } else if (evt.type === 'heal') {
                 const color = evt.kind === 'drain' ? '#e040fb' : evt.kind === 'passive' ? '#b388ff' : '#44dd44';
@@ -1766,13 +2197,18 @@ class GameUI {
         if (!source && hand && Number.isInteger(evt.handIndex)) {
             source = hand.querySelector(`[data-index="${evt.handIndex}"]`) || hand.children[evt.handIndex];
         }
+        if (!source && hand && evt.card) {
+            const id = cardId(evt.card);
+            source = Array.from(hand.querySelectorAll('.card-canvas')).find(el => el.dataset.cardId === id) || null;
+        }
         if (!source && hand) {
             source = hand.querySelector('.selected') || hand.lastElementChild || hand;
         }
         if (!source) source = document.getElementById('reveal-cards') || document.getElementById('deck-area');
 
         const faceUp = evt.faceUp === true || owner === 'player';
-        await this.anim.discardCard(evt.card, source, discard, faceUp);
+        const landsOnTop = evt.destination === 'top';
+        await this.anim.discardCard(evt.card, source, discard, faceUp, { landsOnTop });
     }
 
     async _playDiscardManyAnimation(evt) {
@@ -1780,15 +2216,34 @@ class GameUI {
         if (!discard) return;
         const owner = evt.who === 'ai2' ? 'ai2' : evt.who === 'ai' ? 'ai' : 'player';
         const hand = document.getElementById(owner === 'player' ? 'player-hand' : `${owner}-hand`);
-        const sources = hand ? Array.from(hand.querySelectorAll('.card-canvas')) : [];
         const cards = Array.from(evt.cards || []);
         const faceUp = evt.faceUp === true || owner === 'player';
-        const animations = cards.map((card, index) => (async () => {
-            if (index) await new Promise(resolve => setTimeout(resolve, index * 54));
-            const source = sources[index] || hand || document.getElementById('reveal-cards');
-            await this.anim.discardCard(card, source, discard, faceUp);
-        })());
-        await Promise.all(animations);
+        const landsOnTop = evt.destination === 'top';
+        const handCards = hand ? Array.from(hand.querySelectorAll('.card-canvas')) : [];
+        const used = new Set();
+        const sources = cards.map(card => {
+            const id = cardId(card);
+            let foundIdx = -1;
+            const match = handCards.find((el, idx) => {
+                if (used.has(idx) || el.dataset.cardId !== id) return false;
+                foundIdx = idx;
+                return true;
+            });
+            if (match) {
+                used.add(foundIdx);
+                return match;
+            }
+            const fallbackIdx = handCards.findIndex((_, idx) => !used.has(idx));
+            if (fallbackIdx >= 0) {
+                used.add(fallbackIdx);
+                return handCards[fallbackIdx];
+            }
+            return hand || document.getElementById('reveal-cards');
+        });
+        for (let index = 0; index < cards.length; index++) {
+            if (index) await new Promise(resolve => setTimeout(resolve, 70));
+            await this.anim.discardCard(cards[index], sources[index], discard, faceUp, { landsOnTop });
+        }
     }
 
     async _playHandSwapAnimation(evt) {
@@ -1811,13 +2266,55 @@ class GameUI {
         await this.anim.swapHands(playerHand, opponentHand, playerCards, opponentCount);
     }
 
+    _paintRevealedHand(container, hand) {
+        if (!container) return;
+        const list = hand || [];
+        const existing = Array.from(container.querySelectorAll('.card-canvas'));
+        if (existing.length === list.length) {
+            let allMatch = true;
+            for (let i = 0; i < list.length; i++) {
+                if (existing[i].dataset.cardMatch !== cardMatchKey(list[i])) { allMatch = false; break; }
+            }
+            if (allMatch) return;
+        }
+        container.innerHTML = '';
+        list.forEach((c, i) => {
+            const cv = renderCard(c, 40, 58, false);
+            if (c) {
+                cv.dataset.cardId = cardId(c);
+                cv.dataset.cardMatch = cardMatchKey(c);
+            }
+            cv.dataset.aiIndex = i;
+            container.appendChild(cv);
+        });
+    }
+
+    _prevAiHandFor(who = 'ai') {
+        if (!this._prevState) return null;
+        if (who === 'ai2') return Array.isArray(this._prevState.ai2Hand) ? this._prevState.ai2Hand : null;
+        return Array.isArray(this._prevState.aiHand) ? this._prevState.aiHand : null;
+    }
+
     async _playAICardAnimation(card, who = 'ai') {
         const aiHand = document.getElementById(who === 'ai2' ? 'ai2-hand' : 'ai-hand');
         const atkZone = document.getElementById('atk-cards');
         if (!aiHand || !atkZone) { await new Promise(r => setTimeout(r, 500)); return; }
-        const sourceCard = aiHand.lastElementChild;
+        const revealFace = !!(this.state && (this.state.revealAIHand || this.state.isAdventure));
+        const prevHand = this._prevAiHandFor(who);
+        // 明牌：先还原出牌前手牌，再定位源牌，避免剩余手牌被误当成飞出牌
+        if (revealFace && prevHand && prevHand.length) {
+            this._paintRevealedHand(aiHand, prevHand);
+        }
+        let sourceCard = this._findHandCardElement(aiHand, card);
+        if (!sourceCard && !revealFace) sourceCard = aiHand.lastElementChild;
         if (sourceCard) sourceCard.style.visibility = 'hidden';
-        try { await this.anim.flyCardBack(aiHand, atkZone, 440, 54); }
+        try {
+            if (revealFace && card) {
+                await this.anim.flyCard(card, sourceCard || aiHand, atkZone, 440, 54);
+            } else {
+                await this.anim.flyCardBack(sourceCard || aiHand, atkZone, 440, 54);
+            }
+        }
         finally { if (sourceCard) sourceCard.remove(); }
         this._settleZoneCard(atkZone, card);
     }
@@ -1826,9 +2323,21 @@ class GameUI {
         const aiHand = document.getElementById(who === 'ai2' ? 'ai2-hand' : 'ai-hand');
         const defZone = document.getElementById('def-cards');
         if (!aiHand || !defZone) return;
-        const sourceCard = aiHand.lastElementChild;
+        const revealFace = !!(this.state && (this.state.revealAIHand || this.state.isAdventure));
+        const prevHand = this._prevAiHandFor(who);
+        if (revealFace && prevHand && prevHand.length) {
+            this._paintRevealedHand(aiHand, prevHand);
+        }
+        let sourceCard = this._findHandCardElement(aiHand, card);
+        if (!sourceCard && !revealFace) sourceCard = aiHand.lastElementChild;
         if (sourceCard) sourceCard.style.visibility = 'hidden';
-        try { await this.anim.flyCardBack(aiHand, defZone, 440, 42); }
+        try {
+            if (revealFace && card) {
+                await this.anim.flyCard(card, sourceCard || aiHand, defZone, 440, 42);
+            } else {
+                await this.anim.flyCardBack(sourceCard || aiHand, defZone, 440, 42);
+            }
+        }
         finally { if (sourceCard) sourceCard.remove(); }
         this._settleZoneCard(defZone, card);
     }
@@ -1869,29 +2378,53 @@ class GameUI {
         this._settleZoneCard(defZone, card);
     }
 
-    async _playRevealAnimation(card, fromOwner) {
-        const ownerEl = document.getElementById(fromOwner === 'player' ? 'player-hand' : fromOwner === 'ai2' ? 'ai2-hand' : fromOwner === 'ai' ? 'ai-hand' : 'deck-area');
+    async _playRevealAnimation(card, fromOwner, fromSource) {
         const toEl = document.getElementById('reveal-cards');
-        if (!ownerEl || !toEl) return;
-        const selectedIndex = fromOwner === 'player' && this._prevState ? this._prevState.selectedCard : -1;
-        const fromEl = selectedIndex >= 0 && ownerEl.children[selectedIndex]
-            ? ownerEl.children[selectedIndex]
-            : ownerEl;
-        if (fromEl !== ownerEl) fromEl.style.visibility = 'hidden';
-        const flying = fromOwner === 'player'
+        if (!toEl) return;
+        // 默认从牌库飞出；仅显式 from:'hand' 时从对应手牌飞出（追加/抽取手牌判定）
+        const fromHand = fromSource === 'hand';
+        let ownerEl = document.getElementById('deck-area');
+        let fromEl = ownerEl;
+        if (fromHand) {
+            ownerEl = document.getElementById(
+                fromOwner === 'player' ? 'player-hand'
+                    : fromOwner === 'ai2' ? 'ai2-hand'
+                        : fromOwner === 'ai' ? 'ai-hand'
+                            : 'deck-area'
+            );
+            if (!ownerEl) return;
+            const selectedIndex = fromOwner === 'player' && this._prevState ? this._prevState.selectedCard : -1;
+            fromEl = selectedIndex >= 0 && ownerEl.children[selectedIndex]
+                ? ownerEl.children[selectedIndex]
+                : ownerEl;
+            if (fromEl !== ownerEl) fromEl.style.visibility = 'hidden';
+        }
+        if (!fromEl) fromEl = document.body;
+
+        const flying = fromHand && fromOwner === 'player'
             ? renderCard(card, CARD_W - 10, CARD_H - 14, false)
             : renderCardBack(CARD_W - 10, CARD_H - 14);
-        flying.style.position='fixed'; flying.style.zIndex='9999'; flying.style.pointerEvents='none';
-        flying.style.transition='left .42s ease-out, top .42s ease-out, transform .42s ease-out';
-        const from=fromEl.getBoundingClientRect(),to=toEl.getBoundingClientRect();
-        flying.style.left=(from.left+from.width/2-30)+'px'; flying.style.top=(from.top+from.height/2-43)+'px';
-        document.body.appendChild(flying); await new Promise(r=>setTimeout(r,30));
-        flying.style.left=(to.left+to.width/2-30)+'px'; flying.style.top=(to.top+to.height/2-43)+'px';
-        flying.style.transform=fromOwner === 'player' ? 'scale(.9)' : 'rotateY(90deg) scale(.9)';
-        await new Promise(r=>setTimeout(r,430)); flying.remove();
-        if (fromEl !== ownerEl) fromEl.remove();
-        toEl.innerHTML=''; const shown=renderCard(card,CARD_W-10,CARD_H-14,false);
-        shown.classList.add('revealed-card'); toEl.appendChild(shown); toEl.dataset.cardKey=JSON.stringify([card]);
+        flying.style.position = 'fixed';
+        flying.style.zIndex = '9999';
+        flying.style.pointerEvents = 'none';
+        flying.style.transition = 'left .42s ease-out, top .42s ease-out, transform .42s ease-out';
+        const from = fromEl.getBoundingClientRect();
+        const to = toEl.getBoundingClientRect();
+        flying.style.left = (from.left + from.width / 2 - 30) + 'px';
+        flying.style.top = (from.top + from.height / 2 - 43) + 'px';
+        document.body.appendChild(flying);
+        await new Promise(r => setTimeout(r, 30));
+        flying.style.left = (to.left + to.width / 2 - 30) + 'px';
+        flying.style.top = (to.top + to.height / 2 - 43) + 'px';
+        flying.style.transform = fromHand && fromOwner === 'player' ? 'scale(.9)' : 'rotateY(90deg) scale(.9)';
+        await new Promise(r => setTimeout(r, 430));
+        flying.remove();
+        if (fromHand && fromEl !== ownerEl) fromEl.remove();
+        toEl.innerHTML = '';
+        const shown = renderCard(card, CARD_W - 10, CARD_H - 14, false);
+        shown.classList.add('revealed-card');
+        toEl.appendChild(shown);
+        toEl.dataset.cardKey = JSON.stringify([card]);
     }
 
 
@@ -1912,6 +2445,13 @@ class GameUI {
             this._selectedPlayerChar = null; this._selectedAIChar = null;
             this._buildSelectScreen();
         });
+    }
+
+    _eventSide(who) {
+        if (who === 'player') return 'player';
+        if (who === 'ai2') return 'ai2';
+        if (who === 'enemy' || who === 'ai') return 'ai';
+        return who || 'ai';
     }
 
     playFloatingText(text, color, target) {
@@ -2018,3 +2558,10 @@ class GameUI {
         requestAnimationFrame(tick);
     }
 }
+
+// Classic-script class declarations live in the global lexical scope, but are
+// not exposed as properties on window. Adventure mode performs an explicit
+// capability check before handing combat to the shared 1v1 UI, so export both
+// classes deliberately.
+window.AnimLayer = AnimLayer;
+window.GameUI = GameUI;

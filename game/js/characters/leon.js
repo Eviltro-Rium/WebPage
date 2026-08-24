@@ -35,18 +35,21 @@
       } else if (v === 7) {
         d = 6;
         burn(2);
-        let oh = eng.h[target];
-        if (oh.length) {
+        let oh = eng.h[owner === 'player' ? 'ai' : 'player'];
+        if (oh && oh.length) {
           let dropped = oh.splice(Math.floor(Math.random() * oh.length), 1)[0];
           eng.s.revealCards = [JSON.parse(JSON.stringify(dropped))];
-          eng.emit('reveal', 'Leon 7牌弃掉目标手牌', dropped, { who: target });
+          eng.emit('reveal', 'Leon 7牌弃掉目标手牌', dropped, { who: owner === 'player' ? 'ai' : 'player', from: 'hand' });
         }
       } else if (v === 0) {
         d = 7;
         burn(1);
         unblock = true;
-        let oh = eng.h[target], dc = Math.min(2, oh.length);
-        for (let i = 0; i < dc; i++) oh.splice(Math.floor(Math.random() * oh.length), 1);
+        let oh = eng.h[owner === 'player' ? 'ai' : 'player'];
+        if (oh) {
+          let dc = Math.min(2, oh.length);
+          for (let i = 0; i < dc; i++) oh.splice(Math.floor(Math.random() * oh.length), 1);
+        }
         eng.hurt(a, 2);
       }
       return { d, skip, unblock };
@@ -72,7 +75,7 @@
         desc = `Leon 3牌：格挡${b}点+抽1张牌`;
       } else if (v === 0) {
         let opponentHand = eng.h[owner === 'player' ? 'ai' : 'player'];
-        opponentHand.splice(0, opponentHand.length);
+        if (opponentHand) opponentHand.splice(0, opponentHand.length);
         hurt(opponent, d);
         hurt(defender, d);
         remaining = 0;

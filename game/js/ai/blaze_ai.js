@@ -44,7 +44,7 @@
 
       const drawn = helpers.targetHand.splice(Math.floor(Math.random() * helpers.targetHand.length), 1)[0];
       eng.s.revealCards = [helpers.copy(drawn)];
-      eng.emit('reveal', 'Blaze 4牌抽取玩家手牌', drawn, { who: 'player' });
+      eng.emit('reveal', 'Blaze 4牌抽取玩家手牌', drawn, { who: 'player', from: 'hand' });
 
       if (!drawn.isItemCard && drawn.value === 0) {
         helpers.selfHand.push(drawn);

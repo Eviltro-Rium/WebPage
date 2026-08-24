@@ -46,3 +46,5 @@ class Bridge {
         }
     }
 }
+
+window.Bridge = Bridge;

@@ -2,6 +2,7 @@
   // The game owns its own particle canvas.
   if (document.getElementById("game-container")) return;
   if (document.getElementById("bg-orbs")) return;
+  if (document.body.classList.contains("page-home")) return;
 
   var canvas = document.createElement("canvas");
   canvas.id = "bg-orbs";

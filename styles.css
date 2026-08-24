@@ -52,26 +52,171 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+body.page-home {
+  background: #2880d8;
+}
+
+#hill-bg-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 主页浅色场景：黑字 + 半透明液态玻璃 */
+body.page-home {
+  --text-main: #0f172a;
+  --text-muted-light: #475569;
+  --border: rgba(15, 23, 42, 0.12);
+  --glass-fill: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-highlight: rgba(255, 255, 255, 0.7);
+  --glass-shadow: 0 8px 24px rgba(31, 35, 40, 0.06);
+  --glass-sheen: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.12) 24%,
+    transparent 56%
+  );
+  color: var(--text-main);
+}
+
+body.page-home a:hover,
+body.page-home .logo:hover,
+body.page-home .content-link:hover {
+  color: #0369a1;
+}
+
+body.page-home .hero-kicker,
+body.page-home .hero-title {
+  text-shadow: none;
+  filter: none;
+}
+
+body.page-home .hero-lead {
+  text-shadow: none;
+}
+
+body.page-home .site-header,
+body.page-home .section-alt,
+body.page-home .section-content .puzzle-card,
+body.page-home .section-content .puzzle-code,
+body.page-home .card,
+body.page-home .btn-ghost,
+body.page-home .btn-primary {
+  isolation: isolate;
+  background-color: var(--glass-fill);
+  background-image: var(--glass-sheen);
+  border-color: var(--glass-border);
+  backdrop-filter: blur(2px) saturate(1.06);
+  -webkit-backdrop-filter: blur(2px) saturate(1.06);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 rgba(31, 35, 40, 0.05),
+    inset 1px 0 0 rgba(255, 255, 255, 0.28),
+    var(--glass-shadow);
+}
+
+body.page-home .site-header {
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    inset 0 -1px 0 rgba(31, 35, 40, 0.04);
+}
+
+body.page-home .section-alt::after,
+body.page-home .section-content .puzzle-card::after,
+body.page-home .card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    125deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.05) 26%,
+    transparent 50%
+  );
+}
+
+body.page-home .btn-primary {
+  color: #0f172a;
+  background-color: rgba(255, 255, 255, 0.62);
+}
+
+body.page-home .btn-primary:hover {
+  color: #0f172a;
+  background-color: rgba(255, 255, 255, 0.78);
+  background-image: var(--glass-sheen);
+}
+
+body.page-home .btn-ghost {
+  color: var(--text-main);
+  border-color: rgba(15, 23, 42, 0.16);
+}
+
+body.page-home .btn-ghost:hover {
+  color: var(--text-main);
+  background-color: rgba(255, 255, 255, 0.36);
+  background-image: var(--glass-sheen);
+  border-color: rgba(15, 23, 42, 0.22);
+}
+
+body.page-home .cursor-dot {
+  background: #0f172a;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+body.page-home .cursor-ring {
+  border-color: rgba(15, 23, 42, 0.38);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body.page-home .cursor-ring.cursor-hover {
+  border-color: rgba(15, 23, 42, 0.82);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+html.custom-cursor-active,
+html.custom-cursor-active body,
+html.custom-cursor-active a,
+html.custom-cursor-active button,
+html.custom-cursor-active input,
+html.custom-cursor-active textarea,
+html.custom-cursor-active select,
+html.custom-cursor-active summary,
+html.custom-cursor-active label {
+  cursor: none !important;
+}
+
 /* ---- 自定义光标 ---- */
 .cursor-dot,
 .cursor-ring {
   position: fixed;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
   pointer-events: none;
   z-index: 9999;
   border-radius: 50%;
-  transform: translate(-50%, -50%);
-  will-change: left, top;
-  transition: opacity 0.15s;
+  will-change: transform;
 }
+
 .cursor-dot {
-  width: 6px; height: 6px;
+  width: 7px;
+  height: 7px;
   background: #fff;
+  transition: opacity 0.18s ease;
 }
+
 .cursor-ring {
-  width: 28px; height: 28px;
-  border: 1.5px solid rgba(255,255,255,0.45);
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid rgba(255, 255, 255, 0.48);
+  transition: opacity 0.18s ease;
 }
+
 .cursor-dot.cursor-hidden,
 .cursor-ring.cursor-hidden {
   opacity: 0;
@@ -211,6 +356,7 @@ main {
   opacity: 0.9;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  text-shadow: 0 1px 8px rgba(20, 50, 80, 0.28);
 }
 
 .hero-title {
@@ -220,7 +366,7 @@ main {
   letter-spacing: -0.03em;
   line-height: 1.15;
   color: var(--text-main);
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  filter: drop-shadow(0 2px 8px rgba(20, 50, 80, 0.28));
 }
 
 .hero-lead {
@@ -229,6 +375,7 @@ main {
   color: var(--text-muted-light);
   font-size: 1.125rem;
   line-height: 1.7;
+  text-shadow: 0 1px 8px rgba(20, 50, 80, 0.28);
 }
 
 .hero-actions {
@@ -338,9 +485,10 @@ main {
   }
 }
 
-/* 相册与作品：两个卡片区块之间留出空隙，避免贴在一起 */
-main .section-gallery.section-alt {
+/* 相册与作品：两个区块之间留出空隙 */
+main .section-gallery {
   margin-bottom: 2.5rem;
+  overflow: visible;
 }
 
 .section-title {
@@ -564,49 +712,115 @@ main .section-gallery.section-alt {
   line-height: 1.55;
 }
 
-.gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 1rem;
-  margin: 0;
-  padding: 0;
+.section-gallery {
+  overflow: visible;
+}
+
+.gallery-cylinder {
   user-select: none;
   -webkit-user-select: none;
+  overflow: visible;
 }
 
-.gallery-item {
-  margin: 0;
-}
-
-.gallery-frame {
+.gallery-cylinder-viewport {
   position: relative;
-  overflow: hidden;
-  border-radius: 12px;
-  border: 1px solid var(--glass-border);
+  height: calc(var(--cylinder-height, 600px) + var(--viewport-pad, 180px));
+  margin: 0 auto;
+  max-width: 1120px;
+  perspective: 2600px;
+  perspective-origin: 50% 50%;
+  overflow: visible;
+}
+
+.gallery-cylinder-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  transform: rotateZ(-12deg) rotateY(-7deg);
+  overflow: visible;
+}
+
+.gallery-cylinder-layers {
+  position: relative;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+
+.gallery-cylinder-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  animation: galleryCylinderSpin 68s linear infinite;
+  will-change: transform;
+}
+
+.gallery-cylinder-ring--reverse {
+  animation-direction: reverse;
+}
+
+@keyframes galleryCylinderSpin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+.gallery-panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  margin: 0;
+  transform-style: preserve-3d;
+}
+
+.gallery-glass {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 6px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 12px 30px rgba(12, 74, 110, 0.2);
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  line-height: 0;
-  aspect-ratio: 1 / 1;
-}
-
-.gallery-frame img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  -webkit-user-drag: none;
-  user-select: none;
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    inset 1px 0 0 rgba(255, 255, 255, 0.2),
+    0 6px 18px rgba(15, 23, 42, 0.12);
+  backface-visibility: hidden;
   pointer-events: none;
-  transition: transform 0.3s ease;
 }
 
-.gallery-frame:hover img {
-  transform: scale(1.05);
+.gallery-photo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  background-repeat: no-repeat;
+  border-radius: 3px;
+  backface-visibility: hidden;
+  pointer-events: none;
+}
+
+.gallery-panel .gallery-watermark {
+  position: absolute;
+  inset: auto;
+  left: 0;
+  top: 0;
+  font-size: clamp(0.8rem, 3.4vmin, 1.35rem);
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+  backface-visibility: hidden;
 }
 
 .gallery-watermark {
@@ -623,6 +837,12 @@ main .section-gallery.section-alt {
   transform: rotate(-14deg);
   pointer-events: none;
   user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-cylinder-ring {
+    animation: none;
+  }
 }
 
 .contact-intro {
