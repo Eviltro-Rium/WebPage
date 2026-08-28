@@ -518,7 +518,7 @@
       g.addColorStop(0, dark ? "rgba(42, 32, 18, 0.38)" : "rgba(120, 98, 58, 0.28)");
       g.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = g;
-      ctx.beginPath();
+        ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
     }
@@ -537,10 +537,10 @@
       r = 0.6 + Math.random() * 2.4;
       var shade = 70 + Math.floor(Math.random() * 90);
       ctx.fillStyle = "rgba(" + shade + "," + (shade - 12) + "," + (shade - 28) + "," + (0.22 + Math.random() * 0.35) + ")";
-      ctx.beginPath();
+        ctx.beginPath();
       ctx.ellipse(x, y, r, r * (0.55 + Math.random() * 0.55), Math.random() * Math.PI, 0, Math.PI * 2);
-      ctx.fill();
-    }
+        ctx.fill();
+      }
     ctx.strokeStyle = "rgba(40, 28, 14, 0.12)";
     ctx.lineWidth = 1.2;
     for (i = 0; i < 18; i++) {
@@ -570,7 +570,7 @@
         ctx.beginPath();
     ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
         ctx.fill();
-  }
+      }
 
   function makeCloudTexture(variant) {
     var layouts = [
@@ -727,11 +727,13 @@
     var subpageBoot =
       document.documentElement.classList.contains("subpage-is-booting");
     var isHomePage = document.body.classList.contains("page-home");
+    var isProjectsPage = document.body.classList.contains("page-projects");
     var isGuestbook = document.body.classList.contains("page-guestbook");
     var commentsReady = !isGuestbook || window.__riumCommentsReady === true;
     var windowLoaded = document.readyState === "complete";
     var assetsReady =
-      windowLoaded && (!isHomePage || window.__riumGalleryReady === true);
+      isProjectsPage ||
+      (windowLoaded && (!isHomePage || window.__riumGalleryReady === true));
     var bootMode =
       !reducedMotion &&
       (document.documentElement.classList.contains("home-is-booting") ||
@@ -1274,7 +1276,7 @@
 
     function refreshAssetsReady() {
       var galleryReady = !isHomePage || window.__riumGalleryReady === true;
-      assetsReady = windowLoaded && galleryReady;
+      assetsReady = isProjectsPage || (windowLoaded && galleryReady);
       if (!bootMode && assetsReady && commentsReady) finishHomeLoading();
     }
 
