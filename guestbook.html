@@ -5,6 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="留言板 · GitHub Discussions" />
     <title>留言 · Rium</title>
+    <script>
+      document.documentElement.classList.add("subpage-is-booting");
+      (function () {
+        var root = document.documentElement;
+        var theme = "light";
+        try {
+          theme = window.localStorage.getItem("rium-theme") === "dark" ? "dark" : "light";
+        } catch (e) { /* ignore storage failures */ }
+        root.setAttribute("data-theme", theme);
+        root.style.colorScheme = theme;
+      })();
+    </script>
+    <noscript>
+      <style>
+        html.subpage-is-booting body.page-guestbook > .site-header,
+        html.subpage-is-booting body.page-guestbook > main,
+        html.subpage-is-booting body.page-guestbook > .site-footer {
+          opacity: 1;
+          visibility: visible;
+          pointer-events: auto;
+        }
+        .home-loading { display: none !important; }
+      </style>
+    </noscript>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -14,11 +38,34 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="page-guestbook">
+    <div id="home-loading" class="home-loading" role="status" aria-live="polite">
+      <div class="home-loading__cinema" aria-hidden="true">
+        <div class="home-loading__vignette"></div>
+        <div class="home-loading__letterbox"></div>
+        <div class="home-loading__horizon"></div>
+        <div class="home-loading__flare"></div>
+      </div>
+      <div class="home-loading__hud">
+        <div class="home-loading__eyebrow">RIUM · GUESTBOOK</div>
+        <div class="home-loading__title">
+          <span class="home-loading__mark" aria-hidden="true">R</span>
+          <span>
+            <strong>留言</strong>
+            <small>正在连接留言板</small>
+          </span>
+        </div>
+        <div class="home-loading__status">
+          <span id="home-loading-label">正在加载留言…</span>
+          <span id="home-loading-percent">0%</span>
+        </div>
+        <div class="home-loading__bar" aria-hidden="true">
+          <span id="home-loading-bar"></span>
+        </div>
+      </div>
+    </div>
     <header class="site-header">
       <a class="logo" href="index.html">Rium</a>
       <nav class="nav" aria-label="主导航">
-        <a href="index.html#about">关于</a>
-        <a href="index.html#gallery">相册</a>
         <a href="projects.html">作品</a>
         <a href="materials.html">学习资料</a>
         <a href="launchpad.html">Launch Pad</a>
@@ -26,6 +73,17 @@
         <a href="index.html#contact">联系</a>
         <a href="guestbook.html" aria-current="page">留言</a>
       </nav>
+      <button
+        class="theme-toggle"
+        type="button"
+        data-theme-toggle
+        aria-label="切换至深色主题"
+        title="切换至深色主题"
+        aria-pressed="false"
+      >
+        <span class="theme-toggle-icon" aria-hidden="true">🌙</span>
+        <span class="theme-toggle-label">深色</span>
+      </button>
     </header>
 
     <main class="main-guestbook">
@@ -110,7 +168,56 @@
         });
       })();
     </script>
-    <script src="js/bg-orbs.js"></script>
+    <script>
+      (function () {
+        var ready = false;
+        var observer = null;
+
+        function markCommentsReady() {
+          if (ready) return;
+          ready = true;
+          window.__riumCommentsReady = true;
+          if (observer) observer.disconnect();
+          document.dispatchEvent(new CustomEvent("rium-comments-ready"));
+        }
+
+        function bindFrame(frame) {
+          if (!frame || frame.getAttribute("data-rium-ready-bound")) return;
+          frame.setAttribute("data-rium-ready-bound", "true");
+          frame.addEventListener("load", markCommentsReady, { once: true });
+        }
+
+        var frame = document.querySelector("iframe.giscus-frame");
+        if (frame) {
+          bindFrame(frame);
+        } else if (window.MutationObserver) {
+          observer = new MutationObserver(function () {
+            var nextFrame = document.querySelector("iframe.giscus-frame");
+            if (nextFrame) {
+              bindFrame(nextFrame);
+              observer.disconnect();
+            }
+          });
+          observer.observe(document.body, { childList: true, subtree: true });
+        }
+
+        // Network blockers should not leave the page permanently covered.
+        window.setTimeout(function () {
+          markCommentsReady();
+          var doc = document.documentElement;
+          if (!doc.classList.contains("subpage-is-booting")) return;
+          doc.classList.remove("subpage-is-booting");
+          var loader = document.getElementById("home-loading");
+          if (loader) {
+            loader.classList.add("is-done");
+            window.setTimeout(function () { loader.remove(); }, 850);
+          }
+        }, 10000);
+      })();
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="js/hill-background.js"></script>
+    <script src="js/theme.js"></script>
     <script src="js/cursor.js"></script>
   </body>
 </html>

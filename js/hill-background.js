@@ -1,12 +1,16 @@
 /**
- * 主页 3D 背景：阳光明媚的青翠小山丘。
- * 浅色晴空 / 软云参考 AgriLoop 日间主题；麦穗改为随风摆动的草叶，并点缀白色小野花。
+ * 主页 3D 背景：日夜主题下的青翠小山丘。
+ * 白天使用晴空与软云，夜间切换为月光、星点和低照度的山坡。
  */
 (function () {
   if (typeof THREE === "undefined") return;
-  if (!document.body.classList.contains("page-home")) return;
+  var scenePages = ["page-home", "page-projects", "page-materials", "page-guestbook"];
+  var isScenePage = scenePages.some(function (pageClass) {
+    return document.body.classList.contains(pageClass);
+  });
+  if (!isScenePage) return;
 
-  var PALETTE = {
+  var LIGHT_PALETTE = {
     sky: 0x58a8ee,
     zenith: 0x2880d8,
     horizon: 0x9ed0f5,
@@ -16,9 +20,12 @@
     soil: 0xc4a878,
     fieldLow: 0x548c2c,
     fieldHigh: 0xf0d060,
+    lawn: 0x62a832,
     grassStem: 0x4e7a24,
     grassBlade: 0x68b034,
     grassTip: 0x9ed24e,
+    flower: 0xfbfaf6,
+    flowerHead: 0xf2c84a,
     particle: 0xffe9a0,
     sun: 0xfff1cc,
     cloud: 0xf7f3ec,
@@ -32,12 +39,50 @@
     haze: 0xf0b45a,
     hemi: 0.52,
     exposure: 1.12,
-    skyGlow: 1.0
+    skyGlow: 1.0,
+    moonGlow: 0
   };
+
+  var DARK_PALETTE = {
+    sky: 0x07111f,
+    zenith: 0x050914,
+    horizon: 0x1a3150,
+    fog: 0x101b2b,
+    fogNear: 34,
+    fogFar: 88,
+    soil: 0x382f28,
+    fieldLow: 0x1f4a33,
+    fieldHigh: 0x6a7044,
+    lawn: 0x315b3b,
+    grassStem: 0x21432d,
+    grassBlade: 0x34734b,
+    grassTip: 0x75a65c,
+    flower: 0xcbd6e8,
+    flowerHead: 0xd9b767,
+    particle: 0xaac5e5,
+    sun: 0xdbe7ff,
+    cloud: 0x8493ad,
+    cloudOpacity: 0,
+    ambient: 0.25,
+    sunIntensity: 0.34,
+    fill: 0x405d88,
+    fillIntensity: 0.24,
+    rim: 0x91b6e8,
+    rimIntensity: 0.42,
+    haze: 0x516c92,
+    hemi: 0.3,
+    exposure: 0.88,
+    skyGlow: 0,
+    moonGlow: 1
+  };
+
+  var PALETTE = LIGHT_PALETTE;
 
   var HOME_POS = { x: 0, y: 7.2, z: 16.5 };
   var HOME_LOOK = { x: 0, y: 2.6, z: -6 };
   var CELESTIAL_PEAK = { x: 18, y: 20, z: -58 };
+  var MOON_PEAK = CELESTIAL_PEAK;
+  var CELESTIAL_DROP = 46;
 
   var SKY_VERT = [
     "varying vec3 vDir;",
@@ -668,8 +713,32 @@
     canvas.setAttribute("aria-hidden", "true");
     document.body.prepend(canvas);
 
+    var initialTheme =
+      document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    PALETTE = initialTheme === "dark" ? DARK_PALETTE : LIGHT_PALETTE;
     var mobile = window.innerWidth < 820 || window.innerHeight < 560;
     var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var subpageBoot =
+      document.documentElement.classList.contains("subpage-is-booting");
+    var isGuestbook = document.body.classList.contains("page-guestbook");
+    var commentsReady = !isGuestbook || window.__riumCommentsReady === true;
+    var bootMode =
+      !reducedMotion &&
+      (document.documentElement.classList.contains("home-is-booting") ||
+        document.documentElement.classList.contains("subpage-is-booting"));
+    var bootStart = null;
+    var bootDuration = subpageBoot
+      ? mobile
+        ? 1650
+        : 1950
+      : mobile
+        ? 2200
+        : 2600;
+    var bootFromPos = new THREE.Vector3(0, 2.15, 5.2);
+    var bootFromLook = new THREE.Vector3(0, 1.35, -0.8);
+    var bootLook = new THREE.Vector3();
+    var homePos = new THREE.Vector3(HOME_POS.x, HOME_POS.y, HOME_POS.z);
+    var homeLook = new THREE.Vector3(HOME_LOOK.x, HOME_LOOK.y, HOME_LOOK.z);
 
     var pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
     var renderer = new THREE.WebGLRenderer({
@@ -693,13 +762,21 @@
     scene.fog = new THREE.Fog(lerpHex(PALETTE.fog, PALETTE.haze, 0.18), PALETTE.fogNear, PALETTE.fogFar);
 
     var camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 220);
-    camera.position.set(HOME_POS.x, HOME_POS.y, HOME_POS.z);
-    camera.lookAt(HOME_LOOK.x, HOME_LOOK.y, HOME_LOOK.z);
+    if (bootMode) {
+      camera.position.copy(bootFromPos);
+      camera.fov = 32;
+      camera.lookAt(bootFromLook);
+    } else {
+      camera.position.copy(homePos);
+      camera.lookAt(homeLook);
+    }
+    camera.updateProjectionMatrix();
     camera.updateMatrixWorld(true);
 
     var hemi = new THREE.HemisphereLight(PALETTE.zenith, PALETTE.soil, PALETTE.hemi);
     scene.add(hemi);
-    scene.add(new THREE.AmbientLight(0xffffff, PALETTE.ambient));
+    var ambient = new THREE.AmbientLight(0xffffff, PALETTE.ambient);
+    scene.add(ambient);
     var sunLight = new THREE.DirectionalLight(PALETTE.sun, PALETTE.sunIntensity);
     sunLight.position.set(18, 22, 8);
     scene.add(sunLight);
@@ -719,7 +796,7 @@
         uSunDir: { value: new THREE.Vector3(0.55, 0.62, -0.55).normalize() },
         uMoonDir: { value: new THREE.Vector3(-0.5, 0.58, -0.64).normalize() },
         uSunGlow: { value: PALETTE.skyGlow },
-        uMoonGlow: { value: 0 }
+        uMoonGlow: { value: PALETTE.moonGlow }
       },
       vertexShader: SKY_VERT,
       fragmentShader: SKY_FRAG,
@@ -730,14 +807,57 @@
     skyDome.renderOrder = 0;
     scene.add(skyDome);
 
+    function pointFromCamera(localPoint) {
+      var probe = new THREE.Object3D();
+      var point = new THREE.Vector3();
+      probe.position.set(localPoint.x, localPoint.y, localPoint.z);
+      camera.add(probe);
+      camera.updateMatrixWorld(true);
+      probe.getWorldPosition(point);
+      camera.remove(probe);
+      return point;
+    }
+
+    var sunPeak = pointFromCamera(CELESTIAL_PEAK);
+    var moonPeak = pointFromCamera(MOON_PEAK);
+    var sunExit = sunPeak.clone();
+    var moonExit = moonPeak.clone();
+    var sunEntry = sunPeak.clone();
+    var moonEntry = moonPeak.clone();
+    sunExit.y -= CELESTIAL_DROP;
+    moonExit.y -= CELESTIAL_DROP;
+    sunEntry.y += CELESTIAL_DROP;
+    moonEntry.y += CELESTIAL_DROP;
+
     var sunAnchor = new THREE.Object3D();
-    sunAnchor.position.set(CELESTIAL_PEAK.x, CELESTIAL_PEAK.y, CELESTIAL_PEAK.z);
-    camera.add(sunAnchor);
-    camera.updateMatrixWorld(true);
-    var celestialBase = new THREE.Vector3();
-    sunAnchor.getWorldPosition(celestialBase);
-    camera.remove(sunAnchor);
-    sunAnchor.position.copy(celestialBase);
+    var moonAnchor = new THREE.Object3D();
+    sunAnchor.position.copy(PALETTE.skyGlow > 0.5 ? sunPeak : sunExit);
+    moonAnchor.position.copy(PALETTE.moonGlow > 0.5 ? moonPeak : moonExit);
+    scene.add(sunAnchor);
+    scene.add(moonAnchor);
+
+    var starPositions = new Float32Array(420 * 3);
+    var si;
+    for (si = 0; si < 420; si++) {
+      starPositions[si * 3] = (Math.random() - 0.5) * 150;
+      starPositions[si * 3 + 1] = 14 + Math.random() * 76;
+      starPositions[si * 3 + 2] = -118 + Math.random() * 108;
+    }
+    var starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
+    var starMat = new THREE.PointsMaterial({
+      color: PALETTE.particle,
+      size: 0.12,
+      transparent: true,
+      opacity: PALETTE.moonGlow * 0.78,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true
+    });
+    var stars = new THREE.Points(starGeo, starMat);
+    stars.visible = PALETTE.moonGlow > 0.01;
+    stars.renderOrder = 1;
+    scene.add(stars);
 
     var clouds = new THREE.Group();
     var cloudMaps = [makeCloudTexture(0), makeCloudTexture(1), makeCloudTexture(2)];
@@ -783,6 +903,7 @@
       clouds.add(cloudMesh);
     }
     scene.add(clouds);
+    clouds.visible = PALETTE.cloudOpacity > 0.01;
 
     var world = new THREE.Group();
     scene.add(world);
@@ -793,6 +914,7 @@
     var terrainColors = new Float32Array(terrainPos.count * 3);
     var soil = new THREE.Color(PALETTE.soil);
     var fieldLow = new THREE.Color(PALETTE.fieldLow);
+    var lawn = new THREE.Color(0x62a832);
     var tmpColor = new THREE.Color();
     var ti, tx, tz, ty, heightT, furrow, grit;
     for (ti = 0; ti < terrainPos.count; ti++) {
@@ -802,7 +924,6 @@
       terrainPos.setY(ti, ty);
       heightT = THREE.MathUtils.clamp((ty + 2.2) / 5.2, 0, 1);
       furrow = 0.5 + 0.5 * Math.sin(tx * 0.72 + tz * 0.28);
-      var lawn = new THREE.Color(0x62a832);
       tmpColor.copy(fieldLow).lerp(lawn, 0.45 + heightT * 0.35);
       tmpColor.lerp(soil, 0.05 + (1 - furrow) * 0.03);
       grit = 0.94 + ((Math.sin(tx * 7.1 + tz * 5.3) * 0.5 + 0.5) * 0.12);
@@ -830,7 +951,7 @@
     var grassMat = makePlantMaterial(GRASS_FRAG, PALETTE.grassBlade, PALETTE.grassStem, PALETTE.grassTip, { bend: 0.34 });
     var underMat = makePlantMaterial(GRASS_FRAG, PALETTE.fieldLow, PALETTE.grassStem, PALETTE.grassBlade, { bend: 0.22 });
     var carpetMat = makePlantMaterial(GRASS_FRAG, PALETTE.fieldLow, PALETTE.grassStem, PALETTE.grassBlade, { bend: 0.14 });
-    var flowerMat = makePlantMaterial(FLOWER_FRAG, 0xfbfaf6, PALETTE.grassStem, 0xf2c84a, { bend: 0.16 });
+    var flowerMat = makePlantMaterial(FLOWER_FRAG, PALETTE.flower, PALETTE.grassStem, PALETTE.flowerHead, { bend: 0.16 });
     underMat.uniforms.uTime = grassMat.uniforms.uTime;
     underMat.uniforms.uWindDir = grassMat.uniforms.uWindDir;
     underMat.uniforms.uSunDir = grassMat.uniforms.uSunDir;
@@ -894,19 +1015,202 @@
     world.add(pollen);
 
     var sunDirWorld = new THREE.Vector3();
+    var moonDirWorld = new THREE.Vector3();
+    var lightDirWorld = new THREE.Vector3();
+    var plantMaterials = [grassMat, underMat, carpetMat, flowerMat];
+    var paletteColorKeys = [
+      "sky",
+      "zenith",
+      "horizon",
+      "fog",
+      "soil",
+      "fieldLow",
+      "fieldHigh",
+      "lawn",
+      "grassStem",
+      "grassBlade",
+      "grassTip",
+      "flower",
+      "flowerHead",
+      "particle",
+      "sun",
+      "cloud",
+      "fill",
+      "rim",
+      "haze"
+    ];
+    var paletteColorKeySet = {};
+    var pcki;
+    for (pcki = 0; pcki < paletteColorKeys.length; pcki++) {
+      paletteColorKeySet[paletteColorKeys[pcki]] = true;
+    }
+
+    function blendPalettes(from, to, progress) {
+      var blended = {};
+      var key;
+      for (key in from) {
+        if (!Object.prototype.hasOwnProperty.call(from, key)) continue;
+        if (paletteColorKeySet[key]) {
+          blended[key] = lerpHex(from[key], to[key], progress);
+        } else {
+          blended[key] = THREE.MathUtils.lerp(from[key], to[key], progress);
+        }
+      }
+      return blended;
+    }
+
+    function repaintTerrain(palette) {
+      soil.setHex(palette.soil);
+      fieldLow.setHex(palette.fieldLow);
+      lawn.setHex(palette.lawn);
+      for (ti = 0; ti < terrainPos.count; ti++) {
+        ty = terrainPos.getY(ti);
+        heightT = THREE.MathUtils.clamp((ty + 2.2) / 5.2, 0, 1);
+        tx = terrainPos.getX(ti);
+        tz = terrainPos.getZ(ti);
+        furrow = 0.5 + 0.5 * Math.sin(tx * 0.72 + tz * 0.28);
+        tmpColor.copy(fieldLow).lerp(lawn, 0.45 + heightT * 0.35);
+        tmpColor.lerp(soil, 0.05 + (1 - furrow) * 0.03);
+        grit = 0.94 + ((Math.sin(tx * 7.1 + tz * 5.3) * 0.5 + 0.5) * 0.12);
+        tmpColor.multiplyScalar(grit);
+        terrainColors[ti * 3] = tmpColor.r;
+        terrainColors[ti * 3 + 1] = tmpColor.g;
+        terrainColors[ti * 3 + 2] = tmpColor.b;
+      }
+      terrainGeo.attributes.color.needsUpdate = true;
+    }
+
+    function setPlantColor(material, uniformName, color) {
+      material.uniforms[uniformName].value.setHex(color);
+    }
+
+    function applyPalette(palette) {
+      var i;
+      PALETTE = palette;
+      renderer.setClearColor(palette.sky, 1);
+      if (THREE.ACESFilmicToneMapping) {
+        renderer.toneMappingExposure = isSafariEngine() ? palette.exposure * 0.94 : palette.exposure;
+      }
+      scene.background.setHex(palette.sky);
+      scene.fog.color.setHex(lerpHex(palette.fog, palette.haze, 0.18));
+      scene.fog.near = palette.fogNear;
+      scene.fog.far = palette.fogFar;
+
+      hemi.color.setHex(palette.zenith);
+      hemi.groundColor.setHex(palette.soil);
+      hemi.intensity = palette.hemi;
+      ambient.intensity = palette.ambient;
+      sunLight.color.setHex(palette.sun);
+      sunLight.intensity = palette.sunIntensity;
+      fill.color.setHex(palette.fill);
+      fill.intensity = palette.fillIntensity;
+      rim.color.setHex(palette.rim);
+      rim.intensity = palette.rimIntensity;
+
+      skyMat.uniforms.uZenith.value.setHex(palette.zenith);
+      skyMat.uniforms.uHorizon.value.setHex(palette.horizon);
+      skyMat.uniforms.uHaze.value.setHex(palette.haze);
+      skyMat.uniforms.uSunGlow.value = palette.skyGlow;
+      skyMat.uniforms.uMoonGlow.value = palette.moonGlow;
+
+      for (i = 0; i < cloudMaterials.length; i++) {
+        cloudMaterials[i].uniforms.uZenith.value.setHex(palette.zenith);
+        cloudMaterials[i].uniforms.uHorizon.value.setHex(palette.horizon);
+        cloudMaterials[i].uniforms.uHaze.value.setHex(palette.haze);
+        cloudMaterials[i].uniforms.uTint.value.setHex(palette.cloud);
+        cloudMaterials[i].uniforms.uOpacity.value = palette.cloudOpacity;
+        cloudMaterials[i].uniforms.uSunGlow.value = palette.skyGlow;
+      }
+      clouds.visible = palette.cloudOpacity > 0.01;
+
+      for (i = 0; i < plantMaterials.length; i++) {
+        setPlantColor(plantMaterials[i], "uRimColor", palette.rim);
+        plantMaterials[i].uniforms.uDay.value = palette.skyGlow;
+      }
+      setPlantColor(grassMat, "uColorA", palette.grassBlade);
+      setPlantColor(grassMat, "uColorB", palette.grassStem);
+      setPlantColor(grassMat, "uColorHead", palette.grassTip);
+      setPlantColor(underMat, "uColorA", palette.fieldLow);
+      setPlantColor(underMat, "uColorB", palette.grassStem);
+      setPlantColor(underMat, "uColorHead", palette.grassBlade);
+      setPlantColor(carpetMat, "uColorA", palette.fieldLow);
+      setPlantColor(carpetMat, "uColorB", palette.grassStem);
+      setPlantColor(carpetMat, "uColorHead", palette.grassBlade);
+      setPlantColor(flowerMat, "uColorA", palette.flower);
+      setPlantColor(flowerMat, "uColorB", palette.grassStem);
+      setPlantColor(flowerMat, "uColorHead", palette.flowerHead);
+
+      pollen.material.color.setHex(palette.particle);
+      pollen.material.opacity = 0.55 * palette.skyGlow;
+      stars.material.color.setHex(palette.particle);
+      stars.material.opacity = 0.78 * palette.moonGlow;
+      stars.visible = palette.moonGlow > 0.01;
+      repaintTerrain(palette);
+    }
+
     function syncSkyDirections() {
       var i;
       sunAnchor.getWorldPosition(sunDirWorld);
+      moonAnchor.getWorldPosition(moonDirWorld);
       sunDirWorld.sub(camera.position).normalize();
+      moonDirWorld.sub(camera.position).normalize();
       skyMat.uniforms.uSunDir.value.copy(sunDirWorld);
-      grassMat.uniforms.uSunDir.value.copy(sunDirWorld);
+      skyMat.uniforms.uMoonDir.value.copy(moonDirWorld);
+      lightDirWorld
+        .copy(sunDirWorld)
+        .lerp(moonDirWorld, 1 - PALETTE.skyGlow)
+        .normalize();
+      for (i = 0; i < plantMaterials.length; i++) {
+        plantMaterials[i].uniforms.uSunDir.value.copy(lightDirWorld);
+      }
       for (i = 0; i < cloudMaterials.length; i++) {
         cloudMaterials[i].uniforms.uSunDir.value.copy(sunDirWorld);
       }
-      sunLight.position.copy(sunDirWorld).multiplyScalar(40);
-      rim.position.copy(sunDirWorld).multiplyScalar(-32);
+      sunLight.position.copy(lightDirWorld).multiplyScalar(40);
+      fill.position.copy(lightDirWorld).multiplyScalar(-18);
+      rim.position.copy(lightDirWorld).multiplyScalar(-32);
       rim.position.y = Math.max(8, Math.abs(rim.position.y));
     }
+
+    function setCelestialState(theme) {
+      if (theme === "dark") {
+        sunAnchor.position.copy(sunExit);
+        moonAnchor.position.copy(moonPeak);
+      } else {
+        sunAnchor.position.copy(sunPeak);
+        moonAnchor.position.copy(moonExit);
+      }
+    }
+
+    function onThemeTransition(event) {
+      var detail = event.detail || {};
+      var from = detail.from === "dark" ? DARK_PALETTE : LIGHT_PALETTE;
+      var to = detail.to === "dark" ? DARK_PALETTE : LIGHT_PALETTE;
+      var progress = THREE.MathUtils.clamp(Number(detail.progress) || 0, 0, 1);
+      var palette = blendPalettes(from, to, progress);
+      applyPalette(palette);
+      // The outgoing body sets below the horizon; the incoming body drops in from above.
+      if (detail.to === "dark") {
+        sunAnchor.position.lerpVectors(sunPeak, sunExit, progress);
+        moonAnchor.position.lerpVectors(moonEntry, moonPeak, progress);
+      } else {
+        sunAnchor.position.lerpVectors(sunEntry, sunPeak, progress);
+        moonAnchor.position.lerpVectors(moonPeak, moonExit, progress);
+      }
+      syncSkyDirections();
+    }
+
+    function onThemeChange(event) {
+      var theme = event.detail && event.detail.theme === "dark" ? "dark" : "light";
+      applyPalette(theme === "dark" ? DARK_PALETTE : LIGHT_PALETTE);
+      setCelestialState(theme);
+      syncSkyDirections();
+    }
+
+    document.addEventListener("rium-theme-transition", onThemeTransition);
+    document.addEventListener("rium-theme-change", onThemeChange);
+    setCelestialState(initialTheme);
+    applyPalette(PALETTE);
     syncSkyDirections();
 
     function faceCloudsToCamera() {
@@ -937,6 +1241,36 @@
       visible = !document.hidden;
     });
 
+    function updateHomeLoading(progress, label) {
+      var percent = Math.round(THREE.MathUtils.clamp(progress, 0, 1) * 100);
+      var bar = document.getElementById("home-loading-bar");
+      var percentEl = document.getElementById("home-loading-percent");
+      var labelEl = document.getElementById("home-loading-label");
+      if (bar) bar.style.width = percent + "%";
+      if (percentEl) percentEl.textContent = percent + "%";
+      if (labelEl && label) labelEl.textContent = label;
+    }
+
+    function finishHomeLoading() {
+      if (isGuestbook && !commentsReady) {
+        updateHomeLoading(1, "正在等待留言加载…");
+        return;
+      }
+      var loader = document.getElementById("home-loading");
+      document.documentElement.classList.remove("home-is-booting", "subpage-is-booting");
+      updateHomeLoading(1, isGuestbook ? "留言已加载" : "场景已就绪");
+      if (!loader) return;
+      loader.classList.add("is-done");
+      window.setTimeout(function () {
+        if (loader.parentNode) loader.parentNode.removeChild(loader);
+      }, 850);
+    }
+
+    document.addEventListener("rium-comments-ready", function () {
+      commentsReady = true;
+      if (!bootMode) finishHomeLoading();
+    });
+
     var running = true;
     function animate(t) {
       if (!running) return;
@@ -953,19 +1287,58 @@
           pp.setY(pi, y > 8 ? 1.2 : y);
         }
         pp.needsUpdate = true;
-        camera.position.x += (HOME_POS.x + mouseX * 1.6 - camera.position.x) * 0.035;
-        camera.position.y += (HOME_POS.y + mouseY * 0.8 - camera.position.y) * 0.035;
-        camera.position.z += (HOME_POS.z - camera.position.z) * 0.035;
+
+        if (bootMode) {
+          if (bootStart === null) bootStart = t;
+          var bootProgress = THREE.MathUtils.clamp(
+            (t - bootStart) / bootDuration,
+            0,
+            1
+          );
+          var bootEase = 1 - Math.pow(1 - bootProgress, 3);
+          var bootLabel =
+            bootProgress < 0.24
+              ? "正在贴近地平线…"
+              : bootProgress < 0.56
+                ? "正在拉开镜头…"
+                : bootProgress < 0.84
+                  ? "正在展开场景…"
+                  : "即将进入主页…";
+
+          camera.position.lerpVectors(bootFromPos, homePos, bootEase);
+          bootLook.lerpVectors(bootFromLook, homeLook, bootEase);
+          camera.lookAt(bootLook);
+          camera.fov = THREE.MathUtils.lerp(32, 48, bootEase);
+          camera.updateProjectionMatrix();
+          updateHomeLoading(bootProgress, bootLabel);
+
+          if (bootProgress >= 1) {
+            bootMode = false;
+            camera.position.copy(homePos);
+            camera.lookAt(homeLook);
+            camera.fov = 48;
+            camera.updateProjectionMatrix();
+            finishHomeLoading();
+          }
+        } else {
+          camera.position.x += (HOME_POS.x + mouseX * 1.6 - camera.position.x) * 0.035;
+          camera.position.y += (HOME_POS.y + mouseY * 0.8 - camera.position.y) * 0.035;
+          camera.position.z += (HOME_POS.z - camera.position.z) * 0.035;
+          camera.fov = 48;
+          camera.lookAt(homeLook);
+        }
       } else {
-        camera.position.set(HOME_POS.x, HOME_POS.y, HOME_POS.z);
+        camera.position.copy(homePos);
+        camera.fov = 48;
+        camera.lookAt(homeLook);
       }
-      camera.lookAt(HOME_LOOK.x, HOME_LOOK.y, HOME_LOOK.z);
       faceCloudsToCamera();
       syncSkyDirections();
       renderer.render(scene, camera);
     }
 
     requestAnimationFrame(animate);
+    if (reducedMotion) finishHomeLoading();
   }
 
   if (document.readyState === "loading") {

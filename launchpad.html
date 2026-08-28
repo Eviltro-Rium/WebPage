@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Launch Pad · 节拍器" />
     <title>Launch Pad · Rium</title>
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var theme = "light";
+        try {
+          theme = window.localStorage.getItem("rium-theme") === "dark" ? "dark" : "light";
+        } catch (e) { /* ignore storage failures */ }
+        root.setAttribute("data-theme", theme);
+        root.style.colorScheme = theme;
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,8 +28,6 @@
     <header class="site-header">
       <a class="logo" href="index.html">Rium</a>
       <nav class="nav" aria-label="主导航">
-        <a href="index.html#about">关于</a>
-        <a href="index.html#gallery">相册</a>
         <a href="projects.html">作品</a>
         <a href="materials.html">学习资料</a>
         <a href="launchpad.html" aria-current="page">Launch Pad</a>
@@ -26,6 +35,17 @@
         <a href="index.html#contact">联系</a>
         <a href="guestbook.html">留言</a>
       </nav>
+      <button
+        class="theme-toggle"
+        type="button"
+        data-theme-toggle
+        aria-label="切换至深色主题"
+        title="切换至深色主题"
+        aria-pressed="false"
+      >
+        <span class="theme-toggle-icon" aria-hidden="true">🌙</span>
+        <span class="theme-toggle-label">深色</span>
+      </button>
     </header>
 
     <main class="main-launchpad">
@@ -611,6 +631,7 @@
 
     </script>
     <script src="js/bg-orbs.js"></script>
+    <script src="js/theme.js"></script>
     <script src="js/cursor.js"></script>
   </body>
 </html>

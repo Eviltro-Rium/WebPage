@@ -14,18 +14,25 @@
   var ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  // Keep the site's original sky / cyan / teal / green palette.
-  var palette = [
+  // Keep a matching palette for both site themes.
+  var lightPalette = [
     { r: 56, g: 189, b: 248 },
     { r: 34, g: 211, b: 238 },
     { r: 45, g: 212, b: 191 },
     { r: 74, g: 222, b: 128 },
   ];
+  var darkPalette = [
+    { r: 68, g: 132, b: 188 },
+    { r: 55, g: 123, b: 164 },
+    { r: 60, g: 151, b: 139 },
+    { r: 75, g: 155, b: 119 },
+  ];
+  var themeMix = document.documentElement.getAttribute("data-theme") === "dark" ? 1 : 0;
 
-  // Homepage particles stay white; the larger ambient orbs retain the site palette.
   var particlePalette = [
     { r: 255, g: 255, b: 255, minAlpha: 0.34, maxAlpha: 0.58 },
   ];
+  var darkParticleColor = { r: 194, g: 225, b: 247 };
 
   var width = 0;
   var height = 0;
@@ -39,6 +46,14 @@
     return min + Math.random() * (max - min);
   }
 
+  function blendColor(light, dark, amount) {
+    return {
+      r: Math.round(light.r + (dark.r - light.r) * amount),
+      g: Math.round(light.g + (dark.g - light.g) * amount),
+      b: Math.round(light.b + (dark.b - light.b) * amount),
+    };
+  }
+
   function makeOrb() {
     return {
       x: random(0, width),
@@ -49,7 +64,7 @@
       phase: random(0, Math.PI * 2),
       wobble: random(12, 34),
       alpha: isHomepage ? random(0.055, 0.11) : random(0.04, 0.075),
-      color: palette[Math.floor(Math.random() * palette.length)],
+      colorIndex: Math.floor(Math.random() * lightPalette.length),
     };
   }
 
@@ -112,7 +127,11 @@
     var x = orb.x + Math.sin(time * 0.00022 + orb.phase) * orb.wobble;
     var y = orb.y + Math.cos(time * 0.00018 + orb.phase) * orb.wobble;
     var radius = orb.radius * pulse;
-    var color = orb.color;
+    var color = blendColor(
+      lightPalette[orb.colorIndex],
+      darkPalette[orb.colorIndex],
+      themeMix
+    );
     var gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
 
     gradient.addColorStop(
@@ -138,7 +157,11 @@
     var y = particle.y + Math.sin(time * 0.00065 + particle.phase) * particle.sway;
     var shimmer = 0.72 + Math.sin(time * 0.001 + particle.phase) * 0.28;
     var alpha = particle.alpha * shimmer;
-    var color = particle.color;
+    var color = blendColor(
+      particle.color,
+      darkParticleColor,
+      themeMix
+    );
 
     ctx.shadowBlur = particle.size * 2.8;
     ctx.shadowColor =
@@ -159,6 +182,16 @@
 
     ctx.globalCompositeOperation = "source-over";
     for (var j = 0; j < particles.length; j += 1) drawParticle(particles[j], time, delta);
+  }
+
+  function onThemeTransition(event) {
+    var detail = event.detail || {};
+    var progress = Math.max(0, Math.min(1, Number(detail.progress) || 0));
+    themeMix = detail.to === "dark" ? progress : 1 - progress;
+  }
+
+  function onThemeChange(event) {
+    themeMix = event.detail && event.detail.theme === "dark" ? 1 : 0;
   }
 
   function animate(time) {
@@ -183,6 +216,8 @@
 
   window.addEventListener("resize", resize, { passive: true });
   document.addEventListener("visibilitychange", start);
+  document.addEventListener("rium-theme-transition", onThemeTransition);
+  document.addEventListener("rium-theme-change", onThemeChange);
 
   if (typeof motionQuery.addEventListener === "function") {
     motionQuery.addEventListener("change", start);
