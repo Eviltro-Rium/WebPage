@@ -116,13 +116,13 @@ function parseSegments(text, defaultColor) {
 }
 
 function cardId(card) {
-    return `${card.color}_${card.value}_${card.isBlack}_${card.isWhite}_${card.potion}_${card.magic}_${card.greenMagic}_${card.magicColor || ''}_${card.purify}_${card.superPurify}_${card.swapHand}_${card.shuffleToDeck}_${card.drawThree}`;
+    return `${card.color}_${card.value}_${card.isBlack}_${card.isWhite}_${card.potion}_${card.magic}_${card.greenMagic}_${card.magicColor || ''}_${card.purify}_${card.superPurify}_${card.swapHand}_${card.shuffleToDeck}_${card.drawThree}_${!!card.trophyWhite}_${card.trophyName || ''}`;
 }
 
 /** 匹配用手牌身份（忽略 chosenColor，避免 AI 出牌染色后找不到源牌） */
 function cardMatchKey(card) {
     if (!card) return '';
-    return `${card.color}_${card.value}_${!!card.isBlack}_${!!card.isWhite}_${!!card.potion}_${!!card.magic}_${!!card.greenMagic}_${card.magicColor || ''}_${!!card.purify}_${!!card.superPurify}_${!!card.swapHand}_${!!card.shuffleToDeck}_${!!card.drawThree}`;
+    return `${card.color}_${card.value}_${!!card.isBlack}_${!!card.isWhite}_${!!card.potion}_${!!card.magic}_${!!card.greenMagic}_${card.magicColor || ''}_${!!card.purify}_${!!card.superPurify}_${!!card.swapHand}_${!!card.shuffleToDeck}_${!!card.drawThree}_${!!card.trophyWhite}_${card.trophyName || ''}`;
 }
 
 function animEaseInOut(t) {
@@ -944,7 +944,8 @@ class GameUI {
                 const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.png`);
                 const title = b.label || ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', guard: '守护', fly: '飞翔', lush: '茂盛', crit: '暴击', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
                 const animCls = !prevSet.has(b.key) ? ' icon-appear' : '';
-                html += `<div class="buff-icon-wrap ${b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.colorClass || ''}${animCls}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}${b.label ? `<span class="buff-name">${b.label}</span>` : ''}</div>`;
+                const specialClass = b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.key === 'bind' ? 'bind-mark' : b.colorClass || '';
+                html += `<div class="buff-icon-wrap ${specialClass}${animCls}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}${b.label ? `<span class="buff-name">${b.label}</span>` : ''}</div>`;
             }
         }
         const removed = [...prevSet].filter(k => !currentKeys.includes(k));
@@ -1217,7 +1218,7 @@ class GameUI {
         if (!s.isAdventure || !advEngine) { bar.style.display = 'none'; return; }
         const snap = advEngine.snapshot();
         const consumables = snap.consumables || [];
-        const slots = snap.consumableSlots || 9;
+        const slots = snap.consumableSlots || 6;
         bar.style.display = 'flex';
         const inAttackMod = s.phase === 'ATTACK_MOD_CHOICE';
 

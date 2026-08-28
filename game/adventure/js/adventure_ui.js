@@ -92,6 +92,8 @@
         wrap.appendChild(this._buildRewardPage(snap));
       } else if (snap.phase === window.AdventurePhase.BEAST_DISCARD) {
         wrap.appendChild(this._buildBeastDiscardPage(snap));
+      } else if (snap.phase === window.AdventurePhase.ITEM_DISCARD) {
+        wrap.appendChild(this._buildItemDiscardPage(snap));
       } else {
         wrap.appendChild(this._buildMap(snap));
       }
@@ -222,6 +224,22 @@
       return '无';
     }
 
+    _trophyCardMarkup(name, width = 54, height = 78) {
+      return '<span class="adv-scene-trophy-card" data-trophy-card="' + name + '" data-trophy-card-width="' + width + '" data-trophy-card-height="' + height + '"></span>';
+    }
+
+    _mountTrophyCards(root) {
+      if (!root || !window.renderCard || !window.AdventureDeck) return;
+      root.querySelectorAll('[data-trophy-card]').forEach(slot => {
+        const card = window.AdventureDeck.trophyWhite(slot.getAttribute('data-trophy-card'));
+        const width = Number(slot.getAttribute('data-trophy-card-width')) || 54;
+        const height = Number(slot.getAttribute('data-trophy-card-height')) || 78;
+        const canvas = window.renderCard(card, width, height, false);
+        canvas.classList.add('adv-scene-trophy-card-canvas');
+        slot.replaceWith(canvas);
+      });
+    }
+
     _roomRewardRowHtml(loot) {
       if (!loot) return '<div class="adv-settle-row">无奖励</div>';
       if (loot.kind === 'gold') {
@@ -237,8 +255,9 @@
         if (!list.length) return '<div class="adv-settle-row">道具：无</div>';
         return list.map(n => {
           const def = window.AdventureRegistry && window.AdventureRegistry.getItem(n);
-          const icon = def && def.icon ? '<img src="' + def.icon + '" class="adv-settle-icon" alt="">' : '';
-          return '<div class="adv-settle-row">' + icon + '道具：' + (def ? def.displayName : n) + '</div>';
+          const isTrophy = def && def.kind === 'trophyWhite';
+          const icon = isTrophy ? this._trophyCardMarkup(n, 48, 70) : (def && def.icon ? '<img src="' + def.icon + '" class="adv-settle-icon" alt="">' : '');
+          return '<div class="adv-settle-row' + (isTrophy ? ' adv-settle-trophy-row' : '') + '">' + icon + (isTrophy ? '战利白卡：' : '道具：') + (def ? def.displayName : n) + '</div>';
         }).join('');
       }
       return '<div class="adv-settle-row">' + this._stashedLootLabel(loot) + '</div>';
@@ -257,6 +276,7 @@
           '<button class="adv-btn adv-btn-primary" id="adv-room-claim">领取</button>' +
           '<button class="adv-btn" id="adv-room-defer">留在房间</button>' +
         '</div>';
+      this._mountTrophyCards(page);
       return page;
     }
 
@@ -272,7 +292,8 @@
         this._buildBuffBar(snap) +
         '<div class="adv-currency"><img src="' + AC.GOLD_ICON + '" class="adv-gold-icon" alt="金币">金币：<b>' + snap.currency.gold + '</b></div>' +
         this._buildBeastTokenDisplay(snap) +
-        this._buildItemPanel(snap);
+        this._buildItemPanel(snap) +
+        this._buildTrophyBackpack(snap);
 
       if (snap.playerPile) {
         html += '<div class="adv-deck-info">牌库' + snap.playerPile.deckCount + ' | 弃牌' + snap.playerPile.discardCount + '</div>';
@@ -362,7 +383,7 @@
       let html = '';
 
       const consumables = snap.consumables || [];
-      const slots = snap.consumableSlots || 9;
+      const slots = snap.consumableSlots || 6;
       const onMap = !this._isCombatPhase(snap.phase);
       const cells = [];
       for (let i = 0; i < slots; i++) {
@@ -390,6 +411,29 @@
       html += '<div class="adv-item-section"><div class="adv-item-title">道具 (' + consumables.length + '/' + slots + ')</div><div class="adv-item-grid">' + cells.join('') + '</div></div>';
 
       return html;
+    }
+
+    _buildItemDiscardPage(snap) {
+      const page = document.createElement('div');
+      page.className = 'adv-reward-page';
+      const items = snap.consumables || [];
+      let html = '<div class="adv-reward-page-title">道具槽超过上限</div>';
+      html += '<div class="adv-settle-section-title">请舍弃 ' + snap.pendingItemDiscard + ' 个道具（保留 ' + (snap.consumableSlots || 6) + ' 个）</div>';
+      html += '<div class="adv-item-grid adv-item-discard-grid">';
+      items.forEach((item, index) => {
+        const icon = item.icon ? '<img class="adv-item-icon" src="' + item.icon + '" alt="' + item.displayName + '">' : '';
+        html += '<button type="button" class="adv-item-slot filled adv-item-discard-slot" data-item-discard="' + index + '" title="丢弃 ' + item.displayName + '">' + icon + '<div class="adv-item-name">' + item.displayName + '</div><span class="adv-item-discard-label">丢弃</span></button>';
+      });
+      html += '</div>';
+      page.innerHTML = html;
+      return page;
+    }
+
+    _buildTrophyBackpack(snap) {
+      const cards = snap.trophyWhiteCards || [];
+      return '<div class="adv-trophy-backpack-section">' +
+        '<button type="button" class="adv-trophy-backpack-btn" id="adv-trophy-pack" title="查看和丢弃已获得的战利白卡">' +
+        '<span class="adv-trophy-backpack-icon">◇</span><span>战利白卡背包</span><b>' + cards.length + '</b></button></div>';
     }
 
     _buildAccessoryColumn(snap) {
@@ -430,12 +474,16 @@
         let slotCls = '';
         if (isBeastSlot) slotCls += ' adv-shop-slot-beast';
         if (isAccessorySlot) slotCls += ' adv-shop-slot-accessory';
+        if (item && item.kind === 'trophyWhite') slotCls += ' adv-shop-slot-trophy';
         if (item) {
           const price = item.price || 0;
           const tag = isBeastSlot ? '兽元' : (isAccessorySlot ? '配饰' : '');
+          const icon = item.kind === 'trophyWhite'
+            ? this._trophyCardMarkup(item.name, 54, 78)
+            : (item.icon ? '<img class="adv-shop-slot-icon" src="' + item.icon + '" alt="">' : '');
           slotsHtml += '<button type="button" class="adv-shop-slot filled' + slotCls + (isSel ? ' selected' : '') + '" data-shop-slot="' + i + '" title="' + (item.description || '') + '">' +
             (tag ? '<div class="adv-shop-slot-tag">' + tag + '</div>' : '') +
-            (item.icon ? '<img class="adv-shop-slot-icon" src="' + item.icon + '" alt="">' : '') +
+            icon +
             '<div class="adv-shop-slot-name">' + item.displayName + '</div>' +
             '<div class="adv-shop-slot-desc">' + (item.description || '') + '</div>' +
             '<div class="adv-shop-slot-price">' + price + ' 金币</div>' +
@@ -467,6 +515,7 @@
           '<button class="adv-btn" id="adv-shop-refresh"' + (canRefresh && gold >= refreshCost ? '' : ' disabled') + '>刷新 · ' + refreshCost + '金币</button>' +
           '<button class="adv-btn" id="adv-leave-shop">离开商店</button>' +
         '</div>';
+      this._mountTrophyCards(page);
       return page;
     }
 
@@ -507,9 +556,20 @@
         }
       }
 
-      const canTrade = selected != null && slots[selected];
+      const trophy = snap.roomInfo && snap.roomInfo.blacksmithTrophy;
+      const trophySelected = selected === 'trophy';
+      const trophyHtml = trophy
+        ? '<button type="button" class="adv-shop-slot filled adv-shop-slot-trophy' + (trophySelected ? ' selected' : '') + '" data-blacksmith-trophy="1" title="' + (trophy.description || '') + '">' +
+          '<div class="adv-shop-slot-tag">战利白卡</div>' +
+          this._trophyCardMarkup(trophy.name, 54, 78) +
+          '<div class="adv-shop-slot-name">' + trophy.displayName + '</div>' +
+          '<div class="adv-shop-slot-desc">' + (trophy.description || '') + '</div>' +
+          '<div class="adv-shop-slot-trade">' + this._beastCostIconsHtml(trophy.beastCost) + '<span class="adv-shop-slot-trade-text">' + (trophy.beastCostText || '') + '</span></div></button>'
+        : '<button type="button" class="adv-shop-slot empty adv-shop-slot-trophy" data-blacksmith-trophy="1"><div class="adv-shop-slot-tag">战利白卡</div><div class="adv-shop-slot-empty-label">sold-out</div><div class="adv-shop-slot-trade adv-shop-slot-trade-empty">刷新可补货</div></button>';
+
+      const canTrade = Number.isInteger(selected) && !!slots[selected];
       const canPayTrade = canTrade && this.eng.s.currency.canPayBeastCost((slots[selected] && slots[selected].beastCost) || []);
-      const canRefresh = selected != null;
+      const canRefresh = Number.isInteger(selected);
       const refreshCost = 2;
 
       const beastSummary = ['ben', 'cao', 'shui', 'huo', 'wuneng'].map(k =>
@@ -540,13 +600,15 @@
         '<div class="adv-shop-page-gold"><img src="' + AC.GOLD_ICON + '" class="adv-gold-icon" alt="">金币：<b>' + gold + '</b></div>' +
         '<div class="adv-blacksmith-tokens">兽元：' + beastSummary + ' <span class="adv-bs-hint">（万能可替代）</span></div>' +
         '<div class="adv-shop-slots adv-blacksmith-slots">' + slotsHtml + '</div>' +
-        '<div class="adv-shop-page-hint">3个配饰槽，用兽元兑换；每槽可花2金币刷新（含空槽）。智慧项链3水1本1草，火焰之拳4火1本，兽元袋3本2草，生命核心3草1水1本，冷冻激光3水1万能，能量盾3草2本，正义之锤2火2水1本，净化水晶2草2水1本，恶魔契约1火1水1草1万能。</div>' +
+        '<div class="adv-blacksmith-trophy-stall"><div class="adv-blacksmith-stall-title">战利白卡摊位</div>' + trophyHtml + '<div class="adv-shop-page-actions"><button class="adv-btn adv-btn-primary" id="adv-blacksmith-trophy-buy"' + (trophy && this.eng.s.currency.canPayBeastCost(trophy.beastCost || []) ? '' : ' disabled') + '>锻造</button><button class="adv-btn" id="adv-blacksmith-trophy-refresh"' + (gold >= refreshCost ? '' : ' disabled') + '>刷新 · 2金币</button></div></div>' +
+        '<div class="adv-shop-page-hint">3个配饰槽，用兽元兑换；另设战利白卡摊位（灼伤2火、刺伤2本、冰冻2水、守护1本1草）。所有战利白卡商店售价均为5金币。每槽可花2金币刷新（含空槽）。智慧项链3水1本1草，火焰之拳4火1本，兽元袋3本2草，生命核心3草1水1本，冷冻激光3水1万能，能量盾3草2本，正义之锤2火2水1本，净化水晶2草2水1本，恶魔契约1火1水1草1万能。</div>' +
         recycleHtml +
         '<div class="adv-shop-page-actions">' +
           '<button class="adv-btn adv-btn-primary" id="adv-blacksmith-trade"' + (canPayTrade ? '' : ' disabled') + '>兑换</button>' +
           '<button class="adv-btn" id="adv-blacksmith-refresh"' + (canRefresh && gold >= refreshCost ? '' : ' disabled') + '>刷新 · ' + refreshCost + '金币</button>' +
           '<button class="adv-btn" id="adv-leave-blacksmith">离开铁匠铺</button>' +
         '</div>';
+      this._mountTrophyCards(page);
       return page;
     }
 
@@ -643,7 +705,8 @@
 
     bindActions() {
       this.container.addEventListener('click', (e) => {
-        const id = e.target.id;
+        const action = e.target.closest('button');
+        const id = action ? action.id : e.target.id;
 
         const useBtn = e.target.closest('[data-use-index]');
         const useIndex = useBtn ? parseInt(useBtn.getAttribute('data-use-index'), 10) : -1;
@@ -656,12 +719,24 @@
         const bsSlot = bsSlotBtn ? parseInt(bsSlotBtn.getAttribute('data-blacksmith-slot'), 10) : -1;
         const recycleBtn = e.target.closest('[data-recycle-index]');
         const recycleIndex = recycleBtn ? parseInt(recycleBtn.getAttribute('data-recycle-index'), 10) : -1;
+        const itemDiscardBtn = e.target.closest('[data-item-discard]');
+        const itemDiscardIndex = itemDiscardBtn ? parseInt(itemDiscardBtn.getAttribute('data-item-discard'), 10) : -1;
         const testItemBtn = e.target.closest('[data-test-item]');
+        const testTrophyBtn = e.target.closest('[data-test-trophy]');
         const testAccessoryBtn = e.target.closest('[data-test-accessory]');
         const testModeBtn = e.target.closest('[data-test-mode]');
         const testOpponentBtn = e.target.closest('[data-test-opponent]');
         if (id === 'adv-test-cancel' || id === 'adv-test-home') {
           window.location.href = '../index.html';
+          return;
+        }
+        if (id === 'adv-trophy-pack') {
+          this._showTrophyBackpack();
+          return;
+        }
+        if (itemDiscardBtn) {
+          this.eng.discardConsumable(itemDiscardIndex);
+          this.render();
           return;
         }
         if (testItemBtn && this._test) {
@@ -670,6 +745,14 @@
           if (at >= 0) this._test.items.splice(at, 1);
           else if (this._test.items.length < 3) this._test.items.push(name);
           else { this._toast('道具最多选择 3 个'); return; }
+          this._renderTestLoadout();
+          return;
+        }
+        if (testTrophyBtn && this._test) {
+          const name = testTrophyBtn.getAttribute('data-test-trophy');
+          const at = this._test.trophyWhiteCards.indexOf(name);
+          if (at >= 0) this._test.trophyWhiteCards.splice(at, 1);
+          else this._test.trophyWhiteCards.push(name);
           this._renderTestLoadout();
           return;
         }
@@ -734,7 +817,7 @@
           if (!this.eng.claimRoomReward()) {
             const err = this.eng._lastRewardError;
             if (err && err.reason === 'accessoryFull') this._showAlertDialog('无法拾取', err.message);
-            else this._toast('领取失败（道具槽可能已满）');
+            else this._toast('领取失败');
           }
           this.render();
         }
@@ -789,6 +872,20 @@
           const sel = this.eng.s.blacksmithSelectedSlot;
           if (sel == null) { this._toast('请先选择槽位'); return; }
           const result = this.eng.refreshBlacksmithSlot(sel);
+          if (!result.ok) this._toast(result.message || '刷新失败');
+          this.render();
+        }
+        else if (e.target.closest('[data-blacksmith-trophy]')) {
+          this.eng.s.blacksmithSelectedSlot = 'trophy';
+          this.render();
+        }
+        else if (id === 'adv-blacksmith-trophy-buy') {
+          const result = this.eng.buyBlacksmithTrophy();
+          if (!result.ok) this._toast(result.message || '锻造失败');
+          this.render();
+        }
+        else if (id === 'adv-blacksmith-trophy-refresh') {
+          const result = this.eng.refreshBlacksmithTrophy();
           if (!result.ok) this._toast(result.message || '刷新失败');
           this.render();
         }
@@ -933,7 +1030,7 @@
     }
 
     startTest(characterName) {
-      this._test = { characterName, items: [], accessories: [], mode: null, opponents: [], running: false, result: null };
+      this._test = { characterName, items: [], trophyWhiteCards: [], accessories: [], mode: null, opponents: [], running: false, result: null };
       const bg = document.getElementById('castle-bg');
       if (bg) bg.style.display = 'block';
       this._renderTestLoadout();
@@ -945,23 +1042,30 @@
     }
 
     _testItemCard(def, selected, attr) {
-      const icon = def.icon ? '<img src="' + def.icon + '" alt="" class="adv-test-item-icon">' : '<span class="adv-test-item-icon adv-test-item-fallback">◆</span>';
+      const icon = def.kind === 'trophyWhite'
+        ? this._trophyCardMarkup(def.name, 46, 68)
+        : (def.icon ? '<img src="' + def.icon + '" alt="" class="adv-test-item-icon">' : '<span class="adv-test-item-icon adv-test-item-fallback">◆</span>');
       return '<button type="button" class="adv-test-item' + (selected ? ' selected' : '') + '" ' + attr + '="' + def.name + '" title="' + (def.description || '') + '">' + icon + '<span>' + def.displayName + '</span></button>';
     }
 
     _renderTestLoadout() {
       if (!this._test) return;
       const items = this._testItemDefs('consumable');
+      const trophies = this._testItemDefs('trophyWhite');
       const accessories = this._testItemDefs('accessory');
       let html = '<div class="adv-test-shell"><div class="adv-test-header"><div><div class="adv-test-kicker">COMBAT LAB</div><h2>冒险测试 · ' + this._test.characterName + '</h2><p>选择本次测试携带的资源，不会写入正式冒险存档。</p></div><button type="button" class="adv-test-link" id="adv-test-cancel">返回主页</button></div>';
       html += '<section class="adv-test-section"><div class="adv-test-section-head"><h3>道具</h3><span>' + this._test.items.length + ' / 3</span></div><div class="adv-test-item-grid">';
       items.forEach(def => { html += this._testItemCard(def, this._test.items.includes(def.name), 'data-test-item'); });
+      html += '</div></section>';
+      html += '<section class="adv-test-section adv-test-trophy-section"><div class="adv-test-section-head"><h3>战利白卡</h3><span>' + this._test.trophyWhiteCards.length + ' 张 · 不占道具槽</span></div><p class="adv-test-muted">开局额外加入手牌，可在战斗中反复抽取。</p><div class="adv-test-item-grid">';
+      trophies.forEach(def => { html += this._testItemCard(def, this._test.trophyWhiteCards.includes(def.name), 'data-test-trophy'); });
       html += '</div></section>';
       html += '<section class="adv-test-section"><div class="adv-test-section-head"><h3>配饰</h3><span>' + this._test.accessories.length + ' / 2</span></div><div class="adv-test-item-grid">';
       accessories.forEach(def => { html += this._testItemCard(def, this._test.accessories.includes(def.name), 'data-test-accessory'); });
       html += '</div></section>';
       html += '<div class="adv-test-actions"><button type="button" class="adv-btn adv-btn-primary" id="adv-test-loadout-confirm">确认配置</button></div></div>';
       this.container.innerHTML = html;
+      this._mountTrophyCards(this.container);
     }
 
     _renderTestMode() {
@@ -999,7 +1103,7 @@
       const mode = this._test.mode;
       const opponents = this._test.opponents.slice();
       const map = window.AdventureMap.fromGrid([[0, 1, 2]]);
-      this.eng.start(map, this._test.characterName, { consumables: this._test.items, accessories: this._test.accessories, stage: 1, scene: 'castle' });
+      this.eng.start(map, this._test.characterName, { consumables: this._test.items, trophyWhiteCards: this._test.trophyWhiteCards, accessories: this._test.accessories, stage: 1, scene: 'castle' });
       const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
       const initialState = {
         playerState: clone(this.eng.s.player),
@@ -1125,6 +1229,30 @@
         });
       });
       return page;
+    }
+
+    _showTrophyBackpack() {
+      if (document.getElementById('adv-trophy-backpack-dialog')) return;
+      const cards = (this.eng.snapshot() && this.eng.snapshot().trophyWhiteCards) || [];
+      const overlay = document.createElement('div');
+      overlay.id = 'adv-trophy-backpack-dialog';
+      overlay.className = 'dialog-overlay';
+      const rows = cards.length ? cards.map((card, index) =>
+        '<div class="adv-trophy-pack-row"><div class="adv-trophy-pack-card">' + this._trophyCardMarkup(card.name, 46, 68) + '<div><b>' + card.displayName + '</b><small>' + (card.description || '') + '</small></div></div><button class="adv-btn adv-trophy-pack-discard" data-trophy-discard="' + index + '">丢弃</button></div>'
+      ).join('') : '<div class="adv-trophy-pack-empty">尚未获得战利白卡</div>';
+      overlay.innerHTML = '<div class="dialog-box adv-trophy-pack-dialog"><div class="dialog-title">战利白卡背包</div><div class="dialog-body adv-trophy-pack-list">' + rows + '</div><div class="dialog-buttons"><button class="adv-btn adv-btn-primary" id="adv-trophy-pack-close">关闭</button></div></div>';
+      document.body.appendChild(overlay);
+      this._mountTrophyCards(overlay);
+      const close = () => overlay.remove();
+      overlay.querySelector('#adv-trophy-pack-close').addEventListener('click', close);
+      overlay.querySelectorAll('[data-trophy-discard]').forEach(btn => btn.addEventListener('click', () => {
+        const result = this.eng.discardTrophyWhiteCard(Number(btn.getAttribute('data-trophy-discard')));
+        if (!result.ok) return;
+        close();
+        this.render();
+        this._showTrophyBackpack();
+      }));
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
     }
 
     _showConfirmDialog(title, body, onConfirm) {

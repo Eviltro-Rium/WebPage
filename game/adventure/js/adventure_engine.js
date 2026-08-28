@@ -14,6 +14,7 @@
   const SHOP_SLOT_COUNT = 6;
   const SHOP_REFRESH_COST = 2;
   const SHOP_ACCESSORY_PRICE = 15;
+  const CONSUMABLE_SLOT_COUNT = 6;
 
   const Phase = {
     IDLE:        'ADVENTURE_IDLE',
@@ -25,6 +26,7 @@
     NPC_TURN:    'ADVENTURE_NPC_TURN',
     BEAST_CHOICE:'ADVENTURE_BEAST_CHOICE',
     BEAST_DISCARD:'ADVENTURE_BEAST_DISCARD',
+    ITEM_DISCARD: 'ADVENTURE_ITEM_DISCARD',
     COMBAT_SETTLE:'ADVENTURE_COMBAT_SETTLE',
     REWARD:      'ADVENTURE_REWARD',
     SHOP:        'ADVENTURE_SHOP',
@@ -43,6 +45,7 @@
     ADVENTURE_NPC_TURN:    '敌方回合',
     ADVENTURE_BEAST_CHOICE:'选择兽元',
     ADVENTURE_BEAST_DISCARD:'舍弃兽元',
+    ADVENTURE_ITEM_DISCARD:'舍弃道具',
     ADVENTURE_COMBAT_SETTLE:'战斗结算',
     ADVENTURE_REWARD:      '领取奖励',
     ADVENTURE_SHOP:        '商店',
@@ -100,6 +103,7 @@
         currency: new window.AdventureCurrency(),
         inventory: opts.inventory ? opts.inventory.slice() : [],
         consumables: opts.consumables ? opts.consumables.slice() : [],
+        trophyWhiteCards: opts.trophyWhiteCards ? opts.trophyWhiteCards.slice() : [],
         accessories: opts.accessories ? opts.accessories.slice() : [],
         playerPile: null,
         discardTop: null,
@@ -108,6 +112,8 @@
         beastReward: null,
         beastSelection: [],
         pendingDiscard: 0,
+        pendingItemDiscard: 0,
+        itemDiscardReturn: null,
         pendingCombatReward: null,
         pendingRoomReward: null,
         shopSelectedSlot: null,
@@ -131,9 +137,15 @@
       const playerDeck = AD.makePlayerDeck();
       this.s.playerPile = new AD.AdventurePile('player', playerDeck, 5);
       this.s.playerPile.draw(5);
+      for (const name of this.s.trophyWhiteCards) {
+        if (window.AdventureRegistry.getItem(name) && window.AdventureRegistry.getItem(name).kind === 'trophyWhite') {
+          this.s.playerPile.hand.push(AD.trophyWhite(name));
+        }
+      }
       const initialTop = AD.drawInitialTop(this.s.playerPile.deck);
       this.s.discardTop = new AD.DiscardTop(initialTop);
       this.s.discardTopOwner = initialTop ? 'player' : null;
+      if (this.s.consumables.length > CONSUMABLE_SLOT_COUNT) this._beginItemDiscard('map');
 
       if (this.s.pos) {
         const room = map.get(this.s.pos.r, this.s.pos.c);
@@ -187,7 +199,7 @@
     }
 
     canMoveTo(r, c) {
-      if (!this.s || this.s.phase === Phase.PLAYER_PLAY || this.s.phase === Phase.PLAYER_DEFEND || this.s.phase === Phase.NPC_TURN || this.s.phase === Phase.BEAST_CHOICE || this.s.phase === Phase.BEAST_DISCARD || this.s.phase === Phase.COMBAT_SETTLE || this.s.phase === Phase.GAME_OVER) return false;
+      if (!this.s || this.s.phase === Phase.PLAYER_PLAY || this.s.phase === Phase.PLAYER_DEFEND || this.s.phase === Phase.NPC_TURN || this.s.phase === Phase.BEAST_CHOICE || this.s.phase === Phase.BEAST_DISCARD || this.s.phase === Phase.ITEM_DISCARD || this.s.phase === Phase.COMBAT_SETTLE || this.s.phase === Phase.GAME_OVER) return false;
       const room = this.s.map.get(r, c);
       if (!room || !room.isEnterable()) return false;
       if (room.visited) return true;
@@ -480,6 +492,7 @@
       this.s.blacksmithSelectedSlot = null;
       this.emit('blacksmithEnter', '进入铁匠铺', {
         slots: room.blacksmithSlots.slice(),
+        trophySlot: room.blacksmithTrophySlot,
         currency: this.s.currency
       });
       this._log('进入铁匠铺');
@@ -487,12 +500,22 @@
 
     _ensureBlacksmithSlots(room) {
       if (!room) return;
-      if (Array.isArray(room.blacksmithSlots) && room.blacksmithSlots.length === 3) return;
-      room.blacksmithSlots = [
-        this._rollBlacksmithSlot(),
-        this._rollBlacksmithSlot(),
-        this._rollBlacksmithSlot()
-      ];
+      if (!Array.isArray(room.blacksmithSlots) || room.blacksmithSlots.length !== 3) {
+        room.blacksmithSlots = [
+          this._rollBlacksmithSlot(),
+          this._rollBlacksmithSlot(),
+          this._rollBlacksmithSlot()
+        ];
+      }
+      if (room.blacksmithTrophySlot === undefined) {
+        room.blacksmithTrophySlot = 'BurnTrophy';
+      }
+    }
+
+    _rollTrophyWhiteSlot() {
+      const trophies = window.AdventureRegistry.allItems().filter(item => item.kind === 'trophyWhite');
+      if (!trophies.length) return null;
+      return trophies[Math.floor(Math.random() * trophies.length)].name;
     }
 
     _rollBlacksmithSlot() {
@@ -519,6 +542,59 @@
         beastCostText: this._beastTradeCostText(beastCost),
         refreshable: true
       };
+    }
+
+    _blacksmithTrophyDetail(itemName) {
+      if (!itemName) return null;
+      const def = window.AdventureRegistry.getItem(itemName);
+      if (!def || def.kind !== 'trophyWhite') return null;
+      const beastCost = Array.isArray(def.beastTradeCost) ? def.beastTradeCost.slice() : [];
+      return {
+        kind: 'trophyWhite',
+        name: itemName,
+        displayName: def.displayName,
+        description: def.description,
+        icon: def.icon,
+        beastCost,
+        beastCostText: this._beastTradeCostText(beastCost),
+        refreshable: true
+      };
+    }
+
+    buyBlacksmithTrophy() {
+      if (this.s.phase !== Phase.BLACKSMITH) return { ok: false, message: '不在铁匠铺' };
+      const room = this.currentRoom();
+      this._ensureBlacksmithSlots(room);
+      const itemName = room && room.blacksmithTrophySlot;
+      if (!itemName) return { ok: false, message: 'sold-out' };
+      const def = window.AdventureRegistry.getItem(itemName);
+      if (!def || def.kind !== 'trophyWhite') return { ok: false, message: '无效战利白卡' };
+      const need = Array.isArray(def.beastTradeCost) ? def.beastTradeCost.slice() : [];
+      if (!this.s.currency.canPayBeastCost(need)) {
+        return { ok: false, message: '兽元不足，需要：' + this._beastTradeCostText(need) };
+      }
+      this.s.currency.payBeastCost(need);
+      if (!this.addItem(itemName)) {
+        this.s.currency.addTokens(this._countTokensFromCost(need));
+        return { ok: false, message: '无法获得战利白卡' };
+      }
+      room.blacksmithTrophySlot = null;
+      this.s.blacksmithSelectedSlot = 'trophy';
+      this._log('锻造战利白卡：' + def.displayName + '（' + this._beastTradeCostText(need) + '）');
+      this.emit('buy', '锻造战利白卡成功', { itemName, kind: 'trophyWhite', beastCost: need.slice() });
+      return { ok: true };
+    }
+
+    refreshBlacksmithTrophy() {
+      if (this.s.phase !== Phase.BLACKSMITH) return { ok: false, message: '不在铁匠铺' };
+      const room = this.currentRoom();
+      this._ensureBlacksmithSlots(room);
+      const price = 2;
+      if (!this.s.currency.spendGold(price)) return { ok: false, message: '金币不足（需要2）' };
+      room.blacksmithTrophySlot = this._rollTrophyWhiteSlot();
+      this.s.blacksmithSelectedSlot = 'trophy';
+      this.emit('blacksmithRefresh', '刷新战利白卡摊位', { trophy: room.blacksmithTrophySlot, price, gold: this.s.currency.gold });
+      return { ok: true, itemName: room.blacksmithTrophySlot };
     }
 
     selectBlacksmithSlot(index) {
@@ -618,7 +694,7 @@
     _isShopConsumableName(itemName) {
       if (!itemName || typeof itemName !== 'string') return false;
       const def = window.AdventureRegistry.getItem(itemName);
-      return !!(def && def.kind === 'consumable');
+      return !!(def && (def.kind === 'consumable' || def.kind === 'trophyWhite'));
     }
 
     _isShopAccessoryName(itemName) {
@@ -1311,11 +1387,10 @@
       if (loot.kind === 'items') {
         const list = Array.isArray(loot.items) ? loot.items : [];
         if (!list.length) return { ok: true, empty: true };
-        if (this.s.consumables.length + list.length > 9) return { ok: false, reason: 'full' };
         for (let i = 0; i < list.length; i++) {
-          if (!this.addItem(list[i])) return { ok: false, reason: 'full' };
+          if (!this.addItem(list[i], { allowConsumableOverflow: true })) return { ok: false, reason: 'full' };
         }
-        return { ok: true };
+        return { ok: true, itemOverflow: Math.max(0, this.s.consumables.length - CONSUMABLE_SLOT_COUNT) };
       }
       if (loot.kind === 'accessory') {
         const name = loot.accessory || loot.item;
@@ -1328,8 +1403,8 @@
       if (loot.kind === 'item') {
         const check = this._canAddItem(loot.item);
         if (!check.ok) return { ok: false, reason: check.reason, message: check.message };
-        if (!this.addItem(loot.item)) return { ok: false, reason: 'full' };
-        return { ok: true };
+        if (!this.addItem(loot.item, { allowConsumableOverflow: true })) return { ok: false, reason: 'full' };
+        return { ok: true, itemOverflow: Math.max(0, this.s.consumables.length - CONSUMABLE_SLOT_COUNT) };
       }
       if (loot.kind === 'beast') {
         const map = {};
@@ -1357,6 +1432,37 @@
       room.rewardClaimed = true;
     }
 
+    _beginItemDiscard(returnTo) {
+      const overflow = Math.max(0, this.s.consumables.length - CONSUMABLE_SLOT_COUNT);
+      if (!overflow) return false;
+      this.s.pendingItemDiscard = overflow;
+      this.s.itemDiscardReturn = returnTo || 'map';
+      this.s.phase = Phase.ITEM_DISCARD;
+      this._log('道具超过上限(' + CONSUMABLE_SLOT_COUNT + ')，需舍弃' + overflow + '个');
+      this.emit('itemOverflow', '道具超上限，需舍弃' + overflow + '个', {
+        overflow,
+        total: this.s.consumables.length,
+        max: CONSUMABLE_SLOT_COUNT,
+        returnTo: this.s.itemDiscardReturn
+      });
+      return true;
+    }
+
+    _resumeAfterItemDiscard() {
+      const returnTo = this.s.itemDiscardReturn;
+      this.s.pendingItemDiscard = 0;
+      this.s.itemDiscardReturn = null;
+      if (returnTo === 'combat-basic') {
+        const pending = this.s.pendingCombatReward;
+        const room = this.currentRoom();
+        if (room && room.type === window.RoomType.BOSS) return this._finishBossRewardSettlement(room);
+        return this._beginDedicatedBeastSettlement(room);
+      }
+      if (returnTo === 'combat-bonus') return this._beginChallengeBeastSettlement(this.currentRoom());
+      this.s.phase = Phase.MAP;
+      return true;
+    }
+
     claimRoomReward() {
       if (!this.s || this.s.phase !== Phase.REWARD) return false;
       const room = this.currentRoom();
@@ -1375,6 +1481,10 @@
       room.visited = true;
       this._log('领取奖励房奖励：' + this._roomLootText(loot));
       this.emit('reward', '领取奖励房奖励', { loot });
+      if (result.itemOverflow) {
+        this._beginItemDiscard('map');
+        return true;
+      }
       this.s.phase = Phase.MAP;
       return true;
     }
@@ -1418,6 +1528,10 @@
         pending.applied = true;
         this._log('领取基础奖励：' + this._basicLootText(pending.basic));
         this.emit('reward', '领取战斗基础奖励', { basic: pending.basic });
+        if (result.itemOverflow) {
+          this._beginItemDiscard('combat-basic');
+          return true;
+        }
         if (result.beastAdded) {
           const overflow = this.s.currency.overflowAfter(0);
           if (overflow > 0) {
@@ -1451,6 +1565,10 @@
         pending.applied = true;
         this._log('领取挑战房奖励：' + this._roomLootText(pending.bonus));
         this.emit('reward', '领取挑战房奖励', { bonus: pending.bonus });
+        if (result.itemOverflow) {
+          this._beginItemDiscard('combat-bonus');
+          return true;
+        }
         return this._beginChallengeBeastSettlement(room);
       }
 
@@ -1948,6 +2066,10 @@
         room.visited = true;
         this._log('领取房间内保留的奖励：' + this._basicLootText(loot));
         this.emit('reward', '领取保留奖励', { basic: loot });
+        if (result.itemOverflow) {
+          this._beginItemDiscard('map');
+          return loot;
+        }
         if (result.beastAdded) {
           this._checkBeastOverflow(room);
           if (this.s.phase === Phase.BEAST_DISCARD) return loot;
@@ -1994,6 +2116,8 @@
       this.s.beastReward = null;
       this.s.beastSelection = [];
       this.s.pendingDiscard = 0;
+      this.s.pendingItemDiscard = 0;
+      this.s.itemDiscardReturn = null;
       this.s.phase = Phase.MAP;
       this.emit('returnToMap', '返回地图', {});
       return true;
@@ -2007,6 +2131,8 @@
       this.s.beastReward = null;
       this.s.beastSelection = [];
       this.s.pendingDiscard = 0;
+      this.s.pendingItemDiscard = 0;
+      this.s.itemDiscardReturn = null;
       this.s.pendingCombatReward = null;
       this.s.pendingRoomReward = null;
       this.s.phase = Phase.MAP;
@@ -2045,8 +2171,9 @@
     _canAddItem(itemName) {
       const def = window.AdventureRegistry.getItem(itemName);
       if (!def) return { ok: false, reason: 'unknown', message: '未知道具' };
+      if (def.kind === 'trophyWhite') return { ok: true };
       if (def.kind === 'consumable') {
-        if (this.s.consumables.length >= 9) return { ok: false, reason: 'full', message: '道具槽已满' };
+        if (this.s.consumables.length >= CONSUMABLE_SLOT_COUNT) return { ok: false, reason: 'full', message: '道具槽已满' };
         return { ok: true };
       }
       if (def.maxStacks) {
@@ -2056,15 +2183,19 @@
       return { ok: true };
     }
 
-    addItem(itemName) {
+    addItem(itemName, opts = {}) {
       const def = window.AdventureRegistry.getItem(itemName);
       if (!def) {
         this._log('未知道具：' + itemName);
         return false;
       }
-      if (def.kind === 'consumable') {
-        if (this.s.consumables.length >= 9) {
-          this._log('一次性道具槽已满（9/9），无法获取 ' + def.displayName);
+      if (def.kind === 'trophyWhite') {
+        if (!Array.isArray(this.s.trophyWhiteCards)) this.s.trophyWhiteCards = [];
+        this.s.trophyWhiteCards.push(itemName);
+        if (this.s.playerPile) this.s.playerPile.hand.push(window.AdventureDeck.trophyWhite(itemName));
+      } else if (def.kind === 'consumable') {
+        if (this.s.consumables.length >= CONSUMABLE_SLOT_COUNT && !opts.allowConsumableOverflow) {
+          this._log('一次性道具槽已满（' + CONSUMABLE_SLOT_COUNT + '/' + CONSUMABLE_SLOT_COUNT + '），无法获取 ' + def.displayName);
           this.emit('itemFail', '道具槽已满', { itemName, reason: 'full' });
           return false;
         }
@@ -2081,9 +2212,47 @@
         this.s.accessories.push(itemName);
         this._applyAccessoryOnAdd(def);
       }
-      this._log('获得' + (def.kind === 'consumable' ? '一次性道具' : '配饰') + '：' + def.displayName);
+      const kindLabel = def.kind === 'trophyWhite' ? '战利白卡' : def.kind === 'consumable' ? '一次性道具' : '配饰';
+      this._log('获得' + kindLabel + '：' + def.displayName);
       this.emit('itemAcquired', '获得道具', { itemName, kind: def.kind });
       return true;
+    }
+
+    discardConsumable(index) {
+      if (!this.s || this.s.phase !== Phase.ITEM_DISCARD) return { ok: false, message: '当前无需舍弃道具' };
+      if (index < 0 || index >= this.s.consumables.length) return { ok: false, message: '无效道具' };
+      const itemName = this.s.consumables.splice(index, 1)[0];
+      const def = window.AdventureRegistry.getItem(itemName);
+      this.s.pendingItemDiscard = Math.max(0, this.s.pendingItemDiscard - 1);
+      this._log('舍弃道具：' + (def ? def.displayName : itemName) + '（剩余需舍弃' + this.s.pendingItemDiscard + '个）');
+      this.emit('itemDiscard', '舍弃道具', { itemName, index, remaining: this.s.pendingItemDiscard });
+      if (this.s.pendingItemDiscard <= 0) {
+        this._log('道具舍弃完成');
+        this.emit('itemDiscardDone', '道具舍弃完成', {});
+        this._resumeAfterItemDiscard();
+      }
+      return { ok: true };
+    }
+
+    discardTrophyWhiteCard(index) {
+      if (!this.s || !Array.isArray(this.s.trophyWhiteCards)) return { ok: false, message: '没有战利白卡' };
+      if (index < 0 || index >= this.s.trophyWhiteCards.length) return { ok: false, message: '无效卡牌' };
+      const itemName = this.s.trophyWhiteCards[index];
+      this.s.trophyWhiteCards.splice(index, 1);
+      const pile = this.s.playerPile;
+      if (pile) {
+        const removeOne = list => {
+          const at = list.findIndex(card => card && card.trophyWhite && card.trophyName === itemName);
+          if (at < 0) return false;
+          list.splice(at, 1);
+          return true;
+        };
+        removeOne(pile.hand) || removeOne(pile.deck) || removeOne(pile.discard);
+      }
+      const def = window.AdventureRegistry.getItem(itemName);
+      this._log('丢弃战利白卡：' + (def ? def.displayName : itemName));
+      this.emit('trophyDiscard', '丢弃战利白卡', { itemName, index });
+      return { ok: true };
     }
 
     _applyAccessoryOnAdd(def) {
@@ -2313,10 +2482,10 @@
     }
 
     _rollItemDrop() {
-      // 仅在一次性道具中均匀抽取（不含配饰）
+      // 在可掉落的道具卡中均匀抽取（含战利白卡，不含配饰）
       const allItems = window.AdventureRegistry.allItems();
       if (!allItems.length) return null;
-      const dropable = allItems.filter(it => it.kind === 'consumable');
+      const dropable = allItems.filter(it => it.kind === 'consumable' || it.kind === 'trophyWhite');
       if (!dropable.length) return null;
       return dropable[Math.floor(Math.random() * dropable.length)].name;
     }
@@ -2413,7 +2582,7 @@
         this.emit('buy', '购买成功', { itemName, kind: 'accessory', price, slot: index, gold: this.s.currency.gold });
         return { ok: true };
       }
-      if (def.kind !== 'consumable') {
+      if (def.kind !== 'consumable' && def.kind !== 'trophyWhite') {
         if (this._isShopItemSlot(index)) room.shopSlots[index] = this._rollItemDrop();
         else if (this._isShopAccessorySlot(index)) room.shopSlots[index] = this._rollAccessoryDrop();
         this.emit('buyFail', '不可购买', { itemName, reason: 'invalid' });
@@ -2499,8 +2668,9 @@
         player: { name: this.s.player.name, hp: this.s.player.hp, maxHp: this.s.player.maxHp, type: this.s.player.type, buffs: this.playerBuffs() },
         currency: this.s.currency.summary(),
         inventory: this.s.inventory.slice(),
+        trophyWhiteCards: (this.s.trophyWhiteCards || []).map((name, index) => Object.assign(itemDetail(name), { index })),
         consumables: this.s.consumables.map(itemDetail),
-        consumableSlots: 9,
+        consumableSlots: CONSUMABLE_SLOT_COUNT,
         accessories: this.s.accessories.map(itemDetail),
         accessoryStatBonuses: this.getAccessoryStatBonuses(),
         phase: this.s.phase,
@@ -2552,6 +2722,7 @@
         } : null,
         pendingRoomReward: this._snapshotLoot(this.s.pendingRoomReward),
         pendingDiscard: this.s.pendingDiscard,
+        pendingItemDiscard: this.s.pendingItemDiscard,
         shopSelectedSlot: this.s.shopSelectedSlot == null ? null : this.s.shopSelectedSlot,
         blacksmithSelectedSlot: this.s.blacksmithSelectedSlot == null ? null : this.s.blacksmithSelectedSlot,
         blacksmithEntryGold: this._blacksmithEntryGold(),
@@ -2567,6 +2738,7 @@
           blacksmithSlots: Array.isArray(room.blacksmithSlots)
             ? room.blacksmithSlots.map(name => this._blacksmithSlotDetail(name))
             : null,
+          blacksmithTrophy: this._blacksmithTrophyDetail(room.blacksmithTrophySlot),
           shopSlots: Array.isArray(room.shopSlots)
             ? room.shopSlots.slice(0, SHOP_SLOT_COUNT).map((slot, index) => {
                 if (!slot) return null;
@@ -2600,7 +2772,7 @@
                     refreshable: true
                   };
                 }
-                if (def.kind !== 'consumable' || !this._isShopItemSlot(index)) return null;
+                if ((def.kind !== 'consumable' && def.kind !== 'trophyWhite') || !this._isShopItemSlot(index)) return null;
                 return {
                   kind: def.kind,
                   name,

@@ -1,7 +1,8 @@
 /**
  * 冒险模式 · 道具定义
  *
- * 一次性道具（consumable）：放入9槽，使用后消耗
+ * 一次性道具（consumable）：放入6槽，使用后消耗
+ * 战利白卡（trophyWhite）：不占道具槽，进入玩家牌库循环抽取
  * 配饰（accessory）：无数量限制，放入即自动生效
  */
 
@@ -61,6 +62,44 @@
     price: 4,
     combatUse: 'burn',
     burnAmount: 3
+  });
+
+  R.registerItem({
+    name: 'BurnTrophy',
+    displayName: '灼伤战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：自动指定当前颜色，对手+1层灼伤，打出后抽1张牌，可搭桥',
+    icon: ICON + 'ghost_fire.png',
+    price: 5,
+    combatUse: 'trophyBurn',
+    trophyEffect: 'burn',
+    beastTradeCost: ['huo', 'huo']
+  });
+
+  R.registerItem({
+    name: 'PiercingTrophy',
+    displayName: '刺伤战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：自动指定当前颜色，对手+1层流血，打出后抽1张牌，可搭桥',
+    icon: ICON + 'pierce.png',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyBleed',
+    trophyEffect: 'bleed',
+    beastTradeCost: ['ben', 'ben']
+  });
+
+  R.registerItem({
+    name: 'FreezeTrophy',
+    displayName: '冰冻战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：自动指定当前颜色，对手获得冷冻，打出后抽1张牌，可搭桥',
+    icon: ICON + 'freeze.png',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyFreeze',
+    trophyEffect: 'freeze',
+    beastTradeCost: ['shui', 'shui']
   });
 
   R.registerItem({
@@ -156,6 +195,32 @@
     price: 5,
     combatUse: 'dodge',
     defendOnly: true
+  });
+
+  R.registerItem({
+    name: 'NaturalShield',
+    displayName: '自然之盾',
+    kind: 'consumable',
+    description: '仅防御出牌阶段使用：格挡本次攻击至多5点伤害',
+    icon: ICON + 'nature_shield.png',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'naturalShield',
+    defendOnly: true,
+    shieldAmount: 5
+  });
+
+  R.registerItem({
+    name: 'GuardTrophy',
+    displayName: '守护战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：获得5层守护；防御阶段改为格挡本次攻击至多5点，打出后抽1张牌，可搭桥',
+    icon: ICON + 'nature_shield.png',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyGuard',
+    trophyEffect: 'guard',
+    beastTradeCost: ['ben', 'cao']
   });
 
   R.registerItem({

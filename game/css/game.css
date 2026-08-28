@@ -888,6 +888,14 @@ body {
     animation: bloodthirstPulse 1.2s ease-in-out infinite;
 }
 .buff-icon-wrap.bloodthirst-buff img { width: 28px; height: 28px; }
+.buff-icon-wrap.bind-mark {
+    width: 54px;
+    border-color: rgba(74, 222, 128, 0.9);
+    background: linear-gradient(135deg, rgba(8, 75, 45, 0.9), rgba(34, 155, 88, 0.58));
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.42);
+    animation: bindMarkPulse 1.45s ease-in-out infinite;
+}
+.buff-icon-wrap.bind-mark img { width: 28px; height: 28px; }
 .buff-icon-wrap .buff-name {
     position: absolute;
     right: 3px;
@@ -901,6 +909,10 @@ body {
 @keyframes bloodthirstPulse {
     0%, 100% { filter: brightness(0.95); transform: scale(1); }
     50% { filter: brightness(1.2); transform: scale(1.035); }
+}
+@keyframes bindMarkPulse {
+    0%, 100% { filter: brightness(0.96); transform: scale(1); }
+    50% { filter: brightness(1.16); transform: scale(1.025); }
 }
 .buff-icon-wrap.chaos-red-buff {
     border-color: rgba(255, 68, 68, 0.9);

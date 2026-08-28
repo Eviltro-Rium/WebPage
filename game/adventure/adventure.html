@@ -9,89 +9,11 @@
     <link rel="stylesheet" href="css/adventure.css">
     <style>
         #castle-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: url('../backgrounds/Castle.png') center/cover no-repeat; display: none; transition: background 0.6s ease; }
-        #adventure-container, #game-container, .game-status-badge { position: relative; z-index: 1; }
+        #adventure-container, #game-container { position: relative; z-index: 1; }
 
-        /* ===== 镜头拉远加载动画 ===== */
-        .app-loading { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: flex-end; justify-content: center; background: #0a0e1a; pointer-events: none; overflow: hidden; transition: opacity 0.8s ease, visibility 0.8s ease; }
-        .app-loading.hidden { opacity: 0; visibility: hidden; }
-        .app-loading-cinema { position: absolute; inset: 0; pointer-events: none; animation: appLoadingZoomOut 2.8s cubic-bezier(0.16,1,0.3,1) forwards; }
-        @keyframes appLoadingZoomOut { 0% { transform: scale(1.5); filter: blur(24px); } 60% { transform: scale(1.08); filter: blur(4px); } 100% { transform: scale(1); filter: blur(0); } }
-        .app-loading-vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 28%, rgba(3,7,14,0.72) 100%); animation: appLoadingVignette 2.8s ease-out forwards; }
-        @keyframes appLoadingVignette { 0% { opacity: 1; } 100% { opacity: 0.5; } }
-        .app-loading-letterbox { position: absolute; inset: 0; animation: appLoadingLetterbox 2.8s cubic-bezier(0.16,1,0.3,1) forwards; }
-        @keyframes appLoadingLetterbox { 0% { box-shadow: inset 0 12vh 0 0 rgba(2,4,10,0.92), inset 0 -12vh 0 0 rgba(2,4,10,0.92); } 100% { box-shadow: inset 0 6vh 0 0 rgba(2,4,10,0.88), inset 0 -6vh 0 0 rgba(2,4,10,0.88); } }
-        .app-loading-horizon { position: absolute; bottom: 16%; left: 0; right: 0; height: 52%; background: radial-gradient(ellipse 58% 38% at 50% 100%, rgba(255,208,96,0.28), rgba(232,197,71,0.12) 42%, transparent 74%); filter: blur(8px); animation: appLoadingHorizon 4.2s ease-in-out infinite alternate; }
-        @keyframes appLoadingHorizon { from { opacity: 0.38; transform: scaleX(0.86); } to { opacity: 0.95; transform: scaleX(1.12); } }
-        .app-loading-flare { position: absolute; top: 34%; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent 8%, rgba(255,208,128,0.18) 38%, rgba(255,244,200,0.42) 50%, rgba(255,176,64,0.16) 62%, transparent 92%); box-shadow: 0 0 28px 4px rgba(255,192,96,0.22); opacity: 0.55; animation: appLoadingFlare 5.2s ease-in-out infinite; }
-        @keyframes appLoadingFlare { 0%,100% { opacity: 0.28; transform: scaleX(0.82); } 50% { opacity: 0.7; transform: scaleX(1.08); } }
-        .app-loading-scan { position: absolute; inset: 0; width: 38%; left: -38%; background: linear-gradient(105deg, transparent 20%, rgba(168,218,255,0.05) 48%, rgba(232,197,71,0.09) 52%, transparent 80%); transform: skewX(-10deg); animation: appLoadingScan 4.6s ease-in-out infinite; }
-        @keyframes appLoadingScan { 0%,15% { transform: translateX(0) skewX(-10deg); opacity: 0; } 35% { opacity: 1; } 72%,100% { transform: translateX(365%) skewX(-10deg); opacity: 0; } }
-        .app-loading-grain { position: absolute; inset: 0; opacity: 0.14; mix-blend-mode: overlay; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); background-size: 180px 180px; animation: appLoadingGrain 0.45s steps(4) infinite; }
-        @keyframes appLoadingGrain { 0% { transform: translate(0,0); } 25% { transform: translate(-12px,8px); } 50% { transform: translate(8px,-10px); } 75% { transform: translate(-6px,-4px); } 100% { transform: translate(0,0); } }
-        .app-loading-hud { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: min(430px, calc(100vw - 32px)); margin-bottom: clamp(36px, 9vh, 88px); padding: 22px 24px 18px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.08); background: rgba(10,14,26,0.58); -webkit-backdrop-filter: blur(18px) saturate(145%); backdrop-filter: blur(18px) saturate(145%); box-shadow: 0 18px 56px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.08); pointer-events: none; animation: appLoadingHudIn 1.2s cubic-bezier(0.16,1,0.3,1) 0.8s both; }
-        @keyframes appLoadingHudIn { from { opacity: 0; transform: translateY(18px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        .app-loading-eyebrow { font-family: monospace; font-size: 9px; line-height: 1; letter-spacing: 0.2em; color: rgba(168,218,255,0.82); }
-        .app-loading-title { display: flex; align-items: center; gap: 13px; }
-        .app-loading-logo { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border: 1px solid rgba(168,218,255,0.38); border-radius: 12px; background: rgba(40,80,120,0.1); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(168,218,255,0.13); font-size: 22px; }
-        .app-loading-brand { font-size: 20px; font-weight: 680; line-height: 1.1; letter-spacing: 0.09em; color: #fff; }
-        .app-loading-subtitle { margin-top: 4px; font-size: 10px; letter-spacing: 0.08em; color: #aaa; }
-        .app-loading-status { display: grid; grid-template-columns: 8px minmax(0,1fr) auto; align-items: center; gap: 8px; margin-top: 2px; }
-        .app-loading-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #a8daff; box-shadow: 0 0 10px #a8daff; animation: appLoadingStatusPulse 1.35s ease-in-out infinite; }
-        @keyframes appLoadingStatusPulse { 0%,100% { opacity: 0.5; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.15); } }
-        .app-loading-text { font-size: 12px; color: #aaa; letter-spacing: 0.04em; }
-        .app-loading-percent { font-family: monospace; font-size: 11px; font-variant-numeric: tabular-nums; color: #fff; }
-        .app-loading-bar { position: relative; width: 100%; height: 5px; border-radius: 999px; background: rgba(255,255,255,0.1); overflow: hidden; }
-        .app-loading-bar span { display: block; width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #1a5f8e, #a8daff, #e8c547); box-shadow: 0 0 12px rgba(168,218,255,0.55); will-change: width; transition: width 0.3s ease; }
-        .app-loading-bar i { position: absolute; inset: 0; width: 28%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent); transform: translateX(-120%); animation: appLoadingProgressShine 1.9s ease-in-out infinite; }
-        @keyframes appLoadingProgressShine { 0%,15% { transform: translateX(-120%); opacity: 0; } 40% { opacity: 0.75; } 75%,100% { transform: translateX(360%); opacity: 0; } }
-        .app-loading-steps { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; }
-        .app-loading-steps span { position: relative; padding-top: 7px; font-family: monospace; font-size: 8px; line-height: 1; text-align: center; color: #666; transition: color 0.45s ease, opacity 0.45s ease; }
-        .app-loading-steps span::before { content: ''; position: absolute; top: 0; left: 50%; width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.1); transform: translateX(-50%); transition: background-color 0.45s ease, box-shadow 0.45s ease, transform 0.45s ease; }
-        .app-loading-steps span.active { color: #aaa; }
-        .app-loading-steps span.active::before { background: #a8daff; box-shadow: 0 0 8px rgba(168,218,255,0.7); transform: translateX(-50%) scale(1.15); }
-        .app-loading-steps span.done { color: rgba(168,218,255,0.55); opacity: 0.82; }
-        .app-loading-steps span.done::before { background: rgba(26,95,142,0.78); box-shadow: none; transform: translateX(-50%) scale(0.92); }
-        @media (prefers-reduced-motion: reduce) { .app-loading-cinema, .app-loading-hud, .app-loading-horizon, .app-loading-scan, .app-loading-flare, .app-loading-grain, .app-loading-status-dot, .app-loading-bar i { animation: none; } }
     </style>
 </head>
 <body>
-    <div id="appLoading" class="app-loading" aria-hidden="true">
-        <div class="app-loading-cinema">
-            <div class="app-loading-vignette"></div>
-            <div class="app-loading-letterbox"></div>
-            <div class="app-loading-horizon"></div>
-            <div class="app-loading-flare"></div>
-            <div class="app-loading-scan"></div>
-            <div class="app-loading-grain"></div>
-        </div>
-        <div class="app-loading-hud">
-            <div class="app-loading-eyebrow">FURRY TRIAL · DUNGEON ADVENTURE</div>
-            <div class="app-loading-title">
-                <span class="app-loading-logo">⚔️</span>
-                <div>
-                    <div class="app-loading-brand">地牢冒险</div>
-                    <div class="app-loading-subtitle">Furry Trial · 单层肉鸽玩法</div>
-                </div>
-            </div>
-            <div class="app-loading-status">
-                <span class="app-loading-status-dot"></span>
-                <span class="app-loading-text" id="appLoadingText">正在进入地牢…</span>
-                <span class="app-loading-percent" id="appLoadingPercent">0%</span>
-            </div>
-            <div class="app-loading-bar">
-                <span id="appLoadingBarFill"></span>
-                <i></i>
-            </div>
-            <div class="app-loading-steps">
-                <span class="active" data-boot-step="scene">场景</span>
-                <span data-boot-step="render">渲染</span>
-                <span data-boot-step="system">系统</span>
-                <span data-boot-step="link">连接</span>
-                <span data-boot-step="data">数据</span>
-                <span data-boot-step="ready">就绪</span>
-            </div>
-        </div>
-    </div>
     <div id="castle-bg"></div>
     <div class="adv-menu-bar" id="adv-menu-bar">
         <button class="adv-menu-btn" id="adv-menu-toggle">菜单</button>
@@ -101,7 +23,6 @@
             <button class="adv-menu-item" id="adv-menu-log">打开日志</button>
         </div>
     </div>
-    <span class="game-status-badge">冒险模式</span>
     <div id="adventure-container"></div>
     <div id="game-container" style="display:none">
         <div id="select-screen"></div>
@@ -163,37 +84,6 @@
 
 
     <script>
-        (function () {
-            const loading = document.getElementById('appLoading');
-            if (loading) {
-                const textEl = document.getElementById('appLoadingText');
-                const pctEl = document.getElementById('appLoadingPercent');
-                const barEl = document.getElementById('appLoadingBarFill');
-                const steps = loading.querySelectorAll('.app-loading-steps span');
-                const labels = ['正在生成地牢地图…', '正在渲染场景…', '正在加载系统…', '正在连接数据…', '正在初始化…', '即将就绪…'];
-                let progress = 0, stepIdx = 0;
-                const tick = setInterval(() => {
-                    progress += Math.random() * 8 + 2;
-                    if (progress > 100) progress = 100;
-                    if (textEl) textEl.textContent = labels[Math.min(stepIdx, labels.length - 1)];
-                    if (pctEl) pctEl.textContent = Math.round(progress) + '%';
-                    if (barEl) barEl.style.width = progress + '%';
-                    const ns = Math.floor(progress / 100 * steps.length);
-                    if (ns > stepIdx) {
-                        for (let i = 0; i < ns && i < steps.length; i++) { steps[i].classList.remove('active'); steps[i].classList.add('done'); }
-                        if (ns < steps.length) steps[ns].classList.add('active');
-                        stepIdx = ns;
-                    }
-                    if (progress >= 100) {
-                        clearInterval(tick);
-                        steps.forEach(s => { s.classList.remove('active'); s.classList.add('done'); });
-                        if (textEl) textEl.textContent = '加载完成';
-                        setTimeout(() => { loading.classList.add('hidden'); setTimeout(() => loading.remove(), 800); }, 500);
-                    }
-                }, 200);
-            }
-        })();
-
         (function () {
 
             const container = document.getElementById('adventure-container');

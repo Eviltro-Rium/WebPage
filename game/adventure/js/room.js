@@ -72,6 +72,10 @@
       this.shopSlots = opts.shopSlots || null;
       /** 铁匠铺 3 槽：配饰 itemName 或 null（空槽） */
       this.blacksmithSlots = opts.blacksmithSlots || null;
+      /** 铁匠铺独立战利白卡摊位：战利白卡 itemName 或 null（空槽） */
+      // Leave an omitted slot undefined so AdventureEngine can lazily stock the
+      // default trophy offer; an explicit null means the stall is sold out.
+      this.blacksmithTrophySlot = opts.blacksmithTrophySlot;
       this.shopItems = opts.shopItems || null;
       this.shopSold = {};
 

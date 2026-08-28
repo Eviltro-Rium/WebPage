@@ -117,6 +117,13 @@
         else renderSettlement(overlay, eng, leave);
       });
     });
+    overlay.querySelectorAll('[data-item-discard]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        eng.discardConsumable(parseInt(btn.getAttribute('data-item-discard'), 10));
+        if (eng.s.phase === window.AdventurePhase.MAP) leave();
+        else renderSettlement(overlay, eng, leave);
+      });
+    });
     const claimBtn = overlay.querySelector('#adv-settle-claim');
     if (claimBtn) {
       claimBtn.addEventListener('click', () => {
@@ -250,7 +257,7 @@
     const consumables = snap.consumables || [];
     if (consumables.length) {
       html += '<div class="adv-sidebar-section">';
-      html += '<div class="adv-sidebar-subtitle">道具 (' + consumables.length + '/9)</div>';
+      html += '<div class="adv-sidebar-subtitle">道具 (' + consumables.length + '/' + (snap.consumableSlots || 6) + ')</div>';
       consumables.forEach(it => { html += sidebarItemHtml(it); });
       html += '</div>';
     }
@@ -347,6 +354,15 @@
           html += '<button class="adv-beast-pick adv-beast-' + k + '" data-beast-discard="' + k + '" title="' + AC.BEAST_LABEL[k] + '">' +
             '<img src="' + AC.BEAST_ICON[k] + '" class="adv-beast-pick-icon" alt="' + AC.BEAST_LABEL[k] + '">' +
             '<span class="adv-beast-pick-count">×' + t[k] + '</span></button>';
+        });
+        html += '</div></div>';
+      } else if (snap.phase === Phase.ITEM_DISCARD) {
+        html += '<div class="adv-settle-section-title">道具槽超过上限</div>';
+        html += '<div class="adv-settle-row">请舍弃 ' + snap.pendingItemDiscard + ' 个道具（保留 ' + (snap.consumableSlots || 6) + ' 个）</div>';
+        html += '<div class="adv-item-discard-grid">';
+        (snap.consumables || []).forEach((item, index) => {
+          const icon = item.icon ? '<img src="' + item.icon + '" class="adv-sidebar-icon" alt="">' : '';
+          html += '<button class="adv-beast-pick adv-item-discard-slot" data-item-discard="' + index + '" title="丢弃 ' + item.displayName + '">' + icon + '<span>' + item.displayName + '</span><small>丢弃</small></button>';
         });
         html += '</div></div>';
       } else if (snap.phase === Phase.COMBAT_SETTLE && pending && pending.stage === 'beast' && pending.beast && pending.beast.auto) {

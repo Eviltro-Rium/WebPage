@@ -24,7 +24,14 @@
     magic:        { label: 'PURPLE MAGIC', aria: '紫魔法', fallback: '✦' },
     green_magic:  { label: 'GREEN MAGIC', aria: '绿魔法', fallback: '✦' },
     swap:         { label: 'SWAP', aria: '换牌', fallback: '⇄' },
-    wild:         { label: 'WILD', aria: '指定颜色', fallback: '◆' }
+    wild:         { label: 'WILD', aria: '指定颜色', fallback: '◆' },
+    trophyWhite:  { label: 'BURN TROPHY', aria: '灼伤战利白卡', fallback: '♨' }
+  };
+  const TROPHY_LABELS = {
+    BurnTrophy: 'BURN TROPHY',
+    PiercingTrophy: 'BLEED TROPHY',
+    FreezeTrophy: 'FREEZE TROPHY',
+    GuardTrophy: 'GUARD TROPHY'
   };
 
   const ASSET_ROOT = (() => {
@@ -46,7 +53,12 @@
     purify: cardAssetUrl('icons/card_icons/purify.png'),
     super_purify: cardAssetUrl('icons/card_icons/super_purify.png'),
     swap: cardAssetUrl('icons/card_icons/swap_cards.png'),
-    shuffle: cardAssetUrl('icons/card_icons/shuffle.png')
+    shuffle: cardAssetUrl('icons/card_icons/shuffle.png'),
+    trophyWhite: cardAssetUrl('icons/items_icons/ghost_fire.png'),
+    trophy_BurnTrophy: cardAssetUrl('icons/items_icons/ghost_fire.png'),
+    trophy_PiercingTrophy: cardAssetUrl('icons/items_icons/pierce.png'),
+    trophy_FreezeTrophy: cardAssetUrl('icons/items_icons/freeze.png'),
+    trophy_GuardTrophy: cardAssetUrl('icons/items_icons/nature_shield.png')
   };
 
   const iconCache = {};
@@ -62,10 +74,17 @@
     return iconCache[name] || null;
   }
 
+  function iconForCard(card) {
+    const kind = itemKind(card);
+    if (card.trophyWhite) return loadIcon('trophy_' + (card.trophyName || 'BurnTrophy')) || loadIcon('trophyWhite');
+    return loadIcon(iconForKind(kind));
+  }
+
   function normalizeCard(raw) {
     const c = raw || {};
     const isItemCard = c.isItemCard != null ? c.isItemCard : !!(
       c.potion || c.magic || c.greenMagic || c.magicColor || c.purify || c.superPurify || c.drawTwo || c.drawThree || c.swapHand || c.shuffleToDeck
+      || c.trophyWhite
     );
     const isNumberCard = c.isNumberCard != null ? c.isNumberCard : (
       !isItemCard && typeof c.value === 'number' && c.value >= 0 && !c.isBlack
@@ -96,6 +115,7 @@
   }
 
   function itemKind(card) {
+    if (card.trophyWhite) return 'trophyWhite';
     if (card.shuffleToDeck) return 'shuffle';
     if (card.drawTwo) return 'draw_two';
     if (card.superPurify) return 'super_purify';
@@ -116,7 +136,9 @@
 
   function cardDescription(card) {
     const color = { RED: '红色', YELLOW: '黄色', BLUE: '蓝色', GREEN: '绿色', BLACK: '黑色', WHITE: '白色' }[card.color] || '';
-    const content = card.isNumberCard ? `${card.value}点数字牌` : ITEM_META[itemKind(card)].aria + '牌';
+    const trophy = card.trophyWhite && typeof window !== 'undefined' && window.AdventureRegistry && card.trophyName
+      ? window.AdventureRegistry.getItem(card.trophyName) : null;
+    const content = card.isNumberCard ? `${card.value}点数字牌` : (trophy ? trophy.displayName : ITEM_META[itemKind(card)].aria + '牌');
     const chosen = card.chosenColor && COLOR_SHORT[card.chosenColor] ? `，指定${COLOR_SHORT[card.chosenColor]}色` : '';
     return color + content + chosen;
   }
@@ -163,6 +185,15 @@
     g.strokeStyle = isSurfaceLight ? 'rgba(255,255,255,0.74)' : 'rgba(255,255,255,0.28)';
     g.lineWidth = 1;
     roundRect(g, 3, 3, w - 6, h - 6, Math.max(4, r - 3)); g.stroke();
+
+    // A restrained gold rim distinguishes reusable trophy-white cards from
+    // ordinary white/item cards without changing the card's color treatment.
+    if (card.trophyWhite) {
+      g.strokeStyle = '#D4A72C';
+      g.lineWidth = 2;
+      roundRect(g, 2, 2, w - 4, h - 4, Math.max(4, r - 2));
+      g.stroke();
+    }
 
     const centerX = w * 0.5;
     const centerY = h * 0.5;
@@ -211,7 +242,7 @@
     } else {
       const kind = itemKind(card);
       const meta = ITEM_META[kind];
-      const icon = loadIcon(iconForKind(kind));
+      const icon = iconForCard(card);
       const isBwItem = card.isBlack || card.isWhite;
       const iconSize = isBwItem
         ? Math.min(w * 0.44, ovalRY * 1.12)
@@ -235,7 +266,7 @@
         g.textAlign = 'center'; g.textBaseline = 'bottom';
         g.fillStyle = isBlack ? 'rgba(248,250,252,0.78)' : 'rgba(42,47,55,0.76)';
         const labelY = centerY + ovalRY * (isBwItem ? 0.82 : 0.72);
-        g.fillText(meta.label, centerX, labelY);
+        g.fillText(card.trophyWhite ? (TROPHY_LABELS[card.trophyName] || 'TROPHY WHITE') : meta.label, centerX, labelY);
       }
 
       const cornerMark = (card.isBlack || card.isWhite) ? '◆' : meta.fallback;

@@ -512,9 +512,10 @@
       const def = window.AdventureRegistry.getItem(item.name);
       if (!def || def.kind !== 'consumable') return this.state();
       if (!this._canUseAdventureCombatItemNow(def)) {
-        const dodgeOnly = def.combatUse === 'dodge' || def.defendOnly;
+        const dodgeOnly = def.combatUse === 'dodge';
         this.emit('desc', dodgeOnly
           ? '闪避只能在防御出牌阶段使用'
+          : def.defendOnly ? def.displayName + '只能在防御出牌阶段使用'
           : '当前不能使用道具（仅可在选牌出牌/防御时使用）');
         return this.state();
       }
@@ -547,6 +548,14 @@
           this.s.defenseSkipped = true;
           message = '闪避成功，本次攻击作废';
           dodgeResolved = true;
+          break;
+        }
+        case 'naturalShield': {
+          const damage = Math.max(0, Number(this.s.pendingAttack && this.s.pendingAttack.damage) || 0);
+          const blocked = Math.min(def.shieldAmount || 5, damage);
+          if (this.s.pendingAttack) this.s.pendingAttack.damage = damage - blocked;
+          this.s.pendingDefenseDamage = Math.max(0, damage - blocked);
+          message = '格挡本次攻击' + blocked + '点伤害';
           break;
         }
         case 'heal': {

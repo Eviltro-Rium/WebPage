@@ -37,7 +37,7 @@
     reveal(desc){let c=this.deck.pop();if(!c)return null;this.s.revealCards=[cp(c)];this.emit('reveal',desc,c,{from:'deck'});return c}
     effective(c){return c.chosenColor||c.color}
     _who(x){if(x===this.s.player)return'player';if(this.s.is1v2&&x===this.s.ai2)return'ai2';return'ai'}
-    cardText(c){if(c.isBlack)return '黑牌';if(c.isWhite)return c.isNumberCard?`白${c.value}`:'白色道具牌';return `${({RED:'红',YELLOW:'黄',BLUE:'蓝',GREEN:'绿'})[c.color]||''}${c.value}`}
+    cardText(c){if(c.trophyWhite)return '战利白卡';if(c.isBlack)return '黑牌';if(c.isWhite)return c.isNumberCard?`白${c.value}`:'白色道具牌';return `${({RED:'红',YELLOW:'黄',BLUE:'蓝',GREEN:'绿'})[c.color]||''}${c.value}`}
     colorName(c){return({RED:'红色',YELLOW:'黄色',BLUE:'蓝色',GREEN:'绿色',BLACK:'黑色',WHITE:'白色'})[c]||'当前颜色'}
     chooseAIColor(){let counts=Object.fromEntries(C.map(x=>[x,0]));for(const card of this.h.ai){let color=this.effective(card);if(C.includes(color))counts[color]++}return C.reduce((a,b)=>counts[b]>counts[a]?b:a)}
     setAIWildColor(card,top,announce=true){if(card.isBlack)card.chosenColor=this.chooseAIColor();else if(card.isWhite)card.chosenColor=this.effective(top);if(announce)this.announceAIColor(card)}
@@ -212,9 +212,31 @@
     turnStart(w){let x=this.s[w];if(!x||!x.alive)return;if((x.poison||0)>0){let dmg=x.poison,who=w==='player'?'player':(w==='ai2'?'ai2':'ai');this.emit('poisonSettle',`-${dmg}[中毒]`,null,{who,amount:dmg});x.hp=Math.max(0,x.hp-dmg);x.alive=x.hp>0;if(this.name(x)==='Serenity')x.bloodthirst=x.hp<30}let n=this.name(x),m=CharacterRegistry.get(n);if(m)m.turnStart(this,x,w)}
     legal(c,def=false){let t=this.s.discardTop,tc=t.chosenColor||t.color,cc=c.chosenColor||c.color;if(c.isItemCard)return true;if(def&&c.value>3)return false;return c.isWhite||tc===cc||t.value===c.value}
     select(i){if(!this.h.player[i])throw Error('无效卡牌');if(this.s.phase==='PLAYER_DISCARD'){let a=this.s.selectedCards||[],p=a.indexOf(i);if(this.s.mayDiscardAfterSkill)a=p>=0?[]:[i];else if(p>=0)a.splice(p,1);else a.push(i);this.s.selectedCards=a;this.s.selectedCard=a.length?a[0]:-1}else this.s.selectedCard=this.s.selectedCard===i?-1:i;return this.state()}
-    itemKind(c){if(c.swapHand)return'swap';if(c.drawThree)return'drawThree';if(c.drawTwo)return'drawTwo';if(c.potion)return'potion';if(c.greenMagic||c.magicColor==='green')return'greenMagic';if(c.magic||c.magicColor==='purple')return'magic';if(c.superPurify)return'superPurify';if(c.purify)return'purify';if(c.shuffleToDeck)return'shuffle';return'wild'}
+    itemKind(c){if(c.trophyWhite)return'trophyWhite';if(c.swapHand)return'swap';if(c.drawThree)return'drawThree';if(c.drawTwo)return'drawTwo';if(c.potion)return'potion';if(c.greenMagic||c.magicColor==='green')return'greenMagic';if(c.magic||c.magicColor==='purple')return'magic';if(c.superPurify)return'superPurify';if(c.purify)return'purify';if(c.shuffleToDeck)return'shuffle';return'wild'}
     _isAdventureBoss(x){if(!this.s.isAdventure||!window.AdventureRegistry)return false;return!!window.AdventureRegistry.getBoss(this.name(x))}
-    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部buff与debuff，然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
+    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn',label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得5层守护'):'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部buff与debuff，然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
+    useTrophyWhite(c, target, w='player'){
+      if (!c || !c.trophyWhite) return false;
+      let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;
+      let effect=c.trophyEffect||def&&def.trophyEffect||'burn';
+      if (effect === 'guard') {
+        if (this.s && this.s.phase === 'PLAYER_DEFEND' && this.s.pendingAttack) {
+          const damage = Math.max(0, Number(this.s.pendingAttack.damage) || 0);
+          const blocked = Math.min(5, damage);
+          this.s.pendingAttack.damage = damage - blocked;
+          this.s.pendingDefenseDamage = this.s.pendingAttack.damage;
+          if (blocked) this.emit('desc', '守护战利白卡：格挡' + blocked + '点伤害');
+        } else if (this.s && this.s.player) {
+          this.s.player.guard = Math.min(5, (this.s.player.guard || 0) + 5);
+        }
+      } else if (target) {
+        if (effect === 'bleed') this.bleed(target, 1);
+        else if (effect === 'freeze') this.freeze(target);
+        else this.burn(target, 1);
+      }
+      if (w === 'player') this.draw('player', 1, true);
+      return true;
+    }
     useItem(c,owner,target,w){if(c.potion)this.heal(owner,this.s.isAdventure&&w!=='player'?3:5);if(c.greenMagic||c.magicColor==='green'){this.heal(owner,w!=='player'&&this._isAdventureBoss(owner)?5:3);this.clearDebuffs(owner)}else if(c.magic||c.magicColor==='purple'){this.heal(owner,w!=='player'&&this._isAdventureBoss(owner)?5:3);this.clearPositiveBuffs(target);}if(c.drawThree)this.draw(w,3,true);if(c.drawTwo)this.draw(w,2,true);if(c.purify&&w==='player'&&(owner.burn||owner.bleed||owner.frozen||owner.poison||owner.bomb)){this.s.pendingDialog='purify'}else if(c.purify)this.clean(owner);if(c.superPurify&&w==='player'){this.s.pendingDialog='superPurify'}else if(c.superPurify){let ownerDeb=owner.burn+owner.bleed+(owner.poison||0)+(owner.frozen?1:0),targetGuard=target?target.guard:0;if(targetGuard>=2&&ownerDeb<2)this.clean(target,true);else this.clean(owner,true);}if(c.swapHand)[this.h.player,this.h.ai]=[this.h.ai,this.h.player];      if(c.shuffleToDeck){this._shuffleDiscardIntoDeck();this.emit('desc','弃牌库已洗回牌堆')}}
     effect(n,v,c,a,t){
       let d=0,skip=false,unblock=false,owner=a===this.s.player?'player':(this.s.is1v2&&a===this.s.ai2?'ai2':'ai'),target=owner==='player'?this._who(t):'player';
@@ -241,7 +263,7 @@
       this.rememberAttackDebuffs('ai');
       let _buffBefore={bleed:this.s.ai.bleed||0,burn:this.s.ai.burn||0,poison:this.s.ai.poison||0,frozen:!!this.s.ai.frozen};
       this.applySaikiPassive(this.s.player,this.s.ai,c);
-      if(c.isItemCard){this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player'});this.useItem(c,this.s.player,this.s.ai,'player');if(!this.s.pendingDialog)this._tickBomb('player');return this.check()}
+      if(c.isItemCard){this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player'});if(c.trophyWhite)this.useTrophyWhite(c,this.s.ai,'player');else this.useItem(c,this.s.player,this.s.ai,'player');if(!this.s.pendingDialog)this._tickBomb('player');return this.check()}
       this._deferAttackBuffs('ai',_buffBefore);
       if(who==='Ryan'&&c.value===5)return this.startRyanFive(c);
       if(who==='Saiki'&&c.value===6)return this.startNumberJudge('Saiki',c);
@@ -455,7 +477,7 @@
           if(c.isBlack)this.emit('colorChoice',`黑牌指定${this.colorName(c.chosenColor)}`,c);
           if(c.isWhite)this.emit('colorChoice',`白色道具牌自动指定${this.colorName(c.chosenColor)}`,c);
           this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player'});
-          this.useItem(c,this.s.player,this.s.ai,'player');
+          if(c.trophyWhite)this.useTrophyWhite(c,this.s.ai,'player');else this.useItem(c,this.s.player,this.s.ai,'player');
           if(!this.s.pendingDialog)this._tickBomb('player');
           return this.check()
         }
@@ -722,7 +744,7 @@
     if(c.isItemCard){
       let kind=this.itemKind(c);
       this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:kind,who:'player',target});
-      this.useItem1v2(c,this.s.player,targetChar,'player');
+      if(c.trophyWhite)this.useTrophyWhite(c,targetChar,'player');else this.useItem1v2(c,this.s.player,targetChar,'player');
       if(!this.s.pendingDialog)this._tickBomb('player');
       this.s.phase='PLAYER_PLAY';this.s.busy=false;this.s.attackTarget=null;
       return this.check()
@@ -852,7 +874,7 @@
         let bridgeLabel=c.isBlack?'黑牌':c.isWhite?'白色':'道具';
         this.emit('defend',bridgeLabel+'牌指定'+this.colorName(c.chosenColor||c.color)+'并搭桥，请继续选择防御牌',c);
         this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player',target});
-        this.useItem1v2(c,this.s.player,targetChar,'player');
+        if(c.trophyWhite)this.useTrophyWhite(c,targetChar,'player');else this.useItem1v2(c,this.s.player,targetChar,'player');
         if(!this.s.pendingDialog)this._tickBomb('player');
         this.s.phase='PLAYER_DEFEND';this.s.busy=false;
         return this.check()

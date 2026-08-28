@@ -27,6 +27,21 @@
     isNumberCard: false, isItemCard: true
   });
 
+  // 战利白卡：属于玩家牌库，不占用一次性道具槽；打出后进入弃牌库，
+  // 因而可以在牌库洗回后反复抽到。它仍按白牌规则自动指定当前颜色。
+  const trophyWhite = (name = 'BurnTrophy') => ({
+    value: -1,
+    color: 'WHITE',
+    trophyWhite: true,
+    trophyName: name,
+    trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', GuardTrophy: 'guard' })[name] || null,
+    chosenColor: null,
+    isBlack: false,
+    isWhite: true,
+    isNumberCard: false,
+    isItemCard: true
+  });
+
   function shuffle(arr) {
     for (let i = arr.length - 1; i; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -136,6 +151,9 @@
           drawThree: c.drawThree,
           swapHand: c.swapHand,
           shuffleToDeck: c.shuffleToDeck,
+          trophyWhite: !!c.trophyWhite,
+          trophyName: c.trophyName || null,
+          trophyEffect: c.trophyEffect || null,
           isBlack: c.isBlack,
           isWhite: c.isWhite,
           isNumberCard: c.isNumberCard,
@@ -184,7 +202,7 @@
   }
 
   window.AdventureDeck = {
-    COLORS, num, item, shuffle, clone,
+    COLORS, num, item, trophyWhite, shuffle, clone,
     makePlayerDeck, makeNpcDeck,
     AdventurePile, DiscardTop,
     drawInitialTop
