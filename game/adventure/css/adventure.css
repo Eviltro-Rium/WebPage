@@ -494,6 +494,47 @@
 
 .adv-combat-error { color: #fca5a5; }
 
+/* 冒险测试台：与正式地图隔离，复用战斗界面但不写入冒险进度。 */
+.adv-test-shell {
+  width: min(980px, calc(100% - 28px)); margin: 40px auto; padding: 26px;
+  color: #eeeaff; background: rgba(25, 22, 43, .82); border: 1px solid rgba(168,85,247,.3);
+  border-radius: 18px; box-shadow: 0 18px 60px rgba(0,0,0,.28); backdrop-filter: blur(10px);
+}
+.adv-test-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:22px; }
+.adv-test-header h2 { margin:3px 0 6px; color:#f5f3ff; }
+.adv-test-header p, .adv-test-shell p { margin:0; color:rgba(232,232,240,.68); font-size:.86rem; }
+.adv-test-kicker { color:#a78bfa; font-size:.68rem; font-weight:800; letter-spacing:.18em; }
+.adv-test-link { border:0; background:none; color:#c4b5fd; cursor:pointer; padding:5px; }
+.adv-test-section { margin:18px 0; }
+.adv-test-section-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; color:#c4b5fd; }
+.adv-test-section-head h3 { margin:0; font-size:1rem; }
+.adv-test-section-head span { font-size:.78rem; opacity:.72; }
+.adv-test-item-grid, .adv-test-opponent-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:9px; }
+.adv-test-item, .adv-test-opponent { min-height:76px; display:flex; align-items:center; gap:8px; text-align:left; padding:9px; color:#eeeaff; background:rgba(50,44,75,.48); border:1px solid rgba(167,139,250,.22); border-radius:10px; cursor:pointer; transition:.16s ease; }
+.adv-test-item:hover, .adv-test-opponent:hover { border-color:#a855f7; transform:translateY(-1px); }
+.adv-test-item.selected, .adv-test-opponent.selected, .adv-test-mode.selected { border-color:#c4b5fd; background:rgba(124,58,237,.28); box-shadow:0 0 0 2px rgba(168,85,247,.2); }
+.adv-test-item-icon { width:34px; height:34px; flex:none; object-fit:contain; }
+.adv-test-item-fallback { display:grid; place-items:center; color:#c4b5fd; }
+.adv-test-mode-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:16px 0 22px; }
+.adv-test-mode { display:flex; flex-direction:column; gap:4px; padding:14px; text-align:left; color:#eeeaff; background:rgba(50,44,75,.48); border:1px solid rgba(167,139,250,.22); border-radius:11px; cursor:pointer; }
+.adv-test-mode strong { color:#f5f3ff; font-size:1rem; }
+.adv-test-mode span { color:rgba(232,232,240,.65); font-size:.75rem; }
+.adv-test-opponent-icon { width:38px; height:38px; object-fit:contain; flex:none; }
+.adv-test-opponent-name { font-weight:700; font-size:.86rem; }
+.adv-test-opponent-meta { display:block; color:rgba(232,232,240,.55); font-size:.68rem; margin-top:3px; }
+.adv-test-actions { display:flex; justify-content:center; gap:10px; margin-top:22px; }
+.adv-test-actions .adv-btn { min-width:140px; }
+.adv-test-result { max-width:560px; text-align:center; }
+.adv-test-result-mark { width:62px; height:62px; display:grid; place-items:center; margin:12px auto; border-radius:50%; font-size:2rem; font-weight:800; }
+.adv-test-result-mark.win { color:#bbf7d0; background:rgba(34,197,94,.18); border:1px solid rgba(74,222,128,.45); }
+.adv-test-result-mark.lose { color:#fecaca; background:rgba(239,68,68,.15); border:1px solid rgba(248,113,113,.4); }
+.adv-test-muted { margin-top:8px !important; font-size:.76rem !important; }
+@media (max-width: 640px) {
+  .adv-test-shell { padding:18px; margin-top:20px; }
+  .adv-test-header { flex-direction:column; }
+  .adv-test-mode-grid { grid-template-columns:1fr; }
+}
+
 .adv-settle-box { min-width: 340px; max-width: 460px; }
 .adv-settle-rewards { text-align: left; margin: 8px 0 16px; }
 .adv-settle-row {

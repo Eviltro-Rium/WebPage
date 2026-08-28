@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(open http://localhost:8080/game/index.html)",
+      "Bash(screencapture -x /tmp/game_screenshot.png)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
+    ]
+  }
+}

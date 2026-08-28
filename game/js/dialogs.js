@@ -125,20 +125,21 @@ class DialogManager {
     collectPurifyChoices(ch, maxCount, onDone, extra) {
         extra = extra || {};
         const selfSnap = {
-            burn: ch.burn || 0, bleed: ch.bleed || 0, poison: ch.poison || 0, frozen: !!ch.frozen,
+            burn: ch.burn || 0, bleed: ch.bleed || 0, poison: ch.poison || 0, bomb: ch.bomb || 0, frozen: !!ch.frozen,
             guard: ch.guard || 0, fly: ch.fly || 0, crit: ch.crit || 0
         };
         const opp = extra.opponent || null;
         const oppSnap = opp ? {
-            burn: opp.burn || 0, bleed: opp.bleed || 0, poison: opp.poison || 0, frozen: !!opp.frozen,
+            burn: opp.burn || 0, bleed: opp.bleed || 0, poison: opp.poison || 0, bomb: opp.bomb || 0, frozen: !!opp.frozen,
             guard: opp.guard || 0, fly: opp.fly || 0, crit: opp.crit || 0
         } : null;
-        const hasAny = snap => snap && (snap.burn > 0 || snap.bleed > 0 || snap.poison > 0 || snap.frozen ||
+        const hasAny = snap => snap && (snap.burn > 0 || snap.bleed > 0 || snap.poison > 0 || snap.bomb > 0 || snap.frozen ||
             snap.guard > 0 || snap.fly > 0 || snap.crit > 0);
         const applyLocal = (snap, kind) => {
             if (kind === 'burn') snap.burn = Math.max(0, snap.burn - 1);
             else if (kind === 'bleed') snap.bleed = Math.max(0, snap.bleed - 1);
             else if (kind === 'poison') snap.poison = Math.max(0, snap.poison - 1);
+            else if (kind === 'bomb') snap.bomb = 0;
             else if (kind === 'freeze') snap.frozen = false;
             else if (kind === 'guard') snap.guard = Math.max(0, snap.guard - 1);
             else if (kind === 'fly') snap.fly = Math.max(0, snap.fly - 1);
@@ -176,6 +177,7 @@ class DialogManager {
             if (snap.frozen) rows.push(['freeze', '冷冻', 'freeze']);
             if (snap.bleed > 0) rows.push(['bleed', `流血 ×${snap.bleed}`, 'bleed']);
             if (snap.poison > 0) rows.push(['poison', `中毒 ×${snap.poison}`, 'poison']);
+            if (snap.bomb > 0) rows.push(['bomb', `炸弹 ×${snap.bomb}`, 'poison']);
             if (snap.guard > 0) rows.push(['guard', `守护 ×${snap.guard}`, 'guard']);
             if (snap.fly > 0) rows.push(['fly', `飞翔 ×${snap.fly}`, 'guard']);
             if (snap.crit > 0) rows.push(['crit', `暴击 ×${snap.crit}`, 'crit']);

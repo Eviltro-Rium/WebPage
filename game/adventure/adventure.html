@@ -208,6 +208,7 @@
 
             const params = new URLSearchParams(window.location.search);
             const presetChar = params.get('char');
+            const testMode = params.get('test') === '1';
 
             const advScenes = ['castle', 'forest'];
             const pickStartMap = () => 'maps/stage_01_' + advScenes[Math.floor(Math.random() * advScenes.length)] + '_' + (1 + Math.floor(Math.random() * 3)) + '.csv';
@@ -215,7 +216,8 @@
             if (presetChar) {
                 currentChar = presetChar;
                 const bg = document.getElementById('castle-bg'); if (bg) bg.style.display = 'block';
-                ui.start(pickStartMap(), presetChar);
+                if (testMode) ui.startTest(presetChar);
+                else ui.start(pickStartMap(), presetChar);
                 return;
             }
 

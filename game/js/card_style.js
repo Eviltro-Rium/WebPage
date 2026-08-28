@@ -21,7 +21,8 @@
     super_purify: { label: 'PURIFY+', aria: '超级净化', fallback: 'P+' },
     purify:       { label: 'PURIFY', aria: '净化', fallback: 'P' },
     potion:       { label: 'POTION', aria: '药剂', fallback: '+' },
-    magic:        { label: 'MAGIC', aria: '魔法', fallback: '✦' },
+    magic:        { label: 'PURPLE MAGIC', aria: '紫魔法', fallback: '✦' },
+    green_magic:  { label: 'GREEN MAGIC', aria: '绿魔法', fallback: '✦' },
     swap:         { label: 'SWAP', aria: '换牌', fallback: '⇄' },
     wild:         { label: 'WILD', aria: '指定颜色', fallback: '◆' }
   };
@@ -39,7 +40,8 @@
   const ICON_PATHS = {
     black: cardAssetUrl('icons/card_icons/color_palette.png'),
     potion: cardAssetUrl('icons/card_icons/potion.png'),
-    magic: cardAssetUrl('icons/card_icons/magic.png'),
+    magic: cardAssetUrl('icons/card_icons/purple_magic.png'),
+    green_magic: cardAssetUrl('icons/card_icons/green_magic.png'),
     draw_three: cardAssetUrl('icons/card_icons/draw_cards.png'),
     purify: cardAssetUrl('icons/card_icons/purify.png'),
     super_purify: cardAssetUrl('icons/card_icons/super_purify.png'),
@@ -63,7 +65,7 @@
   function normalizeCard(raw) {
     const c = raw || {};
     const isItemCard = c.isItemCard != null ? c.isItemCard : !!(
-      c.potion || c.magic || c.purify || c.superPurify || c.drawTwo || c.drawThree || c.swapHand || c.shuffleToDeck
+      c.potion || c.magic || c.greenMagic || c.magicColor || c.purify || c.superPurify || c.drawTwo || c.drawThree || c.swapHand || c.shuffleToDeck
     );
     const isNumberCard = c.isNumberCard != null ? c.isNumberCard : (
       !isItemCard && typeof c.value === 'number' && c.value >= 0 && !c.isBlack
@@ -99,7 +101,8 @@
     if (card.superPurify) return 'super_purify';
     if (card.purify) return 'purify';
     if (card.potion) return 'potion';
-    if (card.magic) return 'magic';
+    if (card.greenMagic || card.magicColor === 'green') return 'green_magic';
+    if (card.magic || card.magicColor === 'purple') return 'magic';
     if (card.drawThree) return 'draw_three';
     if (card.swapHand) return 'swap';
     return 'wild';

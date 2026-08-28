@@ -389,6 +389,15 @@ body {
     transform-origin: center;
     transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s, color 0.2s;
 }
+.home-test-btn {
+    display: block;
+    margin: 9px auto 0;
+    min-width: min(100%, 280px);
+    border-color: rgba(196,181,253,0.55);
+    background: rgba(124,58,237,0.22);
+    font-size: 0.9rem;
+}
+.home-test-btn:not(:disabled):hover { background: rgba(168,85,247,0.36); }
 .home-start-btn:not(:disabled):hover {
     transform: translateY(-3px) scale(1.05);
 }

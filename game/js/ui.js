@@ -30,7 +30,8 @@ const TAG_COLORS = {
 const ICON_PATHS = {
     black: gameAssetUrl('icons/card_icons/color_palette.png'),
     potion: gameAssetUrl('icons/card_icons/potion.png'),
-    magic: gameAssetUrl('icons/card_icons/magic.png'),
+    magic: gameAssetUrl('icons/card_icons/purple_magic.png'),
+    green_magic: gameAssetUrl('icons/card_icons/green_magic.png'),
     draw_three: gameAssetUrl('icons/card_icons/draw_cards.png'),
     purify: gameAssetUrl('icons/card_icons/purify.png'),
     super_purify: gameAssetUrl('icons/card_icons/super_purify.png'),
@@ -115,13 +116,13 @@ function parseSegments(text, defaultColor) {
 }
 
 function cardId(card) {
-    return `${card.color}_${card.value}_${card.isBlack}_${card.isWhite}_${card.potion}_${card.magic}_${card.purify}_${card.superPurify}_${card.swapHand}_${card.shuffleToDeck}_${card.drawThree}`;
+    return `${card.color}_${card.value}_${card.isBlack}_${card.isWhite}_${card.potion}_${card.magic}_${card.greenMagic}_${card.magicColor || ''}_${card.purify}_${card.superPurify}_${card.swapHand}_${card.shuffleToDeck}_${card.drawThree}`;
 }
 
 /** 匹配用手牌身份（忽略 chosenColor，避免 AI 出牌染色后找不到源牌） */
 function cardMatchKey(card) {
     if (!card) return '';
-    return `${card.color}_${card.value}_${!!card.isBlack}_${!!card.isWhite}_${!!card.potion}_${!!card.magic}_${!!card.purify}_${!!card.superPurify}_${!!card.swapHand}_${!!card.shuffleToDeck}_${!!card.drawThree}`;
+    return `${card.color}_${card.value}_${!!card.isBlack}_${!!card.isWhite}_${!!card.potion}_${!!card.magic}_${!!card.greenMagic}_${card.magicColor || ''}_${!!card.purify}_${!!card.superPurify}_${!!card.swapHand}_${!!card.shuffleToDeck}_${!!card.drawThree}`;
 }
 
 class AnimLayer {
@@ -526,6 +527,9 @@ class GameUI {
         }
         html += `</div></div>`;
         html += `<button class="start-btn home-start-btn" id="start-btn" type="button" disabled><span class="home-start-shine" aria-hidden="true"></span>开始游戏</button>`;
+        if (this._isAdventure) {
+            html += `<button class="start-btn home-test-btn" id="adventure-test-btn" type="button" disabled>进入测试</button>`;
+        }
         html += `</div></div>`;
 
         this.selectScreen.innerHTML = html;
@@ -564,6 +568,8 @@ class GameUI {
         const checkReady = () => {
             const ready = this._isAdventure ? !!this._selectedPlayerChar : (this._selectedPlayerChar && this._selectedAIChar && (!(this._is1v2||this._isLord) || this._selectedAI2Char));
             document.getElementById('start-btn').disabled = !ready;
+            const testBtn = document.getElementById('adventure-test-btn');
+            if (testBtn) testBtn.disabled = !ready;
             if (ready && !this._isAdventure) {
                 const s = this._selectedPlayerChar + ' (玩家)  vs  ' + this._selectedAIChar + ' (Bot1)';
                 document.getElementById('assign-status').textContent = (this._is1v2||this._isLord) ? s + ' & ' + this._selectedAI2Char + ' (Bot2)' : s;
@@ -602,6 +608,12 @@ class GameUI {
                 if (this._selectedPlayerChar && this._selectedAIChar && this._selectedAI2Char) this._startGame1v2 ? this._startGame1v2() : this._startGame();
             } else {
                 if (this._selectedPlayerChar && this._selectedAIChar) this._startGame();
+            }
+        });
+        const testBtn = document.getElementById('adventure-test-btn');
+        if (testBtn) testBtn.addEventListener('click', () => {
+            if (this._isAdventure && this._selectedPlayerChar) {
+                window.location.href = 'adventure/adventure.html?char=' + encodeURIComponent(this._selectedPlayerChar) + '&test=1';
             }
         });
         const mode1v1Btn = document.getElementById('mode-1v1');
@@ -1346,7 +1358,7 @@ class GameUI {
             const oppKey = s.attackTarget || (s.activeAttacker === 'ai2' ? 'ai2' : 'ai');
             const opponent = s[oppKey] && s[oppKey].alive ? s[oppKey] : (s.ai && s.ai.alive ? s.ai : null);
             const hasBuff = ch => ch && ((ch.burn || 0) > 0 || (ch.bleed || 0) > 0 ||
-                (ch.poison || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
+                (ch.poison || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
             if (!hasBuff(player) && !hasBuff(opponent)) return;
             this.dialogs.collectPurifyChoices(player, def.purifyCount || 1, choices => {
                 if (!choices.length) return;
@@ -1357,7 +1369,7 @@ class GameUI {
         if (def.combatUse === 'buffTransfer') {
             const player = s.player;
             const hasBuff = ch => ch && ((ch.burn || 0) > 0 || (ch.bleed || 0) > 0 ||
-                (ch.poison || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
+                (ch.poison || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
             if (!hasBuff(player)) return;
             this.dialogs.showBuffTransferChoice(player, choice => { void run(choice); });
             return;

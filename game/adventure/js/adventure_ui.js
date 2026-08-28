@@ -27,6 +27,7 @@
       this._bridgeCombatStarting = false;
       this._bridgeCombatActive = false;
       this.logVisible = false;
+      this._test = null;
       this._bindEngine();
     }
 
@@ -655,6 +656,69 @@
         const bsSlot = bsSlotBtn ? parseInt(bsSlotBtn.getAttribute('data-blacksmith-slot'), 10) : -1;
         const recycleBtn = e.target.closest('[data-recycle-index]');
         const recycleIndex = recycleBtn ? parseInt(recycleBtn.getAttribute('data-recycle-index'), 10) : -1;
+        const testItemBtn = e.target.closest('[data-test-item]');
+        const testAccessoryBtn = e.target.closest('[data-test-accessory]');
+        const testModeBtn = e.target.closest('[data-test-mode]');
+        const testOpponentBtn = e.target.closest('[data-test-opponent]');
+        if (id === 'adv-test-cancel' || id === 'adv-test-home') {
+          window.location.href = '../index.html';
+          return;
+        }
+        if (testItemBtn && this._test) {
+          const name = testItemBtn.getAttribute('data-test-item');
+          const at = this._test.items.indexOf(name);
+          if (at >= 0) this._test.items.splice(at, 1);
+          else if (this._test.items.length < 3) this._test.items.push(name);
+          else { this._toast('道具最多选择 3 个'); return; }
+          this._renderTestLoadout();
+          return;
+        }
+        if (testAccessoryBtn && this._test) {
+          const name = testAccessoryBtn.getAttribute('data-test-accessory');
+          const at = this._test.accessories.indexOf(name);
+          if (at >= 0) this._test.accessories.splice(at, 1);
+          else if (this._test.accessories.length < 2) this._test.accessories.push(name);
+          else { this._toast('配饰最多选择 2 个'); return; }
+          this._renderTestLoadout();
+          return;
+        }
+        if (id === 'adv-test-loadout-confirm' && this._test) {
+          this._test.mode = null;
+          this._test.opponents = [];
+          this._renderTestMode();
+          return;
+        }
+        if (id === 'adv-test-back-loadout' && this._test) {
+          this._renderTestLoadout();
+          return;
+        }
+        if (testModeBtn && this._test) {
+          this._test.mode = testModeBtn.getAttribute('data-test-mode');
+          this._test.opponents = [];
+          this._renderTestMode();
+          return;
+        }
+        if (testOpponentBtn && this._test && this._test.mode) {
+          const name = testOpponentBtn.getAttribute('data-test-opponent');
+          const max = this._test.mode === '1v2' ? 2 : 1;
+          const at = this._test.opponents.indexOf(name);
+          if (at >= 0) this._test.opponents.splice(at, 1);
+          else if (this._test.opponents.length < max) this._test.opponents.push(name);
+          else { this._toast('该测试房只能选择 ' + max + ' 个对手'); return; }
+          this._renderTestMode();
+          return;
+        }
+        if (id === 'adv-test-start' && this._test) {
+          const need = this._test.mode === '1v2' ? 2 : 1;
+          if (this._test.opponents.length === need) this._startTestBattle();
+          return;
+        }
+        if (id === 'adv-test-again' && this._test) {
+          this._test.mode = null;
+          this._test.opponents = [];
+          this._renderTestMode();
+          return;
+        }
         if (id === 'adv-enter') { this._handleEnterRoom(); }
         else if (id === 'adv-reward') {
           const loot = this.eng.collectReward();
@@ -753,7 +817,7 @@
           if (def && def.combatUse === 'purify') {
             const player = this.eng.s.player;
             const hasBuff = (player.burn || 0) > 0 || (player.bleed || 0) > 0 ||
-              (player.poison || 0) > 0 || player.frozen || (player.guard || 0) > 0 ||
+              (player.poison || 0) > 0 || (player.bomb || 0) > 0 || player.frozen || (player.guard || 0) > 0 ||
               (player.fly || 0) > 0 || (player.crit || 0) > 0;
             if (!hasBuff) {
               this._toast('当前没有可净化的状态');
@@ -866,6 +930,115 @@
         this.eng.onCombatEnd(result);
       }
       this.render();
+    }
+
+    startTest(characterName) {
+      this._test = { characterName, items: [], accessories: [], mode: null, opponents: [], running: false, result: null };
+      const bg = document.getElementById('castle-bg');
+      if (bg) bg.style.display = 'block';
+      this._renderTestLoadout();
+    }
+
+    _testItemDefs(kind) {
+      return (window.AdventureRegistry && window.AdventureRegistry.allItems
+        ? window.AdventureRegistry.allItems() : []).filter(item => item.kind === kind);
+    }
+
+    _testItemCard(def, selected, attr) {
+      const icon = def.icon ? '<img src="' + def.icon + '" alt="" class="adv-test-item-icon">' : '<span class="adv-test-item-icon adv-test-item-fallback">◆</span>';
+      return '<button type="button" class="adv-test-item' + (selected ? ' selected' : '') + '" ' + attr + '="' + def.name + '" title="' + (def.description || '') + '">' + icon + '<span>' + def.displayName + '</span></button>';
+    }
+
+    _renderTestLoadout() {
+      if (!this._test) return;
+      const items = this._testItemDefs('consumable');
+      const accessories = this._testItemDefs('accessory');
+      let html = '<div class="adv-test-shell"><div class="adv-test-header"><div><div class="adv-test-kicker">COMBAT LAB</div><h2>冒险测试 · ' + this._test.characterName + '</h2><p>选择本次测试携带的资源，不会写入正式冒险存档。</p></div><button type="button" class="adv-test-link" id="adv-test-cancel">返回主页</button></div>';
+      html += '<section class="adv-test-section"><div class="adv-test-section-head"><h3>道具</h3><span>' + this._test.items.length + ' / 3</span></div><div class="adv-test-item-grid">';
+      items.forEach(def => { html += this._testItemCard(def, this._test.items.includes(def.name), 'data-test-item'); });
+      html += '</div></section>';
+      html += '<section class="adv-test-section"><div class="adv-test-section-head"><h3>配饰</h3><span>' + this._test.accessories.length + ' / 2</span></div><div class="adv-test-item-grid">';
+      accessories.forEach(def => { html += this._testItemCard(def, this._test.accessories.includes(def.name), 'data-test-accessory'); });
+      html += '</div></section>';
+      html += '<div class="adv-test-actions"><button type="button" class="adv-btn adv-btn-primary" id="adv-test-loadout-confirm">确认配置</button></div></div>';
+      this.container.innerHTML = html;
+    }
+
+    _renderTestMode() {
+      if (!this._test) return;
+      const normal = window.AdventureRegistry ? window.AdventureRegistry.allMonsters() : [];
+      const bosses = window.AdventureRegistry ? window.AdventureRegistry.allBosses() : [];
+      const mode = this._test.mode;
+      const pool = mode === 'boss' ? bosses : normal;
+      const needed = mode === '1v2' ? 2 : 1;
+      let html = '<div class="adv-test-shell"><div class="adv-test-header"><div><div class="adv-test-kicker">COMBAT LAB</div><h2>选择测试房间</h2><p>击败全部对手后直接结束，不产生金币、道具或兽元奖励。</p></div><button type="button" class="adv-test-link" id="adv-test-back-loadout">返回配置</button></div>';
+      html += '<div class="adv-test-mode-grid">' +
+        '<button type="button" class="adv-test-mode' + (mode === '1v1' ? ' selected' : '') + '" data-test-mode="1v1"><strong>1v1</strong><span>普通房 · 选择 1 个普通怪物</span></button>' +
+        '<button type="button" class="adv-test-mode' + (mode === '1v2' ? ' selected' : '') + '" data-test-mode="1v2"><strong>1v2</strong><span>挑战房 · 选择 2 个普通怪物</span></button>' +
+        '<button type="button" class="adv-test-mode' + (mode === 'boss' ? ' selected' : '') + '" data-test-mode="boss"><strong>Boss</strong><span>Boss房 · 选择 1 个 Boss</span></button>' +
+        '</div>';
+      if (mode) {
+        html += '<section class="adv-test-section"><div class="adv-test-section-head"><h3>' + (mode === 'boss' ? 'Boss 列表' : '普通怪物列表') + '</h3><span>' + this._test.opponents.length + ' / ' + needed + '</span></div><div class="adv-test-opponent-grid">';
+        pool.forEach(def => {
+          const selected = this._test.opponents.includes(def.name);
+          const icon = def.icon ? '<img src="' + def.icon + '" alt="" class="adv-test-opponent-icon">' : '';
+          html += '<button type="button" class="adv-test-opponent' + (selected ? ' selected' : '') + '" data-test-opponent="' + def.name + '">' + icon + '<span class="adv-test-opponent-name">' + (def.kind || def.name) + '</span><span class="adv-test-opponent-meta">' + def.name + ' · HP ' + (def.hp || 0) + '</span></button>';
+        });
+        html += '</div></section><div class="adv-test-actions"><button type="button" class="adv-btn adv-btn-primary" id="adv-test-start"' + (this._test.opponents.length === needed ? '' : ' disabled') + '>开始测试</button></div>';
+      }
+      html += '</div>';
+      this.container.innerHTML = html;
+    }
+
+    _startTestBattle() {
+      if (!this._test || this._test.running) return;
+      if (!window.AdventureCombatBridge || !window.AdventureCombatBridge.isAvailable()) {
+        this._showCombatLaunchError('战斗模块加载失败，请刷新页面后重试');
+        return;
+      }
+      const mode = this._test.mode;
+      const opponents = this._test.opponents.slice();
+      const map = window.AdventureMap.fromGrid([[0, 1, 2]]);
+      this.eng.start(map, this._test.characterName, { consumables: this._test.items, accessories: this._test.accessories, stage: 1, scene: 'castle' });
+      const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
+      const initialState = {
+        playerState: clone(this.eng.s.player),
+        playerPile: { deck: clone(this.eng.s.playerPile.deck), hand: clone(this.eng.s.playerPile.hand), discard: clone(this.eng.s.playerPile.discard), handLimit: this.eng.s.playerPile.handLimit },
+        discardTop: this.eng.s.discardTop ? clone(this.eng.s.discardTop.get()) : null,
+        discardTopOwner: this.eng.s.discardTopOwner || null,
+        adventureCurrency: this.eng.s.currency,
+        adventureEngine: this.eng,
+        stage: 1,
+        scene: 'castle',
+        testMode: true
+      };
+      this._test.running = true;
+      this._bridgeCombatStarting = true;
+      const done = (result, state, persistentState, meta) => this._onTestBattleEnd(result, state, persistentState, meta);
+      const promise = mode === '1v2'
+        ? window.AdventureCombatBridge.startCombat1v2(this._test.characterName, opponents[0], opponents[1], done, initialState)
+        : window.AdventureCombatBridge.startCombat(this._test.characterName, opponents[0], done, initialState);
+      Promise.resolve(promise).catch(error => {
+        this._test.running = false;
+        this._bridgeCombatStarting = false;
+        this._showCombatLaunchError('测试启动失败：' + (error.message || error));
+      });
+    }
+
+    _onTestBattleEnd(result) {
+      this._bridgeCombatStarting = false;
+      this._bridgeCombatActive = false;
+      if (!this._test) return;
+      this._test.running = false;
+      this._test.result = result;
+      this._renderTestResult();
+    }
+
+    _renderTestResult() {
+      if (!this._test) return;
+      const won = this._test.result === 'win';
+      const label = this._test.mode === 'boss' ? 'Boss 测试' : (this._test.mode === '1v2' ? '1v2 挑战测试' : '1v1 普通测试');
+      this.container.innerHTML = '<div class="adv-test-shell adv-test-result"><div class="adv-test-kicker">TEST COMPLETE</div><div class="adv-test-result-mark ' + (won ? 'win' : 'lose') + '">' + (won ? '✓' : '×') + '</div><h2>' + (won ? '测试完成' : '测试结束') + '</h2><p>' + label + (won ? '：已击败所有对手。' : '：本次未能击败对手。') + '</p><p class="adv-test-muted">测试不会发放奖励，也不会改变正式冒险进度。</p><div class="adv-test-actions"><button type="button" class="adv-btn adv-btn-primary" id="adv-test-again">再次测试</button><button type="button" class="adv-btn" id="adv-test-home">返回主页</button></div></div>';
     }
 
     _getDialogs() {

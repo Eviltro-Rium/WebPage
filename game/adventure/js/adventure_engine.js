@@ -857,12 +857,18 @@
       pile.discardCard(oldTop);
       combat.atkCard = card;
 
-      if (card.magic) {
+      if (card.magic || card.greenMagic || card.magicColor) {
         const _mHp = (window.AdventureRegistry && window.AdventureRegistry.getBoss(combat.enemy.name)) ? 5 : 3;
         combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + _mHp);
-        this._clearPlayerPositiveBuffs();
-        this._log('敌方出魔法牌，恢复' + _mHp + '点生命，清除玩家正面buff');
-        this.emit('npcPlay', '敌方魔法牌：恢复' + _mHp + '生命，清除玩家正面buff', card, { kind: 'magic' });
+        if (card.greenMagic || card.magicColor === 'green') {
+          combat.enemy.burn = 0; combat.enemy.bleed = 0; combat.enemy.poison = 0; combat.enemy.frozen = false; combat.enemy.bomb = 0;
+          this._log('敌方出绿魔法牌，恢复' + _mHp + '点生命，清除自身负面状态');
+          this.emit('npcPlay', '敌方绿魔法牌：恢复' + _mHp + '生命，清除自身负面状态', card, { kind: 'greenMagic' });
+        } else {
+          this._clearPlayerPositiveBuffs();
+          this._log('敌方出紫魔法牌，恢复' + _mHp + '点生命，清除玩家正面buff');
+          this.emit('npcPlay', '敌方紫魔法牌：恢复' + _mHp + '生命，清除玩家正面buff', card, { kind: 'magic' });
+        }
         combat.atkCard = null;
         this._npcPlayNext();
         return;
@@ -1002,12 +1008,18 @@
         pile.discardCard(oldTop);
         played.push(card);
 
-        if (card.magic) {
+        if (card.magic || card.greenMagic || card.magicColor) {
           const _mHp = (window.AdventureRegistry && window.AdventureRegistry.getBoss(combat.enemy.name)) ? 5 : 3;
           combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + _mHp);
-          this._clearPlayerPositiveBuffs();
-          this._log('NPC 出魔法牌，恢复' + _mHp + '点生命，清除玩家正面buff，继续搭桥');
-          this.emit('npcPlay', 'NPC 魔法牌：恢复' + _mHp + '点生命，清除玩家正面buff', card, { kind: 'magic' });
+          if (card.greenMagic || card.magicColor === 'green') {
+            combat.enemy.burn = 0; combat.enemy.bleed = 0; combat.enemy.poison = 0; combat.enemy.frozen = false; combat.enemy.bomb = 0;
+            this._log('NPC 出绿魔法牌，恢复' + _mHp + '点生命，清除自身负面状态，继续搭桥');
+            this.emit('npcPlay', 'NPC 绿魔法牌：恢复' + _mHp + '点生命，清除自身负面状态', card, { kind: 'greenMagic' });
+          } else {
+            this._clearPlayerPositiveBuffs();
+            this._log('NPC 出紫魔法牌，恢复' + _mHp + '点生命，清除玩家正面buff，继续搭桥');
+            this.emit('npcPlay', 'NPC 紫魔法牌：恢复' + _mHp + '点生命，清除玩家正面buff', card, { kind: 'magic' });
+          }
         } else {
           const ctx = { playerHandSize: this.s.playerPile ? this.s.playerPile.hand.length : 0 };
           const dmg = (typeof combat.enemy.attackDamage === 'function')
@@ -1042,12 +1054,18 @@
       const oldTop = this.s.discardTop.replace(card);
       pile.discardCard(oldTop);
 
-      if (card.magic) {
+      if (card.magic || card.greenMagic || card.magicColor) {
         const _mHp = (window.AdventureRegistry && window.AdventureRegistry.getBoss(combat.enemy.name)) ? 5 : 3;
         combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + _mHp);
-        this._clearPlayerPositiveBuffs();
-        this._log('NPC 防御出魔法牌，恢复' + _mHp + '点生命，清除玩家正面buff');
-        this.emit('npcDefend', 'NPC 魔法牌防御：恢复' + _mHp + '点生命，清除玩家正面buff', card, { kind: 'magic' });
+        if (card.greenMagic || card.magicColor === 'green') {
+          combat.enemy.burn = 0; combat.enemy.bleed = 0; combat.enemy.poison = 0; combat.enemy.frozen = false; combat.enemy.bomb = 0;
+          this._log('NPC 防御出绿魔法牌，恢复' + _mHp + '点生命，清除自身负面状态');
+          this.emit('npcDefend', 'NPC 绿魔法牌防御：恢复' + _mHp + '点生命，清除自身负面状态', card, { kind: 'greenMagic' });
+        } else {
+          this._clearPlayerPositiveBuffs();
+          this._log('NPC 防御出紫魔法牌，恢复' + _mHp + '点生命，清除玩家正面buff');
+          this.emit('npcDefend', 'NPC 紫魔法牌防御：恢复' + _mHp + '点生命，清除玩家正面buff', card, { kind: 'magic' });
+        }
         return { remaining: incomingDamage, defended: true, card };
       }
 
@@ -2445,10 +2463,10 @@
           kind: this.s.combat.kind,
           round: this.s.combat.round,
           selectedCard: this.s.combat.selectedCard,
-          atkCard: this.s.combat.atkCard ? (this.s.combat.atkCard.magic ? '魔' : (this.s.combat.atkCard.potion ? '药' : this.s.combat.atkCard.value)) : null,
-          defCard: this.s.combat.defCard ? (this.s.combat.defCard.magic ? '魔' : (this.s.combat.defCard.potion ? '药' : this.s.combat.defCard.value)) : null,
+          atkCard: this.s.combat.atkCard ? ((this.s.combat.atkCard.magic || this.s.combat.atkCard.magicColor === 'purple') ? '紫魔' : ((this.s.combat.atkCard.greenMagic || this.s.combat.atkCard.magicColor === 'green') ? '绿魔' : (this.s.combat.atkCard.potion ? '药' : this.s.combat.atkCard.value))) : null,
+          defCard: this.s.combat.defCard ? ((this.s.combat.defCard.magic || this.s.combat.defCard.magicColor === 'purple') ? '紫魔' : ((this.s.combat.defCard.greenMagic || this.s.combat.defCard.magicColor === 'green') ? '绿魔' : (this.s.combat.defCard.potion ? '药' : this.s.combat.defCard.value))) : null,
           pendingDamage: this.s.combat.pendingDamage || 0,
-          npcHand: this.s.combat.npcPile.hand.map(c => c.magic ? '魔' : (c.potion ? '药' : c.value)),
+          npcHand: this.s.combat.npcPile.hand.map(c => (c.magic || c.magicColor === 'purple') ? '紫魔' : ((c.greenMagic || c.magicColor === 'green') ? '绿魔' : (c.potion ? '药' : c.value))),
           npcHandCount: this.s.combat.npcPile.hand.length,
           npcDeckCount: this.s.combat.npcPile.deck.length,
           npcDiscardCount: this.s.combat.npcPile.discard.length,

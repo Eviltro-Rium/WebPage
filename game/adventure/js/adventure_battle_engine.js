@@ -33,6 +33,7 @@
     constructor() {
       super();
       this.isAdventureBattle = true;
+      this.testMode = false;
       this.piles = null;
       this.tableTopOwner = null;
     }
@@ -47,6 +48,7 @@
       const playerName = config.player;
       const opponentName = config.opponent;
       const stage = config.stage || 1;
+      this.testMode = !!config.testMode;
       if (!window.CharacterRegistry.get(playerName)) throw new Error('未知冒险角色：' + playerName);
 
       const rawDef = window.AdventureRegistry.getMonster(opponentName) ||
@@ -143,6 +145,7 @@
       let opponent1Name = config.opponent1;
       let opponent2Name = config.opponent2;
       const stage = config.stage || 1;
+      this.testMode = !!config.testMode;
       if (!window.CharacterRegistry.get(playerName)) throw new Error('未知冒险角色：' + playerName);
 
       const _fsDef = (n) => {

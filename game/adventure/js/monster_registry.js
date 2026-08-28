@@ -39,9 +39,11 @@
         const { heal, guard, fly, bleed, poison, clearPositiveBuffs, draw } = helpers;
         let d = 0, skip = false, unblock = false;
 
-        if (c && c.magic) {
+        if (c && (c.magic || c.greenMagic || c.magicColor)) {
           heal(a, AdvR.getBoss(mod.name) ? 5 : 3);
-          if (clearPositiveBuffs) clearPositiveBuffs(t);
+          if (c.greenMagic || c.magicColor === 'green') {
+            if (typeof eng.clearDebuffs === 'function') eng.clearDebuffs(a);
+          } else if (clearPositiveBuffs) clearPositiveBuffs(t);
           return { d: 0, skip: false, unblock: false };
         }
 
@@ -138,11 +140,15 @@
       defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
         const { heal, hurt, poison, bleed, clearDebuffs, draw } = helpers;
 
-        if (c && c.magic) {
+        if (c && (c.magic || c.greenMagic || c.magicColor)) {
           const magicHp = AdvR.getBoss(mod.name) ? 5 : 3;
           heal(defender, magicHp);
+          if (c.greenMagic || c.magicColor === 'green') {
+            if (eng && typeof eng.clearDebuffs === 'function') eng.clearDebuffs(defender);
+            return { remaining: d, desc: '绿魔法防御：恢复' + magicHp + '生命，清除自身负面状态' };
+          }
           if (eng && typeof eng.clearPositiveBuffs === 'function') eng.clearPositiveBuffs(opponent);
-          return { remaining: d, desc: '魔法牌防御：恢复' + magicHp + '生命，清除玩家正面buff' };
+          return { remaining: d, desc: '紫魔法防御：恢复' + magicHp + '生命，清除玩家正面buff' };
         }
 
         const poisonAmt = typeof mod.defendPoison === 'function' ? (mod.defendPoison(c) || 0) : 0;
@@ -280,10 +286,10 @@
           };
         }
 
-        applyLush(); applyAllExtras();
-        if (v === 1) return { remaining: Math.max(0, d - Math.ceil(d / 2)), desc: '1牌防御' + lushDesc + allExtrasDesc };
-        if (v === 3) return { remaining: Math.max(0, d - Math.floor(d / 2)), desc: '3牌防御' + lushDesc + allExtrasDesc };
-        return { remaining: d, desc: '直接承受' + lushDesc + allExtrasDesc };
+        applyPoison(); applyBleed(); applyDrawSelf(); applyLush(); applyAllExtras();
+        if (v === 1) return { remaining: Math.max(0, d - Math.ceil(d / 2)), desc: '1牌防御' + suffix() + drawSelfDesc + lushDesc + allExtrasDesc };
+        if (v === 3) return { remaining: Math.max(0, d - Math.floor(d / 2)), desc: '3牌防御' + suffix() + drawSelfDesc + lushDesc + allExtrasDesc };
+        return { remaining: d, desc: '直接承受' + suffix() + drawSelfDesc + lushDesc + allExtrasDesc };
       }
     });
   }
@@ -293,13 +299,15 @@
       name: mod.name,
 
       attackScore(eng, v, c, x) {
-        if (c && c.magic) return 90;
+        if (c && (c.magic || c.magicColor === 'purple')) return 100;
+        if (c && (c.greenMagic || c.magicColor === 'green')) return 90;
         if (!c || !c.isNumberCard) return null;
         return v * 10 + 20;
       },
 
       defendScore(eng, v, c, top, x) {
-        if (c && c.magic) return 80;
+        if (c && (c.magic || c.magicColor === 'purple')) return 100;
+        if (c && (c.greenMagic || c.magicColor === 'green')) return 90;
         if (!c || !c.isNumberCard) return null;
         if (v > 3 && !mod.canDefendHigh) return null;
         return v * 10 + 30 + (x.lethal ? 50 : 0);
@@ -328,9 +336,11 @@
   function getAdventureNpcSkillDesc(charName, card, isDefend, opts = {}) {
     if (!card) return '';
     if (card.isItemCard) {
-      if (card.magic) {
+      if (card.magic || card.greenMagic || card.magicColor) {
         const isBoss = !!(AdvR.getBoss(String(charName || '').replace(/^AI\d*\s+/, '')));
-        return '恢复' + (isBoss ? 5 : 3) + '[生命]，清除玩家所有正面buff，可搭桥继续出牌';
+        return card.greenMagic || card.magicColor === 'green'
+          ? '恢复' + (isBoss ? 5 : 3) + '[生命]，清除自身所有负面状态，可搭桥继续出牌'
+          : '恢复' + (isBoss ? 5 : 3) + '[生命]，清除玩家所有正面buff，可搭桥继续出牌';
       }
       if (typeof window.getItemDesc === 'function') {
         return window.getItemDesc(card) || '';

@@ -56,6 +56,25 @@
     if (callback) callback('win', finalState, persistentState, { settled: true });
   }
 
+  function leaveTestBattle(finalState, persistentState, playerWon) {
+    if (gameUI) {
+      if (gameUI.gameScreen) gameUI.gameScreen.classList.remove('active');
+      gameUI._is1v2 = false;
+    }
+    const gc = document.getElementById('game-container');
+    if (gc) gc.style.display = 'none';
+    const menuBtn = document.getElementById('menu-btn');
+    if (menuBtn) menuBtn.style.display = '';
+    restoreNormalBattleApi();
+    const adventureContainer = document.getElementById('adventure-container');
+    if (adventureContainer && prevDisplay !== null) adventureContainer.style.display = prevDisplay;
+    const callback = onComplete;
+    onComplete = null;
+    battleEngine = null;
+    completing = false;
+    if (callback) callback(playerWon ? 'win' : 'lose', finalState, persistentState, { test: true, settled: true });
+  }
+
   function itemLabel(name) {
     const def = window.AdventureRegistry && window.AdventureRegistry.getItem(name);
     if (!def) return name;
@@ -385,6 +404,11 @@
       }
       document.querySelectorAll('.dialog-overlay').forEach(node => node.remove());
 
+      if (battleEngine.testMode) {
+        setTimeout(() => leaveTestBattle(finalState, persistentState, playerWon), 420);
+        return;
+      }
+
       if (advEng) {
         advEng.applyBattleResult(persistentState);
         advEng.onCombatEnd(playerWon ? 'win' : 'lose');
@@ -424,6 +448,7 @@
         opponent: monsterName,
         stage: initialState.stage || 1,
         scene: initialState.scene || null,
+        testMode: !!initialState.testMode,
         playerState: initialState.playerState || initialState,
         playerPile: initialState.playerPile || null,
         discardTop: initialState.discardTop || null,
@@ -481,6 +506,7 @@
         opponent2: monsterName2,
         stage: initialState.stage || 1,
         scene: initialState.scene || null,
+        testMode: !!initialState.testMode,
         playerState: initialState.playerState || initialState,
         playerPile: initialState.playerPile || null,
         discardTop: initialState.discardTop || null,
