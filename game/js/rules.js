@@ -8,6 +8,7 @@
     poison: { src: 'icons/buff_icons/poison.png', label: '中毒' },
     freeze: { src: 'icons/buff_icons/freeze.png', label: '冷冻' },
     guard: { src: 'icons/buff_icons/guard.png', label: '守护' },
+    fly: { src: 'icons/buff_icons/fly.png', label: '飞翔' },
     chaos_red: { src: 'icons/buff_icons/chaos_red.png', label: '混沌红' },
     chaos_yellow: { src: 'icons/buff_icons/chaos_yellow.png', label: '混沌黄' },
     chaos_blue: { src: 'icons/buff_icons/chaos_blue.png', label: '混沌蓝' },

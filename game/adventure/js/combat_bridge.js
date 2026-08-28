@@ -67,6 +67,23 @@
     return def.displayName;
   }
 
+  function showAccessoryFullDialog(message) {
+    if (document.getElementById('adv-accessory-full-dialog')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'adv-accessory-full-dialog';
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = '<div class="dialog-box" style="max-width:360px">' +
+      '<div class="dialog-title">无法拾取</div>' +
+      '<div class="dialog-body" style="color:rgba(255,255,255,0.85);font-size:0.85rem;margin-bottom:12px">' + (message || '配饰已达上限') + '</div>' +
+      '<div class="dialog-buttons" style="display:flex;gap:8px;justify-content:flex-end">' +
+      '<button class="adv-btn adv-btn-primary" id="adv-af-ok">确定</button>' +
+      '</div></div>';
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.querySelector('#adv-af-ok').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+
   function bindSettleEvents(overlay, eng, leave) {
     overlay.querySelectorAll('[data-beast-slot]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -84,7 +101,12 @@
     const claimBtn = overlay.querySelector('#adv-settle-claim');
     if (claimBtn) {
       claimBtn.addEventListener('click', () => {
-        if (!eng.claimCombatReward()) return;
+        if (!eng.claimCombatReward()) {
+          if (eng._lastRewardError && eng._lastRewardError.reason === 'accessoryFull') {
+            renderSettlement(overlay, eng, leave, eng._lastRewardError.message);
+          }
+          return;
+        }
         if (eng.s.phase === window.AdventurePhase.MAP) leave();
         else renderSettlement(overlay, eng, leave);
       });
@@ -226,7 +248,7 @@
     return html;
   }
 
-  function renderSettlement(overlay, eng, leave) {
+  function renderSettlement(overlay, eng, leave, errorMsg) {
     const snap = eng.snapshot();
     const AC = window.AdventureCurrency;
     const Phase = window.AdventurePhase;
@@ -243,7 +265,14 @@
       html += '<h2>胜利!</h2>';
       html += '<div class="adv-settle-rewards">';
 
-      if (snap.phase === Phase.COMBAT_SETTLE && pending && pending.stage === 'basic') {
+      if (errorMsg) {
+        html += '<div class="adv-settle-section-title">无法拾取</div>';
+        html += '<div class="adv-settle-row" style="color:#fb7185">' + errorMsg + '</div>';
+        html += '</div>';
+        html += '<div class="adv-settle-actions">' +
+          '<button id="adv-settle-defer" class="adv-settle-secondary">留在房间</button>' +
+          '</div>';
+      } else if (snap.phase === Phase.COMBAT_SETTLE && pending && pending.stage === 'basic') {
         const isBoss = pending.roomType === 'boss';
         html += '<div class="adv-settle-section-title">' + (isBoss ? 'Boss奖励' : '基础奖励') + '</div>';
         html += basicRewardHtml(pending, AC);
@@ -394,6 +423,7 @@
         player: playerName,
         opponent: monsterName,
         stage: initialState.stage || 1,
+        scene: initialState.scene || null,
         playerState: initialState.playerState || initialState,
         playerPile: initialState.playerPile || null,
         discardTop: initialState.discardTop || null,
@@ -421,6 +451,7 @@
     battleEngine.s.revealAIHand = true;
     ui.state = battleEngine.state();
     ui.updateDisplay();
+    if (typeof ui._playOpeningEvents === 'function') await ui._playOpeningEvents();
     ui._startPolling();
     return result;
   }
@@ -449,6 +480,7 @@
         opponent1: monsterName1,
         opponent2: monsterName2,
         stage: initialState.stage || 1,
+        scene: initialState.scene || null,
         playerState: initialState.playerState || initialState,
         playerPile: initialState.playerPile || null,
         discardTop: initialState.discardTop || null,
@@ -477,6 +509,7 @@
     battleEngine.s.revealAIHand = true;
     ui.state = battleEngine.state();
     ui.updateDisplay();
+    if (typeof ui._playOpeningEvents === 'function') await ui._playOpeningEvents();
     ui._startPolling();
     return result;
   }

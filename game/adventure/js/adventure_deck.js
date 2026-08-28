@@ -19,7 +19,7 @@
 
   const item = (color, k) => ({
     value: -1, color, drawTwo: k === 'drawTwo', drawThree: k === 'drawThree',
-    potion: k === 'potion', purify: k === 'purify', superPurify: k === 'superPurify',
+    potion: k === 'potion', magic: k === 'magic', purify: k === 'purify', superPurify: k === 'superPurify',
     swapHand: k === 'swap', shuffleToDeck: k === 'shuffle',
     isBlack: color === 'BLACK', isWhite: color === 'WHITE',
     isNumberCard: false, isItemCard: true
@@ -43,6 +43,7 @@
       d.push(num(c, 0));
     }
     for (let v = 1; v <= 7; v++) d.push(num('WHITE', v, true));
+
     for (let i = 0; i < 2; i++) d.push(item('BLACK', 'black'), item('BLACK', 'drawTwo'), item('WHITE', 'drawThree'));
     for (let i = 0; i < 4; i++) d.push(item('BLACK', 'shuffle'), item('WHITE', 'potion'), item('WHITE', 'superPurify'));
     for (let i = 0; i < 6; i++) d.push(item('WHITE', 'purify'));
@@ -55,7 +56,7 @@
     for (let i = 0; i < whiteZeros; i++) d.push(num('WHITE', 0, true));
     for (let v = 1; v <= 3; v++) for (let n = 0; n < 4; n++) d.push(num('WHITE', v, true));
     for (let v = 4; v <= 6; v++) for (let n = 0; n < 2; n++) d.push(num('WHITE', v, true));
-    d.push(item('WHITE', 'potion'), item('WHITE', 'potion'));
+    d.push(item('WHITE', 'magic'), item('WHITE', 'magic'));
     return shuffle(d);
   }
 
@@ -122,6 +123,7 @@
           color: c.color,
           value: c.value,
           potion: c.potion,
+          magic: c.magic,
           purify: c.purify,
           superPurify: c.superPurify,
           drawTwo: c.drawTwo,

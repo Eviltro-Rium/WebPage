@@ -575,17 +575,17 @@ test('CastleEagle attack and defend skills', () => {
   assert.equal(engine.s.player.bleed, 1);
 
   const atk1 = engine.effect('CastleEagle', 1, number(1, 'RED'), engine.s.ai, engine.s.player);
-  assert.equal(atk1.d, 2);
+  assert.equal(atk1.d, 4);
   assert.equal(atk1.unblock, false);
 
   const atk3 = engine.effect('CastleEagle', 3, number(3, 'RED'), engine.s.ai, engine.s.player);
-  assert.equal(atk3.d, 4);
+  assert.equal(atk3.d, 6);
 
   engine.s.player.guard = 2;
   engine.s.player.fly = 1;
   engine.s.player.crit = 1;
   const atk4 = engine.effect('CastleEagle', 4, number(4, 'RED'), engine.s.ai, engine.s.player);
-  assert.equal(atk4.d, 2);
+  assert.equal(atk4.d, 3);
   assert.equal(atk4.unblock, true);
   assert.equal(engine.s.player.guard, 0);
   assert.equal(engine.s.player.fly, 0);
@@ -735,4 +735,73 @@ test('PurifyWater can clear an opponent buff', () => {
   assert.equal(engine.s.ai.burn, 1);
   assert.equal(engine.s.player.burn, 0);
   assert.equal(advEngine.s.consumables.length, 0);
+});
+
+function startChan(pileOverrides = {}, top = number(3, 'RED')) {
+  const engine = new AdventureBattleEngine();
+  const playerPile = Object.assign({
+    deck: [number(4, 'BLUE'), number(5, 'GREEN'), number(6, 'YELLOW')],
+    hand: [number(3, 'RED'), number(1, 'YELLOW')],
+    discard: [],
+    handLimit: 5
+  }, pileOverrides);
+  engine.startAdventure({
+    player: 'Chan',
+    opponent: 'CastleWolf',
+    playerState: { hp: 40, maxHp: 80 },
+    playerPile,
+    discardTop: top,
+    discardTopOwner: 'player'
+  });
+  return engine;
+}
+
+test('Chan defense 3 heals from the revealed card and keeps remaining damage finite', () => {
+  const engine = startChan();
+  engine.s.phase = 'PLAYER_DEFEND';
+  engine.s.busy = false;
+  engine.s.pendingAttack = { damage: 8, unblock: false };
+  engine.s.atkCard = number(2, 'RED');
+  engine.s.atkOwner = 'ai';
+  engine.s.discardTop = number(2, 'RED');
+  engine.h.player.push(number(3, 'RED'));
+  engine.s.selectedCard = engine.h.player.length - 1;
+  engine.piles.player.deck.push(number(4, 'BLUE'));
+  const hp = engine.s.player.hp;
+
+  engine.defend();
+
+  assert.equal(engine.s.phase === 'GAME_OVER', false);
+  assert.equal(engine.s.player.alive, true);
+  assert.ok(engine.pendingSettlement, 'defense should defer remaining damage');
+  assert.equal(Number.isFinite(engine.pendingSettlement.damage), true);
+  assert.equal(engine.pendingSettlement.damage, 8);
+  assert.equal(engine.s.player.hp, hp + 2);
+  assert.equal(engine.h.player.some(card => card.value === 4 && card.color === 'BLUE'), true);
+});
+
+test('Chan passive draws one extra card when entering a room', () => {
+  const engine = startChan({
+    deck: [number(7, 'GREEN'), number(5, 'BLUE')],
+    hand: [number(1, 'YELLOW'), number(2, 'RED')]
+  });
+  assert.equal(engine.h.player.length, 3);
+  const draws = engine.events.filter(evt => evt.type === 'draw' && evt.who === 'player');
+  assert.equal(draws.length, 1);
+  assert.equal(draws[0].count, 1);
+});
+
+test('Chan passive and refill emit a single player draw when a new attack turn starts', () => {
+  const engine = startChan({
+    deck: [number(4, 'BLUE'), number(5, 'GREEN'), number(6, 'YELLOW'), number(7, 'RED')],
+    hand: [number(1, 'YELLOW'), number(2, 'RED')]
+  });
+  const before = engine.h.player.length;
+  engine.events = [];
+  engine.ver = 0;
+  engine.endAi();
+  const draws = engine.events.filter(evt => evt.type === 'draw' && evt.who === 'player');
+  assert.equal(draws.length, 1);
+  assert.equal(engine.h.player.length, before + draws[0].count);
+  assert.ok(draws[0].count >= 1);
 });

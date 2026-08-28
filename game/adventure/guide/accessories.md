@@ -25,8 +25,9 @@
 | 能量盾 | `EnergyShield` | 3草 + 2本 | 进攻开始前获得 2 层守护 |
 | 正义之锤 | `JusticeHammer` | 2火 + 2水 + 1本 | 所有有伤害的技能伤害 +1 |
 | 净化水晶 | `PurifyCrystal` | 2草 + 2水 + 1本 | 打出绿牌或蓝牌时选择清除一个buff |
+| 恶魔契约 | `DemonPact` | 1火 + 1水 + 1草 + 1万能 | 选牌阶段自伤3点生命抽1张牌（每阶段限1次） |
 
-共 **8** 种配饰。主要在**铁匠铺**用兽元兑换（万能兽元可替代任意普通兽元）。
+共 **9** 种配饰。主要在**铁匠铺**用兽元兑换（万能兽元可替代任意普通兽元）。
 
 ---
 
@@ -48,6 +49,7 @@
 | 能量盾 | 3×草 + 2×本 |
 | 正义之锤 | 2×火 + 2×水 + 1×本 |
 | 净化水晶 | 2×草 + 2×水 + 1×本 |
+| 恶魔契约 | 1×火 + 1×水 + 1×草 + 1×万能 |
 
 ---
 
@@ -138,6 +140,20 @@
 
 ---
 
+## 恶魔契约（`DemonPact`）
+
+- **兑换**：1火 + 1水 + 1草 + 1万能
+- **效果**：选牌阶段可自伤 **3** 点生命抽取 **1** 张牌
+- **触发时机**：玩家进攻选牌阶段（`PLAYER_PLAY`）或防御选牌阶段（`PLAYER_DEFEND`，含不可防御等待）
+- **使用方式**：点击"恶魔交易"按钮主动触发（类似道具使用）
+- **限制**：
+  - 每个选牌阶段限用 **1** 次
+  - 生命值需 > 3 点
+  - 牌库需有牌可抽
+- **携带上限**：1 个
+
+---
+
 ## 获取方式（当前实现）
 
 | 途径 | 说明 |
@@ -160,5 +176,6 @@
 能量盾对战触发：`game/adventure/js/adventure_battle_engine.js`（`_tryEnergyShieldOnAttack`）
 正义之锤对战触发：`game/adventure/js/adventure_battle_engine.js`（`gateAdventureAttackMod` 重写）
 净化水晶对战触发：`game/adventure/js/adventure_battle_engine.js`（`continueAfterAttackMod` 重写、`choosePurifyCrystal`）
+恶魔契约对战触发：`game/adventure/js/adventure_battle_engine.js`（`useDemonPact`）
 
 一次性道具图鉴见 [consumables.md](./consumables.md)。

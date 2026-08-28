@@ -151,10 +151,11 @@ class DialogManager {
                 return;
             }
             this.showPurifyChoice(selfSnap, picked => {
+                if (picked.done) { onDone(choices); return; }
                 choices.push(picked);
                 applyLocal(picked.who === 'opp' ? oppSnap : selfSnap, picked.kind);
                 step();
-            }, { opponent: oppSnap, allowOpponent: !!oppSnap });
+            }, { opponent: oppSnap, allowOpponent: !!oppSnap, used: choices.length, total: maxCount });
         };
         if (!hasAny(selfSnap) && !hasAny(oppSnap)) { onDone([]); return; }
         step();
@@ -189,6 +190,11 @@ class DialogManager {
         };
         addGroup(ch, 'self', extra.allowOpponent ? '自己 · ' : '');
         if (extra.allowOpponent) addGroup(extra.opponent, 'opp', '对手 · ');
+        const doneBtn = document.createElement('button');
+        doneBtn.className = 'choice-row choice-done-btn';
+        doneBtn.innerHTML = `<span>完成（已净化${extra.used || 0}/${extra.total || 1}次，提前结束）</span>`;
+        doneBtn.addEventListener('click', async () => { overlay.remove(); await onChoose({ done: true }); });
+        list.appendChild(doneBtn);
         box.appendChild(list); overlay.appendChild(box); document.body.appendChild(overlay);
     }
 
@@ -270,7 +276,7 @@ class DialogManager {
             btn.addEventListener('click',async()=>{overlay.remove();await onChoose(payload)});
             list.appendChild(btn);
         };
-        const flyIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/guard.png') : 'icons/buff_icons/guard.png';
+        const flyIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/fly.png') : 'icons/buff_icons/fly.png';
         const guardIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/guard.png') : 'icons/buff_icons/guard.png';
         if (fly > 0) {
             addBtn(`<img src="${flyIcon}" alt=""><span>使用 1 层飞翔躲避（50%，剩余 ${fly - 1}）</span>`, { action: 'fly' });

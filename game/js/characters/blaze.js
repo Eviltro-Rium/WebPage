@@ -26,9 +26,9 @@
         d = Math.ceil(1.5 * fieldBurn);
         hadBurn = true;
       }
-      if (v === 0) { d = 6; unblock = true; burn(2); }
+      if (v === 0) { d = 5; unblock = true; burn(2); }
       if (d && hadBurn && v !== 0) d++;
-      return { d, skip, unblock };
+      return { d, skip, unblock, immediateBuffs: v === 7 };
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, burn } = helpers;
@@ -42,6 +42,14 @@
         burn(defender, 1);
         remaining = d;
         desc = `Blaze 1牌：恢复${2 + bh}点+双方灼烧1`;
+      }
+      if (v === 2) {
+        burn(opponent, 4);
+        b = Math.ceil(d / 2);
+        let tb = defender.burn + opponent.burn + (eng.s.ai2 ? eng.s.ai2.burn : 0);
+        heal(defender, tb);
+        remaining = Math.max(0, d - b);
+        desc = `Blaze 2牌：进攻方+4灼烧+格挡${b}点+恢复${tb}点`;
       }
       if (v === 3) {
         burn(opponent, 2);

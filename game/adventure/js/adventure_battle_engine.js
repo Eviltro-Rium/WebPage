@@ -96,6 +96,7 @@
       this.s.handLimit = this.piles.player.handLimit;
       this.s.isAdventure = true;
       this.s.adventureStage = stage;
+      this.s.adventureScene = config.scene || null;
       this.s.is1v2 = false;
       this.s.isLord = false;
       this.s.phase = 'PLAYER_PLAY';
@@ -121,9 +122,10 @@
       // NPC resources are recreated for every room and never borrow cards from
       // the player's pile.
       this.draw('ai', this.piles.ai.handLimit, false);
-      this._suppressDrawAnim = true;
-      this.turnStart('player');
-      this._suppressDrawAnim = false;
+      const openingHands = this.handCounts();
+      this.silentDraws(function () { this.turnStart('player'); });
+      this.emitDrawDiff(openingHands);
+      this._tryEnergyShieldOnAttack();
 
       const monsterDef = window.AdventureRegistry.getMonster(opponentName) ||
         window.AdventureRegistry.getBoss(opponentName);
@@ -208,7 +210,7 @@
         pendingAIContinue: null, pendingDefenseDamage: 0, pendingFiveChoice: false, fiveChoiceCard: null,
         pendingNumberJudge: null, mayDiscardAfterSkill: false, serenityHalfTarget: null,
         forceEndAITurn: false, activeAttacker: 'player',
-        is1v2: true, isLord: true, isAdventure: true, adventureStage: stage, needColorChoice: false,
+        is1v2: true, isLord: true, isAdventure: true, adventureStage: stage, adventureScene: config.scene || null, needColorChoice: false,
         pendingDialog: null, discardTop: top, discardTopOwner: topOwner,
         player: this.character(playerName),
         ai: this.character(opponent1Name, true),
@@ -235,9 +237,10 @@
 
       this.draw('ai', this.piles.ai.handLimit, false);
       this.draw('ai2', this.piles.ai2.handLimit, false);
-      this._suppressDrawAnim = true;
-      this.turnStart('player');
-      this._suppressDrawAnim = false;
+      const openingHands = this.handCounts();
+      this.silentDraws(function () { this.turnStart('player'); });
+      this.emitDrawDiff(openingHands);
+      this._tryEnergyShieldOnAttack();
 
       if (hasFirstStrike) {
         this.s.phase = 'AI_TURN';
@@ -441,6 +444,13 @@
           this.s.adventureBeastTokens = Object.assign({}, this.adventureCurrency.tokens);
           this.s.adventureBeastTotal = this.adventureCurrency.totalBeastTokens ? this.adventureCurrency.totalBeastTokens() : 0;
         }
+        this.s.demonPactAvailable = !!(this._hasAccessory('DemonPact') &&
+          this.s.player.hp > 3 &&
+          (this.s.phase === 'PLAYER_PLAY' || this.s.phase === 'PLAYER_DEFEND') &&
+          !this.s.busy && !this.s.needColorChoice &&
+          (this.s.phase === 'PLAYER_PLAY'
+            ? this._demonPactPlayTurn !== this.s.turn
+            : this._demonPactDefendAttack !== this.s.pendingAttack));
       }
       return super.state();
     }
@@ -578,10 +588,9 @@
         case 'vampire': {
           const amt = def.vampireAmount || 3;
           const before = ai.hp;
-          ai.hp = Math.max(0, ai.hp - amt);
+          this.hurt(ai, amt, 'drain');
           const drained = before - ai.hp;
-          player.hp = Math.min(player.maxHp, player.hp + drained);
-          ai.alive = ai.hp > 0;
+          this.heal(player, drained, 'drain');
           message = '吸取对手' + drained + '点生命';
           break;
         }
@@ -601,6 +610,28 @@
             return this.state();
           }
           message = applied.message;
+          break;
+        }
+        case 'bind': {
+          if (this.s.phase !== 'PLAYER_PLAY') {
+            this.emit('desc', '捆缚只能在进攻回合使用');
+            return this.state();
+          }
+          if (this.s.bindUsedThisTurn) {
+            this.emit('desc', '本回合已使用过捆缚');
+            return this.state();
+          }
+          this._bindSkipNextAITurn = true;
+          this.s.bindUsedThisTurn = true;
+          if (this.s.ai) this.s.ai.bindMark = true;
+          if (this.s.ai2 && this.s.ai2.alive) this.s.ai2.bindMark = true;
+          message = '本回合结束后将跳过对手进攻，再进行一次进攻';
+          break;
+        }
+        case 'bomb': {
+          ai.bomb = def.bombTimer || 5;
+          this.emit('buff', '炸弹倒计时：' + ai.bomb, null, { who: 'ai', kind: 'bomb', stacks: ai.bomb });
+          message = '对对手施加定时炸弹（倒计时' + ai.bomb + '）';
           break;
         }
         default:
@@ -624,6 +655,9 @@
       if (this.s.needColorChoice) return false;
       if (def && (def.combatUse === 'dodge' || def.defendOnly)) {
         return this.s.phase === 'PLAYER_DEFEND' && !!this.s.pendingAttack;
+      }
+      if (def && def.combatUse === 'bind') {
+        return this.s.phase === 'PLAYER_PLAY' && !this.s.bindUsedThisTurn;
       }
       // 仅在玩家可选择出牌/防御牌时（含不可防御时的跳过窗口）
       return this.s.phase === 'PLAYER_PLAY' || this.s.phase === 'PLAYER_DEFEND';
@@ -755,6 +789,83 @@
       return eng && typeof eng.accessoryCount === 'function' ? eng.accessoryCount(name) : 1;
     }
 
+    useDemonPact() {
+      if (!this.s || !this.s.isAdventure) return this.state();
+      if (!this._hasAccessory('DemonPact')) return this.state();
+      const phase = this.s.phase;
+      if (phase !== 'PLAYER_PLAY' && phase !== 'PLAYER_DEFEND') {
+        this.emit('desc', '恶魔契约只能在选牌阶段使用');
+        return this.state();
+      }
+      if (phase === 'PLAYER_PLAY') {
+        if (this._demonPactPlayTurn === this.s.turn) {
+          this.emit('desc', '本回合已使用过恶魔契约');
+          return this.state();
+        }
+      } else {
+        if (this._demonPactDefendAttack === this.s.pendingAttack) {
+          this.emit('desc', '本阶段已使用过恶魔契约');
+          return this.state();
+        }
+      }
+      if (this.s.player.hp <= 3) {
+        this.emit('desc', '生命值不足3点，无法使用恶魔契约');
+        return this.state();
+      }
+      if (phase === 'PLAYER_PLAY') {
+        this._demonPactPlayTurn = this.s.turn;
+      } else {
+        this._demonPactDefendAttack = this.s.pendingAttack;
+      }
+      this.hurt(this.s.player, 3);
+      this.emit('desc', '恶魔契约：自伤3点生命');
+      const drawn = this.draw('player', 1, true);
+      if (drawn.length) this.emit('desc', '恶魔契约：抽取1张牌');
+      else this.emit('desc', '恶魔契约：牌库已空，未能抽牌');
+      this.check();
+      return this.state();
+    }
+
+    _canUseBindNow() {
+      if (!this.s || !this.s.isAdventure) return false;
+      if (this.s.phase !== 'PLAYER_PLAY') return false;
+      if (this.s.busy) return false;
+      if (this.s.needColorChoice) return false;
+      if (this.s.bindUsedThisTurn) return false;
+      return true;
+    }
+
+    startAITurn() {
+      if (this.s && this.s.isAdventure && this._bindSkipNextAITurn) {
+        this._bindSkipNextAITurn = false;
+        const hands = this.handCounts();
+        this.silentDraws(function () {
+          this.fillHands(true);
+          this.turnStart('player');
+          this._tryEnergyShieldOnAttack();
+        });
+        if (this.s.ai) this.s.ai.bindMark = true;
+        if (this.s.ai2 && this.s.ai2.alive) this.s.ai2.bindMark = true;
+        this.s.bindExtraTurn = true;
+        this.s.bindUsedThisTurn = false;
+        this.s.phase = 'PLAYER_PLAY';
+        this.s.busy = false;
+        this.s.activeAttacker = 'player';
+        this.s.hasPlayedThisTurn = false;
+        this.s.turn++;
+        this._energyShieldAppliedThisTurn = false;
+        this.emit('desc', '捆缚：跳过对手进攻，玩家再进行一次进攻');
+        this.emitDrawDiff(hands);
+        return this.check();
+      }
+      if (this.s && this.s.bindExtraTurn) {
+        if (this.s.ai) this.s.ai.bindMark = false;
+        if (this.s.ai2) this.s.ai2.bindMark = false;
+        this.s.bindExtraTurn = false;
+      }
+      return super.startAITurn();
+    }
+
     _tryFreezeLaserOnAttackDamage(target, amount, kind) {
       if (!this.s || !this.s.isAdventure) return;
       if (!(amount > 0) || kind) return;
@@ -771,10 +882,6 @@
       if (this.s.phase !== 'PLAYER_PLAY') return;
       if (this._energyShieldAppliedThisTurn) return;
       if (!this._hasAccessory('EnergyShield')) return;
-      const i = this.s.selectedCard;
-      const c = this.h.player && this.h.player[i];
-      if (!c || c.isItemCard) return;
-      if (c.isBlack && !c.chosenColor) return;
       this._energyShieldAppliedThisTurn = true;
       const def = window.AdventureRegistry && window.AdventureRegistry.getItem('EnergyShield');
       const perShield = (def && def.onAttackStartGuard) || 2;
@@ -784,8 +891,33 @@
     }
 
     play() {
-      this._tryEnergyShieldOnAttack();
-      return super.play();
+      const result = super.play();
+      this._tryGoblinPassive();
+      return result;
+    }
+
+    _tryGoblinPassive() {
+      if (!this.s || !this.s.isAdventure) return;
+      const c = this.s.atkCard;
+      if (!c || !c.isNumberCard || c.value !== 1) return;
+      const aiName = this.name(this.s.ai);
+      if (aiName !== 'DungeonGoblin') return;
+      const stage = this.s.adventureStage || 1;
+      const advEngine = this._adventureEngine;
+      if (!advEngine) return;
+      if (stage === 2) {
+        if (advEngine.s.currency.gold > 0) {
+          advEngine.s.currency.gold--;
+          this.emit('desc', '城堡哥布林被动：玩家损失1金币');
+        }
+      } else if (stage >= 3) {
+        if (advEngine.s.consumables && advEngine.s.consumables.length) {
+          const idx = Math.floor(Math.random() * advEngine.s.consumables.length);
+          const removed = advEngine.s.consumables.splice(idx, 1)[0];
+          const def = window.AdventureRegistry.getItem(removed);
+          this.emit('desc', '城堡哥布林被动：玩家损失道具[' + (def ? def.displayName : removed) + ']');
+        }
+      }
     }
 
     hurt(x, n, kind = false) {
@@ -794,7 +926,7 @@
     }
 
     afterAttack() {
-      this._energyShieldAppliedThisTurn = false;
+
       this._freezeLaserAppliedThisAttack = false;
       if (this.s) this.s.pendingPurifyCrystal = null;
       return super.afterAttack();
@@ -888,6 +1020,44 @@
       return this._proceedToDefend(pending.damage, pending.skip, pending.unblock, pending.card, pending.delay);
     }
 
+    endAi() {
+      this.trimAI();
+      if (this.s.ai.burn) {
+        let dmg = this.s.ai.burn;
+        this.s.ai.burn--;
+        if (this.name(this.s.ai) !== 'Leon') {
+          this.emit('burnSettle', `-${dmg}[灼烧]，-1[灼烧层数]`, null, { who: 'ai', amount: dmg });
+          this.s.ai.hp = Math.max(0, this.s.ai.hp - dmg);
+          this.s.ai.alive = this.s.ai.hp > 0;
+        }
+      }
+      this.s.turn++;
+      this.s.phase = 'PLAYER_PLAY';
+      this.s.busy = false;
+      this.s.activeAttacker = 'player';
+      this.s.pendingAttack = null;
+      this.s.pendingAIBridge = null;
+      this.s.pendingAIContinue = null;
+      this.s.forceEndAITurn = false;
+      this.s.attackDebuffSnapshot = null;
+      this.s.atkCard = this.s.defCard = null;
+      this.s.atkOwner = this.s.defOwner = null;
+      this.s.revealCards = [];
+      this.s.hasPlayedThisTurn = false;
+      this.s.aiTurnStarted = false;
+      this.s.aiHasPlayed = false;
+      this.s.bindUsedThisTurn = false;
+      this._energyShieldAppliedThisTurn = false;
+      const hands = this.handCounts();
+      this.silentDraws(function () {
+        this.fillHands(false);
+        this.turnStart('player');
+        this._tryEnergyShieldOnAttack();
+      });
+      this.emitDrawDiff(hands);
+      this.check();
+    }
+
     dispatch(method, params = {}) {
       if (method === 'selectAdventureBattle') return this.startAdventure(params);
       if (method === 'selectAdventureBattle1v2') return this.startAdventure1v2(params);
@@ -898,6 +1068,7 @@
       }
       if (method === 'setAttackModBonus') { this.s.attackModBonus = params.bonus || 0; return this.state(); }
       if (method === 'choosePurifyCrystal') return this.choosePurifyCrystal(params.choice || params);
+      if (method === 'useDemonPact') return this.useDemonPact();
       return super.dispatch(method, params);
     }
   }

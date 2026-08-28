@@ -23,7 +23,7 @@
         d = 2;
         skip = true;
       } else if (v === 5) {
-        d = 2;
+        d = 0;
         eng.hurt(a, 2);
         let cards = [];
         for (let i = 0; i < 5 && eng.deck.length; i++) cards.push(eng.deck.pop());

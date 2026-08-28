@@ -62,6 +62,8 @@
       const snap = this.eng.snapshot();
       if (!snap) return;
 
+      this._updateBackground(snap.scene);
+
       if (snap.phase === window.AdventurePhase.GAME_OVER) {
         window.location.href = '../index.html';
         return;
@@ -87,6 +89,8 @@
         wrap.appendChild(this._buildBlacksmithPage(snap));
       } else if (snap.phase === window.AdventurePhase.REWARD && snap.pendingRoomReward) {
         wrap.appendChild(this._buildRewardPage(snap));
+      } else if (snap.phase === window.AdventurePhase.BEAST_DISCARD) {
+        wrap.appendChild(this._buildBeastDiscardPage(snap));
       } else {
         wrap.appendChild(this._buildMap(snap));
       }
@@ -96,10 +100,20 @@
       this.container.appendChild(wrap);
     }
 
+    _updateBackground(scene) {
+      const bg = document.getElementById('castle-bg');
+      if (!bg) return;
+      const map = { castle: 'Castle', desert: 'Desert', forest: 'Forest', ocean: 'FrozenOcean', volcano: 'Volcano' };
+      const name = map[scene] || 'Castle';
+      if (this._currentBg === name) return;
+      this._currentBg = name;
+      bg.style.background = `url('../backgrounds/${name}.png') center/cover no-repeat`;
+    }
+
     _buildHeader(snap) {
       const h = document.createElement('div');
       h.className = 'adventure-header';
-      const sceneLabel = { castle: '城堡', desert: '沙漠', forest: '森林', ocean: '海洋', volcano: '火山' }[snap.scene] || '未知';
+      const sceneLabel = { castle: '城堡', desert: '沙漠', forest: '森林', ocean: '冻洋', volcano: '火山' }[snap.scene] || '未知';
       const stageLabel = '第' + ['一', '二', '三', '四'][((snap.stage || 1) - 1) % 4] + '层';
       h.innerHTML =
         '<div class="adv-title">地牢冒险 · ' + sceneLabel + ' · ' + stageLabel + '</div>' +
@@ -251,7 +265,7 @@
       const p = snap.player;
       const hpPct = Math.round(100 * p.hp / p.maxHp);
 
-      let html = '<div class="adv-card">' +
+      let html = '<div class="adv-player-row"><div class="adv-card">' +
         '<div class="adv-char-name">' + p.name + '<span class="adv-char-type">' + p.type + '</span></div>' +
         '<div class="adv-hp-bar"><div class="adv-hp-fill" style="width:' + hpPct + '%"></div><span class="adv-hp-text">' + p.hp + '/' + p.maxHp + '</span></div>' +
         this._buildBuffBar(snap) +
@@ -263,6 +277,9 @@
         html += '<div class="adv-deck-info">牌库' + snap.playerPile.deckCount + ' | 弃牌' + snap.playerPile.discardCount + '</div>';
         html += '<div class="adv-hand-zone" id="adv-hand-zone"></div>';
       }
+      html += '</div>';
+
+      html += this._buildAccessoryColumn(snap);
       html += '</div>';
 
       if (snap.roomInfo) {
@@ -371,20 +388,23 @@
       }
       html += '<div class="adv-item-section"><div class="adv-item-title">道具 (' + consumables.length + '/' + slots + ')</div><div class="adv-item-grid">' + cells.join('') + '</div></div>';
 
-      const accessories = snap.accessories || [];
-      if (accessories.length) {
-        const accCells = accessories.map((item) =>
-          '<div class="adv-acc-slot" title="' + item.description + '">' +
-          (item.icon ? '<img class="adv-acc-icon" src="' + item.icon + '" alt="' + item.displayName + '">' : '') +
-          '<div class="adv-acc-text">' +
-          '<div class="adv-acc-name">' + item.displayName + '</div>' +
-          '<div class="adv-acc-desc">' + item.description + '</div>' +
-          '</div></div>'
-        );
-        html += '<div class="adv-item-section"><div class="adv-item-title">配饰 (' + accessories.length + ')</div><div class="adv-acc-list">' + accCells.join('') + '</div></div>';
-      }
-
       return html;
+    }
+
+    _buildAccessoryColumn(snap) {
+      const accessories = snap.accessories || [];
+      if (!accessories.length) return '';
+      const icons = accessories.map(item => {
+        const tip = item.displayName + ' — ' + item.description;
+        const icon = item.icon
+          ? '<img class="adv-acc-col-icon" src="' + item.icon + '" alt="' + item.displayName + '">'
+          : '<span class="adv-acc-col-noicon">' + (item.displayName || '?').charAt(0) + '</span>';
+        return '<div class="adv-acc-col-slot" title="' + tip + '">' + icon + '</div>';
+      });
+      return '<div class="adv-acc-card">' +
+        '<div class="adv-acc-card-title">配饰</div>' +
+        '<div class="adv-acc-column">' + icons.join('') + '</div>' +
+        '</div>';
     }
 
     _isCombatPhase(phase) {
@@ -519,7 +539,7 @@
         '<div class="adv-shop-page-gold"><img src="' + AC.GOLD_ICON + '" class="adv-gold-icon" alt="">金币：<b>' + gold + '</b></div>' +
         '<div class="adv-blacksmith-tokens">兽元：' + beastSummary + ' <span class="adv-bs-hint">（万能可替代）</span></div>' +
         '<div class="adv-shop-slots adv-blacksmith-slots">' + slotsHtml + '</div>' +
-        '<div class="adv-shop-page-hint">3个配饰槽，用兽元兑换；每槽可花2金币刷新（含空槽）。智慧项链3水1本1草，火焰之拳4火1本，兽元袋3本2草，生命核心3草1水1本，冷冻激光3水1万能，能量盾3草2本，正义之锤2火2水1本，净化水晶2草2水1本。</div>' +
+        '<div class="adv-shop-page-hint">3个配饰槽，用兽元兑换；每槽可花2金币刷新（含空槽）。智慧项链3水1本1草，火焰之拳4火1本，兽元袋3本2草，生命核心3草1水1本，冷冻激光3水1万能，能量盾3草2本，正义之锤2火2水1本，净化水晶2草2水1本，恶魔契约1火1水1草1万能。</div>' +
         recycleHtml +
         '<div class="adv-shop-page-actions">' +
           '<button class="adv-btn adv-btn-primary" id="adv-blacksmith-trade"' + (canPayTrade ? '' : ' disabled') + '>兑换</button>' +
@@ -636,10 +656,22 @@
         const recycleBtn = e.target.closest('[data-recycle-index]');
         const recycleIndex = recycleBtn ? parseInt(recycleBtn.getAttribute('data-recycle-index'), 10) : -1;
         if (id === 'adv-enter') { this._handleEnterRoom(); }
-        else if (id === 'adv-reward') { this.eng.collectReward(); this.render(); }
+        else if (id === 'adv-reward') {
+          const loot = this.eng.collectReward();
+          if (!loot && this.eng._lastRewardError) {
+            const err = this.eng._lastRewardError;
+            if (err.reason === 'accessoryFull') this._showAlertDialog('无法拾取', err.message);
+            else this._toast(err.message || '领取失败');
+          }
+          this.render();
+        }
         else if (id === 'adv-skip-reward') { this.eng.skipReward(); this.render(); }
         else if (id === 'adv-room-claim') {
-          if (!this.eng.claimRoomReward()) this._toast('领取失败（道具槽可能已满）');
+          if (!this.eng.claimRoomReward()) {
+            const err = this.eng._lastRewardError;
+            if (err && err.reason === 'accessoryFull') this._showAlertDialog('无法拾取', err.message);
+            else this._toast('领取失败（道具槽可能已满）');
+          }
           this.render();
         }
         else if (id === 'adv-room-defer') {
@@ -653,7 +685,19 @@
           const sel = this.eng.s.shopSelectedSlot;
           if (sel == null) { this._toast('请先选择槽位'); return; }
           const result = this.eng.buyShopSlot(sel);
-          if (!result.ok) this._toast(result.message || '购买失败');
+          if (!result.ok) {
+            if (result.reason === 'beastFull') {
+              this._showConfirmDialog('兽元已满', '兽元栏已满，继续购买后需舍弃多余兽元，是否继续？', () => {
+                const r = this.eng.buyShopSlot(sel, { force: true });
+                if (!r.ok) this._toast(r.message || '购买失败');
+                this.render();
+              });
+            } else if (result.reason === 'accessoryFull') {
+              this._showAlertDialog('无法拾取', result.message || '配饰已达上限');
+            } else {
+              this._toast(result.message || '购买失败');
+            }
+          }
           this.render();
         }
         else if (id === 'adv-shop-refresh') {
@@ -671,7 +715,10 @@
           const sel = this.eng.s.blacksmithSelectedSlot;
           if (sel == null) { this._toast('请先选择槽位'); return; }
           const result = this.eng.buyBlacksmithSlot(sel);
-          if (!result.ok) this._toast(result.message || '兑换失败');
+          if (!result.ok) {
+            if (result.reason === 'accessoryFull') this._showAlertDialog('无法拾取', result.message || '配饰已达上限');
+            else this._toast(result.message || '兑换失败');
+          }
           this.render();
         }
         else if (id === 'adv-blacksmith-refresh') {
@@ -777,6 +824,7 @@
         discardTopOwner: this.eng.s.discardTopOwner || null,
         adventureCurrency: this.eng.s.currency,
         stage: snap.stage || 1,
+        scene: this.eng.s.scene || 'castle',
         adventureEngine: this.eng
       };
 
@@ -859,12 +907,11 @@
     async _advanceStage() {
       this.eng.enterNextStage();
       if (this.eng.s.phase !== window.AdventurePhase.CLEAR) return;
-      const scenes = ['castle', 'desert', 'forest', 'ocean', 'volcano'];
+      const scenes = ['castle', 'forest'];
       let stage = this.eng.s.stage || 1;
       let scene = this.eng.s.scene || 'castle';
-      let sceneIdx = scenes.indexOf(scene);
       stage++;
-      if (stage > 4) { stage = 1; sceneIdx = (sceneIdx + 1) % scenes.length; scene = scenes[sceneIdx]; }
+      if (stage > 4) { stage = 1; scene = scenes[Math.floor(Math.random() * scenes.length)]; }
       const variant = 1 + Math.floor(Math.random() * 3);
       const mapName = 'stage_' + String(stage).padStart(2, '0') + '_' + scene + '_' + variant;
       const mapUrl = 'maps/' + mapName + '.csv';
@@ -880,6 +927,67 @@
       } catch (e) {
         this._toast('加载下一层失败：' + (e.message || e));
       }
+    }
+
+    _buildBeastDiscardPage(snap) {
+      const page = document.createElement('div');
+      page.className = 'adv-reward-page';
+      const AC = window.AdventureCurrency;
+      const t = snap.currency.tokens;
+      const types = (AC.ALL_BEAST_TYPES || []).filter(k => t[k] > 0);
+      let html = '<div class="adv-reward-page-title">兽元超过上限</div>';
+      html += '<div class="adv-settle-section-title">请舍弃 ' + snap.pendingDiscard + ' 个兽元</div>';
+      html += '<div class="adv-beast-offered">';
+      types.forEach(k => {
+        html += '<button class="adv-beast-pick adv-beast-' + k + '" data-beast-discard="' + k + '" title="' + AC.BEAST_LABEL[k] + '">' +
+          '<img src="' + AC.BEAST_ICON[k] + '" class="adv-beast-pick-icon" alt="' + AC.BEAST_LABEL[k] + '">' +
+          '<span class="adv-beast-pick-count">×' + t[k] + '</span></button>';
+      });
+      html += '</div>';
+      page.innerHTML = html;
+      page.querySelectorAll('[data-beast-discard]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          this.eng.discardBeastToken(btn.getAttribute('data-beast-discard'));
+          this.render();
+        });
+      });
+      return page;
+    }
+
+    _showConfirmDialog(title, body, onConfirm) {
+      if (document.getElementById('adv-confirm-dialog')) return;
+      const overlay = document.createElement('div');
+      overlay.id = 'adv-confirm-dialog';
+      overlay.className = 'dialog-overlay';
+      overlay.innerHTML = '<div class="dialog-box" style="max-width:360px">' +
+        '<div class="dialog-title">' + title + '</div>' +
+        '<div class="dialog-body" style="color:rgba(255,255,255,0.85);font-size:0.85rem;margin-bottom:12px">' + body + '</div>' +
+        '<div class="dialog-buttons" style="display:flex;gap:8px;justify-content:flex-end">' +
+        '<button class="adv-btn" id="adv-confirm-cancel">取消</button>' +
+        '<button class="adv-btn adv-btn-primary" id="adv-confirm-ok">确定</button>' +
+        '</div></div>';
+      document.body.appendChild(overlay);
+      const close = () => overlay.remove();
+      overlay.querySelector('#adv-confirm-ok').addEventListener('click', () => { close(); onConfirm(); });
+      overlay.querySelector('#adv-confirm-cancel').addEventListener('click', close);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    }
+
+    _showAlertDialog(title, body, onClose) {
+      if (document.getElementById('adv-alert-dialog')) return;
+      const overlay = document.createElement('div');
+      overlay.id = 'adv-alert-dialog';
+      overlay.className = 'dialog-overlay';
+      overlay.innerHTML = '<div class="dialog-box" style="max-width:360px">' +
+        '<div class="dialog-title">' + title + '</div>' +
+        '<div class="dialog-body" style="color:rgba(255,255,255,0.85);font-size:0.85rem;margin-bottom:12px">' + body + '</div>' +
+        '<div class="dialog-buttons" style="display:flex;gap:8px;justify-content:flex-end">' +
+        '<button class="adv-btn adv-btn-primary" id="adv-alert-ok">确定</button>' +
+        '</div></div>';
+      document.body.appendChild(overlay);
+      const close = () => { overlay.remove(); if (onClose) onClose(); };
+      overlay.querySelector('#adv-alert-ok').addEventListener('click', close);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     }
 
     _toast(msg) {

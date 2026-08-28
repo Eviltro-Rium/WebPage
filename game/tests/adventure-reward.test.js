@@ -543,7 +543,7 @@ test('shop sells accessories for 15 gold and can refresh accessory slot', () => 
 test('shop and drop rolls are uniform over consumables only', () => {
   const eng = startEngine();
   const consumables = context.AdventureRegistry.allItems().filter(it => it.kind === 'consumable');
-  assert.equal(consumables.length, 14);
+  assert.equal(consumables.length, 16);
   const names = new Set(consumables.map(it => it.name));
   const counts = Object.create(null);
   names.forEach(n => { counts[n] = 0; });

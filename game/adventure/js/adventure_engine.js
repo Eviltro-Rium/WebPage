@@ -243,8 +243,16 @@
     _pickBossName(room) {
       if (room && room.bossName) return room.bossName;
       const scene = this.s.scene || 'castle';
+      const stage = this.s.stage || 1;
       const pool = window.AdventureBossPool || {};
-      const list = pool[scene] || ['CastleChameleon'];
+      const fallback = ['CastleChameleon'];
+      const scenePool = pool[scene];
+      let list;
+      if (Array.isArray(scenePool)) {
+        list = scenePool;
+      } else {
+        list = (scenePool && scenePool[stage]) || (scenePool && scenePool['*']) || fallback;
+      }
       const idx = Math.floor(Math.random() * list.length);
       return list[idx] || 'CastleChameleon';
     }
@@ -530,6 +538,11 @@
       if (!itemName) return { ok: false, message: 'sold-out' };
       const need = this._accessoryTradeCost(itemName);
       if (!need.length) return { ok: false, message: '无法交易' };
+      const check = this._canAddItem(itemName);
+      if (!check.ok) {
+        this.emit('buyFail', check.message, { itemName, reason: check.reason });
+        return { ok: false, reason: check.reason, message: check.message };
+      }
       if (!this.s.currency.canPayBeastCost(need)) {
         this.emit('buyFail', '兽元不足', { itemName, reason: 'beast' });
         return { ok: false, message: '兽元不足，需要：' + this._beastTradeCostText(need) + '（万能可替代）' };
@@ -844,10 +857,12 @@
       pile.discardCard(oldTop);
       combat.atkCard = card;
 
-      if (card.potion) {
-        combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + 5);
-        this._log('敌方出药剂牌，恢复5点生命');
-        this.emit('npcPlay', '敌方药剂牌：恢复5生命', card, { kind: 'potion' });
+      if (card.magic) {
+        const _mHp = (window.AdventureRegistry && window.AdventureRegistry.getBoss(combat.enemy.name)) ? 5 : 3;
+        combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + _mHp);
+        this._clearPlayerPositiveBuffs();
+        this._log('敌方出魔法牌，恢复' + _mHp + '点生命，清除玩家正面buff');
+        this.emit('npcPlay', '敌方魔法牌：恢复' + _mHp + '生命，清除玩家正面buff', card, { kind: 'magic' });
         combat.atkCard = null;
         this._npcPlayNext();
         return;
@@ -987,10 +1002,12 @@
         pile.discardCard(oldTop);
         played.push(card);
 
-        if (card.potion) {
-          combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + 5);
-          this._log('NPC 出药剂牌，恢复5点生命，继续搭桥');
-          this.emit('npcPlay', 'NPC 药剂牌：恢复5点生命', card, { kind: 'potion' });
+        if (card.magic) {
+          const _mHp = (window.AdventureRegistry && window.AdventureRegistry.getBoss(combat.enemy.name)) ? 5 : 3;
+          combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + _mHp);
+          this._clearPlayerPositiveBuffs();
+          this._log('NPC 出魔法牌，恢复' + _mHp + '点生命，清除玩家正面buff，继续搭桥');
+          this.emit('npcPlay', 'NPC 魔法牌：恢复' + _mHp + '点生命，清除玩家正面buff', card, { kind: 'magic' });
         } else {
           const ctx = { playerHandSize: this.s.playerPile ? this.s.playerPile.hand.length : 0 };
           const dmg = (typeof combat.enemy.attackDamage === 'function')
@@ -1025,10 +1042,12 @@
       const oldTop = this.s.discardTop.replace(card);
       pile.discardCard(oldTop);
 
-      if (card.potion) {
-        combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + 5);
-        this._log('NPC 防御出药剂牌，恢复5点生命');
-        this.emit('npcDefend', 'NPC 药剂牌防御：恢复5点生命', card, { kind: 'potion' });
+      if (card.magic) {
+        const _mHp = (window.AdventureRegistry && window.AdventureRegistry.getBoss(combat.enemy.name)) ? 5 : 3;
+        combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + _mHp);
+        this._clearPlayerPositiveBuffs();
+        this._log('NPC 防御出魔法牌，恢复' + _mHp + '点生命，清除玩家正面buff');
+        this.emit('npcDefend', 'NPC 魔法牌防御：恢复' + _mHp + '点生命，清除玩家正面buff', card, { kind: 'magic' });
         return { remaining: incomingDamage, defended: true, card };
       }
 
@@ -1227,10 +1246,14 @@
       if (loot.kind === 'accessory') {
         const name = loot.accessory || loot.item;
         if (!name) return { ok: true, empty: true };
+        const check = this._canAddItem(name);
+        if (!check.ok) return { ok: false, reason: check.reason, message: check.message };
         if (!this.addItem(name)) return { ok: false, reason: 'full' };
         return { ok: true };
       }
       if (loot.kind === 'item') {
+        const check = this._canAddItem(loot.item);
+        if (!check.ok) return { ok: false, reason: check.reason, message: check.message };
         if (!this.addItem(loot.item)) return { ok: false, reason: 'full' };
         return { ok: true };
       }
@@ -1268,9 +1291,11 @@
       if (!loot) return false;
       const result = this._applyBasicLoot(loot);
       if (!result.ok) {
-        this._log('道具槽已满，无法领取该奖励，可选择留在房间');
+        this._lastRewardError = { reason: result.reason || 'full', message: result.message || '道具槽已满，无法领取该奖励' };
+        this._log(this._lastRewardError.message);
         return false;
       }
+      this._lastRewardError = null;
       this._clearStashedLoot(room);
       this.s.pendingRoomReward = null;
       room.visited = true;
@@ -1310,9 +1335,11 @@
       if (pending.stage === 'basic' && !pending.applied) {
         const result = this._applyBasicLoot(pending.basic);
         if (!result.ok) {
-          this._log('道具槽已满，无法领取该道具，可选择留在房间');
+          this._lastRewardError = { reason: result.reason || 'full', message: result.message || '道具槽已满，无法领取该道具' };
+          this._log(this._lastRewardError.message);
           return false;
         }
+        this._lastRewardError = null;
         this._clearStashedLoot(room);
         pending.applied = true;
         this._log('领取基础奖励：' + this._basicLootText(pending.basic));
@@ -1342,9 +1369,11 @@
       if (pending.stage === 'bonus' && !pending.applied) {
         const result = this._applyBasicLoot(pending.bonus);
         if (!result.ok) {
-          this._log('道具槽已满，无法领取该奖励，可选择留在房间');
+          this._lastRewardError = { reason: result.reason || 'full', message: result.message || '道具槽已满，无法领取该奖励' };
+          this._log(this._lastRewardError.message);
           return false;
         }
+        this._lastRewardError = null;
         pending.applied = true;
         this._log('领取挑战房奖励：' + this._roomLootText(pending.bonus));
         this.emit('reward', '领取挑战房奖励', { bonus: pending.bonus });
@@ -1444,7 +1473,8 @@
       }
       this.s.beastReward = null;
       this.s.pendingDiscard = 0;
-      this.s.phase = Phase.MAP;
+      this.s.phase = this.s.beastDiscardReturnPhase || Phase.MAP;
+      this.s.beastDiscardReturnPhase = null;
     }
 
     _beginDedicatedBeastSettlement(room) {
@@ -1559,7 +1589,8 @@
         this.emit('beastOverflow', '兽元超上限，需舍弃' + overflow + '个', { overflow, total: this.s.currency.totalBeastTokens(), max: this.s.currency.maxBeast });
       } else {
         this.s.beastReward = null;
-        this.s.phase = Phase.MAP;
+        this.s.phase = this.s.beastDiscardReturnPhase || Phase.MAP;
+        this.s.beastDiscardReturnPhase = null;
       }
     }
 
@@ -1762,6 +1793,20 @@
       this.emit('buff', '清除debuff', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'clearDebuffs' });
     }
 
+    _clearPlayerPositiveBuffs() {
+      const p = this.s.player;
+      if (!p) return;
+      p.guard = 0;
+      p.fly = 0;
+      p.crit = 0;
+      p.lush = 0;
+      p.chaos_red = false;
+      p.chaos_yellow = false;
+      p.chaos_blue = false;
+      p.chaos_green = false;
+      this._log('玩家正面buff已清除');
+    }
+
     tickBuffs(target) {
       const who = target === this.s.player ? '玩家' : '敌方';
       if (target.burn > 0) {
@@ -1776,7 +1821,7 @@
         target.bleed--;
         target.hp = Math.max(0, target.hp - dmg);
         this._log(who + '流血结算：-' + dmg + '生命，流血层数-1');
-        this.emit('buffSettle', '-' + dmg + '[流血]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
+        this.emit('bleedSettle', '-' + dmg + '[流血]，-1[流血层数]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
       }
       if (target.frozen) {
         target.frozen = false;
@@ -1820,9 +1865,11 @@
         const loot = room.stashedLoot;
         const result = this._applyBasicLoot(loot);
         if (!result.ok) {
-          this._log('道具槽已满，无法领取留在房间的道具');
+          this._lastRewardError = { reason: result.reason || 'full', message: result.message || '道具槽已满，无法领取留在房间的道具' };
+          this._log(this._lastRewardError.message);
           return null;
         }
+        this._lastRewardError = null;
         this._clearStashedLoot(room);
         room.visited = true;
         this._log('领取房间内保留的奖励：' + this._basicLootText(loot));
@@ -1920,6 +1967,20 @@
     }
 
     /* ===== 道具系统 ===== */
+
+    _canAddItem(itemName) {
+      const def = window.AdventureRegistry.getItem(itemName);
+      if (!def) return { ok: false, reason: 'unknown', message: '未知道具' };
+      if (def.kind === 'consumable') {
+        if (this.s.consumables.length >= 9) return { ok: false, reason: 'full', message: '道具槽已满' };
+        return { ok: true };
+      }
+      if (def.maxStacks) {
+        const current = this.s.accessories.filter(a => a === itemName).length;
+        if (current >= def.maxStacks) return { ok: false, reason: 'accessoryFull', message: def.displayName + '已达堆叠上限(' + def.maxStacks + ')' };
+      }
+      return { ok: true };
+    }
 
     addItem(itemName) {
       const def = window.AdventureRegistry.getItem(itemName);
@@ -2021,9 +2082,11 @@
       if ((ch.bleed || 0) > 0) kinds.push('bleed');
       if ((ch.poison || 0) > 0) kinds.push('poison');
       if (ch.frozen) kinds.push('freeze');
+      if ((ch.bomb || 0) > 0) kinds.push('bomb');
       if ((ch.guard || 0) > 0) kinds.push('guard');
       if ((ch.fly || 0) > 0) kinds.push('fly');
       if ((ch.crit || 0) > 0) kinds.push('crit');
+      if ((ch.lush || 0) > 0) kinds.push('lush');
       return kinds;
     }
 
@@ -2049,6 +2112,10 @@
         player.frozen = false;
         return true;
       }
+      if (kind === 'bomb' && (player.bomb || 0) > 0) {
+        player.bomb = 0;
+        return true;
+      }
       if (kind === 'guard' && (player.guard || 0) > 0) {
         player.guard--;
         return true;
@@ -2059,6 +2126,10 @@
       }
       if (kind === 'crit' && (player.crit || 0) > 0) {
         player.crit--;
+        return true;
+      }
+      if (kind === 'lush' && (player.lush || 0) > 0) {
+        player.lush--;
         return true;
       }
       return false;
@@ -2205,7 +2276,8 @@
       return true;
     }
 
-    buyShopSlot(index) {
+    buyShopSlot(index, opts) {
+      const force = !!(opts && opts.force);
       if (this.s.phase !== Phase.SHOP) return { ok: false, message: '不在商店' };
       const room = this.currentRoom();
       this._ensureShopSlots(room);
@@ -2218,9 +2290,9 @@
       if (slot.kind === 'beast') {
         const beastType = slot.beastType;
         const label = window.AdventureCurrency.BEAST_LABEL[beastType] || beastType;
-        if (!this.s.currency.canAdd(1)) {
+        if (!this.s.currency.canAdd(1) && !force) {
           this.emit('buyFail', '兽元已满', { beastType, reason: 'full' });
-          return { ok: false, message: '兽元栏已满' };
+          return { ok: false, reason: 'beastFull', message: '兽元栏已满' };
         }
         if (!this.s.currency.spendGold(price)) {
           this._log('金币不足，无法购买');
@@ -2234,6 +2306,10 @@
         this.s.shopSelectedSlot = index;
         this._log('购买 ' + label + '，花费 ' + price + ' 金币');
         this.emit('buy', '购买成功', { kind: 'beast', beastType, price, slot: index, gold: this.s.currency.gold });
+        if (this.s.currency.overflowAfter(0) > 0) {
+          this.s.beastDiscardReturnPhase = Phase.SHOP;
+          this._checkBeastOverflow(room);
+        }
         return { ok: true };
       }
 
@@ -2243,6 +2319,11 @@
         return { ok: false, message: '无效商品' };
       }
       if (def.kind === 'accessory') {
+        const check = this._canAddItem(itemName);
+        if (!check.ok) {
+          this.emit('buyFail', check.message, { itemName, reason: check.reason });
+          return { ok: false, reason: check.reason, message: check.message };
+        }
         if (!this.s.currency.spendGold(price)) {
           this._log('金币不足，无法购买');
           this.emit('buyFail', '金币不足', { itemName, price, gold: this.s.currency.gold });
@@ -2364,10 +2445,10 @@
           kind: this.s.combat.kind,
           round: this.s.combat.round,
           selectedCard: this.s.combat.selectedCard,
-          atkCard: this.s.combat.atkCard ? (this.s.combat.atkCard.potion ? '药' : this.s.combat.atkCard.value) : null,
-          defCard: this.s.combat.defCard ? (this.s.combat.defCard.potion ? '药' : this.s.combat.defCard.value) : null,
+          atkCard: this.s.combat.atkCard ? (this.s.combat.atkCard.magic ? '魔' : (this.s.combat.atkCard.potion ? '药' : this.s.combat.atkCard.value)) : null,
+          defCard: this.s.combat.defCard ? (this.s.combat.defCard.magic ? '魔' : (this.s.combat.defCard.potion ? '药' : this.s.combat.defCard.value)) : null,
           pendingDamage: this.s.combat.pendingDamage || 0,
-          npcHand: this.s.combat.npcPile.hand.map(c => c.potion ? '药' : c.value),
+          npcHand: this.s.combat.npcPile.hand.map(c => c.magic ? '魔' : (c.potion ? '药' : c.value)),
           npcHandCount: this.s.combat.npcPile.hand.length,
           npcDeckCount: this.s.combat.npcPile.deck.length,
           npcDiscardCount: this.s.combat.npcPile.discard.length,

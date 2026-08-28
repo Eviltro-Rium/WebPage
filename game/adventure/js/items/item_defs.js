@@ -270,4 +270,37 @@
     onPlayPurify: 1,
     maxStacks: 1
   });
+
+  R.registerItem({
+    name: 'DemonPact',
+    displayName: '恶魔契约',
+    kind: 'accessory',
+    description: '选牌阶段可自伤3点生命抽1张牌（每阶段限1次）',
+    icon: ICON + "demon's_contrast.png",
+    beastTradeCost: ['huo', 'shui', 'cao', 'wuneng'],
+    maxStacks: 1
+  });
+
+  R.registerItem({
+    name: 'Bind',
+    displayName: '捆缚',
+    kind: 'consumable',
+    description: '进攻回合使用，回合结束后跳过对手进攻，再进行一次进攻',
+    icon: ICON + 'binding.png',
+    useScene: 'combat',
+    price: 8,
+    combatUse: 'bind'
+  });
+
+  R.registerItem({
+    name: 'TimeBomb',
+    displayName: '定时炸弹',
+    kind: 'consumable',
+    description: '对对手施加定时炸弹（倒计时5），对手每打出1张牌倒计时-1，归零时爆炸造成10点伤害。可被净化清除',
+    icon: ICON + 'time_bomb.png',
+    useScene: 'combat',
+    price: 6,
+    combatUse: 'bomb',
+    bombTimer: 5
+  });
 })();

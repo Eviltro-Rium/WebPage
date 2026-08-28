@@ -7,7 +7,8 @@
     { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼烧时1至7牌攻击伤害+1', avatar: 'avatars/Blaze.png', color: '#e67e22' },
     { name: 'Serenity', hp: 80, type: '暗影', passive: '免疫冷冻；低于30生命嗜血，正常态恢复+1', avatar: 'avatars/Serenity.jpg', color: '#1abc9c' },
     { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害', avatar: 'avatars/Moze.jpg', color: '#7f8c8d' },
-    { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌', avatar: 'avatars/Knight.png', color: '#8e44ad' }
+    { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌', avatar: 'avatars/Knight.png', color: '#8e44ad' },
+    { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可消耗1层【暴击】使攻击不可防御', avatar: 'avatars/Otto.png', color: '#d35400' }
   ];
 
   const SKILL_GRID = [

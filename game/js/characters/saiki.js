@@ -9,7 +9,7 @@
     turnStart(eng, ch) {},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs } = helpers;
-      let d = 0, skip = false, unblock = false;
+      let d = 0, skip = false, unblock = false, immediateBuffs = false;
       if (v === 1) {
         d = 4;
       } else if (v === 2) {
@@ -29,12 +29,17 @@
           skip = true;
         } else {
           d = 4;
-          let oh = eng.h[target];
+          let targetKey = eng._who(t);
+          let oh = eng.h[targetKey];
           if (oh.length) {
             let drawn = oh.splice(Math.floor(Math.random() * oh.length), 1)[0];
-            eng.h[owner].push(drawn);
             eng.s.revealCards = [JSON.parse(JSON.stringify(drawn))];
-            eng.emit('reveal', 'Saiki 5牌抽取对手手牌', drawn, { who: target, from: 'hand' });
+            eng.emit('reveal', 'Saiki 5牌抽取对手手牌', drawn, { who: targetKey, from: 'hand' });
+            if (eng.s.isAdventure) {
+              eng.discardWithEvent(drawn, targetKey, { from: 'reveal', faceUp: true, desc: `Saiki 5牌弃掉${eng.cardText(drawn)}` });
+            } else {
+              eng.h[owner].push(drawn);
+            }
           }
         }
       } else if (v === 7) {
@@ -46,8 +51,9 @@
         bleed(1);
         d = 1 + 3 * oldBleed;
         heal(a, totalBleed);
+        immediateBuffs = true;
       }
-      return { d, skip, unblock };
+      return { d, skip, unblock, immediateBuffs };
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;
@@ -57,10 +63,10 @@
         remaining = Math.max(0, d - b);
         desc = `Saiki 1牌：防御至多3点`;
       } else if (v === 2) {
-        hurt(opponent, 3);
+        hurt(opponent, 2);
         bleed(opponent, 1);
         remaining = d;
-        desc = 'Saiki 2牌：反击3点+1层流血';
+        desc = 'Saiki 2牌：2点伤害+1层流血';
       } else if (v === 0) {
         let shared = Math.ceil(d / 2);
         hurt(opponent, shared);

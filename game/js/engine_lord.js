@@ -21,7 +21,7 @@
       lordPlayerTargetIdx:0};
     this.s.attackTarget='ai';
     this.draw('player',7);this.draw('ai',5);this.draw('ai2',5);
-    this.turnStart('player');return this.state()
+    let _hands=this.handCounts();this.silentDraws(function(){this.turnStart('player')});this.emitDrawDiff(_hands);return this.state()
   };
 
   E.prototype._lordNeedsTarget=function(c){
@@ -70,7 +70,7 @@
       let target=this.s[targetKey];
       let dmg=this.applyDefenderAvoidance(target,p.damage);
       this.hurt(target,dmg);
-      if(p.bleed>0)this.hurt(target,p.bleed,true);
+      this.settleBleed(target,p.bleed);
       this._restoreAttackBuffs();
       this.resolveSerenityHalf();this.afterAttack();
       if(forceEnd)this._lordStartNextAI();
@@ -78,7 +78,7 @@
     }
     let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;
     this.hurt(this.s.player,p.damage);
-    if(p.bleed>0)this.hurt(this.s.player,p.bleed,true);
+    this.settleBleed(this.s.player,p.bleed);
     this._restoreAttackBuffs();
     this.resolveSerenityHalf();this._grantChaosIfKnight('ai');
     if(forceEnd)this.endAi1v2();else this.continueAIAttack()
@@ -188,7 +188,7 @@
     this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];
     this.s.hasPlayedThisTurn=false;this.s.aiTurnStarted=false;this.s.aiHasPlayed=false;
     this.s.currentAITarget=0;
-    this.turnStart('player');this.fillHands1v2(true);this.check()
+    let _hands=this.handCounts();this.silentDraws(function(){this.fillHands1v2(true);this.turnStart('player')});this.emitDrawDiff(_hands);this.check()
   };
 
   E.prototype._lordAIFillTarget=function(){

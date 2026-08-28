@@ -30,6 +30,7 @@ const TAG_COLORS = {
 const ICON_PATHS = {
     black: gameAssetUrl('icons/card_icons/color_palette.png'),
     potion: gameAssetUrl('icons/card_icons/potion.png'),
+    magic: gameAssetUrl('icons/card_icons/magic.png'),
     draw_three: gameAssetUrl('icons/card_icons/draw_cards.png'),
     purify: gameAssetUrl('icons/card_icons/purify.png'),
     super_purify: gameAssetUrl('icons/card_icons/super_purify.png'),
@@ -114,13 +115,13 @@ function parseSegments(text, defaultColor) {
 }
 
 function cardId(card) {
-    return `${card.color}_${card.value}_${card.isBlack}_${card.isWhite}_${card.potion}_${card.purify}_${card.superPurify}_${card.swapHand}_${card.shuffleToDeck}_${card.drawThree}`;
+    return `${card.color}_${card.value}_${card.isBlack}_${card.isWhite}_${card.potion}_${card.magic}_${card.purify}_${card.superPurify}_${card.swapHand}_${card.shuffleToDeck}_${card.drawThree}`;
 }
 
 /** 匹配用手牌身份（忽略 chosenColor，避免 AI 出牌染色后找不到源牌） */
 function cardMatchKey(card) {
     if (!card) return '';
-    return `${card.color}_${card.value}_${!!card.isBlack}_${!!card.isWhite}_${!!card.potion}_${!!card.purify}_${!!card.superPurify}_${!!card.swapHand}_${!!card.shuffleToDeck}_${!!card.drawThree}`;
+    return `${card.color}_${card.value}_${!!card.isBlack}_${!!card.isWhite}_${!!card.potion}_${!!card.magic}_${!!card.purify}_${!!card.superPurify}_${!!card.swapHand}_${!!card.shuffleToDeck}_${!!card.drawThree}`;
 }
 
 class AnimLayer {
@@ -428,7 +429,8 @@ class GameUI {
                 { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼烧时1至7牌攻击伤害+1' },
                 { name: 'Serenity', hp: 80, type: '暗影', passive: '免疫冷冻；低于30生命嗜血，正常态恢复+1' },
                 { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害' },
-                { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌' }
+                { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌' },
+                { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可消耗1层【暴击】使攻击不可防御' }
             ];
         }
         this._buildSelectScreen();
@@ -633,14 +635,52 @@ class GameUI {
         this.gameScreen.classList.add('active');
         this._buildGameScreen();
         this.updateDisplay();
+        await this._playOpeningEvents();
         this._startPolling();
+    }
+
+    _pendingDrawCount(who) {
+        const events = (this.state && this.state.events) || [];
+        return events
+            .filter(evt => evt && evt.type === 'draw' && evt.who === who)
+            .reduce((sum, evt) => sum + (Number(evt.count) || 1), 0);
+    }
+
+    _hideTrailingCount(options, who) {
+        if (options && Object.prototype.hasOwnProperty.call(options, 'hideTrailing')) {
+            return Math.max(0, Number(options.hideTrailing) || 0);
+        }
+        return 0;
+    }
+
+    _hidePendingDraws() {
+        const playerDraws = this._pendingDrawCount('player');
+        const aiDraws = this._pendingDrawCount('ai');
+        const ai2Draws = this._pendingDrawCount('ai2');
+        if (playerDraws) this._renderPlayerHand({ hideTrailing: playerDraws });
+        if (this.state && this.state.is1v2 && this._renderAIHand1v2) {
+            if (aiDraws) this._renderAIHand1v2({ hideTrailing: aiDraws, who: 'ai' });
+            if (ai2Draws) this._renderAIHand1v2({ hideTrailing: ai2Draws, who: 'ai2' });
+        } else if (aiDraws) {
+            this._renderAIHand({ hideTrailing: aiDraws });
+        }
+    }
+
+    async _playOpeningEvents() {
+        const events = (this.state && this.state.events) || [];
+        if (!events.length) return;
+        this._hidePendingDraws();
+        await this._consumeEvents(events);
+        const fresh = await Bridge.getState();
+        if (fresh && !fresh.error) this.state = fresh;
+        this.updateDisplay();
     }
 
     _startPolling() {
         if (this._pollInterval) clearInterval(this._pollInterval);
         this._pollInterval = setInterval(() => {
             if (this._isPollingAI || this._isHandlingAction) return;
-            if (this.state && (this.state.phase === 'AI_TURN' || this.state.phase === 'AI_DEFEND' || this.state.phase === 'AI2_TURN' || this.state.busy)) {
+            if (this.state && (this.state.phase === 'AI_TURN' || this.state.phase === 'AI_DEFEND' || this.state.phase === 'AI2_TURN' || this.state.busy || (this.state.events && this.state.events.length))) {
                 // All AI state changes must pass through the event-aware poller.
                 // A plain state refresh can consume a newer event version without
                 // playing/acknowledging that event, leaving settlement waiting forever.
@@ -650,8 +690,13 @@ class GameUI {
     }
 
     _buildGameScreen() {
+        const s = this.state || {};
+        const sceneLabels = { castle: '城堡', desert: '沙漠', forest: '森林', ocean: '冻洋', volcano: '火山' };
+        const sceneName = sceneLabels[s.adventureScene] || '';
+        const stageNum = s.adventureStage || s.stage || 1;
+        const titleText = (s.isAdventure && sceneName) ? (sceneName + ' · 第' + stageNum + '层') : 'Furry Battle';
         let html = `
-            <div class="game-title">Furry Battle</div>
+            <div class="game-title">${titleText}</div>
             <div class="top-bar">
                 <div class="deck-area" id="deck-area">
                     <canvas id="deck-icon" width="40" height="52"></canvas>
@@ -729,6 +774,7 @@ class GameUI {
         const activeAttacker = s.activeAttacker || (['AI_TURN', 'PLAYER_DEFEND', 'GUARD_CHOICE'].includes(s.phase) ? 'ai' : 'player');
         document.getElementById('player-hp-section').classList.toggle('active-attacker', activeAttacker === 'player');
         document.getElementById('ai-hp-section').classList.toggle('active-attacker', activeAttacker === 'ai');
+
 
         if (prev) this._detectAndPlayAnimations(prev, s);
 
@@ -833,8 +879,8 @@ class GameUI {
             const bossDef = window.AdventureRegistry && window.AdventureRegistry.getBoss(charName);
             const advDef = monsterDef || bossDef;
             if (advDef && advDef.icon) {
-                el.src = advDef.icon;
-                el.onerror = null;
+                el.src = gameAssetUrl(advDef.icon.replace(/^\.\.\//, ''));
+                el.onerror = () => { el.src = gameAssetUrl(`avatars/${charName}.png`); el.onerror = () => { el.src = gameAssetUrl(`avatars/${charName}.jpg`); el.onerror = null; }; };
             } else {
                 el.src = gameAssetUrl(`avatars/${charName}.png`);
                 el.onerror = () => { el.src = gameAssetUrl(`avatars/${charName}.jpg`); el.onerror = null; };
@@ -852,14 +898,20 @@ class GameUI {
 
     _updateBuffs(prefix, ch) {
         const container = document.getElementById(`${prefix}-buffs`);
+        if (!container) return;
+        const prevKeys = this._prevBuffKeys || (this._prevBuffKeys = {});
+        const prevSet = new Set(prevKeys[prefix] || []);
+        const currentKeys = [];
         let html = '';
         const buffs = [
-            { key: 'burn', stacks: ch.burn, icon: 'burn' },
-            { key: 'freeze', stacks: ch.frozen ? 1 : 0, icon: 'freeze' },
-            { key: 'bleed', stacks: ch.bleed, icon: 'bleed' },
-            { key: 'poison', stacks: ch.poison || 0, icon: 'poison' },
-            { key: 'guard', stacks: ch.guard, icon: 'guard' },
-            { key: 'fly', stacks: ch.fly || 0, icon: 'guard', label: '飞翔', colorClass: 'fly-buff' },
+            { key: 'burn', stacks: ch.burn, icon: 'burn', colorClass: 'burn-buff' },
+            { key: 'freeze', stacks: ch.frozen ? 1 : 0, icon: 'freeze', colorClass: 'freeze-buff' },
+            { key: 'bleed', stacks: ch.bleed, icon: 'bleed', colorClass: 'bleed-buff' },
+            { key: 'poison', stacks: ch.poison || 0, icon: 'poison', colorClass: 'poison-buff' },
+            { key: 'bomb', stacks: ch.bomb || 0, label: '炸弹', colorClass: 'poison-buff' },
+            { key: 'guard', stacks: ch.guard, icon: 'guard', colorClass: 'guard-buff' },
+            { key: 'fly', stacks: ch.fly || 0, icon: 'fly', colorClass: 'fly-buff' },
+            { key: 'lush', stacks: ch.lush || 0, icon: 'lush', colorClass: 'lush-buff' },
             { key: 'crit', stacks: ch.crit || 0, label: '暴击', colorClass: 'crit-buff' },
             { key: 'chaos_red', stacks: ch.chaos_red ? 1 : 0, icon: 'chaos_red', hideCount: true, colorClass: 'chaos-red-buff' },
             { key: 'chaos_yellow', stacks: ch.chaos_yellow ? 1 : 0, icon: 'chaos_yellow', hideCount: true, colorClass: 'chaos-yellow-buff' },
@@ -867,14 +919,29 @@ class GameUI {
             { key: 'chaos_green', stacks: ch.chaos_green ? 1 : 0, icon: 'chaos_green', hideCount: true, colorClass: 'chaos-green-buff' }
         ];
         if (ch.bloodthirst) buffs.push({ key: 'bloodthirst', stacks: 1, path: gameAssetUrl('icons/ui_icons/blood_thirsty.png'), label: '嗜血', hideCount: true });
+        if (ch.bindMark) buffs.push({ key: 'bind', stacks: 1, path: gameAssetUrl('icons/items_icons/binding.png'), label: '捆缚', hideCount: true });
         for (const b of buffs) {
             if (b.stacks > 0) {
+                currentKeys.push(b.key);
                 const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.png`);
-                const title = b.label || ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', guard: '守护', fly: '飞翔', crit: '暴击', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
-                html += `<div class="buff-icon-wrap ${b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.colorClass || ''}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}${b.label ? `<span class="buff-name">${b.label}</span>` : ''}</div>`;
+                const title = b.label || ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', guard: '守护', fly: '飞翔', lush: '茂盛', crit: '暴击', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
+                const animCls = !prevSet.has(b.key) ? ' icon-appear' : '';
+                html += `<div class="buff-icon-wrap ${b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.colorClass || ''}${animCls}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}${b.label ? `<span class="buff-name">${b.label}</span>` : ''}</div>`;
             }
         }
-        container.innerHTML = html;
+        const removed = [...prevSet].filter(k => !currentKeys.includes(k));
+        prevKeys[prefix] = currentKeys;
+        if (removed.length) {
+            container.querySelectorAll('.buff-icon-wrap').forEach(el => {
+                const title = el.getAttribute('title');
+                const keyMap = { '灼烧': 'burn', '冷冻': 'freeze', '流血': 'bleed', '中毒': 'poison', '守护': 'guard', '飞翔': 'fly', '暴击': 'crit', '嗜血': 'bloodthirst', '捆缚': 'bind' };
+                const key = Object.keys(keyMap).find(k => title === k);
+                if (key && removed.includes(keyMap[key])) el.classList.add('icon-disappear');
+            });
+            setTimeout(() => { container.innerHTML = html; }, 160);
+        } else {
+            container.innerHTML = html;
+        }
     }
 
     _renderPlayerHand(options = {}) {
@@ -882,7 +949,7 @@ class GameUI {
         const container = document.getElementById('player-hand');
         container.innerHTML = '';
         if (!s.playerHand) return;
-        const hideTrailing = Math.max(0, Number(options.hideTrailing) || 0);
+        const hideTrailing = this._hideTrailingCount(options, 'player');
         const canInteract = ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
             'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD'].includes(s.phase);
         const isDefend = s.phase === 'PLAYER_DEFEND';
@@ -1040,7 +1107,7 @@ class GameUI {
         container.innerHTML = '';
         const canSelect = s.phase === 'OPPONENT_CARD_CHOICE' || (s.phase === 'PLAYER_SEVEN_CHOICE' && !s.chanFourSwapMode && !s.chanSevenKeepMode) || (s.phase === 'SAIKI_THREE_CHOICE' && !s.saikiThreeDrawn);
         const handSize = s.aiHandSize || 0;
-        const hideTrailing = Math.max(0, Number(options.hideTrailing) || 0);
+        const hideTrailing = this._hideTrailingCount(options, 'ai');
         const revealMode = !!s.aiHand && Array.isArray(s.aiHand);
         const canPeekSkill = !!(s.isAdventure && revealMode && (s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND'));
         if (!canPeekSkill) this._npcHandFocusIndex = -1;
@@ -1097,6 +1164,9 @@ class GameUI {
         if (def.combatUse === 'dodge' || def.defendOnly) {
             return s.phase === 'PLAYER_DEFEND' && !!s.pendingAttack;
         }
+        if (def.combatUse === 'bind') {
+            return s.phase === 'PLAYER_PLAY' && !s.bindUsedThisTurn;
+        }
         // 仅在可选出牌/防御牌时（含不可防御跳过窗口）；其他子阶段不可用
         return s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND';
     }
@@ -1134,23 +1204,28 @@ class GameUI {
         const inAttackMod = s.phase === 'ATTACK_MOD_CHOICE';
 
         let html = '<div class="adv-item-bar-title">道具</div><div class="adv-combat-item-slots">';
+        const prevItems = this._prevItemNames || (this._prevItemNames = []);
+        const currentItemNames = [];
         for (let i = 0; i < slots; i++) {
             const item = consumables[i];
             if (!item) {
                 html += '<div class="adv-combat-item-slot empty" title="空道具槽"></div>';
                 continue;
             }
+            currentItemNames.push(item.name);
             const def = window.AdventureRegistry.getItem(item.name);
             const isAttackModItem = def && def.combatUse === 'attackMod';
             const canUse = this._canUseAdventureCombatItem(s, def);
             const selectable = inAttackMod && this._isAttackModSelectableIndex(i, s);
             const selected = selectable && this._attackModSelectedItem === i;
             const itemSelected = !inAttackMod && canUse && this._selectedCombatItem === i;
+            const isNew = !prevItems.includes(item.name);
             let cls = 'adv-combat-item-slot filled adv-combat-item';
             if (selectable) cls += ' attack-mod-selectable';
             if (selected) cls += ' attack-mod-selected';
             if (itemSelected) cls += ' item-selected';
             if (!canUse && !selectable) cls += ' disabled';
+            if (isNew) cls += ' icon-appear';
             let modBadge = '';
             if (isAttackModItem && def.attackModUnblock) modBadge = '<span class="adv-combat-item-bonus">破防</span>';
             else if (isAttackModItem && def.attackModBonus) modBadge = '<span class="adv-combat-item-bonus">+' + def.attackModBonus + '</span>';
@@ -1161,8 +1236,46 @@ class GameUI {
                 '</button>';
         }
         html += '</div>';
-        bar.innerHTML = html;
 
+        const accessories = snap.accessories || [];
+        const prevAccs = this._prevAccNames || (this._prevAccNames = []);
+        const currentAccNames = accessories.map(a => a.name);
+        if (accessories.length) {
+            html += '<div class="adv-combat-acc-section"><div class="adv-item-bar-title">配饰</div><div class="adv-combat-acc-slots">';
+            accessories.forEach((item) => {
+                const tip = item.displayName + ' — ' + item.description;
+                const animCls = !prevAccs.includes(item.name) ? ' icon-appear' : '';
+                html += '<div class="adv-combat-acc-slot' + animCls + '" title="' + tip + '">' +
+                    (item.icon ? '<img src="' + item.icon + '" alt="' + item.displayName + '">' : '') +
+                    '</div>';
+            });
+            html += '</div></div>';
+        }
+
+        const removedItems = prevItems.filter(n => !currentItemNames.includes(n));
+        const removedAccs = prevAccs.filter(n => !currentAccNames.includes(n));
+        this._prevItemNames = currentItemNames;
+        this._prevAccNames = currentAccNames;
+        const hasRemoved = removedItems.length || removedAccs.length;
+        if (hasRemoved) {
+            bar.querySelectorAll('.adv-combat-item-slot.filled').forEach(el => {
+                const title = el.getAttribute('title') || '';
+                if (removedItems.some(n => { const d = window.AdventureRegistry.getItem(n); return d && title === (d.description || d.displayName); }))
+                    el.classList.add('icon-disappear');
+            });
+            bar.querySelectorAll('.adv-combat-acc-slot').forEach(el => {
+                const title = (el.getAttribute('title') || '').split(' — ')[0];
+                if (removedAccs.some(n => { const d = window.AdventureRegistry.getItem(n); return d && d.displayName === title; }))
+                    el.classList.add('icon-disappear');
+            });
+            setTimeout(() => { bar.innerHTML = html; this._bindItemBarEvents(bar, consumables, s, inAttackMod); }, 160);
+        } else {
+            bar.innerHTML = html;
+            this._bindItemBarEvents(bar, consumables, s, inAttackMod);
+        }
+    }
+
+    _bindItemBarEvents(bar, consumables, s, inAttackMod) {
         bar.querySelectorAll('[data-item-index]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const idx = parseInt(btn.getAttribute('data-item-index'), 10);
@@ -1375,6 +1488,7 @@ class GameUI {
             } else {
                 html += `<button class="ctrl-btn btn-play" id="btn-play" ${!hasCard ? 'disabled' : ''}>出牌</button>`;
                 html += `<button class="ctrl-btn btn-use-item" id="btn-use-item" ${this._selectedCombatItem == null ? 'disabled' : ''}>使用道具</button>`;
+                if (s.demonPactAvailable) html += `<button class="ctrl-btn btn-demon-pact" id="btn-demon-pact">恶魔交易</button>`;
                 html += `<button class="ctrl-btn btn-discard" id="btn-discard" ${s.hasPlayedThisTurn ? 'disabled' : ''}>弃牌</button>`;
                 html += `<button class="ctrl-btn btn-end" id="btn-end">结束回合</button>`;
             }
@@ -1389,6 +1503,7 @@ class GameUI {
                 if (s.unblockDefend) {
                     html += `<span class="ctrl-hint" style="color:#fca5a5">无法防御！</span>`;
                     html += `<button class="ctrl-btn btn-use-item" id="btn-use-item" ${this._selectedCombatItem == null ? 'disabled' : ''}>使用道具</button>`;
+                    if (s.demonPactAvailable) html += `<button class="ctrl-btn btn-demon-pact" id="btn-demon-pact">恶魔交易</button>`;
                     html += `<button class="ctrl-btn btn-skip" id="btn-skip">跳过</button>`;
                 } else {
                     if (s.hasPlayedBlackDefend) {
@@ -1396,6 +1511,7 @@ class GameUI {
                     }
                     html += `<button class="ctrl-btn btn-defend" id="btn-defend" ${!hasCard ? 'disabled' : ''}>防御</button>`;
                     html += `<button class="ctrl-btn btn-use-item" id="btn-use-item" ${this._selectedCombatItem == null ? 'disabled' : ''}>使用道具</button>`;
+                    if (s.demonPactAvailable) html += `<button class="ctrl-btn btn-demon-pact" id="btn-demon-pact">恶魔交易</button>`;
                     html += `<button class="ctrl-btn btn-skip" id="btn-skip">${s.hasPlayedBlackDefend ? '放弃防御' : '跳过'}</button>`;
                 }
             }
@@ -1476,6 +1592,7 @@ class GameUI {
         bind('btn-attack-mod-confirm', () => { this._confirmAttackMod(); });
         bind('btn-attack-mod-skip', () => { this._skipAttackMod(); });
         bind('btn-use-item', async () => { await this._useSelectedCombatItem(); });
+        bind('btn-demon-pact', async () => { await this._apiAction('useDemonPact'); });
         bind('btn-confirm-discard', async () => { await this._apiAction('doConfirmDiscard'); });
         bind('btn-cancel-discard', async () => { await this._apiAction('doCancelDiscard'); });
         bind('btn-five-heal', async () => { await this._apiAction('doFiveHeal'); });
@@ -1719,7 +1836,7 @@ class GameUI {
                     await this._consumeEvents(result.events, { fastFirstBatch: quickDecision || entersDecision });
                 }
                 this.updateDisplay();
-                shouldPollAI = this.state.phase === 'AI_TURN' || this.state.phase === 'AI_DEFEND' || this.state.phase === 'AI2_TURN';
+                shouldPollAI = this.state.phase === 'AI_TURN' || this.state.phase === 'AI_DEFEND' || this.state.phase === 'AI2_TURN' || !!(this.state.events && this.state.events.length);
             } else if (result && result.error) {
                 this.showError(result.error);
                 this.updateDisplay();
@@ -1978,10 +2095,10 @@ class GameUI {
                 }
                 if (typeof this.state.deck === 'number') this._drawDeckIcon(this.state.deck);
                 if (target) await this.anim.drawCards(count, evt.who === 'player', target);
-                if (evt.who === 'player') this._renderPlayerHand();
-                else if (evt.who === 'ai2' && this._renderAIHand1v2) this._renderAIHand1v2();
-                else if (this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2();
-                else this._renderAIHand();
+                if (evt.who === 'player') this._renderPlayerHand({ hideTrailing: 0 });
+                else if (evt.who === 'ai2' && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: 0, who: 'ai2' });
+                else if (this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: 0, who: 'ai' });
+                else this._renderAIHand({ hideTrailing: 0 });
                 await wait(120);
             } else if (evt.type === 'reveal' && evt.card) {
                 if (this._isDefenseJudgmentEvent(evt)) {
@@ -2045,12 +2162,26 @@ class GameUI {
                 if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
                 if (evt.amount > 0) { this.shakeScreen(Math.min(evt.amount * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,136,0,0.8)', Math.min(evt.amount * 3, 20)); } }
                 await wait(500);
+            } else if (evt.type === 'bleedSettle') {
+                this.playFloatingText(evt.desc || '', '#cc2222', this._eventSide(evt.who));
+                const side = this._eventSide(evt.who);
+                if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+                if (evt.amount > 0) { this.shakeScreen(Math.min(evt.amount * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(204,34,34,0.8)', Math.min(evt.amount * 3, 20)); } }
+                await wait(500);
             } else if (evt.type === 'poisonSettle') {
                 this.playFloatingText(evt.desc || '', '#84cc16', this._eventSide(evt.who));
                 const side = this._eventSide(evt.who);
                 if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
                 if (evt.amount > 0) { this.shakeScreen(Math.min(evt.amount * 2, 10), 300); }
                 await wait(500);
+            } else if (evt.type === 'bombExplode') {
+                this.playFloatingText(evt.desc || '炸弹爆炸！', '#ff4444', this._eventSide(evt.who));
+                const side = this._eventSide(evt.who);
+                if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+                this.shakeScreen(10, 400);
+                const hpEl = document.getElementById(side + '-hp-section');
+                if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,68,68,0.9)', 25); }
+                await wait(600);
             } else if (evt.type === 'hurt') {
                 this.playFloatingText(evt.desc || '', evt.poison ? '#84cc16' : (evt.bleed ? '#cc2222' : '#ff4444'), this._eventSide(evt.who));
                 const side = this._eventSide(evt.who);
@@ -2121,13 +2252,19 @@ class GameUI {
 
     _showCardSkillDesc(id, card, owner, isDefend) {
         if (!card || !this.state) return;
-        const participant = owner === 'ai2' ? this.state.ai2 : owner === 'ai' ? this.state.ai : this.state.player;
+        const s = this.state;
+        const participant = owner === 'ai2' ? s.ai2 : owner === 'ai' ? s.ai : s.player;
         if (!participant) return;
         const charName = participant.name.replace(/^AI\d*\s+/, '');
         const label = card.isItemCard
             ? (card.isBlack ? '黑牌' : card.isWhite ? '白牌' : '道具')
             : card.value;
-        const skill = getSkillDesc(charName, card, isDefend) || (isDefend ? '执行防御效果' : '执行进攻效果');
+        const adventureOpts = s.isAdventure ? {
+            stage: s.adventureStage || s.stage || 1,
+            playerHandSize: (s.playerHand && s.playerHand.length) || 0,
+            incomingDamage: s.pendingDefenseDamage || 0
+        } : null;
+        const skill = this._resolveHandSkillDesc(charName, card, isDefend, adventureOpts) || (isDefend ? '执行防御效果' : '执行进攻效果');
         this._showZoneDesc(id, `${charName} · ${label}｜${skill}`);
     }
 

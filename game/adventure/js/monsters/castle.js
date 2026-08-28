@@ -11,11 +11,19 @@
   if (!R) return;
 
   window.AdventureBossPool = window.AdventureBossPool || {};
-  window.AdventureBossPool.castle = ['CastleChameleon', 'CastleEagle'];
+  window.AdventureBossPool.castle = {
+    '*': ['CastleChameleon', 'CastleEagle'],
+    2: ['CastleChameleon', 'CastleEagle', 'CastleGargoyle'],
+    3: ['CastleChameleon', 'CastleEagle', 'CastleGargoyle'],
+    4: ['CastleChameleon', 'CastleEagle', 'CastleGargoyle']
+  };
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.castle = {
-    '*': ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger']
+    '*': ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat'],
+    2: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'DungeonGoblin'],
+    3: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'DungeonGoblin'],
+    4: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'DungeonGoblin']
   };
 
   /**
@@ -300,8 +308,9 @@
   /**
    * Boss · 自由之鹰（CastleEagle）
    * HP 35。被动：进攻开始前对玩家施加1层流血。
-   * 进攻：1/2/3 → 2/3/4伤；4/5/6 → 清除正面buff + 2不可防御；0 → 2层飞翔 + 4伤
-   * 防御：1/2/3 → 反击1/2/3；0 → 免疫所有伤害
+   * 进攻：1/2/3 → 4/5/6伤；4/5/6 → 清除正面buff + 3不可防御；0 → 2层飞翔 + 4伤
+   * 防御：1/2/3 → 反击3；0 → 免疫所有伤害
+   * 强化：(2)+10生命 (3)伤害+1 (4)反击+1
    */
   R.registerBoss({
     name: 'CastleEagle',
@@ -310,6 +319,8 @@
     attack: 4,
     defense: 2,
     icon: '../icons/npc_icons/castle_eagle.png',
+    handLimit: 3,
+    whiteZeros: 2,
     firstStrike: true,
 
     attackTurnStart(eng) {
@@ -319,10 +330,10 @@
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value === 1) return 2;
-      if (card.value === 2) return 3;
-      if (card.value === 3) return 4;
-      if (card.value >= 4 && card.value <= 6) return 2;
+      if (card.value === 1) return 4;
+      if (card.value === 2) return 5;
+      if (card.value === 3) return 6;
+      if (card.value >= 4 && card.value <= 6) return 3;
       if (card.value === 0) return 4;
       return 0;
     },
@@ -342,7 +353,7 @@
 
     defendCounter(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return card.value;
+      if (card.value >= 1 && card.value <= 3) return 3;
       return 0;
     },
 
@@ -354,6 +365,264 @@
       2: orig => ({ hp: orig.hp + 10 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({ defendCounter: (card) => orig.defendCounter(card) + 1 })
+    }
+  });
+
+  /**
+   * 城堡哥布林（DungeonGoblin）
+   * 仅在 Stage 2/3/4 刷出
+   * 被动：玩家打出数字1卡牌时触发（stage2:损失1金币, stage3/4:损失1随机道具）
+   * 进攻：1/2/3牌造成2点不可防御伤害，4/5/6牌造成5点伤害并获得1/2/3层守护
+   * 防御：1/2/3牌恢复1/2/3点生命
+   * 强化：(4)防御恢复生命+1
+   */
+  R.registerMonster({
+    name: 'DungeonGoblin',
+    kind: '城堡哥布林',
+    hp: 27,
+    attack: 4,
+    defense: 1,
+    icon: '../icons/npc_icons/castle_goblin.png',
+
+    attackDamage(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 2;
+      if (card.value >= 4 && card.value <= 6) return 5;
+      return 0;
+    },
+
+    attackUnblockable(card) {
+      if (!card || !card.isNumberCard) return false;
+      return card.value >= 1 && card.value <= 3;
+    },
+
+    attackGuard(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 4 && card.value <= 6) return card.value - 3;
+      return 0;
+    },
+
+    defendHeal(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return card.value;
+      return 0;
+    },
+
+    stageMods: {
+      4: orig => ({
+        defendHeal: (card) => {
+          if (!card || !card.isNumberCard) return 0;
+          if (card.value >= 1 && card.value <= 3) return card.value + 1;
+          return 0;
+        }
+      })
+    }
+  });
+
+  /**
+   * 鸦（CastleCrow）
+   * 进攻：1/2/3牌造成3点伤害恢复1点生命，4/5/6牌造成4点伤害恢复2点生命
+   * 防御：1/2牌无任何效果，3牌免疫所有伤害并免疫buff
+   * 强化：(2)+5生命 (3)伤害+1 (4)1/2牌格挡½伤害（向上取整）
+   */
+  R.registerMonster({
+    name: 'CastleCrow',
+    kind: '城堡之鸦',
+    hp: 20,
+    attack: 3,
+    defense: 1,
+    icon: '../icons/npc_icons/castle_crow.png',
+
+    attackDamage(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 3;
+      if (card.value >= 4 && card.value <= 6) return 4;
+      return 0;
+    },
+
+    attackHeal(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 1;
+      if (card.value >= 4 && card.value <= 6) return 2;
+      return 0;
+    },
+
+    defendBlock(card, incoming) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 2) return 0;
+      return 0;
+    },
+
+    defendImmune(card) {
+      return !!(card && card.isNumberCard && card.value === 3);
+    },
+
+    defendImmuneBuff(card) {
+      return !!(card && card.isNumberCard && card.value === 3);
+    },
+
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 5 }),
+      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
+      4: orig => ({
+        defendBlock: (card, incoming) => {
+          if (!card || !card.isNumberCard) return 0;
+          if (card.value >= 1 && card.value <= 2) return Math.ceil((incoming || 0) / 2);
+          return 0;
+        }
+      })
+    }
+  });
+
+  /**
+   * 蝠（CastleBat）
+   * 进攻：1/2/3牌造成2点伤害并施加1层流血，4/5/6牌吸血2点（不可防御，可使用道具）
+   * 防御：1/2/3牌格挡至多2点伤害并施加1层流血
+   * 强化：(2)+5生命 (3)吸血+1 (4)格挡+1
+   */
+  R.registerMonster({
+    name: 'CastleBat',
+    kind: '城堡之蝠',
+    hp: 15,
+    attack: 3,
+    defense: 1,
+    icon: '../icons/npc_icons/castle_bat.png',
+
+    attackDamage(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 2;
+      if (card.value >= 4 && card.value <= 6) return 2;
+      return 0;
+    },
+
+    attackBleed(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 1;
+      return 0;
+    },
+
+    attackUnblockable(card) {
+      if (!card || !card.isNumberCard) return false;
+      return card.value >= 4 && card.value <= 6;
+    },
+
+    attackHeal(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 4 && card.value <= 6) return 2;
+      return 0;
+    },
+
+    defendBlock(card, incoming) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return Math.min(2, incoming || 0);
+      return 0;
+    },
+
+    defendBleed(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 1;
+      return 0;
+    },
+
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 5 }),
+      3: orig => ({
+        attackHeal: (card) => {
+          const base = orig.attackHeal(card);
+          return base > 0 ? base + 1 : 0;
+        }
+      }),
+      4: orig => ({
+        defendBlock: (card, incoming) => {
+          const base = orig.defendBlock(card, incoming);
+          return base > 0 ? base + 1 : 0;
+        }
+      })
+    }
+  });
+
+  /**
+   * Boss · 石像鬼（CastleGargoyle）
+   * 进攻：1/2/3牌获得1层飞翔并造成3点伤害，4/5/6牌获得1层守护并造成3点不可防御伤害
+   * 进攻0牌：造成3点不可防御伤害，玩家随机丢失1个道具，石像鬼抽取1张牌
+   * 防御：1/2/3牌格挡½伤害（向上取整）并施加1层流血，0牌免疫所有伤害（不免疫buff）并抽取1张牌
+   * 强化：(2)+10生命 (3)伤害+1 (4)防御1/2/3恢复1生命
+   */
+  R.registerBoss({
+    name: 'CastleGargoyle',
+    kind: '石像鬼',
+    hp: 50,
+    attack: 4,
+    defense: 2,
+    handLimit: 3,
+    whiteZeros: 2,
+    icon: '../icons/npc_icons/gargoyle.png',
+
+    attackDamage(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 3;
+      if (card.value >= 4 && card.value <= 6) return 3;
+      if (card.value === 0) return 3;
+      return 0;
+    },
+
+    attackFly(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 1;
+      return 0;
+    },
+
+    attackGuard(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 4 && card.value <= 6) return 1;
+      return 0;
+    },
+
+    attackUnblockable(card) {
+      if (!card || !card.isNumberCard) return false;
+      return card.value === 0 || (card.value >= 4 && card.value <= 6);
+    },
+
+    attackStealItem(card) {
+      return !!(card && card.isNumberCard && card.value === 0);
+    },
+
+    attackDrawSelf(card) {
+      return !!(card && card.isNumberCard && card.value === 0);
+    },
+
+    defendBlock(card, incoming) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return Math.ceil((incoming || 0) / 2);
+      return 0;
+    },
+
+    defendBleed(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 1;
+      return 0;
+    },
+
+    defendImmune(card) {
+      return !!(card && card.isNumberCard && card.value === 0);
+    },
+
+    defendDrawSelf(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value === 0) return 1;
+      return 0;
+    },
+
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 10 }),
+      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
+      4: orig => ({
+        defendHeal: (card) => {
+          if (!card || !card.isNumberCard) return 0;
+          if (card.value >= 1 && card.value <= 3) return 1;
+          return 0;
+        }
+      })
     }
   });
 })();

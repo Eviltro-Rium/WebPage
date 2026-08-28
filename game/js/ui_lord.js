@@ -8,7 +8,7 @@
       console.log('[Lord] selectCharacters1v2 result:', result?.error || 'ok', 'isLord:', result?.isLord);
       if(result.error){this.showError(result.error);return}
       this.state=result;this.selectScreen.classList.remove('active');this.gameScreen.classList.add('active');
-      this._buildGameScreen1v2();this.updateDisplay();this._startPolling()
+      this._buildGameScreen1v2();this.updateDisplay();await this._playOpeningEvents();this._startPolling()
     } catch(e) {
       console.error('[Lord] _startGameLord error:',e);
       this.showError('启动领主模式失败: '+e.message);
@@ -20,8 +20,14 @@
   GameUI.prototype._buildGameScreen1v2=function(){
     if(!this.state||!this.state.isLord)return _origBuildGameScreen1v2.call(this);
     const s=this.state;
+    const adv=!!s.isAdventure;
+    const ai1Label=adv?'对手':'AI';
+    const ai2Label=adv?'对手2':'AI2';
+    const ai1HandTitle=adv?'对手手牌':'AI1 手牌';
+    const ai2HandTitle=adv?'对手2手牌':'AI2 手牌';
+    const gameTitle=adv?'Furry 冒险':'Furry Battle 领主模式';
     let html=`
-      <div class="game-title">Furry Battle 领主模式</div>
+      <div class="game-title">${gameTitle}</div>
       <div class="top-bar">
         <div class="deck-area" id="deck-area"><canvas id="deck-icon" width="40" height="52"></canvas><span class="deck-info" id="deck-info">牌堆: 0</span></div>
         <span class="phase-info" id="phase-info">出牌阶段</span>
@@ -31,20 +37,20 @@
       <div class="hp-section" id="ai-hp-section">
         <span class="attacker-indicator">进攻方</span>
         <img class="hp-avatar" id="ai-avatar" src="" alt="">
-        <span class="hp-name" id="ai-name">AI</span>
+        <span class="hp-name" id="ai-name">${ai1Label}</span>
         <div class="hp-bar-outer"><div class="hp-bar-inner" id="ai-hp-bar" style="width:100%"></div><span class="hp-text" id="ai-hp-text">100/100</span></div>
         <div class="buff-icons" id="ai-buffs"></div>
       </div>
       <div class="hp-section ai2-hp-section" id="ai2-hp-section">
         <span class="attacker-indicator">进攻方</span>
         <img class="hp-avatar" id="ai2-avatar" src="" alt="">
-        <span class="hp-name" id="ai2-name">AI2</span>
+        <span class="hp-name" id="ai2-name">${ai2Label}</span>
         <div class="hp-bar-outer"><div class="hp-bar-inner" id="ai2-hp-bar" style="width:100%"></div><span class="hp-text" id="ai2-hp-text">100/100</span></div>
         <div class="buff-icons" id="ai2-buffs"></div>
       </div>
       <div class="ai-area">
-        <div class="ai-hand-zone"><div class="zone-title">AI1 手牌</div><div class="ai-hand-row" id="ai-hand"></div></div>
-        <div class="ai-hand-zone" style="border-color:#a855f7"><div class="zone-title" style="color:#c084fc">AI2 手牌</div><div class="ai-hand-row" id="ai2-hand"></div></div>
+        <div class="ai-hand-zone"><div class="zone-title">${ai1HandTitle}</div><div class="ai-hand-row" id="ai-hand"></div></div>
+        <div class="ai-hand-zone" style="border-color:#a855f7"><div class="zone-title" style="color:#c084fc">${ai2HandTitle}</div><div class="ai-hand-row" id="ai2-hand"></div></div>
         <div class="play-zone"><div class="play-zone-row">
           <div class="attack-zone"><div class="zone-title">进攻</div><div class="zone-cards" id="atk-cards"><span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待出牌</span></div><div class="zone-desc" id="atk-desc"></div></div>
           <div class="defend-zone"><div class="zone-title">防御</div><div class="zone-cards" id="def-cards"><span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待防御</span></div><div class="zone-desc" id="def-desc"></div></div>
