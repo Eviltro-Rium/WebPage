@@ -21,11 +21,15 @@
       this.extra = {};
       this.guard = 0;
       this.fly = 0;
+      this.lush = Math.max(0, Number(opts.initialLush) || 0);
 
-      if (typeof opts.attackDamage === 'function') this.attackDamage = opts.attackDamage;
-      if (typeof opts.attackUnblockable === 'function') this.attackUnblockable = opts.attackUnblockable;
-      if (typeof opts.defendBlock === 'function') this.defendBlock = opts.defendBlock;
-      if (typeof opts.defendHeal === 'function') this.defendHeal = opts.defendHeal;
+      // Keep the registry hooks available to the legacy adventure path too.
+      for (const hook of [
+        'attackDamage', 'attackUnblockable', 'attackHeal', 'attackLush', 'attackTurnStart',
+        'defendBlock', 'defendHeal', 'defendPoison', 'defendBleed', 'defendGuard', 'defendLush'
+      ]) {
+        if (typeof opts[hook] === 'function') this[hook] = opts[hook];
+      }
 
       this._def = opts;
     }
@@ -42,6 +46,7 @@
       this.extra = {};
       this.guard = 0;
       this.fly = 0;
+      this.lush = Math.max(0, Number(this._def.initialLush) || 0);
     }
 
     turnStart(eng, ctx) {

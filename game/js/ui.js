@@ -125,6 +125,15 @@ function cardMatchKey(card) {
     return `${card.color}_${card.value}_${!!card.isBlack}_${!!card.isWhite}_${!!card.potion}_${!!card.magic}_${!!card.greenMagic}_${card.magicColor || ''}_${!!card.purify}_${!!card.superPurify}_${!!card.swapHand}_${!!card.shuffleToDeck}_${!!card.drawThree}`;
 }
 
+function animEaseInOut(t) {
+    return 0.5 - Math.cos(Math.PI * Math.max(0, Math.min(1, t))) / 2;
+}
+
+function animSmoothstep(t) {
+    t = Math.max(0, Math.min(1, t));
+    return t * t * (3 - 2 * t);
+}
+
 class AnimLayer {
     constructor() { this.animating = false; }
 
@@ -149,7 +158,7 @@ class AnimLayer {
 
             const tick = (now) => {
                 const t = Math.min(1, (now - start) / dur);
-                const ease = 1 - Math.pow(1 - t, 3);
+                const ease = animEaseInOut(t);
                 const x = sx + (ex - sx) * ease;
                 const y = sy + (ey - sy) * ease - Math.sin(ease * Math.PI) * arc;
                 const scale = 1 + 0.15 * Math.sin(ease * Math.PI);
@@ -184,12 +193,12 @@ class AnimLayer {
 
             const tick = (now) => {
                 const t = Math.min(1, (now - start) / dur);
-                const ease = 1 - Math.pow(1 - t, 3);
+                const ease = animEaseInOut(t);
                 const x = sx + (ex - sx) * ease;
                 const y = sy + (ey - sy) * ease - Math.sin(ease * Math.PI) * arc;
                 const scale = 1 + 0.15 * Math.sin(ease * Math.PI);
                 flyEl.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-                flyEl.style.opacity = t < 0.1 ? t / 0.1 : t > 0.85 ? (1 - t) / 0.15 : 1;
+                flyEl.style.opacity = t < 0.08 ? t / 0.08 : t > 0.94 ? (1 - t) / 0.06 : 1;
                 if (t < 1) requestAnimationFrame(tick);
                 else { flyEl.remove(); resolve(); }
             };
@@ -199,13 +208,11 @@ class AnimLayer {
 
     async drawCards(count, isPlayer, targetEl) {
         const srcEl = document.getElementById('deck-area') || document.querySelector('.top-bar') || document.body;
-        const promises = [];
-        for (let i = 0; i < count; i++) {
-            if (i) await new Promise(r => setTimeout(r, 115));
+        const promises = Array.from({ length: Math.max(0, count) }, (_, i) => new Promise(resolve => {
             const spread = Math.min(24, 72 / Math.max(1, count - 1));
             const offsetX = (i - (count - 1) / 2) * spread;
-            promises.push(this.flyCardBack(srcEl, targetEl, 420, isPlayer ? 58 : 44, offsetX, isPlayer ? 2 : -2));
-        }
+            setTimeout(() => resolve(this.flyCardBack(srcEl, targetEl, 440, isPlayer ? 58 : 44, offsetX, isPlayer ? 2 : -2)), i * 82);
+        }));
         await Promise.all(promises);
     }
 
@@ -225,7 +232,7 @@ class AnimLayer {
             const start = performance.now();
             const tick = (now) => {
                 const t = Math.min(1, (now - start) / dur);
-                const ease = 1 - Math.pow(1 - t, 3);
+                const ease = animEaseInOut(t);
                 const scale = 0.3 + 0.7 * ease;
                 const opacity = ease;
                 el.style.transform = `translate(${cx}px, ${cy}px) scale(${scale})`;
@@ -270,7 +277,7 @@ class AnimLayer {
             const distance = Math.hypot(ex - sx, ey - sy);
             const arc = Math.max(40, Math.min(100, distance * 0.22));
             const turn = ex >= sx ? 1 : -1;
-            const duration = landsOnTop ? 520 : 440;
+            const duration = landsOnTop ? 560 : 500;
             const start = performance.now();
 
             if (fromEl.classList && fromEl.classList.contains('card-canvas')) {
@@ -280,16 +287,15 @@ class AnimLayer {
 
             const tick = now => {
                 const t = Math.min(1, (now - start) / duration);
-                const ease = t < 0.72
-                    ? 1 - Math.pow(1 - t / 0.72, 3)
-                    : 1;
+                const flightT = Math.min(1, t / 0.8);
+                const ease = animEaseInOut(flightT);
                 const x = sx + (ex - sx) * ease;
                 const y = sy + (ey - sy) * ease - Math.sin(ease * Math.PI) * arc;
-                const sink = Math.max(0, (t - 0.72) / 0.28);
-                const scale = 1 + Math.sin(ease * Math.PI) * 0.08 - sink * (landsOnTop ? 0.36 : 0.5);
-                const rotate = turn * (Math.sin(ease * Math.PI) * 6 + sink * 10);
-                flyEl.style.transform = `translate(${x}px, ${y + sink * (landsOnTop ? 13 : 20)}px) scale(${scale}) rotate(${rotate}deg)`;
-                flyEl.style.opacity = t < 0.08 ? t / 0.08 : (landsOnTop ? (sink ? 1 - sink : 1) : (1 - sink));
+                const settle = animSmoothstep((t - 0.78) / 0.22);
+                const scale = 1 + Math.sin(ease * Math.PI) * 0.08 - settle * (landsOnTop ? 0.2 : 0.28);
+                const rotate = turn * (Math.sin(ease * Math.PI) * 5 + settle * 5);
+                flyEl.style.transform = `translate(${x}px, ${y + settle * (landsOnTop ? 10 : 16)}px) scale(${scale}) rotate(${rotate}deg)`;
+                flyEl.style.opacity = t < 0.08 ? t / 0.08 : (t > 0.96 ? (1 - t) / 0.04 : 1);
                 if (t < 1) {
                     requestAnimationFrame(tick);
                     return;

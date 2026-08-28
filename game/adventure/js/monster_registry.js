@@ -26,7 +26,13 @@
       type: mod.kind || '怪物',
       passive: '冒险模式怪物',
       adventureNpc: true,
-      init() { return { guard: 0, fly: 0, lush: 0 }; },
+      init() {
+        return {
+          guard: 0,
+          fly: 0,
+          lush: Math.max(0, Number(mod.initialLush) || 0)
+        };
+      },
       turnStart(eng, x, w) {
         if (w !== 'ai' && w !== 'ai2') return;
         if ((x.lush || 0) > 0) {
@@ -414,17 +420,28 @@
       return parts.length ? parts.join('，') : '无防御效果';
     }
 
-    const ctx = { playerHandSize: Number(opts.playerHandSize) || 0, playerPoison: Number(opts.playerPoison) || 0, attackerLush: Number(opts.attackerLush) || 0 };
+    const ctx = {
+      playerHandSize: Number(opts.playerHandSize) || 0,
+      playerPoison: Number(opts.playerPoison) || 0,
+      attackerLush: opts.attackerLush == null ? (Number(mod.initialLush) || 0) : (Number(opts.attackerLush) || 0)
+    };
     let parts = [];
     let dmg = 0;
+    const ladybugDrain = mod.name === 'ForestLadybug' && card.value >= 1 && card.value <= 3;
     if (typeof mod.attackDamage === 'function') dmg = mod.attackDamage(card, ctx) || 0;
     else if (card.isNumberCard) dmg = card.value || 0;
     if (dmg > 0) {
-      let line = '造成' + dmg + '点伤害';
+      let line = ladybugDrain ? '吸取' + dmg + '点生命' : '造成' + dmg + '点伤害';
       if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) {
         line += '（不可防御）';
+      } else if (mod.name === 'ForestLadybug') {
+        line += '（可防御）';
       }
       parts.push(line);
+    }
+    if (typeof mod.attackLush === 'function') {
+      const l = mod.attackLush(card);
+      if (l > 0) parts.push('获得' + l + '层茂盛');
     }
     if (typeof mod.attackGuard === 'function') {
       const g = mod.attackGuard(card);
@@ -447,7 +464,7 @@
     }
     if (typeof mod.attackHeal === 'function') {
       const h = mod.attackHeal(card, ctx);
-      if (h > 0) parts.push('恢复' + h + '点生命');
+      if (h > 0 && !ladybugDrain) parts.push('恢复' + h + '点生命');
     }
     if (typeof mod.attackStealItem === 'function' && mod.attackStealItem(card)) {
       parts.push('玩家随机丢失1个道具');

@@ -169,20 +169,22 @@
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/forest_ladybug.png',
-    attackDamage(card) {
+    initialLush: 1,
+    attackDamage(card, ctx) {
       const v = card.value;
-      if (v >= 4 && v <= 6) return 2;
+      if (v >= 1 && v <= 3) return 1 + ((ctx && ctx.attackerLush) || 0);
+      if (v >= 4 && v <= 6) return 4;
       return 0;
     },
     attackUnblockable(card) {
-      return card.value >= 4 && card.value <= 6;
+      return card.value >= 1 && card.value <= 3;
     },
     attackLush(card) {
       return card.value >= 4 && card.value <= 6 ? 1 : 0;
     },
     attackHeal(card, ctx) {
       const v = card.value;
-      if (v >= 1 && v <= 3) return 3 * ((ctx && ctx.attackerLush) || 0);
+      if (v >= 1 && v <= 3) return 1 + ((ctx && ctx.attackerLush) || 0);
       return 0;
     },
     defendBlock(card, incoming) {

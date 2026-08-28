@@ -129,24 +129,23 @@
 
                 const chars = [{ name: playerName, label: '玩家', color: '#3b82f6' }];
 
-                let enemyName = null;
-                let enemyStage = (ui.eng && ui.eng.s && ui.eng.s.stage) || 1;
-                if (window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine()) {
-                    const abe = window.AdventureCombatBridge.activeEngine();
-                    if (abe.s && abe.s.ai) enemyName = abe.s.ai.name.replace(/^AI\d*\s+/, '');
+                const addOpponent = (rawName, label, color, stage) => {
+                    const name = String(rawName || '').replace(/^AI\d*\s+/, '');
+                    if (!name || chars.some(c => c.name === name)) return;
+                    chars.push({ name, label, color, stage, isNpc: true });
+                };
+                const enemyStage = (ui.eng && ui.eng.s && ui.eng.s.stage) || 1;
+                const bridge = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine
+                    ? window.AdventureCombatBridge.activeEngine() : null;
+                if (bridge && bridge.s) {
+                    if (bridge.s.ai && bridge.s.ai.name) addOpponent(bridge.s.ai.name, '敌人', '#ef4444', enemyStage);
+                    if (bridge.s.ai2 && bridge.s.ai2.name) addOpponent(bridge.s.ai2.name, '敌人2', '#a855f7', enemyStage);
                 }
-                if (!enemyName && ui.eng && ui.eng.s && ui.eng.s.combat && ui.eng.s.combat.enemy) {
-                    enemyName = ui.eng.s.combat.enemy.name;
-                }
-                if (enemyName) chars.push({ name: enemyName, label: '敌人', color: '#ef4444', stage: enemyStage });
-
-                if (window.AdventureRegistry) {
-                    for (const m of window.AdventureRegistry.allMonsters()) {
-                        if (!chars.some(c => c.name === m.name)) chars.push({ name: m.name, label: m.kind, color: '#22c55e', isNpc: true });
-                    }
-                    for (const b of window.AdventureRegistry.allBosses()) {
-                        if (!chars.some(c => c.name === b.name)) chars.push({ name: b.name, label: b.kind + '·Boss', color: '#f59e0b', isNpc: true });
-                    }
+                if (ui.eng && ui.eng.s && ui.eng.s.combat) {
+                    const combat = ui.eng.s.combat;
+                    const combatName = value => typeof value === 'string' ? value : value && value.name;
+                    addOpponent(combatName(combat.enemy), '敌人', '#ef4444', enemyStage);
+                    addOpponent(combatName(combat.enemy2), '敌人2', '#a855f7', enemyStage);
                 }
 
                 const SKILL_GRID = [

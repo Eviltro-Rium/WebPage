@@ -836,10 +836,47 @@
       const combat = this.s.combat;
       if (!combat) return;
       this.s.phase = Phase.NPC_TURN;
+      for (const enemy of [combat.enemy, combat.enemy2]) {
+        if (!enemy || enemy.hp <= 0) continue;
+        if ((enemy.lush || 0) > 0) {
+          const amount = Math.min(enemy.lush, 2);
+          const before = enemy.hp;
+          enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
+          this.emit('heal', '+' + (enemy.hp - before) + '[生命]', null, { who: 'enemy', amount: enemy.hp - before, kind: 'passive' });
+        }
+        if (typeof enemy.attackTurnStart === 'function') enemy.attackTurnStart(this, enemy, 'enemy');
+      }
       combat.npcPile.drawToLimit();
       this._log('敌方回合开始');
       this.emit('npcTurnStart', '敌方回合', null);
       this._npcPlayNext();
+    }
+
+    _applyNpcAttackHooks(enemy, card) {
+      if (!enemy || !card || card.isItemCard) return;
+      const ownerLabel = enemy.name || '敌方';
+      if (typeof enemy.attackLush === 'function') {
+        const lush = Number(enemy.attackLush(card)) || 0;
+        if (lush > 0) {
+          enemy.lush = Math.min(2, (enemy.lush || 0) + lush);
+          this.emit('buff', '+' + lush + '[茂盛]', null, { who: 'enemy', kind: 'lush', stacks: enemy.lush });
+        }
+      }
+      if (typeof enemy.attackHeal === 'function') {
+        const ctx = {
+          playerHandSize: this.s.playerPile ? this.s.playerPile.hand.length : 0,
+          playerBleed: (this.s.player.bleed || 0),
+          playerPoison: (this.s.player.poison || 0),
+          attackerLush: enemy.lush || 0
+        };
+        const amount = Number(enemy.attackHeal(card, ctx)) || 0;
+        if (amount > 0) {
+          const before = enemy.hp;
+          enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
+          this.emit('heal', '+' + (enemy.hp - before) + '[生命]', null, { who: 'enemy', amount: enemy.hp - before, kind: 'skill' });
+          this._log(ownerLabel + '恢复' + (enemy.hp - before) + '点生命');
+        }
+      }
     }
 
     _npcPlayNext() {
@@ -881,7 +918,13 @@
         return;
       }
 
-      const ctx = { playerHandSize: this.s.playerPile ? this.s.playerPile.hand.length : 0 };
+      const ctx = {
+        playerHandSize: this.s.playerPile ? this.s.playerPile.hand.length : 0,
+        playerBleed: this.s.player.bleed || 0,
+        playerPoison: this.s.player.poison || 0,
+        attackerLush: combat.enemy.lush || 0
+      };
+      this._applyNpcAttackHooks(combat.enemy, card);
       const dmg = (typeof combat.enemy.attackDamage === 'function')
         ? combat.enemy.attackDamage(card, ctx)
         : card.value;
@@ -1028,7 +1071,13 @@
             this.emit('npcPlay', 'NPC 紫魔法牌：恢复' + _mHp + '点生命，清除玩家正面buff', card, { kind: 'magic' });
           }
         } else {
-          const ctx = { playerHandSize: this.s.playerPile ? this.s.playerPile.hand.length : 0 };
+          const ctx = {
+            playerHandSize: this.s.playerPile ? this.s.playerPile.hand.length : 0,
+            playerBleed: this.s.player.bleed || 0,
+            playerPoison: this.s.player.poison || 0,
+            attackerLush: combat.enemy.lush || 0
+          };
+          this._applyNpcAttackHooks(combat.enemy, card);
           const dmg = (typeof combat.enemy.attackDamage === 'function')
             ? combat.enemy.attackDamage(card, ctx)
             : card.value;
