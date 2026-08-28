@@ -165,12 +165,53 @@
         };
         const drawSelfDesc = drawSelfAmt > 0 ? '，抽取' + drawSelfAmt + '张牌' : '';
 
+        const guardAmt = typeof mod.defendGuard === 'function' ? (mod.defendGuard(c) || 0) : 0;
+        const applyGuard = () => {
+          if (guardAmt > 0) {
+            defender.guard = Math.min(5, (defender.guard || 0) + guardAmt);
+            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+            eng.emit('buff', '+' + guardAmt + '[守护]', null, { who, kind: 'guard', stacks: defender.guard });
+          }
+        };
+        const guardDesc = guardAmt > 0 ? '，获得' + guardAmt + '层守护' : '';
+
+        const allLushAmt = typeof mod.defendAllLush === 'function' ? (mod.defendAllLush(c) || 0) : 0;
+        const applyAllLush = () => {
+          if (allLushAmt > 0) {
+            const targets = [eng.s.ai];
+            if (eng.s.is1v2 && eng.s.ai2 && eng.s.ai2.alive) targets.push(eng.s.ai2);
+            for (const t of targets) {
+              if (!t.alive) continue;
+              t.lush = Math.min(2, (t.lush || 0) + allLushAmt);
+              const who = t === eng.s.player ? 'player' : (t === eng.s.ai2 ? 'ai2' : 'ai');
+              eng.emit('buff', '+' + allLushAmt + '[茂盛]', null, { who, kind: 'lush', stacks: t.lush });
+            }
+          }
+        };
+        const allLushDesc = allLushAmt > 0 ? '，全体友方获得' + allLushAmt + '层茂盛' : '';
+
+        const allHealAmt = typeof mod.defendAllHeal === 'function' ? (mod.defendAllHeal(c) || 0) : 0;
+        const applyAllHeal = () => {
+          if (allHealAmt > 0) {
+            const targets = [eng.s.ai];
+            if (eng.s.is1v2 && eng.s.ai2 && eng.s.ai2.alive) targets.push(eng.s.ai2);
+            for (const t of targets) {
+              if (!t.alive) continue;
+              heal(t, allHealAmt);
+            }
+          }
+        };
+        const allHealDesc = allHealAmt > 0 ? '，全体友方恢复' + allHealAmt + '点生命' : '';
+
+        const applyAllExtras = () => { applyGuard(); applyAllLush(); applyAllHeal(); };
+        const allExtrasDesc = guardDesc + allLushDesc + allHealDesc;
+
         if (typeof mod.defendImmune === 'function' && mod.defendImmune(c)) {
           if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c) && clearDebuffs) {
             clearDebuffs(defender);
           }
-          applyPoison(); applyBleed(); applyDrawSelf();
-          return { remaining: 0, desc: '免疫所有伤害' + (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c) ? '，免疫buff' : '') + suffix() + drawSelfDesc };
+          applyPoison(); applyBleed(); applyDrawSelf(); applyAllExtras();
+          return { remaining: 0, desc: '免疫所有伤害' + (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c) ? '，免疫buff' : '') + suffix() + drawSelfDesc + allExtrasDesc };
         }
 
         const lushAmt = typeof mod.defendLush === 'function' ? (mod.defendLush(c) || 0) : 0;
@@ -183,13 +224,14 @@
         };
         const lushDesc = lushAmt > 0 ? '，获得' + lushAmt + '层茂盛' : '';
 
+
         if (typeof mod.defendSplit === 'function' && mod.defendSplit(c)) {
           const split = Math.ceil(d / 2);
           if (hurt) hurt(opponent, split);
-          applyPoison(); applyBleed(); applyDrawSelf(); applyLush();
+          applyPoison(); applyBleed(); applyDrawSelf(); applyLush(); applyAllExtras();
           return {
             remaining: split,
-            desc: '均摊伤害，双方各受' + split + '点' + suffix() + drawSelfDesc + lushDesc
+            desc: '均摊伤害，双方各受' + split + '点' + suffix() + drawSelfDesc + lushDesc + allExtrasDesc
           };
         }
 
@@ -201,17 +243,17 @@
               const block = mod.defendBlock(c, d, defender);
               if (block > 0) {
                 const remaining = Math.max(0, d - block);
-                applyPoison(); applyBleed(); applyLush();
+                applyPoison(); applyBleed(); applyLush(); applyAllExtras();
                 return {
                   remaining,
-                  desc: '恢复' + healAmt + '生命，格挡' + block + '点' + suffix() + lushDesc
+                  desc: '恢复' + healAmt + '生命，格挡' + block + '点' + suffix() + lushDesc + allExtrasDesc
                 };
               }
             }
-            applyPoison(); applyBleed(); applyLush();
+            applyPoison(); applyBleed(); applyLush(); applyAllExtras();
             return {
               remaining: d,
-              desc: '防御恢复' + healAmt + '生命' + suffix() + lushDesc
+              desc: '防御恢复' + healAmt + '生命' + suffix() + lushDesc + allExtrasDesc
             };
           }
         }
@@ -220,10 +262,10 @@
           const counter = mod.defendCounter(c);
           if (counter > 0 && hurt) {
             hurt(opponent, counter);
-            applyPoison(); applyBleed(); applyDrawSelf(); applyLush();
+            applyPoison(); applyBleed(); applyDrawSelf(); applyLush(); applyAllExtras();
             return {
               remaining: d,
-              desc: '反击' + counter + '点伤害' + suffix() + drawSelfDesc + lushDesc
+              desc: '反击' + counter + '点伤害' + suffix() + drawSelfDesc + lushDesc + allExtrasDesc
             };
           }
         }
@@ -231,17 +273,17 @@
         if (typeof mod.defendBlock === 'function') {
           const block = mod.defendBlock(c, d, defender);
           const remaining = Math.max(0, d - block);
-          applyPoison(); applyBleed(); applyDrawSelf(); applyLush();
+          applyPoison(); applyBleed(); applyDrawSelf(); applyLush(); applyAllExtras();
           return {
             remaining,
-            desc: '格挡' + block + '点' + suffix() + drawSelfDesc + lushDesc
+            desc: '格挡' + block + '点' + suffix() + drawSelfDesc + lushDesc + allExtrasDesc
           };
         }
 
-        applyLush();
-        if (v === 1) return { remaining: Math.max(0, d - Math.ceil(d / 2)), desc: '1牌防御' + lushDesc };
-        if (v === 3) return { remaining: Math.max(0, d - Math.floor(d / 2)), desc: '3牌防御' + lushDesc };
-        return { remaining: d, desc: '直接承受' + lushDesc };
+        applyLush(); applyAllExtras();
+        if (v === 1) return { remaining: Math.max(0, d - Math.ceil(d / 2)), desc: '1牌防御' + lushDesc + allExtrasDesc };
+        if (v === 3) return { remaining: Math.max(0, d - Math.floor(d / 2)), desc: '3牌防御' + lushDesc + allExtrasDesc };
+        return { remaining: d, desc: '直接承受' + lushDesc + allExtrasDesc };
       }
     });
   }
@@ -259,7 +301,7 @@
       defendScore(eng, v, c, top, x) {
         if (c && c.magic) return 80;
         if (!c || !c.isNumberCard) return null;
-        if (v > 3) return null;
+        if (v > 3 && !mod.canDefendHigh) return null;
         return v * 10 + 30 + (x.lethal ? 50 : 0);
       },
 
@@ -327,6 +369,18 @@
       if (typeof mod.defendCounter === 'function') {
         const counter = mod.defendCounter(card);
         if (counter > 0) parts.push('反击' + counter + '点伤害');
+      }
+      if (typeof mod.defendGuard === 'function') {
+        const g = mod.defendGuard(card);
+        if (g > 0) parts.push('获得' + g + '层守护');
+      }
+      if (typeof mod.defendAllLush === 'function') {
+        const al = mod.defendAllLush(card);
+        if (al > 0) parts.push('全体友方获得' + al + '层茂盛');
+      }
+      if (typeof mod.defendAllHeal === 'function') {
+        const ah = mod.defendAllHeal(card);
+        if (ah > 0) parts.push('全体友方恢复' + ah + '点生命');
       }
       if (typeof mod.defendBlock === 'function') {
         const b8 = mod.defendBlock(card, 8);

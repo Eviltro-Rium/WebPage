@@ -19,10 +19,10 @@
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.forest = {
-    '*': ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara'],
-    2: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara'],
-    3: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara'],
-    4: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara']
+    '*': ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia'],
+    2: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia'],
+    3: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia'],
+    4: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia']
   };
 
   // ===== 丛林猴 =====
@@ -224,6 +224,53 @@
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({ defendBlock: (card, incoming) => Math.max(0, incoming - 1) })
+    }
+  });
+
+  // ===== 大王花 =====
+  R.registerMonster({
+    name: 'ForestRafflesia',
+    kind: '大王花',
+    hp: 15,
+    attack: 0,
+    defense: 3,
+    icon: '../icons/npc_icons/forest_rafflesia.png',
+    handLimit: 3,
+    noAttack: true,
+    canDefendHigh: true,
+    attackSkipEffect(eng, self, player) {
+      eng.poison(player, 1);
+      eng.emit('desc', self.name + '散发毒气，玩家获得1层中毒');
+    },
+    defendHeal(card) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return 1;
+      return 0;
+    },
+    defendGuard(card) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return 1;
+      return 0;
+    },
+    defendAllLush(card) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return 1;
+      return 0;
+    },
+    defendPoison(card) {
+      const v = card.value;
+      if (v >= 4 && v <= 6) return 1;
+      return 0;
+    },
+    defendAllHeal(card) {
+      const v = card.value;
+      if (v >= 4 && v <= 6) return 3;
+      return 0;
+    },
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 5 }),
+      3: orig => ({ defendAllHeal: (card) => orig.defendAllHeal(card) + 1 }),
+      4: orig => ({ defendHeal: (card) => orig.defendHeal(card) + 1 })
     }
   });
 
