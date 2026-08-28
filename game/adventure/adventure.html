@@ -140,6 +140,15 @@
                 }
                 if (enemyName) chars.push({ name: enemyName, label: '敌人', color: '#ef4444', stage: enemyStage });
 
+                if (window.AdventureRegistry) {
+                    for (const m of window.AdventureRegistry.allMonsters()) {
+                        if (!chars.some(c => c.name === m.name)) chars.push({ name: m.name, label: m.kind, color: '#22c55e', isNpc: true });
+                    }
+                    for (const b of window.AdventureRegistry.allBosses()) {
+                        if (!chars.some(c => c.name === b.name)) chars.push({ name: b.name, label: b.kind + '·Boss', color: '#f59e0b', isNpc: true });
+                    }
+                }
+
                 const SKILL_GRID = [
                     { atkKey: 0, defKey: 0, label: '1' }, { atkKey: 1, defKey: 1, label: '2' },
                     { atkKey: 2, defKey: 2, label: '3' }, { atkKey: 7, defKey: 3, label: '0' },
@@ -169,16 +178,32 @@
                             if (modTable[ch.stage].defend) def = modTable[ch.stage].defend;
                         }
                     }
-                    if (!atk.length && !def.length) continue;
+                    let dynAtk = null, dynDef = null;
+                    if (!atk.length && !def.length && ch.isNpc) {
+                        const fn = window.AdventureMonsterBridge && window.AdventureMonsterBridge.getAdventureNpcSkillDesc;
+                        if (fn) {
+                            const mkCard = vv => ({ value: vv, isNumberCard: true, isItemCard: false, isBlack: false, isWhite: false });
+                            const stage = ch.stage || 1;
+                            for (const vv of [1, 2, 3, 4, 5, 6, 0]) {
+                                const aDesc = fn(ch.name, mkCard(vv), false, { stage });
+                                const dDesc = fn(ch.name, mkCard(vv), true, { stage });
+                                if (aDesc && aDesc !== '无进攻效果') { if (!dynAtk) dynAtk = {}; dynAtk[vv] = aDesc; }
+                                if (dDesc && dDesc !== '无防御效果') { if (!dynDef) dynDef = {}; dynDef[vv] = dDesc; }
+                            }
+                        }
+                    }
+                    if (!atk.length && !def.length && !dynAtk && !dynDef) continue;
                     const labelExtra = (ch.stage && ch.stage > 1) ? (' (第' + ch.stage + '层)') : '';
                     html += '<div class="skill-overlay-char"><span class="skill-overlay-char-label" style="color:' + ch.color + '">' +
                         ch.label + '：' + ch.name + labelExtra + '</span></div>';
                     html += '<div class="skill-grid">';
                     for (const row of SKILL_GRID) {
-                        const atkDesc = atk[row.atkKey] ? colorize(stripPrefix(atk[row.atkKey])) : '—';
-                        const defDesc = row.defKey >= 0 && def[row.defKey]
-                            ? colorize(stripPrefix(def[row.defKey]))
-                            : (row.defKey >= 0 ? '无防御效果' : '');
+                        const rv = parseInt(row.label);
+                        let atkDesc, defDesc;
+                        if (dynAtk) atkDesc = dynAtk[rv] ? colorize(dynAtk[rv]) : '—';
+                        else atkDesc = atk[row.atkKey] ? colorize(stripPrefix(atk[row.atkKey])) : '—';
+                        if (dynDef) defDesc = row.defKey >= 0 ? (dynDef[rv] ? colorize(dynDef[rv]) : '无防御效果') : '';
+                        else defDesc = row.defKey >= 0 && def[row.defKey] ? colorize(stripPrefix(def[row.defKey])) : (row.defKey >= 0 ? '无防御效果' : '');
                         html += '<div class="skill-row"><div class="skill-cell skill-atk">' + atkDesc + '</div><div class="skill-num">' + row.label + '</div>';
                         html += row.defKey >= 0
                             ? '<div class="skill-cell skill-def">' + defDesc + '</div>'

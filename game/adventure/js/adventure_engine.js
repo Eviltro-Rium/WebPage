@@ -692,7 +692,14 @@
     _rollAccessoryDrop() {
       const allItems = window.AdventureRegistry.allItems();
       if (!allItems.length) return null;
-      const accessories = allItems.filter(it => it.kind === 'accessory');
+      const accessories = allItems.filter(it => {
+        if (it.kind !== 'accessory') return false;
+        if (it.maxStacks) {
+          const current = (this.s.accessories || []).filter(a => a === it.name).length;
+          if (current >= it.maxStacks) return false;
+        }
+        return true;
+      });
       if (!accessories.length) return null;
       return accessories[Math.floor(Math.random() * accessories.length)].name;
     }
