@@ -58,6 +58,12 @@
           <span id="home-loading-label">正在靠近地平线…</span>
           <span id="home-loading-percent">0%</span>
         </div>
+        <div class="home-loading__stages" aria-hidden="true">
+          <span data-loading-stage="scene">场景</span>
+          <span data-loading-stage="assets">资源</span>
+          <span data-loading-stage="page">页面</span>
+          <span data-loading-stage="enter">进入</span>
+        </div>
         <div class="home-loading__bar" aria-hidden="true">
           <span id="home-loading-bar"></span>
         </div>
@@ -66,11 +72,11 @@
     <header class="site-header">
       <a class="logo" href="index.html">Rium</a>
       <nav class="nav" aria-label="主导航">
+        <a href="index.html" aria-current="page">主页</a>
         <a href="projects.html">作品</a>
         <a href="materials.html">学习资料</a>
         <a href="launchpad.html">Launch Pad <span class="nav-badge">测试</span></a>
         <a href="game/index.html">游戏 <span class="nav-badge">测试</span></a>
-        <a href="#contact">联系</a>
         <a href="guestbook.html">留言</a>
       </nav>
       <button
@@ -351,6 +357,7 @@ int D = first_perfect();</code></pre>
         var doc = document.documentElement;
         var loader = document.getElementById("home-loading");
         if (!doc.classList.contains("home-is-booting")) return;
+        if (window.__hillBackgroundActive) return;
         doc.classList.remove("home-is-booting");
         if (loader) {
           loader.classList.add("is-done");

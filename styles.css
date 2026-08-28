@@ -55,7 +55,8 @@ body {
 body.page-home,
 body.page-projects,
 body.page-materials,
-body.page-guestbook {
+body.page-guestbook,
+body.page-launchpad {
   background: #2880d8;
 }
 
@@ -84,7 +85,11 @@ html.subpage-is-booting body.page-materials > main,
 html.subpage-is-booting body.page-materials > .site-footer,
 html.subpage-is-booting body.page-guestbook > .site-header,
 html.subpage-is-booting body.page-guestbook > main,
-html.subpage-is-booting body.page-guestbook > .site-footer {
+html.subpage-is-booting body.page-guestbook > .site-footer,
+html.subpage-is-booting body.page-launchpad > .site-header,
+html.subpage-is-booting body.page-launchpad > main,
+html.subpage-is-booting body.page-launchpad > .site-footer,
+html.subpage-is-booting body.page-launchpad > .metronome-float {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -315,7 +320,8 @@ html.subpage-is-booting body.page-guestbook > .site-footer {
 body.page-home > .site-footer,
 body.page-projects > .site-footer,
 body.page-materials > .site-footer,
-body.page-guestbook > .site-footer {
+body.page-guestbook > .site-footer,
+body.page-launchpad > .site-footer {
   position: relative;
   z-index: 1;
 }
@@ -1623,7 +1629,8 @@ main .section-gallery {
 /* 浅色子页面使用深色文字，确保天空背景上的内容清晰。 */
 body.page-projects,
 body.page-materials,
-body.page-guestbook {
+body.page-guestbook,
+body.page-launchpad {
   --text-main: #0f172a;
   --text: #0f172a;
   --text-muted: #475569;
@@ -1639,9 +1646,11 @@ body.page-guestbook {
 body.page-projects a:hover,
 body.page-materials a:hover,
 body.page-guestbook a:hover,
+body.page-launchpad a:hover,
 body.page-projects .logo:hover,
 body.page-materials .logo:hover,
-body.page-guestbook .logo:hover {
+body.page-guestbook .logo:hover,
+body.page-launchpad .logo:hover {
   color: #0369a1;
 }
 
@@ -1679,7 +1688,8 @@ html[data-theme="dark"] body {
 html[data-theme="dark"] body.page-home,
 html[data-theme="dark"] body.page-projects,
 html[data-theme="dark"] body.page-materials,
-html[data-theme="dark"] body.page-guestbook {
+html[data-theme="dark"] body.page-guestbook,
+html[data-theme="dark"] body.page-launchpad {
   --text-main: #e7f0fb;
   --text-muted-light: #b9c9dc;
   --border: rgba(201, 226, 249, 0.2);
@@ -2006,4 +2016,126 @@ html.theme-animating .theme-toggle {
   html.theme-animating .theme-toggle {
     transition: none;
   }
+}
+
+/* 加载阶段指示：进度条与场景、资源、页面、进入四个阶段同步。 */
+.home-loading__stages {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.1rem;
+}
+
+.home-loading__stages span {
+  position: relative;
+  padding-top: 0.5rem;
+  color: rgba(15, 23, 42, 0.38);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.58rem;
+  line-height: 1;
+  text-align: center;
+  transition: color 0.35s ease, opacity 0.35s ease;
+}
+
+.home-loading__stages span::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0.28rem;
+  height: 0.28rem;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.2);
+  transform: translateX(-50%);
+  transition: background-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
+}
+
+.home-loading__stages span.is-active {
+  color: #123b5a;
+}
+
+.home-loading__stages span.is-active::before {
+  background: #2e9d8b;
+  box-shadow: 0 0 0.45rem rgba(46, 157, 139, 0.58);
+  transform: translateX(-50%) scale(1.2);
+}
+
+.home-loading__stages span.is-done {
+  color: rgba(29, 107, 143, 0.72);
+}
+
+.home-loading__stages span.is-done::before {
+  background: #1d6b8f;
+}
+
+/* 透明面板：移除 backdrop blur 和亮面叠层，降低持续合成开销。 */
+.site-header,
+.section-alt,
+.section-content .puzzle-card,
+.section-content .puzzle-code,
+.card,
+.download-item,
+.launchpad-clear,
+.launch-pad-btn,
+.beat-pad {
+  background: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.site-header,
+.section-alt,
+.section-content .puzzle-card,
+.section-content .puzzle-code,
+.card,
+.download-item {
+  box-shadow: 0 12px 30px rgba(20, 64, 92, 0.08);
+}
+
+body.page-home .section-alt::after,
+body.page-home .section-content .puzzle-card::after,
+body.page-home .card::after {
+  display: none;
+}
+
+html[data-theme="dark"] .home-loading__stages span {
+  color: rgba(207, 226, 246, 0.38);
+}
+
+html[data-theme="dark"] .home-loading__stages span::before {
+  background: rgba(207, 226, 246, 0.2);
+}
+
+html[data-theme="dark"] .home-loading__stages span.is-active {
+  color: #dff1ff;
+}
+
+html[data-theme="dark"] .home-loading__stages span.is-active::before {
+  background: #78c8ff;
+  box-shadow: 0 0 0.45rem rgba(120, 200, 255, 0.58);
+}
+
+html[data-theme="dark"] .home-loading__stages span.is-done {
+  color: rgba(120, 200, 255, 0.72);
+}
+
+html[data-theme="dark"] .home-loading__stages span.is-done::before {
+  background: #78c8ff;
+}
+
+html[data-theme="dark"] .site-header,
+html[data-theme="dark"] .section-alt,
+html[data-theme="dark"] .section-content .puzzle-card,
+html[data-theme="dark"] .section-content .puzzle-code,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .download-item,
+html[data-theme="dark"] .launchpad-clear,
+html[data-theme="dark"] .launch-pad-btn,
+html[data-theme="dark"] .beat-pad {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+}
+
+html[data-theme="dark"] .home-loading__hud {
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
 }

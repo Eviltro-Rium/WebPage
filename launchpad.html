@@ -6,6 +6,7 @@
     <meta name="description" content="Launch Pad · 节拍器" />
     <title>Launch Pad · Rium</title>
     <script>
+      document.documentElement.classList.add("subpage-is-booting");
       (function () {
         var root = document.documentElement;
         var theme = "light";
@@ -16,6 +17,19 @@
         root.style.colorScheme = theme;
       })();
     </script>
+    <noscript>
+      <style>
+        html.subpage-is-booting body.page-launchpad > .site-header,
+        html.subpage-is-booting body.page-launchpad > main,
+        html.subpage-is-booting body.page-launchpad > .site-footer,
+        html.subpage-is-booting body.page-launchpad > .metronome-float {
+          opacity: 1;
+          visibility: visible;
+          pointer-events: auto;
+        }
+        .home-loading { display: none !important; }
+      </style>
+    </noscript>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -25,14 +39,45 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="page-launchpad">
+    <div id="home-loading" class="home-loading" role="status" aria-live="polite">
+      <div class="home-loading__cinema" aria-hidden="true">
+        <div class="home-loading__vignette"></div>
+        <div class="home-loading__letterbox"></div>
+        <div class="home-loading__horizon"></div>
+        <div class="home-loading__flare"></div>
+      </div>
+      <div class="home-loading__hud">
+        <div class="home-loading__eyebrow">RIUM · LAUNCH PAD</div>
+        <div class="home-loading__title">
+          <span class="home-loading__mark" aria-hidden="true">R</span>
+          <span>
+            <strong>Launch Pad</strong>
+            <small>正在准备音源与节拍器</small>
+          </span>
+        </div>
+        <div class="home-loading__status">
+          <span id="home-loading-label">正在加载页面资源…</span>
+          <span id="home-loading-percent">0%</span>
+        </div>
+        <div class="home-loading__stages" aria-hidden="true">
+          <span data-loading-stage="scene">场景</span>
+          <span data-loading-stage="assets">资源</span>
+          <span data-loading-stage="page">页面</span>
+          <span data-loading-stage="enter">进入</span>
+        </div>
+        <div class="home-loading__bar" aria-hidden="true">
+          <span id="home-loading-bar"></span>
+        </div>
+      </div>
+    </div>
     <header class="site-header">
       <a class="logo" href="index.html">Rium</a>
       <nav class="nav" aria-label="主导航">
+        <a href="index.html">主页</a>
         <a href="projects.html">作品</a>
         <a href="materials.html">学习资料</a>
         <a href="launchpad.html" aria-current="page">Launch Pad</a>
         <a href="game/index.html">游戏</a>
-        <a href="index.html#contact">联系</a>
         <a href="guestbook.html">留言</a>
       </nav>
       <button
@@ -630,7 +675,21 @@
       })();
 
     </script>
-    <script src="js/bg-orbs.js"></script>
+    <script>
+      window.setTimeout(function () {
+        var doc = document.documentElement;
+        var loader = document.getElementById("home-loading");
+        if (!doc.classList.contains("subpage-is-booting")) return;
+        if (window.__hillBackgroundActive) return;
+        doc.classList.remove("subpage-is-booting");
+        if (loader) {
+          loader.classList.add("is-done");
+          window.setTimeout(function () { loader.remove(); }, 850);
+        }
+      }, 5000);
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="js/hill-background.js"></script>
     <script src="js/theme.js"></script>
     <script src="js/cursor.js"></script>
   </body>

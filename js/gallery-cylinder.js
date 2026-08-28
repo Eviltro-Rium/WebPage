@@ -17,6 +17,8 @@
 
   var natural = {};
   var pending = sources.length;
+  var loaded = 0;
+  window.__riumGalleryProgress = 0;
 
   function metrics(vw) {
     if (vw < 560) {
@@ -291,9 +293,23 @@
   }
 
   function done() {
+    loaded += 1;
+    window.__riumGalleryProgress = loaded / sources.length;
+    document.dispatchEvent(new CustomEvent("rium-page-assets-progress", {
+      detail: {
+        source: "gallery",
+        loaded: loaded,
+        total: sources.length,
+        progress: window.__riumGalleryProgress
+      }
+    }));
     pending -= 1;
     if (pending > 0) return;
     layout();
+    window.__riumGalleryReady = true;
+    document.dispatchEvent(new CustomEvent("rium-page-assets-ready", {
+      detail: { source: "gallery" }
+    }));
     window.addEventListener("resize", layout);
   }
 

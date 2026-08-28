@@ -4,7 +4,13 @@
  */
 (function () {
   if (typeof THREE === "undefined") return;
-  var scenePages = ["page-home", "page-projects", "page-materials", "page-guestbook"];
+  var scenePages = [
+    "page-home",
+    "page-projects",
+    "page-materials",
+    "page-guestbook",
+    "page-launchpad"
+  ];
   var isScenePage = scenePages.some(function (pageClass) {
     return document.body.classList.contains(pageClass);
   });
@@ -720,8 +726,12 @@
     var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var subpageBoot =
       document.documentElement.classList.contains("subpage-is-booting");
+    var isHomePage = document.body.classList.contains("page-home");
     var isGuestbook = document.body.classList.contains("page-guestbook");
     var commentsReady = !isGuestbook || window.__riumCommentsReady === true;
+    var windowLoaded = document.readyState === "complete";
+    var assetsReady =
+      windowLoaded && (!isHomePage || window.__riumGalleryReady === true);
     var bootMode =
       !reducedMotion &&
       (document.documentElement.classList.contains("home-is-booting") ||
@@ -748,6 +758,7 @@
       alpha: false,
       stencil: false
     });
+    window.__hillBackgroundActive = true;
     renderer.setPixelRatio(pixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(PALETTE.sky, 1);
@@ -1241,7 +1252,7 @@
       visible = !document.hidden;
     });
 
-    function updateHomeLoading(progress, label) {
+    function updateHomeLoading(progress, label, stage) {
       var percent = Math.round(THREE.MathUtils.clamp(progress, 0, 1) * 100);
       var bar = document.getElementById("home-loading-bar");
       var percentEl = document.getElementById("home-loading-percent");
@@ -1249,16 +1260,36 @@
       if (bar) bar.style.width = percent + "%";
       if (percentEl) percentEl.textContent = percent + "%";
       if (labelEl && label) labelEl.textContent = label;
+      if (stage) {
+        var stageEls = document.querySelectorAll("[data-loading-stage]");
+        var stageNames = ["scene", "assets", "page", "enter"];
+        var stageIndex = stageNames.indexOf(stage);
+        Array.prototype.forEach.call(stageEls, function (stageEl) {
+          var currentIndex = stageNames.indexOf(stageEl.getAttribute("data-loading-stage"));
+          stageEl.classList.toggle("is-active", currentIndex === stageIndex);
+          stageEl.classList.toggle("is-done", currentIndex >= 0 && currentIndex < stageIndex);
+        });
+      }
+    }
+
+    function refreshAssetsReady() {
+      var galleryReady = !isHomePage || window.__riumGalleryReady === true;
+      assetsReady = windowLoaded && galleryReady;
+      if (!bootMode && assetsReady && commentsReady) finishHomeLoading();
     }
 
     function finishHomeLoading() {
+      if (!assetsReady) {
+        updateHomeLoading(0.76, "正在等待页面资源加载…", "assets");
+        return;
+      }
       if (isGuestbook && !commentsReady) {
-        updateHomeLoading(1, "正在等待留言加载…");
+        updateHomeLoading(0.86, "正在等待留言加载…", "comments");
         return;
       }
       var loader = document.getElementById("home-loading");
       document.documentElement.classList.remove("home-is-booting", "subpage-is-booting");
-      updateHomeLoading(1, isGuestbook ? "留言已加载" : "场景已就绪");
+      updateHomeLoading(1, isGuestbook ? "留言已加载" : "场景已就绪", "enter");
       if (!loader) return;
       loader.classList.add("is-done");
       window.setTimeout(function () {
@@ -1266,9 +1297,16 @@
       }, 850);
     }
 
+    window.addEventListener("load", function () {
+      windowLoaded = true;
+      refreshAssetsReady();
+    });
+    document.addEventListener("rium-page-assets-ready", function () {
+      refreshAssetsReady();
+    });
     document.addEventListener("rium-comments-ready", function () {
       commentsReady = true;
-      if (!bootMode) finishHomeLoading();
+      refreshAssetsReady();
     });
 
     var running = true;
@@ -1290,27 +1328,55 @@
 
         if (bootMode) {
           if (bootStart === null) bootStart = t;
-          var bootProgress = THREE.MathUtils.clamp(
+          var rawBootProgress = THREE.MathUtils.clamp(
             (t - bootStart) / bootDuration,
             0,
             1
           );
+          var readyForReveal = assetsReady && commentsReady;
+          var bootProgress = readyForReveal
+            ? rawBootProgress
+            : Math.min(rawBootProgress, 0.92);
           var bootEase = 1 - Math.pow(1 - bootProgress, 3);
-          var bootLabel =
-            bootProgress < 0.24
-              ? "正在贴近地平线…"
-              : bootProgress < 0.56
-                ? "正在拉开镜头…"
-                : bootProgress < 0.84
-                  ? "正在展开场景…"
-                  : "即将进入主页…";
+          var galleryProgress = isHomePage
+            ? THREE.MathUtils.clamp(Number(window.__riumGalleryProgress) || 0, 0, 1)
+            : windowLoaded
+              ? 1
+              : 0;
+          var loadingProgress;
+          var loadingLabel;
+          var loadingStage;
+
+          if (rawBootProgress < 0.22) {
+            loadingProgress = (rawBootProgress / 0.22) * 0.18;
+            loadingStage = "scene";
+            loadingLabel = "正在初始化 3D 场景…";
+          } else if (!assetsReady) {
+            loadingProgress = 0.18 + galleryProgress * 0.58;
+            loadingStage = "assets";
+            loadingLabel = isHomePage
+              ? galleryProgress > 0
+                ? "正在加载相册图片…"
+                : "正在加载页面资源…"
+              : "正在加载页面资源…";
+          } else if (isGuestbook && !commentsReady) {
+            loadingProgress = 0.86;
+            loadingStage = "page";
+            loadingLabel = "正在加载留言…";
+          } else {
+            loadingProgress = 0.86 + rawBootProgress * 0.14;
+            loadingStage = rawBootProgress >= 0.9 ? "enter" : "page";
+            loadingLabel = rawBootProgress >= 0.9
+              ? "即将进入页面…"
+              : "正在整理页面布局…";
+          }
 
           camera.position.lerpVectors(bootFromPos, homePos, bootEase);
           bootLook.lerpVectors(bootFromLook, homeLook, bootEase);
           camera.lookAt(bootLook);
           camera.fov = THREE.MathUtils.lerp(32, 48, bootEase);
           camera.updateProjectionMatrix();
-          updateHomeLoading(bootProgress, bootLabel);
+          updateHomeLoading(loadingProgress, loadingLabel, loadingStage);
 
           if (bootProgress >= 1) {
             bootMode = false;

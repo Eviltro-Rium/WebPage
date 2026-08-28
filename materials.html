@@ -58,6 +58,12 @@
           <span id="home-loading-label">正在衔接学习资料页…</span>
           <span id="home-loading-percent">0%</span>
         </div>
+        <div class="home-loading__stages" aria-hidden="true">
+          <span data-loading-stage="scene">场景</span>
+          <span data-loading-stage="assets">资源</span>
+          <span data-loading-stage="page">页面</span>
+          <span data-loading-stage="enter">进入</span>
+        </div>
         <div class="home-loading__bar" aria-hidden="true">
           <span id="home-loading-bar"></span>
         </div>
@@ -66,11 +72,11 @@
     <header class="site-header">
       <a class="logo" href="index.html">Rium</a>
       <nav class="nav" aria-label="主导航">
+        <a href="index.html">主页</a>
         <a href="projects.html">作品</a>
         <a href="materials.html" aria-current="page">学习资料</a>
         <a href="launchpad.html">Launch Pad</a>
         <a href="game/index.html">游戏</a>
-        <a href="index.html#contact">联系</a>
         <a href="guestbook.html">留言</a>
       </nav>
       <button
@@ -204,6 +210,7 @@
         var doc = document.documentElement;
         var loader = document.getElementById("home-loading");
         if (!doc.classList.contains("subpage-is-booting")) return;
+        if (window.__hillBackgroundActive) return;
         doc.classList.remove("subpage-is-booting");
         if (loader) {
           loader.classList.add("is-done");
