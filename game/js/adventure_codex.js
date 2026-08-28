@@ -68,8 +68,10 @@
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; 怪物列表</button><h1 class="rules-title">怪物图鉴</h1></div>';
     html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
     html += `<div class="char-detail-hero-name">${m.name}</div>`;
-    html += `<div class="char-detail-hero-type">${m.kind || '怪物'} · HP ${m.hp}</div>`;
+    html += `<div class="char-detail-hero-type">${m.kind || '怪物'} · HP ${m.hp}${m.handLimit ? ' · 手牌' + m.handLimit : ''}</div>`;
     if (m.firstStrike) html += `<div class="char-detail-hero-passive">先手攻击</div>`;
+    if (m.initialLush) html += `<div class="char-detail-hero-passive">开局获得${m.initialLush}层【茂盛】</div>`;
+    if (m.noAttack) html += `<div class="char-detail-hero-passive">无进攻阶段</div>`;
     html += `</div></div>`;
 
     html += buildSkillGrid(atk, def);
