@@ -204,7 +204,7 @@ test('battle startup preserves the player pile and gives the NPC its own two-car
   assert.deepEqual(Array.from(engine.piles.player.deck, card => card.value), [4, 5]);
   assert.deepEqual(Array.from(engine.piles.player.discard, card => card.value), [6]);
   assert.equal(engine.h.ai.length, 2);
-  assert.equal(engine.piles.ai.deck.length, 20);
+  assert.equal(engine.piles.ai.deck.length, 26);
   assert.equal(engine.s.player.hp, 74);
   assert.equal(engine.s.player.burn, 1);
   assert.equal(engine.s.player.guard, 2);

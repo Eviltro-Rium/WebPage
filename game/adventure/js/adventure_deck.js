@@ -3,7 +3,7 @@
  *
  * 与主引擎的差异：
  *   - 玩家牌库去掉「交换手牌」道具牌（swapHand）。
- *   - NPC（怪物）拥有独立牌库：白色1~3各4张、白色4~6各2张，外加2张紫魔法和2张绿魔法；Boss 另加两张白色0。
+ *   - NPC（怪物）拥有独立牌库：白色1~3各5张、白色4~6各3张，外加2张紫魔法和2张绿魔法；Boss 另加两张白色0。
  *   - 弃牌库拆分为不可见的玩家弃牌库与 NPC 弃牌库，互不混淆。
  *   - 虚拟弃牌库顶（DiscardTop）仅用于提示双方下一张可出之牌，不归属任何一方弃牌库。
  *   - 怪物手牌上限2张且明牌展示；Boss 手牌上限3张。
@@ -71,8 +71,8 @@
     const d = [];
     const whiteZeros = Math.max(0, Number(opts.whiteZeros) || 0);
     for (let i = 0; i < whiteZeros; i++) d.push(num('WHITE', 0, true));
-    for (let v = 1; v <= 3; v++) for (let n = 0; n < 4; n++) d.push(num('WHITE', v, true));
-    for (let v = 4; v <= 6; v++) for (let n = 0; n < 2; n++) d.push(num('WHITE', v, true));
+    for (let v = 1; v <= 3; v++) for (let n = 0; n < 5; n++) d.push(num('WHITE', v, true));
+    for (let v = 4; v <= 6; v++) for (let n = 0; n < 3; n++) d.push(num('WHITE', v, true));
     // Purple magic is the original magic card; green magic cleanses the caster.
     d.push(item('WHITE', 'magic'), item('WHITE', 'magic'));
     d.push(item('WHITE', 'greenMagic'), item('WHITE', 'greenMagic'));
