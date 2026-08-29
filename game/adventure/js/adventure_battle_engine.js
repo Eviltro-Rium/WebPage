@@ -335,7 +335,8 @@
 
     discardToBottom(card, owner) {
       if (!card) return;
-      const pile = this._pile(this._activeOwner(owner));
+      const targetOwner = card.borrowedFrom || this._activeOwner(owner);
+      const pile = this._pile(targetOwner);
       if (!pile) return;
       const saved = clone(card);
       if (saved.isBlack || saved.isWhite) delete saved.chosenColor;
@@ -346,7 +347,7 @@
       if (this.s.discardTop) {
         this.discardToBottom(this.s.discardTop, this.tableTopOwner || 'player');
       }
-      const nextOwner = this._activeOwner(owner);
+      const nextOwner = card && card.borrowedFrom ? card.borrowedFrom : this._activeOwner(owner);
       this.s.discardTop = clone(card);
       this.tableTopOwner = nextOwner;
       this.s.discardTopOwner = nextOwner;
@@ -437,10 +438,12 @@
         this.s.aiDeckCount = this.piles.ai.deck.length;
         this.s.aiDiscardCount = this.piles.ai.discard.length;
         this.s.aiHandCount = this.piles.ai.hand.length;
+        this.s.aiHand = this.piles.ai.hand;
         if (this.piles.ai2) {
           this.s.ai2DeckCount = this.piles.ai2.deck.length;
           this.s.ai2DiscardCount = this.piles.ai2.discard.length;
           this.s.ai2HandCount = this.piles.ai2.hand.length;
+          this.s.ai2Hand = this.piles.ai2.hand;
         }
         if (this.adventureCurrency) {
           this.s.adventureGold = this.adventureCurrency.gold || 0;
@@ -469,6 +472,19 @@
     finishAdventureBattle() {
       clearTimeout(this.timer);
       this._settleTableTop();
+
+      // A borrowed monster card never becomes part of the player's persistent
+      // collection. If it was still in the hand/deck when the room ended,
+      // return it to the monster's discard pile before resetting NPC cards.
+      for (const list of [this.piles.player.deck, this.piles.player.hand, this.piles.player.discard]) {
+        for (let i = list.length - 1; i >= 0; i--) {
+          const card = list[i];
+          if (!card || !card.borrowedFrom) continue;
+          list.splice(i, 1);
+          const owner = this._pile(card.borrowedFrom);
+          if (owner) owner.discard.push(clone(card));
+        }
+      }
 
       const is1v2 = !!this.piles.ai2;
       const allHands = is1v2
@@ -512,6 +528,10 @@
       const def = window.AdventureRegistry.getItem(item.name);
       if (!def || def.kind !== 'consumable') return this.state();
       if (!this._canUseAdventureCombatItemNow(def)) {
+        if (this.s.player && (this.s.player.blind || 0) > 0 && def.kind === 'consumable') {
+          this.emit('desc', '玩家处于致盲状态，无法使用一次性道具');
+          return this.state();
+        }
         const dodgeOnly = def.combatUse === 'dodge';
         this.emit('desc', dodgeOnly
           ? '闪避只能在防御出牌阶段使用'
@@ -537,6 +557,24 @@
       let dodgeResolved = false;
 
       switch (def.combatUse) {
+        case 'chameleonPaint': {
+          const target = choice && (choice.target || choice.owner);
+          const index = Number(choice && choice.index);
+          const targetKey = target || (this.s.is1v2 ? this.s.attackTarget : 'ai');
+          const hand = this.h[targetKey];
+          const targetChar = this.s[targetKey];
+          if (!hand || !targetChar || !targetChar.alive || !Number.isInteger(index) || !hand[index]) {
+            this.emit('desc', '请选择一张有效的对手手牌');
+            return this.state();
+          }
+          const borrowed = hand.splice(index, 1)[0];
+          borrowed.borrowedMonster = true;
+          borrowed.borrowedFrom = targetKey;
+          borrowed.borrowedMonsterName = this.name(targetChar);
+          this.h.player.push(borrowed);
+          message = '暂借' + borrowed.borrowedMonsterName + '的一张牌，加入玩家手牌';
+          break;
+        }
         case 'dodge': {
           this.cancelAttackDebuffs('player', false);
           this.s.pendingBuffRestore = null;
@@ -665,11 +703,15 @@
       if (!this.s || !this.s.isAdventure) return false;
       if (this.s.busy) return false;
       if (this.s.needColorChoice) return false;
+      if (this.s.player && (this.s.player.blind || 0) > 0 && def && def.kind === 'consumable') return false;
       if (def && (def.combatUse === 'dodge' || def.defendOnly)) {
         return this.s.phase === 'PLAYER_DEFEND' && !!this.s.pendingAttack;
       }
       if (def && def.combatUse === 'bind') {
         return this.s.phase === 'PLAYER_PLAY' && !this.s.bindUsedThisTurn;
+      }
+      if (def && def.combatUse === 'chameleonPaint') {
+        return this.s.phase === 'PLAYER_PLAY';
       }
       // 仅在玩家可选择出牌/防御牌时（含不可防御时的跳过窗口）
       return this.s.phase === 'PLAYER_PLAY' || this.s.phase === 'PLAYER_DEFEND';
@@ -952,6 +994,60 @@
       return super.afterAttack();
     }
 
+    _returnBorrowedCardsFromHand() {
+      if (!this.h || !Array.isArray(this.h.player)) return 0;
+      let returned = 0;
+      for (let i = this.h.player.length - 1; i >= 0; i--) {
+        const card = this.h.player[i];
+        if (!card || !card.borrowedFrom) continue;
+        this.h.player.splice(i, 1);
+        this.discardWithEvent(card, card.borrowedFrom, {
+          from: 'hand', destination: 'npc-discard',
+          desc: '进攻回合结束：借用的怪物牌归还' + (card.borrowedMonsterName || 'NPC') + '弃牌堆'
+        });
+        returned++;
+      }
+      return returned;
+    }
+
+    endTurn() {
+      this._returnBorrowedCardsFromHand();
+      return super.endTurn();
+    }
+
+    confirmDiscard() {
+      const result = super.confirmDiscard();
+      this._returnBorrowedCardsFromHand();
+      return result;
+    }
+
+    playBorrowedMonsterCard(card) {
+      const sourceKey = card.borrowedFrom || (this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai');
+      const monster = this.s[sourceKey];
+      if (!monster || !monster.alive) return this.gateAdventureAttackMod(card, 0, true, false);
+      const monsterName = card.borrowedMonsterName || this.name(monster);
+      const mod = window.AdventureRegistry && (window.AdventureRegistry.getMonster(monsterName) || window.AdventureRegistry.getBoss(monsterName));
+      this.s.attackTarget = sourceKey;
+      this.s.borrowedMonsterSkill = true;
+      this.rememberAttackDebuffs(sourceKey);
+      const before = { bleed: monster.bleed || 0, burn: monster.burn || 0, poison: monster.poison || 0, frozen: !!monster.frozen };
+      try {
+        if (mod && typeof mod.attackSkipEffect === 'function') {
+          mod.attackSkipEffect(this, this.s.player, monster);
+          this.emit('desc', '玩家借用' + monsterName + '技能：跳过防御');
+          return this.gateAdventureAttackMod(card, 0, true, false);
+        }
+        const result = this.effect(monsterName, card.value, card, this.s.player, monster) || { d: 0, skip: false, unblock: false };
+        this._deferAttackBuffs(sourceKey, before);
+        if (result.immediateBuffs) this._restoreAttackBuffs();
+        const damage = Number(result.d) || 0;
+        this.emit('desc', '玩家借用' + monsterName + '技能：' + damage + '点伤害' + ((result.skip || result.unblock || damage <= 0) ? '，跳过防御' : ''), card);
+        return this.gateAdventureAttackMod(card, damage, !!result.skip, !!result.unblock);
+      } finally {
+        this.s.borrowedMonsterSkill = false;
+      }
+    }
+
     gateAdventureAttackMod(card, damage, skip = false, unblock = false, delay = 0) {
       if (this.s && this.s.isAdventure && damage > 0 && this._hasAccessory('JusticeHammer')) {
         const bonus = this._accessoryCount('JusticeHammer');
@@ -1086,6 +1182,8 @@
         const choice = params.choices != null ? params.choices : (params.choice || null);
         return this.useAdventureCombatItem(params.itemIndex || 0, choice);
       }
+      if (method === 'chooseTrophyDisarm') return this.chooseTrophyDisarm(params.target, params.index);
+      if (method === 'doEndTurn' && this.s && this.s.is1v2) this._returnBorrowedCardsFromHand();
       if (method === 'setAttackModBonus') { this.s.attackModBonus = params.bonus || 0; return this.state(); }
       if (method === 'choosePurifyCrystal') return this.choosePurifyCrystal(params.choice || params);
       if (method === 'useDemonPact') return this.useDemonPact();

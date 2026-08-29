@@ -24,7 +24,7 @@ const TAG_COLORS = {
     '[净化]': '#ddd6fe', '[解冻]': '#bae6fd',
     '[红]': '#fda4af', '[黄]': '#fde047', '[蓝]': '#93c5fd',
     '[绿]': '#86efac', '[白]': '#f8fafc', '[黑]': '#cbd5e1',
-    '[守护]': '#67e8f9', '[飞翔]': '#a5b4fc'
+    '[守护]': '#67e8f9', '[飞翔]': '#a5b4fc', '[致盲]': '#c4b5fd'
 };
 
 const ICON_PATHS = {
@@ -43,6 +43,7 @@ const ICON_PATHS = {
     guard: gameAssetUrl('icons/buff_icons/guard.png'),
     sparkling: gameAssetUrl('icons/ui_icons/sparkling.png')
 };
+ICON_PATHS.blind = gameAssetUrl('icons/buff_icons/blind.png');
 
 const PHASE_NAMES = {
     PLAYER_PLAY: '出牌阶段', PLAYER_DISCARD: '弃牌阶段',
@@ -73,6 +74,14 @@ function cardLabel(card) {
 function renderCard(card, w, h, selected) {
     if (window.CardStyle && window.CardStyle.renderCard) return window.CardStyle.renderCard(card, w, h, selected);
     return document.createElement('canvas');
+}
+
+// NPC hands are face-up in adventure mode. Mark their white cards so they
+// remain visually distinct from the player's white cards without changing
+// the shared card renderer or any card rules.
+function markNpcWhiteCard(canvas, card) {
+    if (canvas && card && card.isWhite && canvas.classList) canvas.classList.add('npc-white-card');
+    return canvas;
 }
 
 function renderCardBack(w, h) {
@@ -137,13 +146,14 @@ function animSmoothstep(t) {
 class AnimLayer {
     constructor() { this.animating = false; }
 
-    flyCard(card, fromEl, toEl, duration, arcHeight) {
+    flyCard(card, fromEl, toEl, duration, arcHeight, owner = 'player') {
         return new Promise(resolve => {
             const fromRect = fromEl.getBoundingClientRect();
             const toRect = toEl.getBoundingClientRect();
             const flyEl = document.createElement('div');
             flyEl.className = 'fly-card';
             const cv = renderCard(card, CARD_W, CARD_H, false);
+            if (owner && owner !== 'player') markNpcWhiteCard(cv, card);
             cv.style.pointerEvents = 'none';
             flyEl.appendChild(cv);
             document.body.appendChild(flyEl);
@@ -836,6 +846,9 @@ class GameUI {
          }, { opponent, allowOpponent: true });
         } else if (s.pendingDialog === 'mozeSeven') {
             this.dialogs.showMozeSevenChoice(choice => this._apiAction('chooseMozeSeven', { choice }));
+        } else if (s.pendingDialog === 'trophyDisarm') {
+            const pending = s.pendingTrophyDisarm || {};
+            this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s, pending.targetKey), choice => this._apiAction('chooseTrophyDisarm', choice), '缴械 · 选择要弃掉的手牌');
         }
 
         if (s.phase === 'ATTACK_MOD_CHOICE') this._ensureAttackModChoicePrompt(s);
@@ -928,6 +941,7 @@ class GameUI {
             { key: 'freeze', stacks: ch.frozen ? 1 : 0, icon: 'freeze', colorClass: 'freeze-buff' },
             { key: 'bleed', stacks: ch.bleed, icon: 'bleed', colorClass: 'bleed-buff' },
             { key: 'poison', stacks: ch.poison || 0, icon: 'poison', colorClass: 'poison-buff' },
+            { key: 'blind', stacks: ch.blind || 0, icon: 'blind', colorClass: 'blind-buff', hideCount: true },
             { key: 'bomb', stacks: ch.bomb || 0, path: gameAssetUrl('icons/items_icons/time_bomb.png'), label: '炸弹', hideCount: false },
             { key: 'guard', stacks: ch.guard, icon: 'guard', colorClass: 'guard-buff' },
             { key: 'fly', stacks: ch.fly || 0, icon: 'fly', colorClass: 'fly-buff' },
@@ -944,7 +958,7 @@ class GameUI {
             if (b.stacks > 0) {
                 currentKeys.push(b.key);
                 const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.png`);
-                const title = b.label || ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', guard: '守护', fly: '飞翔', lush: '茂盛', crit: '暴击', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
+                const title = b.label || ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', blind: '致盲', guard: '守护', fly: '飞翔', lush: '茂盛', crit: '暴击', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
                 const animCls = !prevSet.has(b.key) ? ' icon-appear' : '';
                 const specialClass = b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.key === 'bind' ? 'bind-mark' : b.key === 'bomb' ? 'bomb-mark' : b.colorClass || '';
                 html += `<div class="buff-icon-wrap ${specialClass}${animCls}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}${b.label ? `<span class="buff-name">${b.label}</span>` : ''}</div>`;
@@ -955,7 +969,7 @@ class GameUI {
         if (removed.length) {
             container.querySelectorAll('.buff-icon-wrap').forEach(el => {
                 const title = el.getAttribute('title');
-                const keyMap = { '灼烧': 'burn', '冷冻': 'freeze', '流血': 'bleed', '中毒': 'poison', '炸弹': 'bomb', '守护': 'guard', '飞翔': 'fly', '暴击': 'crit', '嗜血': 'bloodthirst', '捆缚': 'bind' };
+                const keyMap = { '灼烧': 'burn', '冷冻': 'freeze', '流血': 'bleed', '中毒': 'poison', '致盲': 'blind', '炸弹': 'bomb', '守护': 'guard', '飞翔': 'fly', '暴击': 'crit', '嗜血': 'bloodthirst', '捆缚': 'bind' };
                 const key = Object.keys(keyMap).find(k => title === k);
                 if (key && removed.includes(keyMap[key])) el.classList.add('icon-disappear');
             });
@@ -1020,7 +1034,7 @@ class GameUI {
         this._hideTooltip();
         const s = this.state;
         if (!s || !card) return;
-        const charName = opts.charName || (s.player ? s.player.name.replace(/^AI\d*\s+/, '') : '');
+        const charName = opts.charName || card.borrowedMonsterName || (s.player ? s.player.name.replace(/^AI\d*\s+/, '') : '');
         if (!charName) return;
         let desc = this._resolveHandSkillDesc(charName, card, isDefend, opts.adventureOpts);
         if (!desc && opts.adventureOpts) desc = isDefend ? '无防御效果' : '无进攻效果';
@@ -1138,6 +1152,7 @@ class GameUI {
             const card = revealMode ? s.aiHand[i] : null;
             const focused = canPeekSkill && i === this._npcHandFocusIndex;
             const cv = revealMode ? renderCard(card, 40, 58, focused) : renderCardBack(40, 58);
+            markNpcWhiteCard(cv, card);
             if (revealMode && card) {
                 cv.dataset.cardId = cardId(card);
                 cv.dataset.cardMatch = cardMatchKey(card);
@@ -1179,6 +1194,7 @@ class GameUI {
         if (!s || !s.isAdventure || !def) return false;
         if (s.busy) return false;
         if (s.needColorChoice) return false;
+        if (s.player && (s.player.blind || 0) > 0 && def.kind === 'consumable') return false;
         if (def.combatUse === 'attackMod') return false;
         const scene = def.useScene || 'combat';
         if (scene !== 'combat' && scene !== 'both') return false;
@@ -1187,6 +1203,9 @@ class GameUI {
         }
         if (def.combatUse === 'bind') {
             return s.phase === 'PLAYER_PLAY' && !s.bindUsedThisTurn;
+        }
+        if (def.combatUse === 'chameleonPaint') {
+            return s.phase === 'PLAYER_PLAY';
         }
         // 仅在可选出牌/防御牌时（含不可防御跳过窗口）；其他子阶段不可用
         return s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND';
@@ -1367,7 +1386,7 @@ class GameUI {
             const oppKey = s.attackTarget || (s.activeAttacker === 'ai2' ? 'ai2' : 'ai');
             const opponent = s[oppKey] && s[oppKey].alive ? s[oppKey] : (s.ai && s.ai.alive ? s.ai : null);
             const hasBuff = ch => ch && ((ch.burn || 0) > 0 || (ch.bleed || 0) > 0 ||
-                (ch.poison || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
+                (ch.poison || 0) > 0 || (ch.blind || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
             if (!hasBuff(player) && !hasBuff(opponent)) return;
             this.dialogs.collectPurifyChoices(player, def.purifyCount || 1, choices => {
                 if (!choices.length) return;
@@ -1378,12 +1397,28 @@ class GameUI {
         if (def.combatUse === 'buffTransfer') {
             const player = s.player;
             const hasBuff = ch => ch && ((ch.burn || 0) > 0 || (ch.bleed || 0) > 0 ||
-                (ch.poison || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
+                (ch.poison || 0) > 0 || (ch.blind || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
             if (!hasBuff(player)) return;
             this.dialogs.showBuffTransferChoice(player, choice => { void run(choice); });
             return;
         }
+        if (def.combatUse === 'chameleonPaint') {
+            const groups = this._opponentCardGroups(s);
+            if (!groups.some(group => group.cards && group.cards.length)) return;
+            this.dialogs.showOpponentCardChoice(groups, choice => { void run(choice); }, '变色龙颜料 · 选择要暂借的牌');
+            return;
+        }
         await run(null);
+    }
+
+    _opponentCardGroups(s, onlyKey) {
+        if (!s) return [];
+        const keys = onlyKey ? [onlyKey] : (s.is1v2 ? ['ai', 'ai2'] : ['ai']);
+        return keys.filter(key => s[key] && s[key].alive !== false).map(key => ({
+            key,
+            label: s[key].name ? `${s[key].name} · 手牌` : key,
+            cards: Array.isArray(s[key + 'Hand']) ? s[key + 'Hand'] : (key === 'ai' && Array.isArray(s.aiHand) ? s.aiHand : [])
+        }));
     }
 
     _updateAdventureInfo(s) {
@@ -1442,6 +1477,7 @@ class GameUI {
             atkContainer.innerHTML = '';
             const cv = renderCard(s.atkCard, CARD_W - 10, CARD_H - 14, false);
             cv.classList.add('zone-card');
+            if (s.atkOwner && s.atkOwner !== 'player') markNpcWhiteCard(cv, s.atkCard);
             atkContainer.appendChild(cv);
             atkContainer.dataset.cardKey = atkKey;
             this._showCardSkillDesc('atk-desc', s.atkCard, s.atkOwner || 'player', false);
@@ -1455,6 +1491,7 @@ class GameUI {
             defContainer.innerHTML = '';
             const cv = renderCard(s.defCard, CARD_W - 10, CARD_H - 14, false);
             cv.classList.add('zone-card');
+            if (s.defOwner && s.defOwner !== 'player') markNpcWhiteCard(cv, s.defCard);
             defContainer.appendChild(cv);
             defContainer.dataset.cardKey = defKey;
             this._showCardSkillDesc('def-desc', s.defCard, s.defOwner || 'player', true);
@@ -2304,7 +2341,7 @@ class GameUI {
         const s = this.state;
         const participant = owner === 'ai2' ? s.ai2 : owner === 'ai' ? s.ai : s.player;
         if (!participant) return;
-        const charName = participant.name.replace(/^AI\d*\s+/, '');
+        const charName = card.borrowedMonsterName || participant.name.replace(/^AI\d*\s+/, '');
         const label = card.isItemCard
             ? (card.isBlack ? '黑牌' : card.isWhite ? '白牌' : '道具')
             : card.value;
@@ -2466,6 +2503,7 @@ class GameUI {
         container.innerHTML = '';
         list.forEach((c, i) => {
             const cv = renderCard(c, 40, 58, false);
+            markNpcWhiteCard(cv, c);
             if (c) {
                 cv.dataset.cardId = cardId(c);
                 cv.dataset.cardMatch = cardMatchKey(c);
@@ -2496,13 +2534,13 @@ class GameUI {
         if (sourceCard) sourceCard.style.visibility = 'hidden';
         try {
             if (revealFace && card) {
-                await this.anim.flyCard(card, sourceCard || aiHand, atkZone, 440, 54);
+                await this.anim.flyCard(card, sourceCard || aiHand, atkZone, 440, 54, who);
             } else {
                 await this.anim.flyCardBack(sourceCard || aiHand, atkZone, 440, 54);
             }
         }
         finally { if (sourceCard) sourceCard.remove(); }
-        this._settleZoneCard(atkZone, card);
+        this._settleZoneCard(atkZone, card, who);
     }
 
     async _playAIDefendAnimation(card, who = 'ai') {
@@ -2519,19 +2557,20 @@ class GameUI {
         if (sourceCard) sourceCard.style.visibility = 'hidden';
         try {
             if (revealFace && card) {
-                await this.anim.flyCard(card, sourceCard || aiHand, defZone, 440, 42);
+                await this.anim.flyCard(card, sourceCard || aiHand, defZone, 440, 42, who);
             } else {
                 await this.anim.flyCardBack(sourceCard || aiHand, defZone, 440, 42);
             }
         }
         finally { if (sourceCard) sourceCard.remove(); }
-        this._settleZoneCard(defZone, card);
+        this._settleZoneCard(defZone, card, who);
     }
 
-    _settleZoneCard(zone, card) {
+    _settleZoneCard(zone, card, owner = 'player') {
         zone.innerHTML = '';
         const settled = renderCard(card, CARD_W - 10, CARD_H - 14, false);
         settled.classList.add('zone-card', 'zone-card-land');
+        if (owner && owner !== 'player') markNpcWhiteCard(settled, card);
         zone.appendChild(settled);
         zone.dataset.cardKey = JSON.stringify(card);
     }
@@ -2547,7 +2586,7 @@ class GameUI {
         if (source !== playerHand) source.style.visibility = 'hidden';
         try { await this.anim.flyCard(card, source, atkZone, 430, 66); }
         finally { if (source !== playerHand) source.remove(); }
-        this._settleZoneCard(atkZone, card);
+        this._settleZoneCard(atkZone, card, 'player');
     }
 
     async _playPlayerDefendAnimation(card) {
@@ -2561,7 +2600,7 @@ class GameUI {
         if (source !== playerHand) source.style.visibility = 'hidden';
         try { await this.anim.flyCard(card, source, defZone, 420, 48); }
         finally { if (source !== playerHand) source.remove(); }
-        this._settleZoneCard(defZone, card);
+        this._settleZoneCard(defZone, card, 'player');
     }
 
     async _playRevealAnimation(card, fromOwner, fromSource) {

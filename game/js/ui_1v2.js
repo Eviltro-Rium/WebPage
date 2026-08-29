@@ -205,6 +205,7 @@
           let cv;
           if(handCards&&handCards[i]){
             cv=renderCard(handCards[i],40,58,false);
+            markNpcWhiteCard(cv, handCards[i]);
           }else{
             cv=renderCardBack(40,58);
           }
@@ -227,6 +228,7 @@
           let cv;
           if(handCards&&handCards[i]){
             cv=renderCard(handCards[i],40,58,false);
+            markNpcWhiteCard(cv, handCards[i]);
             cv.style.filter='hue-rotate(240deg)';
           }else{
             cv=renderCardBack(40,58);

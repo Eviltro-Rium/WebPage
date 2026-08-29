@@ -20,11 +20,59 @@
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.castle = {
-    '*': ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat'],
-    2: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'DungeonGoblin'],
-    3: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'DungeonGoblin'],
-    4: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'DungeonGoblin']
+    '*': ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly'],
+    2: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly', 'DungeonGoblin'],
+    3: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly', 'DungeonGoblin'],
+    4: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly', 'DungeonGoblin']
   };
+
+  /** 萤火虫（CastleFirefly）
+   * 进攻：1/2/3 造成2点伤害并获得飞翔；4/5/6造成4点伤害并致盲。
+   * 防御：1/2/3 格挡 ceil(1 + 道具数量 / 2) 点伤害。
+   */
+  R.registerMonster({
+    name: 'CastleFirefly',
+    kind: '城堡萤火虫',
+    hp: 18,
+    attack: 3,
+    defense: 1,
+    icon: '../icons/npc_icons/castle_firefly.png',
+
+    attackDamage(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 2;
+      if (card.value >= 4 && card.value <= 6) return 4;
+      return 0;
+    },
+
+    attackFly(card) {
+      return !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+    },
+
+    attackBlind(card) {
+      return !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
+    },
+
+    defendBlock(card, incoming, defender, eng) {
+      if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return 0;
+      const count = eng && eng._adventureEngine && eng._adventureEngine.snapshot
+        ? ((eng._adventureEngine.snapshot().consumables || []).length) : 0;
+      return Math.ceil(1 + count / 2);
+    },
+
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 6 }),
+      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
+      4: orig => ({
+        defendBlock: (card, incoming, defender, eng) => {
+          if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return 0;
+          const count = eng && eng._adventureEngine && eng._adventureEngine.snapshot
+            ? ((eng._adventureEngine.snapshot().consumables || []).length) : 0;
+          return 1 + count;
+        }
+      })
+    }
+  });
 
   /**
    * 狼（CastleWolf）

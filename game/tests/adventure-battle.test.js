@@ -746,6 +746,53 @@ test('MagicTransfer can pull an NPC buff onto the player', () => {
   assert.equal(engine._adventureEngine.s.consumables.length, 0);
 });
 
+test('Disarm trophy discards a selected NPC card and draws for the player', () => {
+  const engine = startLeon();
+  const trophy = context.AdventureDeck.trophyWhite('DisarmTrophy');
+  engine.h.player = [trophy];
+  engine.s.playerHand = engine.h.player;
+  engine.h.ai = [number(4, 'RED'), number(2, 'BLUE')];
+  engine.s.discardTop = number(1, 'RED');
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.select(0);
+  engine.play();
+  assert.equal(engine.s.pendingDialog, 'trophyDisarm');
+  engine.dispatch('chooseTrophyDisarm', { target: 'ai', index: 1 });
+  assert.equal(engine.h.ai.length, 1);
+  assert.equal(engine.s.pendingDialog, null);
+});
+
+test('Chameleon Paint borrows an NPC card with source metadata', () => {
+  const engine = startLeon();
+  engine._adventureEngine = {
+    snapshot: () => ({ consumables: [{ name: 'ChameleonPaint', displayName: '变色龙颜料' }] }),
+    s: { consumables: ['ChameleonPaint'] }
+  };
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.busy = false;
+  engine.h.ai = [number(2, 'RED')];
+  engine.useAdventureCombatItem(0, { target: 'ai', index: 0 });
+  assert.equal(engine.h.player.at(-1).borrowedFrom, 'ai');
+  assert.equal(engine.h.player.at(-1).borrowedMonster, true);
+  assert.equal(engine._adventureEngine.s.consumables.length, 0);
+});
+
+test('borrowed NPC number card resolves NPC attack skill against its owner', () => {
+  const engine = startLeon();
+  const borrowed = number(2, 'RED');
+  borrowed.borrowedMonster = true;
+  borrowed.borrowedFrom = 'ai';
+  borrowed.borrowedMonsterName = 'CastleWolf';
+  engine.h.player = [borrowed];
+  engine.h.ai = [];
+  engine.s.discardTop = number(1, 'RED');
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.select(0);
+  engine.play();
+  assert.equal(engine.s.pendingAttack.damage, 4);
+  assert.equal(engine.s.phase, 'ATTACK_MOD_CHOICE');
+});
+
 test('PurifyWater can clear an opponent buff', () => {
   const advEngine = new AdventureEngine();
   advEngine.s = { consumables: ['PurifyWater1'] };

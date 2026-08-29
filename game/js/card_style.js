@@ -31,7 +31,8 @@
     BurnTrophy: 'BURN TROPHY',
     PiercingTrophy: 'BLEED TROPHY',
     FreezeTrophy: 'FREEZE TROPHY',
-    GuardTrophy: 'GUARD TROPHY'
+    GuardTrophy: 'GUARD TROPHY',
+    DisarmTrophy: 'DISARM TROPHY'
   };
 
   const ASSET_ROOT = (() => {
@@ -58,7 +59,8 @@
     trophy_BurnTrophy: cardAssetUrl('icons/items_icons/ghost_fire.png'),
     trophy_PiercingTrophy: cardAssetUrl('icons/items_icons/pierce.png'),
     trophy_FreezeTrophy: cardAssetUrl('icons/items_icons/freeze.png'),
-    trophy_GuardTrophy: cardAssetUrl('icons/items_icons/nature_shield.png')
+    trophy_GuardTrophy: cardAssetUrl('icons/items_icons/nature_shield.png'),
+    trophy_DisarmTrophy: cardAssetUrl('icons/items_icons/disarm.png')
   };
 
   const iconCache = {};

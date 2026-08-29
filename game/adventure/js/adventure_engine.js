@@ -83,6 +83,7 @@
         burn: 0,
         bleed: 0,
         poison: 0,
+        blind: 0,
         frozen: false,
         guard: 0,
         fly: 0,
@@ -1988,6 +1989,7 @@
       target.burn = 0;
       target.bleed = 0;
       target.poison = 0;
+      target.blind = 0;
       target.frozen = false;
       this._log((target === this.s.player ? '玩家' : '敌方') + 'debuff已清除');
       this.emit('buff', '清除debuff', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'clearDebuffs' });
@@ -2031,7 +2033,7 @@
     }
 
     isDebuffed(target) {
-      return (target.burn || 0) > 0 || (target.bleed || 0) > 0 || (target.poison || 0) > 0 || !!target.frozen;
+      return (target.burn || 0) > 0 || (target.bleed || 0) > 0 || (target.poison || 0) > 0 || (target.blind || 0) > 0 || !!target.frozen;
     }
 
     playerBuffs() {
@@ -2040,6 +2042,7 @@
         burn: p.burn || 0,
         bleed: p.bleed || 0,
         poison: p.poison || 0,
+        blind: p.blind || 0,
         frozen: !!p.frozen,
         guard: p.guard || 0,
         fly: p.fly || 0,
@@ -2332,6 +2335,7 @@
       if ((ch.burn || 0) > 0) kinds.push('burn');
       if ((ch.bleed || 0) > 0) kinds.push('bleed');
       if ((ch.poison || 0) > 0) kinds.push('poison');
+      if ((ch.blind || 0) > 0) kinds.push('blind');
       if (ch.frozen) kinds.push('freeze');
       if ((ch.bomb || 0) > 0) kinds.push('bomb');
       if ((ch.guard || 0) > 0) kinds.push('guard');
@@ -2357,6 +2361,10 @@
       }
       if (kind === 'poison' && (player.poison || 0) > 0) {
         player.poison = Math.max(0, player.poison - 1);
+        return true;
+      }
+      if (kind === 'blind' && (player.blind || 0) > 0) {
+        player.blind = 0;
         return true;
       }
       if (kind === 'freeze' && player.frozen) {

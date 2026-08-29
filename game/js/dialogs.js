@@ -122,6 +122,47 @@ class DialogManager {
         document.body.appendChild(overlay);
     }
 
+    showOpponentCardChoice(groups, onChoose, title = '选择一张对手手牌') {
+        if (document.getElementById('opponent-card-choice-dialog')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'opponent-card-choice-dialog';
+        overlay.className = 'dialog-overlay';
+        const box = document.createElement('div');
+        box.className = 'dialog-box';
+        box.innerHTML = `<h3>${title}</h3>`;
+        const list = document.createElement('div');
+        list.style.display = 'flex'; list.style.flexDirection = 'column'; list.style.gap = '14px'; list.style.marginTop = '12px';
+        let count = 0;
+        for (const group of (groups || [])) {
+            if (!group || !Array.isArray(group.cards) || !group.cards.length) continue;
+            const section = document.createElement('div');
+            const heading = document.createElement('div');
+            heading.textContent = group.label || group.key;
+            heading.style.cssText = 'font-weight:700;margin-bottom:6px;color:#dbeafe';
+            section.appendChild(heading);
+            const row = document.createElement('div');
+            row.style.display = 'flex'; row.style.flexWrap = 'wrap'; row.style.gap = '8px';
+            group.cards.forEach((card, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'card-choice';
+                btn.type = 'button';
+                if (typeof renderCard === 'function') {
+                    const cv = renderCard(card, 54, 78, false);
+                    if (typeof markNpcWhiteCard === 'function') markNpcWhiteCard(cv, card);
+                    btn.appendChild(cv);
+                }
+                else btn.innerHTML = `<span>${card.value || '?'}</span>`;
+                btn.addEventListener('click', () => { overlay.remove(); if (onChoose) onChoose({ target: group.key, index }); });
+                row.appendChild(btn); count++;
+            });
+            section.appendChild(row); list.appendChild(section);
+        }
+        if (!count) {
+            const empty = document.createElement('div'); empty.textContent = '对手没有可选择的手牌'; empty.style.color = '#94a3b8'; list.appendChild(empty);
+        }
+        box.appendChild(list); overlay.appendChild(box); document.body.appendChild(overlay);
+    }
+
     showMozeSevenChoice(onChoose) {
         if (document.getElementById('moze-seven-choice-dialog')) return;
         const overlay = document.createElement('div');
@@ -139,20 +180,21 @@ class DialogManager {
     collectPurifyChoices(ch, maxCount, onDone, extra) {
         extra = extra || {};
         const selfSnap = {
-            burn: ch.burn || 0, bleed: ch.bleed || 0, poison: ch.poison || 0, bomb: ch.bomb || 0, frozen: !!ch.frozen,
+            burn: ch.burn || 0, bleed: ch.bleed || 0, poison: ch.poison || 0, blind: ch.blind || 0, bomb: ch.bomb || 0, frozen: !!ch.frozen,
             guard: ch.guard || 0, fly: ch.fly || 0, crit: ch.crit || 0
         };
         const opp = extra.opponent || null;
         const oppSnap = opp ? {
-            burn: opp.burn || 0, bleed: opp.bleed || 0, poison: opp.poison || 0, bomb: opp.bomb || 0, frozen: !!opp.frozen,
+            burn: opp.burn || 0, bleed: opp.bleed || 0, poison: opp.poison || 0, blind: opp.blind || 0, bomb: opp.bomb || 0, frozen: !!opp.frozen,
             guard: opp.guard || 0, fly: opp.fly || 0, crit: opp.crit || 0
         } : null;
-        const hasAny = snap => snap && (snap.burn > 0 || snap.bleed > 0 || snap.poison > 0 || snap.bomb > 0 || snap.frozen ||
+        const hasAny = snap => snap && (snap.burn > 0 || snap.bleed > 0 || snap.poison > 0 || snap.blind > 0 || snap.bomb > 0 || snap.frozen ||
             snap.guard > 0 || snap.fly > 0 || snap.crit > 0);
         const applyLocal = (snap, kind) => {
             if (kind === 'burn') snap.burn = Math.max(0, snap.burn - 1);
             else if (kind === 'bleed') snap.bleed = Math.max(0, snap.bleed - 1);
             else if (kind === 'poison') snap.poison = Math.max(0, snap.poison - 1);
+            else if (kind === 'blind') snap.blind = 0;
             else if (kind === 'bomb') snap.bomb = 0;
             else if (kind === 'freeze') snap.frozen = false;
             else if (kind === 'guard') snap.guard = Math.max(0, snap.guard - 1);
@@ -191,6 +233,7 @@ class DialogManager {
             if (snap.frozen) rows.push(['freeze', '冷冻', 'freeze']);
             if (snap.bleed > 0) rows.push(['bleed', `流血 ×${snap.bleed}`, 'bleed']);
             if (snap.poison > 0) rows.push(['poison', `中毒 ×${snap.poison}`, 'poison']);
+            if (snap.blind > 0) rows.push(['blind', '致盲', 'blind']);
             if (snap.bomb > 0) rows.push(['bomb', `炸弹 ×${snap.bomb}`, 'poison']);
             if (snap.guard > 0) rows.push(['guard', `守护 ×${snap.guard}`, 'guard']);
             if (snap.fly > 0) rows.push(['fly', `飞翔 ×${snap.fly}`, 'guard']);
@@ -228,6 +271,7 @@ class DialogManager {
             if (t.ch.burn > 0) buffs.push(`<img src="${buffIcon('burn')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>灼烧×${t.ch.burn}</span>`);
             if (t.ch.bleed > 0) buffs.push(`<img src="${buffIcon('bleed')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>流血×${t.ch.bleed}</span>`);
             if (t.ch.poison > 0) buffs.push(`<img src="${buffIcon('poison')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>中毒×${t.ch.poison}</span>`);
+            if (t.ch.blind > 0) buffs.push(`<img src="${buffIcon('blind')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>致盲</span>`);
             if (t.ch.frozen) buffs.push(`<img src="${buffIcon('freeze')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>冷冻</span>`);
             if (t.ch.guard > 0) buffs.push(`<img src="${buffIcon('guard')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>守护×${t.ch.guard}</span>`);
             const buffText = buffs.length ? buffs.join(' ') : '无buff';

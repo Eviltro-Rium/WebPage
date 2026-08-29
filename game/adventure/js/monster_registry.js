@@ -96,6 +96,12 @@
           const p = mod.attackPoison(c);
           if (p > 0 && poison) poison(p);
         }
+        if (typeof mod.attackBlind === 'function' && mod.attackBlind(c)) {
+          if (typeof eng.blind === 'function') eng.blind(t, { silent: true });
+          else t.blind = 1;
+          const targetWho = owner === 'player' ? eng._who(t) : 'player';
+          eng.emit('buff', '[致盲]', null, { who: targetWho, kind: 'blind', stacks: 1 });
+        }
         if (typeof mod.attackHeal === 'function') {
           const h = mod.attackHeal(c, ctx);
           if (h > 0) heal(a, h);
@@ -113,7 +119,7 @@
           else eng.draw(owner, 1, true);
           eng.emit('desc', a.name + '抽取1张牌');
         }
-        if (typeof mod.attackStealItem === 'function' && mod.attackStealItem(c)) {
+        if (typeof mod.attackStealItem === 'function' && mod.attackStealItem(c) && !(eng.s && eng.s.borrowedMonsterSkill)) {
           const advEng = eng._adventureEngine;
           if (advEng && advEng.s && Array.isArray(advEng.s.consumables) && advEng.s.consumables.length > 0) {
             const idx = Math.floor(Math.random() * advEng.s.consumables.length);
@@ -252,7 +258,7 @@
           if (healAmt > 0) {
             heal(defender, healAmt);
             if (typeof mod.defendBlock === 'function') {
-              const block = mod.defendBlock(c, d, defender);
+              const block = mod.defendBlock(c, d, defender, eng);
               if (block > 0) {
                 const remaining = Math.max(0, d - block);
                 applyPoison(); applyBleed(); applyLush(); applyAllExtras();
@@ -283,7 +289,7 @@
         }
 
         if (typeof mod.defendBlock === 'function') {
-          const block = mod.defendBlock(c, d, defender);
+          const block = mod.defendBlock(c, d, defender, eng);
           const remaining = Math.max(0, d - block);
           applyPoison(); applyBleed(); applyDrawSelf(); applyLush(); applyAllExtras();
           return {
@@ -403,6 +409,10 @@
         if (ah > 0) parts.push('全体友方恢复' + ah + '点生命');
       }
       if (typeof mod.defendBlock === 'function') {
+        if (mod.name === 'CastleFirefly') {
+          parts.push('格挡1+道具数量×1/2点伤害（向上取整）');
+          return parts.length ? parts.join('，') : '无防御效果';
+        }
         const b8 = mod.defendBlock(card, 8);
         const b4 = mod.defendBlock(card, 4);
         if (b8 > 0 || b4 > 0) {
@@ -468,6 +478,9 @@
     if (typeof mod.attackPoison === 'function') {
       const p = mod.attackPoison(card);
       if (p > 0) parts.push('施加' + p + '层中毒');
+    }
+    if (typeof mod.attackBlind === 'function' && mod.attackBlind(card)) {
+      parts.push('施加1层致盲（致盲期间不能使用一次性道具）');
     }
     if (typeof mod.attackHeal === 'function') {
       const h = mod.attackHeal(card, ctx);

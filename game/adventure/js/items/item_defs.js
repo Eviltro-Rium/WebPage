@@ -224,6 +224,19 @@
   });
 
   R.registerItem({
+    name: 'DisarmTrophy',
+    displayName: '缴械战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：选择对手1张手牌弃掉，打出后抽1张牌，可搭桥',
+    icon: ICON + 'disarm.png',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyDisarm',
+    trophyEffect: 'disarm',
+    beastTradeCost: ['shui', 'ben']
+  });
+
+  R.registerItem({
     name: 'MagicTransfer',
     displayName: '魔法转移',
     kind: 'consumable',
@@ -232,6 +245,18 @@
     useScene: 'combat',
     price: 5,
     combatUse: 'buffTransfer',
+    needsChoice: true
+  });
+
+  R.registerItem({
+    name: 'ChameleonPaint',
+    displayName: '变色龙颜料',
+    kind: 'consumable',
+    description: '进攻出牌阶段使用：选择对手1张牌暂借入手牌，可按规则打出并释放该怪物技能',
+    icon: ICON + 'chameleon_pigment.png',
+    useScene: 'combat',
+    price: 8,
+    combatUse: 'chameleonPaint',
     needsChoice: true
   });
 
