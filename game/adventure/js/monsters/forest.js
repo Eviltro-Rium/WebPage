@@ -240,6 +240,7 @@
     handLimit: 3,
     noAttack: true,
     canDefendHigh: true,
+    attackSkipDescription: '跳过进攻阶段，玩家获得1层中毒',
     attackSkipEffect(eng, self, player) {
       eng.poison(player, 1);
       eng.emit('desc', self.name + '散发毒气，玩家获得1层中毒');

@@ -32,7 +32,7 @@
       let label=who==='player'?'玩家':who==='ai2'?'AI2':'AI';
       this.emit('discardMany',extra.desc||`${label}弃掉${batch.length}张牌`,batch[0],Object.assign({who,from:'hand',destination:'bottom',cards:cp(batch)},extra))
     }
-    setDiscardTop(card){if(this.s.discardTop)this.discardToBottom(this.s.discardTop);this.s.discardTop=cp(card)}
+    setDiscardTop(card){if(this.s.discardTop)this.discardToBottom(this.s.discardTop);this.s.discardTop=cp(card);const actor=this.s.defOwner||this.s.atkOwner;const owner=actor==='ai2'?'ai2':actor==='ai'?'ai':null;if(owner)this._markBombPlay(owner)}
     emit(type,desc,card,extra={}){if(type!=='playerPlay'&&this.s&&this.s.atkOwner==='player'&&this.s.atkCard&&this._animatedPlayerAttack!==this.s.atkCard){this._animatedPlayerAttack=this.s.atkCard;let playId=++this.ver;this.events.push({id:playId,type:'playerPlay',desc:'玩家打出进攻牌',card:cp(this.s.atkCard)})}let id=++this.ver;this.events.push(Object.assign({id,type,desc,card:card&&cp(card)},extra));return id}
     reveal(desc){let c=this.deck.pop();if(!c)return null;this.s.revealCards=[cp(c)];this.emit('reveal',desc,c,{from:'deck'});return c}
     effective(c){return c.chosenColor||c.color}
@@ -122,7 +122,7 @@
       return{remaining}}
     opponentChoiceSkill(name,value){return (name==='Chan'&&(value===4||value===7))||(name==='Saiki'&&value===3)||(name==='Blaze'&&value===4)||(name==='Moze'&&value===5)}
     finishOpponentAttack(p,d,skip=false,unblock=false){this.s.pendingOpponentSkill=null;return this.gateAdventureAttackMod(p.attackCard,d,skip,unblock)}
-    opponentEmpty(p){let d=0,skip=false;if(p.name==='Chan'&&p.value===4){d=2;skip=true}if(p.name==='Chan'&&p.value===7)d=6;if(p.name==='Saiki')d=2;if(p.name==='Blaze')d=2+(this.s.player.burn?1:0);if(p.name==='Moze')skip=true;this.emit('desc',`${p.name} ${p.value}牌：对手无手牌${d?`，造成${d}点伤害`:''}${skip?'并跳过防御':''}`,p.attackCard);return this.finishOpponentAttack(p,d,skip,false)}
+    opponentEmpty(p){let d=0,skip=false;if(p.name==='Chan'&&p.value===4){d=2;skip=true}if(p.name==='Chan'&&p.value===7)d=6;if(p.name==='Saiki')d=2;if(p.name==='Blaze')d=2+(this.s.player.burn?1:0);if(p.name==='Moze'){const before=this.s.player.hp;this.s.player.hp=Math.min(this.s.player.maxHp,this.s.player.hp+2);this.s.player.guard=Math.min(5,(this.s.player.guard||0)+1);skip=true;this.emit('desc',`Moze 5牌：对手无手牌，恢复${this.s.player.hp-before}点生命并获得1层守护，跳过防御`,p.attackCard);return this.finishOpponentAttack(p,0,skip,false)}this.emit('desc',`${p.name} ${p.value}牌：对手无手牌${d?`，造成${d}点伤害`:''}${skip?'并跳过防御':''}`,p.attackCard);return this.finishOpponentAttack(p,d,skip,false)}
     gateAdventureAttackMod(card,damage,skip=false,unblock=false,delay=0){
       damage=Number(damage)||0;skip=!!skip;unblock=!!unblock;
       this.s.pendingAttack={damage,unblock};
@@ -161,7 +161,7 @@
         return this.check();
       }
       if(d&&!skip&&!unblock){this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>this.aiDefend(card,d),delay)}
-      else{let targetKey=this.s.is1v2?(this.s.attackTarget||'ai'):'ai';if(d>0)this.hurt(this.s[targetKey],d);this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this._restoreAttackBuffs();this.afterAttack();this.check()},1700)}
+      else{let targetKey=this.s.is1v2?(this.s.attackTarget||'ai'):'ai';if(d>0)this.hurt(this.s[targetKey],d);this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this._restoreAttackBuffs();this.afterAttack();this.check()},d>0?1700:520)}
       return this.check();
     }
     resolveAttackModChoice(params={}){
@@ -199,7 +199,8 @@
     chooseFly(){let incoming=this.s.pendingGuardDamage||0,p=this.s.player;if((p.fly||0)<=0)return this._settleAvoidedAttack(incoming);p.fly--;this.emit('desc','消耗1层[飞翔]尝试躲避');if(Math.random()<0.5){this.emit('desc','飞翔躲避成功');return this._settleAvoidedAttack(0)}this.emit('desc','飞翔躲避失败');if((p.fly||0)>0){this.s.pendingDialog='flyRetry';this.s.phase='GUARD_CHOICE';this.s.busy=false;return this.state()}return this._settleAvoidedAttack(incoming)}
     chooseFlyContinue(again){if(again)return this.chooseFly();return this._settleAvoidedAttack(this.s.pendingGuardDamage||0)}
     clearPositiveBuffs(x){if(!x)return;x.guard=0;x.fly=0;x.crit=0;x.lush=0;x.chaos_red=false;x.chaos_yellow=false;x.chaos_blue=false;x.chaos_green=false}
-    _tickBomb(owner='ai'){let target=this.s&&this.s[owner];if(!target||!target.alive||(target.bomb||0)<=0)return;target.bomb--;const who=owner==='player'?'player':(owner==='ai2'?'ai2':'ai');if(target.bomb<=0){this.hurt(target,10);this.emit('bombExplode','定时炸弹爆炸！造成10点伤害',null,{who,amount:10});this.emit('desc','定时炸弹爆炸！'+target.name+'受到10点伤害')}else{this.emit('buff','炸弹倒计时：'+target.bomb,null,{who,kind:'bomb',stacks:target.bomb})}}
+    _markBombPlay(owner){if(!this.s||!this.s[owner]||!(this.s[owner].bomb||0))return;this.s.bombPlayTokens=this.s.bombPlayTokens||{};this.s.bombPlayTokens[owner]=(this.s.bombPlayTokens[owner]||0)+1}
+    _tickBomb(owner='ai'){let target=this.s&&this.s[owner],tokens=this.s&&this.s.bombPlayTokens;if(!target||!target.alive||(target.bomb||0)<=0||!tokens||!tokens[owner])return;if(--tokens[owner]<=0)delete tokens[owner];target.bomb--;const who=owner==='player'?'player':(owner==='ai2'?'ai2':'ai');if(target.bomb<=0){this.hurt(target,10,false,{silent:true});this.emit('bombExplode','定时炸弹爆炸！造成10点伤害',null,{who,amount:10})}else{this.emit('buff','炸弹倒计时：'+target.bomb,null,{who,kind:'bomb',stacks:target.bomb})}}
     deferSettlement(kind,damage,bleed=0){damage=Math.max(0,Number(damage)||0);bleed=Math.max(0,Number(bleed)||0);this.s.pendingDefenseDamage=damage;this.s.busy=true;this.pendingSettlement={kind,damage,bleed,afterEventId:this.ver};if(!this.events.length)this.acknowledgeEvents(this.ver)}
     _deferAttackBuffs(targetKey,before){let target=this.s[targetKey];if(!target)return;let now={bleed:target.bleed||0,burn:target.burn||0,poison:target.poison||0,frozen:!!target.frozen};let changed=now.bleed!==(before.bleed||0)||now.burn!==(before.burn||0)||now.poison!==(before.poison||0)||now.frozen!==!!before.frozen;if(!changed)return;this.s.pendingBuffRestore={target:targetKey,after:now,before:{bleed:before.bleed||0,burn:before.burn||0,poison:before.poison||0,frozen:!!before.frozen}};target.bleed=before.bleed||0;target.burn=before.burn||0;target.poison=before.poison||0;target.frozen=!!before.frozen}
     _restoreAttackBuffs(){if(!this.s.pendingBuffRestore)return;let r=this.s.pendingBuffRestore,target=this.s[r.target];if(target){let w=r.target==='player'?'player':'ai',add=r.after.bleed-r.before.bleed;if(add>0){target.bleed=Math.min(2,(target.bleed||0)+add);this.emit('buff',`${add>1?add:''}[流血]`,null,{who:w,kind:'bleed',stacks:target.bleed})}add=r.after.burn-r.before.burn;if(add>0){target.burn=Math.min(4,(target.burn||0)+add);this.emit('buff',`+${add}[灼烧]`,null,{who:w,kind:'burn',stacks:target.burn})}add=r.after.poison-r.before.poison;if(add>0){target.poison=Math.min(3,(target.poison||0)+add);this.emit('buff',`+${add}[中毒]`,null,{who:w,kind:'poison',stacks:target.poison})}if(r.after.frozen&&!r.before.frozen&&!target.frozen){target.frozen=true;this.emit('buff','[冷冻]',null,{who:w,kind:'freeze',stacks:1})}}this.s.pendingBuffRestore=null}
@@ -251,7 +252,13 @@
       if(!c)throw Error('请先选择卡牌');
       if(!this.legal(c))throw Error('颜色或数字不匹配');
       let who=this.name(this.s.player);
-      if(((who==='Ryan'&&c.value===5)||(who==='Saiki'&&c.value===6)||(who==='Moze'&&c.value===4))&&!this.h.player.some((x,j)=>j!==i&&x.isNumberCard))throw Error(`${who} ${c.value}牌还需要一张数字牌，请保留至少一张数字牌再使用`);
+      const needsNumberFollowup = (who==='Ryan'&&c.value===5)||(who==='Saiki'&&c.value===6)||(who==='Moze'&&c.value===4);
+      if(needsNumberFollowup&&!this.h.player.some((x,j)=>j!==i&&x.isNumberCard)){
+        this.emit('desc',`${who} ${c.value}牌：没有可用的追加数字牌，技能空过并跳过防御`,c);
+        this.h.player.splice(i,1); this.s.selectedCard=-1; this.s.atkCard=cp(c); this.s.atkOwner='player';
+        this.setDiscardTop(c); this.s.hasPlayedThisTurn=true; this._markBombPlay('player'); this._tickBomb('player');
+        return this.gateAdventureAttackMod(c,0,true,false);
+      }
       if(c.isBlack&&!c.chosenColor){this.s.needColorChoice=true;this.s.pendingDialog='color';return this.state()}
       if(c.isWhite)c.chosenColor=this.effective(this.s.discardTop);
       this.h.player.splice(i,1);
@@ -260,11 +267,13 @@
       this.s.atkOwner='player';
       this.setDiscardTop(c);
       this.s.hasPlayedThisTurn=true;
+      this._markBombPlay('player'); this._tickBomb('player');
       this.rememberAttackDebuffs('ai');
       let _buffBefore={bleed:this.s.ai.bleed||0,burn:this.s.ai.burn||0,poison:this.s.ai.poison||0,frozen:!!this.s.ai.frozen};
       this.applySaikiPassive(this.s.player,this.s.ai,c);
       if(c.isItemCard){this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player'});if(c.trophyWhite)this.useTrophyWhite(c,this.s.ai,'player');else this.useItem(c,this.s.player,this.s.ai,'player');if(!this.s.pendingDialog)this._tickBomb('player');return this.check()}
       this._deferAttackBuffs('ai',_buffBefore);
+      if(who==='Moze'&&c.value===7){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc','Moze 7牌：请选择清除对手正面buff或自身负面buff',c);return this.state()}
       if(who==='Ryan'&&c.value===5)return this.startRyanFive(c);
       if(who==='Saiki'&&c.value===6)return this.startNumberJudge('Saiki',c);
       if(who==='Moze'&&c.value===4)return this.startNumberJudge('Moze',c);
@@ -279,6 +288,25 @@
 
       this.emit('desc',`${this.s.player.name}：${r.d}点伤害${(r.skip||r.unblock||r.d<=0)?'，跳过防御':''}`,c);
       return this.gateAdventureAttackMod(c,r.d,r.skip,r.unblock)
+    }
+    resolveMozeSevenChoice(choice){
+      if(!this.s || this.s.pendingDialog!=='mozeSeven')throw Error('当前没有待处理的 Moze 7牌选择');
+      const targetKey=this.s.is1v2?(this.s.attackTarget||'ai'):'ai';
+      const target=this.s[targetKey];
+      let cleared=0,desc;
+      if(choice==='opponentBuff'){
+        cleared=(target.guard||0)+(target.fly||0)+(target.crit||0)+(target.lush||0)+['chaos_red','chaos_yellow','chaos_blue','chaos_green'].filter(k=>target[k]).length;
+        this.clearPositiveBuffs(target);
+        desc='清除对手所有正面buff';
+      }else if(choice==='debuff'){
+        cleared=(this.s.player.burn||0)+(this.s.player.bleed||0)+(this.s.player.poison||0)+(this.s.player.frozen?1:0)+(this.s.player.bomb||0);
+        this.clearDebuffs(this.s.player);
+        desc='清除自身所有负面buff';
+      }else throw Error('无效的 Moze 7牌选择');
+      this.s.pendingDialog=null;
+      const damage=3+cleared;
+      this.emit('desc',`Moze 7牌：${desc}，清除${cleared}层，造成${damage}点不可防御伤害`,this.s.atkCard);
+      return this.gateAdventureAttackMod(this.s.atkCard,damage,false,true);
     }
     startRyanFive(card){
       this.s.pendingFiveChoice=true;
@@ -469,6 +497,7 @@
         if(c.isWhite)c.chosenColor=inheritedColor;
         this.h.player.splice(i,1);this.s.selectedCard=-1;
         this.s.defCard=cp(c);this.s.defOwner='player';this.setDiscardTop(c);
+        this._markBombPlay('player'); this._tickBomb('player');
         this._animatedPlayerAttack=this.s.atkCard;
         if(c.isItemCard){
           this.s.hasPlayedBlackDefend=true;this.s.phase='PLAYER_DEFEND';this.s.busy=false;
@@ -727,7 +756,13 @@
     if(!c)throw Error('请选择要打出的牌');
     if(!this.legal(c))throw Error('该牌不能用于进攻');
     let who=this.name(this.s.player);
-    if(((who==='Ryan'&&c.value===5)||(who==='Saiki'&&c.value===6)||(who==='Moze'&&c.value===4))&&!this.h.player.some((x,j)=>j!==i&&x.isNumberCard))throw Error(who+' '+c.value+'牌还需要一张数字牌，请保留至少一张数字牌再使用');
+    const needsNumberFollowup = (who==='Ryan'&&c.value===5)||(who==='Saiki'&&c.value===6)||(who==='Moze'&&c.value===4);
+    if(needsNumberFollowup&&!this.h.player.some((x,j)=>j!==i&&x.isNumberCard)){
+      this.emit('desc',who+' '+c.value+'牌：没有可用的追加数字牌，技能空过并跳过防御',c);
+      this.h.player.splice(i,1); this.s.selectedCard=-1; this.s.atkCard=cp(c); this.s.atkOwner='player';
+      this.setDiscardTop(c); this.s.hasPlayedThisTurn=true; this._markBombPlay('player'); this._tickBomb('player');
+      return this.gateAdventureAttackMod(c,0,true,false);
+    }
     if(c.isBlack&&!c.chosenColor){this.s.needColorChoice=true;this.s.pendingDialog='color';return this.state()}
     if(c.isWhite)c.chosenColor=this.effective(this.s.discardTop);
     let target=this.s.attackTarget||(this.s.ai.alive?'ai':(this.s.ai2&&this.s.ai2.alive?'ai2':'ai')),targetChar=this.s[target];
@@ -737,7 +772,7 @@
     // Keep the exact attack-card reference used by emit(). A cloned object makes
     // the automatic animation guard treat the same play as a second new card.
     this._animatedPlayerAttack=this.s.atkCard;
-    this.setDiscardTop(c);this.rememberAttackDebuffs(target);let _buffBefore={bleed:targetChar.bleed||0,burn:targetChar.burn||0,poison:targetChar.poison||0,frozen:!!targetChar.frozen};this.applySaikiPassive(this.s.player,targetChar,c);
+    this.setDiscardTop(c);this._markBombPlay('player'); this._tickBomb('player');this.rememberAttackDebuffs(target);let _buffBefore={bleed:targetChar.bleed||0,burn:targetChar.burn||0,poison:targetChar.poison||0,frozen:!!targetChar.frozen};this.applySaikiPassive(this.s.player,targetChar,c);
     this.emit('playerPlay','玩家打出进攻牌',c);
     if(c.isBlack)this.emit('colorChoice','黑牌指定'+this.colorName(c.chosenColor),c);
     else if(c.isWhite)this.emit('colorChoice','白色牌自动指定'+this.colorName(c.chosenColor),c);
@@ -749,8 +784,9 @@
       this.s.phase='PLAYER_PLAY';this.s.busy=false;this.s.attackTarget=null;
       return this.check()
     }
-    this._deferAttackBuffs(target,_buffBefore);
-    if(who==='Leon'&&c.value===0)return this.leonZero1v2(c);
+     this._deferAttackBuffs(target,_buffBefore);
+     if(who==='Moze'&&c.value===7){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc','Moze 7牌：请选择清除对手正面buff或自身负面buff',c);return this.state()}
+     if(who==='Leon'&&c.value===0)return this.leonZero1v2(c);
     if(who==='Ryan'&&c.value===5)return this.startRyanFive(c);
     if(who==='Saiki'&&c.value===6)return this.startNumberJudge('Saiki',c);
     if(who==='Moze'&&c.value===4)return this.startNumberJudge('Moze',c);
@@ -865,7 +901,7 @@
       let inheritedColor=this.effective(this.s.discardTop||this.s.atkCard);
       if(c.isWhite)c.chosenColor=inheritedColor;
       this.h.player.splice(i,1);this.s.selectedCard=-1;
-      this.s.defCard=cp(c);this.s.defOwner='player';this.setDiscardTop(c);
+      this.s.defCard=cp(c);this.s.defOwner='player';this.setDiscardTop(c);this._markBombPlay('player'); this._tickBomb('player');
       this._animatedPlayerAttack=this.s.atkCard;
       let n=this.name(this.s.player),v=c.value,b=0,desc='';
       if(c.isBlack)this.emit('colorChoice','黑牌指定'+this.colorName(c.chosenColor),c);
@@ -1009,9 +1045,17 @@
   };
 
   // --- 1v2 dispatch override ---
+  const origEmit=Engine.prototype.emit;
+  Engine.prototype.emit=function(type,desc,card,extra={}){
+    const id=origEmit.call(this,type,desc,card,extra);
+    if(type==='aiPlay')this._tickBomb(this.s&&this.s.atkOwner||'ai');
+    else if(type==='aiDefend')this._tickBomb(this.s&&this.s.defOwner||'ai');
+    return id;
+  };
   const origDispatch=Engine.prototype.dispatch;
   Engine.prototype.dispatch=function(m,p={}){
     if(m==='selectCharacters1v2')return this.start1v2(p.player,p.ai,p.ai2);
+    if(m==='chooseMozeSeven')return this.resolveMozeSevenChoice(p.choice);
 
     if(!this.s||!this.s.is1v2)return origDispatch.call(this,m,p);
     if(m==='chooseColor'){

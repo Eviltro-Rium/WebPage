@@ -394,6 +394,10 @@
         const al = mod.defendAllLush(card);
         if (al > 0) parts.push('全体友方获得' + al + '层茂盛');
       }
+      if (typeof mod.defendLush === 'function') {
+        const l = mod.defendLush(card);
+        if (l > 0) parts.push('获得' + l + '层茂盛');
+      }
       if (typeof mod.defendAllHeal === 'function') {
         const ah = mod.defendAllHeal(card);
         if (ah > 0) parts.push('全体友方恢复' + ah + '点生命');
@@ -425,6 +429,9 @@
       playerPoison: Number(opts.playerPoison) || 0,
       attackerLush: opts.attackerLush == null ? (Number(mod.initialLush) || 0) : (Number(opts.attackerLush) || 0)
     };
+    if (typeof mod.attackSkipEffect === 'function') {
+      return mod.attackSkipDescription || '跳过进攻阶段';
+    }
     let parts = [];
     let dmg = 0;
     const ladybugDrain = mod.name === 'ForestLadybug' && card.value >= 1 && card.value <= 3;

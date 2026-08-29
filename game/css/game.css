@@ -896,6 +896,14 @@ body {
     animation: bindMarkPulse 1.45s ease-in-out infinite;
 }
 .buff-icon-wrap.bind-mark img { width: 28px; height: 28px; }
+.buff-icon-wrap.bomb-mark {
+    width: 54px;
+    border-color: rgba(251, 146, 60, 0.92);
+    background: linear-gradient(135deg, rgba(106, 38, 8, 0.92), rgba(220, 96, 28, 0.62));
+    box-shadow: 0 0 12px rgba(251, 146, 60, 0.48);
+    animation: bombMarkPulse 1.25s ease-in-out infinite;
+}
+.buff-icon-wrap.bomb-mark img { width: 28px; height: 28px; }
 .buff-icon-wrap .buff-name {
     position: absolute;
     right: 3px;
@@ -913,6 +921,10 @@ body {
 @keyframes bindMarkPulse {
     0%, 100% { filter: brightness(0.96); transform: scale(1); }
     50% { filter: brightness(1.16); transform: scale(1.025); }
+}
+@keyframes bombMarkPulse {
+    0%, 100% { filter: brightness(0.94); transform: scale(1); }
+    50% { filter: brightness(1.2); transform: scale(1.03); }
 }
 .buff-icon-wrap.chaos-red-buff {
     border-color: rgba(255, 68, 68, 0.9);

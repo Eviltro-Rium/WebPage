@@ -148,12 +148,27 @@
     const nextBtn = overlay.querySelector('#adv-settle-next');
     if (nextBtn) {
       nextBtn.addEventListener('click', () => {
+        const current = eng.snapshot();
+        if (current.pendingCombatReward && current.pendingCombatReward.stage === 'basic' && !current.pendingCombatReward.applied && current.pendingCombatReward.roomType === 'boss') {
+          if (!eng.deferCombatReward()) return;
+        }
         eng.enterNextStage();
         leave();
       });
     }
     const mapBtn = overlay.querySelector('#adv-settle-map');
-    if (mapBtn) mapBtn.addEventListener('click', () => { eng.returnToMap(); leave(); });
+    if (mapBtn) mapBtn.addEventListener('click', () => {
+      // Boss exits reopen the adventure settlement page on return; they no
+      // longer drop the player onto the map with standalone action buttons.
+      const room = eng.currentRoom && eng.currentRoom();
+      if (room && room.type === window.RoomType.BOSS && room.cleared) {
+        eng.returnToMap();
+        eng.enterCurrent();
+      } else {
+        eng.returnToMap();
+      }
+      leave();
+    });
     const returnBtn = overlay.querySelector('#adv-settle-return');
     if (returnBtn) returnBtn.addEventListener('click', () => goToGameHome());
   }
@@ -305,7 +320,7 @@
         html += '</div>';
         html += '<div class="adv-settle-actions">' +
           '<button id="adv-settle-claim">领取</button>' +
-          '<button id="adv-settle-defer" class="adv-settle-secondary">留在房间</button>' +
+          (isBoss ? '<button id="adv-settle-next" class="adv-settle-secondary">直接进入下一层</button>' : '<button id="adv-settle-defer" class="adv-settle-secondary">留在房间</button>') +
           '</div>';
       } else if (snap.phase === Phase.COMBAT_SETTLE && pending && pending.stage === 'boss-exit') {
         html += '<div class="adv-settle-section-title">Boss已战胜</div>';

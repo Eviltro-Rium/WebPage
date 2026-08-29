@@ -122,6 +122,20 @@ class DialogManager {
         document.body.appendChild(overlay);
     }
 
+    showMozeSevenChoice(onChoose) {
+        if (document.getElementById('moze-seven-choice-dialog')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'moze-seven-choice-dialog';
+        overlay.className = 'dialog-overlay';
+        overlay.innerHTML = '<div class="dialog-box compact-choice-box"><h3>Moze 7牌 · 选择效果</h3><div style="font-size:.78rem;color:#dbeafe;margin:8px 0 14px">每清除1层，伤害 +1（不可防御）</div><div class="dialog-buttons" style="display:flex;gap:8px;justify-content:center"><button class="ctrl-btn btn-play" data-moze-seven="opponentBuff">清除对手正面buff</button><button class="ctrl-btn btn-play" data-moze-seven="debuff">清除自身负面buff</button></div></div>';
+        overlay.querySelectorAll('[data-moze-seven]').forEach(btn => btn.addEventListener('click', () => {
+            const choice = btn.getAttribute('data-moze-seven');
+            overlay.remove();
+            if (onChoose) onChoose(choice);
+        }));
+        document.body.appendChild(overlay);
+    }
+
     collectPurifyChoices(ch, maxCount, onDone, extra) {
         extra = extra || {};
         const selfSnap = {

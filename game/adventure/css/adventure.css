@@ -500,6 +500,42 @@
   color: #eeeaff; background: rgba(25, 22, 43, .82); border: 1px solid rgba(168,85,247,.3);
   border-radius: 18px; box-shadow: 0 18px 60px rgba(0,0,0,.28); backdrop-filter: blur(10px);
 }
+.adv-map-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.adv-tips-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid rgba(168, 85, 247, 0.34);
+  border-radius: 10px;
+  background: linear-gradient(110deg, rgba(29, 24, 53, 0.86), rgba(48, 33, 72, 0.72));
+  box-shadow: 0 4px 16px rgba(12, 8, 28, 0.22);
+}
+.adv-tips-label {
+  flex: 0 0 auto;
+  color: #e9d5ff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  white-space: nowrap;
+}
+.adv-tips-text {
+  min-width: 0;
+  color: #d8d4e8;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.adv-tips-fade { animation: advTipsFade .35s ease both; }
+@keyframes advTipsFade {
+  from { opacity: .2; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .adv-test-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:22px; }
 .adv-test-header h2 { margin:3px 0 6px; color:#f5f3ff; }
 .adv-test-header p, .adv-test-shell p { margin:0; color:rgba(232,232,240,.68); font-size:.86rem; }

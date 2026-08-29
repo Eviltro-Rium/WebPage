@@ -468,6 +468,34 @@ test('lord mode NPC uses guard after defending in 1v2', () => {
   assert.equal(engine.s.ai.hp, 24);
 });
 
+test('FlameFist triggers for Moze 2 defense in adventure 1v2', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({
+    player: 'Moze',
+    opponent1: 'CastleWolf',
+    opponent2: 'CastleWolf',
+    stage: 1,
+    playerPile: { deck: [], hand: [number(2, 'RED')], discard: [], handLimit: 5 },
+    discardTop: number(2, 'RED'),
+    discardTopOwner: 'player'
+  });
+  engine._adventureEngine = {
+    s: { accessories: ['FlameFist'] },
+    hasAccessory(name) { return name === 'FlameFist'; },
+    accessoryCount(name) { return name === 'FlameFist' ? 1 : 0; }
+  };
+  engine.s.phase = 'PLAYER_DEFEND';
+  engine.s.pendingAttack = { damage: 4, unblock: false };
+  engine.s.atkOwner = 'ai';
+  engine.s.currentAITarget = 0;
+  engine.s.selectedCard = 0;
+
+  engine.defend1v2();
+
+  assert.equal(engine.s.ai.burn, 1);
+});
+
 test('lord mode player discard ends turn with correct alternating AI attacker', () => {
   const engine = new AdventureBattleEngine();
   engine.later = () => {};

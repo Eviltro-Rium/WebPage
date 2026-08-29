@@ -833,7 +833,9 @@ class GameUI {
             const opponent = s[oppKey];
             this.dialogs.showPurifyChoice(s.player, picked => {
                 this._apiAction('choosePurifyCrystal', { choice: picked });
-            }, { opponent, allowOpponent: true });
+         }, { opponent, allowOpponent: true });
+        } else if (s.pendingDialog === 'mozeSeven') {
+            this.dialogs.showMozeSevenChoice(choice => this._apiAction('chooseMozeSeven', { choice }));
         }
 
         if (s.phase === 'ATTACK_MOD_CHOICE') this._ensureAttackModChoicePrompt(s);
@@ -926,7 +928,7 @@ class GameUI {
             { key: 'freeze', stacks: ch.frozen ? 1 : 0, icon: 'freeze', colorClass: 'freeze-buff' },
             { key: 'bleed', stacks: ch.bleed, icon: 'bleed', colorClass: 'bleed-buff' },
             { key: 'poison', stacks: ch.poison || 0, icon: 'poison', colorClass: 'poison-buff' },
-            { key: 'bomb', stacks: ch.bomb || 0, label: '炸弹', colorClass: 'poison-buff' },
+            { key: 'bomb', stacks: ch.bomb || 0, path: gameAssetUrl('icons/items_icons/time_bomb.png'), label: '炸弹', hideCount: false },
             { key: 'guard', stacks: ch.guard, icon: 'guard', colorClass: 'guard-buff' },
             { key: 'fly', stacks: ch.fly || 0, icon: 'fly', colorClass: 'fly-buff' },
             { key: 'lush', stacks: ch.lush || 0, icon: 'lush', colorClass: 'lush-buff' },
@@ -944,7 +946,7 @@ class GameUI {
                 const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.png`);
                 const title = b.label || ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', guard: '守护', fly: '飞翔', lush: '茂盛', crit: '暴击', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
                 const animCls = !prevSet.has(b.key) ? ' icon-appear' : '';
-                const specialClass = b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.key === 'bind' ? 'bind-mark' : b.colorClass || '';
+                const specialClass = b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.key === 'bind' ? 'bind-mark' : b.key === 'bomb' ? 'bomb-mark' : b.colorClass || '';
                 html += `<div class="buff-icon-wrap ${specialClass}${animCls}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}${b.label ? `<span class="buff-name">${b.label}</span>` : ''}</div>`;
             }
         }
@@ -953,7 +955,7 @@ class GameUI {
         if (removed.length) {
             container.querySelectorAll('.buff-icon-wrap').forEach(el => {
                 const title = el.getAttribute('title');
-                const keyMap = { '灼烧': 'burn', '冷冻': 'freeze', '流血': 'bleed', '中毒': 'poison', '守护': 'guard', '飞翔': 'fly', '暴击': 'crit', '嗜血': 'bloodthirst', '捆缚': 'bind' };
+                const keyMap = { '灼烧': 'burn', '冷冻': 'freeze', '流血': 'bleed', '中毒': 'poison', '炸弹': 'bomb', '守护': 'guard', '飞翔': 'fly', '暴击': 'crit', '嗜血': 'bloodthirst', '捆缚': 'bind' };
                 const key = Object.keys(keyMap).find(k => title === k);
                 if (key && removed.includes(keyMap[key])) el.classList.add('icon-disappear');
             });
@@ -1877,7 +1879,7 @@ class GameUI {
             'doChanSevenKeep', 'doChanSevenDiscard', 'doSaikiThreeKeep',
             'doSaikiThreeDiscard', 'doChanFourDiscard', 'doChanFourSwap',
             'doSaikiSixConfirm', 'resolveAttackModChoice', 'chooseTarget', 'chooseColor', 'choosePurify',
-            'chooseSuperPurifyTarget', 'chooseGuard', 'chanFiveReorder', 'choosePurifyCrystal'
+            'chooseSuperPurifyTarget', 'chooseGuard', 'chanFiveReorder', 'choosePurifyCrystal', 'chooseMozeSeven'
         ]).has(method);
     }
 
@@ -1917,7 +1919,7 @@ class GameUI {
             doSaikiThreeKeep: '正在加入手牌', doSaikiThreeDiscard: '正在弃掉卡牌',
             doChanFourSwap: '正在交换卡牌', doChanFourDiscard: '正在弃牌并结算伤害',
             doSaikiSixConfirm: '正在结算数字判定', resolveAttackModChoice: '正在应用攻击修正', chooseTarget: '正在确认目标',
-            chooseColor: '正在指定颜色', choosePurify: '正在执行净化', chooseSuperPurifyTarget: '正在执行超级净化',
+            chooseColor: '正在指定颜色', choosePurify: '正在执行净化', chooseSuperPurifyTarget: '正在执行超级净化', chooseMozeSeven: '正在结算 Moze 7牌',
             chooseGuard: '正在结算守护', chanFiveReorder: '正在确认牌库顺序',
             doEndTurn: '正在结束回合', doEnterDiscard: '正在进入弃牌阶段'
         };
@@ -1947,12 +1949,30 @@ class GameUI {
 
             this._prevState = this.state;
             this.state = newState;
+            const missingAIPlay = this._missingAIPlay(this._prevState, newState);
+            if (missingAIPlay) {
+                // Recover visually when a bridge poll returns the post-play state
+                // after the aiPlay event was already acknowledged by another poll.
+                await this._playAICardAnimation(newState.atkCard || null, missingAIPlay);
+                this._renderDiscardTop();
+            }
             this.updateDisplay();
             if (this.state.phase !== 'AI_TURN' && this.state.phase !== 'AI_DEFEND' && this.state.phase !== 'AI2_TURN') break;
           }
         } finally {
             this._isPollingAI = false;
         }
+    }
+
+    _missingAIPlay(previous, current) {
+        if (!previous || !current || current.events && current.events.length) return null;
+        const owner = current.atkOwner === 'ai2' ? 'ai2' : current.atkOwner === 'ai' ? 'ai' : null;
+        if (!owner || !current.atkCard) return null;
+        const phaseTransition = previous.phase === 'AI_TURN' && current.phase === 'PLAYER_DEFEND';
+        const sizeKey = owner === 'ai2' ? 'ai2HandSize' : 'aiHandSize';
+        const handShrank = Number.isFinite(Number(previous[sizeKey])) && Number.isFinite(Number(current[sizeKey]))
+            && Number(current[sizeKey]) < Number(previous[sizeKey]);
+        return phaseTransition || handShrank ? owner : null;
     }
 
     async _ackEvents(events) {
@@ -2047,12 +2067,17 @@ class GameUI {
         }
         for (const evt of orderedEvents) {
             try {
-              if (evt.type === 'aiPlay' && evt.card) {
+              if (evt.type === 'aiPlay') {
+                // Some older/bridge states omitted the card payload even though
+                // the engine had already recorded the active attack card. Keep
+                // the play animation visible by falling back to that snapshot.
+                const aiPlayCard = evt.card || (this.state && this.state.atkCard);
+                if (!aiPlayCard) { await wait(180); continue; }
                 this._updateAttackerIndicator(evt.who || 'ai');
-                await this._playAICardAnimation(evt.card, evt.who || 'ai');
+                await this._playAICardAnimation(aiPlayCard, evt.who || 'ai');
                 this._renderDiscardTop();
                 await wait(600);
-                this._showCardSkillDesc('atk-desc', evt.card, evt.who || 'ai', false);
+                this._showCardSkillDesc('atk-desc', aiPlayCard, evt.who || 'ai', false);
                 await wait(1400);
             } else if (evt.type === 'playerPlay' && evt.card) {
                 this._updateAttackerIndicator('player');
@@ -2202,7 +2227,12 @@ class GameUI {
                 if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,68,68,0.9)', 25); }
                 await wait(600);
             } else if (evt.type === 'hurt') {
-                this.playFloatingText(evt.desc || '', evt.poison ? '#84cc16' : (evt.bleed ? '#cc2222' : '#ff4444'), this._eventSide(evt.who));
+                // 普通伤害已经由生命值/受击动画表现，隐藏冗余的 -N[伤害]；
+                // 流血、中毒、吸血等带有明确类型的伤害仍保留飘字。
+                const isPlainDamage = !evt.poison && !evt.bleed && !evt.drain && String(evt.desc || '').includes('[伤害]');
+                if (!isPlainDamage) {
+                    this.playFloatingText(evt.desc || '', evt.poison ? '#84cc16' : (evt.bleed ? '#cc2222' : '#ff4444'), this._eventSide(evt.who));
+                }
                 const side = this._eventSide(evt.who);
                 if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
                 if (evt.amount > 0) { this.shakeScreen(evt.who === 'player' ? Math.min(evt.amount * 2, 10) : Math.min(evt.amount, 6), evt.who === 'player' ? 300 : 200); if (evt.who === 'player') { const hpEl = document.getElementById('player-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,60,60,0.8)', Math.min(evt.amount * 3, 20)); } } }

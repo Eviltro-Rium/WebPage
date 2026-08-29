@@ -796,6 +796,13 @@
       return super.defend(skip);
     }
 
+    // 1v2 的 dispatch 会直接调用 defend1v2，绕过上面的 defend 包装。
+    // 在这里补上同一条配饰触发链，确保 Moze 2 等反击型防御技能也能触发火焰之拳。
+    defend1v2(skip = false) {
+      this._tryFlameFistOnDefend(skip);
+      return super.defend1v2(skip);
+    }
+
     _accessoryCount(name) {
       const eng = this._adventureEngine;
       return eng && typeof eng.accessoryCount === 'function' ? eng.accessoryCount(name) : 1;
@@ -932,8 +939,9 @@
       }
     }
 
-    hurt(x, n, kind = false) {
-      super.hurt(x, n, kind);
+    hurt(x, n, kind = false, opts = {}) {
+      // 保留 silent 等选项，避免流血结算在合并飘字之外又产生一条重复伤害事件。
+      super.hurt(x, n, kind, opts);
       this._tryFreezeLaserOnAttackDamage(x, n, kind);
     }
 

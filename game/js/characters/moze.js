@@ -31,6 +31,7 @@
         let q = a.burn + a.bleed + (a.frozen ? 1 : 0);
         clearDebuffs(a);
         d = 3 + q;
+        unblock = true;
       } else if (v === 0) {
         guard(3);
         d = 5;

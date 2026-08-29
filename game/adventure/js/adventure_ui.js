@@ -7,6 +7,16 @@
   const PHASE_LABEL = window.AdventurePhaseLabel || {};
   const T = window.RoomType;
   const AC = window.AdventureCurrency;
+  const GAME_TIPS = [
+    '房间清理完后不会自动补牌，也不会清除身上的 Buff。',
+    '进入挑战房后有一次补牌机会。',
+    '有些怪物会清除道具，请及时使用手上的道具。',
+    '怪物手牌全是白卡，优先使用魔法牌，其次按点数从大到小出牌。',
+    '战利品白卡是一种特殊白卡，打出后可以再抽一张牌。',
+    '玩家牌库和怪物牌库相互独立，因此部分角色技能在冒险模式下会被修正。',
+    '不要舍不得弃牌！否则你可能会一直无法释放技能！',
+    '游戏中的主角都来自作者的现实生活。'
+  ];
 
   const ROOM_ICON_DIR = '../icons/adventure_ui_icons/';
   const ROOM_STYLE = {
@@ -28,7 +38,16 @@
       this._bridgeCombatActive = false;
       this.logVisible = false;
       this._test = null;
+      this._tipsTimer = null;
+      this._tipsIndex = -1;
       this._bindEngine();
+    }
+
+    _stopTipsRotation() {
+      if (this._tipsTimer) {
+        clearInterval(this._tipsTimer);
+        this._tipsTimer = null;
+      }
     }
 
     _bindEngine() {
@@ -60,6 +79,7 @@
     }
 
     render() {
+      this._stopTipsRotation();
       const snap = this.eng.snapshot();
       if (!snap) return;
 
@@ -88,6 +108,8 @@
         wrap.appendChild(this._buildShopPage(snap));
       } else if (snap.phase === window.AdventurePhase.BLACKSMITH) {
         wrap.appendChild(this._buildBlacksmithPage(snap));
+      } else if (snap.phase === window.AdventurePhase.REWARD && snap.roomInfo && snap.roomInfo.type === window.RoomType.BOSS && snap.roomInfo.cleared) {
+        wrap.appendChild(this._buildBossRewardPage(snap));
       } else if (snap.phase === window.AdventurePhase.REWARD && snap.pendingRoomReward) {
         wrap.appendChild(this._buildRewardPage(snap));
       } else if (snap.phase === window.AdventurePhase.BEAST_DISCARD) {
@@ -95,12 +117,36 @@
       } else if (snap.phase === window.AdventurePhase.ITEM_DISCARD) {
         wrap.appendChild(this._buildItemDiscardPage(snap));
       } else {
-        wrap.appendChild(this._buildMap(snap));
+        const mapPanel = document.createElement('div');
+        mapPanel.className = 'adv-map-panel';
+        mapPanel.appendChild(this._buildMap(snap));
+        if (snap.phase === window.AdventurePhase.MAP) mapPanel.appendChild(this._buildTipsBanner());
+        wrap.appendChild(mapPanel);
       }
       wrap.appendChild(this._buildSidebar(snap));
       wrap.appendChild(this._buildLog());
 
       this.container.appendChild(wrap);
+    }
+
+    _buildTipsBanner() {
+      const banner = document.createElement('section');
+      banner.className = 'adv-tips-banner';
+      banner.innerHTML = '<div class="adv-tips-label">游戏 Tips</div><div class="adv-tips-text"></div>';
+      const text = banner.querySelector('.adv-tips-text');
+      const showNext = () => {
+        if (!GAME_TIPS.length || !text) return;
+        let next = Math.floor(Math.random() * GAME_TIPS.length);
+        if (GAME_TIPS.length > 1 && next === this._tipsIndex) next = (next + 1) % GAME_TIPS.length;
+        this._tipsIndex = next;
+        text.classList.remove('adv-tips-fade');
+        void text.offsetWidth;
+        text.textContent = GAME_TIPS[next];
+        text.classList.add('adv-tips-fade');
+      };
+      showNext();
+      this._tipsTimer = setInterval(showNext, 6000);
+      return banner;
     }
 
     _updateBackground(scene) {
@@ -429,6 +475,26 @@
       return page;
     }
 
+    _buildBossRewardPage(snap) {
+      const page = document.createElement('div');
+      page.className = 'adv-reward-page adv-boss-reward-page';
+      const pending = snap.pendingCombatReward;
+      const loot = pending && pending.stage === 'basic' && !pending.applied
+        ? pending.basic
+        : (snap.roomInfo && snap.roomInfo.stashedLoot);
+      const hasLoot = !!loot && loot.kind !== 'none';
+      page.innerHTML =
+        '<div class="adv-reward-page-title">Boss战结算</div>' +
+        '<div class="adv-settle-section-title">' + (hasLoot ? 'Boss奖励' : 'Boss已战胜') + '</div>' +
+        '<div class="adv-settle-rewards">' + (hasLoot ? this._roomRewardRowHtml(loot) : '<div class="adv-settle-row">奖励已领取，可前往下一层</div>') + '</div>' +
+        '<div class="adv-shop-page-actions">' +
+          (hasLoot ? '<button class="adv-btn adv-btn-primary" id="adv-boss-claim">领取奖励</button>' : '') +
+          '<button class="adv-btn adv-btn-primary" id="adv-next-stage">进入下一层</button>' +
+        '</div>';
+      this._mountTrophyCards(page);
+      return page;
+    }
+
     _buildTrophyBackpack(snap) {
       const cards = snap.trophyWhiteCards || [];
       return '<div class="adv-trophy-backpack-section">' +
@@ -642,12 +708,9 @@
         const ri = snap.roomInfo;
         if (snap.pendingRoomReward) {
           btns += '<div class="adv-action-hint">请在奖励页操作</div>';
-        } else if (ri && ri.stashedLoot) {
+        } else if (ri && ri.stashedLoot && ri.type !== T.BOSS) {
           btns += '<button class="adv-btn adv-btn-primary" id="adv-reward">领取保留奖励</button>';
           btns += '<button class="adv-btn" id="adv-skip-reward">稍后再领</button>';
-        }
-        if (ri && ri.type === T.BOSS && ri.cleared) {
-          btns += '<button class="adv-btn" id="adv-next-stage">进入下一层</button>';
         }
       } else if (snap.phase === Phase.SHOP) {
         btns += '<div class="adv-action-hint">请在商店页操作</div>';
@@ -873,6 +936,14 @@
           if (sel == null) { this._toast('请先选择槽位'); return; }
           const result = this.eng.refreshBlacksmithSlot(sel);
           if (!result.ok) this._toast(result.message || '刷新失败');
+          this.render();
+        }
+        else if (id === 'adv-boss-claim') {
+          if (!this.eng.claimCombatReward()) {
+            const err = this.eng._lastRewardError;
+            if (err && err.reason === 'accessoryFull') this._showAlertDialog('无法拾取', err.message);
+            else this._toast((err && err.message) || '领取失败');
+          }
           this.render();
         }
         else if (e.target.closest('[data-blacksmith-trophy]')) {

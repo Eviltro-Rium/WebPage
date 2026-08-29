@@ -299,6 +299,13 @@
         this._log(room.stashedLoot
           ? 'Boss已战胜，可领取留在房间的奖励或进入下一层'
           : 'Boss已战胜，可进入下一层');
+        // Re-entering a cleared Boss room should open the settlement-style page
+        // instead of exposing map-only action buttons.
+        this.s.pendingRoomReward = room.stashedLoot ? this._cloneLoot(room.stashedLoot) : null;
+        this.s.pendingCombatReward = room.stashedLoot ? {
+          stage: 'basic', roomType: window.RoomType.BOSS,
+          basic: this._cloneLoot(room.stashedLoot), beast: null, applied: false
+        } : null;
         this.s.phase = Phase.REWARD;
         this.emit('rewardPending', 'Boss已战胜', {
           roomType: room.type,
@@ -1340,6 +1347,7 @@
     }
 
     _finishBossRewardSettlement(room) {
+      this.s.pendingRoomReward = null;
       this.s.pendingCombatReward = {
         stage: 'boss-exit',
         roomType: window.RoomType.BOSS,
