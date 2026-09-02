@@ -20,6 +20,17 @@ window.AdventureRegistry = {
   allBosses()   { return Object.values(this._bosses); },
   allItems()    { return Object.values(this._items); },
 
+  itemsByKind(kind) {
+    if (!this._itemsByKind) {
+      this._itemsByKind = {};
+      for (const it of Object.values(this._items)) {
+        const k = it.kind || 'unknown';
+        (this._itemsByKind[k] || (this._itemsByKind[k] = [])).push(it);
+      }
+    }
+    return this._itemsByKind[kind] || [];
+  },
+
   monsterNames() { return Object.keys(this._monsters); },
   bossNames()    { return Object.keys(this._bosses); },
   itemNames()    { return Object.keys(this._items); }

@@ -78,6 +78,7 @@
     <script src="js/npc_strategy.js"></script>
     <script src="js/adventure_engine.js"></script>
     <script src="js/adventure_battle_engine.js"></script>
+    <script src="js/adventure_save.js"></script>
     <script src="js/card_render.js"></script>
     <script src="js/combat_bridge.js"></script>
     <script src="js/adventure_ui.js"></script>
@@ -241,7 +242,7 @@
                 currentChar = presetChar;
                 const bg = document.getElementById('castle-bg'); if (bg) bg.style.display = 'block';
                 if (testMode) ui.startTest(presetChar);
-                else ui.start(pickStartMap(), presetChar);
+                else ui.restoreOrStart(pickStartMap, presetChar);
                 return;
             }
 
@@ -282,7 +283,7 @@
                 currentChar = picked;
                 container.innerHTML = '';
                 const bg = document.getElementById('castle-bg'); if (bg) bg.style.display = 'block';
-                ui.start(pickStartMap(), picked);
+                ui.restoreOrStart(pickStartMap, picked);
             });
         })();
     </script>

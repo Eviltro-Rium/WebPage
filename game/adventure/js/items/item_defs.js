@@ -214,7 +214,7 @@
     name: 'GuardTrophy',
     displayName: '守护战利白卡',
     kind: 'trophyWhite',
-    description: '白色战利卡：获得5层守护；防御阶段改为格挡本次攻击至多5点，打出后抽1张牌，可搭桥',
+    description: '白色战利卡：获得1层守护；防御阶段改为格挡本次攻击至多5点，打出后抽1张牌，可搭桥',
     icon: ICON + 'nature_shield.png',
     useScene: 'combat',
     price: 5,

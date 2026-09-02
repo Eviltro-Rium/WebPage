@@ -160,6 +160,87 @@
       return this.s;
     }
 
+    /** 导出可序列化的存档数据（委托给 AdventureSave） */
+    exportSave() {
+      return window.AdventureSave ? window.AdventureSave.serialize(this) : null;
+    }
+
+    /** 从存档恢复引擎状态；map 需由调用方先按存档的 mapName 加载 */
+    restoreFromSave(save, map) {
+      const charMod = window.CharacterRegistry.get(save.characterName);
+      if (!charMod) throw new Error('未知角色: ' + save.characterName);
+      const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
+      const player = clone(save.player);
+
+      this.s = {
+        map: map,
+        pos: clone(save.pos),
+        player: player,
+        charMod: charMod,
+        currency: new window.AdventureCurrency(),
+        inventory: (save.inventory || []).slice(),
+        consumables: (save.consumables || []).slice(),
+        trophyWhiteCards: (save.trophyWhiteCards || []).slice(),
+        accessories: (save.accessories || []).slice(),
+        playerPile: null,
+        discardTop: null,
+        discardTopOwner: save.discardTopOwner || null,
+        combat: null,
+        beastReward: clone(save.beastReward) || null,
+        beastSelection: clone(save.beastSelection) || [],
+        pendingDiscard: save.pendingDiscard || 0,
+        pendingItemDiscard: save.pendingItemDiscard || 0,
+        itemDiscardReturn: clone(save.itemDiscardReturn) || null,
+        pendingCombatReward: clone(save.pendingCombatReward) || null,
+        pendingRoomReward: clone(save.pendingRoomReward) || null,
+        shopSelectedSlot: save.shopSelectedSlot == null ? null : save.shopSelectedSlot,
+        blacksmithSelectedSlot: save.blacksmithSelectedSlot == null ? null : save.blacksmithSelectedSlot,
+        phase: save.phase,
+        log: (save.log || []).slice(),
+        turn: save.turn || 0,
+        stage: save.stage || 1,
+        scene: save.scene || 'castle'
+      };
+
+      this.s.currency.gold = save.currency.gold || 0;
+      if (save.currency.tokens) Object.assign(this.s.currency.tokens, save.currency.tokens);
+
+      const AD = window.AdventureDeck;
+      this.s.playerPile = new AD.AdventurePile('player', clone(save.playerPile.deck), save.playerPile.handLimit || 5);
+      this.s.playerPile.hand = clone(save.playerPile.hand) || [];
+      this.s.playerPile.discard = clone(save.playerPile.discard) || [];
+      this.s.discardTop = save.discardTop ? new AD.DiscardTop(clone(save.discardTop)) : null;
+
+      for (let r = 0; r < map.rows; r++) {
+        for (let c = 0; c < map.cols; c++) {
+          const room = map.get(r, c);
+          const d = save.rooms && save.rooms[r + ',' + c];
+          if (!room || !d) continue;
+          room.visited = !!d.visited;
+          room.cleared = !!d.cleared;
+          room.rewardClaimed = !!d.rewardClaimed;
+          room.beastTokenClaimed = !!d.beastTokenClaimed;
+          room.locked = !!d.locked;
+          room.stashedLoot = d.stashedLoot ? clone(d.stashedLoot) : null;
+          if (d.monsterName != null) room.monsterName = d.monsterName;
+          if (d.bossName != null) room.bossName = d.bossName;
+          room.reward = d.reward ? clone(d.reward) : null;
+          room.shopSlots = d.shopSlots ? clone(d.shopSlots) : null;
+          if (Array.isArray(d.blacksmithSlots)) room.blacksmithSlots = clone(d.blacksmithSlots);
+          if ('blacksmithTrophySlot' in d) room.blacksmithTrophySlot = d.blacksmithTrophySlot == null ? null : clone(d.blacksmithTrophySlot);
+          room.shopItems = d.shopItems ? clone(d.shopItems) : null;
+          room.shopSold = clone(d.shopSold) || {};
+          if (Array.isArray(d.doorCost) && d.doorCost.length === 2) room.doorCost = d.doorCost.slice(0, 2);
+          room.doorUnlocked = !!d.doorUnlocked;
+        }
+      }
+
+      this._syncBeastCap();
+      this._initItemDoorCosts(map);
+      this.emit('restore', '已恢复冒险进度', { character: save.characterName });
+      return this.s;
+    }
+
     _initItemDoorCosts(map) {
       if (!map || !map.grid) return;
       const AC = window.AdventureCurrency;
@@ -282,7 +363,8 @@
         }
         return;
       }
-      const monster = window.Monster.fromRegistry(this._pickMonsterName(room));
+      if (!room.monsterName) room.monsterName = this._pickMonsterName(room);
+      const monster = window.Monster.fromRegistry(room.monsterName);
       if (!monster) {
         this._log('普通房间未配置怪物，直接通过');
         room.cleared = true;
@@ -774,18 +856,17 @@
     }
 
     _rollAccessoryDrop() {
-      const allItems = window.AdventureRegistry.allItems();
-      if (!allItems.length) return null;
-      const accessories = allItems.filter(it => {
-        if (it.kind !== 'accessory') return false;
-        if (it.maxStacks) {
-          const current = (this.s.accessories || []).filter(a => a === it.name).length;
-          if (current >= it.maxStacks) return false;
-        }
-        return true;
-      });
+      const accessories = window.AdventureRegistry.itemsByKind('accessory');
       if (!accessories.length) return null;
-      return accessories[Math.floor(Math.random() * accessories.length)].name;
+      const owned = this.s.accessories || [];
+      const available = accessories.filter(it => {
+        if (!it.maxStacks) return true;
+        let count = 0;
+        for (const a of owned) if (a === it.name) count++;
+        return count < it.maxStacks;
+      });
+      if (!available.length) return null;
+      return available[Math.floor(Math.random() * available.length)].name;
     }
 
     _shopSlotPrice(index, slot) {
@@ -805,7 +886,11 @@
     }
 
     accessoryCount(name) {
-      return (this.s && Array.isArray(this.s.accessories) ? this.s.accessories : []).filter(a => a === name).length;
+      const arr = this.s && Array.isArray(this.s.accessories) ? this.s.accessories : null;
+      if (!arr) return 0;
+      let count = 0;
+      for (let i = 0; i < arr.length; i++) if (arr[i] === name) count++;
+      return count;
     }
 
     _initCombat(enemy, kind, enemy2 = null) {
@@ -2498,10 +2583,9 @@
     }
 
     _rollItemDrop() {
-      // 在可掉落的道具卡中均匀抽取（含战利白卡，不含配饰）
-      const allItems = window.AdventureRegistry.allItems();
-      if (!allItems.length) return null;
-      const dropable = allItems.filter(it => it.kind === 'consumable' || it.kind === 'trophyWhite');
+      const consumables = window.AdventureRegistry.itemsByKind('consumable');
+      const trophyWhites = window.AdventureRegistry.itemsByKind('trophyWhite');
+      const dropable = consumables.concat(trophyWhites);
       if (!dropable.length) return null;
       return dropable[Math.floor(Math.random() * dropable.length)].name;
     }

@@ -38,6 +38,7 @@
     html += '<div class="codex-category-card" data-cat="boss"><div class="codex-category-icon">👑</div><div class="codex-category-name">Boss图鉴</div></div>';
     html += '<div class="codex-category-card" data-cat="consumable"><div class="codex-category-icon">🧪</div><div class="codex-category-name">道具图鉴</div></div>';
     html += '<div class="codex-category-card" data-cat="accessory"><div class="codex-category-icon">💍</div><div class="codex-category-name">饰品图鉴</div></div>';
+    html += '<div class="codex-category-card" data-cat="trophyWhite"><div class="codex-category-icon">🃏</div><div class="codex-category-name">战利白卡</div></div>';
     html += '</div></div>';
     return html;
   }
@@ -184,6 +185,54 @@
     return html;
   }
 
+  function buildTrophyList() {
+    const allItems = window.AdventureRegistry ? window.AdventureRegistry.allItems() : [];
+    const items = allItems.filter(it => it.kind === 'trophyWhite');
+    let html = '<div class="char-detail-page">';
+    html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">战利白卡</h1></div>';
+    if (!items.length) {
+      html += '<div class="codex-empty">暂无数据</div>';
+    } else {
+      html += '<div class="char-detail-grid">';
+      for (const it of items) {
+        const icon = resolveIcon(it.icon);
+        const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-avatar codex-no-icon">${it.displayName[0]}</div>`;
+        html += `<div class="char-detail-card" data-name="${it.name}">${iconHtml}<div class="char-detail-name">${it.displayName}</div><div class="char-detail-type">${it.price || 0}金币</div></div>`;
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function buildTrophyDetail(name) {
+    const it = window.AdventureRegistry ? window.AdventureRegistry.getItem(name) : null;
+    if (!it) return '';
+    const icon = resolveIcon(it.icon);
+    const iconHtml = icon ? `<img class="char-detail-hero-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-hero-avatar codex-no-icon">${it.displayName[0]}</div>`;
+    const effectLabel = { burn: '灼伤', bleed: '流血', freeze: '冷冻', guard: '守护', disarm: '缴械' }[it.trophyEffect] || it.trophyEffect || '';
+
+    let html = '<div class="char-detail-page">';
+    html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; 战利白卡</button><h1 class="rules-title">战利白卡</h1></div>';
+    html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
+    html += `<div class="char-detail-hero-name">${it.displayName}</div>`;
+    html += `<div class="char-detail-hero-type">战利白卡 · ${it.price || 0}金币</div>`;
+    html += `<div class="char-detail-hero-passive">${it.description || ''}</div>`;
+    html += `</div></div>`;
+    if (it.beastTradeCost && it.beastTradeCost.length) {
+      html += '<div class="codex-stat-bonus"><div class="codex-stat-title">兑换消耗</div><div class="codex-stat-list">';
+      const beastNames = { huo: '火', shui: '水', cao: '草', ben: '土', wuneng: '万能' };
+      const costMap = {};
+      for (const t of it.beastTradeCost) costMap[t] = (costMap[t] || 0) + 1;
+      for (const [k, v] of Object.entries(costMap)) {
+        html += `<div class="codex-stat-row"><span class="codex-stat-key">${beastNames[k] || k}</span><span class="codex-stat-val">${v}</span></div>`;
+      }
+      html += '</div></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
   function buildSkillGrid(atk, def) {
     if (!atk.length && !def.length) return '';
     let html = '<div class="skill-grid">';
@@ -253,6 +302,7 @@
         else if (cat === 'boss') showBossList(container);
         else if (cat === 'consumable') showItemList(container, 'consumable');
         else if (cat === 'accessory') showItemList(container, 'accessory');
+        else if (cat === 'trophyWhite') showTrophyList(container);
       });
     });
   }
@@ -294,6 +344,19 @@
   function showItemDetail(container, name, kind) {
     container.innerHTML = buildItemDetail(name);
     document.getElementById('codex-back-list').addEventListener('click', () => showItemList(container, kind));
+  }
+
+  function showTrophyList(container) {
+    container.innerHTML = buildTrophyList();
+    document.getElementById('codex-back-cat').addEventListener('click', () => showCategoryPage(container));
+    container.querySelectorAll('.char-detail-card').forEach(el => {
+      el.addEventListener('click', () => showTrophyDetail(container, el.dataset.name));
+    });
+  }
+
+  function showTrophyDetail(container, name) {
+    container.innerHTML = buildTrophyDetail(name);
+    document.getElementById('codex-back-list').addEventListener('click', () => showTrophyList(container));
   }
 
   window.AdventureCodex = { show: showCategoryPage };

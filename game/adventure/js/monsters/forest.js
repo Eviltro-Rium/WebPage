@@ -20,9 +20,9 @@
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.forest = {
     '*': ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia'],
-    2: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia'],
-    3: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia'],
-    4: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia']
+    2: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha'],
+    3: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha'],
+    4: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha']
   };
 
   // ===== 丛林猴 =====
@@ -149,9 +149,9 @@
       if (v >= 1 && v <= 3) return 1;
       return 0;
     },
-    defendCounter(card) {
+    defendCounter(card, incoming) {
       const v = card.value;
-      if (v >= 1 && v <= 3) return v;
+      if (v >= 1 && v <= 3) return Math.ceil((incoming || 0) / 2);
       return 0;
     },
     stageMods: {
@@ -274,6 +274,41 @@
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ defendAllHeal: (card) => orig.defendAllHeal(card) + 1 }),
       4: orig => ({ defendHeal: (card) => orig.defendHeal(card) + 1 })
+    }
+  });
+
+  // ===== 食人鱼 =====
+  R.registerMonster({
+    name: 'ForestPiranha',
+    kind: '食人鱼',
+    hp: 25,
+    attack: 3,
+    defense: 1,
+    icon: '../icons/npc_icons/forest_piranha.png',
+    attackDamage(card, ctx) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return ((ctx && ctx.playerBleed) || 0) * 3;
+      if (v >= 4 && v <= 6) return 2;
+      return 0;
+    },
+    attackUnblockable(card) {
+      return card.value >= 4 && card.value <= 6;
+    },
+    attackBleed(card) {
+      return card.value >= 4 && card.value <= 6 ? 1 : 0;
+    },
+    defendCounter(card, incoming) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return Math.ceil((incoming || 0) / 2);
+      return 0;
+    },
+    defendBleed(card) {
+      return card.value >= 1 && card.value <= 3 ? 1 : 0;
+    },
+    stageMods: {
+
+      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
+      4: orig => ({ defendCounter: (card, incoming) => orig.defendCounter(card, incoming) + 1 })
     }
   });
 

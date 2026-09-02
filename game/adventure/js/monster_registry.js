@@ -277,7 +277,7 @@
         }
 
         if (typeof mod.defendCounter === 'function') {
-          const counter = mod.defendCounter(c);
+          const counter = mod.defendCounter(c, d);
           if (counter > 0 && hurt) {
             hurt(opponent, counter);
             applyPoison(); applyBleed(); applyDrawSelf(); applyLush(); applyAllExtras();
@@ -389,8 +389,12 @@
         if (b > 0) parts.push('施加' + b + '层流血');
       }
       if (typeof mod.defendCounter === 'function') {
-        const counter = mod.defendCounter(card);
-        if (counter > 0) parts.push('反击' + counter + '点伤害');
+        const c8 = mod.defendCounter(card, 8);
+        const c4 = mod.defendCounter(card, 4);
+        if (c8 > 0 || c4 > 0) {
+          if (c8 !== c4 && c8 === Math.ceil(8 / 2) && c4 === Math.ceil(4 / 2)) parts.push('反击一半伤害（向上取整）');
+          else parts.push('反击' + c8 + '点伤害');
+        }
       }
       if (typeof mod.defendGuard === 'function') {
         const g = mod.defendGuard(card);
@@ -444,10 +448,23 @@
     }
     let parts = [];
     let dmg = 0;
+    let bleedDmgDesc = null;
     const ladybugDrain = mod.name === 'ForestLadybug' && card.value >= 1 && card.value <= 3;
-    if (typeof mod.attackDamage === 'function') dmg = mod.attackDamage(card, ctx) || 0;
-    else if (card.isNumberCard) dmg = card.value || 0;
-    if (dmg > 0) {
+    if (typeof mod.attackDamage === 'function') {
+      const ctx0 = Object.assign({}, ctx, { playerBleed: 0 });
+      const ctx1 = Object.assign({}, ctx, { playerBleed: 1 });
+      dmg = mod.attackDamage(card, ctx0) || 0;
+      const dmg1 = mod.attackDamage(card, ctx1) || 0;
+      if (dmg !== dmg1) {
+        const perBleed = dmg1 - dmg;
+        bleedDmgDesc = (dmg > 0 ? '造成' + dmg + '点伤害+' : '') + '对手每有1层【流血】' + perBleed + '点伤害';
+      }
+    } else if (card.isNumberCard) dmg = card.value || 0;
+    if (bleedDmgDesc) {
+      let line = bleedDmgDesc;
+      if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) line += '（不可防御）';
+      parts.push(line);
+    } else if (dmg > 0) {
       let line = ladybugDrain ? '吸取' + dmg + '点生命' : '造成' + dmg + '点伤害';
       if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) {
         line += '（不可防御）';

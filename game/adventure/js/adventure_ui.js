@@ -70,6 +70,7 @@
           if (parts[i] === 'stage' && /^\d+$/.test(parts[i + 1])) stage = parseInt(parts[i + 1], 10);
           if (['castle', 'desert', 'forest', 'ocean', 'volcano'].includes(parts[i + 1])) scene = parts[i + 1];
         }
+        this.eng.mapName = mapName;
         this.eng.start(map, characterName, { gold: 0, stage: stage, scene: scene });
         this.render();
         if (window.cardIconsReady) window.cardIconsReady.then(() => this.render());
@@ -78,12 +79,55 @@
       }
     }
 
+    /** 优先恢复本地存档；无存档或角色不匹配时用默认地图开始新冒险 */
+    async restoreOrStart(defaultMapFn, characterName) {
+      const save = window.AdventureSave ? window.AdventureSave.load() : null;
+      if (save && save.characterName === characterName) {
+        try {
+          await this.restoreFromSave(save);
+          if (window.cardIconsReady) window.cardIconsReady.then(() => this.render());
+          return true;
+        } catch (e) {
+          if (window.AdventureSave) window.AdventureSave.clear();
+        }
+      }
+      await this.start(typeof defaultMapFn === 'function' ? defaultMapFn() : defaultMapFn, characterName);
+      return false;
+    }
+
+    async restoreFromSave(save) {
+      this.container.innerHTML = '<div class="adv-loading">恢复冒险进度…</div>';
+      const mapName = save.mapName;
+      let map;
+      if (window.AdventureMapData && window.AdventureMapData[mapName]) {
+        map = window.AdventureMap.fromCsvText(window.AdventureMapData[mapName]);
+      } else {
+        map = await window.AdventureMap.fromCsvUrl('maps/' + mapName + '.csv');
+      }
+      this.eng.mapName = mapName;
+      this.eng.restoreFromSave(save, map);
+      this.render();
+    }
+
     render() {
       this._stopTipsRotation();
       const snap = this.eng.snapshot();
       if (!snap) return;
 
       this._updateBackground(snap.scene);
+
+      if (window.AdventureSave && !this._test) {
+        if (snap.phase === window.AdventurePhase.GAME_OVER) {
+          window.AdventureSave.clear();
+          this._lastSaveKey = null;
+        } else if (window.AdventureSave.isSafePhase(snap.phase) && this.eng.mapName) {
+          const k = snap.phase + '|' + (snap.pos ? snap.pos.r + ',' + snap.pos.c : '') + '|' + snap.player.hp + '|' + snap.currency.gold + '|' + (snap.playerPile ? snap.playerPile.deckCount + ',' + snap.playerPile.discardCount : '');
+          if (k !== this._lastSaveKey) {
+            this._lastSaveKey = k;
+            window.AdventureSave.save(this.eng);
+          }
+        }
+      }
 
       if (snap.phase === window.AdventurePhase.GAME_OVER) {
         window.location.href = '../index.html';

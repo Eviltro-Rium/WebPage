@@ -855,7 +855,7 @@ class GameUI {
         else { this._attackModPromptOpen = false; this._attackModActive = false; }
 
         if (s.phase === 'GAME_OVER') this._showGameOver();
-        this._prevState = JSON.parse(JSON.stringify(s));
+        this._prevState = s;
     }
 
     _detectAndPlayAnimations(prev, curr) {
@@ -935,6 +935,7 @@ class GameUI {
         const prevKeys = this._prevBuffKeys || (this._prevBuffKeys = {});
         const prevSet = new Set(prevKeys[prefix] || []);
         const currentKeys = [];
+        const currentStacks = {};
         let html = '';
         const buffs = [
             { key: 'burn', stacks: ch.burn, icon: 'burn', colorClass: 'burn-buff' },
@@ -957,6 +958,7 @@ class GameUI {
         for (const b of buffs) {
             if (b.stacks > 0) {
                 currentKeys.push(b.key);
+                currentStacks[b.key] = b.stacks;
                 const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.png`);
                 const title = b.label || ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', blind: '致盲', guard: '守护', fly: '飞翔', lush: '茂盛', crit: '暴击', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
                 const animCls = !prevSet.has(b.key) ? ' icon-appear' : '';
@@ -964,8 +966,18 @@ class GameUI {
                 html += `<div class="buff-icon-wrap ${specialClass}${animCls}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}${b.label ? `<span class="buff-name">${b.label}</span>` : ''}</div>`;
             }
         }
-        const removed = [...prevSet].filter(k => !currentKeys.includes(k));
+        const currentSet = new Set(currentKeys);
+        const removed = [...prevSet].filter(k => !currentSet.has(k));
+        const prevStacks = (this._prevBuffStacks || (this._prevBuffStacks = {}))[prefix] || {};
+        let stacksChanged = currentKeys.length !== prevSet.size;
+        if (!stacksChanged) {
+            for (const k of currentKeys) {
+                if (!prevSet.has(k) || prevStacks[k] !== currentStacks[k]) { stacksChanged = true; break; }
+            }
+        }
         prevKeys[prefix] = currentKeys;
+        (this._prevBuffStacks || (this._prevBuffStacks = {}))[prefix] = currentStacks;
+        if (!stacksChanged && !removed.length) return;
         if (removed.length) {
             container.querySelectorAll('.buff-icon-wrap').forEach(el => {
                 const title = el.getAttribute('title');
@@ -984,6 +996,22 @@ class GameUI {
         const container = document.getElementById('player-hand');
         container.innerHTML = '';
         if (!s.playerHand) return;
+        container.ondblclick = async (e) => {
+            const cv = e.target && e.target.closest ? e.target.closest('[data-index]') : null;
+            if (!cv || cv.classList.contains('disabled')) return;
+            const phase = this.state.phase;
+            if (phase !== 'PLAYER_PLAY' && phase !== 'PLAYER_DEFEND') return;
+            if (this.state.needColorChoice) return;
+            if (phase === 'PLAYER_DEFEND' && this.state.unblockDefend) return;
+            this._npcHandFocusIndex = -1;
+            const idx = parseInt(cv.dataset.index);
+            if (this.state.selectedCard !== idx) {
+                const selResult = await Bridge.call('selectCard', { index: idx });
+                if (selResult && !selResult.error) { this.state = selResult; this.updateDisplay(); }
+            }
+            const result = await Bridge.call(phase === 'PLAYER_DEFEND' ? 'doDefend' : 'doPlay');
+            if (result && !result.error) { this.state = result; this.updateDisplay(); }
+        };
         const hideTrailing = this._hideTrailingCount(options, 'player');
         const canInteract = ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
             'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD'].includes(s.phase);
@@ -1002,6 +1030,7 @@ class GameUI {
                 const result = await Bridge.call('selectCard', { index: parseInt(cv.dataset.index) });
                 if (result && !result.error) { this.state = result; this.updateDisplay(); }
             });
+
             if (sel && canInteract) {
                 cv.addEventListener('mouseenter', () => {
                     if (this._npcHandFocusIndex >= 0) return;
@@ -1883,7 +1912,7 @@ class GameUI {
         const quickDecision = this._isDecisionAction(method);
         this._showActionPending(method);
         try {
-            this._prevState = this.state ? JSON.parse(JSON.stringify(this.state)) : null;
+            this._prevState = this.state;
             const result = await Bridge.call(method, params);
             if (result && !result.error) {
                 this.state = result;
