@@ -1072,6 +1072,12 @@ body {
 }
 .card-canvas.disabled { opacity: 0.5; cursor: not-allowed; }
 .card-canvas.disabled:hover { transform: none; filter: none; box-shadow: 0 1px 2px rgba(15,23,42,0.24), 0 5px 14px rgba(15,23,42,0.18); }
+.card-canvas.card-playable { box-shadow: 0 0 10px rgba(168,85,247,0.5), inset 0 0 8px rgba(168,85,247,0.25), 0 4px 14px rgba(15,23,42,0.22); animation: cardPlayablePulse 1.2s ease-in-out infinite; }
+.card-canvas.card-playable:hover { box-shadow: 0 0 16px rgba(168,85,247,0.65), inset 0 0 12px rgba(168,85,247,0.35), 0 8px 20px rgba(15,23,42,0.28); }
+.card-canvas.card-unplayable { opacity: 0.62; }
+.card-canvas.card-unplayable:hover { transform: none; filter: none; box-shadow: 0 1px 2px rgba(15,23,42,0.24), 0 5px 14px rgba(15,23,42,0.18); }
+.card-canvas.card-playable.selected { box-shadow: 0 0 0 2px rgba(248,250,252,0.92), 0 0 0 4px rgba(168,85,247,0.62), inset 0 0 8px rgba(168,85,247,0.25), 0 10px 22px rgba(15,23,42,0.22); }
+@keyframes cardPlayablePulse { 0%, 100% { box-shadow: 0 0 8px rgba(168,85,247,0.4), inset 0 0 6px rgba(168,85,247,0.2), 0 4px 14px rgba(15,23,42,0.22); } 50% { box-shadow: 0 0 14px rgba(168,85,247,0.6), inset 0 0 10px rgba(168,85,247,0.32), 0 4px 14px rgba(15,23,42,0.22); } }
 
 .card-back-canvas {
     border-radius: 11px;

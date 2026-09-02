@@ -1021,6 +1021,8 @@ class GameUI {
             const sel = i === s.selectedCard || ((s.selectedCards || []).includes(i));
             const cv = renderCard(card, CARD_W, CARD_H, sel);
             if (!canInteract) cv.classList.add('disabled');
+            else if (s.legalHand && s.legalHand[i]) cv.classList.add('card-playable');
+            else if (s.legalHand && !s.legalHand[i]) cv.classList.add('card-unplayable');
             if (hideTrailing && i >= s.playerHand.length - hideTrailing) cv.classList.add('card-draw-pending');
             cv.dataset.index = i;
             cv.dataset.cardId = cardId(card);
