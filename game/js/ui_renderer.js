@@ -45,9 +45,12 @@ _hideZoneDesc(id) {
 _drawDeckIcon(count) {
     const c = document.getElementById('deck-icon');
     if (!c) return;
+    const normalizedCount = Number(count) || 0;
+    if (c.dataset.deckCount === String(normalizedCount)) return;
+    c.dataset.deckCount = String(normalizedCount);
     const g = c.getContext('2d');
     g.clearRect(0, 0, 40, 52);
-    const layers = Math.min(3, Math.ceil(count / 20));
+    const layers = Math.min(3, Math.ceil(normalizedCount / 20));
     for (let i = layers - 1; i >= 0; i--) {
         const ox = i * 2, oy = i * 2;
         g.fillStyle = i === 0 ? '#4a5568' : '#2d3748';
@@ -56,10 +59,10 @@ _drawDeckIcon(count) {
         g.roundRect(ox + 2, oy + 2, 32, 44, 3);
         g.fill(); g.stroke();
     }
-    if (count > 0) {
+    if (normalizedCount > 0) {
         g.fillStyle = '#a0aec0'; g.font = 'bold 11px sans-serif';
         g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.fillText(count, 18, 24);
+        g.fillText(normalizedCount, 18, 24);
     } else {
         g.fillStyle = '#4a5568'; g.font = '9px sans-serif';
         g.textAlign = 'center'; g.textBaseline = 'middle';

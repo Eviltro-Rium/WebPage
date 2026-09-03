@@ -134,6 +134,12 @@ function cardId(card) {
     return `${card.color}_${card.value}_${card.isBlack}_${card.isWhite}_${card.potion}_${card.magic}_${card.greenMagic}_${card.magicColor || ''}_${card.purify}_${card.superPurify}_${card.swapHand}_${card.shuffleToDeck}_${card.drawThree}_${!!card.trophyWhite}_${card.trophyName || ''}`;
 }
 
+// Rendering cache key: unlike cardId/cardMatchKey, chosenColor is included
+// because it changes the visible face of black/white cards.
+function cardVisualKey(card) {
+    return card ? `${cardId(card)}_${card.chosenColor || ''}` : '';
+}
+
 /** 匹配用手牌身份（忽略 chosenColor，避免 AI 出牌染色后找不到源牌） */
 function cardMatchKey(card) {
     if (!card) return '';
@@ -928,11 +934,16 @@ class GameUI {
     }
 
     _updateHpBar(prefix, ch) {
-        const pct = Math.max(0, (ch.hp / ch.maxHp) * 100);
+        if (!ch) return;
+        const key = `${ch.hp}/${ch.maxHp}`;
         const bar = document.getElementById(`${prefix}-hp-bar`);
+        const text = document.getElementById(`${prefix}-hp-text`);
+        if (!bar || !text || bar.dataset.hpKey === key) return;
+        bar.dataset.hpKey = key;
+        const pct = Math.max(0, (ch.hp / ch.maxHp) * 100);
         bar.style.width = pct + '%';
         bar.className = 'hp-bar-inner' + (pct <= 25 ? ' critical' : pct <= 50 ? ' low' : '');
-        document.getElementById(`${prefix}-hp-text`).textContent = `${ch.hp}/${ch.maxHp}`;
+        text.textContent = key;
     }
 
     _updateBuffs(prefix, ch) {
@@ -1024,13 +1035,26 @@ class GameUI {
     _renderPlayerHand(options = {}) {
         const s = this.state;
         const container = document.getElementById('player-hand');
-        container.innerHTML = '';
-        if (!s.playerHand) return;
-        container.ondblclick = null;
+        if (!container || !s || !s.playerHand) return;
         const hideTrailing = this._hideTrailingCount(options, 'player');
         const canInteract = ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
             'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD'].includes(s.phase);
         const isDefend = s.phase === 'PLAYER_DEFEND';
+        const handKey = JSON.stringify([
+            s.phase,
+            s.selectedCard,
+            s.selectedCards || [],
+            s.needColorChoice,
+            s.unblockDefend,
+            s.legalHand || null,
+            hideTrailing,
+            (s.playerHand || []).map(cardVisualKey),
+            (s.chanFiveCards || []).map(cardVisualKey)
+        ]);
+        if (container.dataset.handRenderKey === handKey && container.children.length === s.playerHand.length) return;
+        container.dataset.handRenderKey = handKey;
+        container.innerHTML = '';
+        container.ondblclick = null;
         for (let i = 0; i < s.playerHand.length; i++) {
             const card = s.playerHand[i];
             const sel = i === s.selectedCard || ((s.selectedCards || []).includes(i));
@@ -1204,12 +1228,22 @@ class GameUI {
     _renderAIHand(options = {}) {
         const s = this.state;
         const container = document.getElementById('ai-hand');
-        container.innerHTML = '';
+        if (!container || !s) return;
         const canSelect = s.phase === 'OPPONENT_CARD_CHOICE' || (s.phase === 'PLAYER_SEVEN_CHOICE' && !s.chanFourSwapMode && !s.chanSevenKeepMode) || (s.phase === 'SAIKI_THREE_CHOICE' && !s.saikiThreeDrawn);
         const handSize = s.aiHandSize || 0;
         const hideTrailing = this._hideTrailingCount(options, 'ai');
         const revealMode = !!s.aiHand && Array.isArray(s.aiHand);
         const canPeekSkill = !!(s.isAdventure && revealMode && (s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND'));
+        const aiHandKey = JSON.stringify([
+            s.phase, handSize, revealMode, canSelect, s.selectedAICard,
+            this._npcHandFocusIndex, hideTrailing,
+            s.chanSevenKeepMode, s.chanSevenChosenCard ? cardId(s.chanSevenChosenCard) : null,
+            revealMode ? s.aiHand.map(cardVisualKey) : null
+        ]);
+        const expectedChildren = handSize + (s.chanSevenKeepMode && s.chanSevenChosenCard ? 1 : 0);
+        if (container.dataset.handRenderKey === aiHandKey && container.children.length === expectedChildren) return;
+        container.dataset.handRenderKey = aiHandKey;
+        container.innerHTML = '';
         if (!canPeekSkill) this._npcHandFocusIndex = -1;
         else if (this._npcHandFocusIndex >= handSize) this._npcHandFocusIndex = -1;
 
@@ -1301,12 +1335,27 @@ class GameUI {
         const bar = document.getElementById('adventure-item-bar');
         if (!bar) return;
         const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine && window.AdventureCombatBridge.activeEngine()._adventureEngine;
-        if (!s.isAdventure || !advEngine) { bar.style.display = 'none'; return; }
+        if (!s.isAdventure || !advEngine) {
+            bar.style.display = 'none';
+            bar.dataset.itemBarKey = 'hidden';
+            return;
+        }
         const snap = advEngine.snapshot();
         const consumables = snap.consumables || [];
         const slots = snap.consumableSlots || 6;
-        bar.style.display = 'flex';
         const inAttackMod = s.phase === 'ATTACK_MOD_CHOICE';
+        const itemBarKey = JSON.stringify([
+            s.phase, s.needColorChoice, s.busy, s.bindUsedThisTurn,
+            s.pendingAttack ? [s.pendingAttack.damage, s.pendingAttack.unblock] : null,
+            s.player && s.player.blind,
+            this._selectedCombatItem, this._attackModSelectedItem,
+            slots,
+            consumables.map(item => item ? [item.name, item.displayName, item.description, item.icon] : null),
+            (snap.accessories || []).map(item => item ? [item.name, item.displayName, item.description, item.icon] : null)
+        ]);
+        if (bar.dataset.itemBarKey === itemBarKey) return;
+        bar.dataset.itemBarKey = itemBarKey;
+        bar.style.display = 'flex';
 
         let html = '<div class="adv-item-bar-title">道具</div><div class="adv-combat-item-slots">';
         const prevItems = this._prevItemNames || (this._prevItemNames = []);
@@ -1489,7 +1538,19 @@ class GameUI {
     _updateAdventureInfo(s) {
         const bar = document.getElementById('adventure-info-bar');
         if (!bar) return;
-        if (!s.isAdventure) { bar.style.display = 'none'; return; }
+        if (!s.isAdventure) {
+            bar.style.display = 'none';
+            bar.dataset.infoKey = 'hidden';
+            return;
+        }
+        const infoKey = JSON.stringify([
+            s.adventureGold,
+            s.adventureBeastTokens || {},
+            s.aiDeckCount,
+            s.aiDiscardCount
+        ]);
+        if (bar.dataset.infoKey === infoKey) return;
+        bar.dataset.infoKey = infoKey;
         bar.style.display = 'flex';
         const AC = window.AdventureCurrency;
         let html = '';
@@ -1521,6 +1582,10 @@ class GameUI {
     _renderDiscardTop() {
         const s = this.state;
         const container = document.getElementById('discard-top');
+        if (!container || !s) return;
+        const key = s.discardTop ? cardVisualKey(s.discardTop) : 'empty';
+        if (container.dataset.cardKey === key) return;
+        container.dataset.cardKey = key;
         container.innerHTML = '';
         if (s.discardTop) {
             const cv = renderCard(s.discardTop, CARD_W - 10, CARD_H - 14, false);

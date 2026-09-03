@@ -198,9 +198,21 @@
     };
     let aiEl=document.getElementById('ai-hand');
     if(aiEl){
-      aiEl.innerHTML='';
+      const size=s.ai.alive?(s.aiHandSize||0):0;
+      const handCards=revealFace&&Array.isArray(s.aiHand)?s.aiHand:null;
+      const aiKey=JSON.stringify([
+        s.ai.alive, size, revealFace, canSelect, selectedTarget, s.selectedAICard,
+        leonZeroDiscard, hideWho, hideTrailing,
+        handCards?handCards.map(c=>cardVisualKey(c)):null
+      ]);
+      const expectedChildren=s.ai.alive?size:1;
+      if(leonZeroDiscard)leonZeroOffset=size;
+      if(aiEl.dataset.handRenderKey===aiKey&&aiEl.children.length===expectedChildren){
+        // Keep the cached DOM/listeners when only HP, buffs or other UI data changed.
+      } else {
+        aiEl.dataset.handRenderKey=aiKey;
+        aiEl.innerHTML='';
       if(s.ai.alive){
-        const size=s.aiHandSize||0;
         const handCards=revealFace&&Array.isArray(s.aiHand)?s.aiHand:null;
         for(let i=0;i<size;i++){
           let cv;
@@ -214,16 +226,27 @@
           decorateSelectable(cv,i,'ai');
           aiEl.appendChild(cv);
         }
-        if(leonZeroDiscard)leonZeroOffset=s.aiHandSize||0;
       }else{
         aiEl.innerHTML='<div style="color:#ef4444;font-size:0.8rem;padding:8px">'+s.ai.name+' 已出局</div>';
+      }
       }
     }
     let ai2El=document.getElementById('ai2-hand');
     if(ai2El&&s.ai2){
-      ai2El.innerHTML='';
+      const size=s.ai2.alive?(s.ai2HandSize||0):0;
+      const handCards=revealFace&&Array.isArray(s.ai2Hand)?s.ai2Hand:null;
+      const ai2Key=JSON.stringify([
+        s.ai2.alive, size, revealFace, canSelect, selectedTarget, s.selectedAICard,
+        leonZeroDiscard, hideWho, hideTrailing,
+        handCards?handCards.map(c=>cardVisualKey(c)):null
+      ]);
+      const expectedChildren=s.ai2.alive?size:1;
+      if(ai2El.dataset.handRenderKey===ai2Key&&ai2El.children.length===expectedChildren){
+        // Cached hand is still valid.
+      } else {
+        ai2El.dataset.handRenderKey=ai2Key;
+        ai2El.innerHTML='';
       if(s.ai2.alive){
-        const size=s.ai2HandSize||0;
         const handCards=revealFace&&Array.isArray(s.ai2Hand)?s.ai2Hand:null;
         for(let i=0;i<size;i++){
           let cv;
@@ -241,6 +264,7 @@
         }
       }else{
         ai2El.innerHTML='<div style="color:#ef4444;font-size:0.8rem;padding:8px">'+s.ai2.name+' 已出局</div>';
+      }
       }
     }
   };

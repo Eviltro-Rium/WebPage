@@ -752,7 +752,11 @@
     var homePos = new THREE.Vector3(HOME_POS.x, HOME_POS.y, HOME_POS.z);
     var homeLook = new THREE.Vector3(HOME_LOOK.x, HOME_LOOK.y, HOME_LOOK.z);
 
-    var pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    // Rendering at the physical 2x DPR on Retina screens quadruples the
+    // fragment workload while making little visual difference for this full
+    // viewport background.  A 1.5x cap keeps the scene crisp and lowers GPU
+    // usage substantially; mobile devices use an even lighter target.
+    var pixelRatio = Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 1.5);
     var renderer = new THREE.WebGLRenderer({
       canvas: canvas,
       antialias: pixelRatio < 1.5,
