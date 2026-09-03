@@ -30,6 +30,11 @@ async _ackEvents(events) {
 
 
 async _consumeEvents(events, options = {}) {
+    // State-diff animations are only a legacy fallback for bridge snapshots
+    // that contain no playable events. Once an event batch is played, the
+    // event handlers are the single source of floating feedback; the next
+    // render must not replay the same transition from prev/current state.
+    if (events && events.length) this._skipStateDiffAnimations = true;
     const wasConsumingEvents = this._isConsumingEvents;
     this._isConsumingEvents = true;
     let pending = [...(events || [])];

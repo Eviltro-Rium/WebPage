@@ -331,8 +331,14 @@
       const target=this.s[targetKey];
       let cleared=0,desc;
       if(choice==='opponentBuff'){
-        cleared=(target.guard||0)+(target.fly||0)+(target.crit||0)+(target.lush||0)+['chaos_red','chaos_yellow','chaos_blue','chaos_green'].filter(k=>target[k]).length;
+        const lushStacks=Math.max(0,Number(target.lush)||0);
+        cleared=(target.guard||0)+(target.fly||0)+(target.crit||0)+lushStacks+['chaos_red','chaos_yellow','chaos_blue','chaos_green'].filter(k=>target[k]).length;
         this.clearPositiveBuffs(target);
+        // Keep the special adventure resource in sync even when an older
+        // adapter supplies its own clearPositiveBuffs implementation.
+        target.lush=0;
+        if(target.buffs&&typeof target.buffs==='object')target.buffs.lush=0;
+        if(lushStacks>0)this.emit('buff',`-${lushStacks}[茂盛]`,null,{who:targetKey,target:targetKey,kind:'lush',stacks:0});
         desc='清除对手所有正面buff';
       }else if(choice==='debuff'){
         cleared=(this.s.player.burn||0)+(this.s.player.bleed||0)+(this.s.player.poison||0)+(this.s.player.frozen?1:0)+(this.s.player.bomb||0);
@@ -993,7 +999,7 @@
 
   Engine.prototype._startAISequence1v2=function(){
     this.fillHands1v2(true);
-    if(this.s.player.burn){let dmg=this.s.player.burn;this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',target:'player',amount:dmg,kind:'burn'});this.hurt(this.s.player,dmg)}}
+    if(this.s.player.burn){let dmg=this.s.player.burn;this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',target:'player',amount:dmg,kind:'burn'});this.s.player.hp=Math.max(0,this.s.player.hp-dmg);this.s.player.alive=this.s.player.hp>0}}
     this.check();if(this.s.phase==='GAME_OVER')return this.state();
     this.s.currentAITarget=this.s.ai.alive?0:1;let key=this._curAI();
     this.s.phase=key==='ai2'?'AI2_TURN':'AI_TURN';this.s.busy=true;this.s.activeAttacker=key;

@@ -182,7 +182,7 @@
     attackLush(card) {
       return card.value >= 4 && card.value <= 6 ? 1 : 0;
     },
-    attackHeal(card, ctx) {
+    attackDrain(card, ctx) {
       const v = card.value;
       if (v >= 1 && v <= 3) return 1 + ((ctx && ctx.attackerLush) || 0);
       return 0;

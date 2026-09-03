@@ -332,10 +332,10 @@
     name: 'EnergyShield',
     displayName: '能量盾',
     kind: 'accessory',
-    description: '进攻开始前获得2层守护（可叠加，最多2个）',
+    description: '进攻开始前获得1层守护（可叠加，最多2个）',
     icon: ICON + 'energy_shield.png',
     beastTradeCost: ['cao', 'cao', 'cao', 'ben', 'ben'],
-    onAttackStartGuard: 2,
+    onAttackStartGuard: 1,
     maxStacks: 2
   });
 

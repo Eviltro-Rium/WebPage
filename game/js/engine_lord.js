@@ -149,7 +149,7 @@
 
   E.prototype._lordStartNextAI=function(){
     this.fillHands1v2(true);
-    if(this.s.player.burn){let dmg=this.s.player.burn;this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',target:'player',amount:dmg,kind:'burn'});this.hurt(this.s.player,dmg)}}
+    if(this.s.player.burn){let dmg=this.s.player.burn;this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',target:'player',amount:dmg,kind:'burn'});this.s.player.hp=Math.max(0,this.s.player.hp-dmg);this.s.player.alive=this.s.player.hp>0}}
     this.check();if(this.s.phase==='GAME_OVER')return this.state();
 
     let idx=this.s.lordPlayerTargetIdx||0;

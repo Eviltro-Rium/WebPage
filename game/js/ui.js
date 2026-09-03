@@ -840,7 +840,9 @@ class GameUI {
         document.getElementById('ai-hp-section').classList.toggle('active-attacker', activeAttacker === 'ai');
 
 
-        if (prev) this._detectAndPlayAnimations(prev, s);
+        const skipStateDiffAnimations = !!this._skipStateDiffAnimations;
+        this._skipStateDiffAnimations = false;
+        if (prev) this._detectAndPlayAnimations(prev, s, { skipEventBacked: skipStateDiffAnimations });
 
         this._renderPlayerHand();
         this._renderAIHand();
@@ -894,13 +896,14 @@ class GameUI {
         this._prevState = s;
     }
 
-    _detectAndPlayAnimations(prev, curr) {
+    _detectAndPlayAnimations(prev, curr, options = {}) {
         // Draw fly-ins are owned exclusively by 'draw' events. Speculative
         // detection here raced with hand re-render and caused duplicate cards.
         this._animatedPlayerDraws = 0;
 
+        const skipEventBacked = !!options.skipEventBacked;
         if (curr.player && prev.player) {
-            if (!curr.isAdventure && curr.player.guard > prev.player.guard) this.playFloatingText(`+${curr.player.guard - prev.player.guard}[守护]`, '#00bcd4', 'player');
+            if (!skipEventBacked && !curr.isAdventure && curr.player.guard > prev.player.guard) this.playFloatingText(`+${curr.player.guard - prev.player.guard}[守护]`, '#00bcd4', 'player');
             if (curr.player.bloodthirst && !prev.player.bloodthirst) this.playFloatingText('[嗜血触发]', '#ff315f', 'player');
             if (!curr.player.bloodthirst && prev.player.bloodthirst) this.playFloatingText('[退出嗜血]', '#f5b6c5', 'player');
             if (curr.player.chaos_red && !prev.player.chaos_red) this.playFloatingText('[混沌-红]', '#ff4444', 'player');
@@ -913,7 +916,7 @@ class GameUI {
             if (!curr.player.chaos_green && prev.player.chaos_green) this.playFloatingText('[清除混沌绿]', '#88ee88', 'player');
         }
         if (curr.ai && prev.ai) {
-            if (!curr.isAdventure && curr.ai.guard > prev.ai.guard) this.playFloatingText(`+${curr.ai.guard - prev.ai.guard}[守护]`, '#00bcd4', 'ai');
+            if (!skipEventBacked && !curr.isAdventure && curr.ai.guard > prev.ai.guard) this.playFloatingText(`+${curr.ai.guard - prev.ai.guard}[守护]`, '#00bcd4', 'ai');
             if (curr.ai.bloodthirst && !prev.ai.bloodthirst) this.playFloatingText('[嗜血触发]', '#ff315f', 'ai');
             if (!curr.ai.bloodthirst && prev.ai.bloodthirst) this.playFloatingText('[退出嗜血]', '#f5b6c5', 'ai');
             if (curr.ai.chaos_red && !prev.ai.chaos_red) this.playFloatingText('[混沌-红]', '#ff4444', 'ai');

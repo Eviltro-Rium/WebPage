@@ -984,7 +984,7 @@
       if (!this._hasAccessory('EnergyShield')) return;
       this._energyShieldAppliedThisTurn = true;
       const def = window.AdventureRegistry && window.AdventureRegistry.getItem('EnergyShield');
-      const perShield = (def && def.onAttackStartGuard) || 2;
+      const perShield = (def && def.onAttackStartGuard) || 1;
       const guard = perShield * this._accessoryCount('EnergyShield');
       this.s.player.guard = Math.min(5, (this.s.player.guard || 0) + guard);
       this.emit('desc', '能量盾：获得' + guard + '层守护');
