@@ -192,7 +192,7 @@
     // ordinary white/item cards without changing the card's color treatment.
     if (card.trophyWhite) {
       g.strokeStyle = '#D4A72C';
-      g.lineWidth = 2;
+      g.lineWidth = 4;
       roundRect(g, 2, 2, w - 4, h - 4, Math.max(4, r - 2));
       g.stroke();
     }

@@ -171,6 +171,7 @@
       return this._apiAction('chooseGuard',{stacks:choice});
     });
     else if(s.pendingDialog==='flyRetry')this.dialogs.showFlyRetryChoice(s.player,s.pendingGuardDamage,again=>this._apiAction('chooseFlyContinue',{again}));
+    else if(s.pendingDialog==='mozeSeven')this.dialogs.showMozeSevenChoice(choice=>this._apiAction('chooseMozeSeven',{choice}));
     if(s.phase==='ATTACK_MOD_CHOICE')this._ensureAttackModChoicePrompt(s);
     else{this._attackModPromptOpen=false;this._attackModActive=false;}
     if(s.phase==='GAME_OVER')this._showGameOver();

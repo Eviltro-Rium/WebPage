@@ -40,6 +40,11 @@ context.window = context;
 
 for (const file of [
   ...characterFiles,
+  path.join(gameRoot, 'js', 'combat_events.js'),
+  path.join(gameRoot, 'js', 'engine_piles.js'),
+  path.join(gameRoot, 'js', 'engine_status.js'),
+  path.join(gameRoot, 'js', 'engine_damage.js'),
+  path.join(gameRoot, 'js', 'engine_modes.js'),
   path.join(gameRoot, 'js', 'engine.js'),
   ...aiFiles
 ]) {

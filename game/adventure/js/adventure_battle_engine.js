@@ -1142,7 +1142,7 @@
         let dmg = this.s.ai.burn;
         this.s.ai.burn--;
         if (this.name(this.s.ai) !== 'Leon') {
-          this.emit('burnSettle', `-${dmg}[灼烧]，-1[灼烧层数]`, null, { who: 'ai', amount: dmg });
+          this.emit('burnSettle', `-${dmg}[灼烧]，-1[灼烧层数]`, null, { who: 'ai', target: 'ai', amount: dmg, kind: 'burn' });
           this.s.ai.hp = Math.max(0, this.s.ai.hp - dmg);
           this.s.ai.alive = this.s.ai.hp > 0;
         }

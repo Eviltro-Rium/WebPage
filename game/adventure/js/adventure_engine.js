@@ -1011,7 +1011,7 @@
           const amount = Math.min(enemy.lush, 2);
           const before = enemy.hp;
           enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
-          this.emit('heal', '+' + (enemy.hp - before) + '[生命]', null, { who: 'enemy', amount: enemy.hp - before, kind: 'passive' });
+          this.emit('heal', '+' + (enemy.hp - before) + '[生命]', null, { who: 'enemy', target: 'enemy', amount: enemy.hp - before, kind: 'passive' });
         }
         if (typeof enemy.attackTurnStart === 'function') enemy.attackTurnStart(this, enemy, 'enemy');
       }
@@ -1028,7 +1028,7 @@
         const lush = Number(enemy.attackLush(card)) || 0;
         if (lush > 0) {
           enemy.lush = Math.min(2, (enemy.lush || 0) + lush);
-          this.emit('buff', '+' + lush + '[茂盛]', null, { who: 'enemy', kind: 'lush', stacks: enemy.lush });
+            this.emit('buff', '+' + lush + '[茂盛]', null, { who: 'enemy', target: 'enemy', kind: 'lush', stacks: enemy.lush });
         }
       }
       if (typeof enemy.attackHeal === 'function') {
@@ -1042,7 +1042,7 @@
         if (amount > 0) {
           const before = enemy.hp;
           enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
-          this.emit('heal', '+' + (enemy.hp - before) + '[生命]', null, { who: 'enemy', amount: enemy.hp - before, kind: 'skill' });
+          this.emit('heal', '+' + (enemy.hp - before) + '[生命]', null, { who: 'enemy', target: 'enemy', amount: enemy.hp - before, kind: 'skill' });
           this._log(ownerLabel + '恢复' + (enemy.hp - before) + '点生命');
         }
       }
@@ -2023,7 +2023,8 @@
       const prev = target.burn || 0;
       target.burn = Math.min(4, prev + n);
       this._log((target === this.s.player ? '玩家' : '敌方') + '灼烧+' + n + '（当前' + target.burn + '层）');
-      this.emit('buff', '+' + n + '[灼烧]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'burn', stacks: target.burn });
+      const targetKey = target === this.s.player ? 'player' : 'enemy';
+      this.emit('buff', '+' + n + '[灼烧]', null, { who: targetKey, target: targetKey, kind: 'burn', stacks: target.burn });
     }
 
     bleed(target, n) {
@@ -2031,7 +2032,8 @@
       const prev = target.bleed || 0;
       target.bleed = Math.min(2, prev + n);
       this._log((target === this.s.player ? '玩家' : '敌方') + '流血+' + n + '（当前' + target.bleed + '层）');
-      this.emit('buff', '+' + n + '[流血]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'bleed', stacks: target.bleed });
+      const targetKey = target === this.s.player ? 'player' : 'enemy';
+      this.emit('buff', '+' + n + '[流血]', null, { who: targetKey, target: targetKey, kind: 'bleed', stacks: target.bleed });
     }
 
     poison(target, n) {
@@ -2039,21 +2041,24 @@
       const prev = target.poison || 0;
       target.poison = Math.min(3, prev + n);
       this._log((target === this.s.player ? '玩家' : '敌方') + '中毒+' + n + '（当前' + target.poison + '层）');
-      this.emit('buff', '+' + n + '[中毒]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'poison', stacks: target.poison });
+      const targetKey = target === this.s.player ? 'player' : 'enemy';
+      this.emit('buff', '+' + n + '[中毒]', null, { who: targetKey, target: targetKey, kind: 'poison', stacks: target.poison });
     }
 
     freeze(target) {
       if (target === this.s.player && this.s.player.name === 'Serenity') return;
       target.frozen = true;
       this._log((target === this.s.player ? '玩家' : '敌方') + '被冷冻');
-      this.emit('buff', '[冷冻]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'freeze', stacks: 1 });
+      const targetKey = target === this.s.player ? 'player' : 'enemy';
+      this.emit('buff', '[冷冻]', null, { who: targetKey, target: targetKey, kind: 'freeze', stacks: 1 });
     }
 
     addGuard(target, n) {
       if (n <= 0) return;
       target.guard = Math.min(5, (target.guard || 0) + n);
       this._log((target === this.s.player ? '玩家' : '敌方') + '守护+' + n + '（当前' + target.guard + '层）');
-      this.emit('buff', '+' + n + '[守护]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'guard', stacks: target.guard });
+      const targetKey = target === this.s.player ? 'player' : 'enemy';
+      this.emit('buff', '+' + n + '[守护]', null, { who: targetKey, target: targetKey, kind: 'guard', stacks: target.guard });
     }
 
     addCrit(n) {
@@ -2077,7 +2082,8 @@
       target.blind = 0;
       target.frozen = false;
       this._log((target === this.s.player ? '玩家' : '敌方') + 'debuff已清除');
-      this.emit('buff', '清除debuff', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'clearDebuffs' });
+      const targetKey = target === this.s.player ? 'player' : 'enemy';
+      this.emit('buff', '清除debuff', null, { who: targetKey, target: targetKey, kind: 'clearDebuffs' });
     }
 
     _clearPlayerPositiveBuffs() {
@@ -2101,19 +2107,22 @@
         target.burn--;
         target.hp = Math.max(0, target.hp - dmg);
         this._log(who + '灼烧结算：-' + dmg + '生命，灼烧层数-1');
-        this.emit('buffSettle', '-' + dmg + '[灼烧]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
+        const targetKey = target === this.s.player ? 'player' : 'enemy';
+        this.emit('buffSettle', '-' + dmg + '[灼烧]', null, { who: targetKey, target: targetKey, amount: dmg, kind: 'burn' });
       }
       if (target.bleed > 0) {
         const dmg = target.bleed;
         target.bleed--;
         target.hp = Math.max(0, target.hp - dmg);
         this._log(who + '流血结算：-' + dmg + '生命，流血层数-1');
-        this.emit('bleedSettle', '-' + dmg + '[流血]，-1[流血层数]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
+        const targetKey = target === this.s.player ? 'player' : 'enemy';
+        this.emit('bleedSettle', '-' + dmg + '[流血]，-1[流血层数]', null, { who: targetKey, target: targetKey, amount: dmg, kind: 'bleed' });
       }
       if (target.frozen) {
         target.frozen = false;
         this._log(who + '冷冻解除');
-        this.emit('buff', '-[冷冻]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'freeze', stacks: 0 });
+        const targetKey = target === this.s.player ? 'player' : 'enemy';
+        this.emit('buff', '-[冷冻]', null, { who: targetKey, target: targetKey, kind: 'freeze', stacks: 0 });
       }
     }
 

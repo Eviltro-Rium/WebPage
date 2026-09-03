@@ -22,6 +22,13 @@
         return who || 'ai';
     };
 
+    proto._eventTarget = function (event, fallback = 'player') {
+        if (global.FurryGame && global.FurryGame.CombatEvents && typeof global.FurryGame.CombatEvents.targetOf === 'function') {
+            return global.FurryGame.CombatEvents.targetOf(event, fallback);
+        }
+        return this._eventSide(event && (event.target || event.who) || fallback);
+    };
+
     proto._playHitFeedback = function (side, amount, color = 'rgba(255,60,60,0.86)') {
         amount = Math.max(0, Number(amount) || 0);
         if (!amount) return;

@@ -7,6 +7,7 @@
  */
 (function (global) {
     const root = global.FurryGame || (global.FurryGame = {});
+    const Targets = Object.freeze({ PLAYER: 'player', AI: 'ai', AI2: 'ai2' });
     const Types = Object.freeze({
         PLAYER_PLAY: 'playerPlay', AI_PLAY: 'aiPlay', PLAYER_DEFEND: 'defend', AI_DEFEND: 'aiDefend',
         DRAW: 'draw', REVEAL: 'reveal', DISCARD: 'discard', DISCARD_MANY: 'discardMany',
@@ -16,6 +17,14 @@
         DESC: 'desc', FLOAT: 'float', CLEAR_ZONES: 'clearZones', GAME_OVER: 'gameOver',
         HINT: 'hint', LORD_DICE: 'lordDice', DUAL_DICE: 'dualDice'
     });
-    const DamageKinds = Object.freeze({ NORMAL: 'damage', BLEED: 'bleed', POISON: 'poison', DRAIN: 'drain' });
-    root.CombatEvents = Object.freeze({ Types, DamageKinds });
+    const DamageKinds = Object.freeze({ NORMAL: 'normal', BLEED: 'bleed', POISON: 'poison', DRAIN: 'drain' });
+    const normalizeTarget = (value, fallback = Targets.AI) => {
+        if (value === 'enemy' || value === 'NPC' || value === 'npc') return Targets.AI;
+        if (value === Targets.PLAYER || value === Targets.AI || value === Targets.AI2) return value;
+        return fallback;
+    };
+    const targetOf = (event, fallback = Targets.PLAYER) => normalizeTarget(
+        event && (event.target || event.who), fallback
+    );
+    root.CombatEvents = Object.freeze({ Types, Targets, DamageKinds, normalizeTarget, targetOf });
 })(window);
