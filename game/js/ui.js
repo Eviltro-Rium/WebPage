@@ -949,6 +949,14 @@ class GameUI {
     _updateBuffs(prefix, ch) {
         const container = document.getElementById(`${prefix}-buffs`);
         if (!container) return;
+        // A removal animation writes HTML after a short delay. Cancel an older
+        // write first, otherwise a stale snapshot can overwrite a newly added
+        // blind/buff icon and make it appear to flicker.
+        const renderTimers = this._buffRenderTimers || (this._buffRenderTimers = {});
+        if (renderTimers[prefix]) {
+            clearTimeout(renderTimers[prefix]);
+            renderTimers[prefix] = null;
+        }
         const prevKeys = this._prevBuffKeys || (this._prevBuffKeys = {});
         const prevSet = new Set(prevKeys[prefix] || []);
         const currentKeys = [];
@@ -1002,7 +1010,16 @@ class GameUI {
                 const key = Object.keys(keyMap).find(k => title === k);
                 if (key && removed.includes(keyMap[key])) el.classList.add('icon-disappear');
             });
-            setTimeout(() => { container.innerHTML = html; }, 160);
+            const expectedKeys = currentKeys.slice();
+            const expectedStacks = Object.assign({}, currentStacks);
+            renderTimers[prefix] = setTimeout(() => {
+                renderTimers[prefix] = null;
+                const latestKeys = (this._prevBuffKeys && this._prevBuffKeys[prefix]) || [];
+                const latestStacks = (this._prevBuffStacks && this._prevBuffStacks[prefix]) || {};
+                if (JSON.stringify(latestKeys) !== JSON.stringify(expectedKeys) ||
+                    JSON.stringify(latestStacks) !== JSON.stringify(expectedStacks)) return;
+                container.innerHTML = html;
+            }, 160);
         } else {
             container.innerHTML = html;
         }
