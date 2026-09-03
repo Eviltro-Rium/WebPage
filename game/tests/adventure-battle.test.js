@@ -41,6 +41,7 @@ const sources = [
   'js/ai/saiki_ai.js',
   'js/ai/moze_ai.js',
   'js/ai/chan_ai.js',
+  'js/combat_events.js',
   'js/engine.js',
   'js/engine_lord.js',
   'adventure/js/adventure_registry.js',
@@ -58,6 +59,7 @@ const sources = [
   'adventure/js/adventure_battle_engine.js',
   'js/bridge.js',
   'js/ui.js',
+  'js/ui_feedback.js',
   'adventure/js/combat_bridge.js'
 ];
 

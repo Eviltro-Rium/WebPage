@@ -1396,6 +1396,17 @@ body {
     will-change: transform, opacity;
 }
 
+.hp-section.combatant-hit {
+    animation: combatantHit 0.36s cubic-bezier(0.2, 0.8, 0.25, 1);
+}
+
+@keyframes combatantHit {
+    0% { filter: brightness(1); }
+    22% { filter: brightness(1.75) saturate(1.35); box-shadow: 0 0 0 2px rgba(255,92,92,0.72), 0 0 24px rgba(255,64,64,0.52); }
+    58% { filter: brightness(0.88) saturate(1.12); transform: translateX(-2px); }
+    100% { filter: brightness(1); transform: translateX(0); }
+}
+
 .fly-card {
     position: fixed;
     top: 0; left: 0;
@@ -1429,6 +1440,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
     .hand-swap-arrive,
     .discard-zone.discard-impact .discard-card-area,
+    .hp-section.combatant-hit,
     .floating-text {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;

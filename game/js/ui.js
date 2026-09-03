@@ -1,4 +1,5 @@
 const CARD_W = 70, CARD_H = 100;
+const UI_EVENT_TYPES = (window.FurryGame && window.FurryGame.CombatEvents && window.FurryGame.CombatEvents.Types) || { HIT: 'hit' };
 const CARD_COLORS = window.CardStyle ? window.CardStyle.CARD_COLORS : {
     RED: { fill: '#E31837', dark: '#B51228', ink: '#E31837' },
     YELLOW: { fill: '#FFCD00', dark: '#D4A900', ink: '#1A1A1A' },
@@ -2268,6 +2269,11 @@ class GameUI {
             } else if (evt.type === 'float') {
                 this.playFloatingText(evt.desc || '', '', evt.who || 'player');
                 await wait(400);
+            } else if (evt.type === UI_EVENT_TYPES.HIT) {
+                const side = this._eventSide(evt.who);
+                if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+                this._playHitFeedback(side, evt.amount);
+                await wait(400);
             } else if (evt.type === 'burnSettle') {
                 this.playFloatingText(evt.desc || '', '#ff8800', this._eventSide(evt.who));
                 const side = this._eventSide(evt.who);
@@ -2295,15 +2301,13 @@ class GameUI {
                 if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,68,68,0.9)', 25); }
                 await wait(600);
             } else if (evt.type === 'hurt') {
-                // 普通伤害已经由生命值/受击动画表现，隐藏冗余的 -N[伤害]；
-                // 流血、中毒、吸血等带有明确类型的伤害仍保留飘字。
-                const isPlainDamage = !evt.poison && !evt.bleed && !evt.drain && String(evt.desc || '').includes('[伤害]');
-                if (!isPlainDamage) {
-                    this.playFloatingText(evt.desc || '', evt.poison ? '#84cc16' : (evt.bleed ? '#cc2222' : '#ff4444'), this._eventSide(evt.who));
-                }
                 const side = this._eventSide(evt.who);
+                // 普通伤害现在由独立的 hit 事件承载。保留此分支仅兼容
+                // 旧事件队列，并只显示流血/中毒/吸血等有语义的飘字。
+                const isPlainDamage = !evt.poison && !evt.bleed && !evt.drain && String(evt.desc || '').includes('[伤害]');
+                if (!isPlainDamage) this.playFloatingText(evt.desc || '', evt.poison ? '#84cc16' : (evt.bleed ? '#cc2222' : '#ff4444'), side);
                 if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
-                if (evt.amount > 0) { this.shakeScreen(evt.who === 'player' ? Math.min(evt.amount * 2, 10) : Math.min(evt.amount, 6), evt.who === 'player' ? 300 : 200); if (evt.who === 'player') { const hpEl = document.getElementById('player-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,60,60,0.8)', Math.min(evt.amount * 3, 20)); } } }
+                this._playHitFeedback(side, evt.amount);
                 await wait(400);
             } else if (evt.type === 'buffSettle') {
                 const bleed = String(evt.desc || '').includes('[流血]');
@@ -2703,116 +2707,6 @@ class GameUI {
         });
     }
 
-    _eventSide(who) {
-        if (who === 'player') return 'player';
-        if (who === 'ai2') return 'ai2';
-        if (who === 'enemy' || who === 'ai') return 'ai';
-        return who || 'ai';
-    }
-
-    playFloatingText(text, color, target) {
-        target = target === 'player' || target === 'ai2' ? target : 'ai';
-        const layouts = [
-            { x: 0, y: 0 },
-            { x: -48, y: -28 },
-            { x: 48, y: -28 },
-            { x: -68, y: -58 },
-            { x: 68, y: -58 },
-            { x: 0, y: -86 }
-        ];
-        const active = (this._floatingTextLanes[target] || []).filter(entry => entry.el.isConnected);
-        this._floatingTextLanes[target] = active;
-        if (active.length >= layouts.length) {
-            const oldest = active.shift();
-            if (oldest && oldest.el) oldest.el.remove();
-        }
-        const used = new Set(active.map(entry => entry.lane));
-        const lane = layouts.findIndex((_, index) => !used.has(index));
-        const layout = layouts[Math.max(0, lane)];
-
-        const el = document.createElement('div');
-        el.className = 'floating-text';
-        el.dataset.target = target;
-        el.dataset.lane = String(lane);
-        const segs = parseSegments(text, color);
-        for (const seg of segs) {
-            const span = document.createElement('span');
-            span.className = 'ft-seg'; span.textContent = seg.text;
-            span.style.color = seg.color; span.style.textShadow = '0 1px 3px rgba(0,0,0,0.3)';
-            el.appendChild(span);
-        }
-        let hpId;
-        if (target === 'player') hpId = 'player-hp-section';
-        else if (target === 'ai2') hpId = 'ai2-hp-section';
-        else hpId = 'ai-hp-section';
-        const hpSection = document.getElementById(hpId);
-        if (!hpSection) return;
-        const rect = hpSection.getBoundingClientRect();
-        const laneY = rect.top < 150 ? Math.abs(layout.y) : layout.y;
-        const centerX = rect.left + rect.width / 2 + layout.x;
-        const top = Math.max(12, Math.min(window.innerHeight - 72, rect.top + rect.height / 2 - 14 + laneY));
-        el.style.left = Math.max(72, Math.min(window.innerWidth - 72, centerX)) + 'px';
-        el.style.top = top + 'px';
-        el.style.setProperty('--float-drift-x', `${layout.x === 0 ? 0 : layout.x > 0 ? 12 : -12}px`);
-        document.body.appendChild(el);
-        active.push({ el, lane });
-        setTimeout(() => {
-            el.remove();
-            this._floatingTextLanes[target] = (this._floatingTextLanes[target] || [])
-                .filter(entry => entry.el !== el && entry.el.isConnected);
-        }, 1850);
-    }
-
-    shakeScreen(intensity, duration) {
-        const container = document.getElementById('game-container');
-        if (!container) return;
-        if (this._shakeTimer) cancelAnimationFrame(this._shakeTimer);
-        const start = performance.now();
-        const dur = duration || 300;
-        const int = intensity || 5;
-        const tick = (now) => {
-            const elapsed = now - start;
-            if (elapsed >= dur) { container.style.transform = ''; this._shakeTimer = null; return; }
-            const decay = 1 - elapsed / dur;
-            const dx = (Math.random() - 0.5) * 2 * int * decay;
-            const dy = (Math.random() - 0.5) * 2 * int * decay;
-            container.style.transform = `translate(${dx}px, ${dy}px)`;
-            this._shakeTimer = requestAnimationFrame(tick);
-        };
-        this._shakeTimer = requestAnimationFrame(tick);
-    }
-
-    burstParticles(x, y, color, count) {
-        const particles = [];
-        for (let i = 0; i < (count || 12); i++) {
-            const angle = (Math.PI * 2 * i) / (count || 12) + (Math.random() - 0.5) * 0.5;
-            const speed = 40 + Math.random() * 80;
-            const size = 3 + Math.random() * 4;
-            const el = document.createElement('div');
-            el.className = 'burst-particle';
-            el.style.left = x + 'px'; el.style.top = y + 'px';
-            el.style.width = size + 'px'; el.style.height = size + 'px';
-            el.style.background = color;
-            el.style.boxShadow = `0 0 ${size * 2}px ${color}`;
-            document.body.appendChild(el);
-            particles.push({ el, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1 });
-        }
-        const start = performance.now();
-        const dur = 600;
-        const tick = (now) => {
-            const dt = (now - start) / dur;
-            if (dt >= 1) { particles.forEach(p => p.el.remove()); return; }
-            for (const p of particles) {
-                const px = parseFloat(p.el.style.left) + p.vx * 0.016;
-                const py = parseFloat(p.el.style.top) + p.vy * 0.016;
-                p.vy += 120 * 0.016; p.life = 1 - dt;
-                p.el.style.left = px + 'px'; p.el.style.top = py + 'px';
-                p.el.style.opacity = p.life; p.el.style.transform = `scale(${p.life})`;
-            }
-            requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-    }
 }
 
 // Classic-script class declarations live in the global lexical scope, but are
