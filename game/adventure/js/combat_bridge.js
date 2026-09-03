@@ -11,13 +11,16 @@
   let onComplete = null;
   let prevDisplay = null;
   let completing = false;
+  // Explicit menu exit abandons the run.  Keep this separate from normal
+  // navigation so pagehide/instrumented callbacks cannot save it again.
+  let abandonRequested = false;
   const normalBattleApi = window.furryBattle;
   const GAME_HOME_URL = '../index.html';
   const COMBAT_SESSION_KEY = 'furryAdventureCombatSessionV1';
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
 
   function saveCombatSession(engine) {
-    if (!engine || !engine.s || engine.testMode) return;
+    if (abandonRequested || !engine || !engine.s || engine.testMode) return;
     if (engine.s.phase === 'GAME_OVER') {
       clearCombatSession();
       return;
@@ -51,6 +54,18 @@
 
   function clearCombatSession() {
     try { sessionStorage.removeItem(COMBAT_SESSION_KEY); } catch (_) { /* ignore */ }
+  }
+
+  function abandonAdventure() {
+    abandonRequested = true;
+    clearCombatSession();
+    try {
+      if (window.AdventureSave && typeof window.AdventureSave.clear === 'function') {
+        window.AdventureSave.clear();
+      }
+    } catch (_) { /* ignore storage errors while leaving */ }
+    battleEngine = null;
+    completing = false;
   }
 
   function instrumentBattlePersistence(engine) {
@@ -518,6 +533,7 @@
 
   async function startCombat(playerName, monsterName, callback, initialState = {}) {
     if (!window.AdventureBattleEngine) throw new Error('冒险战斗适配器未加载');
+    abandonRequested = false;
     onComplete = callback;
     completing = false;
 
@@ -579,6 +595,7 @@
 
   async function startCombat1v2(playerName, monsterName1, monsterName2, callback, initialState = {}) {
     if (!window.AdventureBattleEngine) throw new Error('冒险战斗适配器未加载');
+    abandonRequested = false;
     onComplete = callback;
     completing = false;
 
@@ -658,6 +675,7 @@
     },
     activeEngine() { return battleEngine; },
     loadCombatSession,
-    clearCombatSession
+    clearCombatSession,
+    abandonAdventure
   };
 })();
