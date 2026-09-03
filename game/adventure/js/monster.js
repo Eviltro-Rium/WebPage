@@ -25,7 +25,7 @@
 
       // Keep the registry hooks available to the legacy adventure path too.
       for (const hook of [
-        'attackDamage', 'attackUnblockable', 'attackHeal', 'attackLush', 'attackTurnStart',
+        'attackDamage', 'attackUnblockable', 'attackHeal', 'attackDrain', 'attackLush', 'attackTurnStart',
         'defendBlock', 'defendHeal', 'defendPoison', 'defendBleed', 'defendGuard', 'defendLush'
       ]) {
         if (typeof opts[hook] === 'function') this[hook] = opts[hook];

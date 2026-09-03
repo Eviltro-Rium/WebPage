@@ -1097,6 +1097,9 @@
       const dmg = (typeof combat.enemy.attackDamage === 'function')
         ? combat.enemy.attackDamage(card, ctx)
         : card.value;
+      const drain = typeof combat.enemy.attackDrain === 'function'
+        ? Math.max(0, Number(combat.enemy.attackDrain(card, ctx)) || 0)
+        : 0;
       const unblockable = (typeof combat.enemy.attackUnblockable === 'function')
         ? combat.enemy.attackUnblockable(card)
         : false;
@@ -1105,7 +1108,8 @@
       this.emit('npcPlay', '敌方攻击：' + dmg + '点伤害', card, { kind: 'attack', damage: dmg, unblockable });
 
       if (unblockable) {
-        this._applyPlayerDamage(dmg);
+        const actual = this._applyPlayerDamage(dmg);
+        this._applyNpcDrain(combat.enemy, actual, drain);
         combat.atkCard = null;
         if (this._checkCombatEnd()) return;
         this._npcPlayNext();
@@ -1113,6 +1117,7 @@
       }
 
       combat.pendingDamage = dmg;
+      combat.pendingDrain = drain;
       this.s.phase = Phase.PLAYER_DEFEND;
       this.emit('playerDefend', '请防御' + dmg + '点伤害', null, { damage: dmg });
     }
@@ -1140,9 +1145,11 @@
       this.emit('playerDefend', '防御：格挡' + block + '点', card, { kind: 'defend', block, remaining });
 
       this._applyPlayerDamage(remaining);
+      this._applyNpcDrain(this.s.combat.enemy, remaining, this.s.combat.pendingDrain || 0);
       this.s.combat.defCard = null;
       this.s.combat.atkCard = null;
       this.s.combat.pendingDamage = 0;
+      this.s.combat.pendingDrain = 0;
       pile.drawToLimit();
 
       if (this._checkCombatEnd()) return { ok: true, combatEnd: true };
@@ -1157,9 +1164,11 @@
       this._log('你选择不防御，承受' + dmg + '点伤害');
       this.emit('playerDefend', '跳过防御', null, { kind: 'skip' });
 
-      this._applyPlayerDamage(dmg);
+      const actual = this._applyPlayerDamage(dmg);
+      this._applyNpcDrain(this.s.combat.enemy, actual, this.s.combat.pendingDrain || 0);
       this.s.combat.atkCard = null;
       this.s.combat.pendingDamage = 0;
+      this.s.combat.pendingDrain = 0;
       this.s.playerPile.drawToLimit();
 
       if (this._checkCombatEnd()) return { ok: true, combatEnd: true };
@@ -1169,9 +1178,19 @@
     }
 
     _applyPlayerDamage(damage) {
-      if (damage <= 0) return;
+      if (damage <= 0) return 0;
       const p = this.s.player;
       let remaining = damage;
+      while ((p.fly || 0) > 0 && remaining > 0) {
+        p.fly--;
+        this._log('你消耗1层飞翔尝试躲避');
+        if (Math.random() < 0.5) {
+          remaining = 0;
+          this._log('飞翔躲避成功');
+          break;
+        }
+        this._log('飞翔躲避失败');
+      }
       if ((p.guard || 0) > 0 && remaining > 0) {
         const used = Math.min(p.guard, remaining);
         p.guard -= used;
@@ -1182,6 +1201,20 @@
       p.hp = Math.max(0, p.hp - remaining);
       this._log('你受到' + remaining + '点伤害，剩余' + p.hp + '/' + p.maxHp + '生命');
       this.emit('playerHurt', '受到伤害', { damage: remaining, hp: p.hp });
+      return remaining;
+    }
+
+    _applyNpcDrain(enemy, actualDamage, nominalDrain) {
+      const amount = Math.min(Math.max(0, Number(actualDamage) || 0), Math.max(0, Number(nominalDrain) || 0));
+      if (!enemy || amount <= 0) return 0;
+      const before = enemy.hp;
+      enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
+      const actual = enemy.hp - before;
+      if (actual > 0) {
+        this.emit('heal', '+' + actual + '[吸血]', null, { who: 'enemy', target: 'enemy', amount: actual, kind: 'drain' });
+        this._log(enemy.name + '吸取' + actual + '点生命');
+      }
+      return actual;
     }
 
     _endNpcTurn() {

@@ -294,12 +294,12 @@ async _playEvents(events, fast = false) {
             // 规则字段决定表现，不再解析 desc 文本。
             const kind = evt.kind || (evt.poison ? DAMAGE_KINDS.POISON : evt.bleed ? DAMAGE_KINDS.BLEED : evt.drain ? DAMAGE_KINDS.DRAIN : DAMAGE_KINDS.NORMAL);
             if (kind === DAMAGE_KINDS.NORMAL) {
-                if (Number(evt.amount) > 0) {
+                if (!evt.suppressFloat && Number(evt.amount) > 0) {
                     this.playFloatingText(evt.floatText || `-${evt.amount}`, '#ff4444', side);
                 }
             } else {
                 const color = kind === DAMAGE_KINDS.POISON ? '#84cc16' : kind === DAMAGE_KINDS.BLEED ? '#cc2222' : '#ff4444';
-                this.playFloatingText(evt.desc || '', color, side);
+                if (!evt.suppressFloat) this.playFloatingText(evt.desc || '', color, side);
             }
             if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
             this._playHitFeedback(side, evt.amount);

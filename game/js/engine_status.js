@@ -31,7 +31,10 @@
                 const text = isDrain ? '吸血' : isBleed ? '流血' : '中毒';
                 engine.emit(eventTypes.HURT || 'hurt', `-${damage}[${text}]`, null, {
                     who: target, target, amount: damage, kind: damageKind,
-                    bleed: isBleed, drain: isDrain, poison: isPoison
+                    bleed: isBleed, drain: isDrain, poison: isPoison,
+                    // Special attacks may keep their own consolidated feedback
+                    // (for example, life steal shows one heal float only).
+                    suppressFloat: !!(opts && opts.suppressFloat)
                 });
                 return;
             }

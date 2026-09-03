@@ -77,7 +77,11 @@
       this.check();return
     }
     let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;
-    this.hurt(this.s.player,p.damage);
+    let bombOwner=this.s.atkOwner || this._curAI() || 'ai';
+    const drainDamage=p.drain>0?Math.min(p.drain,p.damage):0;
+    const lifestealTarget=this.s[bombOwner]||this.s.ai;
+    this.hurt(this.s.player,p.damage,drainDamage>0?'drain':false,drainDamage>0?{suppressFloat:true}:{});
+    if(drainDamage>0&&lifestealTarget.hp<lifestealTarget.maxHp)this.heal(lifestealTarget,drainDamage,'drain');
     this.settleBleed(this.s.player,p.bleed);
     this._restoreAttackBuffs();
     this.resolveSerenityHalf();this._grantChaosIfKnight('ai');

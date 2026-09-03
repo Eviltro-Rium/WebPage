@@ -554,7 +554,7 @@
       return card.value >= 4 && card.value <= 6;
     },
 
-    attackHeal(card) {
+    attackDrain(card) {
       if (!card || !card.isNumberCard) return 0;
       if (card.value >= 4 && card.value <= 6) return 2;
       return 0;
@@ -575,8 +575,8 @@
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
-        attackHeal: (card) => {
-          const base = orig.attackHeal(card);
+        attackDrain: (card) => {
+          const base = orig.attackDrain(card);
           return base > 0 ? base + 1 : 0;
         }
       }),

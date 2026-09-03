@@ -43,7 +43,7 @@
       },
       effect(eng, v, c, a, t, owner, helpers) {
         const { heal, guard, fly, bleed, poison, clearPositiveBuffs, draw } = helpers;
-        let d = 0, skip = false, unblock = false;
+        let d = 0, skip = false, unblock = false, drain = 0;
 
         if (c && (c.magic || c.greenMagic || c.magicColor)) {
           heal(a, AdvR.getBoss(mod.name) ? 5 : 3);
@@ -102,7 +102,12 @@
           const targetWho = owner === 'player' ? eng._who(t) : 'player';
           eng.emit('buff', '[致盲]', null, { who: targetWho, kind: 'blind', stacks: 1 });
         }
-        if (typeof mod.attackHeal === 'function') {
+        // Life steal is settled together with the attack, after guard/fly has
+        // reduced the incoming damage.  Do not heal here: at this point the
+        // engine only knows the nominal damage value.
+        if (typeof mod.attackDrain === 'function') {
+          drain = Math.max(0, Number(mod.attackDrain(c, ctx)) || 0);
+        } else if (typeof mod.attackHeal === 'function') {
           const h = mod.attackHeal(c, ctx);
           if (h > 0) heal(a, h);
         }
@@ -146,7 +151,7 @@
           eng.emit('desc', '清除双方所有buff');
         }
 
-        return { d, skip, unblock };
+        return { d, skip, unblock, drain };
       },
 
       defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
@@ -450,6 +455,9 @@
     let dmg = 0;
     let bleedDmgDesc = null;
     const ladybugDrain = mod.name === 'ForestLadybug' && card.value >= 1 && card.value <= 3;
+    const drainAmount = typeof mod.attackDrain === 'function'
+      ? Math.max(0, Number(mod.attackDrain(card, ctx)) || 0)
+      : 0;
     if (typeof mod.attackDamage === 'function') {
       const ctx0 = Object.assign({}, ctx, { playerBleed: 0 });
       const ctx1 = Object.assign({}, ctx, { playerBleed: 1 });
@@ -464,7 +472,7 @@
       let line = bleedDmgDesc;
       if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) line += '（不可防御）';
       parts.push(line);
-    } else if (dmg > 0) {
+    } else if (dmg > 0 && !drainAmount) {
       let line = ladybugDrain ? '吸取' + dmg + '点生命' : '造成' + dmg + '点伤害';
       if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) {
         line += '（不可防御）';
@@ -499,7 +507,14 @@
     if (typeof mod.attackBlind === 'function' && mod.attackBlind(card)) {
       parts.push('施加1层致盲（致盲期间不能使用一次性道具）');
     }
-    if (typeof mod.attackHeal === 'function') {
+    if (typeof mod.attackDrain === 'function') {
+      const h = mod.attackDrain(card, ctx);
+      if (h > 0) {
+        let line = '吸取' + h + '点生命';
+        if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) line += '（不可防御）';
+        parts.push(line);
+      }
+    } else if (typeof mod.attackHeal === 'function') {
       const h = mod.attackHeal(card, ctx);
       if (h > 0 && !ladybugDrain) parts.push('恢复' + h + '点生命');
     }

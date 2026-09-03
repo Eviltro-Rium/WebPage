@@ -1193,7 +1193,7 @@ body {
 .floating-text {
     position: fixed; pointer-events: none;
     min-width: max-content; max-width: min(260px, 72vw);
-    font-size: 1.05rem; font-weight: 850; line-height: 1.2;
+    font-size: 1.2rem; font-weight: 900; line-height: 1.2;
     z-index: 1000; white-space: nowrap; text-align: center;
     animation: floatUp 1.75s cubic-bezier(0.16, 0.78, 0.26, 1) forwards;
     text-shadow: 0 1px 3px rgba(0,0,0,0.72), 0 0 10px rgba(255,255,255,0.16);
