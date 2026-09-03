@@ -1130,5 +1130,96 @@
   };
 
   window.Engine=Engine;
-  const e=new Engine();window.furryBattle={dispatch:(m,p)=>e.dispatch(m,p),getState:()=>e.state()};
+  // The standalone browser build keeps the engine in memory.  A page refresh
+  // used to replace that instance with a blank one, which looked like the
+  // battle had been abandoned.  Keep a tab-scoped snapshot so a refresh can
+  // reconstruct the exact piles, hands, events and pending settlement.
+  const LOCAL_SESSION_KEY='furryBattleSessionV1';
+  const canPersistLocalBattle=()=>typeof document==='undefined'||!document.getElementById('adventure-container');
+  const readBattleSession=()=>{
+    if(!canPersistLocalBattle())return null;
+    try{
+      const raw=window.sessionStorage&&window.sessionStorage.getItem(LOCAL_SESSION_KEY);
+      const data=raw?JSON.parse(raw):null;
+      return data&&data.version===1&&data.kind==='standalone'?data:null;
+    }catch(_e){return null}
+  };
+  const persistBattleSession=engine=>{
+    if(!canPersistLocalBattle())return;
+    try{
+      if(!engine.s||!engine.s.player||engine.s.phase==='SELECT_MODE'||engine.s.phase==='GAME_OVER'){
+        if(window.sessionStorage)window.sessionStorage.removeItem(LOCAL_SESSION_KEY);
+        return;
+      }
+      const snapshot={
+        version:1,kind:'standalone',savedAt:Date.now(),mode:!!engine.mode,
+        s:cp(engine.s),deck:cp(engine.deck),discardBottom:cp(engine.discardBottom),
+        h:cp(engine.h),events:cp(engine.events),ver:engine.ver,
+        pendingSettlement:cp(engine.pendingSettlement)
+      };
+      if(window.sessionStorage)window.sessionStorage.setItem(LOCAL_SESSION_KEY,JSON.stringify(snapshot));
+    }catch(_e){/* storage quota/private mode must not stop the game */}
+  };
+  const restoreBattleSession=(engine,data)=>{
+    if(!data)return false;
+    try{
+      engine.mode=!!data.mode;
+      engine.s=cp(data.s);
+      engine.deck=cp(data.deck)||[];
+      engine.discardBottom=cp(data.discardBottom)||[];
+      engine.h=cp(data.h)||{player:[],ai:[]};
+      engine.events=cp(data.events)||[];
+      engine.ver=Number(data.ver)||0;
+      engine.pendingSettlement=cp(data.pendingSettlement)||null;
+      engine.timer=0;
+      return !!(engine.s&&engine.s.player);
+    }catch(_e){return false}
+  };
+  const e=new Engine();
+  const originalLater=e.later;
+  e.later=function(fn,ms){
+    return originalLater.call(this,()=>{
+      try{return fn();}
+      finally{persistBattleSession(this)}
+    },ms);
+  };
+  const restored=restoreBattleSession(e,readBattleSession());
+  if(!restored){
+    try{if(canPersistLocalBattle()&&window.sessionStorage)window.sessionStorage.removeItem(LOCAL_SESSION_KEY)}catch(_e){}
+  }
+  // Timers cannot survive a refresh.  Resume only after any persisted events
+  // have been acknowledged, so the normal UI can still play their animations.
+  if(restored){
+    const resume=()=>{
+      if(!e.s||e.s.phase==='GAME_OVER'||e.s.phase==='PLAYER_PLAY'||e.s.phase==='PLAYER_DEFEND')return;
+      if(e.events&&e.events.length){e.later(resume,450);return}
+      if(e.s.phase==='AI_TURN')return e.aiTurn();
+      if(e.s.phase==='AI2_TURN'&&typeof e.aiTurn1v2==='function')return e.aiTurn1v2();
+      if(e.s.phase==='AI_DEFEND'){
+        if(e.pendingSettlement||e.s.pendingAIBridge||e.s.pendingAIContinue)return e.acknowledgeEvents(e.ver);
+        const pending=e.s.pendingAttack;
+        if(pending&&!e.s.defenseSkipped&&pending.damage>0){
+          const attack=e.s.atkCard||e.s.attackCard||{value:0,color:e.s.discardTop&&e.s.discardTop.color};
+          if(e.s.is1v2&&typeof e.aiDefend1v2==='function')return e.aiDefend1v2(attack,pending.damage);
+          if(typeof e.aiDefend==='function')return e.aiDefend(attack,pending.damage);
+        }
+        e.afterAttack();e.check();
+      }
+    };
+    e.later(resume,450);
+  }
+  window.furryBattle={
+    dispatch:(m,p)=>{
+      try{
+        const result=e.dispatch(m,p||{});
+        persistBattleSession(e);
+        return result;
+      }catch(error){
+        persistBattleSession(e);
+        throw error;
+      }
+    },
+    getState:()=>e.state()
+  };
+  if(typeof window.addEventListener==='function')window.addEventListener('pagehide',()=>persistBattleSession(e));
 })();

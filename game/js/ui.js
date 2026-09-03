@@ -462,6 +462,30 @@ class GameUI {
                 { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可消耗1层【暴击】使攻击不可防御' }
             ];
         }
+        // A standalone local battle is persisted in sessionStorage by the
+        // engine wrapper. Rebuild the battle screen instead of showing the
+        // character selector after a browser refresh.
+        const restored = await Bridge.getState();
+        if (restored && restored.player && restored.phase &&
+            restored.phase !== 'SELECT_MODE' && !restored.isAdventure) {
+            const cleanName = name => String(name || '').replace(/^AI\d*\s+/, '');
+            this.state = restored;
+            this._is1v2 = !!restored.is1v2;
+            this._isLord = !!restored.isLord;
+            this._isAdventure = false;
+            this._modeChosen = true;
+            this._selectedPlayerChar = cleanName(restored.player.name);
+            this._selectedAIChar = cleanName(restored.ai && restored.ai.name);
+            this._selectedAI2Char = cleanName(restored.ai2 && restored.ai2.name);
+            this.selectScreen.classList.remove('active');
+            this.gameScreen.classList.add('active');
+            if (this._is1v2 && typeof this._buildGameScreen1v2 === 'function') this._buildGameScreen1v2();
+            else this._buildGameScreen();
+            this.updateDisplay();
+            if (restored.events && restored.events.length) await this._playOpeningEvents();
+            if (['AI_TURN', 'AI_DEFEND', 'AI2_TURN'].includes(this.state.phase)) this._startPolling();
+            return;
+        }
         this._buildSelectScreen();
     }
 
@@ -1108,7 +1132,7 @@ class GameUI {
                 await selection;
             });
 
-            if (sel && canInteract) {
+            if (canInteract) {
                 cv.addEventListener('mouseenter', () => {
                     if (this._npcHandFocusIndex >= 0) return;
                     this._showTooltip(card, cv, isDefend);
@@ -1285,6 +1309,19 @@ class GameUI {
                 cv.style.cursor = 'pointer';
                 cv.classList.add('selectable-ai-card');
                 if (focused) cv.style.border = '3px solid #a78bfa';
+                if (card) {
+                    const adventureOpts = {
+                        stage: s.adventureStage || s.stage || 1,
+                        playerHandSize: (s.playerHand && s.playerHand.length) || 0,
+                        incomingDamage: s.pendingDefenseDamage || 0
+                    };
+                    const showDefend = s.phase === 'PLAYER_PLAY';
+                    const charName = this._combatDisplayName(s.ai && s.ai.name);
+                    cv.addEventListener('mouseenter', () => {
+                        this._showTooltip(card, cv, showDefend, { charName, adventureOpts });
+                    });
+                    cv.addEventListener('mouseleave', () => this._syncHandSkillTooltip());
+                }
                 cv.addEventListener('click', async () => {
                     const idx = parseInt(cv.dataset.aiIndex, 10);
                     this._npcHandFocusIndex = this._npcHandFocusIndex === idx ? -1 : idx;

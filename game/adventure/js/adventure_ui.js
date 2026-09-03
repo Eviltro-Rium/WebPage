@@ -82,14 +82,43 @@
     /** 优先恢复本地存档；无存档或角色不匹配时用默认地图开始新冒险 */
     async restoreOrStart(defaultMapFn, characterName) {
       const save = window.AdventureSave ? window.AdventureSave.load() : null;
+      const combatSession = window.AdventureCombatBridge && typeof window.AdventureCombatBridge.loadCombatSession === 'function'
+        ? window.AdventureCombatBridge.loadCombatSession() : null;
       if (save && save.characterName === characterName) {
         try {
           await this.restoreFromSave(save);
+          // 战斗中的快照保存在 sessionStorage（只在同一标签页刷新时有效），
+          // 冒险存档则保留地图、房间和战斗前的玩家状态。先恢复后者，再重建
+          // 当前房间的桥接战斗，最后由战斗引擎注回精确的回合/牌堆状态。
+          const canResumeCombat = combatSession && combatSession.characterName === characterName &&
+            combatSession.battle && save.phase === window.AdventurePhase.MAP &&
+            (!combatSession.mapName || combatSession.mapName === this.eng.mapName);
+          if (canResumeCombat && this.eng.s.phase === window.AdventurePhase.MAP && this.eng.currentRoom()) {
+            const room = this.eng.currentRoom();
+            if (room.type === window.RoomType.NORMAL && combatSession.enemy) room.monsterName = combatSession.enemy;
+            if (room.type === window.RoomType.BOSS && combatSession.enemy) room.bossName = combatSession.enemy;
+            if (room.type === window.RoomType.CHALLENGE && combatSession.enemy) room.monsterName = combatSession.enemy;
+            const entered = this.eng.enterCurrent();
+            const combatPhases = [window.AdventurePhase.PLAYER_PLAY, window.AdventurePhase.PLAYER_DEFEND, window.AdventurePhase.NPC_TURN];
+            if (combatPhases.includes(this.eng.s.phase) && entered !== false) {
+              const resumed = await this._startBridgeCombat(combatSession);
+              if (resumed) return true;
+            }
+          }
+          if (combatSession && window.AdventureCombatBridge && typeof window.AdventureCombatBridge.clearCombatSession === 'function') {
+            window.AdventureCombatBridge.clearCombatSession();
+          }
           if (window.cardIconsReady) window.cardIconsReady.then(() => this.render());
           return true;
         } catch (e) {
           if (window.AdventureSave) window.AdventureSave.clear();
+          if (window.AdventureCombatBridge && typeof window.AdventureCombatBridge.clearCombatSession === 'function') {
+            window.AdventureCombatBridge.clearCombatSession();
+          }
         }
+      }
+      if (combatSession && window.AdventureCombatBridge && typeof window.AdventureCombatBridge.clearCombatSession === 'function') {
+        window.AdventureCombatBridge.clearCombatSession();
       }
       await this.start(typeof defaultMapFn === 'function' ? defaultMapFn() : defaultMapFn, characterName);
       return false;
@@ -1075,12 +1104,12 @@
       this.render();
     }
 
-    async _startBridgeCombat() {
-      if (this._bridgeCombatStarting || this._bridgeCombatActive) return;
+    async _startBridgeCombat(resumeSession = null) {
+      if (this._bridgeCombatStarting || this._bridgeCombatActive) return false;
       const snap = this.eng.snapshot();
       if (!snap || !snap.combat) {
         this._showCombatLaunchError('没有可启动的战斗数据');
-        return;
+        return false;
       }
       this._bridgeCombatStarting = true;
       const playerName = snap.player.name;
@@ -1101,6 +1130,7 @@
         adventureCurrency: this.eng.s.currency,
         stage: snap.stage || 1,
         scene: this.eng.s.scene || 'castle',
+        resumeBattle: resumeSession && resumeSession.battle ? resumeSession.battle : null,
         adventureEngine: this.eng
       };
 
@@ -1119,8 +1149,10 @@
           );
         }
         this._bridgeCombatActive = true;
+        return true;
       } catch (e) {
         this._showCombatLaunchError('战斗启动失败：' + (e.message || e));
+        return false;
       } finally {
         this._bridgeCombatStarting = false;
       }
@@ -1145,6 +1177,9 @@
     }
 
     startTest(characterName) {
+      if (window.AdventureCombatBridge && typeof window.AdventureCombatBridge.clearCombatSession === 'function') {
+        window.AdventureCombatBridge.clearCombatSession();
+      }
       this._test = { characterName, items: [], trophyWhiteCards: [], accessories: [], mode: null, opponents: [], running: false, result: null };
       const bg = document.getElementById('castle-bg');
       if (bg) bg.style.display = 'block';

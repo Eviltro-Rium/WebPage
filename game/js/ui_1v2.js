@@ -185,9 +185,21 @@
     const s=this.state;if(!s)return;
     const revealFace=!!(s.revealAIHand||s.isAdventure);
     const canSelect=s.phase==='OPPONENT_CARD_CHOICE'||(s.phase==='PLAYER_SEVEN_CHOICE'&&!s.chanFourSwapMode&&!s.chanSevenKeepMode)||(s.phase==='SAIKI_THREE_CHOICE'&&!s.saikiThreeDrawn);
+    const canPeekSkill=!!(s.isAdventure&&revealFace&&(s.phase==='PLAYER_PLAY'||s.phase==='PLAYER_DEFEND'));
     const leonZeroDiscard=!!s.pendingLeonZeroDiscard;
     const selectedTarget=s.attackTarget||(s.ai.alive?'ai':'ai2');
     let leonZeroOffset=0;
+    const showNpcTooltip=(card,anchor,key)=>{
+      if(!card||!canPeekSkill)return;
+      const opponent=s[key];
+      const charName=this._combatDisplayName(opponent&&opponent.name);
+      const adventureOpts={
+        stage:s.adventureStage||s.stage||1,
+        playerHandSize:(s.playerHand&&s.playerHand.length)||0,
+        incomingDamage:s.pendingDefenseDamage||0
+      };
+      this._showTooltip(card,anchor,s.phase==='PLAYER_PLAY',{charName,adventureOpts});
+    };
     const decorateSelectable=(card,index,key)=>{
       if(!canSelect)return;
       if(!leonZeroDiscard&&selectedTarget!==key)return;
@@ -223,6 +235,10 @@
             cv=renderCardBack(40,58);
           }
           if(hideTrailing&&(!hideWho||hideWho==='ai')&&i>=size-hideTrailing)cv.classList.add('card-draw-pending');
+          if(canPeekSkill&&handCards&&handCards[i]){
+            cv.addEventListener('mouseenter',()=>showNpcTooltip(handCards[i],cv,'ai'));
+            cv.addEventListener('mouseleave',()=>this._syncHandSkillTooltip());
+          }
           decorateSelectable(cv,i,'ai');
           aiEl.appendChild(cv);
         }
@@ -259,6 +275,10 @@
             cv.style.filter='hue-rotate(240deg)';
           }
           if(hideTrailing&&(!hideWho||hideWho==='ai2')&&i>=size-hideTrailing)cv.classList.add('card-draw-pending');
+          if(canPeekSkill&&handCards&&handCards[i]){
+            cv.addEventListener('mouseenter',()=>showNpcTooltip(handCards[i],cv,'ai2'));
+            cv.addEventListener('mouseleave',()=>this._syncHandSkillTooltip());
+          }
           decorateSelectable(cv,i,'ai2');
           ai2El.appendChild(cv);
         }

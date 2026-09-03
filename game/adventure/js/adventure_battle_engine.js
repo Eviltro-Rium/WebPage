@@ -38,6 +38,45 @@
       this.tableTopOwner = null;
     }
 
+    restoreSession(snapshot, adventureEngine = null) {
+      const data = snapshot && (snapshot.battle || snapshot);
+      if (!data || !data.s || !data.piles) throw new Error('战斗快照无效');
+      this._adventureEngine = adventureEngine || null;
+      this.testMode = !!data.testMode;
+      this.s = clone(data.s);
+      this.piles = clone(data.piles);
+      this.h = clone(data.h) || { player: [], ai: [] };
+      this.events = clone(data.events) || [];
+      this.ver = Number(data.ver) || 0;
+      this.pendingSettlement = clone(data.pendingSettlement) || null;
+      this.tableTopOwner = data.tableTopOwner || this.s.discardTopOwner || null;
+      this.s.discardTopOwner = this.tableTopOwner;
+      this.deck = this.piles.player.deck;
+      this.discardBottom = this.piles.player.discard;
+      // 1v2 NPCs intentionally share one deck/discard pile. JSON cloning
+      // breaks that reference, so restore it explicitly.
+      if (this.piles.ai2) {
+        this.piles.ai2.deck = this.piles.ai.deck;
+        this.piles.ai2.discard = this.piles.ai.discard;
+        this.h.ai = this.piles.ai.hand;
+        this.h.ai2 = this.piles.ai2.hand;
+      }
+      this.h.player = this.piles.player.hand;
+      const register = name => {
+        const raw = window.AdventureRegistry &&
+          (window.AdventureRegistry.getMonster(name) || window.AdventureRegistry.getBoss(name));
+        if (!raw || !window.AdventureMonsterBridge) return;
+        const def = window.AdventureMonsterBridge.applyStageMods
+          ? window.AdventureMonsterBridge.applyStageMods(raw, this.s.adventureStage || 1)
+          : raw;
+        window.AdventureMonsterBridge.registerMonsterChar(def);
+        window.AdventureMonsterBridge.registerMonsterAI(def);
+      };
+      register(this.s.ai && this.s.ai.name);
+      register(this.s.ai2 && this.s.ai2.name);
+      return this.state();
+    }
+
     character(n, ai = false) {
       // 冒险模式不给 NPC 加 "AI " 前缀
       const ch = super.character(n, false);

@@ -13,6 +13,56 @@
   let completing = false;
   const normalBattleApi = window.furryBattle;
   const GAME_HOME_URL = '../index.html';
+  const COMBAT_SESSION_KEY = 'furryAdventureCombatSessionV1';
+  const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
+
+  function saveCombatSession(engine) {
+    if (!engine || !engine.s || engine.testMode) return;
+    if (engine.s.phase === 'GAME_OVER') {
+      clearCombatSession();
+      return;
+    }
+    try {
+      const adv = engine._adventureEngine;
+      sessionStorage.setItem(COMBAT_SESSION_KEY, JSON.stringify({
+        version: 1,
+        characterName: engine.s.player && engine.s.player.name,
+        mapName: adv && adv.mapName,
+        enemy: engine.s.ai && engine.s.ai.name,
+        enemy2: engine.s.ai2 && engine.s.ai2.name,
+        battle: {
+          s: clone(engine.s), piles: clone(engine.piles), h: clone(engine.h),
+          events: clone(engine.events), ver: engine.ver,
+          pendingSettlement: clone(engine.pendingSettlement),
+          tableTopOwner: engine.tableTopOwner,
+          testMode: false
+        }
+      }));
+    } catch (_) { /* session storage may be unavailable/private */ }
+  }
+
+  function loadCombatSession() {
+    try {
+      const raw = sessionStorage.getItem(COMBAT_SESSION_KEY);
+      const data = raw ? JSON.parse(raw) : null;
+      return data && data.version === 1 && data.battle ? data : null;
+    } catch (_) { return null; }
+  }
+
+  function clearCombatSession() {
+    try { sessionStorage.removeItem(COMBAT_SESSION_KEY); } catch (_) { /* ignore */ }
+  }
+
+  function instrumentBattlePersistence(engine) {
+    if (!engine || typeof engine.later !== 'function') return;
+    const originalLater = engine.later;
+    engine.later = function (fn, ms) {
+      return originalLater.call(this, () => {
+        try { return fn(); }
+        finally { saveCombatSession(this); }
+      }, ms);
+    };
+  }
 
   function goToGameHome() {
     window.location.href = GAME_HOME_URL;
@@ -20,7 +70,16 @@
 
   function localApi(engine) {
     return {
-      dispatch(method, params) { return engine.dispatch(method, params || {}); },
+      dispatch(method, params) {
+        try {
+          const result = engine.dispatch(method, params || {});
+          saveCombatSession(engine);
+          return result;
+        } catch (error) {
+          saveCombatSession(engine);
+          throw error;
+        }
+      },
       getState() { return engine.state(); }
     };
   }
@@ -43,6 +102,7 @@
 
     const callback = onComplete;
     onComplete = null;
+    clearCombatSession();
     battleEngine = null;
     completing = false;
 
@@ -70,6 +130,7 @@
     if (adventureContainer && prevDisplay !== null) adventureContainer.style.display = prevDisplay;
     const callback = onComplete;
     onComplete = null;
+    clearCombatSession();
     battleEngine = null;
     completing = false;
     if (callback) callback(playerWon ? 'win' : 'lose', finalState, persistentState, { test: true, settled: true });
@@ -467,6 +528,7 @@
 
     const ui = ensureGameUI();
     battleEngine = new window.AdventureBattleEngine();
+    instrumentBattlePersistence(battleEngine);
     if (initialState.adventureEngine) battleEngine._adventureEngine = initialState.adventureEngine;
     if (initialState.adventureCurrency) battleEngine.adventureCurrency = initialState.adventureCurrency;
     window.furryBattle = localApi(battleEngine);
@@ -474,17 +536,19 @@
 
     let result;
     try {
-      result = battleEngine.startAdventure({
-        player: playerName,
-        opponent: monsterName,
-        stage: initialState.stage || 1,
-        scene: initialState.scene || null,
-        testMode: !!initialState.testMode,
-        playerState: initialState.playerState || initialState,
-        playerPile: initialState.playerPile || null,
-        discardTop: initialState.discardTop || null,
-        discardTopOwner: initialState.discardTopOwner || null
-      });
+      result = initialState.resumeBattle
+        ? battleEngine.restoreSession(initialState.resumeBattle, initialState.adventureEngine)
+        : battleEngine.startAdventure({
+          player: playerName,
+          opponent: monsterName,
+          stage: initialState.stage || 1,
+          scene: initialState.scene || null,
+          testMode: !!initialState.testMode,
+          playerState: initialState.playerState || initialState,
+          playerPile: initialState.playerPile || null,
+          discardTop: initialState.discardTop || null,
+          discardTopOwner: initialState.discardTopOwner || null
+        });
     } catch (error) {
       restoreNormalBattleApi();
       battleEngine = null;
@@ -506,6 +570,7 @@
 
     battleEngine.s.revealAIHand = true;
     ui.state = battleEngine.state();
+    saveCombatSession(battleEngine);
     ui.updateDisplay();
     if (typeof ui._playOpeningEvents === 'function') await ui._playOpeningEvents();
     ui._startPolling();
@@ -524,6 +589,7 @@
 
     const ui = ensureGameUI();
     battleEngine = new window.AdventureBattleEngine();
+    instrumentBattlePersistence(battleEngine);
     if (initialState.adventureEngine) battleEngine._adventureEngine = initialState.adventureEngine;
     if (initialState.adventureCurrency) battleEngine.adventureCurrency = initialState.adventureCurrency;
     window.furryBattle = localApi(battleEngine);
@@ -531,18 +597,20 @@
 
     let result;
     try {
-      result = battleEngine.startAdventure1v2({
-        player: playerName,
-        opponent1: monsterName1,
-        opponent2: monsterName2,
-        stage: initialState.stage || 1,
-        scene: initialState.scene || null,
-        testMode: !!initialState.testMode,
-        playerState: initialState.playerState || initialState,
-        playerPile: initialState.playerPile || null,
-        discardTop: initialState.discardTop || null,
-        discardTopOwner: initialState.discardTopOwner || null
-      });
+      result = initialState.resumeBattle
+        ? battleEngine.restoreSession(initialState.resumeBattle, initialState.adventureEngine)
+        : battleEngine.startAdventure1v2({
+          player: playerName,
+          opponent1: monsterName1,
+          opponent2: monsterName2,
+          stage: initialState.stage || 1,
+          scene: initialState.scene || null,
+          testMode: !!initialState.testMode,
+          playerState: initialState.playerState || initialState,
+          playerPile: initialState.playerPile || null,
+          discardTop: initialState.discardTop || null,
+          discardTopOwner: initialState.discardTopOwner || null
+        });
     } catch (error) {
       restoreNormalBattleApi();
       battleEngine = null;
@@ -565,6 +633,7 @@
 
     battleEngine.s.revealAIHand = true;
     ui.state = battleEngine.state();
+    saveCombatSession(battleEngine);
     ui.updateDisplay();
     if (typeof ui._playOpeningEvents === 'function') await ui._playOpeningEvents();
     ui._startPolling();
@@ -576,6 +645,10 @@
     return battleEngine.finishAdventureBattle();
   }
 
+  if (typeof window.addEventListener === 'function') {
+    window.addEventListener('pagehide', () => saveCombatSession(battleEngine));
+  }
+
   window.AdventureCombatBridge = {
     startCombat,
     startCombat1v2,
@@ -583,6 +656,8 @@
     isAvailable() {
       return !!window.GameUI && !!window.Bridge && !!window.AdventureBattleEngine;
     },
-    activeEngine() { return battleEngine; }
+    activeEngine() { return battleEngine; },
+    loadCombatSession,
+    clearCombatSession
   };
 })();

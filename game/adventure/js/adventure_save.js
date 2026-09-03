@@ -1,7 +1,8 @@
 /**
  * 冒险模式存档系统
  * 在安全的非战斗阶段将引擎状态序列化到 localStorage；
- * 页面刷新后恢复到最近一次安全快照（战斗中刷新则回到进入该房间前）。
+ * 战斗过程另由 combat_bridge 使用 sessionStorage 保存当前标签页快照。
+ * 因此页面刷新时优先恢复精确战斗状态，找不到战斗快照才回到安全快照。
  */
 (function () {
   const KEY = 'furryAdventureSave';
