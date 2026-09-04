@@ -29,7 +29,7 @@
 
   R.registerItem({
     name: 'PurifyWater2',
-    displayName: '净化之水（强效）',
+    displayName: '净化之水II',
     kind: 'consumable',
     description: '清除自身至多3个负面状态；对战中也可清除对手buff（含正面）',
     icon: ICON + 'purify_water.png',
@@ -201,7 +201,7 @@
     name: 'NaturalShield',
     displayName: '自然之盾',
     kind: 'consumable',
-    description: '仅防御出牌阶段使用：格挡本次攻击至多5点伤害',
+    description: '仅防御出牌阶段使用：格挡本次攻击至多5点伤害，获得1层守护',
     icon: ICON + 'nature_shield.png',
     useScene: 'combat',
     price: 5,
@@ -354,11 +354,11 @@
     name: 'PurifyCrystal',
     displayName: '净化水晶',
     kind: 'accessory',
-    description: '打出绿牌或蓝牌时，选择清除一个buff（最多1个）',
+    description: '打出蓝牌时选择清除一个buff；叠加2个时绿牌也生效',
     icon: ICON + 'purify_crystal.png',
     beastTradeCost: ['cao', 'cao', 'shui', 'shui', 'ben'],
     onPlayPurify: 1,
-    maxStacks: 1
+    maxStacks: 2
   });
 
   R.registerItem({

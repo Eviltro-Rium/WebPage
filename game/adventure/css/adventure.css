@@ -235,10 +235,12 @@
   border: 1px solid rgba(34, 197, 94, 0.35); background: rgba(20, 30, 25, 0.6);
   display: flex; align-items: center; justify-content: center; cursor: help;
   transition: border-color 0.15s, box-shadow 0.15s;
+  position: relative;
 }
 .adv-acc-col-slot:hover { border-color: rgba(134, 239, 172, 0.8); box-shadow: 0 0 6px rgba(134, 239, 172, 0.3); }
 .adv-acc-col-icon { width: 26px; height: 26px; object-fit: contain; }
 .adv-acc-col-noicon { font-size: 0.75rem; color: #86efac; font-weight: 600; }
+.adv-acc-col-stack { position: absolute; bottom: -2px; right: -2px; background: rgba(34,197,94,0.9); color: #fff; font-size: 0.65rem; font-weight: 700; border-radius: 50%; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; }
 .adv-char-name { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
 .adv-char-type { font-size: 12px; color: #a78bfa; margin-left: 8px; font-weight: 400; }
 .adv-hp-bar {

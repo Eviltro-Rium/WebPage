@@ -628,7 +628,12 @@
           const blocked = Math.min(def.shieldAmount || 5, damage);
           if (this.s.pendingAttack) this.s.pendingAttack.damage = damage - blocked;
           this.s.pendingDefenseDamage = Math.max(0, damage - blocked);
-          message = '格挡本次攻击' + blocked + '点伤害';
+          const before = player.guard || 0;
+          player.guard = Math.min(5, before + 1);
+          if (player.guard > before) {
+            this.emit('buff', '+1[守护]', null, { who: 'player', target: 'player', kind: 'guard', stacks: player.guard });
+          }
+          message = '格挡本次攻击' + blocked + '点伤害，获得1层守护';
           break;
         }
         case 'heal': {
@@ -1140,10 +1145,12 @@
 
     _shouldTriggerPurifyCrystal(card) {
       if (!this.s || !this.s.isAdventure) return false;
-      if (!this._hasAccessory('PurifyCrystal')) return false;
-      if (!card) return false;
+      const count = this._accessoryCount('PurifyCrystal');
+      if (count <= 0 || !card) return false;
       const color = this.effective(card);
-      if (color !== 'GREEN' && color !== 'BLUE') return false;
+      if (color === 'BLUE') {}
+      else if (color === 'GREEN' && count >= 2) {}
+      else return false;
       const opponentKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
       const opponent = this.s[opponentKey];
       return this._hasPurifyableBuff(this.s.player) || this._hasPurifyableBuff(opponent);
@@ -1152,7 +1159,7 @@
     _hasPurifyableBuff(ch) {
       if (!ch) return false;
       return (ch.burn > 0) || (ch.bleed > 0) || ((ch.poison || 0) > 0) || !!ch.frozen ||
-             (ch.guard > 0) || ((ch.fly || 0) > 0) || ((ch.crit || 0) > 0);
+             (ch.guard > 0) || ((ch.fly || 0) > 0) || ((ch.crit || 0) > 0) || ((ch.lush || 0) > 0);
     }
 
     choosePurifyCrystal(choice) {
@@ -1162,7 +1169,7 @@
       const opponentKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
       const target = who === 'opp' ? this.s[opponentKey] : this.s.player;
       const targetLabel = who === 'opp' ? (this.s.is1v2 && opponentKey === 'ai2' ? 'AI2' : '对手') : '玩家';
-      const kindLabel = { burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', guard: '守护', fly: '飞翔', crit: '暴击' }[kind] || 'buff';
+      const kindLabel = { burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛' }[kind] || 'buff';
       this.clean(target, false, kind);
       this.emit('desc', '净化水晶：清除' + targetLabel + '一层' + kindLabel);
       const pending = this.s.pendingPurifyCrystal;

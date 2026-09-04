@@ -127,18 +127,14 @@
         }
       }
     }
-    const skipStateDiffAnimations=!!this._skipStateDiffAnimations;
-    this._skipStateDiffAnimations=false;
     if(prev){
-      this._detectAndPlayAnimations(prev,s,{skipEventBacked:skipStateDiffAnimations});
+      this._detectAndPlayAnimations(prev,s);
 
       if(prev.ai2&&s.ai2){
-        // Debuffs are rendered by the canonical buff/buffSettle events. The
-        // old state-diff fallback replayed them here after the event queue had
-        // already animated them, producing duplicate poison/burn/bleed-style
-        // feedback in 1v2. Keep only legacy transitions that do not have a
-        // corresponding event yet (guard/chaos/bloodthirst).
-        if(!skipStateDiffAnimations&&s.ai2.guard>prev.ai2.guard)this.playFloatingText(`+${s.ai2.guard-prev.ai2.guard}[守护]`,'#00bcd4','ai2');
+        if(s.ai2.burn>prev.ai2.burn)this.playFloatingText(`+${s.ai2.burn-prev.ai2.burn}[灼烧]`,'#ff8800','ai2');
+        if(s.ai2.bleed>prev.ai2.bleed)this.playFloatingText(`[流血]`,'#cc2222','ai2');
+        if(s.ai2.frozen&&!prev.ai2.frozen)this.playFloatingText('[冷冻]','#44aaff','ai2');
+        if(s.ai2.guard>prev.ai2.guard)this.playFloatingText(`+${s.ai2.guard-prev.ai2.guard}[守护]`,'#00bcd4','ai2');
         if(s.ai2.bloodthirst&&!prev.ai2.bloodthirst)this.playFloatingText('[嗜血触发]','#ff315f','ai2');
         if(!s.ai2.bloodthirst&&prev.ai2.bloodthirst)this.playFloatingText('[退出嗜血]','#f5b6c5','ai2');
         if(s.ai2.chaos_red&&!prev.ai2.chaos_red)this.playFloatingText('[混沌-红]','#ff4444','ai2');
@@ -175,7 +171,6 @@
       return this._apiAction('chooseGuard',{stacks:choice});
     });
     else if(s.pendingDialog==='flyRetry')this.dialogs.showFlyRetryChoice(s.player,s.pendingGuardDamage,again=>this._apiAction('chooseFlyContinue',{again}));
-    else if(s.pendingDialog==='mozeSeven')this.dialogs.showMozeSevenChoice(choice=>this._apiAction('chooseMozeSeven',{choice}));
     if(s.phase==='ATTACK_MOD_CHOICE')this._ensureAttackModChoicePrompt(s);
     else{this._attackModPromptOpen=false;this._attackModActive=false;}
     if(s.phase==='GAME_OVER')this._showGameOver();
@@ -189,21 +184,9 @@
     const s=this.state;if(!s)return;
     const revealFace=!!(s.revealAIHand||s.isAdventure);
     const canSelect=s.phase==='OPPONENT_CARD_CHOICE'||(s.phase==='PLAYER_SEVEN_CHOICE'&&!s.chanFourSwapMode&&!s.chanSevenKeepMode)||(s.phase==='SAIKI_THREE_CHOICE'&&!s.saikiThreeDrawn);
-    const canPeekSkill=!!(s.isAdventure&&revealFace&&(s.phase==='PLAYER_PLAY'||s.phase==='PLAYER_DEFEND'));
     const leonZeroDiscard=!!s.pendingLeonZeroDiscard;
     const selectedTarget=s.attackTarget||(s.ai.alive?'ai':'ai2');
     let leonZeroOffset=0;
-    const showNpcTooltip=(card,anchor,key)=>{
-      if(!card||!canPeekSkill)return;
-      const opponent=s[key];
-      const charName=this._combatDisplayName(opponent&&opponent.name);
-      const adventureOpts={
-        stage:s.adventureStage||s.stage||1,
-        playerHandSize:(s.playerHand&&s.playerHand.length)||0,
-        incomingDamage:s.pendingDefenseDamage||0
-      };
-      this._showTooltip(card,anchor,s.phase==='PLAYER_PLAY',{charName,adventureOpts});
-    };
     const decorateSelectable=(card,index,key)=>{
       if(!canSelect)return;
       if(!leonZeroDiscard&&selectedTarget!==key)return;
@@ -214,21 +197,9 @@
     };
     let aiEl=document.getElementById('ai-hand');
     if(aiEl){
-      const size=s.ai.alive?(s.aiHandSize||0):0;
-      const handCards=revealFace&&Array.isArray(s.aiHand)?s.aiHand:null;
-      const aiKey=JSON.stringify([
-        s.ai.alive, size, revealFace, canSelect, selectedTarget, s.selectedAICard,
-        leonZeroDiscard, hideWho, hideTrailing,
-        handCards?handCards.map(c=>cardVisualKey(c)):null
-      ]);
-      const expectedChildren=s.ai.alive?size:1;
-      if(leonZeroDiscard)leonZeroOffset=size;
-      if(aiEl.dataset.handRenderKey===aiKey&&aiEl.children.length===expectedChildren){
-        // Keep the cached DOM/listeners when only HP, buffs or other UI data changed.
-      } else {
-        aiEl.dataset.handRenderKey=aiKey;
-        aiEl.innerHTML='';
+      aiEl.innerHTML='';
       if(s.ai.alive){
+        const size=s.aiHandSize||0;
         const handCards=revealFace&&Array.isArray(s.aiHand)?s.aiHand:null;
         for(let i=0;i<size;i++){
           let cv;
@@ -239,34 +210,19 @@
             cv=renderCardBack(40,58);
           }
           if(hideTrailing&&(!hideWho||hideWho==='ai')&&i>=size-hideTrailing)cv.classList.add('card-draw-pending');
-          if(canPeekSkill&&handCards&&handCards[i]){
-            cv.addEventListener('mouseenter',()=>showNpcTooltip(handCards[i],cv,'ai'));
-            cv.addEventListener('mouseleave',()=>this._syncHandSkillTooltip());
-          }
           decorateSelectable(cv,i,'ai');
           aiEl.appendChild(cv);
         }
+        if(leonZeroDiscard)leonZeroOffset=s.aiHandSize||0;
       }else{
         aiEl.innerHTML='<div style="color:#ef4444;font-size:0.8rem;padding:8px">'+s.ai.name+' 已出局</div>';
-      }
       }
     }
     let ai2El=document.getElementById('ai2-hand');
     if(ai2El&&s.ai2){
-      const size=s.ai2.alive?(s.ai2HandSize||0):0;
-      const handCards=revealFace&&Array.isArray(s.ai2Hand)?s.ai2Hand:null;
-      const ai2Key=JSON.stringify([
-        s.ai2.alive, size, revealFace, canSelect, selectedTarget, s.selectedAICard,
-        leonZeroDiscard, hideWho, hideTrailing,
-        handCards?handCards.map(c=>cardVisualKey(c)):null
-      ]);
-      const expectedChildren=s.ai2.alive?size:1;
-      if(ai2El.dataset.handRenderKey===ai2Key&&ai2El.children.length===expectedChildren){
-        // Cached hand is still valid.
-      } else {
-        ai2El.dataset.handRenderKey=ai2Key;
-        ai2El.innerHTML='';
+      ai2El.innerHTML='';
       if(s.ai2.alive){
+        const size=s.ai2HandSize||0;
         const handCards=revealFace&&Array.isArray(s.ai2Hand)?s.ai2Hand:null;
         for(let i=0;i<size;i++){
           let cv;
@@ -279,16 +235,11 @@
             cv.style.filter='hue-rotate(240deg)';
           }
           if(hideTrailing&&(!hideWho||hideWho==='ai2')&&i>=size-hideTrailing)cv.classList.add('card-draw-pending');
-          if(canPeekSkill&&handCards&&handCards[i]){
-            cv.addEventListener('mouseenter',()=>showNpcTooltip(handCards[i],cv,'ai2'));
-            cv.addEventListener('mouseleave',()=>this._syncHandSkillTooltip());
-          }
           decorateSelectable(cv,i,'ai2');
           ai2El.appendChild(cv);
         }
       }else{
         ai2El.innerHTML='<div style="color:#ef4444;font-size:0.8rem;padding:8px">'+s.ai2.name+' 已出局</div>';
-      }
       }
     }
   };

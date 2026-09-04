@@ -160,6 +160,11 @@
       return this.s;
     }
 
+    /** 导出可序列化的存档数据（委托给 AdventureSave） */
+    exportSave() {
+      return window.AdventureSave ? window.AdventureSave.serialize(this) : null;
+    }
+
     /** 从存档恢复引擎状态；map 需由调用方先按存档的 mapName 加载 */
     restoreFromSave(save, map) {
       const charMod = window.CharacterRegistry.get(save.characterName);
@@ -921,6 +926,412 @@
       this._log('牌库就绪：玩家' + this.s.playerPile.deck.length + '张库/' + this.s.playerPile.hand.length + '张手牌，NPC ' + this.s.combat.npcPile.deck.length + '张库/' + this.s.combat.npcPile.hand.length + '张明牌');
     }
 
+    playerSelectCard(index) {
+      if (this.s.phase !== Phase.PLAYER_PLAY && this.s.phase !== Phase.PLAYER_DEFEND) return false;
+      if (index < 0 || index >= this.s.playerPile.hand.length) return false;
+      this.s.combat.selectedCard = index;
+      return true;
+    }
+
+    playerPlayCard(index) {
+      if (this.s.phase !== Phase.PLAYER_PLAY) return { error: '不是你的回合' };
+      const pile = this.s.playerPile;
+      if (index < 0 || index >= pile.hand.length) return { error: '无效卡牌' };
+      const card = pile.hand[index];
+      const top = this.s.discardTop;
+      if (!top.legal(card)) return { error: '这张牌不符合出牌规则' };
+
+      pile.playFromHand(index);
+      const oldTop = top.replace(card);
+      pile.discardCard(oldTop);
+      this.s.combat.selectedCard = null;
+      this.s.combat.atkCard = card;
+
+      if (card.potion) {
+        const healAmt = 5;
+        this.s.player.hp = Math.min(this.s.player.maxHp, this.s.player.hp + healAmt);
+        this._log('你出药剂牌，恢复' + healAmt + '点生命');
+        this.emit('playerPlay', '药剂牌：恢复' + healAmt + '生命', card, { kind: 'potion', heal: healAmt });
+        this.s.combat.atkCard = null;
+        this._checkCombatEnd();
+        return { ok: true };
+      }
+
+      if (card.isItemCard) {
+        this._log('你出' + (card.isBlack ? '黑' : '白') + '道具牌');
+        this.emit('playerPlay', '道具牌', card, { kind: 'item' });
+        this.s.combat.atkCard = null;
+        this._checkCombatEnd();
+        return { ok: true };
+      }
+
+      const dmg = this._calcPlayerDamage(card);
+      this._log('你出' + (card.isWhite ? '白' : '') + card.value + '牌，造成' + dmg + '点伤害');
+      this.emit('playerPlay', '出牌攻击：' + dmg + '点伤害', card, { kind: 'attack', damage: dmg });
+
+      const defResult = this.npcDefendTurn(dmg);
+      const actualDmg = this._applyEnemyDamage(defResult.remaining);
+      this.emit('attackResolve', '攻击结算：造成' + actualDmg + '点伤害', null, { damage: actualDmg });
+
+      this.s.combat.atkCard = null;
+      pile.drawToLimit();
+      this.s.combat.npcPile.drawToLimit();
+
+      if (this._checkCombatEnd()) return { ok: true, combatEnd: true };
+      return { ok: true };
+    }
+
+    _calcPlayerDamage(card) {
+      if (!card || !card.isNumberCard) return 0;
+      let dmg = card.value;
+      if (this.s.player.crit > 0) {
+        dmg = Math.ceil(dmg * 1.5);
+        this.s.player.crit--;
+        this._log('暴击！伤害×1.5=' + dmg);
+      }
+      return dmg;
+    }
+
+    playerEndTurn() {
+      if (this.s.phase !== Phase.PLAYER_PLAY) return { error: '不是你的回合' };
+      this.s.combat.selectedCard = null;
+      this._log('你结束了回合');
+      this.emit('playerEndTurn', '结束回合', null);
+      this._startNpcTurn();
+      return { ok: true };
+    }
+
+    _startNpcTurn() {
+      const combat = this.s.combat;
+      if (!combat) return;
+      this.s.phase = Phase.NPC_TURN;
+      for (const enemy of [combat.enemy, combat.enemy2]) {
+        if (!enemy || enemy.hp <= 0) continue;
+        if ((enemy.lush || 0) > 0) {
+          const amount = Math.min(enemy.lush, 2);
+          const before = enemy.hp;
+          enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
+          this.emit('heal', '+' + (enemy.hp - before) + '[生命]', null, { who: 'enemy', amount: enemy.hp - before, kind: 'passive' });
+        }
+        if (typeof enemy.attackTurnStart === 'function') enemy.attackTurnStart(this, enemy, 'enemy');
+      }
+      combat.npcPile.drawToLimit();
+      this._log('敌方回合开始');
+      this.emit('npcTurnStart', '敌方回合', null);
+      this._npcPlayNext();
+    }
+
+    _applyNpcAttackHooks(enemy, card) {
+      if (!enemy || !card || card.isItemCard) return;
+      const ownerLabel = enemy.name || '敌方';
+      if (typeof enemy.attackLush === 'function') {
+        const lush = Number(enemy.attackLush(card)) || 0;
+        if (lush > 0) {
+          enemy.lush = Math.min(2, (enemy.lush || 0) + lush);
+          this.emit('buff', '+' + lush + '[茂盛]', null, { who: 'enemy', kind: 'lush', stacks: enemy.lush });
+        }
+      }
+      if (typeof enemy.attackHeal === 'function') {
+        const ctx = {
+          playerHandSize: this.s.playerPile ? this.s.playerPile.hand.length : 0,
+          playerBleed: (this.s.player.bleed || 0),
+          playerPoison: (this.s.player.poison || 0),
+          attackerLush: enemy.lush || 0
+        };
+        const amount = Number(enemy.attackHeal(card, ctx)) || 0;
+        if (amount > 0) {
+          const before = enemy.hp;
+          enemy.hp = Math.min(enemy.maxHp, enemy.hp + amount);
+          this.emit('heal', '+' + (enemy.hp - before) + '[生命]', null, { who: 'enemy', amount: enemy.hp - before, kind: 'skill' });
+          this._log(ownerLabel + '恢复' + (enemy.hp - before) + '点生命');
+        }
+      }
+    }
+
+    _npcPlayNext() {
+      const combat = this.s.combat;
+      if (!combat) return;
+      const pile = combat.npcPile;
+      const strategy = window.AdventureNpcStrategy;
+
+      if (pile.hand.length === 0) {
+        this._endNpcTurn();
+        return;
+      }
+
+      const idx = strategy.chooseAttack(pile.hand);
+      if (idx < 0) {
+        this._endNpcTurn();
+        return;
+      }
+
+      const card = pile.playFromHand(idx);
+      const oldTop = this.s.discardTop.replace(card);
+      pile.discardCard(oldTop);
+      combat.atkCard = card;
+
+      if (card.magic || card.greenMagic || card.magicColor) {
+        const _mHp = (window.AdventureRegistry && window.AdventureRegistry.getBoss(combat.enemy.name)) ? 5 : 3;
+        combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + _mHp);
+        if (card.greenMagic || card.magicColor === 'green') {
+          combat.enemy.burn = 0; combat.enemy.bleed = 0; combat.enemy.poison = 0; combat.enemy.frozen = false; combat.enemy.bomb = 0;
+          this._log('敌方出绿魔法牌，恢复' + _mHp + '点生命，清除自身负面状态');
+          this.emit('npcPlay', '敌方绿魔法牌：恢复' + _mHp + '生命，清除自身负面状态', card, { kind: 'greenMagic' });
+        } else {
+          this._clearPlayerPositiveBuffs();
+          this._log('敌方出紫魔法牌，恢复' + _mHp + '点生命，清除玩家正面buff');
+          this.emit('npcPlay', '敌方紫魔法牌：恢复' + _mHp + '生命，清除玩家正面buff', card, { kind: 'magic' });
+        }
+        combat.atkCard = null;
+        this._npcPlayNext();
+        return;
+      }
+
+      const ctx = {
+        playerHandSize: this.s.playerPile ? this.s.playerPile.hand.length : 0,
+        playerBleed: this.s.player.bleed || 0,
+        playerPoison: this.s.player.poison || 0,
+        attackerLush: combat.enemy.lush || 0
+      };
+      this._applyNpcAttackHooks(combat.enemy, card);
+      const dmg = (typeof combat.enemy.attackDamage === 'function')
+        ? combat.enemy.attackDamage(card, ctx)
+        : card.value;
+      const unblockable = (typeof combat.enemy.attackUnblockable === 'function')
+        ? combat.enemy.attackUnblockable(card)
+        : false;
+
+      this._log('敌方出白' + card.value + '牌，造成' + dmg + '点伤害' + (unblockable ? '（不可防御）' : ''));
+      this.emit('npcPlay', '敌方攻击：' + dmg + '点伤害', card, { kind: 'attack', damage: dmg, unblockable });
+
+      if (unblockable) {
+        this._applyPlayerDamage(dmg);
+        combat.atkCard = null;
+        if (this._checkCombatEnd()) return;
+        this._npcPlayNext();
+        return;
+      }
+
+      combat.pendingDamage = dmg;
+      this.s.phase = Phase.PLAYER_DEFEND;
+      this.emit('playerDefend', '请防御' + dmg + '点伤害', null, { damage: dmg });
+    }
+
+    playerDefendCard(index) {
+      if (this.s.phase !== Phase.PLAYER_DEFEND) return { error: '不是防御阶段' };
+      const pile = this.s.playerPile;
+      if (index < 0 || index >= pile.hand.length) return { error: '无效卡牌' };
+      const card = pile.hand[index];
+      const top = this.s.discardTop;
+      if (!top.legal(card, true)) return { error: '这张牌不能用于防御' };
+
+      pile.playFromHand(index);
+      const oldTop = top.replace(card);
+      pile.discardCard(oldTop);
+      this.s.combat.defCard = card;
+
+      let block = 0;
+      if (card.value === 1) block = Math.ceil(this.s.combat.pendingDamage / 2);
+      else if (card.value === 3) block = Math.floor(this.s.combat.pendingDamage / 2);
+      else if (card.value === 2) block = 1;
+
+      const remaining = Math.max(0, this.s.combat.pendingDamage - block);
+      this._log('你防御出白' + card.value + '牌，格挡' + block + '点，剩余' + remaining + '点');
+      this.emit('playerDefend', '防御：格挡' + block + '点', card, { kind: 'defend', block, remaining });
+
+      this._applyPlayerDamage(remaining);
+      this.s.combat.defCard = null;
+      this.s.combat.atkCard = null;
+      this.s.combat.pendingDamage = 0;
+      pile.drawToLimit();
+
+      if (this._checkCombatEnd()) return { ok: true, combatEnd: true };
+      this.s.phase = Phase.NPC_TURN;
+      this._npcPlayNext();
+      return { ok: true };
+    }
+
+    playerSkipDefend() {
+      if (this.s.phase !== Phase.PLAYER_DEFEND) return { error: '不是防御阶段' };
+      const dmg = this.s.combat.pendingDamage;
+      this._log('你选择不防御，承受' + dmg + '点伤害');
+      this.emit('playerDefend', '跳过防御', null, { kind: 'skip' });
+
+      this._applyPlayerDamage(dmg);
+      this.s.combat.atkCard = null;
+      this.s.combat.pendingDamage = 0;
+      this.s.playerPile.drawToLimit();
+
+      if (this._checkCombatEnd()) return { ok: true, combatEnd: true };
+      this.s.phase = Phase.NPC_TURN;
+      this._npcPlayNext();
+      return { ok: true };
+    }
+
+    _applyPlayerDamage(damage) {
+      if (damage <= 0) return;
+      const p = this.s.player;
+      let remaining = damage;
+      if ((p.guard || 0) > 0 && remaining > 0) {
+        const used = Math.min(p.guard, remaining);
+        p.guard -= used;
+        remaining -= used;
+        this._log('你消耗' + used + '层守护，减免' + used + '点伤害');
+        this.emit('playerGuard', '消耗守护', { used, guardLeft: p.guard });
+      }
+      p.hp = Math.max(0, p.hp - remaining);
+      this._log('你受到' + remaining + '点伤害，剩余' + p.hp + '/' + p.maxHp + '生命');
+      this.emit('playerHurt', '受到伤害', { damage: remaining, hp: p.hp });
+    }
+
+    _endNpcTurn() {
+      const combat = this.s.combat;
+      if (!combat) return;
+      combat.round++;
+      combat.npcPile.drawToLimit();
+      this.s.playerPile.drawToLimit();
+      this._log('敌方回合结束，第' + combat.round + '轮开始');
+      this.emit('npcTurnEnd', '敌方回合结束', null);
+      this.s.phase = Phase.PLAYER_PLAY;
+    }
+
+    _checkCombatEnd() {
+      const combat = this.s.combat;
+      if (!combat) return false;
+      if (combat.enemy.hp <= 0) {
+        this.onCombatEnd('win');
+        return true;
+      }
+      if (this.s.player.hp <= 0) {
+        this.onCombatEnd('lose');
+        return true;
+      }
+      return false;
+    }
+
+    _runCombat(enemy, kind) {
+    }
+
+    npcAttackTurn() {
+      const combat = this.s.combat;
+      if (!combat) return null;
+      const pile = combat.npcPile;
+      const strategy = window.AdventureNpcStrategy;
+      const played = [];
+
+      while (pile.hand.length > 0) {
+        const idx = strategy.chooseAttack(pile.hand);
+        if (idx < 0) break;
+        const card = pile.playFromHand(idx);
+        const oldTop = this.s.discardTop.replace(card);
+        pile.discardCard(oldTop);
+        played.push(card);
+
+        if (card.magic || card.greenMagic || card.magicColor) {
+          const _mHp = (window.AdventureRegistry && window.AdventureRegistry.getBoss(combat.enemy.name)) ? 5 : 3;
+          combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + _mHp);
+          if (card.greenMagic || card.magicColor === 'green') {
+            combat.enemy.burn = 0; combat.enemy.bleed = 0; combat.enemy.poison = 0; combat.enemy.frozen = false; combat.enemy.bomb = 0;
+            this._log('NPC 出绿魔法牌，恢复' + _mHp + '点生命，清除自身负面状态，继续搭桥');
+            this.emit('npcPlay', 'NPC 绿魔法牌：恢复' + _mHp + '点生命，清除自身负面状态', card, { kind: 'greenMagic' });
+          } else {
+            this._clearPlayerPositiveBuffs();
+            this._log('NPC 出紫魔法牌，恢复' + _mHp + '点生命，清除玩家正面buff，继续搭桥');
+            this.emit('npcPlay', 'NPC 紫魔法牌：恢复' + _mHp + '点生命，清除玩家正面buff', card, { kind: 'magic' });
+          }
+        } else {
+          const ctx = {
+            playerHandSize: this.s.playerPile ? this.s.playerPile.hand.length : 0,
+            playerBleed: this.s.player.bleed || 0,
+            playerPoison: this.s.player.poison || 0,
+            attackerLush: combat.enemy.lush || 0
+          };
+          this._applyNpcAttackHooks(combat.enemy, card);
+          const dmg = (typeof combat.enemy.attackDamage === 'function')
+            ? combat.enemy.attackDamage(card, ctx)
+            : card.value;
+          const unblockable = (typeof combat.enemy.attackUnblockable === 'function')
+            ? combat.enemy.attackUnblockable(card)
+            : false;
+          this._log('NPC 出白' + card.value + '牌，造成' + dmg + '点伤害' + (unblockable ? '（不可防御）' : ''));
+          this.emit('npcPlay', 'NPC 白' + card.value + '：' + dmg + '点伤害', card, { kind: 'attack', damage: dmg, unblockable });
+        }
+      }
+
+      this.emit('npcAttackEnd', 'NPC进攻结束：共出' + played.length + '张牌', null, { count: played.length });
+      pile.drawToLimit();
+      return played;
+    }
+
+    npcDefendTurn(incomingDamage) {
+      const combat = this.s.combat;
+      if (!combat) return { remaining: incomingDamage, defended: false };
+      const pile = combat.npcPile;
+      const strategy = window.AdventureNpcStrategy;
+      const idx = strategy.chooseDefend(pile.hand);
+
+      if (idx < 0) {
+        this._log('NPC 无可防御牌，承受全部' + incomingDamage + '点伤害');
+        return { remaining: incomingDamage, defended: false, card: null };
+      }
+
+      const card = pile.playFromHand(idx);
+      const oldTop = this.s.discardTop.replace(card);
+      pile.discardCard(oldTop);
+
+      if (card.magic || card.greenMagic || card.magicColor) {
+        const _mHp = (window.AdventureRegistry && window.AdventureRegistry.getBoss(combat.enemy.name)) ? 5 : 3;
+        combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + _mHp);
+        if (card.greenMagic || card.magicColor === 'green') {
+          combat.enemy.burn = 0; combat.enemy.bleed = 0; combat.enemy.poison = 0; combat.enemy.frozen = false; combat.enemy.bomb = 0;
+          this._log('NPC 防御出绿魔法牌，恢复' + _mHp + '点生命，清除自身负面状态');
+          this.emit('npcDefend', 'NPC 绿魔法牌防御：恢复' + _mHp + '点生命，清除自身负面状态', card, { kind: 'greenMagic' });
+        } else {
+          this._clearPlayerPositiveBuffs();
+          this._log('NPC 防御出紫魔法牌，恢复' + _mHp + '点生命，清除玩家正面buff');
+          this.emit('npcDefend', 'NPC 紫魔法牌防御：恢复' + _mHp + '点生命，清除玩家正面buff', card, { kind: 'magic' });
+        }
+        return { remaining: incomingDamage, defended: true, card };
+      }
+
+      const healAmt = (typeof combat.enemy.defendHeal === 'function')
+        ? combat.enemy.defendHeal(card)
+        : 0;
+      if (healAmt > 0) {
+        combat.enemy.hp = Math.min(combat.enemy.maxHp, combat.enemy.hp + healAmt);
+        this._log('NPC 防御出白' + card.value + '牌，恢复' + healAmt + '点生命');
+        this.emit('npcDefend', 'NPC 白' + card.value + '防御：恢复' + healAmt + '点生命', card, { kind: 'defend-heal', heal: healAmt });
+        return { remaining: incomingDamage, defended: true, card };
+      }
+
+      const block = (typeof combat.enemy.defendBlock === 'function')
+        ? combat.enemy.defendBlock(card, incomingDamage)
+        : (card.value === 1 ? Math.ceil(incomingDamage / 2)
+         : card.value === 3 ? Math.floor(incomingDamage / 2)
+         : 0);
+      const remaining = Math.max(0, incomingDamage - block);
+      this._log('NPC 防御出白' + card.value + '牌，格挡' + block + '点，剩余' + remaining + '点');
+      this.emit('npcDefend', 'NPC 白' + card.value + '防御：格挡' + block + '点', card, { kind: 'defend', block, remaining });
+      return { remaining, defended: true, card };
+    }
+
+    _applyEnemyDamage(damage) {
+      if (!this.s || !this.s.combat || damage <= 0) return 0;
+      const enemy = this.s.combat.enemy;
+      let remaining = damage;
+      if ((enemy.guard || 0) > 0 && remaining > 0) {
+        const used = Math.min(enemy.guard, remaining);
+        enemy.guard -= used;
+        remaining -= used;
+        this._log('敌方消耗' + used + '层守护，减免' + used + '点伤害（剩余守护' + enemy.guard + '层）');
+        this.emit('enemyGuard', '敌方消耗守护', { used, guardLeft: enemy.guard });
+      }
+      enemy.hp = Math.max(0, enemy.hp - remaining);
+      this._log('敌方受到' + remaining + '点伤害，剩余' + enemy.hp + '/' + enemy.maxHp + '生命');
+      this.emit('enemyHurt', '敌方受到伤害', { damage: remaining, hp: enemy.hp });
+      return remaining;
+    }
+
     onCombatEnd(result) {
       if (!this.s || !this.s.combat) return;
       const room = this.currentRoom();
@@ -1388,6 +1799,18 @@
       return true;
     }
 
+    _collectGoldReward(room) {
+      const reward = room.reward || this._defaultReward(room);
+      if (reward) {
+        if (reward.currency) this.s.currency.addGold(reward.currency);
+        if (reward.items) reward.items.forEach(it => this.addItem(it));
+        if (reward.heal) this.s.player.hp = Math.min(this.s.player.maxHp, this.s.player.hp + reward.heal);
+      }
+      room.rewardClaimed = true;
+      this._log('获得金币奖励' + (reward && reward.currency ? '：' + reward.currency + '金币' : '：无'));
+      this.emit('reward', '获得金币奖励', { reward });
+    }
+
     applyBattleResult(result) {
       if (!this.s || !result) return false;
       const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
@@ -1420,6 +1843,27 @@
         npcResetCount: result.npcResetCount || 0
       });
       return true;
+    }
+
+    _startBeastTokenReward(room) {
+      const scenario = window.AdventureCurrency.rollBeastReward();
+      this.s.beastReward = scenario;
+      this.s.beastSelection = [];
+
+      if (scenario.auto) {
+        this.s.currency.addTokens(scenario.offered);
+        room.beastTokenClaimed = true;
+        this._log('兽元奖励：直接获得' + this._tokenText(scenario.offered));
+        this.emit('beastReward', '获得万能兽元', { scenario: scenario.scenario, auto: true, tokens: scenario.offered });
+        this._checkBeastOverflow(room);
+      } else {
+        this.s.phase = Phase.BEAST_CHOICE;
+        const offeredText = scenario.offeredTypes
+          ? scenario.offeredTypes.map(t => window.AdventureCurrency.BEAST_LABEL[t] + '×2').join('、')
+          : this._tokenText(scenario.offered);
+        this._log('兽元奖励（情况' + (scenario.scenario + 1) + '）：可选 ' + offeredText + '，请选2个');
+        this.emit('beastReward', '选择兽元', { scenario: scenario.scenario, offered: scenario.offered, offeredTypes: scenario.offeredTypes, pickCount: 2 });
+      }
     }
 
     _checkBeastOverflow(room) {
@@ -1573,6 +2017,110 @@
       return parts.join('、') || '无';
     }
 
+    burn(target, n) {
+      if (n <= 0) return;
+      if (target === this.s.player && this.s.player.name === 'Leon') return;
+      const prev = target.burn || 0;
+      target.burn = Math.min(4, prev + n);
+      this._log((target === this.s.player ? '玩家' : '敌方') + '灼烧+' + n + '（当前' + target.burn + '层）');
+      this.emit('buff', '+' + n + '[灼烧]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'burn', stacks: target.burn });
+    }
+
+    bleed(target, n) {
+      if (n <= 0) return;
+      const prev = target.bleed || 0;
+      target.bleed = Math.min(2, prev + n);
+      this._log((target === this.s.player ? '玩家' : '敌方') + '流血+' + n + '（当前' + target.bleed + '层）');
+      this.emit('buff', '+' + n + '[流血]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'bleed', stacks: target.bleed });
+    }
+
+    poison(target, n) {
+      if (n <= 0) return;
+      const prev = target.poison || 0;
+      target.poison = Math.min(3, prev + n);
+      this._log((target === this.s.player ? '玩家' : '敌方') + '中毒+' + n + '（当前' + target.poison + '层）');
+      this.emit('buff', '+' + n + '[中毒]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'poison', stacks: target.poison });
+    }
+
+    freeze(target) {
+      if (target === this.s.player && this.s.player.name === 'Serenity') return;
+      target.frozen = true;
+      this._log((target === this.s.player ? '玩家' : '敌方') + '被冷冻');
+      this.emit('buff', '[冷冻]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'freeze', stacks: 1 });
+    }
+
+    addGuard(target, n) {
+      if (n <= 0) return;
+      target.guard = Math.min(5, (target.guard || 0) + n);
+      this._log((target === this.s.player ? '玩家' : '敌方') + '守护+' + n + '（当前' + target.guard + '层）');
+      this.emit('buff', '+' + n + '[守护]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'guard', stacks: target.guard });
+    }
+
+    addCrit(n) {
+      if (n <= 0) return;
+      this.s.player.crit = Math.min(2, (this.s.player.crit || 0) + n);
+      this._log('玩家暴击+' + n + '（当前' + this.s.player.crit + '层）');
+      this.emit('buff', '+' + n + '[暴击]', null, { who: 'player', kind: 'crit', stacks: this.s.player.crit });
+    }
+
+    setChaos(color, on) {
+      const key = 'chaos_' + color;
+      this.s.player[key] = !!on;
+      this._log('玩家混沌' + color + (on ? '开启' : '关闭'));
+      this.emit('buff', (on ? '+' : '-') + '[混沌' + color + ']', null, { who: 'player', kind: 'chaos_' + color, stacks: on ? 1 : 0 });
+    }
+
+    clearDebuffs(target) {
+      target.burn = 0;
+      target.bleed = 0;
+      target.poison = 0;
+      target.blind = 0;
+      target.frozen = false;
+      this._log((target === this.s.player ? '玩家' : '敌方') + 'debuff已清除');
+      this.emit('buff', '清除debuff', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'clearDebuffs' });
+    }
+
+    _clearPlayerPositiveBuffs() {
+      const p = this.s.player;
+      if (!p) return;
+      p.guard = 0;
+      p.fly = 0;
+      p.crit = 0;
+      p.lush = 0;
+      p.chaos_red = false;
+      p.chaos_yellow = false;
+      p.chaos_blue = false;
+      p.chaos_green = false;
+      this._log('玩家正面buff已清除');
+    }
+
+    tickBuffs(target) {
+      const who = target === this.s.player ? '玩家' : '敌方';
+      if (target.burn > 0) {
+        const dmg = target.burn;
+        target.burn--;
+        target.hp = Math.max(0, target.hp - dmg);
+        this._log(who + '灼烧结算：-' + dmg + '生命，灼烧层数-1');
+        this.emit('buffSettle', '-' + dmg + '[灼烧]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
+      }
+      if (target.bleed > 0) {
+        const dmg = target.bleed;
+        target.bleed--;
+        target.hp = Math.max(0, target.hp - dmg);
+        this._log(who + '流血结算：-' + dmg + '生命，流血层数-1');
+        this.emit('bleedSettle', '-' + dmg + '[流血]，-1[流血层数]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
+      }
+      if (target.frozen) {
+        target.frozen = false;
+        this._log(who + '冷冻解除');
+        this.emit('buff', '-[冷冻]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'freeze', stacks: 0 });
+      }
+    }
+
+    isDebuffed(target) {
+      return (target.burn || 0) > 0 || (target.bleed || 0) > 0 || (target.poison || 0) > 0 || (target.blind || 0) > 0 || !!target.frozen;
+    }
+
     playerBuffs() {
       const p = this.s.player;
       return {
@@ -1698,6 +2246,20 @@
 
     _defaultReward(room) {
       return null;
+    }
+
+    _rewardText(reward) {
+      const parts = [];
+      if (reward.currency) parts.push(reward.currency + ' 金币');
+      if (reward.items && reward.items.length) {
+        const names = reward.items.map(n => {
+          const def = window.AdventureRegistry.getItem(n);
+          return def ? def.displayName : n;
+        });
+        parts.push(names.join('、'));
+      }
+      if (reward.heal) parts.push('恢复 ' + reward.heal + ' 生命');
+      return '：' + (parts.length ? parts.join('，') : '无');
     }
 
     /* ===== 道具系统 ===== */
@@ -2008,12 +2570,31 @@
       return bonus;
     }
 
+    triggerAccessories(event, ctx = {}) {
+      const results = [];
+      for (const name of this.s.accessories) {
+        const def = window.AdventureRegistry.getItem(name);
+        if (def && def.kind === 'accessory' && typeof def.passive === 'function') {
+          const r = def.passive(Object.assign({ event }, ctx));
+          if (r) results.push({ itemName: name, result: r });
+        }
+      }
+      return results;
+    }
+
     _rollItemDrop() {
       const consumables = window.AdventureRegistry.itemsByKind('consumable');
       const trophyWhites = window.AdventureRegistry.itemsByKind('trophyWhite');
       const dropable = consumables.concat(trophyWhites);
       if (!dropable.length) return null;
       return dropable[Math.floor(Math.random() * dropable.length)].name;
+    }
+
+    _rollCombatDrop() {
+      const bonus = this.getAccessoryStatBonuses();
+      const baseRate = 0.25 + (bonus.dropRateBonus || 0);
+      if (Math.random() >= baseRate) return null;
+      return this._rollItemDrop();
     }
 
     buy(itemName, price) {

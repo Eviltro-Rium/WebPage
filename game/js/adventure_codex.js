@@ -70,9 +70,12 @@
     html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
     html += `<div class="char-detail-hero-name">${m.name}</div>`;
     html += `<div class="char-detail-hero-type">${m.kind || '怪物'} · HP ${m.hp}${m.handLimit ? ' · 手牌' + m.handLimit : ''}</div>`;
-    if (m.firstStrike) html += `<div class="char-detail-hero-passive">先手攻击</div>`;
-    if (m.initialLush) html += `<div class="char-detail-hero-passive">开局获得${m.initialLush}层【茂盛】</div>`;
-    if (m.noAttack) html += `<div class="char-detail-hero-passive">无进攻阶段</div>`;
+    if (m.firstStrike) html += `<div class="char-detail-hero-passive codex-special-trait">先手攻击</div>`;
+    if (m.initialLush) html += `<div class="char-detail-hero-passive codex-special-trait">开局获得${m.initialLush}层【茂盛】</div>`;
+    if (m.noAttack) html += `<div class="char-detail-hero-passive codex-special-trait">无进攻阶段</div>`;
+    if (m.canDefendHigh) html += `<div class="char-detail-hero-passive codex-special-trait">可用高牌（4/5/6）防御</div>`;
+    if (m.attackSkipDescription) html += `<div class="char-detail-hero-passive codex-special-trait">${m.attackSkipDescription}</div>`;
+    if (m.handLimit && m.handLimit < 4) html += `<div class="char-detail-hero-passive codex-special-trait">手牌上限${m.handLimit}</div>`;
     html += `</div></div>`;
 
     html += buildSkillGrid(atk, def);
@@ -113,8 +116,12 @@
     html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
     html += `<div class="char-detail-hero-name">${b.kind || b.name}</div>`;
     html += `<div class="char-detail-hero-type">Boss · HP ${b.hp}${b.handLimit ? ' · 手牌' + b.handLimit : ''}</div>`;
-    if (b.whiteZeros) html += `<div class="char-detail-hero-passive">牌库含 ${b.whiteZeros} 张白色0</div>`;
-    if (b.firstStrike) html += `<div class="char-detail-hero-passive">先手攻击</div>`;
+    if (b.whiteZeros) html += `<div class="char-detail-hero-passive codex-special-trait">牌库含 ${b.whiteZeros} 张白色0</div>`;
+    if (b.firstStrike) html += `<div class="char-detail-hero-passive codex-special-trait">先手攻击</div>`;
+    if (b.canDefendHigh) html += `<div class="char-detail-hero-passive codex-special-trait">可用高牌（4/5/6）防御</div>`;
+    if (b.noAttack) html += `<div class="char-detail-hero-passive codex-special-trait">无进攻阶段</div>`;
+    if (b.attackSkipDescription) html += `<div class="char-detail-hero-passive codex-special-trait">${b.attackSkipDescription}</div>`;
+    if (b.handLimit && b.handLimit < 4) html += `<div class="char-detail-hero-passive codex-special-trait">手牌上限${b.handLimit}</div>`;
     html += `</div></div>`;
 
     if (atk.length || def.length) {
@@ -158,7 +165,7 @@
     html += `<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; ${kindLabel}列表</button><h1 class="rules-title">${it.kind === 'consumable' ? '道具图鉴' : '饰品图鉴'}</h1></div>`;
     html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
     html += `<div class="char-detail-hero-name">${it.displayName}</div>`;
-    html += `<div class="char-detail-hero-type">${kindLabel} · ${it.price || 0}金币</div>`;
+    html += `<div class="char-detail-hero-type">${kindLabel} · ${it.kind === 'accessory' ? 15 : (it.price || 0)}金币</div>`;
     html += `<div class="char-detail-hero-passive">${it.description || ''}</div>`;
     if (useSceneLabel) html += `<div class="char-detail-hero-passive">${useSceneLabel}</div>`;
     html += `</div></div>`;
@@ -174,12 +181,6 @@
       html += '</div></div>';
     }
 
-    if (it.combatUse) {
-      html += '<div class="codex-stat-bonus">';
-      html += '<div class="codex-stat-title">战斗效果</div>';
-      html += `<div class="codex-stat-list"><div class="codex-stat-row"><span class="codex-stat-key">${it.combatUse}</span></div></div>`;
-      html += '</div>';
-    }
 
     html += '</div>';
     return html;
@@ -221,12 +222,17 @@
     html += `</div></div>`;
     if (it.beastTradeCost && it.beastTradeCost.length) {
       html += '<div class="codex-stat-bonus"><div class="codex-stat-title">兑换消耗</div><div class="codex-stat-list">';
-      const beastNames = { huo: '火', shui: '水', cao: '草', ben: '土', wuneng: '万能' };
+      const beastNames = { huo: '火兽元', shui: '水兽元', cao: '草兽元', ben: '本兽元', wuneng: '万能兽元' };
+      const beastColors = { huo: '#ff5555', shui: '#55aaff', cao: '#55cc55', ben: '#ffcc44', wuneng: '#cc88ff' };
       const costMap = {};
       for (const t of it.beastTradeCost) costMap[t] = (costMap[t] || 0) + 1;
+      const parts = [];
       for (const [k, v] of Object.entries(costMap)) {
-        html += `<div class="codex-stat-row"><span class="codex-stat-key">${beastNames[k] || k}</span><span class="codex-stat-val">${v}</span></div>`;
+        const name = beastNames[k] || k;
+        const color = beastColors[k] || '#ccc';
+        parts.push(`${v}<span style="color:${color}">[${name}]</span>`);
       }
+      html += `<div class="codex-stat-row"><span class="codex-stat-key">${parts.join(' ')}</span></div>`;
       html += '</div></div>';
     }
     html += '</div>';
@@ -254,7 +260,9 @@
   }
 
   function buildStageMods(name) {
-    const mods = window.SKILL_DATA && SKILL_DATA.castleStageMods && SKILL_DATA.castleStageMods[name];
+    const castleMods = window.SKILL_DATA && SKILL_DATA.castleStageMods && SKILL_DATA.castleStageMods[name];
+    const forestMods = window.SKILL_DATA && SKILL_DATA.forestStageMods && SKILL_DATA.forestStageMods[name];
+    const mods = castleMods || forestMods;
     if (!mods) return '';
     let html = '<div class="codex-stage-section">';
     html += '<div class="codex-stage-title">Stage 强化</div>';
@@ -262,6 +270,9 @@
       const mod = mods[stage];
       if (!mod) continue;
       html += `<div class="codex-stage-row"><span class="codex-stage-label">Stage ${stage}</span>`;
+      if (mod.hp) {
+        html += `<div class="codex-stage-skills"><span class="codex-stage-skill">生命上限+${mod.hp}</span></div>`;
+      }
       if (mod.attack) {
         html += '<div class="codex-stage-skills"><span class="codex-stage-skill-type">进攻</span>';
         for (const row of SKILL_GRID) {

@@ -77,11 +77,7 @@
       this.check();return
     }
     let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;
-    let bombOwner=this.s.atkOwner || this._curAI() || 'ai';
-    const drainDamage=p.drain>0?Math.min(p.drain,p.damage):0;
-    const lifestealTarget=this.s[bombOwner]||this.s.ai;
-    this.hurt(this.s.player,p.damage,drainDamage>0?'drain':false,drainDamage>0?{suppressFloat:true}:{});
-    if(drainDamage>0&&lifestealTarget.hp<lifestealTarget.maxHp)this.heal(lifestealTarget,drainDamage,'drain');
+    this.hurt(this.s.player,p.damage);
     this.settleBleed(this.s.player,p.bleed);
     this._restoreAttackBuffs();
     this.resolveSerenityHalf();this._grantChaosIfKnight('ai');
@@ -149,7 +145,7 @@
 
   E.prototype._lordStartNextAI=function(){
     this.fillHands1v2(true);
-    if(this.s.player.burn){let dmg=this.s.player.burn;this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',target:'player',amount:dmg,kind:'burn'});this.s.player.hp=Math.max(0,this.s.player.hp-dmg);this.s.player.alive=this.s.player.hp>0}}
+    if(this.s.player.burn){let dmg=this.s.player.burn;this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',amount:dmg});this.hurt(this.s.player,dmg)}}
     this.check();if(this.s.phase==='GAME_OVER')return this.state();
 
     let idx=this.s.lordPlayerTargetIdx||0;
@@ -174,7 +170,7 @@
 
     let key=this._curAI();
     let ch=this.s[key];
-    if(ch.burn){let dmg=ch.burn;ch.burn--;if(this.name(ch)!=='Leon'){let w=this._who(ch);this.emit('burnSettle','-'+dmg+'[灼烧]，-1[灼烧层数]',null,{who:w,target:w,amount:dmg,kind:'burn'});ch.hp=Math.max(0,ch.hp-dmg);ch.alive=ch.hp>0}}
+    if(ch.burn){let dmg=ch.burn;ch.burn--;if(this.name(ch)!=='Leon'){let w=this._who(ch);this.emit('burnSettle','-'+dmg+'[灼烧]，-1[灼烧层数]',null,{who:w,amount:dmg});ch.hp=Math.max(0,ch.hp-dmg);ch.alive=ch.hp>0}}
     this.check();if(this.s.phase==='GAME_OVER')return;
 
     this._handleEliminated1v2();
@@ -258,7 +254,7 @@
   const origState=E.prototype.state;
   E.prototype.state=function(){
     if(!this.s||!this.s.isLord)return origState.call(this);
-    Object.assign(this.s,{deck:this.deck.length,discard:1+this.discardBottom.length,discardBottomCount:this.discardBottom.length,playerHand:this.h.player,aiHandSize:this.h.ai.length,ai2HandSize:this.h.ai2?this.h.ai2.length:0,aiHand:this.s.revealAIHand?clone(this.h.ai):null,ai2Hand:this.s.revealAIHand&&this.h.ai2?clone(this.h.ai2):null,eventLogVersion:this.ver,events:clone(this.events),legalHand:this._computeLegalHand()});
+    Object.assign(this.s,{deck:this.deck.length,discard:1+this.discardBottom.length,discardBottomCount:this.discardBottom.length,playerHand:this.h.player,aiHandSize:this.h.ai.length,ai2HandSize:this.h.ai2?this.h.ai2.length:0,aiHand:this.s.revealAIHand?clone(this.h.ai):null,ai2Hand:this.s.revealAIHand&&this.h.ai2?clone(this.h.ai2):null,eventLogVersion:this.ver,events:clone(this.events)});
     return clone(this.s)
   };
 

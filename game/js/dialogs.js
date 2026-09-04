@@ -238,6 +238,7 @@ class DialogManager {
             if (snap.guard > 0) rows.push(['guard', `守护 ×${snap.guard}`, 'guard']);
             if (snap.fly > 0) rows.push(['fly', `飞翔 ×${snap.fly}`, 'guard']);
             if (snap.crit > 0) rows.push(['crit', `暴击 ×${snap.crit}`, 'crit']);
+            if (snap.lush > 0) rows.push(['lush', `茂盛 ×${snap.lush}`, 'lush']);
             for (const [kind, label, icon] of rows) {
                 const btn = document.createElement('button');
                 btn.className = 'choice-row';
