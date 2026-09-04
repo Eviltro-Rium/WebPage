@@ -217,11 +217,25 @@
     select(i){if(!this.h.player[i])throw Error('无效卡牌');if(this.s.phase==='PLAYER_DISCARD'){let a=this.s.selectedCards||[],p=a.indexOf(i);if(this.s.mayDiscardAfterSkill)a=p>=0?[]:[i];else if(p>=0)a.splice(p,1);else a.push(i);this.s.selectedCards=a;this.s.selectedCard=a.length?a[0]:-1}else this.s.selectedCard=this.s.selectedCard===i?-1:i;return this.state()}
     itemKind(c){if(c.trophyWhite)return'trophyWhite';if(c.swapHand)return'swap';if(c.drawThree)return'drawThree';if(c.drawTwo)return'drawTwo';if(c.potion)return'potion';if(c.greenMagic||c.magicColor==='green')return'greenMagic';if(c.magic||c.magicColor==='purple')return'magic';if(c.superPurify)return'superPurify';if(c.purify)return'purify';if(c.shuffleToDeck)return'shuffle';return'wild'}
     _isAdventureBoss(x){if(!this.s.isAdventure||!window.AdventureRegistry)return false;return!!window.AdventureRegistry.getBoss(this.name(x))}
-    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn',label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部buff与debuff，然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
+    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}let label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部buff与debuff，然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
     useTrophyWhite(c, target, w='player'){
       if (!c || !c.trophyWhite) return false;
       let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;
       let effect=c.trophyEffect||def&&def.trophyEffect||'burn';
+      if (effect === 'zero') {
+        let who=this.name(this.s.player);
+        if (this.s.phase==='PLAYER_DEFEND') {
+          let d=Math.max(0,Number(this.s.pendingAttack&&this.s.pendingAttack.damage)||0);
+          let incomingCard=this.s.discardTop||this.s.atkCard,inheritedColor=this.effective(incomingCard);
+          let m=CharacterRegistry.get(who);
+          if(m){let r=m.defend(this,who,0,d,c,this.s.player,this.s.ai,'player',inheritedColor,{hurt:(x,n,b)=>this.hurt(x,n,b),heal:(x,n,k)=>this.heal(x,n,k),draw:(w2,n,an)=>this.draw(w2,n,an),burn:(x,n)=>this.burn(x,n),bleed:(x,n)=>this.bleed(x,n),poison:(x,n)=>this.poison(x,n),cancelAttackDebuffs:(o,r)=>this.cancelAttackDebuffs(o,r),clearDebuffs:x=>this.clearDebuffs(x)});if(r){this.s.pendingAttack.damage=Math.max(0,r.remaining);this.s.pendingDefenseDamage=this.s.pendingAttack.damage;if(r.desc)this.emit('desc',r.desc)}}
+        } else {
+          let r=this.effect(who,0,c,this.s.player,this.s.ai);
+          this.emit('desc',`${this.s.player.name} 0牌：${r.d}点伤害${(r.skip||r.unblock||r.d<=0)?'，跳过防御':''}`,c);
+          this.gateAdventureAttackMod(c,r.d,r.skip,r.unblock);
+        }
+        return true;
+      }
       if (effect === 'guard') {
         if (this.s && this.s.phase === 'PLAYER_DEFEND' && this.s.pendingAttack) {
           const damage = Math.max(0, Number(this.s.pendingAttack.damage) || 0);
@@ -530,6 +544,18 @@
         this.s.defCard=cp(c);this.s.defOwner='player';this.setDiscardTop(c);
         this._markBombPlay('player'); this._tickBomb('player');
         this._animatedPlayerAttack=this.s.atkCard;
+        if(c.trophyWhite&&(c.trophyEffect==='zero'||(window.AdventureRegistry&&c.trophyName&&(window.AdventureRegistry.getItem(c.trophyName)||{}).trophyEffect==='zero'))){
+          this.s.hasPlayedBlackDefend=false;
+          this.emit('defend',`白色牌指定${this.colorName(c.chosenColor||c.color)}，释放防御0技能`,c);
+          this.emit('colorChoice',`白色道具牌自动指定${this.colorName(c.chosenColor)}`,c);
+          this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player'});
+          this.useTrophyWhite(c,this.s.ai,'player');
+          d=Math.max(0,Number(this.s.pendingAttack&&this.s.pendingAttack.damage)||0);
+          if(d&&this.playerNeedsAvoidChoice()){this.askGuard(d,this.s.player.bleed);return this.check()}
+          this.s.phase='AI_TURN';
+          this.deferSettlement('AI_ATTACK',d,0);
+          return this.check()
+        }
         if(c.isItemCard){
           this.s.hasPlayedBlackDefend=true;this.s.phase='PLAYER_DEFEND';this.s.busy=false;
           let bridgeLabel=c.isBlack?'黑牌':c.isWhite?'白色':'道具';
@@ -813,7 +839,7 @@
       this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:kind,who:'player',target});
       if(c.trophyWhite)this.useTrophyWhite(c,targetChar,'player');else this.useItem1v2(c,this.s.player,targetChar,'player');
       if(!this.s.pendingDialog)this._tickBomb('player');
-      if(!this.s.pendingDialog){this.s.phase='PLAYER_PLAY';this.s.busy=false;this.s.attackTarget=null;}
+      if(!this.s.pendingDialog && this.s.phase==='PLAYER_PLAY'){this.s.busy=false;this.s.attackTarget=null;}
       return this.check()
     }
      this._deferAttackBuffs(target,_buffBefore);
@@ -938,6 +964,17 @@
       let n=this.name(this.s.player),v=c.value,b=0,desc='';
       if(c.isBlack)this.emit('colorChoice','黑牌指定'+this.colorName(c.chosenColor),c);
       else if(c.isWhite)this.emit('colorChoice','白色牌自动指定'+this.colorName(c.chosenColor),c);
+      if(c.trophyWhite&&(c.trophyEffect==='zero'||(window.AdventureRegistry&&c.trophyName&&(window.AdventureRegistry.getItem(c.trophyName)||{}).trophyEffect==='zero'))){
+        this.emit('defend','白色牌指定'+this.colorName(c.chosenColor||c.color)+'，释放防御0技能',c);
+        this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player',target});
+        this.useTrophyWhite(c,targetChar,'player');
+        d=Math.max(0,Number(this.s.pendingAttack&&this.s.pendingAttack.damage)||0);
+        if(d&&this.playerNeedsAvoidChoice()){this.askGuard(d,this.s.player.bleed);return this.check()}
+        let curAIKey2=this._curAI();
+        this.s.phase=curAIKey2.toUpperCase()+'_TURN';
+        this.deferSettlement('AI_ATTACK',d,0);
+        return this.check()
+      }
       if(c.isItemCard){
         let bridgeLabel=c.isBlack?'黑牌':c.isWhite?'白色':'道具';
         this.emit('defend',bridgeLabel+'牌指定'+this.colorName(c.chosenColor||c.color)+'并搭桥，请继续选择防御牌',c);

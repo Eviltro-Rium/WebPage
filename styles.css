@@ -2073,9 +2073,12 @@ html[data-theme="dark"] .home-loading__hud {
 }
 
 /* Defer painting of long below-the-fold sections until they approach the
-   viewport. This keeps first paint and initial scrolling responsive. */
+   viewport. This keeps first paint and initial scrolling responsive.
+   The 3D gallery is excluded: its rotating photo strips need to stay
+   rasterized, and the on-demand paint burst when it reaches the viewport
+   edge delays photo textures mid-scroll. */
 @supports (content-visibility: auto) {
-  body.page-home .section:not(.hero) {
+  body.page-home .section:not(.hero):not(.section-gallery) {
     content-visibility: auto;
     contain-intrinsic-size: 1px 560px;
   }

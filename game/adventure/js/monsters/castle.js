@@ -416,56 +416,57 @@
     }
   });
 
-  /**
-   * 城堡哥布林（DungeonGoblin）
-   * 仅在 Stage 2/3/4 刷出
-   * 被动：玩家打出数字1卡牌时触发（stage2:损失1金币, stage3/4:损失1随机道具）
-   * 进攻：1/2/3牌造成2点不可防御伤害，4/5/6牌造成5点伤害并获得1/2/3层守护
-   * 防御：1/2/3牌恢复1/2/3点生命
-   * 强化：(4)防御恢复生命+1
-   */
-  R.registerMonster({
-    name: 'DungeonGoblin',
-    kind: '城堡哥布林',
-    hp: 27,
-    attack: 4,
-    defense: 1,
-    icon: '../icons/npc_icons/castle_goblin.png',
+   /**
+    * 城堡哥布林（DungeonGoblin）
+    * 仅在 Stage 2/3/4 刷出
+    * 被动：玩家打出数字1卡牌时触发（stage2:损失1金币, stage3/4:损失1随机道具）
+    * 进攻：1/2/3牌造成2点不可防御伤害，4/5/6牌造成5点伤害并获得1/2/3层守护
+    * 防御：1/2/3牌恢复1/2/3点生命
+    * 强化：(2)+8生命 (4)防御恢复生命+1
+    */
+   R.registerMonster({
+     name: 'DungeonGoblin',
+     kind: '城堡哥布林',
+     hp: 27,
+     attack: 4,
+     defense: 1,
+     icon: '../icons/npc_icons/castle_goblin.png',
 
-    attackDamage(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 2;
-      if (card.value >= 4 && card.value <= 6) return 5;
-      return 0;
-    },
+     attackDamage(card) {
+       if (!card || !card.isNumberCard) return 0;
+       if (card.value >= 1 && card.value <= 3) return 2;
+       if (card.value >= 4 && card.value <= 6) return 5;
+       return 0;
+     },
 
-    attackUnblockable(card) {
-      if (!card || !card.isNumberCard) return false;
-      return card.value >= 1 && card.value <= 3;
-    },
+     attackUnblockable(card) {
+       if (!card || !card.isNumberCard) return false;
+       return card.value >= 1 && card.value <= 3;
+     },
 
-    attackGuard(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 4 && card.value <= 6) return card.value - 3;
-      return 0;
-    },
+     attackGuard(card) {
+       if (!card || !card.isNumberCard) return 0;
+       if (card.value >= 4 && card.value <= 6) return card.value - 3;
+       return 0;
+     },
 
-    defendHeal(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return card.value;
-      return 0;
-    },
+     defendHeal(card) {
+       if (!card || !card.isNumberCard) return 0;
+       if (card.value >= 1 && card.value <= 3) return card.value;
+       return 0;
+     },
 
-    stageMods: {
-      4: orig => ({
-        defendHeal: (card) => {
-          if (!card || !card.isNumberCard) return 0;
-          if (card.value >= 1 && card.value <= 3) return card.value + 1;
-          return 0;
-        }
-      })
-    }
-  });
+     stageMods: {
+       2: orig => ({ hp: orig.hp + 8 }),
+       4: orig => ({
+         defendHeal: (card) => {
+           if (!card || !card.isNumberCard) return 0;
+           if (card.value >= 1 && card.value <= 3) return card.value + 1;
+           return 0;
+         }
+       })
+     }
+   });
 
   /**
    * 鸦（CastleCrow）

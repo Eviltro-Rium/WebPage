@@ -32,7 +32,8 @@
     PiercingTrophy: 'BLEED TROPHY',
     FreezeTrophy: 'FREEZE TROPHY',
     GuardTrophy: 'GUARD TROPHY',
-    DisarmTrophy: 'DISARM TROPHY'
+    DisarmTrophy: 'DISARM TROPHY',
+    ZeroTrophy: 'ZERO TROPHY'
   };
 
   const ASSET_ROOT = (() => {
@@ -60,7 +61,8 @@
     trophy_PiercingTrophy: cardAssetUrl('icons/items_icons/pierce.png'),
     trophy_FreezeTrophy: cardAssetUrl('icons/items_icons/freeze.png'),
     trophy_GuardTrophy: cardAssetUrl('icons/items_icons/nature_shield.png'),
-    trophy_DisarmTrophy: cardAssetUrl('icons/items_icons/disarm.png')
+    trophy_DisarmTrophy: cardAssetUrl('icons/items_icons/disarm.png'),
+    trophy_ZeroTrophy: cardAssetUrl('icons/items_icons/zero.png')
   };
 
   const iconCache = {};
@@ -192,7 +194,7 @@
     // ordinary white/item cards without changing the card's color treatment.
     if (card.trophyWhite) {
       g.strokeStyle = '#D4A72C';
-      g.lineWidth = 4;
+      g.lineWidth = 2;
       roundRect(g, 2, 2, w - 4, h - 4, Math.max(4, r - 2));
       g.stroke();
     }

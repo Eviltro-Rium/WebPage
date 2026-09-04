@@ -237,6 +237,19 @@
   });
 
   R.registerItem({
+    name: 'ZeroTrophy',
+    displayName: '零技能战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：自动指定当前颜色，释放角色0技能（进攻时释放攻击0技能，防御时释放防御0技能），不搭桥，不抽牌',
+    icon: ICON + 'zero.png',
+    useScene: 'combat',
+    price: 10,
+    combatUse: 'trophyZero',
+    trophyEffect: 'zero',
+    beastTradeCost: ['wuneng', 'wuneng']
+  });
+
+  R.registerItem({
     name: 'MagicTransfer',
     displayName: '魔法转移',
     kind: 'consumable',

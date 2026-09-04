@@ -34,7 +34,7 @@
     color: 'WHITE',
     trophyWhite: true,
     trophyName: name,
-    trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', GuardTrophy: 'guard', DisarmTrophy: 'disarm' })[name] || null,
+    trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', GuardTrophy: 'guard', DisarmTrophy: 'disarm', ZeroTrophy: 'zero' })[name] || null,
     chosenColor: null,
     isBlack: false,
     isWhite: true,

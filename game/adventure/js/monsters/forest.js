@@ -306,7 +306,7 @@
       return card.value >= 1 && card.value <= 3 ? 1 : 0;
     },
     stageMods: {
-
+      2: orig => ({ hp: orig.hp + 8 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({ defendCounter: (card, incoming) => orig.defendCounter(card, incoming) + 1 })
     }
