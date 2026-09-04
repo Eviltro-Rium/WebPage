@@ -1057,7 +1057,7 @@
   Engine.prototype._state1v2=function(){
     if(!this.s)return{phase:'SELECT_MODE',deck:0,turn:1};
     Object.assign(this.s,{deck:this.deck.length,discard:1+this.discardBottom.length,discardBottomCount:this.discardBottom.length,
-      playerHand:this.h.player,aiHandSize:this.h.ai.length,ai2HandSize:this.h.ai2.length,
+      playerHand:this.h.player,legalHand:this._computeLegalHand(),aiHandSize:this.h.ai.length,ai2HandSize:this.h.ai2.length,
       eventLogVersion:this.ver,events:cp(this.events)});
     return cp(this.s)
   };

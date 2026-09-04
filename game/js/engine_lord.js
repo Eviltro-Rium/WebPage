@@ -254,7 +254,7 @@
   const origState=E.prototype.state;
   E.prototype.state=function(){
     if(!this.s||!this.s.isLord)return origState.call(this);
-    Object.assign(this.s,{deck:this.deck.length,discard:1+this.discardBottom.length,discardBottomCount:this.discardBottom.length,playerHand:this.h.player,aiHandSize:this.h.ai.length,ai2HandSize:this.h.ai2?this.h.ai2.length:0,aiHand:this.s.revealAIHand?clone(this.h.ai):null,ai2Hand:this.s.revealAIHand&&this.h.ai2?clone(this.h.ai2):null,eventLogVersion:this.ver,events:clone(this.events)});
+    Object.assign(this.s,{deck:this.deck.length,discard:1+this.discardBottom.length,discardBottomCount:this.discardBottom.length,playerHand:this.h.player,legalHand:typeof this._computeLegalHand==='function'?this._computeLegalHand():null,aiHandSize:this.h.ai.length,ai2HandSize:this.h.ai2?this.h.ai2.length:0,aiHand:this.s.revealAIHand?clone(this.h.ai):null,ai2Hand:this.s.revealAIHand&&this.h.ai2?clone(this.h.ai2):null,eventLogVersion:this.ver,events:clone(this.events)});
     return clone(this.s)
   };
 

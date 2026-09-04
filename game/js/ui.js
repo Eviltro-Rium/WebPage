@@ -818,7 +818,9 @@ class GameUI {
         document.getElementById('ai-hp-section').classList.toggle('active-attacker', activeAttacker === 'ai');
 
 
-        if (prev) this._detectAndPlayAnimations(prev, s);
+        const skipStateDiffAnimations = !!this._skipStateDiffAnimations;
+        this._skipStateDiffAnimations = false;
+        if (prev) this._detectAndPlayAnimations(prev, s, { skipEventBacked: skipStateDiffAnimations });
 
         this._renderPlayerHand();
         this._renderAIHand();
@@ -872,13 +874,14 @@ class GameUI {
         this._prevState = s;
     }
 
-    _detectAndPlayAnimations(prev, curr) {
+    _detectAndPlayAnimations(prev, curr, options = {}) {
         // Draw fly-ins are owned exclusively by 'draw' events. Speculative
         // detection here raced with hand re-render and caused duplicate cards.
         this._animatedPlayerDraws = 0;
+        const skipEventBacked = !!options.skipEventBacked;
 
         if (curr.player && prev.player) {
-            if (!curr.isAdventure && curr.player.guard > prev.player.guard) this.playFloatingText(`+${curr.player.guard - prev.player.guard}[守护]`, '#00bcd4', 'player');
+            if (!skipEventBacked && !curr.isAdventure && curr.player.guard > prev.player.guard) this.playFloatingText(`+${curr.player.guard - prev.player.guard}[守护]`, '#00bcd4', 'player');
             if (curr.player.bloodthirst && !prev.player.bloodthirst) this.playFloatingText('[嗜血触发]', '#ff315f', 'player');
             if (!curr.player.bloodthirst && prev.player.bloodthirst) this.playFloatingText('[退出嗜血]', '#f5b6c5', 'player');
             if (curr.player.chaos_red && !prev.player.chaos_red) this.playFloatingText('[混沌-红]', '#ff4444', 'player');
@@ -891,7 +894,7 @@ class GameUI {
             if (!curr.player.chaos_green && prev.player.chaos_green) this.playFloatingText('[清除混沌绿]', '#88ee88', 'player');
         }
         if (curr.ai && prev.ai) {
-            if (!curr.isAdventure && curr.ai.guard > prev.ai.guard) this.playFloatingText(`+${curr.ai.guard - prev.ai.guard}[守护]`, '#00bcd4', 'ai');
+            if (!skipEventBacked && !curr.isAdventure && curr.ai.guard > prev.ai.guard) this.playFloatingText(`+${curr.ai.guard - prev.ai.guard}[守护]`, '#00bcd4', 'ai');
             if (curr.ai.bloodthirst && !prev.ai.bloodthirst) this.playFloatingText('[嗜血触发]', '#ff315f', 'ai');
             if (!curr.ai.bloodthirst && prev.ai.bloodthirst) this.playFloatingText('[退出嗜血]', '#f5b6c5', 'ai');
             if (curr.ai.chaos_red && !prev.ai.chaos_red) this.playFloatingText('[混沌-红]', '#ff4444', 'ai');
@@ -936,16 +939,26 @@ class GameUI {
     }
 
     _updateHpBar(prefix, ch) {
-        const pct = Math.max(0, (ch.hp / ch.maxHp) * 100);
+        if (!ch) return;
+        const key = `${ch.hp}/${ch.maxHp}`;
         const bar = document.getElementById(`${prefix}-hp-bar`);
+        const text = document.getElementById(`${prefix}-hp-text`);
+        if (!bar || !text || bar.dataset.hpKey === key) return;
+        bar.dataset.hpKey = key;
+        const pct = Math.max(0, (ch.hp / ch.maxHp) * 100);
         bar.style.width = pct + '%';
         bar.className = 'hp-bar-inner' + (pct <= 25 ? ' critical' : pct <= 50 ? ' low' : '');
-        document.getElementById(`${prefix}-hp-text`).textContent = `${ch.hp}/${ch.maxHp}`;
+        text.textContent = key;
     }
 
     _updateBuffs(prefix, ch) {
         const container = document.getElementById(`${prefix}-buffs`);
         if (!container) return;
+        const renderTimers = this._buffRenderTimers || (this._buffRenderTimers = {});
+        if (renderTimers[prefix]) {
+            clearTimeout(renderTimers[prefix]);
+            renderTimers[prefix] = null;
+        }
         const prevKeys = this._prevBuffKeys || (this._prevBuffKeys = {});
         const prevSet = new Set(prevKeys[prefix] || []);
         const currentKeys = [];
@@ -999,7 +1012,16 @@ class GameUI {
                 const key = Object.keys(keyMap).find(k => title === k);
                 if (key && removed.includes(keyMap[key])) el.classList.add('icon-disappear');
             });
-            setTimeout(() => { container.innerHTML = html; }, 160);
+            const expectedKeys = currentKeys.slice();
+            const expectedStacks = Object.assign({}, currentStacks);
+            renderTimers[prefix] = setTimeout(() => {
+                renderTimers[prefix] = null;
+                const latestKeys = (this._prevBuffKeys && this._prevBuffKeys[prefix]) || [];
+                const latestStacks = (this._prevBuffStacks && this._prevBuffStacks[prefix]) || {};
+                if (JSON.stringify(latestKeys) !== JSON.stringify(expectedKeys) ||
+                    JSON.stringify(latestStacks) !== JSON.stringify(expectedStacks)) return;
+                container.innerHTML = html;
+            }, 160);
         } else {
             container.innerHTML = html;
         }
@@ -1008,28 +1030,49 @@ class GameUI {
     _renderPlayerHand(options = {}) {
         const s = this.state;
         const container = document.getElementById('player-hand');
-        container.innerHTML = '';
-        if (!s.playerHand) return;
-        container.ondblclick = async (e) => {
-            const cv = e.target && e.target.closest ? e.target.closest('[data-index]') : null;
-            if (!cv || cv.classList.contains('disabled')) return;
-            const phase = this.state.phase;
-            if (phase !== 'PLAYER_PLAY' && phase !== 'PLAYER_DEFEND') return;
-            if (this.state.needColorChoice) return;
-            if (phase === 'PLAYER_DEFEND' && this.state.unblockDefend) return;
-            this._npcHandFocusIndex = -1;
-            const idx = parseInt(cv.dataset.index);
-            if (this.state.selectedCard !== idx) {
-                const selResult = await Bridge.call('selectCard', { index: idx });
-                if (selResult && !selResult.error) { this.state = selResult; this.updateDisplay(); }
-            }
-            const result = await Bridge.call(phase === 'PLAYER_DEFEND' ? 'doDefend' : 'doPlay');
-            if (result && !result.error) { this.state = result; this.updateDisplay(); }
-        };
+        if (!container || !s || !s.playerHand) return;
         const hideTrailing = this._hideTrailingCount(options, 'player');
         const canInteract = ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
             'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD'].includes(s.phase);
         const isDefend = s.phase === 'PLAYER_DEFEND';
+        const handKey = JSON.stringify([
+            s.phase,
+            s.selectedCard,
+            s.selectedCards || [],
+            s.needColorChoice,
+            s.unblockDefend,
+            s.legalHand || null,
+            hideTrailing,
+            (s.playerHand || []).map(cardVisualKey),
+            (s.chanFiveCards || []).map(cardVisualKey)
+        ]);
+        if (container.dataset.handRenderKey === handKey && container.children.length === s.playerHand.length) return;
+        container.dataset.handRenderKey = handKey;
+        container.innerHTML = '';
+        container.ondblclick = null;
+        const handleDoubleClick = async (index) => {
+            const state = this.state;
+            if (!state || !Array.isArray(state.playerHand)) return;
+            const phase = state.phase;
+            if (phase !== 'PLAYER_PLAY' && phase !== 'PLAYER_DEFEND') return;
+            if (state.needColorChoice || (phase === 'PLAYER_DEFEND' && state.unblockDefend)) return;
+            if (this._isHandlingAction) return;
+            const card = state.playerHand[index];
+            if (!card || (state.legalHand && state.legalHand[index] === false)) return;
+            this._npcHandFocusIndex = -1;
+            if (state.selectedCard !== index) {
+                const selected = await Bridge.call('selectCard', { index });
+                if (!selected || selected.error) return;
+                this.state = selected;
+                this.updateDisplay();
+            }
+            const action = phase === 'PLAYER_DEFEND' ? 'doDefend' : 'doPlay';
+            if (typeof this._apiAction === 'function') await this._apiAction(action);
+            else {
+                const result = await Bridge.call(action);
+                if (result && !result.error) { this.state = result; this.updateDisplay(); }
+            }
+        };
         for (let i = 0; i < s.playerHand.length; i++) {
             const card = s.playerHand[i];
             const sel = i === s.selectedCard || ((s.selectedCards || []).includes(i));
@@ -1040,14 +1083,31 @@ class GameUI {
             if (hideTrailing && i >= s.playerHand.length - hideTrailing) cv.classList.add('card-draw-pending');
             cv.dataset.index = i;
             cv.dataset.cardId = cardId(card);
-            cv.addEventListener('click', async () => {
+            cv.addEventListener('click', async (event) => {
                 if (cv.classList.contains('disabled')) return;
+                const idx = parseInt(cv.dataset.index, 10);
+                if (!Number.isInteger(idx)) return;
                 this._npcHandFocusIndex = -1;
-                const result = await Bridge.call('selectCard', { index: parseInt(cv.dataset.index) });
-                if (result && !result.error) { this.state = result; this.updateDisplay(); }
+                const now = Date.now();
+                const previous = this._lastPlayerHandClick;
+                const isDoubleClick = previous && previous.index === idx && now - previous.time < 600;
+                if (isDoubleClick) {
+                    this._lastPlayerHandClick = null;
+                    event.preventDefault();
+                    if (previous.promise) await previous.promise;
+                    await handleDoubleClick(idx);
+                    return;
+                }
+                this._lastPlayerHandClick = { index: idx, time: now, promise: null };
+                const selection = (async () => {
+                    const result = await Bridge.call('selectCard', { index: idx });
+                    if (result && !result.error) { this.state = result; this.updateDisplay(); }
+                })();
+                this._lastPlayerHandClick.promise = selection;
+                await selection;
             });
 
-            if (sel && canInteract) {
+            if (canInteract) {
                 cv.addEventListener('mouseenter', () => {
                     if (this._npcHandFocusIndex >= 0) return;
                     this._showTooltip(card, cv, isDefend);
