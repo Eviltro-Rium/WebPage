@@ -425,63 +425,6 @@ body.page-home .btn-ghost:hover {
   border-color: rgba(15, 23, 42, 0.22);
 }
 
-body.page-home .cursor-dot {
-  background: #0f172a;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45);
-}
-
-body.page-home .cursor-ring {
-  border-color: rgba(15, 23, 42, 0.38);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-body.page-home .cursor-ring.cursor-hover {
-  border-color: rgba(15, 23, 42, 0.82);
-  background: rgba(255, 255, 255, 0.14);
-}
-
-html.custom-cursor-active,
-html.custom-cursor-active body,
-html.custom-cursor-active a,
-html.custom-cursor-active button,
-html.custom-cursor-active input,
-html.custom-cursor-active textarea,
-html.custom-cursor-active select,
-html.custom-cursor-active summary,
-html.custom-cursor-active label {
-  cursor: none !important;
-}
-
-/* ---- 自定义光标 ---- */
-.cursor-dot,
-.cursor-ring {
-  position: fixed;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  z-index: 9999;
-  border-radius: 50%;
-  will-change: transform;
-}
-
-.cursor-dot {
-  width: 7px;
-  height: 7px;
-  background: #fff;
-  transition: opacity 0.18s ease;
-}
-
-.cursor-ring {
-  width: 30px;
-  height: 30px;
-  border: 1.5px solid rgba(255, 255, 255, 0.48);
-  transition: opacity 0.18s ease;
-}
-
-.cursor-dot.cursor-hidden,
-.cursor-ring.cursor-hidden {
-  opacity: 0;
-}
 
 /* 光斑 A：跟随鼠标的浅色高光 */
 body::before {
@@ -1831,20 +1774,6 @@ html[data-theme="dark"] body.page-home .card::after {
   );
 }
 
-html[data-theme="dark"] body.page-home .cursor-dot {
-  background: #e7f0fb;
-  box-shadow: 0 0 0 1px rgba(4, 14, 27, 0.5);
-}
-
-html[data-theme="dark"] body.page-home .cursor-ring {
-  border-color: rgba(211, 235, 255, 0.52);
-  background: rgba(18, 50, 78, 0.12);
-}
-
-html[data-theme="dark"] body.page-home .cursor-ring.cursor-hover {
-  border-color: rgba(225, 243, 255, 0.9);
-  background: rgba(125, 194, 240, 0.18);
-}
 
 html[data-theme="dark"] body::before {
   background: radial-gradient(

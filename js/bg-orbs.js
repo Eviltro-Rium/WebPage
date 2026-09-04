@@ -108,7 +108,7 @@
 
     // The canvas is a soft decorative layer; avoid allocating a full 2x
     // Retina buffer for it on every content page.
-    var ratio = Math.min(window.devicePixelRatio || 1, 1.5);
+    var ratio = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(width * ratio);
     canvas.height = Math.round(height * ratio);
     canvas.style.width = width + "px";
