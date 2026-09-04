@@ -4,7 +4,9 @@
     --bg-gradient: radial-gradient(circle at 18% 12%, #164e63 0%, transparent 34%),
         radial-gradient(circle at 82% 88%, #14532d 0%, transparent 38%),
         linear-gradient(145deg, #081c2c 0%, #0b2940 42%, #0b3b3b 72%, #123524 100%);
-    --glass-fill: linear-gradient(145deg, rgba(9,25,42,0.92) 0%, rgba(12,38,54,0.88) 55%, rgba(11,44,43,0.84) 100%);
+    /* Transparent glass base: the page/background remains visible without a
+       compositor-heavy backdrop blur on every card and panel. */
+    --glass-fill: rgba(10, 31, 49, 0.62);
     --glass-border: rgba(186,230,253,0.48);
     --glass-highlight: rgba(255,255,255,0.16);
     --glass-shadow: 0 12px 36px rgba(0,8,20,0.36);
@@ -80,6 +82,7 @@ body {
 .game-home-link:active {
     transform: scale(0.96);
 }
+.game-home-link[hidden] { display: none !important; }
 
 /* ---- 测试阶段标识（右下角） ---- */
 .game-status-badge {
@@ -1082,6 +1085,10 @@ body {
     outline: 3px solid rgba(255,255,255,0.98);
     outline-offset: 3px;
     box-shadow: 0 0 0 5px rgba(192,132,252,0.95), 0 0 22px rgba(168,85,247,0.95), inset 0 0 14px rgba(255,255,255,0.3), 0 10px 24px rgba(15,23,42,0.3);
+}
+/* Keep the NPC-white identity visible even when playable/selected styles add a glow. */
+.card-canvas.npc-white-card {
+    outline-color: #111827 !important;
 }
 @keyframes cardPlayablePulse {
     0%, 100% { box-shadow: 0 0 0 2px rgba(17,24,39,0.82), 0 0 12px rgba(192,132,252,0.82), 0 0 24px rgba(168,85,247,0.62), inset 0 0 10px rgba(255,255,255,0.2), 0 8px 20px rgba(15,23,42,0.28); }
@@ -2158,3 +2165,36 @@ body {
 }
 .icon-appear { animation: iconAppear 0.25s ease-out; }
 .icon-disappear { animation: iconDisappear 0.16s ease-in forwards; pointer-events: none; }
+
+/* Lightweight transparent glass surfaces.
+   Backdrop blur is expensive during card animations and state updates; keep
+   the translucent fills, borders and shadows while avoiding full-screen
+   backdrop recomposition. */
+:where(
+    .game-home-link,
+    .game-status-badge,
+    .home-panel,
+    .char-card,
+    .phase-info,
+    .ai-hand-zone,
+    .attack-zone,
+    .defend-zone,
+    .reveal-zone,
+    .player-hand-zone,
+    .ctrl-btn,
+    .game-over-overlay,
+    .game-over-box,
+    .dialog-overlay,
+    .dialog-box,
+    .discard-zone,
+    .card-tooltip,
+    .game-menu-overlay,
+    .skill-overlay
+) {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+@media (max-width: 820px) {
+    body { background-attachment: scroll; }
+}

@@ -40,6 +40,9 @@
   var particles = [];
   var frameId = 0;
   var previousTime = 0;
+  var lastDrawTime = 0;
+  var frameInterval = 33;
+  var resizeFrame = 0;
   var motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   function random(min, max) {
@@ -99,8 +102,13 @@
   function resize() {
     width = window.innerWidth;
     height = window.innerHeight;
+    // Decorative background motion is capped around 30fps to leave more
+    // frame time for scrolling and interactive controls.
+    frameInterval = width < 640 ? 50 : 33;
 
-    var ratio = Math.min(window.devicePixelRatio || 1, 2);
+    // The canvas is a soft decorative layer; avoid allocating a full 2x
+    // Retina buffer for it on every content page.
+    var ratio = Math.min(window.devicePixelRatio || 1, 1.5);
     canvas.width = Math.round(width * ratio);
     canvas.height = Math.round(height * ratio);
     canvas.style.width = width + "px";
@@ -195,7 +203,12 @@
   }
 
   function animate(time) {
+    if (lastDrawTime && time - lastDrawTime < frameInterval) {
+      frameId = window.requestAnimationFrame(animate);
+      return;
+    }
     var delta = previousTime ? Math.min((time - previousTime) / 1000, 0.05) : 0;
+    lastDrawTime = time;
     previousTime = time;
     draw(time, delta);
     frameId = window.requestAnimationFrame(animate);
@@ -205,6 +218,7 @@
     window.cancelAnimationFrame(frameId);
     frameId = 0;
     previousTime = 0;
+    lastDrawTime = 0;
 
     if (motionQuery.matches || document.hidden) {
       draw(performance.now(), 0);
@@ -214,7 +228,15 @@
     frameId = window.requestAnimationFrame(animate);
   }
 
-  window.addEventListener("resize", resize, { passive: true });
+  function scheduleResize() {
+    if (resizeFrame) return;
+    resizeFrame = window.requestAnimationFrame(function () {
+      resizeFrame = 0;
+      resize();
+    });
+  }
+
+  window.addEventListener("resize", scheduleResize, { passive: true });
   document.addEventListener("visibilitychange", start);
   document.addEventListener("rium-theme-transition", onThemeTransition);
   document.addEventListener("rium-theme-change", onThemeChange);

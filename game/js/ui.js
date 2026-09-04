@@ -78,17 +78,25 @@ function cardLabel(card) {
 }
 
 function renderCard(card, w, h, selected) {
-    if (window.CardStyle && window.CardStyle.renderCard) return window.CardStyle.renderCard(card, w, h, selected);
-    return document.createElement('canvas');
+    const canvas = window.CardStyle && window.CardStyle.renderCard
+        ? window.CardStyle.renderCard(card, w, h, selected)
+        : document.createElement('canvas');
+    // Chameleon Paint temporarily puts a monster card in the player's hand.
+    // Mark it at the shared render boundary so hand, reveal and flight copies
+    // all keep the same NPC-white visual identity.
+    return markNpcWhiteCard(canvas, card);
 }
 
 // NPC hands are face-up in adventure mode. Mark their white cards so they
 // remain visually distinct from the player's white cards without changing
 // the shared card renderer or any card rules.
-function markNpcWhiteCard(canvas, card) {
-    if (canvas && card && card.isWhite && canvas.classList) canvas.classList.add('npc-white-card');
+function markNpcWhiteCard(canvas, card, isNpc = false) {
+    const isWhite = !!(card && (card.isWhite || card.color === 'WHITE'));
+    const isMonsterCard = !!(isNpc || (card && (card.borrowedMonster || card.npcCard || card.source === 'npc')));
+    if (canvas && isWhite && isMonsterCard && canvas.classList) canvas.classList.add('npc-white-card');
     return canvas;
 }
+window.markNpcWhiteCard = markNpcWhiteCard;
 
 function renderCardBack(w, h) {
     if (window.CardStyle && window.CardStyle.renderCardBack) return window.CardStyle.renderCardBack(w, h);
@@ -137,7 +145,7 @@ function cardId(card) {
 // Rendering cache key: unlike cardId/cardMatchKey, chosenColor is included
 // because it changes the visible face of black/white cards.
 function cardVisualKey(card) {
-    return card ? `${cardId(card)}_${card.chosenColor || ''}` : '';
+    return card ? `${cardId(card)}_${card.chosenColor || ''}_${!!card.npcCard}_${!!card.borrowedMonster}` : '';
 }
 
 /** 匹配用手牌身份（忽略 chosenColor，避免 AI 出牌染色后找不到源牌） */
@@ -165,7 +173,7 @@ class AnimLayer {
             const flyEl = document.createElement('div');
             flyEl.className = 'fly-card';
             const cv = renderCard(card, CARD_W, CARD_H, false);
-            if (owner && owner !== 'player') markNpcWhiteCard(cv, card);
+            markNpcWhiteCard(cv, card, owner && owner !== 'player');
             cv.style.pointerEvents = 'none';
             flyEl.appendChild(cv);
             document.body.appendChild(flyEl);
@@ -1295,7 +1303,7 @@ class GameUI {
             const card = revealMode ? s.aiHand[i] : null;
             const focused = canPeekSkill && i === this._npcHandFocusIndex;
             const cv = revealMode ? renderCard(card, 40, 58, focused) : renderCardBack(40, 58);
-            markNpcWhiteCard(cv, card);
+            markNpcWhiteCard(cv, card, true);
             if (revealMode && card) {
                 cv.dataset.cardId = cardId(card);
                 cv.dataset.cardMatch = cardMatchKey(card);
@@ -1664,7 +1672,7 @@ class GameUI {
             atkContainer.innerHTML = '';
             const cv = renderCard(s.atkCard, CARD_W - 10, CARD_H - 14, false);
             cv.classList.add('zone-card');
-            if (s.atkOwner && s.atkOwner !== 'player') markNpcWhiteCard(cv, s.atkCard);
+            if (s.atkOwner && s.atkOwner !== 'player') markNpcWhiteCard(cv, s.atkCard, true);
             atkContainer.appendChild(cv);
             atkContainer.dataset.cardKey = atkKey;
             this._showCardSkillDesc('atk-desc', s.atkCard, s.atkOwner || 'player', false);
@@ -1678,7 +1686,7 @@ class GameUI {
             defContainer.innerHTML = '';
             const cv = renderCard(s.defCard, CARD_W - 10, CARD_H - 14, false);
             cv.classList.add('zone-card');
-            if (s.defOwner && s.defOwner !== 'player') markNpcWhiteCard(cv, s.defCard);
+            if (s.defOwner && s.defOwner !== 'player') markNpcWhiteCard(cv, s.defCard, true);
             defContainer.appendChild(cv);
             defContainer.dataset.cardKey = defKey;
             this._showCardSkillDesc('def-desc', s.defCard, s.defOwner || 'player', true);

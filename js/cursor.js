@@ -15,6 +15,8 @@
   var rx = mx;
   var ry = my;
   var hovering = false;
+  var hoverDirty = true;
+  var frameId = 0;
 
   var hoverSelector =
     "a, button, input, textarea, select, summary, label, " +
@@ -41,7 +43,9 @@
   function onMove(e) {
     mx = e.clientX;
     my = e.clientY;
+    hoverDirty = true;
     setTransform(dot, mx, my, hovering ? 0.35 : 1);
+    scheduleFollow();
   }
 
   function onLeave() {
@@ -59,16 +63,24 @@
   document.addEventListener("mouseenter", onEnter);
 
   function follow() {
+    frameId = 0;
     var dx = mx - rx;
     var dy = my - ry;
     rx += dx * 0.16;
     ry += dy * 0.16;
     setTransform(ring, rx, ry, hovering ? 1.65 : 1);
-    updateHover();
-    requestAnimationFrame(follow);
+    if (hoverDirty) {
+      hoverDirty = false;
+      updateHover();
+    }
+    if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) scheduleFollow();
+  }
+
+  function scheduleFollow() {
+    if (!frameId) frameId = requestAnimationFrame(follow);
   }
 
   setTransform(dot, mx, my, 1);
   setTransform(ring, rx, ry, 1);
-  requestAnimationFrame(follow);
+  scheduleFollow();
 })();
