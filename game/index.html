@@ -17,6 +17,28 @@
         <div id="char-detail-screen"></div>
         <div id="game-screen"></div>
     </div>
+    <script>
+        // The external-home link belongs to the game landing screen only.
+        // Keep it in sync with the internal screen router so it disappears
+        // from rules, character details and active battles.
+        (function () {
+            var link = document.querySelector('.game-home-link');
+            var container = document.getElementById('game-container');
+            var select = document.getElementById('select-screen');
+            if (!link || !container || !select) return;
+            function sync() {
+                link.hidden = !select.classList.contains('active');
+            }
+            sync();
+            if (typeof MutationObserver === 'function') {
+                new MutationObserver(sync).observe(container, {
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['class']
+                });
+            }
+        })();
+    </script>
     <script src="js/characters/registry.js"></script>
     <script src="js/characters/ryan.js"></script>
     <script src="js/characters/leon.js"></script>

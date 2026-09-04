@@ -244,7 +244,6 @@
         }
 
         window.addEventListener("pointermove", onPointer, { passive: true });
-        window.addEventListener("pointerrawupdate", onPointer, { passive: true });
 
         window.addEventListener("pointerleave", function () {
           body.classList.remove("liquid-global-active");
@@ -261,7 +260,7 @@
         );
         var anchorPerfMs = performance.now();
         var visualStep = -1;
-        var rafId = null;
+        var timerId = null;
 
         function clearPads() {
           pads.forEach(function (pad) {
@@ -286,12 +285,22 @@
         }
 
         function draw() {
+          timerId = null;
           var step = stepAt(performance.now());
           if (step !== visualStep) {
             visualStep = step;
             renderStep(step);
           }
-          rafId = requestAnimationFrame(draw);
+          // The pads only change every half beat; avoid a permanent 60fps
+          // loop while keeping the musical phase aligned to the clock.
+          var elapsed = Math.max(0, performance.now() - anchorPerfMs);
+          var nextBoundary = halfBeatMs - (elapsed % halfBeatMs);
+          timerId = window.setTimeout(draw, Math.max(16, nextBoundary));
+        }
+
+        function scheduleDraw(delay) {
+          if (timerId !== null) return;
+          timerId = window.setTimeout(draw, Math.max(0, delay || 0));
         }
 
         function resetClock() {
@@ -301,19 +310,17 @@
 
         document.addEventListener("visibilitychange", function () {
           if (document.hidden) {
-            if (rafId !== null) {
-              cancelAnimationFrame(rafId);
-              rafId = null;
+            if (timerId !== null) {
+              clearTimeout(timerId);
+              timerId = null;
             }
             return;
           }
           resetClock();
-          if (rafId === null) {
-            rafId = requestAnimationFrame(draw);
-          }
+          scheduleDraw(0);
         });
 
-        rafId = requestAnimationFrame(draw);
+        scheduleDraw(0);
 
         window.launchpadClock = {
           bpm: BPM,

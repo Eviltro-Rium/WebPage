@@ -822,3 +822,17 @@
 .adv-scene-trophy-card-canvas { display: block; flex: 0 0 auto; width: auto; height: auto; }
 .adv-settle-trophy-row { align-items: center; }
 .adv-settle-trophy-row .adv-scene-trophy-card-canvas { margin-right: 3px; }
+
+/* Adventure cards use transparent glass rather than backdrop blur so map and
+   combat animations stay cheap to composite on lower-end devices. */
+:where(
+  .adventure-header,
+  .adv-card,
+  .adv-acc-card,
+  .adv-select-screen,
+  .adv-test-shell,
+  .adv-settle-sidebar
+) {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

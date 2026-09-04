@@ -148,7 +148,7 @@ class DialogManager {
                 btn.type = 'button';
                 if (typeof renderCard === 'function') {
                     const cv = renderCard(card, 54, 78, false);
-                    if (typeof markNpcWhiteCard === 'function') markNpcWhiteCard(cv, card);
+                    if (typeof markNpcWhiteCard === 'function') markNpcWhiteCard(cv, card, true);
                     btn.appendChild(cv);
                 }
                 else btn.innerHTML = `<span>${card.value || '?'}</span>`;
