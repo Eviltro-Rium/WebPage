@@ -969,12 +969,6 @@ main .section-gallery {
   animation-direction: reverse;
 }
 
-/* The 3D gallery is decorative; stop its continuous rotation while it is
-   outside the viewport to avoid spending GPU time on unseen pixels. */
-.gallery-cylinder-viewport.is-offscreen .gallery-cylinder-ring {
-  animation-play-state: paused;
-}
-
 @keyframes galleryCylinderSpin {
   from {
     transform: rotateY(0deg);
@@ -2076,11 +2070,6 @@ html[data-theme="dark"] .beat-pad {
 
 html[data-theme="dark"] .home-loading__hud {
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
-}
-
-/* Fixed backgrounds force larger repaint regions while scrolling on mobile. */
-@media (max-width: 820px) {
-  body { background-attachment: scroll; }
 }
 
 /* Defer painting of long below-the-fold sections until they approach the

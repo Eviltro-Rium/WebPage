@@ -1246,31 +1246,16 @@
     };
     document.addEventListener("mousemove", onMove, { passive: true });
 
-    var resizeFrame = 0;
     var onResize = function () {
-      if (resizeFrame) return;
-      resizeFrame = requestAnimationFrame(function () {
-        resizeFrame = 0;
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      });
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
     };
     window.addEventListener("resize", onResize);
 
     var visible = !document.hidden;
-    var animationFrameId = 0;
-    var lastRenderTime = 0;
-    var frameInterval = mobile ? 50 : 33;
     document.addEventListener("visibilitychange", function () {
       visible = !document.hidden;
-      if (!visible) {
-        if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        animationFrameId = 0;
-        return;
-      }
-      lastRenderTime = 0;
-      scheduleAnimationFrame();
     });
 
     function updateHomeLoading(progress, label, stage) {
@@ -1331,20 +1316,10 @@
     });
 
     var running = true;
-    function scheduleAnimationFrame() {
-      if (!animationFrameId && visible && running) {
-        animationFrameId = requestAnimationFrame(animate);
-      }
-    }
-
     function animate(t) {
-      animationFrameId = 0;
-      if (!running || !visible) return;
-      if (lastRenderTime && t - lastRenderTime < frameInterval) {
-        scheduleAnimationFrame();
-        return;
-      }
-      lastRenderTime = t;
+      if (!running) return;
+      requestAnimationFrame(animate);
+      if (!visible) return;
       var time = t * 0.001;
       if (!reducedMotion) {
         grassMat.uniforms.uTime.value = time;
@@ -1432,19 +1407,10 @@
       faceCloudsToCamera();
       syncSkyDirections();
       renderer.render(scene, camera);
-      scheduleAnimationFrame();
     }
 
-    if (reducedMotion) {
-      // Render the static scene once; no animation loop is needed when the
-      // user has explicitly requested reduced motion.
-      faceCloudsToCamera();
-      syncSkyDirections();
-      renderer.render(scene, camera);
-      finishHomeLoading();
-    } else {
-      scheduleAnimationFrame();
-    }
+    requestAnimationFrame(animate);
+    if (reducedMotion) finishHomeLoading();
   }
 
   if (document.readyState === "loading") {

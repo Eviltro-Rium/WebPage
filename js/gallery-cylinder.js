@@ -18,7 +18,6 @@
   var natural = {};
   var pending = sources.length;
   var loaded = 0;
-  var layoutFrame = 0;
   window.__riumGalleryProgress = 0;
 
   function metrics(vw) {
@@ -293,14 +292,6 @@
     viewport.style.setProperty("--viewport-pad", viewportPad + "px");
   }
 
-  function scheduleLayout() {
-    if (layoutFrame) return;
-    layoutFrame = window.requestAnimationFrame(function () {
-      layoutFrame = 0;
-      layout();
-    });
-  }
-
   function done() {
     loaded += 1;
     window.__riumGalleryProgress = loaded / sources.length;
@@ -319,14 +310,7 @@
     document.dispatchEvent(new CustomEvent("rium-page-assets-ready", {
       detail: { source: "gallery" }
     }));
-    window.addEventListener("resize", scheduleLayout, { passive: true });
-    if (typeof window.IntersectionObserver === "function") {
-      var observer = new window.IntersectionObserver(function (entries) {
-        if (!entries.length) return;
-        viewport.classList.toggle("is-offscreen", !entries[0].isIntersecting);
-      }, { rootMargin: "120px" });
-      observer.observe(viewport);
-    }
+    window.addEventListener("resize", layout);
   }
 
   for (i = 0; i < sources.length; i++) {
