@@ -62,9 +62,9 @@ test('bomb settlement emits one typed event for every participant', () => {
     assert.equal(events.length, 1);
     assert.deepEqual(
       { type: events[0].type, target: events[0].target, kind: events[0].kind, amount: events[0].amount },
-      { type: 'bombExplode', target, kind: 'bomb', amount: 10 }
+      { type: 'bombExplode', target, kind: 'bomb', amount: 5 }
     );
-    assert.equal(state[target].hp, 10);
+    assert.equal(state[target].hp, 15);
   }
 });
 

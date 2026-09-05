@@ -21,9 +21,9 @@
             entity.bomb--;
             const target = owner === 'player' ? 'player' : owner === 'ai2' ? 'ai2' : 'ai';
             if (entity.bomb <= 0) {
-                this.apply(engine, entity, 10, false, { silent: true });
-                engine.emit(eventTypes.BOMB_EXPLODE || 'bombExplode', '定时炸弹爆炸！造成10点伤害', null, {
-                    who: target, target, amount: 10, kind: 'bomb'
+                this.apply(engine, entity, 5, false, { silent: true });
+                engine.emit(eventTypes.BOMB_EXPLODE || 'bombExplode', '定时炸弹爆炸！造成5点伤害', null, {
+                    who: target, target, amount: 5, kind: 'bomb'
                 });
             } else {
                 engine.emit(eventTypes.BUFF || 'buff', '炸弹倒计时：' + entity.bomb, null, {

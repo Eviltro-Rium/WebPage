@@ -323,32 +323,50 @@
       }
     }
 
+    _isAvailableAtStage(def, stage) {
+      return !!def && (!Number.isFinite(Number(def.minStage)) || stage >= Number(def.minStage));
+    }
+
+    _availableNames(names, stage, kind) {
+      const registry = window.AdventureRegistry;
+      if (!registry) return (names || []).slice();
+      const getter = kind === 'boss' ? 'getBoss' : 'getMonster';
+      return (names || []).filter(name => this._isAvailableAtStage(registry[getter](name), stage));
+    }
+
     _pickMonsterName(room) {
-      if (room.monsterName) return room.monsterName;
       const scene = this.s.scene || 'castle';
       const stage = this.s.stage || 1;
       const pool = window.AdventureMonsterPool || {};
-      const fallback = (window.AdventureRegistry && window.AdventureRegistry.monsterNames()) || ['CastleWolf'];
-      const list = (pool[scene] && pool[scene][stage]) || (pool[scene] && pool[scene]['*']) || fallback;
-      const idx = Math.floor(Math.random() * list.length);
-      return list[idx];
+      const registry = window.AdventureRegistry;
+      if (room && room.monsterName) {
+        const explicit = registry && registry.getMonster(room.monsterName);
+        if (this._isAvailableAtStage(explicit, stage)) return room.monsterName;
+      }
+      const fallback = (registry && this._availableNames(registry.monsterNames(), stage, 'monster')) || ['CastleWolf'];
+      const configured = (pool[scene] && (pool[scene][stage] || pool[scene]['*'])) || fallback;
+      const list = this._availableNames(configured, stage, 'monster');
+      if (!list.length) return fallback[0] || 'CastleWolf';
+      return list[Math.floor(Math.random() * list.length)];
     }
 
     _pickBossName(room) {
-      if (room && room.bossName) return room.bossName;
       const scene = this.s.scene || 'castle';
       const stage = this.s.stage || 1;
       const pool = window.AdventureBossPool || {};
-      const fallback = ['CastleChameleon'];
-      const scenePool = pool[scene];
-      let list;
-      if (Array.isArray(scenePool)) {
-        list = scenePool;
-      } else {
-        list = (scenePool && scenePool[stage]) || (scenePool && scenePool['*']) || fallback;
+      const registry = window.AdventureRegistry;
+      if (room && room.bossName) {
+        const explicit = registry && registry.getBoss(room.bossName);
+        if (this._isAvailableAtStage(explicit, stage)) return room.bossName;
       }
-      const idx = Math.floor(Math.random() * list.length);
-      return list[idx] || 'CastleChameleon';
+      const fallback = (registry && this._availableNames(registry.bossNames(), stage, 'boss')) || ['CastleChameleon'];
+      const scenePool = pool[scene];
+      const configured = Array.isArray(scenePool)
+        ? scenePool
+        : ((scenePool && (scenePool[stage] || scenePool['*'])) || fallback);
+      const list = this._availableNames(configured, stage, 'boss');
+      if (!list.length) return fallback[0] || 'CastleChameleon';
+      return list[Math.floor(Math.random() * list.length)] || 'CastleChameleon';
     }
 
     _handleNormal(room) {
@@ -363,7 +381,8 @@
         }
         return;
       }
-      if (!room.monsterName) room.monsterName = this._pickMonsterName(room);
+      const currentMonster = window.AdventureRegistry && window.AdventureRegistry.getMonster(room.monsterName);
+      if (!this._isAvailableAtStage(currentMonster, this.s.stage || 1)) room.monsterName = this._pickMonsterName(room);
       const monster = window.Monster.fromRegistry(room.monsterName);
       if (!monster) {
         this._log('普通房间未配置怪物，直接通过');
@@ -397,7 +416,8 @@
         });
         return;
       }
-      if (!room.bossName) room.bossName = this._pickBossName(room);
+      const currentBoss = window.AdventureRegistry && window.AdventureRegistry.getBoss(room.bossName);
+      if (!this._isAvailableAtStage(currentBoss, this.s.stage || 1)) room.bossName = this._pickBossName(room);
       const boss = window.Boss.fromRegistry(room.bossName);
       if (!boss) {
         this._log('Boss 房间未配置 Boss，直接通过');
@@ -2503,6 +2523,22 @@
       const kind = def.combatUse || '';
 
       switch (kind) {
+        case 'crystalBall': {
+          const pile = this.s.playerPile;
+          if (!pile) return { ok: false, message: '牌库尚未初始化' };
+          const count = Math.min(3, pile.deck.length);
+          if (!count) return { ok: false, message: '牌库为空' };
+          const cards = pile.deck.slice(pile.deck.length - count).reverse();
+          const order = Array.isArray(ctx.reorderOrder) ? ctx.reorderOrder.map(Number) : null;
+          if (!order) return { ok: false, needsChoice: true, crystalBallCards: cards, message: '请选择水晶球查看的牌的顺序' };
+          if (order.length !== count || new Set(order).size !== count || order.some(i => i < 0 || i >= count)) {
+            return { ok: false, message: '水晶球顺序无效' };
+          }
+          pile.deck.splice(pile.deck.length - count, count);
+          const arranged = order.map(i => cards[i]);
+          for (let i = arranged.length - 1; i >= 0; i--) pile.deck.push(arranged[i]);
+          return { ok: true, message: '已调整牌库顶' + count + '张牌的顺序' };
+        }
         case 'heal': {
           const amount = def.healAmount || 5;
           const before = player.hp;

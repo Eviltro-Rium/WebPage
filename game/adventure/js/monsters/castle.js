@@ -427,6 +427,7 @@
    R.registerMonster({
      name: 'DungeonGoblin',
      kind: '城堡哥布林',
+     minStage: 2,
      hp: 27,
      attack: 4,
      defense: 1,
@@ -600,6 +601,7 @@
   R.registerBoss({
     name: 'CastleGargoyle',
     kind: '石像鬼',
+    minStage: 2,
     hp: 50,
     attack: 4,
     defense: 2,

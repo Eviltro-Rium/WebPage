@@ -31,6 +31,11 @@
     BurnTrophy: 'BURN TROPHY',
     PiercingTrophy: 'BLEED TROPHY',
     FreezeTrophy: 'FREEZE TROPHY',
+    RussianRouletteTrophy: 'RUSSIAN ROULETTE',
+    FlyTrophy: 'FLY TROPHY',
+    LushTrophy: 'LUSH TROPHY',
+    PoisonTrophy: 'POISON TROPHY',
+    TimeBombTrophy: 'TIME BOMB',
     GuardTrophy: 'GUARD TROPHY',
     DisarmTrophy: 'DISARM TROPHY',
     ZeroTrophy: 'ZERO TROPHY'
@@ -56,13 +61,18 @@
     super_purify: cardAssetUrl('icons/card_icons/super_purify.png'),
     swap: cardAssetUrl('icons/card_icons/swap_cards.png'),
     shuffle: cardAssetUrl('icons/card_icons/shuffle.png'),
-    trophyWhite: cardAssetUrl('icons/items_icons/ghost_fire.png'),
-    trophy_BurnTrophy: cardAssetUrl('icons/items_icons/ghost_fire.png'),
-    trophy_PiercingTrophy: cardAssetUrl('icons/items_icons/pierce.png'),
-    trophy_FreezeTrophy: cardAssetUrl('icons/items_icons/freeze.png'),
-    trophy_GuardTrophy: cardAssetUrl('icons/items_icons/nature_shield.png'),
-    trophy_DisarmTrophy: cardAssetUrl('icons/items_icons/disarm.png'),
-    trophy_ZeroTrophy: cardAssetUrl('icons/items_icons/zero.png')
+    trophyWhite: cardAssetUrl('icons/buff_icons/burn.png'),
+    trophy_BurnTrophy: cardAssetUrl('icons/buff_icons/burn.png'),
+    trophy_PiercingTrophy: cardAssetUrl('icons/buff_icons/bleed.png'),
+    trophy_FreezeTrophy: cardAssetUrl('icons/buff_icons/freeze.png'),
+    trophy_TimeBombTrophy: cardAssetUrl('icons/buff_icons/time_bomb.png'),
+    trophy_RussianRouletteTrophy: cardAssetUrl('icons/card_icons/Russian_roulette.png'),
+    trophy_FlyTrophy: cardAssetUrl('icons/buff_icons/fly.png'),
+    trophy_LushTrophy: cardAssetUrl('icons/buff_icons/lush.png'),
+    trophy_PoisonTrophy: cardAssetUrl('icons/buff_icons/poison.png'),
+    trophy_GuardTrophy: cardAssetUrl('icons/buff_icons/guard.png'),
+    trophy_DisarmTrophy: cardAssetUrl('icons/card_icons/disarm.png'),
+    trophy_ZeroTrophy: cardAssetUrl('icons/card_icons/zero.png')
   };
 
   const iconCache = {};

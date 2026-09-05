@@ -231,6 +231,9 @@ async _playEvents(events, fast = false) {
             this._showZoneDesc('reveal-desc', evt.desc || '判定');
             if (evt.who === 'player' || evt.from === 'deck') this._renderPlayerHand();
             await wait(1200);
+        } else if (evt.type === 'diceRoll' && Number.isFinite(Number(evt.value))) {
+            this._showZoneDesc('reveal-desc', evt.desc || ('12面骰：' + evt.value));
+            await wait(450);
         } else if (evt.type === 'lordDice' && Number.isFinite(Number(evt.roll))) {
             if (typeof this._playDiceAnimation === 'function') {
                 await this._playDiceAnimation(Number(evt.roll), evt.target);

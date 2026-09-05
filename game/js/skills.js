@@ -862,6 +862,11 @@ const SKILL_DATA = {
 };
 
 function getItemDesc(card) {
+    if (card.trophyWhite) {
+        const def = window.AdventureRegistry && card.trophyName
+            ? window.AdventureRegistry.getItem(card.trophyName) : null;
+        return def && def.description ? def.description : "战利白卡：打出后抽1张牌，可搭桥继续出牌";
+    }
     if (card.isBlack) {
         if (card.shuffleToDeck) return "指定颜色，弃牌库除顶牌外洗入牌库，可搭桥继续出牌";
         if (card.drawTwo) return "指定颜色，抽2张牌，可搭桥继续出牌";

@@ -15,7 +15,7 @@
         BURN_SETTLE: 'burnSettle', BLEED_SETTLE: 'bleedSettle', POISON_SETTLE: 'poisonSettle',
         BOMB_EXPLODE: 'bombExplode', ITEM_EFFECT: 'itemEffect', COLOR_CHOICE: 'colorChoice',
         DESC: 'desc', FLOAT: 'float', CLEAR_ZONES: 'clearZones', GAME_OVER: 'gameOver',
-        HINT: 'hint', LORD_DICE: 'lordDice', DUAL_DICE: 'dualDice'
+        HINT: 'hint', DICE_ROLL: 'diceRoll', LORD_DICE: 'lordDice', DUAL_DICE: 'dualDice'
     });
     const DamageKinds = Object.freeze({ NORMAL: 'normal', BLEED: 'bleed', POISON: 'poison', DRAIN: 'drain' });
     const normalizeTarget = (value, fallback = Targets.AI) => {

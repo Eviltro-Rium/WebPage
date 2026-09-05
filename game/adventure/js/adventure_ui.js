@@ -19,6 +19,7 @@
   ];
 
   const ROOM_ICON_DIR = '../icons/adventure_ui_icons/';
+  const BUFF_ICON_DIR = '../icons/buff_icons/';
   const ROOM_STYLE = {
     empty:  { label: '',   cls: 'room-empty',  glyph: '', icon: null },
     start:  { label: '起点', cls: 'room-start',  glyph: '', icon: ROOM_ICON_DIR + 'starting_room.png' },
@@ -472,7 +473,7 @@
       if (b.frozen)        items.push('<span class="adv-buff adv-buff-frozen" title="冷冻">冷冻</span>');
       if (b.guard > 0)     items.push('<span class="adv-buff adv-buff-guard" title="守护">守护×' + b.guard + '</span>');
       if (b.fly > 0)       items.push('<span class="adv-buff adv-buff-fly" title="飞翔">飞翔×' + b.fly + '</span>');
-      if (b.crit > 0)      items.push('<span class="adv-buff adv-buff-crit" title="暴击">暴击×' + b.crit + '</span>');
+      if (b.crit > 0)      items.push('<span class="adv-buff" title="暴击"><img class="adv-buff-icon" src="' + BUFF_ICON_DIR + 'crit.png" alt="暴击">×' + b.crit + '</span>');
       if (b.chaos_red)     items.push('<span class="adv-buff adv-buff-chaos-red" title="混沌·红">混沌红</span>');
       if (b.chaos_yellow)  items.push('<span class="adv-buff adv-buff-chaos-yellow" title="混沌·黄">混沌黄</span>');
       if (b.chaos_blue)    items.push('<span class="adv-buff adv-buff-chaos-blue" title="混沌·蓝">混沌蓝</span>');
@@ -761,7 +762,7 @@
         '<div class="adv-blacksmith-tokens">兽元：' + beastSummary + ' <span class="adv-bs-hint">（万能可替代）</span></div>' +
         '<div class="adv-shop-slots adv-blacksmith-slots">' + slotsHtml + '</div>' +
         '<div class="adv-blacksmith-trophy-stall"><div class="adv-blacksmith-stall-title">战利白卡摊位</div>' + trophyHtml + '</div>' +
-        '<div class="adv-shop-page-hint">3个配饰槽，用兽元兑换；另设战利白卡摊位（灼伤2火、刺伤2本、冰冻2水、守护1本1草）。所有战利白卡商店售价均为5金币。每槽可花2金币刷新（含空槽）。智慧项链3水1本1草，火焰之拳4火1本，兽元袋3本2草，生命核心3草1水1本，冷冻激光3水1万能，能量盾3草2本，正义之锤2火2水1本，净化水晶2草2水1本，恶魔契约1火1水1草1万能。</div>' +
+        '<div class="adv-shop-page-hint">3个配饰槽，用兽元兑换；另设战利白卡摊位（灼伤2火、流血2本、冰冻2水、飞翔1水1草、茂盛2草、中毒1本1草、俄罗斯赌盘1火1本、定时炸弹1本1火、守护1本1草、缴械1水1本、零2万能）。所有战利白卡商店售价均为5金币。每槽可花2金币刷新（含空槽）。智慧项链3水1本1草，火焰之拳4火1本，兽元袋3本2草，生命核心3草1水1本，冷冻激光3水1万能，能量盾3草2本，正义之锤2火2水1本，净化水晶2草2水1本，恶魔契约1火1水1草1万能。</div>' +
         recycleHtml +
         '<div class="adv-shop-page-actions">' +
           '<button class="adv-btn adv-btn-primary" id="adv-blacksmith-trade"' + (tradeEnabled ? '' : ' disabled') + '>' + tradeLabel + '</button>' +
@@ -1081,6 +1082,19 @@
             });
             return;
           }
+          if (def && def.combatUse === 'crystalBall') {
+            const preview = this.eng.useConsumable(useIndex);
+            if (preview && preview.needsChoice && preview.crystalBallCards) {
+              this._showCrystalBallChoice(preview.crystalBallCards, order => {
+                const result = this.eng.useConsumable(useIndex, { reorderOrder: order });
+                if (result && result.message) this._toast(result.message);
+                this.render();
+              });
+            } else if (preview && preview.message) {
+              this._toast(preview.message);
+            }
+            return;
+          }
           if (def && def.combatUse === 'purify') {
             const player = this.eng.s.player;
             const hasBuff = (player.burn || 0) > 0 || (player.bleed || 0) > 0 ||
@@ -1246,8 +1260,10 @@
 
     _renderTestMode() {
       if (!this._test) return;
-      const normal = window.AdventureRegistry ? window.AdventureRegistry.allMonsters() : [];
-      const bosses = window.AdventureRegistry ? window.AdventureRegistry.allBosses() : [];
+      // 测试房默认从 Stage 1 开始，隐藏定义为后续阶段才出现的怪物。
+      const isStageOne = def => !def || !Number.isFinite(Number(def.minStage)) || Number(def.minStage) <= 1;
+      const normal = window.AdventureRegistry ? window.AdventureRegistry.allMonsters().filter(isStageOne) : [];
+      const bosses = window.AdventureRegistry ? window.AdventureRegistry.allBosses().filter(isStageOne) : [];
       const mode = this._test.mode;
       const pool = mode === 'boss' ? bosses : normal;
       const needed = mode === '1v2' ? 2 : 1;
@@ -1345,6 +1361,31 @@
       overlay.querySelector('#cm-mulligan').addEventListener('click', () => { close(); onChoose('mulligan'); });
       overlay.querySelector('#cm-cancel').addEventListener('click', close);
       overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    }
+
+    _showCrystalBallChoice(cards, onChoose) {
+      if (document.getElementById('crystal-ball-choice-dialog')) return;
+      const cardName = card => card && card.isNumberCard ? ((card.color || '') + ' ' + card.value) : (card && card.isWhite ? '白色道具牌' : '道具牌');
+      const overlay = document.createElement('div');
+      overlay.id = 'crystal-ball-choice-dialog';
+      overlay.className = 'dialog-overlay';
+      overlay.innerHTML = '<div class="dialog-box" style="max-width:430px"><div class="dialog-title">水晶球</div>' +
+        '<div class="dialog-body" style="color:rgba(255,255,255,0.85);font-size:0.85rem;margin-bottom:12px">点击牌面设置放回顺序（先点击的牌放在牌库顶）</div>' +
+        '<div class="crystal-ball-cards" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">' + cards.map((card, index) => '<button type="button" class="adv-btn crystal-ball-card" data-index="' + index + '">' + cardName(card) + '</button>').join('') +
+        '</div><div class="crystal-ball-order" style="min-height:24px;text-align:center;color:#c4b5fd;margin-bottom:10px">尚未排序</div><div class="dialog-buttons" style="display:flex;gap:6px;justify-content:center"><button class="adv-btn adv-btn-primary" id="crystal-ball-confirm" disabled>确认放回</button><button class="adv-btn" id="crystal-ball-cancel">取消</button></div></div>';
+      document.body.appendChild(overlay);
+      const selected = [], orderEl = overlay.querySelector('.crystal-ball-order'), confirm = overlay.querySelector('#crystal-ball-confirm');
+      overlay.querySelectorAll('.crystal-ball-card').forEach(button => button.addEventListener('click', () => {
+        const index = Number(button.dataset.index), at = selected.indexOf(index);
+        if (at >= 0) selected.splice(at, 1); else selected.push(index);
+        button.classList.toggle('selected', selected.includes(index));
+        orderEl.textContent = selected.length ? '放回顺序：' + selected.map(i => cardName(cards[i])).join(' → ') : '尚未排序';
+        confirm.disabled = selected.length !== cards.length;
+      }));
+      const close = () => overlay.remove();
+      confirm.addEventListener('click', () => { if (selected.length === cards.length) { close(); onChoose(selected); } });
+      overlay.querySelector('#crystal-ball-cancel').addEventListener('click', close);
+      overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
     }
 
     _showCombatLaunchError(message) {

@@ -419,7 +419,7 @@
       }
       if (typeof mod.defendBlock === 'function') {
         if (mod.name === 'CastleFirefly') {
-          parts.push('格挡1+道具数量×1/2点伤害（向上取整）');
+          parts.push((opts.stage >= 4 ? '格挡1+道具数量点伤害' : '格挡向上取整(1+道具数量×1/2)点伤害'));
           return parts.length ? parts.join('，') : '无防御效果';
         }
         const b8 = mod.defendBlock(card, 8);

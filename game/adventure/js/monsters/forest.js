@@ -281,6 +281,7 @@
   R.registerMonster({
     name: 'ForestPiranha',
     kind: '食人鱼',
+    minStage: 2,
     hp: 25,
     attack: 3,
     defense: 1,
@@ -419,6 +420,7 @@
   R.registerBoss({
     name: 'ForestDryad',
     kind: '树精',
+    minStage: 2,
     hp: 50,
     attack: 3,
     defense: 2,

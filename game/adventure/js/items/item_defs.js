@@ -69,7 +69,7 @@
     displayName: '灼伤战利白卡',
     kind: 'trophyWhite',
     description: '白色战利卡：自动指定当前颜色，对手+1层灼伤，打出后抽1张牌，可搭桥',
-    icon: ICON + 'ghost_fire.png',
+    icon: '../icons/buff_icons/burn.png',
     price: 5,
     combatUse: 'trophyBurn',
     trophyEffect: 'burn',
@@ -78,10 +78,10 @@
 
   R.registerItem({
     name: 'PiercingTrophy',
-    displayName: '刺伤战利白卡',
+    displayName: '流血战利白卡',
     kind: 'trophyWhite',
     description: '白色战利卡：自动指定当前颜色，对手+1层流血，打出后抽1张牌，可搭桥',
-    icon: ICON + 'pierce.png',
+    icon: '../icons/buff_icons/bleed.png',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyBleed',
@@ -94,12 +94,64 @@
     displayName: '冰冻战利白卡',
     kind: 'trophyWhite',
     description: '白色战利卡：自动指定当前颜色，对手获得冷冻，打出后抽1张牌，可搭桥',
-    icon: ICON + 'freeze.png',
+    icon: '../icons/buff_icons/freeze.png',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyFreeze',
     trophyEffect: 'freeze',
     beastTradeCost: ['shui', 'shui']
+  });
+
+  R.registerItem({
+    name: 'RussianRouletteTrophy',
+    displayName: '俄罗斯赌盘',
+    kind: 'trophyWhite',
+    description: '白色战利卡：投掷12面骰；1–5玩家受到10点伤害，6–12对手受到10点伤害，打出后抽1张牌，可搭桥',
+    icon: '../icons/card_icons/Russian_roulette.png',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyRoulette',
+    trophyEffect: 'roulette',
+    beastTradeCost: ['huo', 'ben']
+  });
+
+  R.registerItem({
+    name: 'FlyTrophy',
+    displayName: '飞翔战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：获得1层飞翔，打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/fly.png',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyFly',
+    trophyEffect: 'fly',
+    beastTradeCost: ['shui', 'cao']
+  });
+
+  R.registerItem({
+    name: 'LushTrophy',
+    displayName: '茂盛战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：获得1层茂盛，打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/lush.png',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyLush',
+    trophyEffect: 'lush',
+    beastTradeCost: ['cao', 'cao']
+  });
+
+  R.registerItem({
+    name: 'PoisonTrophy',
+    displayName: '中毒战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：对手+1层中毒，打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/poison.png',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyPoison',
+    trophyEffect: 'poison',
+    beastTradeCost: ['ben', 'cao']
   });
 
   R.registerItem({
@@ -174,6 +226,29 @@
   });
 
   R.registerItem({
+    name: 'LaserEye',
+    displayName: '镭射眼',
+    kind: 'consumable',
+    description: '进攻或防御出牌阶段使用：对所有对手造成5点伤害',
+    icon: '../icons/items_icons/laser_beam.png',
+    useScene: 'combat',
+    price: 7,
+    combatUse: 'laserEye',
+    laserDamage: 5
+  });
+
+  R.registerItem({
+    name: 'CrystalBall',
+    displayName: '水晶球',
+    kind: 'consumable',
+    description: '查看自己牌库顶3张牌并调整顺序放回；地图、进攻和防御阶段均可使用',
+    icon: ICON + 'crystal_ball.png',
+    useScene: 'both',
+    price: 6,
+    combatUse: 'crystalBall'
+  });
+
+  R.registerItem({
     name: 'CardMaster',
     displayName: '卡牌大师',
     kind: 'consumable',
@@ -215,7 +290,7 @@
     displayName: '守护战利白卡',
     kind: 'trophyWhite',
     description: '白色战利卡：获得1层守护；防御阶段改为格挡本次攻击至多5点，打出后抽1张牌，可搭桥',
-    icon: ICON + 'nature_shield.png',
+    icon: '../icons/buff_icons/guard.png',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyGuard',
@@ -228,7 +303,7 @@
     displayName: '缴械战利白卡',
     kind: 'trophyWhite',
     description: '白色战利卡：选择对手1张手牌弃掉，打出后抽1张牌，可搭桥',
-    icon: ICON + 'disarm.png',
+    icon: '../icons/card_icons/disarm.png',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyDisarm',
@@ -241,9 +316,9 @@
     displayName: '零技能战利白卡',
     kind: 'trophyWhite',
     description: '白色战利卡：自动指定当前颜色，释放角色0技能（进攻时释放攻击0技能，防御时释放防御0技能），不搭桥，不抽牌',
-    icon: ICON + 'zero.png',
+    icon: '../icons/card_icons/zero.png',
     useScene: 'combat',
-    price: 10,
+    price: 6,
     combatUse: 'trophyZero',
     trophyEffect: 'zero',
     beastTradeCost: ['wuneng', 'wuneng']
@@ -396,14 +471,15 @@
   });
 
   R.registerItem({
-    name: 'TimeBomb',
-    displayName: '定时炸弹',
-    kind: 'consumable',
-    description: '对对手施加定时炸弹（倒计时5），对手每打出1张牌倒计时-1，归零时爆炸造成10点伤害。可被净化清除',
-    icon: ICON + 'time_bomb.png',
+    name: 'TimeBombTrophy',
+    displayName: '定时炸弹战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：对当前对手施加定时炸弹（倒计时5），对手每打出1张牌倒计时-1，归零时爆炸造成5点伤害；打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/time_bomb.png',
     useScene: 'combat',
-    price: 6,
-    combatUse: 'bomb',
-    bombTimer: 5
+    price: 5,
+    combatUse: 'trophyBomb',
+    trophyEffect: 'bomb',
+    beastTradeCost: ['ben', 'huo']
   });
 })();

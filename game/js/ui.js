@@ -40,8 +40,7 @@ const ICON_PATHS = {
     burn: gameAssetUrl('icons/buff_icons/burn.png'),
     freeze: gameAssetUrl('icons/buff_icons/freeze.png'),
     bleed: gameAssetUrl('icons/buff_icons/bleed.png'),
-    guard: gameAssetUrl('icons/buff_icons/guard.png'),
-    sparkling: gameAssetUrl('icons/ui_icons/sparkling.png')
+    guard: gameAssetUrl('icons/buff_icons/guard.png')
 };
 ICON_PATHS.blind = gameAssetUrl('icons/buff_icons/blind.png');
 
@@ -971,11 +970,11 @@ class GameUI {
             { key: 'bleed', stacks: ch.bleed, icon: 'bleed', colorClass: 'bleed-buff' },
             { key: 'poison', stacks: ch.poison || 0, icon: 'poison', colorClass: 'poison-buff' },
             { key: 'blind', stacks: ch.blind || 0, icon: 'blind', colorClass: 'blind-buff', hideCount: true },
-            { key: 'bomb', stacks: ch.bomb || 0, path: gameAssetUrl('icons/items_icons/time_bomb.png'), label: '炸弹', hideCount: false },
+            { key: 'bomb', stacks: ch.bomb || 0, path: gameAssetUrl('icons/buff_icons/time_bomb.png'), label: '炸弹', hideCount: false },
             { key: 'guard', stacks: ch.guard, icon: 'guard', colorClass: 'guard-buff' },
             { key: 'fly', stacks: ch.fly || 0, icon: 'fly', colorClass: 'fly-buff' },
             { key: 'lush', stacks: ch.lush || 0, icon: 'lush', colorClass: 'lush-buff' },
-            { key: 'crit', stacks: ch.crit || 0, label: '暴击', colorClass: 'crit-buff' },
+            { key: 'crit', stacks: ch.crit || 0, path: gameAssetUrl('icons/buff_icons/crit.png') },
             { key: 'chaos_red', stacks: ch.chaos_red ? 1 : 0, icon: 'chaos_red', hideCount: true, colorClass: 'chaos-red-buff' },
             { key: 'chaos_yellow', stacks: ch.chaos_yellow ? 1 : 0, icon: 'chaos_yellow', hideCount: true, colorClass: 'chaos-yellow-buff' },
             { key: 'chaos_blue', stacks: ch.chaos_blue ? 1 : 0, icon: 'chaos_blue', hideCount: true, colorClass: 'chaos-blue-buff' },
@@ -1364,6 +1363,31 @@ class GameUI {
         overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     }
 
+    _showCrystalBallChoice(cards, onChoose, onCancel) {
+        if (document.getElementById('crystal-ball-choice-dialog')) return;
+        const cardName = card => card && card.isNumberCard ? ((card.color || '') + ' ' + card.value) : (card && card.isWhite ? '白色道具牌' : '道具牌');
+        const overlay = document.createElement('div');
+        overlay.id = 'crystal-ball-choice-dialog';
+        overlay.className = 'dialog-overlay';
+        overlay.innerHTML = '<div class="dialog-box" style="max-width:430px">' +
+            '<div class="dialog-title">水晶球</div><div class="dialog-body" style="color:rgba(255,255,255,0.85);font-size:0.85rem;margin-bottom:12px">点击牌面设置放回顺序（先点击的牌放在牌库顶）</div>' +
+            '<div class="crystal-ball-cards" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">' + cards.map((card, index) => '<button type="button" class="ctrl-btn crystal-ball-card" data-index="' + index + '">' + cardName(card) + '</button>').join('') +
+            '</div><div class="crystal-ball-order" style="min-height:24px;text-align:center;color:#c4b5fd;margin-bottom:10px">尚未排序</div><div class="dialog-buttons" style="display:flex;gap:6px;justify-content:center"><button class="ctrl-btn btn-play" id="crystal-ball-confirm" disabled>确认放回</button><button class="ctrl-btn btn-skip" id="crystal-ball-cancel">取消</button></div></div>';
+        document.body.appendChild(overlay);
+        const selected = [], orderEl = overlay.querySelector('.crystal-ball-order'), confirm = overlay.querySelector('#crystal-ball-confirm');
+        overlay.querySelectorAll('.crystal-ball-card').forEach(button => button.addEventListener('click', () => {
+            const index = Number(button.dataset.index), at = selected.indexOf(index);
+            if (at >= 0) selected.splice(at, 1); else selected.push(index);
+            button.classList.toggle('selected', selected.includes(index));
+            orderEl.textContent = selected.length ? '放回顺序：' + selected.map(i => cardName(cards[i])).join(' → ') : '尚未排序';
+            confirm.disabled = selected.length !== cards.length;
+        }));
+        const close = () => overlay.remove();
+        confirm.addEventListener('click', () => { if (selected.length === cards.length) { close(); onChoose(selected); } });
+        overlay.querySelector('#crystal-ball-cancel').addEventListener('click', () => { close(); if (onCancel) onCancel(); });
+        overlay.addEventListener('click', event => { if (event.target === overlay) { close(); if (onCancel) onCancel(); } });
+    }
+
     _renderAdventureItemBar(s) {
         const bar = document.getElementById('adventure-item-bar');
         if (!bar) return;
@@ -1538,12 +1562,26 @@ class GameUI {
             this._showCardMasterChoice(choice => { void run(choice); });
             return;
         }
+        if (def.combatUse === 'crystalBall') {
+            const preview = await Bridge.call('useAdventureCombatItem', { itemIndex: idx });
+            if (!preview || preview.error) return;
+            this._prevState = this.state;
+            this.state = preview;
+            this.updateDisplay();
+            if (Array.isArray(preview.crystalBallCards) && preview.crystalBallCards.length) {
+                this._showCrystalBallChoice(preview.crystalBallCards, order => { void run({ order }); }, async () => {
+                    const cleared = await Bridge.call('useAdventureCombatItem', { itemIndex: idx, choice: { cancel: true } });
+                    if (cleared && !cleared.error) { this.state = cleared; this.updateDisplay(); }
+                });
+            }
+            return;
+        }
         if (def.combatUse === 'purify') {
             const player = s.player;
             const oppKey = s.attackTarget || (s.activeAttacker === 'ai2' ? 'ai2' : 'ai');
             const opponent = s[oppKey] && s[oppKey].alive ? s[oppKey] : (s.ai && s.ai.alive ? s.ai : null);
             const hasBuff = ch => ch && ((ch.burn || 0) > 0 || (ch.bleed || 0) > 0 ||
-                (ch.poison || 0) > 0 || (ch.blind || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
+                (ch.poison || 0) > 0 || (ch.blind || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.lush || 0) > 0 || (ch.crit || 0) > 0);
             if (!hasBuff(player) && !hasBuff(opponent)) return;
             this.dialogs.collectPurifyChoices(player, def.purifyCount || 1, choices => {
                 if (!choices.length) return;
@@ -1554,7 +1592,7 @@ class GameUI {
         if (def.combatUse === 'buffTransfer') {
             const player = s.player;
             const hasBuff = ch => ch && ((ch.burn || 0) > 0 || (ch.bleed || 0) > 0 ||
-                (ch.poison || 0) > 0 || (ch.blind || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
+                (ch.poison || 0) > 0 || (ch.blind || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.lush || 0) > 0 || (ch.crit || 0) > 0);
             if (!hasBuff(player)) return;
             this.dialogs.showBuffTransferChoice(player, choice => { void run(choice); });
             return;
@@ -1674,13 +1712,18 @@ class GameUI {
         // animated; the reveal event itself owns the judgment area meanwhile.
         if (this._isConsumingEvents) return;
         const cards = this.state.revealCards || [];
-        const key = JSON.stringify(cards);
+        const dice = this.state.diceRoll || null;
+        const key = JSON.stringify({ cards, dice });
         if (box.dataset.cardKey === key) return;
         box.innerHTML = '';
-        if (!cards.length) box.innerHTML = '<span class="reveal-empty">等待判定</span>';
-        for (const card of cards) {
-            const cv = renderCard(card, 60, 100, false);
-            cv.classList.add('revealed-card'); box.appendChild(cv);
+        if (dice && Number.isFinite(Number(dice.value))) {
+            box.innerHTML = '<div class="d12-result" aria-label="12面骰结果"><span class="d12-label">12面骰</span><strong>' + dice.value + '</strong></div>';
+        } else {
+            if (!cards.length) box.innerHTML = '<span class="reveal-empty">等待判定</span>';
+            for (const card of cards) {
+                const cv = renderCard(card, 60, 100, false);
+                cv.classList.add('revealed-card'); box.appendChild(cv);
+            }
         }
         box.dataset.cardKey = key;
     }
@@ -2373,6 +2416,9 @@ class GameUI {
                 this._showZoneDesc('reveal-desc', evt.desc || '判定');
                 if (evt.who === 'player' || evt.from === 'deck') this._renderPlayerHand();
                 await wait(1200);
+            } else if (evt.type === 'diceRoll' && Number.isFinite(Number(evt.value))) {
+                this._showZoneDesc('reveal-desc', evt.desc || ('12面骰：' + evt.value));
+                await wait(450);
             } else if (evt.type === 'lordDice' && Number.isFinite(Number(evt.roll))) {
                 if (typeof this._playDiceAnimation === 'function') {
                     await this._playDiceAnimation(Number(evt.roll), evt.target);
@@ -2436,7 +2482,7 @@ class GameUI {
                 // 普通伤害已经由生命值/受击动画表现，隐藏冗余的 -N[伤害]；
                 // 流血、中毒、吸血等带有明确类型的伤害仍保留飘字。
                 const isPlainDamage = !evt.poison && !evt.bleed && !evt.drain && String(evt.desc || '').includes('[伤害]');
-                if (!isPlainDamage) {
+                if (!evt.suppressFloat && !isPlainDamage) {
                     this.playFloatingText(evt.desc || '', evt.poison ? '#84cc16' : (evt.bleed ? '#cc2222' : '#ff4444'), this._eventSide(evt.who));
                 }
                 const side = this._eventSide(evt.who);
@@ -2454,7 +2500,7 @@ class GameUI {
                 await wait(500);
             } else if (evt.type === 'buff') {
                 const side = this._eventSide(evt.who);
-                const colors = { burn: '#ff8800', bleed: '#cc2222', freeze: '#44aaff', guard: '#00bcd4', poison: '#84cc16', crit: '#fbbf24' };
+                const colors = { burn: '#ff8800', bleed: '#cc2222', freeze: '#44aaff', guard: '#00bcd4', poison: '#84cc16', bomb: '#ef4444', crit: '#fbbf24' };
                 this.playFloatingText(evt.desc || '', colors[evt.kind] || '#c4b5fd', side);
                 if (this.state[side]) {
                     let ch = this.state[side];

@@ -258,7 +258,7 @@
         ai: this.character(opponent1Name, true),
         ai2: this.character(opponent2Name, true),
         currentAITarget: 0, attackTarget: 'ai', eliminatedHandled: { ai: false, ai2: false },
-        atkCard: null, atkOwner: null, defCard: null, defOwner: null, revealCards: [],
+        atkCard: null, atkOwner: null, defCard: null, defOwner: null, revealCards: [], diceRoll: null,
         lordPlayerTargetIdx: 0,
         revealAIHand: true
       };
@@ -305,6 +305,15 @@
       return null;
     }
 
+    _syncNpcSharedPile() {
+      if (!this.piles || !this.piles.ai || !this.piles.ai2) return;
+      // Keep the 1v2 aliases intact after state restores or any code path that
+      // replaces one of the pile arrays. Both monsters must draw from exactly
+      // one deck and one discard pile.
+      this.piles.ai2.deck = this.piles.ai.deck;
+      this.piles.ai2.discard = this.piles.ai.discard;
+    }
+
     _activeOwner(explicitOwner) {
       if (explicitOwner === 'player' || explicitOwner === 'ai' || explicitOwner === 'ai2') return explicitOwner;
       if (this.s) {
@@ -321,14 +330,19 @@
     }
 
     _refillPile(owner) {
+      if (owner === 'ai' || owner === 'ai2') this._syncNpcSharedPile();
       const pile = this._pile(owner);
-      if (!pile || pile.deck.length || !pile.discard.length) return false;
+      if (!pile || !pile.discard.length) return false;
+      const lowNpcDeck = (owner === 'ai' || owner === 'ai2') && pile.deck.length < 3;
+      if (pile.deck.length && !lowNpcDeck) return false;
       for (const card of pile.discard) {
         if (card.isBlack || card.isWhite) delete card.chosenColor;
       }
       pile.deck.push(...pile.discard.splice(0, pile.discard.length));
       this._shuffle(pile.deck);
-      this.emit('desc', (owner === 'player' ? '玩家' : 'NPC') + '牌库已空，各自弃牌库洗回牌堆');
+      this.emit('desc', lowNpcDeck
+        ? 'NPC牌库少于3张，弃牌库已洗回NPC牌库'
+        : (owner === 'player' ? '玩家' : 'NPC') + '牌库已空，各自弃牌库洗回牌堆');
       return true;
     }
 
@@ -348,6 +362,7 @@
 
     draw(owner, count, animated = false) {
       const key = owner;
+      if (key === 'ai' || key === 'ai2') this._syncNpcSharedPile();
       const pile = this._pile(key);
       if (!pile) return [];
       const cards = [];
@@ -355,10 +370,6 @@
         // The two monsters draw from one shared pile. Refill it before every
         // card when fewer than three cards remain, so a batch draw cannot
         // bypass the low-deck rule after its first card.
-        if ((key === 'ai' || key === 'ai2') && pile.deck.length < 3 && pile.discard.length) {
-          this._shuffleDiscardIntoDeck(key);
-          this.emit('desc', (key === 'ai2' ? 'NPC2' : 'NPC') + '共享牌库少于3张，弃牌库洗入牌库');
-        }
         this._refillPile(key);
         if (!pile.deck.length) break;
         const card = pile.deck.pop();
@@ -646,6 +657,37 @@
           message = '暂借' + borrowed.borrowedMonsterName + '的一张牌，加入玩家手牌';
           break;
         }
+        case 'crystalBall': {
+          if (choice && choice.cancel) {
+            this.s.crystalBallCards = null;
+            this.s.pendingDialog = null;
+            return this.state();
+          }
+          const count = Math.min(3, this.deck.length);
+          if (!count) {
+            this.emit('desc', '水晶球：牌库为空');
+            return this.state();
+          }
+          const cards = this.deck.slice(this.deck.length - count).reverse();
+          const order = choice && Array.isArray(choice.order) ? choice.order.map(Number) : null;
+          if (!order) {
+            this.s.crystalBallCards = clone(cards);
+            this.s.pendingDialog = 'crystalBall';
+            this.s.busy = false;
+            return this.state();
+          }
+          if (order.length !== count || new Set(order).size !== count || order.some(i => i < 0 || i >= count)) {
+            this.emit('desc', '水晶球顺序无效');
+            return this.state();
+          }
+          this.deck.splice(this.deck.length - count, count);
+          const arranged = order.map(i => cards[i]);
+          for (let i = arranged.length - 1; i >= 0; i--) this.deck.push(arranged[i]);
+          this.s.crystalBallCards = null;
+          this.s.pendingDialog = null;
+          message = '已调整牌库顶' + count + '张牌的顺序';
+          break;
+        }
         case 'dodge': {
           this.cancelAttackDebuffs('player', false);
           this.s.pendingBuffRestore = null;
@@ -714,10 +756,25 @@
         case 'vampire': {
           const amt = def.vampireAmount || 3;
           const before = ai.hp;
-          this.hurt(ai, amt, 'drain');
+          // The heal event already presents the actual drained amount. Keep
+          // the target's hit feedback, but suppress its second drain float.
+          this.hurt(ai, amt, 'drain', { suppressFloat: true });
           const drained = before - ai.hp;
           this.heal(player, drained, 'drain');
           message = '吸取对手' + drained + '点生命';
+          break;
+        }
+        case 'laserEye': {
+          const damage = Math.max(0, Number(def.laserDamage) || 5);
+          const targets = [this.s.ai];
+          if (this.s.is1v2 && this.s.ai2) targets.push(this.s.ai2);
+          let hit = 0;
+          for (const target of targets) {
+            if (!target || !target.alive) continue;
+            this.hurt(target, damage);
+            hit++;
+          }
+          message = '对所有对手造成' + damage + '点伤害（命中' + hit + '名）';
           break;
         }
         case 'cardMaster': {
@@ -752,12 +809,6 @@
           if (this.s.ai) this.s.ai.bindMark = true;
           if (this.s.ai2 && this.s.ai2.alive) this.s.ai2.bindMark = true;
           message = '本回合结束后将跳过对手进攻，再进行一次进攻';
-          break;
-        }
-        case 'bomb': {
-          ai.bomb = def.bombTimer || 5;
-          this.emit('buff', '炸弹倒计时：' + ai.bomb, null, { who: 'ai', kind: 'bomb', stacks: ai.bomb });
-          message = '对对手施加定时炸弹（倒计时' + ai.bomb + '）';
           break;
         }
         default:

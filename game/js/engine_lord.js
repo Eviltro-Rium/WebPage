@@ -17,7 +17,7 @@
       pendingDialog:null,discardTop:top,
       player:this.character(p),ai:this.character(a1,true),ai2:Object.assign(this.character(a2,true),{name:'AI2 '+a2}),
       currentAITarget:0,attackTarget:null,eliminatedHandled:{ai:false,ai2:false},
-      atkCard:null,atkOwner:null,defCard:null,defOwner:null,revealCards:[],
+      atkCard:null,atkOwner:null,defCard:null,defOwner:null,revealCards:[],diceRoll:null,
       lordPlayerTargetIdx:0};
     this.s.attackTarget='ai';
     this.draw('player',7);this.draw('ai',5);this.draw('ai2',5);

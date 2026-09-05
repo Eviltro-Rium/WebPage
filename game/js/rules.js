@@ -2,19 +2,6 @@
   const num = (color, value, white = false) => ({ value, color, drawTwo: false, drawThree: false, potion: false, purify: false, superPurify: false, swapHand: false, shuffleToDeck: false, isBlack: false, isWhite: white, isNumberCard: true, isItemCard: false });
   const item = (color, k) => ({ value: -1, color, drawTwo: k === 'drawTwo', drawThree: k === 'drawThree', potion: k === 'potion', purify: k === 'purify', superPurify: k === 'superPurify', swapHand: k === 'swap', shuffleToDeck: k === 'shuffle', isBlack: color === 'BLACK', isWhite: color === 'WHITE', isNumberCard: false, isItemCard: true });
 
-  const BUFF_ICONS = {
-    burn: { src: 'icons/buff_icons/burn.png', label: '灼烧' },
-    bleed: { src: 'icons/buff_icons/bleed.png', label: '流血' },
-    poison: { src: 'icons/buff_icons/poison.png', label: '中毒' },
-    freeze: { src: 'icons/buff_icons/freeze.png', label: '冷冻' },
-    guard: { src: 'icons/buff_icons/guard.png', label: '守护' },
-    fly: { src: 'icons/buff_icons/fly.png', label: '飞翔' },
-    chaos_red: { src: 'icons/buff_icons/chaos_red.png', label: '混沌红' },
-    chaos_yellow: { src: 'icons/buff_icons/chaos_yellow.png', label: '混沌黄' },
-    chaos_blue: { src: 'icons/buff_icons/chaos_blue.png', label: '混沌蓝' },
-    chaos_green: { src: 'icons/buff_icons/chaos_green.png', label: '混沌绿' }
-  };
-
   const CARD_DATA = [
     {
       category: '数字牌',
@@ -119,25 +106,12 @@
     { title: '搭桥机制', desc: '打出道具牌或1~3点数字牌时，如果是在防御阶段，该牌只发挥道具效果/搭桥作用，然后继续选择下一张牌防御，直到打出4~7或0点数字牌触发防御技能。' },
     { title: '进攻与防御', desc: '进攻方出牌后，防御方可以选择手牌进行防御。防御牌只能是1~3点数字牌或道具牌。防御成功可减免伤害或触发防御技能。也可以选择跳过防御，承受全部伤害。' },
     { title: '回合流程', desc: '玩家回合：出牌进攻 → AI防御 → 结算伤害 → 回合结束补牌。AI回合：AI出牌进攻 → 玩家防御 → 结算伤害 → 回合结束补牌。' },
-    { title: '灼烧', desc: '灼烧是一种持续伤害效果，最多叠加4层。拥有灼烧的角色在自己的进攻回合结束时受到等同于灼烧层数的伤害，然后灼烧减少1层。', buff: 'burn' },
-    { title: '流血', desc: '流血是一种持续伤害效果，最多叠加2层。当防御方用1~3点数字牌防御时，防御方额外受到等同于流血层数的伤害。', buff: 'bleed' },
-    { title: '中毒', desc: '中毒是一种持续伤害效果，最多叠加3层。拥有中毒的角色在自己的进攻回合开始前受到等同于中毒层数的伤害；层数不随时间自然减少，可用净化移除。', buff: 'poison' },
-    { title: '冷冻', desc: '冷冻使角色无法防御蓝色攻击。被冷冻后，如果受到蓝色攻击，只能跳过防御承受全部伤害。', buff: 'freeze' },
-    { title: '守护', desc: '守护可以减免伤害（不能减免流血伤害）。当受到伤害时，可以选择消耗守护层数来等额减免伤害。', buff: 'guard' },
-    { title: '飞翔', desc: '正面buff，上限2层。受到攻击伤害时可花费1层尝试躲避，成功率1/2；失败后可再花费1层继续尝试。与守护不能同时用于同一次伤害。飞翔只能躲避伤害，不能躲避本次攻击附带的buff。', buff: 'guard' },
-    { title: '混沌', desc: 'Knight专属buff。打出基础颜色（红黄蓝绿）数字牌时，防御完成后获得对应颜色的混沌（每种上限1层）。进攻回合开始前清除所有混沌。混沌可增强Knight的技能效果。', buff: 'chaos_red' },
     { title: '弃牌库', desc: '打出的牌会进入弃牌库。弃牌库顶的牌决定了下一张牌的匹配条件。当牌库耗尽时，弃牌库会被洗回牌堆继续使用。' }
   ];
 
   let _thumbId = 0;
   function thumbPlaceholder() {
     return `rule-thumb-${++_thumbId}`;
-  }
-
-  function buffIconHTML(key) {
-    const b = BUFF_ICONS[key];
-    if (!b) return '';
-    return `<img class="rule-buff-icon" src="${b.src}" alt="${b.label}" title="${b.label}">`;
   }
 
   function buildRulesPage() {
@@ -149,8 +123,7 @@
 
     html += '<div class="rules-section"><h2 class="rules-section-title">基本规则</h2><div class="rules-list">';
     for (const rule of GAMEPLAY_RULES) {
-      const icon = rule.buff ? buffIconHTML(rule.buff) : '';
-      html += `<div class="rule-item">${icon}<div class="rule-item-title">${rule.title}</div><div class="rule-item-desc">${rule.desc}</div></div>`;
+      html += `<div class="rule-item"><div class="rule-item-title">${rule.title}</div><div class="rule-item-desc">${rule.desc}</div></div>`;
     }
     html += '</div></div>';
 

@@ -301,7 +301,7 @@
 .adv-buff-frozen    { color: #60a5fa; background: rgba(96,165,250,0.15); border-color: rgba(96,165,250,0.4); }
 .adv-buff-guard     { color: #34d399; background: rgba(52,211,153,0.15); border-color: rgba(52,211,153,0.4); }
 .adv-buff-fly       { color: #7dd3fc; background: rgba(56,189,248,0.15); border-color: rgba(56,189,248,0.4); }
-.adv-buff-crit      { color: #fbbf24; background: rgba(251,191,36,0.15); border-color: rgba(251,191,36,0.4); }
+.adv-buff-icon      { width: 18px; height: 18px; object-fit: contain; margin-right: 3px; vertical-align: middle; }
 .adv-buff-chaos-red    { color: #f87171; background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.3); }
 .adv-buff-chaos-yellow { color: #fbbf24; background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.3); }
 .adv-buff-chaos-blue   { color: #60a5fa; background: rgba(96,165,250,0.1); border-color: rgba(96,165,250,0.3); }
