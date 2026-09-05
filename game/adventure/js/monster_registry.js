@@ -53,7 +53,13 @@
           return { d: 0, skip: false, unblock: false };
         }
 
-        const ctx = { playerHandSize: eng.h.player ? eng.h.player.length : 0, playerBleed: (t.bleed || 0), playerPoison: (t.poison || 0), attackerLush: (a.lush || 0) };
+        const attackerKey = a === eng.s.ai2 ? 'ai2' : (a === eng.s.ai ? 'ai' : 'player');
+        const ctx = {
+          playerHandSize: eng.h.player ? eng.h.player.length : 0,
+          attackerHandSize: eng.h[attackerKey] ? eng.h[attackerKey].length : 0,
+          attackerHand: eng.h[attackerKey] || [],
+          playerBleed: (t.bleed || 0), playerPoison: (t.poison || 0), attackerLush: (a.lush || 0)
+        };
         if (typeof mod.attackDamage === 'function') {
           d = mod.attackDamage(c, ctx);
         } else {
@@ -179,6 +185,9 @@
         const suffix = () =>
           (poisonAmt ? '，施加' + poisonAmt + '层中毒' : '') +
           (bleedAmt ? '，施加' + bleedAmt + '层流血' : '');
+        if (typeof mod.defendRollImmune === 'function' && mod.defendRollImmune(c, eng, defender, d, owner)) {
+          return { remaining: 0, desc: '12面骰判定成功，免疫所有伤害和buff' };
+        }
         const drawSelfAmt = typeof mod.defendDrawSelf === 'function' ? (mod.defendDrawSelf(c) || 0) : 0;
         const applyDrawSelf = () => {
           if (drawSelfAmt > 0) {
@@ -381,6 +390,11 @@
           parts.push('免疫buff');
         }
       }
+      if (typeof mod.defendRollImmune === 'function' && mod.defendRollImmune(card)) {
+        parts.push(mod.name === 'CastleGhost'
+          ? (opts.stage >= 4 ? '投12面骰，1-6免疫伤害和buff' : '投12面骰，1-4免疫伤害和buff')
+          : '投12面骰判定免疫伤害和buff');
+      }
       if (typeof mod.defendHeal === 'function') {
         const healAmt = mod.defendHeal(card);
         if (healAmt > 0) parts.push('恢复' + healAmt + '点生命');
@@ -445,6 +459,8 @@
 
     const ctx = {
       playerHandSize: Number(opts.playerHandSize) || 0,
+      attackerHandSize: Number(opts.attackerHandSize) || 0,
+      attackerHand: Array.isArray(opts.attackerHand) ? opts.attackerHand : [],
       playerPoison: Number(opts.playerPoison) || 0,
       attackerLush: opts.attackerLush == null ? (Number(mod.initialLush) || 0) : (Number(opts.attackerLush) || 0)
     };
@@ -468,6 +484,11 @@
         bleedDmgDesc = (dmg > 0 ? '造成' + dmg + '点伤害+' : '') + '对手每有1层【流血】' + perBleed + '点伤害';
       }
     } else if (card.isNumberCard) dmg = card.value || 0;
+    if (mod.name === 'CastleGhost' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
+      parts.push(ctx.attackerHandSize === 1
+        ? '若打出后剩1张牌，按剩余手牌点数造成' + (opts.stage >= 3 ? '2倍' : '1.5倍') + '伤害'
+        : '若打出后手牌不剩1张，跳过本轮');
+    }
     if (bleedDmgDesc) {
       let line = bleedDmgDesc;
       if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) line += '（不可防御）';

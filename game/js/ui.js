@@ -24,7 +24,16 @@ const TAG_COLORS = {
     '[净化]': '#ddd6fe', '[解冻]': '#bae6fd',
     '[红]': '#fda4af', '[黄]': '#fde047', '[蓝]': '#93c5fd',
     '[绿]': '#86efac', '[白]': '#f8fafc', '[黑]': '#cbd5e1',
-    '[守护]': '#67e8f9', '[飞翔]': '#a5b4fc', '[致盲]': '#c4b5fd'
+    '[守护]': '#67e8f9', '[飞翔]': '#a5b4fc', '[致盲]': '#c4b5fd',
+    '[中毒]': '#a3e635', '[中毒层数]': '#a3e635', '[茂盛]': '#4ade80', '[暴击]': '#facc15',
+    '[灼烧层数]': '#fdba74', '[流血层数]': '#fb7185',
+    '[定时炸弹]': '#fb923c', '[炸弹]': '#fb923c', '[束缚]': '#22c55e',
+    '[自然之盾]': '#86efac', '[战利白卡]': '#fbbf24', '[道具]': '#fbbf24',
+    '[混沌]': '#c084fc', '[混沌·红]': '#f87171', '[混沌·黄]': '#fde047',
+    '[混沌·蓝]': '#60a5fa', '[混沌·绿]': '#4ade80',
+    '[混沌-红]': '#f87171', '[混沌-黄]': '#fde047', '[混沌-蓝]': '#60a5fa', '[混沌-绿]': '#4ade80',
+    '[混沌红]': '#f87171', '[混沌黄]': '#fde047', '[混沌蓝]': '#60a5fa', '[混沌绿]': '#4ade80',
+    '[清除混沌红]': '#fca5a5', '[清除混沌黄]': '#fef08a', '[清除混沌蓝]': '#93c5fd', '[清除混沌绿]': '#86efac'
 };
 
 const ICON_PATHS = {
@@ -492,7 +501,16 @@ class GameUI {
     }
 
     _buildSelectScreen() {
-        const chars = this.characters;
+        // Adventure NPCs are registered in CharacterRegistry so the shared
+        // combat bridge can use them, but they must never be selectable as
+        // player characters.  Check both the marker and the adventure
+        // registries because HTTP character lists may omit custom fields.
+        const chars = (this.characters || []).filter(ch => {
+            if (ch && ch.adventureNpc) return false;
+            const name = ch && ch.name;
+            return !(window.AdventureRegistry && name &&
+                (window.AdventureRegistry.getMonster(name) || window.AdventureRegistry.getBoss(name)));
+        });
         const charColors = { Ryan: '#e74c3c', Leon: '#3498db', Chan: '#2ecc71',
             Saiki: '#9b59b6', Blaze: '#e67e22', Serenity: '#1abc9c', Moze: '#7f8c8d', Knight: '#8e44ad' };
         const charAvatar = { Ryan: 'avatars/Ryan.jpg', Leon: 'avatars/Leon.png', Chan: 'avatars/Chan.png', Saiki: 'avatars/Saiki.png', Blaze: 'avatars/Blaze.png', Serenity: 'avatars/Serenity.jpg', Moze: 'avatars/Moze.jpg', Knight: 'avatars/Knight.png', Otto: 'avatars/Otto.png' };
@@ -1386,6 +1404,34 @@ class GameUI {
         confirm.addEventListener('click', () => { if (selected.length === cards.length) { close(); onChoose(selected); } });
         overlay.querySelector('#crystal-ball-cancel').addEventListener('click', () => { close(); if (onCancel) onCancel(); });
         overlay.addEventListener('click', event => { if (event.target === overlay) { close(); if (onCancel) onCancel(); } });
+    }
+
+    // Render crystal-ball choices with the same real card canvas and drag
+    // ordering interaction used by Chan 5.
+    _showCrystalBallChoice(cards, onChoose, onCancel) {
+        if (document.getElementById('crystal-ball-choice-dialog')) return;
+        const overlay = document.createElement('div'); overlay.id = 'crystal-ball-choice-dialog'; overlay.className = 'dialog-overlay';
+        const box = document.createElement('div'); box.className = 'dialog-box'; box.style.maxWidth = '520px';
+        box.innerHTML = '<div class="dialog-title">水晶球</div><div class="dialog-body" style="color:rgba(255,255,255,0.85);font-size:0.85rem;margin-bottom:12px">拖拽排序，最左侧为牌库顶</div>';
+        const row = document.createElement('div'); row.className = 'chan-five-row crystal-ball-row';
+        const order = cards.map((_, i) => i);
+        const refresh = () => { const nodes = new Map([...row.children].map(node => [Number(node.dataset.sortIndex), node])); order.forEach(i => { if (nodes.get(i)) row.appendChild(nodes.get(i)); }); };
+        cards.forEach((card, index) => {
+            const node = renderCard(card, CARD_W, CARD_H, false); node.classList.add('crystal-ball-sort-card'); node.draggable = true; node.dataset.sortIndex = String(index);
+            node.addEventListener('dragstart', event => { event.dataTransfer.setData('text/plain', String(index)); node.classList.add('dragging'); });
+            node.addEventListener('dragend', () => node.classList.remove('dragging'));
+            node.addEventListener('dragover', event => { event.preventDefault(); node.classList.add('drag-target'); });
+            node.addEventListener('dragleave', () => node.classList.remove('drag-target'));
+            node.addEventListener('drop', event => { event.preventDefault(); node.classList.remove('drag-target'); const from = Number(event.dataTransfer.getData('text/plain')); const fromPos = order.indexOf(from); const toPos = order.indexOf(index); if (fromPos >= 0 && toPos >= 0 && fromPos !== toPos) { order.splice(fromPos, 1); order.splice(toPos, 0, from); refresh(); } });
+            row.appendChild(node);
+        });
+        box.appendChild(row);
+        const actions = document.createElement('div'); actions.className = 'dialog-buttons';
+        const reset = document.createElement('button'); reset.className = 'ctrl-btn btn-skip'; reset.textContent = '重置'; reset.onclick = () => { order.splice(0, order.length, ...cards.map((_, i) => i)); refresh(); };
+        const confirm = document.createElement('button'); confirm.className = 'ctrl-btn btn-play'; confirm.textContent = '确认放回'; confirm.onclick = () => { overlay.remove(); onChoose(order.slice()); };
+        const cancel = document.createElement('button'); cancel.className = 'ctrl-btn btn-skip'; cancel.textContent = '取消'; cancel.onclick = () => { overlay.remove(); if (onCancel) onCancel(); };
+        actions.append(reset, confirm, cancel); box.appendChild(actions); overlay.appendChild(box); document.body.appendChild(overlay);
+        overlay.addEventListener('click', event => { if (event.target === overlay) { overlay.remove(); if (onCancel) onCancel(); } });
     }
 
     _renderAdventureItemBar(s) {

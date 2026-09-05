@@ -181,15 +181,15 @@ class DialogManager {
         extra = extra || {};
         const selfSnap = {
             burn: ch.burn || 0, bleed: ch.bleed || 0, poison: ch.poison || 0, blind: ch.blind || 0, bomb: ch.bomb || 0, frozen: !!ch.frozen,
-            guard: ch.guard || 0, fly: ch.fly || 0, crit: ch.crit || 0
+            guard: ch.guard || 0, fly: ch.fly || 0, crit: ch.crit || 0, lush: ch.lush || 0
         };
         const opp = extra.opponent || null;
         const oppSnap = opp ? {
             burn: opp.burn || 0, bleed: opp.bleed || 0, poison: opp.poison || 0, blind: opp.blind || 0, bomb: opp.bomb || 0, frozen: !!opp.frozen,
-            guard: opp.guard || 0, fly: opp.fly || 0, crit: opp.crit || 0
+            guard: opp.guard || 0, fly: opp.fly || 0, crit: opp.crit || 0, lush: opp.lush || 0
         } : null;
         const hasAny = snap => snap && (snap.burn > 0 || snap.bleed > 0 || snap.poison > 0 || snap.blind > 0 || snap.bomb > 0 || snap.frozen ||
-            snap.guard > 0 || snap.fly > 0 || snap.crit > 0);
+            snap.guard > 0 || snap.fly > 0 || snap.crit > 0 || snap.lush > 0);
         const applyLocal = (snap, kind) => {
             if (kind === 'burn') snap.burn = Math.max(0, snap.burn - 1);
             else if (kind === 'bleed') snap.bleed = Math.max(0, snap.bleed - 1);
@@ -200,6 +200,7 @@ class DialogManager {
             else if (kind === 'guard') snap.guard = Math.max(0, snap.guard - 1);
             else if (kind === 'fly') snap.fly = Math.max(0, snap.fly - 1);
             else if (kind === 'crit') snap.crit = Math.max(0, snap.crit - 1);
+            else if (kind === 'lush') snap.lush = Math.max(0, snap.lush - 1);
         };
         const choices = [];
         const step = () => {
@@ -273,10 +274,14 @@ class DialogManager {
             const buffs = [];
             if (t.ch.burn > 0) buffs.push(`<img src="${buffIcon('burn')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>灼烧×${t.ch.burn}</span>`);
             if (t.ch.bleed > 0) buffs.push(`<img src="${buffIcon('bleed')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>流血×${t.ch.bleed}</span>`);
-            if (t.ch.poison > 0) buffs.push(`<img src="${buffIcon('poison')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>中毒×${t.ch.poison}</span>`);
             if (t.ch.blind > 0) buffs.push(`<img src="${buffIcon('blind')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>致盲</span>`);
+            if (t.ch.poison > 0) buffs.push(`<img src="${buffIcon('poison')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>中毒×${t.ch.poison}</span>`);
             if (t.ch.frozen) buffs.push(`<img src="${buffIcon('freeze')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>冷冻</span>`);
+            if (t.ch.bomb > 0) buffs.push(`<img src="${buffIcon('time_bomb')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>定时炸弹×${t.ch.bomb}</span>`);
             if (t.ch.guard > 0) buffs.push(`<img src="${buffIcon('guard')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>守护×${t.ch.guard}</span>`);
+            if (t.ch.fly > 0) buffs.push(`<img src="${buffIcon('fly')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>飞翔×${t.ch.fly}</span>`);
+            if (t.ch.crit > 0) buffs.push(`<img src="${buffIcon('crit')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>暴击×${t.ch.crit}</span>`);
+            if (t.ch.lush > 0) buffs.push(`<img src="${buffIcon('lush')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>茂盛×${t.ch.lush}</span>`);
             const buffText = buffs.length ? buffs.join(' ') : '无buff';
             btn.innerHTML = `<span style="font-weight:700">${t.label}</span><span style="color:#aaa;font-size:0.85rem;margin-left:8px">${buffText}</span>`;
             btn.addEventListener('click', async () => { overlay.remove(); await onChoose(t.key); });

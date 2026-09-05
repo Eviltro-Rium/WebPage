@@ -29,7 +29,13 @@
       } else if (v === 4) {
         let r = takeReveal('Knight 4牌判定');
         if (r) {
-          if (r.isNumberCard) { if (r.value < 4) d = 4; else d = 6; } else { d = 6; }
+          if (r.isNumberCard) {
+            d = r.value < 4 ? 4 : 6;
+          } else if (r.isItemCard || r.isBlack || r.isWhite) {
+            // All non-number item cards count as the high-damage branch,
+            // including trophy white cards.
+            d = 6;
+          }
           if (!cb) {
             let idx = eng.h[owner].indexOf(r);
             if (idx >= 0) eng.h[owner].splice(idx, 1);

@@ -21,14 +21,66 @@
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.castle = {
     '*': ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly'],
-    2: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly', 'DungeonGoblin'],
-    3: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly', 'DungeonGoblin'],
-    4: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly', 'DungeonGoblin']
+    2: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly', 'DungeonGoblin', 'CastleGhost'],
+    3: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly', 'DungeonGoblin', 'CastleGhost'],
+    4: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly', 'DungeonGoblin', 'CastleGhost']
   };
 
   /** 萤火虫（CastleFirefly）
    * 进攻：1/2/3 造成2点伤害并获得飞翔；4/5/6造成4点伤害并致盲。
    * 防御：1/2/3 格挡 ceil(1 + 道具数量 / 2) 点伤害。
+   */
+  R.registerMonster({
+    name: 'CastleGhost',
+    kind: '城堡幽灵',
+    minStage: 2,
+    hp: 24,
+    attack: 3,
+    defense: 1,
+    icon: '../icons/npc_icons/castle_ghost.png',
+
+    attackDamage(card, ctx) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 3;
+      if (card.value >= 4 && card.value <= 6 && ctx && ctx.attackerHandSize === 1) {
+        const remaining = ctx.attackerHand && ctx.attackerHand[0];
+        const value = remaining && remaining.isNumberCard ? Number(remaining.value) || 0 : 0;
+        const multiplier = Number(ctx.stage) >= 3 ? 2 : 1.5;
+        return Math.ceil(multiplier * value);
+      }
+      return 0;
+    },
+
+    attackFly(card) {
+      return !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+    },
+
+    defendRollImmune(card, eng) {
+      if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return false;
+      // UI/AI capability checks call this without an engine; the real defense
+      // path supplies the engine and records the D12 roll in the判定区.
+      if (!eng || typeof eng.rollD12 !== 'function') return true;
+      const roll = eng.rollD12('城堡幽灵防御判定', { who: 'ai' });
+      return roll <= 4;
+    },
+
+    stageMods: {
+      3: orig => ({
+        attackDamage(card, ctx) { return orig.attackDamage(card, Object.assign({}, ctx, { stage: 3 })); }
+      }),
+      4: orig => ({
+        attackDamage(card, ctx) { return orig.attackDamage(card, Object.assign({}, ctx, { stage: 4 })); },
+        defendRollImmune(card, eng) {
+          if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return false;
+          if (!eng || typeof eng.rollD12 !== 'function') return true;
+          return eng.rollD12('城堡幽灵防御判定', { who: 'ai' }) <= 6;
+        }
+      })
+    }
+  });
+
+  /** 城堡幽灵（CastleGhost）
+   * Stage 2 起出现；4/5/6 技能会根据打出后剩余手牌决定是否造成伤害。
    */
   R.registerMonster({
     name: 'CastleFirefly',

@@ -281,7 +281,11 @@
 
             const charAvatar = { Ryan: '../avatars/Ryan.jpg', Leon: '../avatars/Leon.png', Chan: '../avatars/Chan.png', Saiki: '../avatars/Saiki.png', Blaze: '../avatars/Blaze.png', Serenity: '../avatars/Serenity.jpg', Moze: '../avatars/Moze.jpg', Knight: '../avatars/Knight.png', Otto: '../avatars/Otto.png' };
 
-            CharacterRegistry.all().filter(mod => !mod.adventureNpc).forEach(mod => {
+            CharacterRegistry.all().filter(mod => {
+                if (mod.adventureNpc) return false;
+                return !(window.AdventureRegistry && mod.name &&
+                    (window.AdventureRegistry.getMonster(mod.name) || window.AdventureRegistry.getBoss(mod.name)));
+            }).forEach(mod => {
                 const btn = document.createElement('button');
                 btn.className = 'adv-char-pick';
                 const avatar = charAvatar[mod.name];

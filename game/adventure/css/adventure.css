@@ -836,3 +836,7 @@
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+.crystal-ball-row { min-height: 112px; display: flex; justify-content: center; align-items: flex-end; gap: 10px; padding: 8px; }
+.crystal-ball-sort-card { cursor: grab; transition: transform .16s ease, filter .16s ease; }
+.crystal-ball-sort-card.dragging { opacity: .45; transform: translateY(-6px) scale(.97); }
+.crystal-ball-sort-card.drag-target { filter: drop-shadow(0 0 8px #c4b5fd); transform: translateY(-6px); }

@@ -1098,8 +1098,8 @@
           if (def && def.combatUse === 'purify') {
             const player = this.eng.s.player;
             const hasBuff = (player.burn || 0) > 0 || (player.bleed || 0) > 0 ||
-              (player.poison || 0) > 0 || (player.bomb || 0) > 0 || player.frozen || (player.guard || 0) > 0 ||
-              (player.fly || 0) > 0 || (player.crit || 0) > 0;
+              (player.poison || 0) > 0 || (player.blind || 0) > 0 || (player.bomb || 0) > 0 || player.frozen || (player.guard || 0) > 0 ||
+              (player.fly || 0) > 0 || (player.crit || 0) > 0 || (player.lush || 0) > 0;
             if (!hasBuff) {
               this._toast('当前没有可净化的状态');
               return;
@@ -1260,10 +1260,10 @@
 
     _renderTestMode() {
       if (!this._test) return;
-      // 测试房默认从 Stage 1 开始，隐藏定义为后续阶段才出现的怪物。
-      const isStageOne = def => !def || !Number.isFinite(Number(def.minStage)) || Number(def.minStage) <= 1;
-      const normal = window.AdventureRegistry ? window.AdventureRegistry.allMonsters().filter(isStageOne) : [];
-      const bosses = window.AdventureRegistry ? window.AdventureRegistry.allBosses().filter(isStageOne) : [];
+      // 测试房是独立的实验入口，允许直接选择全部已注册怪物/Boss；
+      // minStage 只限制正式冒险地图的随机遭遇，不限制测试对象选择。
+      const normal = window.AdventureRegistry ? window.AdventureRegistry.allMonsters() : [];
+      const bosses = window.AdventureRegistry ? window.AdventureRegistry.allBosses() : [];
       const mode = this._test.mode;
       const pool = mode === 'boss' ? bosses : normal;
       const needed = mode === '1v2' ? 2 : 1;
@@ -1386,6 +1386,32 @@
       confirm.addEventListener('click', () => { if (selected.length === cards.length) { close(); onChoose(selected); } });
       overlay.querySelector('#crystal-ball-cancel').addEventListener('click', close);
       overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
+    }
+
+    _showCrystalBallChoice(cards, onChoose, onCancel) {
+      if (document.getElementById('crystal-ball-choice-dialog')) return;
+      const overlay = document.createElement('div'); overlay.id = 'crystal-ball-choice-dialog'; overlay.className = 'dialog-overlay';
+      const box = document.createElement('div'); box.className = 'dialog-box'; box.style.maxWidth = '520px';
+      box.innerHTML = '<div class="dialog-title">水晶球</div><div class="dialog-body" style="color:rgba(255,255,255,0.85);font-size:0.85rem;margin-bottom:12px">拖拽排序，最左侧为牌库顶</div>';
+      const row = document.createElement('div'); row.className = 'chan-five-row crystal-ball-row';
+      const order = cards.map((_, i) => i);
+      const refresh = () => { const nodes = new Map([...row.children].map(node => [Number(node.dataset.sortIndex), node])); order.forEach(i => { if (nodes.get(i)) row.appendChild(nodes.get(i)); }); };
+      cards.forEach((card, index) => {
+        const node = renderCard(card, 70, 100, false); node.classList.add('crystal-ball-sort-card'); node.draggable = true; node.dataset.sortIndex = String(index);
+        node.addEventListener('dragstart', event => { event.dataTransfer.setData('text/plain', String(index)); node.classList.add('dragging'); });
+        node.addEventListener('dragend', () => node.classList.remove('dragging'));
+        node.addEventListener('dragover', event => { event.preventDefault(); node.classList.add('drag-target'); });
+        node.addEventListener('dragleave', () => node.classList.remove('drag-target'));
+        node.addEventListener('drop', event => { event.preventDefault(); node.classList.remove('drag-target'); const from = Number(event.dataTransfer.getData('text/plain')); const fromPos = order.indexOf(from); const toPos = order.indexOf(index); if (fromPos >= 0 && toPos >= 0 && fromPos !== toPos) { order.splice(fromPos, 1); order.splice(toPos, 0, from); refresh(); } });
+        row.appendChild(node);
+      });
+      box.appendChild(row);
+      const actions = document.createElement('div'); actions.className = 'dialog-buttons';
+      const reset = document.createElement('button'); reset.className = 'adv-btn'; reset.textContent = '重置'; reset.onclick = () => { order.splice(0, order.length, ...cards.map((_, i) => i)); refresh(); };
+      const confirm = document.createElement('button'); confirm.className = 'adv-btn adv-btn-primary'; confirm.textContent = '确认放回'; confirm.onclick = () => { overlay.remove(); onChoose(order.slice()); };
+      const cancel = document.createElement('button'); cancel.className = 'adv-btn'; cancel.textContent = '取消'; cancel.onclick = () => { overlay.remove(); if (onCancel) onCancel(); };
+      actions.append(reset, confirm, cancel); box.appendChild(actions); overlay.appendChild(box); document.body.appendChild(overlay);
+      overlay.addEventListener('click', event => { if (event.target === overlay) { overlay.remove(); if (onCancel) onCancel(); } });
     }
 
     _showCombatLaunchError(message) {
