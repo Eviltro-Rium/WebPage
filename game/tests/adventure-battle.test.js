@@ -395,6 +395,72 @@ test('1v2 skip-defense kill with empty event queue settles without freezing', ()
   assert.ok(engine.s.busy);
 });
 
+test('adventure 1v2 keeps one shared NPC pile isolated from the player pile', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({
+    player: 'Leon',
+    opponent1: 'CastleWolf',
+    opponent2: 'CastleBear',
+    stage: 1,
+    playerPile: { deck: [], hand: [], discard: [], handLimit: 5 }
+  });
+
+  assert.equal(engine.piles.ai.deck, engine.piles.ai2.deck);
+  assert.equal(engine.piles.ai.discard, engine.piles.ai2.discard);
+  assert.notEqual(engine.piles.player.deck, engine.piles.ai.deck);
+  assert.notEqual(engine.piles.player.discard, engine.piles.ai.discard);
+
+  const npcCards = [
+    ...engine.piles.ai.deck,
+    ...engine.piles.ai.discard,
+    ...engine.h.ai,
+    ...engine.h.ai2
+  ];
+  assert.equal(npcCards.filter(card => card.greenMagic).length, 2);
+
+  // Even if the phase fields still point at an NPC, an explicit player
+  // shuffle must only consume the player's discard pile.
+  engine.s.defOwner = 'ai';
+  engine.s.atkOwner = 'ai2';
+  const playerCard = number(9, 'RED');
+  const npcCard = context.AdventureDeck.item('WHITE', 'greenMagic');
+  engine.piles.player.deck = [];
+  engine.deck = engine.piles.player.deck;
+  engine.piles.player.discard = [playerCard];
+  engine.discardBottom = engine.piles.player.discard;
+  engine.piles.ai.discard.push(npcCard);
+  engine.useItem1v2(
+    context.AdventureDeck.item('BLACK', 'shuffle'),
+    engine.s.player,
+    engine.s.ai,
+    'player'
+  );
+  assert.equal(engine.piles.player.discard.length, 0);
+  assert.equal(engine.piles.ai.discard.includes(npcCard), true);
+  assert.equal(engine.piles.player.deck.includes(playerCard), true);
+
+  engine.draw('player', 1);
+  assert.equal(engine.h.player.some(card => card.greenMagic), false);
+
+  // The shared NPC discard can be refilled through either NPC owner, but it
+  // must remain the same pile and never become a player draw source.
+  engine._shuffleDiscardIntoDeck('ai2');
+  assert.equal(engine.piles.ai.discard.length, 0);
+  assert.equal(engine.piles.ai.deck.includes(npcCard), true);
+  assert.equal(engine.piles.ai.deck, engine.piles.ai2.deck);
+
+  // A batch draw also observes the <3-card threshold between cards.
+  engine.h.ai.length = 0;
+  engine.h.ai2.length = 0;
+  engine.piles.ai.deck.splice(0, engine.piles.ai.deck.length,
+    number(1, 'RED'), number(2, 'RED'), number(3, 'RED'));
+  engine.piles.ai.discard.splice(0, engine.piles.ai.discard.length, npcCard);
+  engine.draw('ai2', 2);
+  assert.equal(engine.piles.ai.discard.length, 0);
+  assert.equal(engine.h.ai2.length, 2);
+});
+
 test('MagicTransfer moves one buff layer from player to opponent', () => {
   const engine = startLeon();
   engine._adventureEngine = {

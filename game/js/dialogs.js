@@ -258,12 +258,14 @@ class DialogManager {
         box.appendChild(list); overlay.appendChild(box); document.body.appendChild(overlay);
     }
 
-    showSuperPurifyChoice(targets, onChoose) {
+    showSuperPurifyChoice(targets, onChoose, title = '超级净化 · 选择目标') {
         if (document.getElementById('super-purify-choice-dialog')) return;
         const overlay = document.createElement('div');
         overlay.id = 'super-purify-choice-dialog'; overlay.className = 'dialog-overlay';
         const box = document.createElement('div'); box.className = 'dialog-box compact-choice-box';
-        box.innerHTML = '<h3>超级净化 · 选择目标</h3>';
+        const heading = document.createElement('h3');
+        heading.textContent = title;
+        box.appendChild(heading);
         const list = document.createElement('div'); list.className = 'choice-list';
         const buffIcon = name => window.gameAssetUrl ? window.gameAssetUrl(`icons/buff_icons/${name}.png`) : `icons/buff_icons/${name}.png`;
         for (const t of targets) {

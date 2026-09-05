@@ -11,11 +11,31 @@ _showZoneDesc(id, desc) {
     if (!el) return;
     const segs = parseSegments(desc, '');
     el.innerHTML = '';
+    el.classList.remove('is-expanded');
+    const text = document.createElement('span');
+    text.className = 'desc-text';
     for (const seg of segs) {
         const span = document.createElement('span');
         span.textContent = seg.text;
         if (seg.color) span.style.color = seg.color;
-        el.appendChild(span);
+        text.appendChild(span);
+    }
+    el.appendChild(text);
+    if (String(desc || '').length > 16) {
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'zone-desc-toggle';
+        toggle.textContent = '⌃';
+        toggle.title = '展开完整说明';
+        toggle.setAttribute('aria-label', '展开完整说明');
+        toggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const expanded = el.classList.toggle('is-expanded');
+            toggle.textContent = expanded ? '⌄' : '⌃';
+            toggle.title = expanded ? '收起说明' : '展开完整说明';
+            toggle.setAttribute('aria-label', toggle.title);
+        });
+        el.appendChild(toggle);
     }
 },
 
@@ -25,21 +45,21 @@ _showCardSkillDesc(id, card, owner, isDefend) {
     const participant = owner === 'ai2' ? s.ai2 : owner === 'ai' ? s.ai : s.player;
     if (!participant) return;
     const charName = card.borrowedMonsterName || participant.name.replace(/^AI\d*\s+/, '');
-    const label = card.isItemCard
-        ? (card.isBlack ? '黑牌' : card.isWhite ? '白牌' : '道具')
-        : card.value;
     const adventureOpts = s.isAdventure ? {
         stage: s.adventureStage || s.stage || 1,
         playerHandSize: (s.playerHand && s.playerHand.length) || 0,
         incomingDamage: s.pendingDefenseDamage || 0
     } : null;
     const skill = this._resolveHandSkillDesc(charName, card, isDefend, adventureOpts) || (isDefend ? '执行防御效果' : '执行进攻效果');
-    this._showZoneDesc(id, `${charName} · ${label}｜${skill}`);
+    this._showZoneDesc(id, skill);
 },
 
 _hideZoneDesc(id) {
     const el = document.getElementById(id);
-    if (el) el.textContent = '';
+    if (el) {
+        el.textContent = '';
+        el.classList.remove('is-expanded');
+    }
 },
 
 _drawDeckIcon(count) {
@@ -250,7 +270,7 @@ async _playAIDefendAnimation(card, who = 'ai') {
 
 _settleZoneCard(zone, card, owner = 'player') {
     zone.innerHTML = '';
-    const settled = renderCard(card, CARD_W - 10, CARD_H - 14, false);
+    const settled = renderCard(card, 60, 100, false);
     settled.classList.add('zone-card', 'zone-card-land');
     if (owner && owner !== 'player') markNpcWhiteCard(settled, card, true);
     zone.appendChild(settled);
@@ -309,8 +329,8 @@ async _playRevealAnimation(card, fromOwner, fromSource) {
     if (!fromEl) fromEl = document.body;
 
     const flying = fromHand && fromOwner === 'player'
-        ? renderCard(card, CARD_W - 10, CARD_H - 14, false)
-        : renderCardBack(CARD_W - 10, CARD_H - 14);
+        ? renderCard(card, 60, 100, false)
+        : renderCardBack(60, 100);
     flying.style.position = 'fixed';
     flying.style.zIndex = '9999';
     flying.style.pointerEvents = 'none';
@@ -318,17 +338,17 @@ async _playRevealAnimation(card, fromOwner, fromSource) {
     const from = fromEl.getBoundingClientRect();
     const to = toEl.getBoundingClientRect();
     flying.style.left = (from.left + from.width / 2 - 30) + 'px';
-    flying.style.top = (from.top + from.height / 2 - 43) + 'px';
+    flying.style.top = (from.top + from.height / 2 - 50) + 'px';
     document.body.appendChild(flying);
     await new Promise(r => setTimeout(r, 30));
     flying.style.left = (to.left + to.width / 2 - 30) + 'px';
-    flying.style.top = (to.top + to.height / 2 - 43) + 'px';
+    flying.style.top = (to.top + to.height / 2 - 50) + 'px';
     flying.style.transform = fromHand && fromOwner === 'player' ? 'scale(.9)' : 'rotateY(90deg) scale(.9)';
     await new Promise(r => setTimeout(r, 430));
     flying.remove();
     if (fromHand && fromEl !== ownerEl) fromEl.remove();
     toEl.innerHTML = '';
-    const shown = renderCard(card, CARD_W - 10, CARD_H - 14, false);
+    const shown = renderCard(card, 60, 100, false);
     shown.classList.add('revealed-card');
     toEl.appendChild(shown);
     toEl.dataset.cardKey = JSON.stringify([card]);

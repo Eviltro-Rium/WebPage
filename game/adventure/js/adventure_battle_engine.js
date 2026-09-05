@@ -296,9 +296,13 @@
 
     _pile(owner) {
       if (!this.piles) return null;
-      if (owner === 'ai2') return this.piles.ai2 || this.piles.ai;
+      if (owner === 'ai2') return this.piles.ai2 || null;
       if (owner === 'ai') return this.piles.ai;
-      return this.piles.player;
+      if (owner === 'player') return this.piles.player;
+      // Never silently treat a missing/unknown owner as the player's pile.
+      // A stale phase field must not be able to route an NPC draw or refill
+      // into the persistent player deck.
+      return null;
     }
 
     _activeOwner(explicitOwner) {
@@ -346,12 +350,15 @@
       const key = owner;
       const pile = this._pile(key);
       if (!pile) return [];
-      if ((key === 'ai' || key === 'ai2') && pile.deck.length <= 2 && pile.discard.length) {
-        this._shuffleDiscardIntoDeck(key);
-        this.emit('desc', (key === 'ai2' ? 'NPC2' : 'NPC') + '牌库不足2张，弃牌库洗入牌库');
-      }
       const cards = [];
       while (count-- > 0) {
+        // The two monsters draw from one shared pile. Refill it before every
+        // card when fewer than three cards remain, so a batch draw cannot
+        // bypass the low-deck rule after its first card.
+        if ((key === 'ai' || key === 'ai2') && pile.deck.length < 3 && pile.discard.length) {
+          this._shuffleDiscardIntoDeck(key);
+          this.emit('desc', (key === 'ai2' ? 'NPC2' : 'NPC') + '共享牌库少于3张，弃牌库洗入牌库');
+        }
         this._refillPile(key);
         if (!pile.deck.length) break;
         const card = pile.deck.pop();
@@ -399,15 +406,15 @@
       this._shuffle(pile.deck);
     }
 
-    reveal(desc) {
-      const owner = this._activeOwner();
-      const pile = this._pile(owner);
+    reveal(desc, owner) {
+      const key = this._activeOwner(owner);
+      const pile = this._pile(key);
       if (!pile) return null;
-      this._refillPile(owner);
+      this._refillPile(key);
       const card = pile.deck.pop();
       if (!card) return null;
       this.s.revealCards = [clone(card)];
-      this.emit('reveal', desc, card, { who: owner, from: 'deck' });
+      this.emit('reveal', desc, card, { who: key, from: 'deck' });
       return card;
     }
 
@@ -481,9 +488,38 @@
           this.s.ai2Hand = this.piles.ai2.hand;
         }
         if (this.adventureCurrency) {
-          this.s.adventureGold = this.adventureCurrency.gold || 0;
-          this.s.adventureBeastTokens = Object.assign({}, this.adventureCurrency.tokens);
-          this.s.adventureBeastTotal = this.adventureCurrency.totalBeastTokens ? this.adventureCurrency.totalBeastTokens() : 0;
+            this.s.adventureGold = this.adventureCurrency.gold || 0;
+            this.s.adventureBeastTokens = Object.assign({}, this.adventureCurrency.tokens);
+            this.s.adventureBeastTotal = this.adventureCurrency.totalBeastTokens ? this.adventureCurrency.totalBeastTokens() : 0;
+        }
+        // Mirror the persistent adventure inventory into the combat snapshot.
+        // This keeps the 1v2 combat UI independent from the map sidebar and
+        // also makes resource rendering resilient while a combat session is
+        // being restored.
+        let adventureSnapshot = null;
+        if (this._adventureEngine) {
+          if (typeof this._adventureEngine.snapshot === 'function') {
+            adventureSnapshot = this._adventureEngine.snapshot();
+          } else if (this._adventureEngine.s) {
+            // Test battles can be restored from a lightweight engine state
+            // object rather than the live map engine.
+            const advState = this._adventureEngine.s;
+            adventureSnapshot = {
+              consumables: advState.consumables || [],
+              accessories: advState.accessories || [],
+              consumableSlots: advState.consumableSlots || 6,
+              currency: advState.currency || null
+            };
+          }
+        }
+        if (adventureSnapshot) {
+          this.s.adventureConsumables = adventureSnapshot.consumables || [];
+          this.s.adventureAccessories = adventureSnapshot.accessories || [];
+          this.s.adventureConsumableSlots = adventureSnapshot.consumableSlots || 6;
+          if (adventureSnapshot.currency) {
+            this.s.adventureGold = adventureSnapshot.currency.gold || this.s.adventureGold || 0;
+            this.s.adventureBeastTokens = Object.assign({}, adventureSnapshot.currency.tokens || this.s.adventureBeastTokens || {});
+          }
         }
         this.s.demonPactAvailable = !!(this._hasAccessory('DemonPact') &&
           this.s.player.hp > 3 &&

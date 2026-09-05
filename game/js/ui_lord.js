@@ -25,11 +25,12 @@
     const ai2Label=adv?'对手2':'AI2';
     const ai1HandTitle=adv?'对手手牌':'AI1 手牌';
     const ai2HandTitle=adv?'对手2手牌':'AI2 手牌';
-    const gameTitle=adv?'Furry 冒险':'Furry Battle 领主模式';
+    const gameTitle=adv?'Furry Trial 冒险':'Furry Battle 领主模式';
     let html=`
       <div class="game-title">${gameTitle}</div>
       <div class="top-bar">
         <div class="deck-area" id="deck-area"><canvas id="deck-icon" width="40" height="52"></canvas><span class="deck-info" id="deck-info">牌堆: 0</span></div>
+        <div class="npc-deck-info" id="npc-deck-info" style="display:none"></div>
         <span class="phase-info" id="phase-info">出牌阶段</span>
         <span class="turn-info" id="turn-info">回合 1</span>
         <button class="menu-btn" id="menu-btn">☰</button>
@@ -66,6 +67,8 @@
         <div class="buff-icons" id="player-buffs"></div>
       </div>
       <div class="error-hint" id="error-hint"></div>
+      <div class="adventure-info-bar" id="adventure-info-bar" style="display:none"></div>
+      <div class="adventure-item-bar" id="adventure-item-bar" style="display:none"></div>
       <div class="player-hand-zone"><div class="zone-title">你的手牌</div><div class="hand-row" id="player-hand"></div></div>
       <div class="lord-turn-hint" id="lord-turn-hint" style="display:none"></div>
 

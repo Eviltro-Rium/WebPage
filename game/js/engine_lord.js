@@ -127,6 +127,10 @@
     if(m==='doOpponentCardConfirm'&&this.s.pendingLeonZeroDiscard)return this._finishLeonZeroDiscard();
     if(m==='chooseAICard')return this.chooseOpponentCard(Number(p.index));
     if(m==='chooseColor'){
+      if(this.s.pendingBlackPlay){
+        const mode=this._resumePendingBlackCard(p.color);
+        return mode==='defend'?this.defend1v2():this.play1v2();
+      }
       let card=this.h.player[this.s.selectedCard];if(!card)throw Error('请选择要指定颜色的牌');
       card.chosenColor=p.color;this.s.needColorChoice=false;this.s.pendingDialog=null;
       return this.s.phase==='PLAYER_DEFEND'?this.defend1v2():this.play1v2()

@@ -33,11 +33,12 @@
     const sceneLabels={castle:'城堡',desert:'沙漠',forest:'森林',ocean:'冻洋',volcano:'火山'};
     const sceneName=sceneLabels[this.state.adventureScene]||'';
     const stageNum=(this.state.adventureStage||this.state.stage||1);
-    const gameTitle=adv?(sceneName?(sceneName+' · 第'+stageNum+'层'):'Furry 冒险 1v2'):'Furry Battle 1v2';
+    const gameTitle=adv?'Furry Trial 冒险':'Furry Battle 1v2';
     let html=`
       <div class="game-title">${gameTitle}</div>
       <div class="top-bar">
         <div class="deck-area" id="deck-area"><canvas id="deck-icon" width="40" height="52"></canvas><span class="deck-info" id="deck-info">牌堆: 0</span></div>
+        <div class="npc-deck-info" id="npc-deck-info" style="display:none"></div>
         <span class="phase-info" id="phase-info">出牌阶段</span>
         <span class="turn-info" id="turn-info">回合 1</span>
         <button class="menu-btn" id="menu-btn">☰</button>
@@ -59,7 +60,6 @@
       <div class="ai-area">
         <div class="ai-hand-zone"><div class="zone-title">${ai1HandTitle}</div><div class="ai-hand-row" id="ai-hand"></div></div>
         <div class="ai-hand-zone" style="border-color:#a855f7"><div class="zone-title" style="color:#c084fc">${ai2HandTitle}</div><div class="ai-hand-row" id="ai2-hand"></div></div>
-        <div class="npc-deck-info" id="npc-deck-info">NPC牌库: 0 | 弃牌库: 0</div>
         <div class="play-zone"><div class="play-zone-row">
           <div class="attack-zone"><div class="zone-title">进攻</div><div class="zone-cards" id="atk-cards"><span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待出牌</span></div><div class="zone-desc" id="atk-desc"></div></div>
           <div class="defend-zone"><div class="zone-title">防御</div><div class="zone-cards" id="def-cards"><span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待防御</span></div><div class="zone-desc" id="def-desc"></div></div>
@@ -75,8 +75,9 @@
         <div class="buff-icons" id="player-buffs"></div>
       </div>
       <div class="error-hint" id="error-hint"></div>
-      <div class="player-hand-zone"><div class="zone-title">你的手牌</div><div class="hand-row" id="player-hand"></div></div>
+      <div class="adventure-info-bar" id="adventure-info-bar" style="display:none"></div>
       <div class="adventure-item-bar" id="adventure-item-bar" style="display:none"></div>
+      <div class="player-hand-zone"><div class="zone-title">你的手牌</div><div class="hand-row" id="player-hand"></div></div>
       <div class="dual-dice-inline" id="dual-dice-inline" style="display:none">
         <div class="lord-dice-label">骰子索敌</div>
         <div class="lord-dice" id="dual-dice-num">?</div>
@@ -155,15 +156,18 @@
     this._renderZones();
     this._renderReveal();
     this._renderControls1v2();
+    this._updateAdventureInfo(s);
     this._renderAdventureItemBar(s);
     const npcDeckEl=document.getElementById('npc-deck-info');
     if(npcDeckEl){
       const deckCount=s.aiDeckCount!=null?s.aiDeckCount:0;
       const discardCount=s.aiDiscardCount!=null?s.aiDiscardCount:0;
+      npcDeckEl.style.display=s.isAdventure?'':'none';
       npcDeckEl.textContent='NPC共享牌库: '+deckCount+' | 弃牌库: '+discardCount;
     }
     if(s.pendingDialog==='purify')this.dialogs.showPurifyChoice(s.player,picked=>{const kind=picked&&picked.kind?picked.kind:picked;this._apiAction('choosePurify',{kind})});
     else if(s.pendingDialog==='superPurify'){const targets=[{key:'player',label:'自己',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+' (对手)',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+' (对手)',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseSuperPurifyTarget',{target}))}
+    else if(s.pendingDialog==='mozeSeven'){const targets=[{key:'player',label:'自己（清除负面）',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+'（清除正面）',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+'（清除正面）',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseMozeSeven',{choice:{target}}),'Moze 7牌 · 选择目标')}
     else if(s.pendingDialog==='guard')this.dialogs.showGuardChoice(s.player,s.pendingGuardDamage,choice=>{
       if(choice&&typeof choice==='object'){
         if(choice.action==='fly')return this._apiAction('chooseFly');
@@ -189,6 +193,13 @@
     const leonZeroDiscard=!!s.pendingLeonZeroDiscard;
     const selectedTarget=s.attackTarget||(s.ai.alive?'ai':'ai2');
     let leonZeroOffset=0;
+    const attachSkillHover=(card,opponent,ownerCard)=>{
+      if(!revealFace||!ownerCard||!(s.phase==='PLAYER_PLAY'||s.phase==='PLAYER_DEFEND'))return;
+      const charName=this._combatDisplayName(opponent&&opponent.name);
+      const adventureOpts={stage:s.adventureStage||s.stage||1,playerHandSize:(s.playerHand&&s.playerHand.length)||0,incomingDamage:s.pendingDefenseDamage||0};
+      card.addEventListener('mouseenter',()=>this._showTooltip(ownerCard,card,s.phase==='PLAYER_DEFEND',{charName,adventureOpts}));
+      card.addEventListener('mouseleave',()=>this._syncHandSkillTooltip());
+    };
     const decorateSelectable=(card,index,key)=>{
       if(!canSelect)return;
       if(!leonZeroDiscard&&selectedTarget!==key)return;
@@ -201,13 +212,17 @@
     if(aiEl){
       aiEl.innerHTML='';
       if(s.ai.alive){
-        const size=s.aiHandSize||0;
         const handCards=revealFace&&Array.isArray(s.aiHand)?s.aiHand:null;
+        // During draw-event playback the hand array can update one poll
+        // before its size field. Render the larger authoritative count so a
+        // freshly drawn card is never removed by an intermediate snapshot.
+        const size=Math.max(Number(s.aiHandSize)||0, handCards ? handCards.length : 0);
         for(let i=0;i<size;i++){
           let cv;
           if(handCards&&handCards[i]){
             cv=renderCard(handCards[i],40,58,false);
             markNpcWhiteCard(cv, handCards[i], true);
+            attachSkillHover(cv,s.ai,handCards[i]);
           }else{
             cv=renderCardBack(40,58);
           }
@@ -224,15 +239,16 @@
     if(ai2El&&s.ai2){
       ai2El.innerHTML='';
       if(s.ai2.alive){
-        const size=s.ai2HandSize||0;
         const handCards=revealFace&&Array.isArray(s.ai2Hand)?s.ai2Hand:null;
+        const size=Math.max(Number(s.ai2HandSize)||0, handCards ? handCards.length : 0);
         for(let i=0;i<size;i++){
           let cv;
           if(handCards&&handCards[i]){
             cv=renderCard(handCards[i],40,58,false);
             markNpcWhiteCard(cv, handCards[i], true);
-            cv.style.filter='hue-rotate(240deg)';
-          }else{
+          }
+          if(handCards&&handCards[i])attachSkillHover(cv,s.ai2,handCards[i]);
+          else{
             cv=renderCardBack(40,58);
             cv.style.filter='hue-rotate(240deg)';
           }

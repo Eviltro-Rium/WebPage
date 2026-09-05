@@ -196,11 +196,17 @@ async _playEvents(events, fast = false) {
                 this._renderAIHand({ hideTrailing: count });
             }
             if (typeof this.state.deck === 'number') this._drawDeckIcon(this.state.deck);
-            if (target) await this.anim.drawCards(count, evt.who === 'player', target);
-            if (evt.who === 'player') this._renderPlayerHand({ hideTrailing: 0 });
-            else if (evt.who === 'ai2' && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: 0, who: 'ai2' });
-            else if (this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: 0, who: 'ai' });
-            else this._renderAIHand({ hideTrailing: 0 });
+            try {
+                if (target) await this.anim.drawCards(count, evt.who === 'player', target);
+            } finally {
+                // Draw events only hide the trailing cards during flight. The
+                // engine hand is authoritative, so never leave that mask on
+                // when an animation is interrupted by polling or a DOM change.
+                if (evt.who === 'player') this._renderPlayerHand({ hideTrailing: 0 });
+                else if (evt.who === 'ai2' && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: 0, who: 'ai2' });
+                else if (this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: 0, who: 'ai' });
+                else this._renderAIHand({ hideTrailing: 0 });
+            }
             await wait(120);
         } else if (evt.type === 'reveal' && evt.card) {
             if (this._isDefenseJudgmentEvent(evt)) {

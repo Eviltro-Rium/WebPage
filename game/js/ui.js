@@ -736,7 +736,7 @@ class GameUI {
         const sceneLabels = { castle: '城堡', desert: '沙漠', forest: '森林', ocean: '冻洋', volcano: '火山' };
         const sceneName = sceneLabels[s.adventureScene] || '';
         const stageNum = s.adventureStage || s.stage || 1;
-        const titleText = (s.isAdventure && sceneName) ? (sceneName + ' · 第' + stageNum + '层') : 'Furry Battle';
+        const titleText = s.isAdventure ? 'Furry Trial 冒险' : 'Furry Battle';
         let html = `
             <div class="game-title">${titleText}</div>
             <div class="top-bar">
@@ -744,6 +744,7 @@ class GameUI {
                     <canvas id="deck-icon" width="40" height="52"></canvas>
                     <span class="deck-info" id="deck-info">牌堆: 0</span>
                 </div>
+                <div class="npc-deck-info" id="npc-deck-info" style="display:none"></div>
                 <span class="phase-info" id="phase-info">出牌阶段</span>
                 <span class="turn-info" id="turn-info">回合 1</span>
                 <button class="menu-btn" id="menu-btn">☰</button>
@@ -1035,6 +1036,9 @@ class GameUI {
         const canInteract = ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
             'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD'].includes(s.phase);
         const isDefend = s.phase === 'PLAYER_DEFEND';
+        // legalHand is only a play/defend legality mask.  Do not apply a
+        // stale mask while selecting cards for discard or a skill choice.
+        const isPlayPhase = s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND';
         const handKey = JSON.stringify([
             s.phase,
             s.selectedCard,
@@ -1076,37 +1080,48 @@ class GameUI {
         for (let i = 0; i < s.playerHand.length; i++) {
             const card = s.playerHand[i];
             const sel = i === s.selectedCard || ((s.selectedCards || []).includes(i));
+            const isUnplayable = isPlayPhase && Array.isArray(s.legalHand) && s.legalHand[i] === false;
             const cv = renderCard(card, CARD_W, CARD_H, sel);
             if (!canInteract) cv.classList.add('disabled');
-            else if (s.legalHand && s.legalHand[i]) cv.classList.add('card-playable');
-            else if (s.legalHand && !s.legalHand[i]) cv.classList.add('card-unplayable');
+            else if (isUnplayable) {
+                cv.classList.add('card-unplayable');
+                cv.setAttribute('aria-disabled', 'true');
+            } else if (Array.isArray(s.legalHand) && s.legalHand[i]) cv.classList.add('card-playable');
             if (hideTrailing && i >= s.playerHand.length - hideTrailing) cv.classList.add('card-draw-pending');
             cv.dataset.index = i;
             cv.dataset.cardId = cardId(card);
-            cv.addEventListener('click', async (event) => {
-                if (cv.classList.contains('disabled')) return;
-                const idx = parseInt(cv.dataset.index, 10);
-                if (!Number.isInteger(idx)) return;
-                this._npcHandFocusIndex = -1;
-                const now = Date.now();
-                const previous = this._lastPlayerHandClick;
-                const isDoubleClick = previous && previous.index === idx && now - previous.time < 600;
-                if (isDoubleClick) {
-                    this._lastPlayerHandClick = null;
-                    event.preventDefault();
-                    if (previous.promise) await previous.promise;
-                    await handleDoubleClick(idx);
-                    return;
-                }
-                this._lastPlayerHandClick = { index: idx, time: now, promise: null };
-                const selection = (async () => {
-                    const result = await Bridge.call('selectCard', { index: idx });
-                    if (result && !result.error) { this.state = result; this.updateDisplay(); }
-                })();
-                this._lastPlayerHandClick.promise = selection;
-                await selection;
-            });
+            // An illegal card is inert: it cannot be selected by either click
+            // path, and does not steal hover focus from a playable card.
+            if (!isUnplayable) {
+                cv.addEventListener('click', async (event) => {
+                    if (cv.classList.contains('disabled')) return;
+                    if (this.state && this.state.needColorChoice) return;
+                    const idx = parseInt(cv.dataset.index, 10);
+                    if (!Number.isInteger(idx)) return;
+                    this._npcHandFocusIndex = -1;
+                    const now = Date.now();
+                    const previous = this._lastPlayerHandClick;
+                    const isDoubleClick = previous && previous.index === idx && now - previous.time < 600;
+                    if (isDoubleClick) {
+                        this._lastPlayerHandClick = null;
+                        event.preventDefault();
+                        if (previous.promise) await previous.promise;
+                        await handleDoubleClick(idx);
+                        return;
+                    }
+                    this._lastPlayerHandClick = { index: idx, time: now, promise: null };
+                    const selection = (async () => {
+                        const result = await Bridge.call('selectCard', { index: idx });
+                        if (result && !result.error) { this.state = result; this.updateDisplay(); }
+                    })();
+                    this._lastPlayerHandClick.promise = selection;
+                    await selection;
+                });
+            }
 
+            // Illegal cards remain hoverable so their skill text can still be
+            // inspected, but they have no click handler and therefore cannot
+            // be selected or played.
             if (canInteract) {
                 cv.addEventListener('mouseenter', () => {
                     if (this._npcHandFocusIndex >= 0) return;
@@ -1246,9 +1261,9 @@ class GameUI {
         const container = document.getElementById('ai-hand');
         container.innerHTML = '';
         const canSelect = s.phase === 'OPPONENT_CARD_CHOICE' || (s.phase === 'PLAYER_SEVEN_CHOICE' && !s.chanFourSwapMode && !s.chanSevenKeepMode) || (s.phase === 'SAIKI_THREE_CHOICE' && !s.saikiThreeDrawn);
-        const handSize = s.aiHandSize || 0;
         const hideTrailing = this._hideTrailingCount(options, 'ai');
         const revealMode = !!s.aiHand && Array.isArray(s.aiHand);
+        const handSize = Math.max(Number(s.aiHandSize) || 0, revealMode ? s.aiHand.length : 0);
         const canPeekSkill = !!(s.isAdventure && revealMode && (s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND'));
         if (!canPeekSkill) this._npcHandFocusIndex = -1;
         else if (this._npcHandFocusIndex >= handSize) this._npcHandFocusIndex = -1;
@@ -1284,6 +1299,18 @@ class GameUI {
                     }
                     this.updateDisplay();
                 });
+            }
+            if (revealMode && card && (s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND')) {
+                const charName = this._combatDisplayName(s.ai && s.ai.name);
+                const adventureOpts = {
+                    stage: s.adventureStage || s.stage || 1,
+                    playerHandSize: (s.playerHand && s.playerHand.length) || 0,
+                    incomingDamage: s.pendingDefenseDamage || 0
+                };
+                cv.addEventListener('mouseenter', () => {
+                    this._showTooltip(card, cv, s.phase === 'PLAYER_DEFEND', { charName, adventureOpts });
+                });
+                cv.addEventListener('mouseleave', () => this._syncHandSkillTooltip());
             }
             container.appendChild(cv);
         }
@@ -1340,9 +1367,17 @@ class GameUI {
     _renderAdventureItemBar(s) {
         const bar = document.getElementById('adventure-item-bar');
         if (!bar) return;
-        const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine && window.AdventureCombatBridge.activeEngine()._adventureEngine;
-        if (!s.isAdventure || !advEngine) { bar.style.display = 'none'; return; }
-        const snap = advEngine.snapshot();
+        const activeBattle = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine
+            ? window.AdventureCombatBridge.activeEngine() : null;
+        const advEngine = activeBattle && activeBattle._adventureEngine;
+        if (!s.isAdventure) { bar.style.display = 'none'; return; }
+        const snap = advEngine && typeof advEngine.snapshot === 'function'
+            ? (advEngine.snapshot() || {})
+            : {
+                consumables: s.adventureConsumables || [],
+                accessories: s.adventureAccessories || [],
+                consumableSlots: s.adventureConsumableSlots || 6
+            };
         const consumables = snap.consumables || [];
         const slots = snap.consumableSlots || 6;
         bar.style.display = 'flex';
@@ -1385,8 +1420,8 @@ class GameUI {
         const accessories = snap.accessories || [];
         const prevAccs = this._prevAccNames || (this._prevAccNames = []);
         const currentAccNames = accessories.map(a => a.name);
+        html += '<div class="adv-combat-acc-section"><div class="adv-item-bar-title">配饰</div><div class="adv-combat-acc-slots">';
         if (accessories.length) {
-            html += '<div class="adv-combat-acc-section"><div class="adv-item-bar-title">配饰</div><div class="adv-combat-acc-slots">';
             accessories.forEach((item) => {
                 const tip = item.displayName + ' — ' + item.description;
                 const animCls = !prevAccs.includes(item.name) ? ' icon-appear' : '';
@@ -1394,8 +1429,10 @@ class GameUI {
                     (item.icon ? '<img src="' + item.icon + '" alt="' + item.displayName + '">' : '') +
                     '</div>';
             });
-            html += '</div></div>';
+        } else {
+            html += '<div class="adv-combat-acc-slot empty" title="暂无配饰">—</div>';
         }
+        html += '</div></div>';
 
         const removedItems = prevItems.filter(n => !currentItemNames.includes(n));
         const removedAccs = prevAccs.filter(n => !currentAccNames.includes(n));
@@ -1422,7 +1459,8 @@ class GameUI {
 
     _bindItemBarEvents(bar, consumables, s, inAttackMod) {
         bar.querySelectorAll('[data-item-index]').forEach(btn => {
-            btn.addEventListener('click', async () => {
+            let clickTimer = null;
+            const selectItem = () => {
                 const idx = parseInt(btn.getAttribute('data-item-index'), 10);
                 const item = consumables[idx];
                 const def = item && window.AdventureRegistry.getItem(item.name);
@@ -1437,6 +1475,20 @@ class GameUI {
                 this._selectedCombatItem = (this._selectedCombatItem === idx) ? null : idx;
                 this._renderAdventureItemBar(this.state);
                 this._updateUseItemButton();
+            };
+            btn.addEventListener('click', (event) => {
+                if (event.detail !== 1) return;
+                clickTimer = setTimeout(selectItem, 230);
+            });
+            btn.addEventListener('dblclick', async (event) => {
+                event.preventDefault();
+                if (clickTimer) clearTimeout(clickTimer);
+                const idx = parseInt(btn.getAttribute('data-item-index'), 10);
+                const item = consumables[idx];
+                const def = item && window.AdventureRegistry.getItem(item.name);
+                if (btn.classList.contains('disabled') || (def && def.combatUse === 'attackMod')) return;
+                this._selectedCombatItem = idx;
+                await this._useSelectedCombatItem();
             });
         });
     }
@@ -1547,14 +1599,20 @@ class GameUI {
         bar.innerHTML = html;
 
         const deckInfo = document.getElementById('ai-deck-info');
+        const npcDeckInfo = document.getElementById('npc-deck-info');
+        const hasNpcPile = s.isAdventure && (s.aiDeckCount != null || s.aiDiscardCount != null);
+        const pileText = 'NPC牌库: ' + (s.aiDeckCount != null ? s.aiDeckCount : 0) +
+            ' | 弃牌库: ' + (s.aiDiscardCount != null ? s.aiDiscardCount : 0);
+        if (npcDeckInfo) {
+            npcDeckInfo.style.display = hasNpcPile ? '' : 'none';
+            npcDeckInfo.textContent = pileText;
+        }
+        // Keep the legacy in-panel element in sync for layouts that still
+        // reserve it, while the visible adventure layout uses the top bar.
         if (deckInfo) {
-            if (s.aiDeckCount != null) {
-                deckInfo.style.display = '';
-                deckInfo.innerHTML = '<span class="ai-deck-count">牌库 ' + s.aiDeckCount + '</span>' +
-                    (s.aiDiscardCount != null ? '<span class="ai-discard-count">弃牌 ' + s.aiDiscardCount + '</span>' : '');
-            } else {
-                deckInfo.style.display = 'none';
-            }
+            deckInfo.style.display = hasNpcPile ? '' : 'none';
+            deckInfo.innerHTML = '<span class="ai-deck-count">牌库 ' + (s.aiDeckCount != null ? s.aiDeckCount : 0) + '</span>' +
+                '<span class="ai-discard-count">弃牌 ' + (s.aiDiscardCount != null ? s.aiDiscardCount : 0) + '</span>';
         }
     }
 
@@ -1563,7 +1621,7 @@ class GameUI {
         const container = document.getElementById('discard-top');
         container.innerHTML = '';
         if (s.discardTop) {
-            const cv = renderCard(s.discardTop, CARD_W - 10, CARD_H - 14, false);
+            const cv = renderCard(s.discardTop, 60, 100, false);
             cv.classList.add('disabled'); cv.style.cursor = 'default';
             container.appendChild(cv);
         } else {
@@ -1580,7 +1638,7 @@ class GameUI {
         const defKey = s.defCard ? JSON.stringify(s.defCard) : 'empty';
         if (atkContainer.dataset.cardKey !== atkKey && s.atkCard) {
             atkContainer.innerHTML = '';
-            const cv = renderCard(s.atkCard, CARD_W - 10, CARD_H - 14, false);
+            const cv = renderCard(s.atkCard, 60, 100, false);
             cv.classList.add('zone-card');
             if (s.atkOwner && s.atkOwner !== 'player') markNpcWhiteCard(cv, s.atkCard, true);
             atkContainer.appendChild(cv);
@@ -1594,7 +1652,7 @@ class GameUI {
 
         if (defContainer.dataset.cardKey !== defKey && s.defCard) {
             defContainer.innerHTML = '';
-            const cv = renderCard(s.defCard, CARD_W - 10, CARD_H - 14, false);
+            const cv = renderCard(s.defCard, 60, 100, false);
             cv.classList.add('zone-card');
             if (s.defOwner && s.defOwner !== 'player') markNpcWhiteCard(cv, s.defCard, true);
             defContainer.appendChild(cv);
@@ -1621,7 +1679,7 @@ class GameUI {
         box.innerHTML = '';
         if (!cards.length) box.innerHTML = '<span class="reveal-empty">等待判定</span>';
         for (const card of cards) {
-            const cv = renderCard(card, CARD_W - 10, CARD_H - 14, false);
+            const cv = renderCard(card, 60, 100, false);
             cv.classList.add('revealed-card'); box.appendChild(cv);
         }
         box.dataset.cardKey = key;
@@ -2280,11 +2338,17 @@ class GameUI {
                     this._renderAIHand({ hideTrailing: count });
                 }
                 if (typeof this.state.deck === 'number') this._drawDeckIcon(this.state.deck);
-                if (target) await this.anim.drawCards(count, evt.who === 'player', target);
-                if (evt.who === 'player') this._renderPlayerHand({ hideTrailing: 0 });
-                else if (evt.who === 'ai2' && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: 0, who: 'ai2' });
-                else if (this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: 0, who: 'ai' });
-                else this._renderAIHand({ hideTrailing: 0 });
+                try {
+                    if (target) await this.anim.drawCards(count, evt.who === 'player', target);
+                } finally {
+                    // The cards are already in the engine hand. Always clear
+                    // the temporary draw mask, even if a visual animation is
+                    // interrupted by a state refresh or missing DOM node.
+                    if (evt.who === 'player') this._renderPlayerHand({ hideTrailing: 0 });
+                    else if (evt.who === 'ai2' && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: 0, who: 'ai2' });
+                    else if (this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: 0, who: 'ai' });
+                    else this._renderAIHand({ hideTrailing: 0 });
+                }
                 await wait(120);
             } else if (evt.type === 'reveal' && evt.card) {
                 if (this._isDefenseJudgmentEvent(evt)) {
@@ -2433,11 +2497,31 @@ class GameUI {
         if (!el) return;
         const segs = parseSegments(desc, '');
         el.innerHTML = '';
+        el.classList.remove('is-expanded');
+        const text = document.createElement('span');
+        text.className = 'desc-text';
         for (const seg of segs) {
             const span = document.createElement('span');
             span.textContent = seg.text;
             if (seg.color) span.style.color = seg.color;
-            el.appendChild(span);
+            text.appendChild(span);
+        }
+        el.appendChild(text);
+        if (String(desc || '').length > 16) {
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'zone-desc-toggle';
+            toggle.textContent = '⌃';
+            toggle.title = '展开完整说明';
+            toggle.setAttribute('aria-label', '展开完整说明');
+            toggle.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const expanded = el.classList.toggle('is-expanded');
+                toggle.textContent = expanded ? '⌄' : '⌃';
+                toggle.title = expanded ? '收起说明' : '展开完整说明';
+                toggle.setAttribute('aria-label', toggle.title);
+            });
+            el.appendChild(toggle);
         }
     }
 
@@ -2447,23 +2531,23 @@ class GameUI {
         const participant = owner === 'ai2' ? s.ai2 : owner === 'ai' ? s.ai : s.player;
         if (!participant) return;
         const charName = card.borrowedMonsterName || participant.name.replace(/^AI\d*\s+/, '');
-        const label = card.isItemCard
-            ? (card.isBlack ? '黑牌' : card.isWhite ? '白牌' : '道具')
-            : card.value;
         const adventureOpts = s.isAdventure ? {
             stage: s.adventureStage || s.stage || 1,
             playerHandSize: (s.playerHand && s.playerHand.length) || 0,
             incomingDamage: s.pendingDefenseDamage || 0
         } : null;
         const skill = this._resolveHandSkillDesc(charName, card, isDefend, adventureOpts) || (isDefend ? '执行防御效果' : '执行进攻效果');
-        this._showZoneDesc(id, `${charName} · ${label}｜${skill}`);
+        this._showZoneDesc(id, skill);
     }
 
 
 
     _hideZoneDesc(id) {
         const el = document.getElementById(id);
-        if (el) el.textContent = '';
+        if (el) {
+            el.textContent = '';
+            el.classList.remove('is-expanded');
+        }
     }
 
     _drawDeckIcon(count) {
@@ -2673,7 +2757,7 @@ class GameUI {
 
     _settleZoneCard(zone, card, owner = 'player') {
         zone.innerHTML = '';
-        const settled = renderCard(card, CARD_W - 10, CARD_H - 14, false);
+        const settled = renderCard(card, 60, 100, false);
         settled.classList.add('zone-card', 'zone-card-land');
         if (owner && owner !== 'player') markNpcWhiteCard(settled, card);
         zone.appendChild(settled);
@@ -2732,8 +2816,8 @@ class GameUI {
         if (!fromEl) fromEl = document.body;
 
         const flying = fromHand && fromOwner === 'player'
-            ? renderCard(card, CARD_W - 10, CARD_H - 14, false)
-            : renderCardBack(CARD_W - 10, CARD_H - 14);
+            ? renderCard(card, 60, 100, false)
+            : renderCardBack(60, 100);
         flying.style.position = 'fixed';
         flying.style.zIndex = '9999';
         flying.style.pointerEvents = 'none';
@@ -2741,17 +2825,17 @@ class GameUI {
         const from = fromEl.getBoundingClientRect();
         const to = toEl.getBoundingClientRect();
         flying.style.left = (from.left + from.width / 2 - 30) + 'px';
-        flying.style.top = (from.top + from.height / 2 - 43) + 'px';
+        flying.style.top = (from.top + from.height / 2 - 50) + 'px';
         document.body.appendChild(flying);
         await new Promise(r => setTimeout(r, 30));
         flying.style.left = (to.left + to.width / 2 - 30) + 'px';
-        flying.style.top = (to.top + to.height / 2 - 43) + 'px';
+        flying.style.top = (to.top + to.height / 2 - 50) + 'px';
         flying.style.transform = fromHand && fromOwner === 'player' ? 'scale(.9)' : 'rotateY(90deg) scale(.9)';
         await new Promise(r => setTimeout(r, 430));
         flying.remove();
         if (fromHand && fromEl !== ownerEl) fromEl.remove();
         toEl.innerHTML = '';
-        const shown = renderCard(card, CARD_W - 10, CARD_H - 14, false);
+        const shown = renderCard(card, 60, 100, false);
         shown.classList.add('revealed-card');
         toEl.appendChild(shown);
         toEl.dataset.cardKey = JSON.stringify([card]);

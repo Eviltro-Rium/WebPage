@@ -60,7 +60,15 @@
     <script src="../js/dialogs.js"></script>
     <script src="../js/card_style.js"></script>
     <script src="../js/ui.js"></script>
+    <!-- Keep the adventure battle page on the same visual/event pipeline as
+         the normal battle page.  These modules own floating text, hit
+         feedback, card animations, controls and event consumption. -->
+    <script src="../js/ui_feedback.js"></script>
+    <script src="../js/ui_renderer.js"></script>
+    <script src="../js/ui_events.js"></script>
+    <script src="../js/ui_controls.js"></script>
     <script src="../js/ui_1v2.js"></script>
+    <script src="../js/ui_lord.js"></script>
 
     <script src="js/adventure_registry.js"></script>
     <script src="js/currency.js"></script>
@@ -105,7 +113,19 @@
             });
             document.addEventListener('click', () => menuDropdown.classList.remove('open'));
 
-            menuExit.addEventListener('click', () => { window.location.href = '../index.html'; });
+            menuExit.addEventListener('click', () => {
+                // “退出游戏” means abandoning the current run.  Clear both
+                // the safe map save and any in-tab combat snapshot before
+                // navigating, otherwise the next visit with the same
+                // character restores the previous adventure progress.
+                menuDropdown.classList.remove('open');
+                if (window.AdventureCombatBridge && typeof window.AdventureCombatBridge.abandonAdventure === 'function') {
+                    window.AdventureCombatBridge.abandonAdventure();
+                } else if (window.AdventureSave && typeof window.AdventureSave.clear === 'function') {
+                    window.AdventureSave.clear();
+                }
+                window.location.href = '../index.html';
+            });
 
             menuSkills.addEventListener('click', () => {
                 menuDropdown.classList.remove('open');
