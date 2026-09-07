@@ -188,7 +188,7 @@
     applySaikiPassive(attacker,target,card){if(this.name(attacker)==='Saiki'&&this.effective(card)==='YELLOW')this.bleed(target,1,{silent:true})}
     clearDebuffs(x){x.burn=0;x.bleed=0;x.poison=0;x.frozen=false;x.bomb=0;x.blind=0}
     rememberAttackDebuffs(owner){let old=this.s.attackDebuffSnapshot;if(old&&old.owner===owner)return;let x=this.s[owner];this.s.attackDebuffSnapshot={owner,burn:x.burn,bleed:x.bleed,poison:x.poison||0,frozen:x.frozen,blind:x.blind||0}}
-    cancelAttackDebuffs(owner,reflect=false){let snap=this.s.attackDebuffSnapshot;if(!snap||snap.owner!==owner)return;let x=this.s[owner],attackerKey=owner==='player'?(this.s.is1v2&&this.s.atkOwner&&this.s.atkOwner!=='player'?this.s.atkOwner:'ai'):'player',attacker=this.s[attackerKey],burn=Math.max(0,x.burn-snap.burn),bleed=Math.max(0,x.bleed-snap.bleed),poison=Math.max(0,(x.poison||0)-(snap.poison||0)),froze=!snap.frozen&&x.frozen;let pending=this.s.pendingBuffRestore;if(pending&&pending.target===owner){bleed+=Math.max(0,pending.after.bleed-pending.before.bleed);burn+=Math.max(0,pending.after.burn-pending.before.burn);poison+=Math.max(0,pending.after.poison-pending.before.poison);if(pending.after.frozen&&!pending.before.frozen)froze=true;this.s.pendingBuffRestore=null}x.burn=snap.burn;x.bleed=snap.bleed;x.poison=snap.poison||0;x.frozen=snap.frozen;if(reflect){this.burn(attacker,burn);this.bleed(attacker,bleed);this.poison(attacker,poison);if(froze)this.freeze(attacker)}}
+    cancelAttackDebuffs(owner,reflect=false){let snap=this.s.attackDebuffSnapshot;if(!snap||snap.owner!==owner)return;let x=this.s[owner],attackerKey=owner==='player'?(this.s.is1v2&&this.s.atkOwner&&this.s.atkOwner!=='player'?this.s.atkOwner:'ai'):'player',attacker=this.s[attackerKey],burn=Math.max(0,x.burn-snap.burn),bleed=Math.max(0,x.bleed-snap.bleed),poison=Math.max(0,(x.poison||0)-(snap.poison||0)),froze=!snap.frozen&&x.frozen,blinded=!(snap.blind||0)&&!!(x.blind||0);let pending=this.s.pendingBuffRestore;if(pending&&pending.target===owner){bleed+=Math.max(0,pending.after.bleed-pending.before.bleed);burn+=Math.max(0,pending.after.burn-pending.before.burn);poison+=Math.max(0,pending.after.poison-pending.before.poison);if(pending.after.frozen&&!pending.before.frozen)froze=true;if(pending.after.blind&&!pending.before.blind)blinded=true;this.s.pendingBuffRestore=null}x.burn=snap.burn;x.bleed=snap.bleed;x.poison=snap.poison||0;x.frozen=snap.frozen;x.blind=snap.blind||0;if(reflect){this.burn(attacker,burn);this.bleed(attacker,bleed);this.poison(attacker,poison);if(froze)this.freeze(attacker);if(blinded)this.blind(attacker)}}
     hurt(x,n,kind=false,opts={}){n=Math.max(0,Number(n)||0);x.hp=Math.max(0,x.hp-n);x.alive=x.hp>0;if(this.name(x)==='Serenity')x.bloodthirst=x.hp<30;if(n>0&&!opts.silent){let w=x===this.s.player?'player':(x===this.s.ai2?'ai2':'ai');let tag=kind==='drain'?'吸血':kind==='bleed'||kind===true?'流血':kind==='poison'?'中毒':'伤害';this.emit('hurt',`-${n}[${tag}]`,null,{who:w,amount:n,bleed:kind==='bleed'||kind===true,drain:kind==='drain',poison:kind==='poison',suppressFloat:!!opts.suppressFloat})}}
     chooseMozeGuardUse(guard,damage,hp){if(damage>=hp)return Math.min(guard,damage);if(damage<=2)return 0;if(guard>=3&&damage>=5)return Math.min(guard,damage);if(guard>=2&&damage>=4)return Math.min(guard,damage);if(hp<=30)return Math.min(guard,damage);return 0}
     chooseDefenderGuardUse(defender,damage){let guard=defender.guard||0;if(damage<=0||guard<=0)return 0;if(this.s.isAdventure)return Math.min(guard,damage);return this.chooseMozeGuardUse(guard,damage,defender.hp)}
@@ -206,7 +206,7 @@
     _tickBomb(owner='ai'){let target=this.s&&this.s[owner],tokens=this.s&&this.s.bombPlayTokens;if(!target||!target.alive||(target.bomb||0)<=0||!tokens||!tokens[owner])return;if(--tokens[owner]<=0)delete tokens[owner];target.bomb--;const who=owner==='player'?'player':(owner==='ai2'?'ai2':'ai');if(target.bomb<=0){this.hurt(target,5,false,{silent:true});this.emit('bombExplode','定时炸弹爆炸！造成5点伤害',null,{who,amount:5})}else{this.emit('buff','炸弹倒计时：'+target.bomb,null,{who,kind:'bomb',stacks:target.bomb})}}
     deferSettlement(kind,damage,bleed=0){damage=Math.max(0,Number(damage)||0);bleed=Math.max(0,Number(bleed)||0);this.s.pendingDefenseDamage=damage;this.s.busy=true;this.pendingSettlement={kind,damage,bleed,afterEventId:this.ver};if(!this.events.length)this.acknowledgeEvents(this.ver)}
     _deferAttackBuffs(targetKey,before){let target=this.s[targetKey];if(!target)return;let now={bleed:target.bleed||0,burn:target.burn||0,poison:target.poison||0,frozen:!!target.frozen,blind:target.blind||0};let changed=now.bleed!==(before.bleed||0)||now.burn!==(before.burn||0)||now.poison!==(before.poison||0)||now.frozen!==!!before.frozen||now.blind!==(before.blind||0);if(!changed)return;this.s.pendingBuffRestore={target:targetKey,after:now,before:{bleed:before.bleed||0,burn:before.burn||0,poison:before.poison||0,frozen:!!before.frozen,blind:before.blind||0}};target.bleed=before.bleed||0;target.burn=before.burn||0;target.poison=before.poison||0;target.frozen=!!before.frozen;target.blind=before.blind||0}
-    _restoreAttackBuffs(){if(!this.s.pendingBuffRestore)return;let r=this.s.pendingBuffRestore,target=this.s[r.target];if(target){let w=r.target==='player'?'player':(r.target==='ai2'?'ai2':'ai'),add=r.after.bleed-r.before.bleed;if(add>0){target.bleed=Math.min(2,(target.bleed||0)+add);this.emit('buff',`${add>1?add:''}[流血]`,null,{who:w,kind:'bleed',stacks:target.bleed})}add=r.after.burn-r.before.burn;if(add>0){target.burn=Math.min(4,(target.burn||0)+add);this.emit('buff',`+${add}[灼烧]`,null,{who:w,kind:'burn',stacks:target.burn})}add=r.after.poison-r.before.poison;if(add>0){target.poison=Math.min(3,(target.poison||0)+add);this.emit('buff',`+${add}[中毒]`,null,{who:w,kind:'poison',stacks:target.poison})}if(r.after.frozen&&!r.before.frozen&&!target.frozen){target.frozen=true;this.emit('buff','[冷冻]',null,{who:w,kind:'freeze',stacks:1})}if(r.after.blind&&!r.before.blind&&!target.blind){target.blind=1;this.emit('buff','[致盲]',null,{who:w,kind:'blind',stacks:1})}}this.s.pendingBuffRestore=null}
+    _restoreAttackBuffs(){if(!this.s.pendingBuffRestore)return;let r=this.s.pendingBuffRestore,target=this.s[r.target];if(target){let w=r.target==='player'?'player':(r.target==='ai2'?'ai2':'ai'),add=r.after.bleed-r.before.bleed;if(add>0){target.bleed=Math.min(2,(target.bleed||0)+add);this.emit('buff',`${add>1?add:''}[流血]`,null,{who:w,kind:'bleed',stacks:target.bleed})}add=r.after.burn-r.before.burn;if(add>0){target.burn=Math.min(4,(target.burn||0)+add);this.emit('buff',`+${add}[灼烧]`,null,{who:w,kind:'burn',stacks:target.burn})}add=r.after.poison-r.before.poison;if(add>0){target.poison=Math.min(3,(target.poison||0)+add);this.emit('buff',`+${add}[中毒]`,null,{who:w,kind:'poison',stacks:target.poison})}if(r.after.frozen&&!r.before.frozen&&!target.frozen){target.frozen=true;this.emit('buff','[冷冻]',null,{who:w,kind:'freeze',stacks:1})}if((r.after.blind||0)>(r.before.blind||0)){target.blind=1;this.emit('buff','[致盲]',null,{who:w,kind:'blind',stacks:1})}}this.s.pendingBuffRestore=null}
     acknowledgeEvents(through){this.events=this.events.filter(e=>(e.id||0)>through);let bridge=this.s.pendingAIBridge;if(bridge&&through>=bridge.afterEventId){this.s.pendingAIBridge=null;this._tickBomb(bridge.owner||'ai');if(bridge.mode==='defense')this.later(()=>this.aiDefend(bridge.attackCard,bridge.damage),220);else this.later(()=>this.aiTurn(),220)}let continuation=this.s.pendingAIContinue;if(continuation&&through>=continuation.afterEventId){this.s.pendingAIContinue=null;this._tickBomb(this.s.atkOwner||'ai');this.continueAIAttack();return}let p=this.pendingSettlement;if(!p||through<p.afterEventId)return;this.pendingSettlement=null;this.s.pendingDefenseDamage=0;if(p.kind==='PLAYER_ATTACK'){let forceEnd=!!this.s.forceEndPlayerTurn;this.s.forceEndPlayerTurn=false;this._restoreAttackBuffs();let target=this.s.attackTarget||'ai',targetChar=this.s[target]||this.s.ai;let dmg=this.applyDefenderAvoidance(targetChar,p.damage);this.hurt(targetChar,dmg);this.settleBleed(targetChar,p.bleed);this.resolveSerenityHalf();this.afterAttack();if(forceEnd&&!this._allEnemiesDead())this.startAITurn();this.check();return}let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;let bombOwner=this.s.atkOwner||'ai';this._restoreAttackBuffs();this.hurt(this.s.player,p.damage);this.settleBleed(this.s.player,p.bleed);this._tickBomb(bombOwner);this.resolveSerenityHalf();this._grantChaosIfKnight('ai');if(forceEnd)this.endAi();else this.continueAIAttack()}
     continueAIAttack(){if(!this.s)return;if(!this.s.player.alive||!this.s.ai.alive){this.check();return}this.s.phase='AI_TURN';this.s.busy=true;this.s.pendingAttack=null;this.s.pendingDefenseDamage=0;this.s.attackDebuffSnapshot=null;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];this.later(()=>this.aiTurn(),220);return this.check()}
     resolveSerenityHalf(){let key=this.s.serenityHalfTarget;if(!key)return;let x=this.s[key],before=x.hp;x.hp=Math.ceil(x.hp/2);x.alive=x.hp>0;this.s.serenityHalfTarget=null;this.emit('desc',`Serenity 0牌：攻防结束，${key==='player'?'玩家':'AI'}生命减半（-${before-x.hp}）`)}
@@ -377,7 +377,7 @@
       this.applySaikiPassive(this.s.player,this.s.ai,c);
       if(c.isItemCard){this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player'});if(c.trophyWhite)this.useTrophyWhite(c,this.s.ai,'player');else this.useItem(c,this.s.player,this.s.ai,'player');if(!this.s.pendingDialog)this._tickBomb('player');return this.check()}
       this._deferAttackBuffs('ai',_buffBefore);
-      if(who==='Moze'&&c.value===7){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc',this.s.is1v2?'Moze 7牌：请选择自己或一名对手作为清除目标':'Moze 7牌：请选择清除对手正面buff或自身负面buff',c);return this.state()}
+      if(who==='Moze'&&c.value===7){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc','Moze 7牌：请选择自己或一名对手作为清除目标',c);return this.state()}
       if(who==='Ryan'&&c.value===5)return this.startRyanFive(c);
       if(who==='Saiki'&&c.value===6)return this.startNumberJudge('Saiki',c);
       if(who==='Moze'&&c.value===4)return this.startNumberJudge('Moze',c);
@@ -396,30 +396,30 @@
     resolveMozeSevenChoice(choice){
       if(!this.s || this.s.pendingDialog!=='mozeSeven')throw Error('当前没有待处理的 Moze 7牌选择');
       const selected=choice&&typeof choice==='object'?(choice.target||choice.choice):choice;
-      const isTargetChoice=this.s.is1v2&&['player','ai','ai2'].includes(selected);
+      // 1v1/1v2 share the same target-row dialog: player clears self debuffs,
+      // ai/ai2 clears that opponent's positive buffs. Legacy string choices remain valid.
+      const isTargetChoice=['player','ai','ai2'].includes(selected);
       const targetKey=isTargetChoice?selected:(this.s.is1v2?(this.s.attackTarget||'ai'):'ai');
       const target=this.s[targetKey];
       let cleared=0,desc;
-      if(isTargetChoice&&targetKey!=='player'){
+      if((isTargetChoice&&targetKey!=='player')||selected==='opponentBuff'){
         if(!target||!target.alive)throw Error('选择的对手已出局');
-        cleared=(target.guard||0)+(target.fly||0)+(target.crit||0)+(target.lush||0)+['chaos_red','chaos_yellow','chaos_blue','chaos_green'].filter(k=>target[k]).length;
+        const lushStacks=Math.max(0,Number(target.lush)||0);
+        cleared=(target.guard||0)+(target.fly||0)+(target.crit||0)+lushStacks+['chaos_red','chaos_yellow','chaos_blue','chaos_green'].filter(k=>target[k]).length;
         this.clearPositiveBuffs(target);
+        target.lush=0;
+        if(lushStacks>0)this.emit('buff',`-${lushStacks}[茂盛]`,null,{who:targetKey,target:targetKey,kind:'lush',stacks:0});
         desc=`清除${target.name||'对手'}所有正面buff`;
       }else if((isTargetChoice&&targetKey==='player')||selected==='debuff'){
         const self=this.s.player;
         cleared=(self.burn||0)+(self.bleed||0)+(self.poison||0)+(self.frozen?1:0)+(self.bomb||0)+(self.blind||0);
         this.clearDebuffs(self);
         desc='清除自身所有负面buff';
-      }else if(selected==='opponentBuff'){
-        if(!target||!target.alive)throw Error('选择的对手已出局');
-        cleared=(target.guard||0)+(target.fly||0)+(target.crit||0)+(target.lush||0)+['chaos_red','chaos_yellow','chaos_blue','chaos_green'].filter(k=>target[k]).length;
-        this.clearPositiveBuffs(target);
-        desc='清除对手所有正面buff';
       }else throw Error('无效的 Moze 7牌选择');
       // In 1v2, choosing an opponent also chooses where the single-target
       // damage lands.  Choosing yourself only changes the purge target and
       // keeps the attack target selected before the skill was played.
-      if(isTargetChoice&&targetKey!=='player')this.s.attackTarget=targetKey;
+      if(this.s.is1v2&&isTargetChoice&&targetKey!=='player')this.s.attackTarget=targetKey;
       this.s.pendingDialog=null;
       const damage=3+cleared;
       this.emit('desc',`Moze 7牌：${desc}，清除${cleared}层，造成${damage}点不可防御伤害`,this.s.atkCard);

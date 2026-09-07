@@ -241,7 +241,7 @@
     name: 'CrystalBall',
     displayName: '水晶球',
     kind: 'consumable',
-    description: '查看自己牌库顶3张牌并调整顺序放回；地图、进攻和防御阶段均可使用',
+    description: '查看自己牌库顶3张牌并调整顺序放回，然后抽取1张牌；地图、进攻和防御阶段均可使用',
     icon: ICON + 'crystal_ball.png',
     useScene: 'both',
     price: 6,

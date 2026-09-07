@@ -450,11 +450,13 @@ _showActionPending(method) {
 },
 
 async _pollAI() {
-    if (this._isPollingAI) return;
+    if (this._isPollingAI || this._isConsumingEvents || this._isHandlingAction) return;
     this._isPollingAI = true;
     try {
       for (let i = 0; i < 80; i++) {
+        if (this._isConsumingEvents || this._isHandlingAction) break;
         await new Promise(r => setTimeout(r, 350));
+        if (this._isConsumingEvents || this._isHandlingAction) break;
         const newState = await Bridge.getState();
         if (!newState || newState.error) continue;
 

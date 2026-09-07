@@ -103,10 +103,10 @@
           if (p > 0 && poison) poison(p);
         }
         if (typeof mod.attackBlind === 'function' && mod.attackBlind(c)) {
+          // Apply silently; attack debuffs are deferred until defense settles.
+          // Emitting [致盲] here would flash the icon and then vanish on defer.
           if (typeof eng.blind === 'function') eng.blind(t, { silent: true });
           else t.blind = 1;
-          const targetWho = owner === 'player' ? eng._who(t) : 'player';
-          eng.emit('buff', '[致盲]', null, { who: targetWho, kind: 'blind', stacks: 1 });
         }
         // Life steal is settled together with the attack, after guard/fly has
         // reduced the incoming damage.  Do not heal here: at this point the
@@ -243,7 +243,10 @@
             clearDebuffs(defender);
           }
           applyPoison(); applyBleed(); applyDrawSelf(); applyAllExtras();
-          return { remaining: 0, desc: '免疫所有伤害' + (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c) ? '，免疫buff' : '') + suffix() + drawSelfDesc + allExtrasDesc };
+          const clearText = (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c))
+            ? '，免疫buff，清除自身所有debuff'
+            : '';
+          return { remaining: 0, desc: '免疫所有伤害' + clearText + suffix() + drawSelfDesc + allExtrasDesc };
         }
 
         const lushAmt = typeof mod.defendLush === 'function' ? (mod.defendLush(c) || 0) : 0;
@@ -388,6 +391,7 @@
         parts.push('免疫所有伤害');
         if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(card)) {
           parts.push('免疫buff');
+          parts.push('清除自身所有debuff');
         }
       }
       if (typeof mod.defendRollImmune === 'function' && mod.defendRollImmune(card)) {
@@ -436,15 +440,30 @@
           parts.push((opts.stage >= 4 ? '格挡1+道具数量点伤害' : '格挡向上取整(1+道具数量×1/2)点伤害'));
           return parts.length ? parts.join('，') : '无防御效果';
         }
-        const b8 = mod.defendBlock(card, 8);
-        const b4 = mod.defendBlock(card, 4);
-        if (b8 > 0 || b4 > 0) {
-          const rem8 = 8 - b8, rem4 = 4 - b4;
-          if (rem8 === rem4 && rem8 < 8) parts.push('将伤害降低为' + rem8 + '点');
-          else if (b8 === b4) parts.push('格挡' + b8 + '点伤害');
-          else if (b8 === Math.ceil(8 / 2) && b4 === Math.ceil(4 / 2)) parts.push('格挡半数伤害（向上取整）');
-          else if (b8 === Math.floor(8 / 2) && b4 === Math.floor(4 / 2)) parts.push('格挡半数伤害');
-          else parts.push('格挡' + b8 + '点伤害');
+        if (mod.name === 'ForestPanda') {
+          const base = Math.max(0, Number(mod.defendBlock(card, 8, { lush: 0 })) || 0);
+          const withLush = Math.max(0, Number(mod.defendBlock(card, 8, { lush: 2 })) || 0);
+          if (base > 0 || withLush > 0) {
+            if (withLush > base) {
+              parts.push('格挡' + base + '点伤害（有2层[茂盛]时额外格挡' + (withLush - base) + '点）');
+            } else {
+              parts.push('格挡' + base + '点伤害');
+            }
+          }
+        } else {
+          const b8 = mod.defendBlock(card, 8);
+          const b4 = mod.defendBlock(card, 4);
+          if (b8 > 0 || b4 > 0) {
+            const rem8 = 8 - b8, rem4 = 4 - b4;
+            if (rem8 === rem4 && rem8 < 8) parts.push('将伤害降低为' + rem8 + '点');
+            else if (b8 === b4) {
+              const capStyle = (mod.name === 'CastleBat' || mod.name === 'ForestDeer' || mod.name === 'ForestLadybug');
+              parts.push((capStyle ? '格挡至多' : '格挡') + b8 + '点伤害');
+            }
+            else if (b8 === Math.ceil(8 / 2) && b4 === Math.ceil(4 / 2)) parts.push('格挡半数伤害（向上取整）');
+            else if (b8 === Math.floor(8 / 2) && b4 === Math.floor(4 / 2)) parts.push('格挡半数伤害');
+            else parts.push('格挡' + b8 + '点伤害');
+          }
         }
       }
       if (typeof mod.defendDrawSelf === 'function') {
@@ -467,10 +486,27 @@
     if (typeof mod.attackSkipEffect === 'function') {
       return mod.attackSkipDescription || '跳过进攻阶段';
     }
+    // Keep ForestLadybug attack copy aligned with adventure/guide/forest.md
+    // (formula for 1-3, lush-then-damage for 4-6; no live stack substitution).
+    if (mod.name === 'ForestLadybug' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '吸取' + (1 + stageBonus) + '+[茂盛]层数点[生命]（不可防御）';
+      }
+      if (v >= 4 && v <= 6) {
+        return '获得1层[茂盛]，造成' + (4 + stageBonus) + '点[伤害]';
+      }
+      return '无进攻效果';
+    }
+    // CastleBat 4/5/6: drain scales with player bleed (castle.md).
+    if (mod.name === 'CastleBat' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      return '吸取' + (2 + stageBonus) + '+玩家[流血]层数点[生命]（不可防御）';
+    }
     let parts = [];
     let dmg = 0;
     let bleedDmgDesc = null;
-    const ladybugDrain = mod.name === 'ForestLadybug' && card.value >= 1 && card.value <= 3;
     const drainAmount = typeof mod.attackDrain === 'function'
       ? Math.max(0, Number(mod.attackDrain(card, ctx)) || 0)
       : 0;
@@ -494,11 +530,9 @@
       if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) line += '（不可防御）';
       parts.push(line);
     } else if (dmg > 0 && !drainAmount) {
-      let line = ladybugDrain ? '吸取' + dmg + '点生命' : '造成' + dmg + '点伤害';
+      let line = '造成' + dmg + '点伤害';
       if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) {
         line += '（不可防御）';
-      } else if (mod.name === 'ForestLadybug') {
-        line += '（可防御）';
       }
       parts.push(line);
     }
@@ -537,7 +571,7 @@
       }
     } else if (typeof mod.attackHeal === 'function') {
       const h = mod.attackHeal(card, ctx);
-      if (h > 0 && !ladybugDrain) parts.push('恢复' + h + '点生命');
+      if (h > 0) parts.push('恢复' + h + '点生命');
     }
     if (typeof mod.attackStealItem === 'function' && mod.attackStealItem(card)) {
       parts.push('玩家随机丢失1个道具');

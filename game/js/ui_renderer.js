@@ -21,21 +21,31 @@ _showZoneDesc(id, desc) {
         text.appendChild(span);
     }
     el.appendChild(text);
-    if (String(desc || '').length > 16) {
+    const plain = String(desc || '');
+    const needsToggle = plain.length > 12;
+    if (needsToggle) {
         const toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'zone-desc-toggle';
-        toggle.textContent = '⌃';
+        toggle.textContent = '‹';
         toggle.title = '展开完整说明';
         toggle.setAttribute('aria-label', '展开完整说明');
+        toggle.setAttribute('aria-expanded', 'false');
         toggle.addEventListener('click', (event) => {
             event.stopPropagation();
             const expanded = el.classList.toggle('is-expanded');
-            toggle.textContent = expanded ? '⌄' : '⌃';
+            toggle.textContent = expanded ? '›' : '‹';
             toggle.title = expanded ? '收起说明' : '展开完整说明';
             toggle.setAttribute('aria-label', toggle.title);
+            toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         });
         el.appendChild(toggle);
+        requestAnimationFrame(() => {
+            if (!el.isConnected || el.classList.contains('is-expanded')) return;
+            if (text.scrollHeight <= text.clientHeight + 1 && plain.length <= 28) {
+                toggle.remove();
+            }
+        });
     }
 },
 

@@ -2537,7 +2537,13 @@
           pile.deck.splice(pile.deck.length - count, count);
           const arranged = order.map(i => cards[i]);
           for (let i = arranged.length - 1; i >= 0; i--) pile.deck.push(arranged[i]);
-          return { ok: true, message: '已调整牌库顶' + count + '张牌的顺序' };
+          const drawn = pile.draw(1);
+          return {
+            ok: true,
+            message: drawn.length
+              ? '已调整牌库顶' + count + '张牌的顺序，并抽取1张牌'
+              : '已调整牌库顶' + count + '张牌的顺序（牌库已空，未能抽牌）'
+          };
         }
         case 'heal': {
           const amount = def.healAmount || 5;

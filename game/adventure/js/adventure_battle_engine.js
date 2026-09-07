@@ -163,18 +163,24 @@
       // NPC resources are recreated for every room and never borrow cards from
       // the player's pile.
       this.draw('ai', this.piles.ai.handLimit, false);
-      const openingHands = this.handCounts();
-      this.silentDraws(function () { this.turnStart('player'); });
-      this.emitDrawDiff(openingHands);
-      this._tryEnergyShieldOnAttack();
 
       const monsterDef = window.AdventureRegistry.getMonster(opponentName) ||
         window.AdventureRegistry.getBoss(opponentName);
       if (monsterDef && monsterDef.firstStrike) {
+        // First-strike rooms: no player opening refill/turnStart; go straight
+        // into NPC attack → defend, then resume normal endAi refill flow.
+        this.s.skipOpeningPlayerFill = true;
+        this._tryEnergyShieldOnAttack();
         this.s.phase = 'AI_TURN';
         this.s.activeAttacker = 'ai';
         this.s.busy = true;
+        this.emit('desc', '先攻：对手先行进攻，玩家不补起始手牌');
         this.later(() => this.startAITurn());
+      } else {
+        const openingHands = this.handCounts();
+        this.silentDraws(function () { this.turnStart('player'); });
+        this.emitDrawDiff(openingHands);
+        this._tryEnergyShieldOnAttack();
       }
       return this.state();
     }
@@ -279,16 +285,20 @@
 
       this.draw('ai', this.piles.ai.handLimit, false);
       this.draw('ai2', this.piles.ai2.handLimit, false);
-      const openingHands = this.handCounts();
-      this.silentDraws(function () { this.turnStart('player'); });
-      this.emitDrawDiff(openingHands);
-      this._tryEnergyShieldOnAttack();
 
       if (hasFirstStrike) {
+        this.s.skipOpeningPlayerFill = true;
+        this._tryEnergyShieldOnAttack();
         this.s.phase = 'AI_TURN';
         this.s.activeAttacker = 'ai';
         this.s.busy = true;
+        this.emit('desc', '先攻：对手先行进攻，玩家不补起始手牌');
         this.later(() => this.startAITurn());
+      } else {
+        const openingHands = this.handCounts();
+        this.silentDraws(function () { this.turnStart('player'); });
+        this.emitDrawDiff(openingHands);
+        this._tryEnergyShieldOnAttack();
       }
 
       return this.state();
@@ -404,6 +414,10 @@
       this.s.discardTop = clone(card);
       this.tableTopOwner = nextOwner;
       this.s.discardTopOwner = nextOwner;
+      this.s.diceRoll = null;
+      const actor = this.s.defOwner || this.s.atkOwner;
+      const bombOwner = actor === 'ai2' ? 'ai2' : actor === 'ai' ? 'ai' : null;
+      if (bombOwner) this._markBombPlay(bombOwner);
     }
 
     _shuffleDiscardIntoDeck(owner) {
@@ -685,7 +699,10 @@
           for (let i = arranged.length - 1; i >= 0; i--) this.deck.push(arranged[i]);
           this.s.crystalBallCards = null;
           this.s.pendingDialog = null;
-          message = '已调整牌库顶' + count + '张牌的顺序';
+          const drawn = this.draw('player', 1, true);
+          message = drawn.length
+            ? '已调整牌库顶' + count + '张牌的顺序，并抽取1张牌'
+            : '已调整牌库顶' + count + '张牌的顺序（牌库已空，未能抽牌）';
           break;
         }
         case 'dodge': {
@@ -1051,6 +1068,43 @@
         if (this.s.ai2) this.s.ai2.bindMark = false;
         this.s.bindExtraTurn = false;
       }
+      // Opening first-strike: refill NPC only; skip player hand fill and the
+      // 1v2 opening burn tick that normally runs when ending a player turn.
+      if (this.s && this.s.isAdventure && this.s.skipOpeningPlayerFill) {
+        this.s.skipOpeningPlayerFill = false;
+        if (this.s.is1v2) {
+          this.fillHands1v2(false);
+          this.check();
+          if (this.s.phase === 'GAME_OVER') return this.state();
+          this.s.currentAITarget = this.s.ai.alive ? 0 : 1;
+          const key = this._curAI();
+          this.s.phase = key === 'ai2' ? 'AI2_TURN' : 'AI_TURN';
+          this.s.busy = true;
+          this.s.activeAttacker = key;
+          this.s.forceEndAITurn = false;
+          this.s.pendingAIContinue = null;
+          this.s.pendingAttack = null;
+          this.s.atkCard = this.s.defCard = null;
+          this.s.atkOwner = this.s.defOwner = null;
+          this.s.selectedCards = [];
+          this.s.aiTurnStarted = false;
+          this.s.aiHasPlayed = false;
+          this.s.attackTarget = null;
+          this.later(() => this.aiTurn1v2());
+          return this.check();
+        }
+        this.draw('ai', Math.max(0, this.piles.ai.handLimit - this.h.ai.length), true);
+        this.s.phase = 'AI_TURN';
+        this.s.busy = true;
+        this.s.activeAttacker = 'ai';
+        this.s.forceEndAITurn = false;
+        this.s.pendingAIContinue = null;
+        this.s.atkCard = this.s.defCard = null;
+        this.s.atkOwner = this.s.defOwner = null;
+        this.s.selectedCards = [];
+        this.later(() => this.aiTurn());
+        return this.check();
+      }
       return super.startAITurn();
     }
 
@@ -1078,18 +1132,19 @@
       this.emit('desc', '能量盾：获得' + guard + '层守护');
     }
 
-    play() {
-      const result = super.play();
+    aiTurn() {
+      const result = super.aiTurn();
       this._tryGoblinPassive();
       return result;
     }
 
     _tryGoblinPassive() {
       if (!this.s || !this.s.isAdventure) return;
+      if (this.s.atkOwner !== 'ai' && this.s.atkOwner !== 'ai2') return;
       const c = this.s.atkCard;
       if (!c || !c.isNumberCard || c.value !== 1) return;
-      const aiName = this.name(this.s.ai);
-      if (aiName !== 'DungeonGoblin') return;
+      const attacker = this.s[this.s.atkOwner] || this.s.ai;
+      if (this.name(attacker) !== 'DungeonGoblin') return;
       const stage = this.s.adventureStage || 1;
       const advEngine = this._adventureEngine;
       if (!advEngine) return;

@@ -151,13 +151,13 @@
     },
     defendCounter(card, incoming) {
       const v = card.value;
-      if (v >= 1 && v <= 3) return Math.ceil((incoming || 0) / 2);
+      if (v >= 1 && v <= 3) return v;
       return 0;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
-      4: orig => ({ defendCounter: (card) => orig.defendCounter(card) + 1 })
+      4: orig => ({ defendCounter: (card, incoming) => orig.defendCounter(card, incoming) + 1 })
     }
   });
 
@@ -194,7 +194,13 @@
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
-      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
+      3: orig => ({
+        attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1,
+        attackDrain: (card, ctx) => {
+          const base = orig.attackDrain(card, ctx);
+          return base > 0 ? base + 1 : 0;
+        }
+      }),
       4: orig => ({ defendBlock: (card, incoming) => Math.min(orig.defendBlock(card, incoming) + 1, incoming) })
     }
   });
@@ -272,8 +278,18 @@
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
-      3: orig => ({ defendAllHeal: (card) => orig.defendAllHeal(card) + 1 }),
-      4: orig => ({ defendHeal: (card) => orig.defendHeal(card) + 1 })
+      3: orig => ({
+        defendAllHeal: (card) => {
+          const base = orig.defendAllHeal(card);
+          return base > 0 ? base + 1 : 0;
+        }
+      }),
+      4: orig => ({
+        defendHeal: (card) => {
+          const base = orig.defendHeal(card);
+          return base > 0 ? base + 1 : 0;
+        }
+      })
     }
   });
 

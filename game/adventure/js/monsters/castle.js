@@ -421,7 +421,6 @@
     icon: '../icons/npc_icons/castle_eagle.png',
     handLimit: 3,
     whiteZeros: 2,
-    firstStrike: true,
 
     attackTurnStart(eng) {
       if (!eng || !eng.s || !eng.s.player) return;
@@ -471,10 +470,10 @@
    /**
     * 城堡哥布林（DungeonGoblin）
     * 仅在 Stage 2/3/4 刷出
-    * 被动：玩家打出数字1卡牌时触发（stage2:损失1金币, stage3/4:损失1随机道具）
+    * 被动：哥布林进攻打出数字1时触发（stage2:损失1金币, stage3/4:损失1随机道具）
     * 进攻：1/2/3牌造成2点不可防御伤害，4/5/6牌造成5点伤害并获得1/2/3层守护
     * 防御：1/2/3牌恢复1/2/3点生命
-    * 强化：(2)+8生命 (4)防御恢复生命+1
+    * 强化：(3)伤害+1 (4)防御恢复生命+1
     */
    R.registerMonster({
      name: 'DungeonGoblin',
@@ -510,7 +509,7 @@
      },
 
      stageMods: {
-       2: orig => ({ hp: orig.hp + 8 }),
+       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
        4: orig => ({
          defendHeal: (card) => {
            if (!card || !card.isNumberCard) return 0;
@@ -578,7 +577,7 @@
 
   /**
    * 蝠（CastleBat）
-   * 进攻：1/2/3牌造成2点伤害并施加1层流血，4/5/6牌吸血2点（不可防御，可使用道具）
+   * 进攻：1/2/3牌造成2点伤害并施加1层流血；4/5/6牌吸血2+玩家流血层数（不可防御）
    * 防御：1/2/3牌格挡至多2点伤害并施加1层流血
    * 强化：(2)+5生命 (3)吸血+1 (4)格挡+1
    */
@@ -590,10 +589,12 @@
     defense: 1,
     icon: '../icons/npc_icons/castle_bat.png',
 
-    attackDamage(card) {
+    attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
       if (card.value >= 1 && card.value <= 3) return 2;
-      if (card.value >= 4 && card.value <= 6) return 2;
+      if (card.value >= 4 && card.value <= 6) {
+        return 2 + ((ctx && ctx.playerBleed) || 0);
+      }
       return 0;
     },
 
@@ -608,9 +609,11 @@
       return card.value >= 4 && card.value <= 6;
     },
 
-    attackDrain(card) {
+    attackDrain(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 4 && card.value <= 6) return 2;
+      if (card.value >= 4 && card.value <= 6) {
+        return 2 + ((ctx && ctx.playerBleed) || 0);
+      }
       return 0;
     },
 
@@ -629,8 +632,12 @@
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
-        attackDrain: (card) => {
-          const base = orig.attackDrain(card);
+        attackDamage: (card, ctx) => {
+          if (!card || card.value < 4 || card.value > 6) return orig.attackDamage(card, ctx);
+          return orig.attackDamage(card, ctx) + 1;
+        },
+        attackDrain: (card, ctx) => {
+          const base = orig.attackDrain(card, ctx);
           return base > 0 ? base + 1 : 0;
         }
       }),

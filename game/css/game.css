@@ -777,7 +777,7 @@ body {
     height: 32px;
     min-height: 32px;
     max-height: 32px;
-    padding: 3px 0;
+    padding: 3px 22px 3px 4px;
     line-height: 1.25;
     white-space: normal;
     overflow: visible;
@@ -789,40 +789,44 @@ body {
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     overflow: hidden;
+    text-align: center;
 }
 .zone-desc-toggle {
     position: absolute;
-    right: 4px;
-    bottom: 2px;
-    width: 22px;
-    height: 20px;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 28px;
     padding: 0;
     display: inline-grid;
     place-items: center;
-    border: 1px solid rgba(233,213,255,0.82);
-    border-radius: 999px;
-    background: linear-gradient(145deg, rgba(168,85,247,0.88), rgba(91,33,182,0.94));
-    color: #fff;
-    font: 800 15px/1 sans-serif;
+    border: 1px solid rgba(226, 232, 240, 0.55);
+    border-radius: 8px 2px 2px 8px;
+    background: rgba(15, 23, 42, 0.82);
+    color: #e2e8f0;
+    font: 700 11px/1 sans-serif;
+    letter-spacing: -0.04em;
     cursor: pointer;
     z-index: 3;
-    box-shadow: 0 2px 7px rgba(15,23,42,0.48), inset 0 1px 0 rgba(255,255,255,0.42);
-    text-shadow: 0 1px 2px rgba(30,12,54,0.8);
-    transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .zone-desc-toggle:hover {
-    filter: brightness(1.16) saturate(1.12);
-    transform: translateY(-1px) scale(1.08);
-    box-shadow: 0 4px 10px rgba(15,23,42,0.55), 0 0 9px rgba(192,132,252,0.7), inset 0 1px 0 rgba(255,255,255,0.5);
+    background: rgba(30, 41, 59, 0.95);
+    border-color: rgba(248, 250, 252, 0.75);
+    color: #fff;
 }
-.zone-desc-toggle:active { transform: scale(0.94); }
+.zone-desc-toggle:active { background: rgba(51, 65, 85, 0.98); }
 .zone-desc-toggle:focus-visible {
-    outline: 2px solid #f5d0fe;
-    outline-offset: 2px;
+    outline: 2px solid rgba(148, 163, 184, 0.9);
+    outline-offset: 1px;
 }
 .zone-desc.is-expanded .zone-desc-toggle,
 .reveal-desc.is-expanded .zone-desc-toggle {
-    background: linear-gradient(145deg, rgba(126,34,206,0.95), rgba(67,20,120,0.98));
+    background: rgba(51, 65, 85, 0.98);
+    border-color: rgba(248, 250, 252, 0.8);
+    color: #fff;
 }
 .zone-desc.is-expanded,
 .reveal-desc.is-expanded {
@@ -833,11 +837,13 @@ body {
     height: auto;
     min-height: 28px;
     max-height: 150px;
-    padding: 5px 23px 5px 5px;
-    background: rgba(24,12,40,0.98);
+    padding: 6px 22px 6px 6px;
+    background: rgba(15, 23, 42, 0.96);
+    border: 1px solid rgba(148, 163, 184, 0.35);
     border-radius: 6px;
     z-index: 20;
-    box-shadow: 0 5px 18px rgba(0,0,0,0.5);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    overflow-y: auto;
 }
 .zone-desc.is-expanded .desc-text,
 .reveal-desc.is-expanded .desc-text {
@@ -892,7 +898,7 @@ body {
     height: 28px;
     min-height: 28px;
     max-height: 28px;
-    padding: 2px 0;
+    padding: 2px 20px 2px 4px;
     line-height: 1.2;
     white-space: normal;
     overflow: visible;
@@ -1135,24 +1141,85 @@ body {
     justify-content: center; min-height: 70px;
 }
 
-.d12-result {
-    width: 78px;
-    height: 78px;
-    border-radius: 14px;
-    border: 2px solid rgba(196, 181, 253, .85);
-    background: linear-gradient(145deg, rgba(76, 29, 149, .92), rgba(30, 41, 79, .95));
-    box-shadow: 0 5px 16px rgba(0, 0, 0, .28), inset 0 0 0 1px rgba(255,255,255,.12);
+.d12-result,
+.d12-die {
+    width: 86px;
+    height: 86px;
+    border-radius: 22% 28% 24% 30% / 28% 24% 30% 26%;
+    border: 2px solid rgba(251, 191, 36, .72);
+    background:
+        linear-gradient(145deg, rgba(255,255,255,.16), transparent 42%),
+        linear-gradient(320deg, rgba(15, 23, 42, .55), transparent 50%),
+        linear-gradient(155deg, #b45309 0%, #92400e 42%, #78350f 100%);
+    box-shadow:
+        0 8px 18px rgba(0, 0, 0, .35),
+        inset 0 1px 0 rgba(255,255,255,.28),
+        inset 0 -6px 12px rgba(0,0,0,.28);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    color: #f5f3ff;
-    animation: d12Land .24s ease-out;
+    gap: 1px;
+    color: #fff7ed;
+    position: relative;
+    transform-style: preserve-3d;
+    user-select: none;
 }
-.d12-result .d12-label { font-size: .62rem; letter-spacing: .08em; color: #ddd6fe; }
-.d12-result strong { font-size: 2rem; line-height: 1; color: #fff; }
-@keyframes d12Land { from { opacity: 0; transform: scale(.78) rotate(-8deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+.d12-result { animation: d12Land .28s cubic-bezier(.2,.8,.2,1); }
+.d12-result .d12-label,
+.d12-die .d12-die-label {
+    font-size: .58rem;
+    letter-spacing: .12em;
+    font-weight: 800;
+    color: rgba(254, 243, 199, .88);
+    text-shadow: 0 1px 1px rgba(0,0,0,.35);
+}
+.d12-result strong,
+.d12-die .d12-die-face {
+    font-size: 2.05rem;
+    line-height: 1;
+    font-weight: 900;
+    color: #fffbeb;
+    text-shadow: 0 2px 0 rgba(0,0,0,.28);
+}
+.d12-die-rolling {
+    animation: d12Orbit 0.55s linear infinite;
+}
+.d12-die-tick {
+    animation: d12Tick 0.09s ease-out;
+}
+.d12-die-landed {
+    animation: d12Land .42s cubic-bezier(.2,.9,.25,1);
+}
+.d12-die-success {
+    border-color: rgba(74, 222, 128, .9);
+    box-shadow:
+        0 0 0 2px rgba(74, 222, 128, .25),
+        0 8px 20px rgba(0, 0, 0, .35),
+        inset 0 1px 0 rgba(255,255,255,.28);
+}
+.d12-die-fail {
+    border-color: rgba(248, 113, 113, .9);
+    box-shadow:
+        0 0 0 2px rgba(248, 113, 113, .22),
+        0 8px 20px rgba(0, 0, 0, .35),
+        inset 0 1px 0 rgba(255,255,255,.28);
+}
+@keyframes d12Land {
+    0% { opacity: 0; transform: scale(.72) rotate(-14deg) translateY(8px); }
+    55% { opacity: 1; transform: scale(1.08) rotate(3deg) translateY(-2px); }
+    100% { opacity: 1; transform: scale(1) rotate(0) translateY(0); }
+}
+@keyframes d12Orbit {
+    0% { transform: rotate(-8deg) translateY(0); }
+    50% { transform: rotate(8deg) translateY(-3px); }
+    100% { transform: rotate(-8deg) translateY(0); }
+}
+@keyframes d12Tick {
+    0% { transform: rotateX(0deg) scale(1); filter: brightness(1); }
+    45% { transform: rotateX(68deg) scale(.9); filter: brightness(1.15); }
+    100% { transform: rotateX(0deg) scale(1); filter: brightness(1); }
+}
 .player-hand-zone .card-canvas {
     width: 70px !important;
     height: 100px !important;

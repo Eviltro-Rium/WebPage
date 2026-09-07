@@ -738,7 +738,10 @@ class GameUI {
     _startPolling() {
         if (this._pollInterval) clearInterval(this._pollInterval);
         this._pollInterval = setInterval(() => {
-            if (this._isPollingAI || this._isHandlingAction) return;
+            // While a player action or event batch is in flight, never let the
+            // poller re-enter _consumeEvents — that double-plays floats like
+            // Mag Transfer's [流血] during the long desc wait.
+            if (this._isPollingAI || this._isHandlingAction || this._isConsumingEvents) return;
             if (this.state && (this.state.phase === 'AI_TURN' || this.state.phase === 'AI_DEFEND' || this.state.phase === 'AI2_TURN' || this.state.busy || (this.state.events && this.state.events.length))) {
                 // All AI state changes must pass through the event-aware poller.
                 // A plain state refresh can consume a newer event version without
@@ -879,7 +882,9 @@ class GameUI {
                 this._apiAction('choosePurifyCrystal', { choice: picked });
          }, { opponent, allowOpponent: true });
         } else if (s.pendingDialog === 'mozeSeven') {
-            this.dialogs.showMozeSevenChoice(choice => this._apiAction('chooseMozeSeven', { choice }));
+            const targets = [{ key: 'player', label: '自己（清除负面）', ch: s.player }];
+            if (s.ai && s.ai.alive) targets.push({ key: 'ai', label: (s.ai.name || '对手') + '（清除正面）', ch: s.ai });
+            this.dialogs.showSuperPurifyChoice(targets, target => this._apiAction('chooseMozeSeven', { choice: { target } }), 'Moze 7牌 · 选择目标');
         } else if (s.pendingDialog === 'trophyDisarm') {
             const pending = s.pendingTrophyDisarm || {};
             this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s, pending.targetKey), choice => this._apiAction('chooseTrophyDisarm', choice), '缴械 · 选择要弃掉的手牌');
@@ -973,9 +978,13 @@ class GameUI {
         const container = document.getElementById(`${prefix}-buffs`);
         if (!container) return;
         const renderTimers = this._buffRenderTimers || (this._buffRenderTimers = {});
+        // Cancelling a pending disappear flush without rewriting the DOM leaves
+        // stale icons (e.g. lush) on screen when the next pass early-returns.
+        let cancelledPending = false;
         if (renderTimers[prefix]) {
             clearTimeout(renderTimers[prefix]);
             renderTimers[prefix] = null;
+            cancelledPending = true;
         }
         const prevKeys = this._prevBuffKeys || (this._prevBuffKeys = {});
         const prevSet = new Set(prevKeys[prefix] || []);
@@ -1022,11 +1031,19 @@ class GameUI {
         }
         prevKeys[prefix] = currentKeys;
         (this._prevBuffStacks || (this._prevBuffStacks = {}))[prefix] = currentStacks;
-        if (!stacksChanged && !removed.length) return;
+        if (!stacksChanged && !removed.length) {
+            if (cancelledPending) container.innerHTML = html;
+            return;
+        }
         if (removed.length) {
             container.querySelectorAll('.buff-icon-wrap').forEach(el => {
                 const title = el.getAttribute('title');
-                const keyMap = { '灼烧': 'burn', '冷冻': 'freeze', '流血': 'bleed', '中毒': 'poison', '致盲': 'blind', '炸弹': 'bomb', '守护': 'guard', '飞翔': 'fly', '暴击': 'crit', '嗜血': 'bloodthirst', '捆缚': 'bind' };
+                const keyMap = {
+                    '灼烧': 'burn', '冷冻': 'freeze', '流血': 'bleed', '中毒': 'poison', '致盲': 'blind',
+                    '炸弹': 'bomb', '守护': 'guard', '飞翔': 'fly', '茂盛': 'lush', '暴击': 'crit',
+                    '嗜血': 'bloodthirst', '捆缚': 'bind',
+                    '混沌红': 'chaos_red', '混沌黄': 'chaos_yellow', '混沌蓝': 'chaos_blue', '混沌绿': 'chaos_green'
+                };
                 const key = Object.keys(keyMap).find(k => title === k);
                 if (key && removed.includes(keyMap[key])) el.classList.add('icon-disappear');
             });
@@ -1563,19 +1580,25 @@ class GameUI {
         if (!item || !def) { this._selectedCombatItem = null; return; }
         if (!this._canUseAdventureCombatItem(s, def)) return;
         const run = async (choice) => {
-            const payload = { itemIndex: idx };
-            if (choice != null) {
-                if (Array.isArray(choice)) payload.choices = choice;
-                else payload.choice = choice;
-            }
-            const result = await Bridge.call('useAdventureCombatItem', payload);
-            if (result && !result.error) {
-                this._prevState = this.state;
-                this.state = result;
-                if (result.events && result.events.length) {
-                    await this._consumeEvents(result.events);
+            if (this._isHandlingAction) return;
+            this._isHandlingAction = true;
+            try {
+                const payload = { itemIndex: idx };
+                if (choice != null) {
+                    if (Array.isArray(choice)) payload.choices = choice;
+                    else payload.choice = choice;
                 }
-                this.updateDisplay();
+                const result = await Bridge.call('useAdventureCombatItem', payload);
+                if (result && !result.error) {
+                    this._prevState = this.state;
+                    this.state = result;
+                    if (result.events && result.events.length) {
+                        await this._consumeEvents(result.events);
+                    }
+                    this.updateDisplay();
+                }
+            } finally {
+                this._isHandlingAction = false;
             }
         };
         this._selectedCombatItem = null;
@@ -1738,7 +1761,7 @@ class GameUI {
         if (box.dataset.cardKey === key) return;
         box.innerHTML = '';
         if (dice && Number.isFinite(Number(dice.value))) {
-            box.innerHTML = '<div class="d12-result" aria-label="12面骰结果"><span class="d12-label">12面骰</span><strong>' + dice.value + '</strong></div>';
+            box.innerHTML = '<div class="d12-result" aria-label="12面骰结果"><span class="d12-label">D12</span><strong>' + dice.value + '</strong></div>';
         } else {
             if (!cards.length) box.innerHTML = '<span class="reveal-empty">等待判定</span>';
             for (const card of cards) {
@@ -2194,11 +2217,13 @@ class GameUI {
     }
 
     async _pollAI() {
-        if (this._isPollingAI) return;
+        if (this._isPollingAI || this._isConsumingEvents || this._isHandlingAction) return;
         this._isPollingAI = true;
         try {
           for (let i = 0; i < 80; i++) {
+            if (this._isConsumingEvents || this._isHandlingAction) break;
             await new Promise(r => setTimeout(r, 350));
+            if (this._isConsumingEvents || this._isHandlingAction) break;
             const newState = await Bridge.getState();
             if (!newState || newState.error) continue;
 
@@ -2438,8 +2463,16 @@ class GameUI {
                 if (evt.who === 'player' || evt.from === 'deck') this._renderPlayerHand();
                 await wait(1200);
             } else if (evt.type === 'diceRoll' && Number.isFinite(Number(evt.value))) {
-                this._showZoneDesc('reveal-desc', evt.desc || ('12面骰：' + evt.value));
-                await wait(450);
+                const value = Number(evt.value);
+                const desc = evt.desc || ('12面骰：' + value);
+                this._showZoneDesc('reveal-desc', '12面骰投掷中…');
+                if (typeof this._playD12Animation === 'function') {
+                    await this._playD12Animation(value, { desc, who: evt.who });
+                } else {
+                    await wait(450);
+                }
+                this._showZoneDesc('reveal-desc', desc);
+                await wait(220);
             } else if (evt.type === 'lordDice' && Number.isFinite(Number(evt.roll))) {
                 if (typeof this._playDiceAnimation === 'function') {
                     await this._playDiceAnimation(Number(evt.roll), evt.target);
@@ -2574,21 +2607,33 @@ class GameUI {
             text.appendChild(span);
         }
         el.appendChild(text);
-        if (String(desc || '').length > 16) {
+        const plain = String(desc || '');
+        // Prefer real overflow over a fixed character count so short wrapped
+        // lines and long single-line tips both get a usable pull tab.
+        const needsToggle = plain.length > 12;
+        if (needsToggle) {
             const toggle = document.createElement('button');
             toggle.type = 'button';
             toggle.className = 'zone-desc-toggle';
-            toggle.textContent = '⌃';
+            toggle.textContent = '‹';
             toggle.title = '展开完整说明';
             toggle.setAttribute('aria-label', '展开完整说明');
+            toggle.setAttribute('aria-expanded', 'false');
             toggle.addEventListener('click', (event) => {
                 event.stopPropagation();
                 const expanded = el.classList.toggle('is-expanded');
-                toggle.textContent = expanded ? '⌄' : '⌃';
+                toggle.textContent = expanded ? '›' : '‹';
                 toggle.title = expanded ? '收起说明' : '展开完整说明';
                 toggle.setAttribute('aria-label', toggle.title);
+                toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
             });
             el.appendChild(toggle);
+            requestAnimationFrame(() => {
+                if (!el.isConnected || el.classList.contains('is-expanded')) return;
+                if (text.scrollHeight <= text.clientHeight + 1 && plain.length <= 28) {
+                    toggle.remove();
+                }
+            });
         }
     }
 

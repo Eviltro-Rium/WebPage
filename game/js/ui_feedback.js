@@ -122,6 +122,73 @@
         this._shakeTimer = requestAnimationFrame(tick);
     };
 
+    proto._inferD12Outcome = function (desc, value) {
+        const text = String(desc || '');
+        const n = Number(value);
+        if (!Number.isFinite(n)) return null;
+        if (/飞翔/.test(text)) return n >= 7 ? 'success' : 'fail';
+        if (/俄罗斯赌盘/.test(text)) return n >= 6 ? 'success' : 'fail';
+        if (/成功/.test(text)) return 'success';
+        if (/失败/.test(text)) return 'fail';
+        return null;
+    };
+
+    /** Spin a D12 in the reveal zone, then land on `value`. */
+    proto._playD12Animation = function (value, options = {}) {
+        const finalValue = Math.max(1, Math.min(12, Number(value) || 1));
+        const box = document.getElementById('reveal-cards');
+        if (!box) return Promise.resolve();
+
+        const outcome = options.outcome || this._inferD12Outcome(options.desc, finalValue);
+        box.innerHTML = '';
+        box.dataset.cardKey = 'd12-animating:' + finalValue;
+
+        const die = document.createElement('div');
+        die.className = 'd12-die d12-die-rolling';
+        die.setAttribute('aria-label', '12面骰投掷中');
+        die.innerHTML = '<span class="d12-die-label">D12</span><strong class="d12-die-face">?</strong>';
+        box.appendChild(die);
+        const face = die.querySelector('.d12-die-face');
+
+        return new Promise(resolve => {
+            const ticks = 16;
+            let i = 0;
+            let last = 0;
+            const tick = () => {
+                i++;
+                let n = finalValue;
+                if (i < ticks) {
+                    do { n = 1 + Math.floor(Math.random() * 12); } while (n === last);
+                    last = n;
+                }
+                face.textContent = String(n);
+                die.classList.remove('d12-die-tick');
+                void die.offsetWidth;
+                die.classList.add('d12-die-tick');
+
+                if (i >= ticks) {
+                    die.classList.remove('d12-die-rolling', 'd12-die-tick');
+                    die.classList.add('d12-die-landed');
+                    if (outcome === 'success') die.classList.add('d12-die-success');
+                    else if (outcome === 'fail') die.classList.add('d12-die-fail');
+                    face.textContent = String(finalValue);
+                    die.setAttribute('aria-label', '12面骰结果 ' + finalValue);
+                    box.dataset.cardKey = 'd12-landed:' + finalValue;
+                    setTimeout(resolve, 480);
+                    return;
+                }
+                const t = i / ticks;
+                setTimeout(tick, 36 + t * t * 100);
+            };
+            setTimeout(tick, 40);
+        });
+    };
+
+    // Lord-mode hook (d6-style). Falls back to the shared tumble presentation.
+    proto._playDiceAnimation = function (roll) {
+        return this._playD12Animation(roll);
+    };
+
     proto.burstParticles = function (x, y, color, count) {
         const particles = [];
         for (let i = 0; i < (count || 12); i++) {
