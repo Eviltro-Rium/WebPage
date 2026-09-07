@@ -14,13 +14,13 @@
       let unblock = false;
       let hadBurn = a.burn > 0;
       if (v === 1) d = 4;
-      if (v === 2) { d = 2; unblock = true; a.burn = Math.min(4, a.burn + 2); }
-      if (v === 3) { d = 3; a.burn = Math.min(4, a.burn + 1); burn(1); }
+      if (v === 2) { d = 2; unblock = true; a.burn = Math.min(5, a.burn + 2); }
+      if (v === 3) { d = 3; a.burn = Math.min(5, a.burn + 1); burn(1); }
       if (v === 4) { d = 0; skip = true; }
-      if (v === 5) { a.burn = Math.min(4, a.burn + 1); d = 2 * a.burn; hadBurn = true; }
+      if (v === 5) { a.burn = Math.min(5, a.burn + 1); d = 2 * a.burn; hadBurn = true; }
       if (v === 6) { heal(a, Math.ceil(1.5 * a.burn)); a.burn = 0; burn(1); skip = true; }
       if (v === 7) {
-        a.burn = Math.min(4, a.burn + 2);
+        a.burn = Math.min(5, a.burn + 2);
         burn(2);
         let fieldBurn = eng.s.is1v2 ? eng.s.player.burn + eng.s.ai.burn + eng.s.ai2.burn : a.burn + t.burn;
         d = Math.ceil(1.5 * fieldBurn);

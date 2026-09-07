@@ -16,8 +16,8 @@ const context = vm.createContext({
 });
 context.window = context;
 
-const uiDir = path.resolve(__dirname, '..', 'js');
-for (const name of ['ui.js', 'ui_feedback.js', 'ui_renderer.js', 'ui_events.js', 'ui_controls.js']) {
+const uiDir = path.resolve(__dirname, '..', 'js', 'ui');
+for (const name of ['ui.js', 'feedback.js', 'renderer.js', 'events.js', 'controls.js']) {
   const file = path.join(uiDir, name);
   vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
 }

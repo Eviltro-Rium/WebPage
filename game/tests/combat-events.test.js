@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const gameRoot = path.resolve(__dirname, '..');
 const context = vm.createContext({ console, Math, JSON });
 context.window = context;
-for (const file of ['js/combat_events.js', 'js/engine_status.js', 'js/engine_damage.js']) {
+for (const file of ['js/combat/events.js', 'js/combat/status.js', 'js/combat/damage.js']) {
   const fullPath = path.join(gameRoot, file);
   vm.runInContext(fs.readFileSync(fullPath, 'utf8'), context, { filename: fullPath });
 }
@@ -69,7 +69,7 @@ test('bomb settlement emits one typed event for every participant', () => {
 });
 
 test('normal damage presentation no longer inspects the description text', () => {
-  const uiEvents = fs.readFileSync(path.join(gameRoot, 'js', 'ui_events.js'), 'utf8');
+  const uiEvents = fs.readFileSync(path.join(gameRoot, 'js', 'ui', 'events.js'), 'utf8');
   assert.equal(uiEvents.includes("includes('[伤害]')"), false);
   assert.equal(uiEvents.includes('includes("[伤害]")'), false);
 });

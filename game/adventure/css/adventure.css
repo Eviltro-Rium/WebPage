@@ -209,7 +209,6 @@
   gap: 8px;
 }
 .adv-player-row > .adv-card { flex: 1 1 auto; min-width: 0; }
-.adv-player-row > .adv-acc-card { flex: 0 0 auto; }
 .adv-card {
   padding: 14px;
   background: rgba(30, 28, 48, 0.72);
@@ -217,19 +216,25 @@
   border-radius: 12px;
   backdrop-filter: blur(8px);
 }
-.adv-acc-card {
-  padding: 10px;
-  background: rgba(30, 28, 48, 0.72);
-  border: 1px solid rgba(120, 110, 180, 0.25);
-  border-radius: 12px;
-  backdrop-filter: blur(8px);
+.adv-acc-panel {
+  margin-top: 8px;
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 8px;
 }
-.adv-acc-card-title { font-size: 0.75rem; color: #a78bfa; font-weight: 600; }
-.adv-acc-column { display: flex; flex-direction: column; gap: 6px; }
+.adv-acc-panel-label {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  color: #a78bfa;
+  font-weight: 600;
+}
+.adv-acc-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 .adv-acc-col-slot {
   width: 34px; height: 34px; border-radius: 6px;
   border: 1px solid rgba(34, 197, 94, 0.35); background: rgba(20, 30, 25, 0.6);
@@ -240,7 +245,14 @@
 .adv-acc-col-slot:hover { border-color: rgba(134, 239, 172, 0.8); box-shadow: 0 0 6px rgba(134, 239, 172, 0.3); }
 .adv-acc-col-icon { width: 26px; height: 26px; object-fit: contain; }
 .adv-acc-col-noicon { font-size: 0.75rem; color: #86efac; font-weight: 600; }
-.adv-acc-col-stack { position: absolute; bottom: -2px; right: -2px; background: rgba(34,197,94,0.9); color: #fff; font-size: 0.65rem; font-weight: 700; border-radius: 50%; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; }
+.adv-acc-col-stack {
+  position: absolute; bottom: -3px; right: -3px;
+  background: rgba(34,197,94,0.95); color: #fff;
+  font-size: 0.62rem; font-weight: 700; line-height: 1;
+  border-radius: 8px; padding: 2px 4px;
+  min-width: 14px; text-align: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.35);
+}
 .adv-char-name { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
 .adv-char-type { font-size: 12px; color: #a78bfa; margin-left: 8px; font-weight: 400; }
 .adv-hp-bar {
@@ -828,7 +840,6 @@
 :where(
   .adventure-header,
   .adv-card,
-  .adv-acc-card,
   .adv-select-screen,
   .adv-test-shell,
   .adv-settle-sidebar

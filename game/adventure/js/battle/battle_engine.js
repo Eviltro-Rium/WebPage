@@ -1,0 +1,1249 @@
+/**
+ * AdventureBattleEngine
+ *
+ * Reuses the normal 1v1 combat state machine while replacing its shared deck
+ * storage with two independent piles. The table still has one shared top card;
+ * when it is replaced, the previous card returns to its recorded owner's
+ * discard pile.
+ */
+(function () {
+  const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
+
+  function normalizePile(owner, source, fallbackDeck, handLimit) {
+    const pile = source || {};
+    return {
+      owner,
+      deck: clone(Array.isArray(pile.deck) ? pile.deck : fallbackDeck || []),
+      hand: clone(Array.isArray(pile.hand) ? pile.hand : []),
+      discard: clone(Array.isArray(pile.discard) ? pile.discard : []),
+      handLimit: Number.isFinite(Number(pile.handLimit)) ? Number(pile.handLimit) : handLimit
+    };
+  }
+
+  function resolveNpcPileSpec(name) {
+    const raw = (window.AdventureRegistry &&
+      (window.AdventureRegistry.getMonster(name) || window.AdventureRegistry.getBoss(name))) || null;
+    return {
+      handLimit: (raw && raw.handLimit) || 2,
+      whiteZeros: (raw && raw.whiteZeros) || 0
+    };
+  }
+
+  class AdventureBattleEngine extends window.Engine {
+    constructor() {
+      super();
+      this.isAdventureBattle = true;
+      this.testMode = false;
+      this.piles = null;
+      this.tableTopOwner = null;
+    }
+
+    restoreSession(snapshot, adventureEngine = null) {
+      const data = snapshot && (snapshot.battle || snapshot);
+      if (!data || !data.s || !data.piles) throw new Error('战斗快照无效');
+      this._adventureEngine = adventureEngine || null;
+      this.testMode = !!data.testMode;
+      this.s = clone(data.s);
+      this.piles = clone(data.piles);
+      this.h = clone(data.h) || { player: [], ai: [] };
+      this.events = clone(data.events) || [];
+      this.ver = Number(data.ver) || 0;
+      this.pendingSettlement = clone(data.pendingSettlement) || null;
+      this.tableTopOwner = data.tableTopOwner || this.s.discardTopOwner || null;
+      this.s.discardTopOwner = this.tableTopOwner;
+      this.deck = this.piles.player.deck;
+      this.discardBottom = this.piles.player.discard;
+      // 1v2 NPCs intentionally share one deck/discard pile. JSON cloning
+      // breaks that reference, so restore it explicitly.
+      if (this.piles.ai2) {
+        this.piles.ai2.deck = this.piles.ai.deck;
+        this.piles.ai2.discard = this.piles.ai.discard;
+        this.h.ai = this.piles.ai.hand;
+        this.h.ai2 = this.piles.ai2.hand;
+      }
+      this.h.player = this.piles.player.hand;
+      const register = name => {
+        const raw = window.AdventureRegistry &&
+          (window.AdventureRegistry.getMonster(name) || window.AdventureRegistry.getBoss(name));
+        if (!raw || !window.AdventureMonsterBridge) return;
+        const def = window.AdventureMonsterBridge.applyStageMods
+          ? window.AdventureMonsterBridge.applyStageMods(raw, this.s.adventureStage || 1)
+          : raw;
+        window.AdventureMonsterBridge.registerMonsterChar(def);
+        window.AdventureMonsterBridge.registerMonsterAI(def);
+      };
+      register(this.s.ai && this.s.ai.name);
+      register(this.s.ai2 && this.s.ai2.name);
+      return this.state();
+    }
+
+    character(n, ai = false) {
+      // 冒险模式不给 NPC 加 "AI " 前缀
+      const ch = super.character(n, false);
+      return ch;
+    }
+
+    startAdventure(config = {}) {
+      const playerName = config.player;
+      const opponentName = config.opponent;
+      const stage = config.stage || 1;
+      this.testMode = !!config.testMode;
+      if (!window.CharacterRegistry.get(playerName)) throw new Error('未知冒险角色：' + playerName);
+
+      const rawDef = window.AdventureRegistry.getMonster(opponentName) ||
+        window.AdventureRegistry.getBoss(opponentName);
+      if (rawDef) {
+        const moddedDef = (window.AdventureMonsterBridge && window.AdventureMonsterBridge.applyStageMods)
+          ? window.AdventureMonsterBridge.applyStageMods(rawDef, stage)
+          : rawDef;
+        window.AdventureMonsterBridge.registerMonsterChar(moddedDef);
+        window.AdventureMonsterBridge.registerMonsterAI(moddedDef);
+      }
+      if (!window.CharacterRegistry.get(opponentName)) throw new Error('未知冒险对手：' + opponentName);
+
+      // Build the ordinary 1v1 state once, then replace only its resource layer.
+      super.start(playerName, opponentName);
+      clearTimeout(this.timer);
+      this.pendingSettlement = null;
+      this.events = [];
+      this.ver = 0;
+
+      const AD = window.AdventureDeck;
+      const aiSpec = resolveNpcPileSpec(opponentName);
+      this.piles = {
+        player: normalizePile('player', config.playerPile, AD.makePlayerDeck(), 5),
+        ai: normalizePile('ai', null, AD.makeNpcDeck({ whiteZeros: aiSpec.whiteZeros }), aiSpec.handLimit)
+      };
+
+      this.h = {
+        player: this.piles.player.hand,
+        ai: this.piles.ai.hand
+      };
+      // Compatibility aliases for character skills that intentionally inspect
+      // or reorder the player's deck (for example Chan value 5).
+      this.deck = this.piles.player.deck;
+      this.discardBottom = this.piles.player.discard;
+
+      this.s.player = this.character(playerName);
+      if (config.playerState) {
+        Object.assign(this.s.player, clone(config.playerState));
+        this.s.player.name = playerName;
+        this.s.player.maxHp = Number(config.playerState.maxHp || this.s.player.maxHp);
+        this.s.player.hp = Math.max(0, Math.min(this.s.player.maxHp, Number(config.playerState.hp)));
+        this.s.player.alive = this.s.player.hp > 0;
+      }
+      this.s.ai = this.character(opponentName, true);
+      this.s.ai.name = opponentName;
+      this.s.handLimit = this.piles.player.handLimit;
+      this.s.isAdventure = true;
+      this.s.adventureStage = stage;
+      this.s.adventureScene = config.scene || null;
+      this.s.is1v2 = false;
+      this.s.isLord = false;
+      this.s.phase = 'PLAYER_PLAY';
+      this.s.turn = 1;
+      this.s.busy = false;
+      this.s.activeAttacker = 'player';
+      this.s.atkCard = null;
+      this.s.atkOwner = null;
+      this.s.defCard = null;
+      this.s.defOwner = null;
+      this.s.revealCards = [];
+
+      let top = clone(config.discardTop);
+      let topOwner = config.discardTopOwner || null;
+      if (!top) {
+        top = this._drawInitialTableCard();
+        topOwner = top ? 'player' : null;
+      }
+      this.s.discardTop = top;
+      this.tableTopOwner = topOwner;
+      this.s.discardTopOwner = topOwner;
+
+      // NPC resources are recreated for every room and never borrow cards from
+      // the player's pile.
+      this.draw('ai', this.piles.ai.handLimit, false);
+
+      const monsterDef = window.AdventureRegistry.getMonster(opponentName) ||
+        window.AdventureRegistry.getBoss(opponentName);
+      if (monsterDef && monsterDef.firstStrike) {
+        // First-strike rooms: no player opening refill/turnStart; go straight
+        // into NPC attack → defend, then resume normal endAi refill flow.
+        this.s.skipOpeningPlayerFill = true;
+        this._tryEnergyShieldOnAttack();
+        this.s.phase = 'AI_TURN';
+        this.s.activeAttacker = 'ai';
+        this.s.busy = true;
+        this.emit('desc', '先攻：对手先行进攻，玩家不补起始手牌');
+        this.later(() => this.startAITurn());
+      } else {
+        const openingHands = this.handCounts();
+        this.silentDraws(function () { this.turnStart('player'); });
+        this.emitDrawDiff(openingHands);
+        this._tryEnergyShieldOnAttack();
+      }
+      return this.state();
+    }
+
+    startAdventure1v2(config = {}) {
+      const playerName = config.player;
+      let opponent1Name = config.opponent1;
+      let opponent2Name = config.opponent2;
+      const stage = config.stage || 1;
+      this.testMode = !!config.testMode;
+      if (!window.CharacterRegistry.get(playerName)) throw new Error('未知冒险角色：' + playerName);
+
+      const _fsDef = (n) => {
+        const d = window.AdventureRegistry.getMonster(n) || window.AdventureRegistry.getBoss(n);
+        return !!(d && d.firstStrike);
+      };
+      const _fs1 = _fsDef(opponent1Name);
+      const _fs2 = _fsDef(opponent2Name);
+      const hasFirstStrike = _fs1 || _fs2;
+      if (_fs2 && !_fs1) {
+        const tmp = opponent1Name; opponent1Name = opponent2Name; opponent2Name = tmp;
+      }
+
+      for (const oppName of [opponent1Name, opponent2Name]) {
+        const rawDef = window.AdventureRegistry.getMonster(oppName) ||
+          window.AdventureRegistry.getBoss(oppName);
+        if (rawDef) {
+          const moddedDef = (window.AdventureMonsterBridge && window.AdventureMonsterBridge.applyStageMods)
+            ? window.AdventureMonsterBridge.applyStageMods(rawDef, stage)
+            : rawDef;
+          window.AdventureMonsterBridge.registerMonsterChar(moddedDef);
+          window.AdventureMonsterBridge.registerMonsterAI(moddedDef);
+        }
+        if (!window.CharacterRegistry.get(oppName)) throw new Error('未知冒险对手：' + oppName);
+      }
+
+      clearTimeout(this.timer);
+      this.pendingSettlement = null;
+      this.events = [];
+      this.ver = 0;
+
+      const AD = window.AdventureDeck;
+      const aiSpec = resolveNpcPileSpec(opponent1Name);
+      const ai2Spec = resolveNpcPileSpec(opponent2Name);
+      const sharedNpcDeck = AD.makeNpcDeck({ whiteZeros: aiSpec.whiteZeros });
+      const sharedNpcDiscard = [];
+      this.piles = {
+        player: normalizePile('player', config.playerPile, AD.makePlayerDeck(), 5),
+        ai: { deck: sharedNpcDeck, hand: [], discard: sharedNpcDiscard, handLimit: aiSpec.handLimit },
+        ai2: { deck: sharedNpcDeck, hand: [], discard: sharedNpcDiscard, handLimit: ai2Spec.handLimit }
+      };
+
+      this.h = {
+        player: this.piles.player.hand,
+        ai: this.piles.ai.hand,
+        ai2: this.piles.ai2.hand
+      };
+      this.deck = this.piles.player.deck;
+      this.discardBottom = this.piles.player.discard;
+
+      let top = clone(config.discardTop);
+      let topOwner = config.discardTopOwner || null;
+      if (!top) {
+        top = this._drawInitialTableCard();
+        topOwner = top ? 'player' : null;
+      }
+
+      this.s = {
+        phase: 'PLAYER_PLAY', turn: 1, busy: false,
+        selectedCard: -1, selectedCards: [], selectedAICard: -1,
+        handLimit: this.piles.player.handLimit,
+        forcedDiscard: false, hasPlayedThisTurn: false, hasPlayedBlackDefend: false,
+        defenseSkipped: false, unblockDefend: false, attackModBonus: 0,
+        aiTurnStarted: false, aiHasPlayed: false, pendingAIBridge: null,
+        pendingAIContinue: null, pendingDefenseDamage: 0, pendingFiveChoice: false, fiveChoiceCard: null,
+        pendingNumberJudge: null, mayDiscardAfterSkill: false, serenityHalfTarget: null,
+        forceEndAITurn: false, activeAttacker: 'player',
+        is1v2: true, isLord: true, isAdventure: true, adventureStage: stage, adventureScene: config.scene || null, needColorChoice: false,
+        pendingDialog: null, discardTop: top, discardTopOwner: topOwner,
+        player: this.character(playerName),
+        ai: this.character(opponent1Name, true),
+        ai2: this.character(opponent2Name, true),
+        currentAITarget: 0, attackTarget: 'ai', eliminatedHandled: { ai: false, ai2: false },
+        atkCard: null, atkOwner: null, defCard: null, defOwner: null, revealCards: [], diceRoll: null,
+        lordPlayerTargetIdx: 0,
+        revealAIHand: true
+      };
+
+      this.s.ai.name = opponent1Name;
+      this.s.ai2.name = opponent2Name;
+
+      if (config.playerState) {
+        Object.assign(this.s.player, clone(config.playerState));
+        this.s.player.name = playerName;
+        this.s.player.maxHp = Number(config.playerState.maxHp || this.s.player.maxHp);
+        this.s.player.hp = Math.max(0, Math.min(this.s.player.maxHp, Number(config.playerState.hp)));
+        this.s.player.alive = this.s.player.hp > 0;
+      }
+
+      this.tableTopOwner = topOwner;
+
+
+      this.draw('ai', this.piles.ai.handLimit, false);
+      this.draw('ai2', this.piles.ai2.handLimit, false);
+
+      if (hasFirstStrike) {
+        this.s.skipOpeningPlayerFill = true;
+        this._tryEnergyShieldOnAttack();
+        this.s.phase = 'AI_TURN';
+        this.s.activeAttacker = 'ai';
+        this.s.busy = true;
+        this.emit('desc', '先攻：对手先行进攻，玩家不补起始手牌');
+        this.later(() => this.startAITurn());
+      } else {
+        const openingHands = this.handCounts();
+        this.silentDraws(function () { this.turnStart('player'); });
+        this.emitDrawDiff(openingHands);
+        this._tryEnergyShieldOnAttack();
+      }
+
+      return this.state();
+    }
+
+    _pile(owner) {
+      if (!this.piles) return null;
+      if (owner === 'ai2') return this.piles.ai2 || null;
+      if (owner === 'ai') return this.piles.ai;
+      if (owner === 'player') return this.piles.player;
+      // Never silently treat a missing/unknown owner as the player's pile.
+      // A stale phase field must not be able to route an NPC draw or refill
+      // into the persistent player deck.
+      return null;
+    }
+
+    _syncNpcSharedPile() {
+      if (!this.piles || !this.piles.ai || !this.piles.ai2) return;
+      // Keep the 1v2 aliases intact after state restores or any code path that
+      // replaces one of the pile arrays. Both monsters must draw from exactly
+      // one deck and one discard pile.
+      this.piles.ai2.deck = this.piles.ai.deck;
+      this.piles.ai2.discard = this.piles.ai.discard;
+    }
+
+    _activeOwner(explicitOwner) {
+      if (explicitOwner === 'player' || explicitOwner === 'ai' || explicitOwner === 'ai2') return explicitOwner;
+      if (this.s) {
+        for (const k of ['defOwner', 'atkOwner', 'activeAttacker']) {
+          const v = this.s[k];
+          if (v === 'player' || v === 'ai' || v === 'ai2') return v;
+        }
+      }
+      return 'player';
+    }
+
+    _shuffle(array) {
+      return window.AdventureDeck.shuffle(array);
+    }
+
+    _refillPile(owner) {
+      if (owner === 'ai' || owner === 'ai2') this._syncNpcSharedPile();
+      const pile = this._pile(owner);
+      if (!pile || !pile.discard.length) return false;
+      const lowNpcDeck = (owner === 'ai' || owner === 'ai2') && pile.deck.length < 3;
+      if (pile.deck.length && !lowNpcDeck) return false;
+      for (const card of pile.discard) {
+        if (card.isBlack || card.isWhite) delete card.chosenColor;
+      }
+      pile.deck.push(...pile.discard.splice(0, pile.discard.length));
+      this._shuffle(pile.deck);
+      this.emit('desc', lowNpcDeck
+        ? 'NPC牌库少于3张，弃牌库已洗回NPC牌库'
+        : (owner === 'player' ? '玩家' : 'NPC') + '牌库已空，各自弃牌库洗回牌堆');
+      return true;
+    }
+
+    _drawInitialTableCard() {
+      const pile = this._pile('player');
+      if (!pile) return null;
+      this._refillPile('player');
+      const attempts = pile.deck.length;
+      for (let i = 0; i < attempts; i++) {
+        const card = pile.deck.pop();
+        if (!card) return null;
+        if (!card.isBlack && !card.isWhite) return card;
+        pile.deck.unshift(card);
+      }
+      return pile.deck.pop() || null;
+    }
+
+    draw(owner, count, animated = false) {
+      const key = owner;
+      if (key === 'ai' || key === 'ai2') this._syncNpcSharedPile();
+      const pile = this._pile(key);
+      if (!pile) return [];
+      const cards = [];
+      while (count-- > 0) {
+        // The two monsters draw from one shared pile. Refill it before every
+        // card when fewer than three cards remain, so a batch draw cannot
+        // bypass the low-deck rule after its first card.
+        this._refillPile(key);
+        if (!pile.deck.length) break;
+        const card = pile.deck.pop();
+        pile.hand.push(card);
+        cards.push(card);
+      }
+      if (animated && cards.length && !this._suppressDrawAnim) {
+        this.emit('draw', `${key === 'player' ? '玩家' : 'NPC'}从自己的牌库抽${cards.length}张牌`, null, { who: key, count: cards.length });
+      }
+      return cards;
+    }
+
+    refillDeckIfNeeded(owner) {
+      return this._refillPile(this._activeOwner(owner));
+    }
+
+    discardToBottom(card, owner) {
+      if (!card) return;
+      const targetOwner = card.borrowedFrom || this._activeOwner(owner);
+      const pile = this._pile(targetOwner);
+      if (!pile) return;
+      const saved = clone(card);
+      if (saved.isBlack || saved.isWhite) delete saved.chosenColor;
+      pile.discard.push(saved);
+    }
+
+    setDiscardTop(card, owner) {
+      if (this.s.discardTop) {
+        this.discardToBottom(this.s.discardTop, this.tableTopOwner || 'player');
+      }
+      const nextOwner = card && card.borrowedFrom ? card.borrowedFrom : this._activeOwner(owner);
+      this.s.discardTop = clone(card);
+      this.tableTopOwner = nextOwner;
+      this.s.discardTopOwner = nextOwner;
+      this.s.diceRoll = null;
+      const actor = this.s.defOwner || this.s.atkOwner;
+      const bombOwner = actor === 'ai2' ? 'ai2' : actor === 'ai' ? 'ai' : null;
+      if (bombOwner) this._markBombPlay(bombOwner);
+    }
+
+    _shuffleDiscardIntoDeck(owner) {
+      const key = this._activeOwner(owner);
+      const pile = this._pile(key);
+      if (!pile || !pile.discard.length) return;
+      for (const card of pile.discard) {
+        if (card.isBlack || card.isWhite) delete card.chosenColor;
+      }
+      pile.deck.push(...pile.discard.splice(0, pile.discard.length));
+      this._shuffle(pile.deck);
+    }
+
+    reveal(desc, owner) {
+      const key = this._activeOwner(owner);
+      const pile = this._pile(key);
+      if (!pile) return null;
+      this._refillPile(key);
+      const card = pile.deck.pop();
+      if (!card) return null;
+      this.s.revealCards = [clone(card)];
+      this.emit('reveal', desc, card, { who: key, from: 'deck' });
+      return card;
+    }
+
+    fillHands(isPlayerPhase) {
+      this.draw('player', this._drawNeedWithIceSeal('player', Math.max(0, this.piles.player.handLimit - this.h.player.length)), true);
+      this.draw('ai', this._drawNeedWithIceSeal('ai', Math.max(0, this.piles.ai.handLimit - this.h.ai.length)), true);
+      if (isPlayerPhase) this.emit('desc', '回合结束：玩家与NPC分别从自己的牌库补牌');
+    }
+
+    fillHands1v2(includePlayer = false) {
+      if (this.s && this.s.isAdventure && this.piles) {
+        if (includePlayer) {
+          this.draw('player', this._drawNeedWithIceSeal('player', Math.max(0, this.piles.player.handLimit - this.h.player.length)), true);
+        }
+        for (const key of ['ai', 'ai2']) {
+          if (!this.s[key] || !this.s[key].alive) continue;
+          const pile = this._pile(key);
+          if (!pile) continue;
+          this.draw(key, this._drawNeedWithIceSeal(key, Math.max(0, pile.handLimit - this.h[key].length)), true);
+        }
+        this.emit('desc', '冒险模式：存活NPC从共享牌库补牌');
+        return;
+      }
+      return super.fillHands1v2(includePlayer);
+    }
+
+    fillAIHands1v2() {
+      if (this.s && this.s.isAdventure && this.piles) {
+        for (const key of ['ai', 'ai2']) {
+          if (!this.s[key] || !this.s[key].alive) continue;
+          const pile = this._pile(key);
+          if (!pile) continue;
+          while (this.h[key].length > pile.handLimit) {
+            let worst = 0;
+            for (let i = 1; i < this.h[key].length; i++) {
+              if (this.h[key][i].value < this.h[key][worst].value) worst = i;
+            }
+            const card = this.h[key].splice(worst, 1)[0];
+            this.discardWithEvent(card, key, { handIndex: worst, desc: this.s[key].name + '手牌超限，弃掉' + this.cardText(card) });
+          }
+          this.draw(key, Math.max(0, pile.handLimit - this.h[key].length), true);
+        }
+        this.emit('desc', '冒险模式：存活NPC手牌保持5张');
+        return;
+      }
+      return super.fillAIHands1v2();
+    }
+
+    trimAI() {
+      while (this.h.ai.length > this.piles.ai.handLimit) {
+        const index = this.chooseAIDiscard(this.h.ai);
+        const card = this.h.ai.splice(index, 1)[0];
+        this.discardWithEvent(card, 'ai', { handIndex: index, desc: `NPC手牌超限，弃掉${this.cardText(card)}` });
+      }
+    }
+
+    state() {
+      if (this.s && this.piles) {
+        this.s.isAdventure = true;
+        this.s.discardTopOwner = this.tableTopOwner;
+        this.s.playerDeckCount = this.piles.player.deck.length;
+        this.s.playerDiscardCount = this.piles.player.discard.length;
+        this.s.aiDeckCount = this.piles.ai.deck.length;
+        this.s.aiDiscardCount = this.piles.ai.discard.length;
+        this.s.aiHandCount = this.piles.ai.hand.length;
+        this.s.aiHand = this.piles.ai.hand;
+        if (this.piles.ai2) {
+          this.s.ai2DeckCount = this.piles.ai2.deck.length;
+          this.s.ai2DiscardCount = this.piles.ai2.discard.length;
+          this.s.ai2HandCount = this.piles.ai2.hand.length;
+          this.s.ai2Hand = this.piles.ai2.hand;
+        }
+        if (this.adventureCurrency) {
+            this.s.adventureGold = this.adventureCurrency.gold || 0;
+            this.s.adventureBeastTokens = Object.assign({}, this.adventureCurrency.tokens);
+            this.s.adventureBeastTotal = this.adventureCurrency.totalBeastTokens ? this.adventureCurrency.totalBeastTokens() : 0;
+        }
+        // Mirror the persistent adventure inventory into the combat snapshot.
+        // This keeps the 1v2 combat UI independent from the map sidebar and
+        // also makes resource rendering resilient while a combat session is
+        // being restored.
+        let adventureSnapshot = null;
+        if (this._adventureEngine) {
+          if (typeof this._adventureEngine.snapshot === 'function') {
+            adventureSnapshot = this._adventureEngine.snapshot();
+          } else if (this._adventureEngine.s) {
+            // Test battles can be restored from a lightweight engine state
+            // object rather than the live map engine.
+            const advState = this._adventureEngine.s;
+            adventureSnapshot = {
+              consumables: advState.consumables || [],
+              accessories: advState.accessories || [],
+              consumableSlots: advState.consumableSlots || 6,
+              currency: advState.currency || null
+            };
+          }
+        }
+        if (adventureSnapshot) {
+          this.s.adventureConsumables = adventureSnapshot.consumables || [];
+          this.s.adventureAccessories = adventureSnapshot.accessories || [];
+          this.s.adventureConsumableSlots = adventureSnapshot.consumableSlots || 6;
+          if (adventureSnapshot.currency) {
+            this.s.adventureGold = adventureSnapshot.currency.gold || this.s.adventureGold || 0;
+            this.s.adventureBeastTokens = Object.assign({}, adventureSnapshot.currency.tokens || this.s.adventureBeastTokens || {});
+          }
+        }
+        this.s.demonPactAvailable = !!(this._hasAccessory('DemonPact') &&
+          this.s.player.hp > 3 &&
+          (this.s.phase === 'PLAYER_PLAY' || this.s.phase === 'PLAYER_DEFEND') &&
+          !this.s.busy && !this.s.needColorChoice &&
+          (this.s.phase === 'PLAYER_PLAY'
+            ? this._demonPactPlayTurn !== this.s.turn
+            : this._demonPactDefendAttack !== this.s.pendingAttack));
+      }
+      return super.state();
+    }
+
+    _settleTableTop() {
+      if (!this.s || !this.s.discardTop) return;
+      this.discardToBottom(this.s.discardTop, this.tableTopOwner || 'player');
+      this.s.discardTop = null;
+      this.tableTopOwner = null;
+      this.s.discardTopOwner = null;
+    }
+
+    finishAdventureBattle() {
+      clearTimeout(this.timer);
+      this._settleTableTop();
+
+      // A borrowed monster card never becomes part of the player's persistent
+      // collection. If it was still in the hand/deck when the room ended,
+      // return it to the monster's discard pile before resetting NPC cards.
+      for (const list of [this.piles.player.deck, this.piles.player.hand, this.piles.player.discard]) {
+        for (let i = list.length - 1; i >= 0; i--) {
+          const card = list[i];
+          if (!card || !card.borrowedFrom) continue;
+          list.splice(i, 1);
+          const owner = this._pile(card.borrowedFrom);
+          if (owner) owner.discard.push(clone(card));
+        }
+      }
+
+      const is1v2 = !!this.piles.ai2;
+      const allHands = is1v2
+        ? [...this.piles.ai.hand, ...this.piles.ai2.hand]
+        : [...this.piles.ai.hand];
+      const npcCards = [
+        ...this.piles.ai.deck,
+        ...allHands,
+        ...this.piles.ai.discard
+      ].map(card => {
+        const saved = clone(card);
+        if (saved.isBlack || saved.isWhite) delete saved.chosenColor;
+        return saved;
+      });
+      this._shuffle(npcCards);
+      this.piles.ai.deck.splice(0, this.piles.ai.deck.length, ...npcCards);
+      this.piles.ai.hand.splice(0, this.piles.ai.hand.length);
+      if (is1v2) this.piles.ai2.hand.splice(0, this.piles.ai2.hand.length);
+      this.piles.ai.discard.splice(0, this.piles.ai.discard.length);
+
+      return {
+        playerState: clone(this.s.player),
+        playerPile: clone({
+          deck: this.piles.player.deck,
+          hand: this.piles.player.hand,
+          discard: this.piles.player.discard,
+          handLimit: this.piles.player.handLimit
+        }),
+        discardTop: null,
+        discardTopOwner: null,
+        npcResetCount: this.piles.ai.deck.length
+      };
+    }
+
+    useAdventureCombatItem(itemIndex, choice) {
+      const advEngine = this._adventureEngine;
+      if (!advEngine) return this.state();
+      const snap = advEngine.snapshot();
+      const item = snap.consumables[itemIndex];
+      if (!item) return this.state();
+      const def = window.AdventureRegistry.getItem(item.name);
+      if (!def || def.kind !== 'consumable') return this.state();
+      if (!this._canUseAdventureCombatItemNow(def)) {
+        if (this.s.player && (this.s.player.blind || 0) > 0 && def.kind === 'consumable') {
+          this.emit('desc', '玩家处于致盲状态，无法使用一次性道具');
+          return this.state();
+        }
+        const dodgeOnly = def.combatUse === 'dodge';
+        this.emit('desc', dodgeOnly
+          ? '闪避只能在防御出牌阶段使用'
+          : def.defendOnly ? def.displayName + '只能在防御出牌阶段使用'
+          : '当前不能使用道具（仅可在选牌出牌/防御时使用）');
+        return this.state();
+      }
+      if (def.combatUse === 'attackMod') return this.state();
+      if ((def.combatUse === 'dodge' || def.defendOnly) && !this.s.pendingAttack) {
+        this.emit('desc', '当前没有可闪避的攻击');
+        return this.state();
+      }
+
+      const player = this.s.player;
+      const purifyChoices = Array.isArray(choice) ? choice : null;
+      let targetKey = this.s.attackTarget;
+      if (!targetKey && this.s.is1v2) {
+        targetKey = (this.s.activeAttacker === 'ai2') ? 'ai2' : 'ai';
+      }
+      if (!targetKey) targetKey = 'ai';
+      const ai = this.s[targetKey] || this.s.ai;
+
+      const effects = window.AdventureCombatEffects;
+      const result = effects && typeof effects.apply === 'function'
+        ? effects.apply(this, def, { choice, purifyChoices, player, ai, advEngine })
+        : { ok: true, message: '使用' + def.displayName };
+
+      if (result && result.pending) return this.state();
+      if (!result || !result.ok) {
+        this.emit('desc', (result && result.message) || '无法使用该道具');
+        return this.state();
+      }
+
+      this.emit('desc', '使用道具[' + def.displayName + ']：' + result.message);
+      advEngine.s.consumables.splice(itemIndex, 1);
+      if (result.dodgeResolved) {
+        this.s.phase = 'AI_TURN';
+        this.deferSettlement('AI_ATTACK', 0, 0);
+        return this.check();
+      }
+      this.check();
+      return this.state();
+    }
+
+    _canUseAdventureCombatItemNow(def) {
+      if (!this.s || !this.s.isAdventure) return false;
+      if (this.s.busy) return false;
+      if (this.s.needColorChoice) return false;
+      if (this.s.player && (this.s.player.blind || 0) > 0 && def && def.kind === 'consumable') return false;
+      if (def && (def.combatUse === 'dodge' || def.defendOnly)) {
+        return this.s.phase === 'PLAYER_DEFEND' && !!this.s.pendingAttack;
+      }
+      if (def && def.combatUse === 'bind') {
+        return this.s.phase === 'PLAYER_PLAY' && !this.s.bindUsedThisTurn;
+      }
+      if (def && def.combatUse === 'chameleonPaint') {
+        return this.s.phase === 'PLAYER_PLAY';
+      }
+      // 仅在玩家可选择出牌/防御牌时（含不可防御时的跳过窗口）
+      return this.s.phase === 'PLAYER_PLAY' || this.s.phase === 'PLAYER_DEFEND';
+    }
+
+    _applyCardMaster(choice) {
+      if (choice !== 'draw2' && choice !== 'mulligan') {
+        return { ok: false, message: '请选择：抽两张，或弃牌重抽' };
+      }
+      if (choice === 'draw2') {
+        const drawn = this.draw('player', 2, true);
+        return { ok: true, message: '抽取' + drawn.length + '张牌' };
+      }
+      const n = this.h.player.length;
+      const dropped = this.h.player.splice(0, n);
+      for (let i = dropped.length - 1; i >= 0; i--) {
+        this.discardWithEvent(dropped[i], 'player', {
+          handIndex: i,
+          desc: '卡牌大师：弃掉' + this.cardText(dropped[i])
+        });
+      }
+      const redrawn = this.draw('player', n, true);
+      return { ok: true, message: '弃掉' + n + '张并重抽' + redrawn.length + '张' };
+    }
+
+    _listTransferableBuffs(ch) {
+      const kinds = [];
+      if (!ch) return kinds;
+      if (ch.burn > 0) kinds.push('burn');
+      if (ch.bleed > 0) kinds.push('bleed');
+      if ((ch.poison || 0) > 0) kinds.push('poison');
+      if (ch.frozen) kinds.push('freeze');
+      if ((ch.iceSeal || 0) > 0) kinds.push('iceSeal');
+      if (ch.guard > 0) kinds.push('guard');
+      if ((ch.fly || 0) > 0) kinds.push('fly');
+      if ((ch.crit || 0) > 0) kinds.push('crit');
+      if ((ch.lush || 0) > 0) kinds.push('lush');
+      if ((ch.parasite || 0) > 0) kinds.push('parasite');
+      return kinds;
+    }
+
+    _moveBuffLayer(from, to, kind, wTo) {
+      const labels = { burn: '灼烧', bleed: '流血', poison: '中毒', freeze: '冷冻', iceSeal: '冰封', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生' };
+      switch (kind) {
+        case 'burn':
+          from.burn--;
+          this.burn(to, 1);
+          break;
+        case 'bleed':
+          from.bleed--;
+          this.bleed(to, 1);
+          break;
+        case 'poison':
+          from.poison = Math.max(0, (from.poison || 0) - 1);
+          this.poison(to, 1);
+          break;
+        case 'freeze':
+          from.frozen = false;
+          this.freeze(to);
+          break;
+        case 'iceSeal':
+          from.iceSeal = 0;
+          this.iceSeal(to);
+          break;
+        case 'guard':
+          from.guard--;
+          to.guard = Math.min(5, (to.guard || 0) + 1);
+          this.emit('buff', '+1[守护]', null, { who: wTo, kind: 'guard', stacks: to.guard });
+          break;
+        case 'fly':
+          from.fly--;
+          to.fly = Math.min(2, (to.fly || 0) + 1);
+          this.emit('buff', '+1[飞翔]', null, { who: wTo, kind: 'fly', stacks: to.fly });
+          break;
+        case 'crit':
+          from.crit--;
+          to.crit = (to.crit || 0) + 1;
+          this.emit('buff', '+1[暴击]', null, { who: wTo, kind: 'crit', stacks: to.crit });
+          break;
+        case 'lush':
+          from.lush--;
+          to.lush = Math.min(2, (to.lush || 0) + 1);
+          this.emit('buff', '+1[茂盛]', null, { who: wTo, kind: 'lush', stacks: to.lush });
+          break;
+        case 'parasite':
+          from.parasite--;
+          to.parasite = Math.min(1, (to.parasite || 0) + 1);
+          this.emit('buff', '+1[寄生]', null, { who: wTo, kind: 'parasite', stacks: to.parasite });
+          break;
+        default:
+          return null;
+      }
+      return labels[kind] || kind;
+    }
+
+    _applyBuffTransfer(choice, player, opponent) {
+      const fromSelf = this._listTransferableBuffs(player);
+      const fromOpp = this._listTransferableBuffs(opponent);
+      if (!fromSelf.length && !fromOpp.length) {
+        return { ok: false, message: '双方都没有可转移的buff' };
+      }
+      let kind = choice;
+      let from = 'self';
+      if (choice && typeof choice === 'object') {
+        kind = choice.kind;
+        const src = choice.from;
+        if (src === 'opp' || src === 'opponent' || src === 'ai' || src === 'ai2') from = 'opp';
+        else if (src === 'self' || src === 'player') from = 'self';
+      }
+      if (!kind) return { ok: false, message: '请选择要转移的一层buff' };
+      if (from === 'opp') {
+        if (!fromOpp.includes(kind)) return { ok: false, message: '无效的buff选择' };
+        const label = this._moveBuffLayer(opponent, player, kind, 'player');
+        if (!label) return { ok: false, message: '无效的buff选择' };
+        return { ok: true, message: '将对手1层' + label + '转移到自己' };
+      }
+      if (!fromSelf.includes(kind)) return { ok: false, message: '无效的buff选择' };
+      const wTo = opponent === this.s.ai2 ? 'ai2' : 'ai';
+      const label = this._moveBuffLayer(player, opponent, kind, wTo);
+      if (!label) return { ok: false, message: '无效的buff选择' };
+      return { ok: true, message: '将1层' + label + '转移给对手' };
+    }
+
+    _hasAccessory(name) {
+      const eng = this._adventureEngine;
+      return !!(eng && typeof eng.hasAccessory === 'function' && eng.hasAccessory(name));
+    }
+
+    /** Emit accessory bar flash before applying the accessory effect / buff float. */
+    _flashAccessory(itemName) {
+      if (!itemName || !this._hasAccessory(itemName)) return;
+      const def = window.AdventureRegistry && window.AdventureRegistry.getItem(itemName);
+      this.emit('accessoryTrigger', (def && def.displayName) || itemName, null, {
+        who: 'player',
+        target: 'player',
+        itemName
+      });
+    }
+
+    _flameFistBurnAmount() {
+      const def = window.AdventureRegistry && window.AdventureRegistry.getItem('FlameFist');
+      const perFist = (def && def.onDefendBurn) || 1;
+      const eng = this._adventureEngine;
+      const count = eng && typeof eng.accessoryCount === 'function' ? eng.accessoryCount('FlameFist') : 1;
+      return perFist * count;
+    }
+
+    _tryFlameFistOnDefend(skip) {
+      if (!this.s || !this.s.isAdventure) return;
+      if (skip) return;
+      if (!this._hasAccessory('FlameFist')) return;
+      const i = this.s.selectedCard;
+      const c = this.h.player && this.h.player[i];
+      if (!c || (c.isBlack && !c.chosenColor)) return;
+      const attackerKey = (this.s.atkOwner && this.s.atkOwner !== 'player') ? this.s.atkOwner : 'ai';
+      const attacker = this.s[attackerKey];
+      if (!attacker || !attacker.alive) return;
+      const stacks = this._flameFistBurnAmount();
+      this._flashAccessory('FlameFist');
+      this.burn(attacker, stacks);
+    }
+
+    defend(skip = false) {
+      this._tryFlameFistOnDefend(skip);
+      return super.defend(skip);
+    }
+
+    // 1v2 的 dispatch 会直接调用 defend1v2，绕过上面的 defend 包装。
+    // 在这里补上同一条配饰触发链，确保 Moze 2 等反击型防御技能也能触发火焰之拳。
+    defend1v2(skip = false) {
+      this._tryFlameFistOnDefend(skip);
+      return super.defend1v2(skip);
+    }
+
+    _accessoryCount(name) {
+      const eng = this._adventureEngine;
+      return eng && typeof eng.accessoryCount === 'function' ? eng.accessoryCount(name) : 1;
+    }
+
+    useDemonPact() {
+      if (!this.s || !this.s.isAdventure) return this.state();
+      if (!this._hasAccessory('DemonPact')) return this.state();
+      const phase = this.s.phase;
+      if (phase !== 'PLAYER_PLAY' && phase !== 'PLAYER_DEFEND') {
+        this.emit('desc', '恶魔契约只能在选牌阶段使用');
+        return this.state();
+      }
+      if (phase === 'PLAYER_PLAY') {
+        if (this._demonPactPlayTurn === this.s.turn) {
+          this.emit('desc', '本回合已使用过恶魔契约');
+          return this.state();
+        }
+      } else {
+        if (this._demonPactDefendAttack === this.s.pendingAttack) {
+          this.emit('desc', '本阶段已使用过恶魔契约');
+          return this.state();
+        }
+      }
+      if (this.s.player.hp <= 3) {
+        this.emit('desc', '生命值不足3点，无法使用恶魔契约');
+        return this.state();
+      }
+      if (phase === 'PLAYER_PLAY') {
+        this._demonPactPlayTurn = this.s.turn;
+      } else {
+        this._demonPactDefendAttack = this.s.pendingAttack;
+      }
+      this._flashAccessory('DemonPact');
+      this.hurt(this.s.player, 3);
+      this.emit('desc', '恶魔契约：自伤3点生命');
+      const drawn = this.draw('player', 1, true);
+      if (drawn.length) this.emit('desc', '恶魔契约：抽取1张牌');
+      else this.emit('desc', '恶魔契约：牌库已空，未能抽牌');
+      this.check();
+      return this.state();
+    }
+
+    _canUseBindNow() {
+      if (!this.s || !this.s.isAdventure) return false;
+      if (this.s.phase !== 'PLAYER_PLAY') return false;
+      if (this.s.busy) return false;
+      if (this.s.needColorChoice) return false;
+      if (this.s.bindUsedThisTurn) return false;
+      return true;
+    }
+
+    startAITurn() {
+      if (this.s && this.s.isAdventure && this._bindSkipNextAITurn) {
+        this._bindSkipNextAITurn = false;
+        const hands = this.handCounts();
+        this.silentDraws(function () {
+          this.fillHands(true);
+          this.turnStart('player');
+          this._tryEnergyShieldOnAttack();
+        });
+        if (this.s.ai) this.s.ai.bindMark = true;
+        if (this.s.ai2 && this.s.ai2.alive) this.s.ai2.bindMark = true;
+        this.s.bindExtraTurn = true;
+        this.s.bindUsedThisTurn = false;
+        this.s.phase = 'PLAYER_PLAY';
+        this.s.busy = false;
+        this.s.activeAttacker = 'player';
+        this.s.hasPlayedThisTurn = false;
+        this.s.turn++;
+        this._energyShieldAppliedThisTurn = false;
+        this.emit('desc', '捆缚：跳过对手进攻，玩家再进行一次进攻');
+        this.emitDrawDiff(hands);
+        return this.check();
+      }
+      if (this.s && this.s.bindExtraTurn) {
+        if (this.s.ai) this.s.ai.bindMark = false;
+        if (this.s.ai2) this.s.ai2.bindMark = false;
+        this.s.bindExtraTurn = false;
+      }
+      // Opening first-strike: refill NPC only; skip player hand fill and the
+      // 1v2 opening burn tick that normally runs when ending a player turn.
+      if (this.s && this.s.isAdventure && this.s.skipOpeningPlayerFill) {
+        this.s.skipOpeningPlayerFill = false;
+        if (this.s.is1v2) {
+          this.fillHands1v2(false);
+          this.check();
+          if (this.s.phase === 'GAME_OVER') return this.state();
+          this.s.currentAITarget = this.s.ai.alive ? 0 : 1;
+          const key = this._curAI();
+          this.s.phase = key === 'ai2' ? 'AI2_TURN' : 'AI_TURN';
+          this.s.busy = true;
+          this.s.activeAttacker = key;
+          this.s.forceEndAITurn = false;
+          this.s.pendingAIContinue = null;
+          this.s.pendingAttack = null;
+          this.s.atkCard = this.s.defCard = null;
+          this.s.atkOwner = this.s.defOwner = null;
+          this.s.selectedCards = [];
+          this.s.aiTurnStarted = false;
+          this.s.aiHasPlayed = false;
+          this.s.attackTarget = null;
+          this.later(() => this.aiTurn1v2());
+          return this.check();
+        }
+        this.draw('ai', Math.max(0, this.piles.ai.handLimit - this.h.ai.length), true);
+        this.s.phase = 'AI_TURN';
+        this.s.busy = true;
+        this.s.activeAttacker = 'ai';
+        this.s.forceEndAITurn = false;
+        this.s.pendingAIContinue = null;
+        this.s.atkCard = this.s.defCard = null;
+        this.s.atkOwner = this.s.defOwner = null;
+        this.s.selectedCards = [];
+        this.later(() => this.aiTurn());
+        return this.check();
+      }
+      return super.startAITurn();
+    }
+
+    _tryFreezeLaserOnAttackDamage(target, amount, kind) {
+      if (!this.s || !this.s.isAdventure) return;
+      if (!(amount > 0) || kind) return;
+      if (!target || target === this.s.player) return;
+      if (this._freezeLaserAppliedThisAttack) return;
+      if (!this._hasAccessory('FreezeLaser')) return;
+      this._freezeLaserAppliedThisAttack = true;
+      this._flashAccessory('FreezeLaser');
+      this.freeze(target);
+    }
+
+    _tryEnergyShieldOnAttack() {
+      if (!this.s || !this.s.isAdventure) return;
+      if (this.s.phase !== 'PLAYER_PLAY') return;
+      if (this._energyShieldAppliedThisTurn) return;
+      if (!this._hasAccessory('EnergyShield')) return;
+      this._energyShieldAppliedThisTurn = true;
+      const def = window.AdventureRegistry && window.AdventureRegistry.getItem('EnergyShield');
+      const perShield = (def && def.onAttackStartGuard) || 1;
+      const guard = perShield * this._accessoryCount('EnergyShield');
+      this._flashAccessory('EnergyShield');
+      this.addGuard(this.s.player, guard);
+    }
+
+    aiTurn() {
+      const result = super.aiTurn();
+      this._tryGoblinPassive();
+      return result;
+    }
+
+    _tryGoblinPassive() {
+      if (!this.s || !this.s.isAdventure) return;
+      if (this.s.atkOwner !== 'ai' && this.s.atkOwner !== 'ai2') return;
+      const c = this.s.atkCard;
+      if (!c || !c.isNumberCard || c.value !== 1) return;
+      const attacker = this.s[this.s.atkOwner] || this.s.ai;
+      if (this.name(attacker) !== 'DungeonGoblin') return;
+      const stage = this.s.adventureStage || 1;
+      const advEngine = this._adventureEngine;
+      if (!advEngine) return;
+      if (stage === 2) {
+        if (advEngine.s.currency.gold > 0) {
+          advEngine.s.currency.gold--;
+          this.emit('desc', '城堡哥布林被动：玩家损失1金币');
+        }
+      } else if (stage >= 3) {
+        if (advEngine.s.consumables && advEngine.s.consumables.length) {
+          const idx = Math.floor(Math.random() * advEngine.s.consumables.length);
+          const removed = advEngine.s.consumables.splice(idx, 1)[0];
+          const def = window.AdventureRegistry.getItem(removed);
+          this.emit('desc', '城堡哥布林被动：玩家损失道具[' + (def ? def.displayName : removed) + ']');
+        }
+      }
+    }
+
+    hurt(x, n, kind = false, opts = {}) {
+      // 保留 silent 等选项，避免流血结算在合并飘字之外又产生一条重复伤害事件。
+      super.hurt(x, n, kind, opts);
+      this._tryFreezeLaserOnAttackDamage(x, n, kind);
+    }
+
+    afterAttack() {
+
+      this._freezeLaserAppliedThisAttack = false;
+      if (this.s) this.s.pendingPurifyCrystal = null;
+      return super.afterAttack();
+    }
+
+    _returnBorrowedCardsFromHand() {
+      if (!this.h || !Array.isArray(this.h.player)) return 0;
+      let returned = 0;
+      for (let i = this.h.player.length - 1; i >= 0; i--) {
+        const card = this.h.player[i];
+        if (!card || !card.borrowedFrom) continue;
+        this.h.player.splice(i, 1);
+        this.discardWithEvent(card, card.borrowedFrom, {
+          from: 'hand', destination: 'npc-discard',
+          desc: '进攻回合结束：借用的怪物牌归还' + (card.borrowedMonsterName || 'NPC') + '弃牌堆'
+        });
+        returned++;
+      }
+      return returned;
+    }
+
+    endTurn() {
+      this._returnBorrowedCardsFromHand();
+      return super.endTurn();
+    }
+
+    confirmDiscard() {
+      const result = super.confirmDiscard();
+      this._returnBorrowedCardsFromHand();
+      return result;
+    }
+
+    playBorrowedMonsterCard(card) {
+      const sourceKey = card.borrowedFrom || (this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai');
+      const monster = this.s[sourceKey];
+      if (!monster || !monster.alive) return this.gateAdventureAttackMod(card, 0, true, false);
+      const monsterName = card.borrowedMonsterName || this.name(monster);
+      const mod = window.AdventureRegistry && (window.AdventureRegistry.getMonster(monsterName) || window.AdventureRegistry.getBoss(monsterName));
+      this.s.attackTarget = sourceKey;
+      this.s.borrowedMonsterSkill = true;
+      this.rememberAttackDebuffs(sourceKey);
+      const before = { bleed: monster.bleed || 0, burn: monster.burn || 0, poison: monster.poison || 0, frozen: !!monster.frozen, blind: monster.blind || 0, iceSeal: monster.iceSeal || 0 };
+      try {
+        if (mod && typeof mod.attackSkipEffect === 'function') {
+          mod.attackSkipEffect(this, this.s.player, monster);
+          this.emit('desc', '玩家借用' + monsterName + '技能：跳过防御');
+          return this.gateAdventureAttackMod(card, 0, true, false);
+        }
+        const result = this.effect(monsterName, card.value, card, this.s.player, monster) || { d: 0, skip: false, unblock: false };
+        this._deferAttackBuffs(sourceKey, before);
+        if (result.immediateBuffs) this._restoreAttackBuffs();
+        const damage = Number(result.d) || 0;
+        this.emit('desc', '玩家借用' + monsterName + '技能：' + damage + '点伤害' + ((result.skip || result.unblock || damage <= 0) ? '，跳过防御' : ''), card);
+        return this.gateAdventureAttackMod(card, damage, !!result.skip, !!result.unblock);
+      } finally {
+        this.s.borrowedMonsterSkill = false;
+      }
+    }
+
+    gateAdventureAttackMod(card, damage, skip = false, unblock = false, delay = 0) {
+      if (this.s && this.s.isAdventure && damage > 0 && this._hasAccessory('JusticeHammer')) {
+        const bonus = this._accessoryCount('JusticeHammer');
+        damage += bonus;
+        this._flashAccessory('JusticeHammer');
+        this.emit('desc', '正义之锤：伤害+' + bonus);
+      }
+      return super.gateAdventureAttackMod(card, damage, skip, unblock, delay);
+    }
+
+    continueAfterAttackMod() {
+      let p = this.s.pendingAttackMod || {};
+      let skip = !!p.skip, unblock = !!p.unblock, card = p.card || this.s.atkCard, delay = p.delay || 0;
+      let d = (this.s.pendingAttack && this.s.pendingAttack.damage) || 0;
+      if (this.s.attackModBonus && d > 0) {
+        d += this.s.attackModBonus;
+        this.s.pendingAttack.damage = d;
+        this.emit('desc', '攻击修正+' + this.s.attackModBonus + '点伤害');
+        this.s.attackModBonus = 0;
+      }
+      this.s.pendingAttackMod = null;
+      if (this._canOfferOttoCrit(d, unblock)) return this._enterCritChoice(d, skip, unblock, card, delay);
+      return this._finishAfterCritChoice(d, skip, unblock, card, delay);
+    }
+
+    _finishAfterCritChoice(d, skip, unblock, card, delay) {
+      if (this._shouldTriggerPurifyCrystal(card)) {
+        this.s.pendingDialog = 'purifyCrystal';
+        this.s.pendingPurifyCrystal = { damage: d, skip, unblock, card: card, delay };
+        this.s.phase = 'PURIFY_CRYSTAL_CHOICE';
+        this.s.busy = false;
+        return this.check();
+      }
+      return this._proceedToDefend(d, skip, unblock, card, delay);
+    }
+
+    _proceedToDefend(d, skip, unblock, card, delay) {
+      if (this.s.is1v2) {
+        if (d && !skip && !unblock) { this.s.phase = 'AI_DEFEND'; this.s.busy = true; this.later(() => this.aiDefend1v2(card, d), delay); }
+        else { this.s.phase = 'AI_DEFEND'; this.s.busy = true; this.deferSettlement('PLAYER_ATTACK', d, 0); }
+        return this.check();
+      }
+      if (d && !skip && !unblock) { this.s.phase = 'AI_DEFEND'; this.s.busy = true; this.later(() => this.aiDefend(card, d), delay); }
+      else {
+        let targetKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
+        if (d > 0) this.hurt(this.s[targetKey], d);
+        this.s.phase = 'AI_DEFEND'; this.s.busy = true;
+        this.later(() => { this._restoreAttackBuffs(); this.afterAttack(); this.check(); }, 1700);
+      }
+      return this.check();
+    }
+
+    _shouldTriggerPurifyCrystal(card) {
+      if (!this.s || !this.s.isAdventure) return false;
+      const count = this._accessoryCount('PurifyCrystal');
+      if (count <= 0 || !card) return false;
+      const color = this.effective(card);
+      if (color === 'BLUE') {}
+      else if (color === 'GREEN' && count >= 2) {}
+      else return false;
+      const opponentKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
+      const opponent = this.s[opponentKey];
+      return this._hasPurifyableBuff(this.s.player) || this._hasPurifyableBuff(opponent);
+    }
+
+    _hasPurifyableBuff(ch) {
+      if (!ch) return false;
+      return (ch.burn > 0) || (ch.bleed > 0) || ((ch.poison || 0) > 0) || ((ch.blind || 0) > 0) ||
+             ((ch.bomb || 0) > 0) || !!ch.frozen || ((ch.iceSeal || 0) > 0) ||
+             (ch.guard > 0) || ((ch.fly || 0) > 0) || ((ch.crit || 0) > 0) || ((ch.lush || 0) > 0) || ((ch.parasite || 0) > 0);
+    }
+
+    choosePurifyCrystal(choice) {
+      if (this.s.phase !== 'PURIFY_CRYSTAL_CHOICE' || !this.s.pendingPurifyCrystal) throw Error('当前没有待处理的净化水晶');
+      const who = choice && choice.who;
+      const kind = choice && choice.kind;
+      const opponentKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
+      const target = who === 'opp' ? this.s[opponentKey] : this.s.player;
+      const targetLabel = who === 'opp' ? (this.s.is1v2 && opponentKey === 'ai2' ? 'AI2' : '对手') : '玩家';
+      const kindLabel = { burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', iceSeal: '冰封', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生' }[kind] || 'buff';
+      this._flashAccessory('PurifyCrystal');
+      this.clean(target, false, kind);
+      this.emit('desc', '净化水晶：清除' + targetLabel + '一层' + kindLabel);
+      const pending = this.s.pendingPurifyCrystal;
+      this.s.pendingDialog = null;
+      this.s.pendingPurifyCrystal = null;
+      return this._proceedToDefend(pending.damage, pending.skip, pending.unblock, pending.card, pending.delay);
+    }
+
+    endAi() {
+      this.trimAI();
+      if (this.s.ai.burn) {
+        let dmg = this.s.ai.burn;
+        this.s.ai.burn--;
+        if (this.name(this.s.ai) !== 'Leon') {
+          this.emit('burnSettle', `-${dmg}[灼烧]，-1[灼烧层数]`, null, { who: 'ai', target: 'ai', amount: dmg, kind: 'burn' });
+          this.s.ai.hp = Math.max(0, this.s.ai.hp - dmg);
+          this.s.ai.alive = this.s.ai.hp > 0;
+        }
+      }
+      this.s.turn++;
+      this.s.phase = 'PLAYER_PLAY';
+      this.s.busy = false;
+      this.s.activeAttacker = 'player';
+      this.s.pendingAttack = null;
+      this.s.pendingAIBridge = null;
+      this.s.pendingAIContinue = null;
+      this.s.forceEndAITurn = false;
+      this.s.attackDebuffSnapshot = null;
+      this.s.atkCard = this.s.defCard = null;
+      this.s.atkOwner = this.s.defOwner = null;
+      this.s.revealCards = [];
+      this.s.hasPlayedThisTurn = false;
+      this.s.aiTurnStarted = false;
+      this.s.aiHasPlayed = false;
+      this.s.bindUsedThisTurn = false;
+      this._energyShieldAppliedThisTurn = false;
+      const hands = this.handCounts();
+      this.silentDraws(function () {
+        this.fillHands(false);
+        this.turnStart('player');
+        this._tryEnergyShieldOnAttack();
+      });
+      this.emitDrawDiff(hands);
+      this.check();
+    }
+
+    dispatch(method, params = {}) {
+      if (method === 'selectAdventureBattle') return this.startAdventure(params);
+      if (method === 'selectAdventureBattle1v2') return this.startAdventure1v2(params);
+      if (method === 'finishAdventureBattle') return this.finishAdventureBattle();
+      if (method === 'useAdventureCombatItem') {
+        const choice = params.choices != null ? params.choices : (params.choice || null);
+        return this.useAdventureCombatItem(params.itemIndex || 0, choice);
+      }
+      if (method === 'chooseTrophyDisarm') return this.chooseTrophyDisarm(params.target, params.index);
+      if (method === 'doEndTurn' && this.s && this.s.is1v2) this._returnBorrowedCardsFromHand();
+      if (method === 'setAttackModBonus') { this.s.attackModBonus = params.bonus || 0; return this.state(); }
+      if (method === 'choosePurifyCrystal') return this.choosePurifyCrystal(params.choice || params);
+      if (method === 'useDemonPact') return this.useDemonPact();
+      return super.dispatch(method, params);
+    }
+  }
+
+  window.AdventureBattleEngine = AdventureBattleEngine;
+})();

@@ -40,12 +40,14 @@ context.window = context;
 
 for (const file of [
   ...characterFiles,
-  path.join(gameRoot, 'js', 'combat_events.js'),
-  path.join(gameRoot, 'js', 'engine_piles.js'),
-  path.join(gameRoot, 'js', 'engine_status.js'),
-  path.join(gameRoot, 'js', 'engine_damage.js'),
-  path.join(gameRoot, 'js', 'engine_modes.js'),
-  path.join(gameRoot, 'js', 'engine.js'),
+  path.join(gameRoot, 'js', 'combat', 'events.js'),
+  path.join(gameRoot, 'js', 'combat', 'piles.js'),
+  path.join(gameRoot, 'js', 'combat', 'status.js'),
+  path.join(gameRoot, 'js', 'combat', 'damage.js'),
+  path.join(gameRoot, 'js', 'combat', 'modes.js'),
+  path.join(gameRoot, 'js', 'combat', 'deck_port.js'),
+  path.join(gameRoot, 'js', 'combat', 'turn_machine.js'),
+  path.join(gameRoot, 'js', 'combat', 'engine.js'),
   ...aiFiles
 ]) {
   vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
@@ -296,7 +298,7 @@ test('manual multi-card discard preserves cards and emits animation events', () 
   assert.deepEqual(Array.from(discardEvents, event => event.handIndex), [2, 0]);
 });
 
-test('Moze can use value 6 without guard and Saiki saves value 7 for bleed', () => {
+test('Moze can use value 6 without guard and Saiki 7 is always playable for drain', () => {
   const moze = setup('Moze');
   const six = number(6);
   moze.h.ai = [number(1), six];
@@ -306,5 +308,5 @@ test('Moze can use value 6 without guard and Saiki saves value 7 for bleed', () 
   const seven = number(7);
   const two = number(2);
   saiki.h.ai = [seven, two];
-  assert.equal(saiki.chooseAIPlay(saiki.s.discardTop), two);
+  assert.equal(saiki.chooseAIPlay(saiki.s.discardTop), seven);
 });

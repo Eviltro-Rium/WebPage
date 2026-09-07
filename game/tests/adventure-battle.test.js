@@ -5,6 +5,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const gameRoot = path.resolve(__dirname, '..');
+const { expand } = require('./_load');
 const context = vm.createContext({
   console,
   Math,
@@ -22,44 +23,18 @@ const context = vm.createContext({
 });
 context.window = context;
 
-const sources = [
-  'js/characters/registry.js',
-  'js/characters/ryan.js',
-  'js/characters/leon.js',
-  'js/characters/chan.js',
-  'js/characters/saiki.js',
-  'js/characters/blaze.js',
-  'js/characters/serenity.js',
-  'js/characters/moze.js',
-  'js/characters/knight.js',
-  'js/ai/registry.js',
-  'js/ai/knight_ai.js',
-  'js/ai/leon_ai.js',
-  'js/ai/ryan_ai.js',
-  'js/ai/blaze_ai.js',
-  'js/ai/serenity_ai.js',
-  'js/ai/saiki_ai.js',
-  'js/ai/moze_ai.js',
-  'js/ai/chan_ai.js',
-  'js/engine.js',
-  'js/engine_lord.js',
-  'adventure/js/adventure_registry.js',
-  'adventure/js/monster.js',
-  'adventure/js/monsters/castle.js',
-  'adventure/js/boss.js',
-  'adventure/js/monster_registry.js',
-  'adventure/js/adventure_deck.js',
-  'adventure/js/items/item_defs.js',
-  'adventure/js/currency.js',
-  'adventure/js/room.js',
-  'adventure/js/map.js',
-  'adventure/js/adventure_deck.js',
-  'adventure/js/adventure_engine.js',
-  'adventure/js/adventure_battle_engine.js',
-  'js/bridge.js',
-  'js/ui.js',
-  'adventure/js/combat_bridge.js'
-];
+const sources = expand(['characters', 'ai', 'combat', 'adventure_content']).concat([
+  'adventure/js/map/map.js',
+  'adventure/js/deck/adventure_deck.js',
+  'adventure/js/engine/adventure_engine.js',
+  'adventure/js/engine/shop.js',
+  'adventure/js/engine/rewards.js',
+  'adventure/js/engine/inventory.js',
+  'adventure/js/engine/combat_legacy.js',
+  'adventure/js/battle/battle_engine.js',
+  'js/ui/ui.js',
+  'adventure/js/battle/combat_bridge.js'
+]);
 
 for (const relative of sources) {
   const file = path.join(gameRoot, relative);
@@ -603,6 +578,52 @@ test('ArmorBreakSpear makes defensible attack unblockable via attack mod choice'
 
   assert.equal(engine.s.pendingAttackMod, null);
   assert.equal(engine.s.phase, 'AI_DEFEND');
+  assert.equal(engine.s.pendingAttack.unblock, true);
+});
+
+test('Otto crit is optional after attack mod and blocked by ArmorBreakSpear', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure({
+    player: 'Otto',
+    opponent: 'CastleWolf',
+    playerState: { hp: 100, maxHp: 100, crit: 1 },
+    playerPile: { deck: [], hand: [number(1, 'RED')], discard: [], handLimit: 5 },
+    discardTop: number(1, 'RED'),
+    discardTopOwner: 'player'
+  });
+  engine.s.player.crit = 1;
+  engine.s.pendingAttack = { damage: 5, unblock: false };
+  engine.s.pendingAttackMod = { card: number(1, 'RED'), skip: false, unblock: false, delay: 0 };
+  engine.s.phase = 'ATTACK_MOD_CHOICE';
+  engine.s.busy = false;
+
+  engine.dispatch('resolveAttackModChoice', { bonus: 0 });
+  assert.equal(engine.s.phase, 'CRIT_CHOICE');
+  assert.equal(engine.s.player.crit, 1);
+
+  engine.dispatch('resolveCritChoice', { use: false });
+  assert.equal(engine.s.phase, 'AI_DEFEND');
+  assert.equal(engine.s.player.crit, 1);
+  assert.equal(engine.s.pendingAttack.unblock, false);
+
+  engine.s.player.crit = 1;
+  engine.s.pendingAttack = { damage: 5, unblock: false };
+  engine.s.pendingAttackMod = { card: number(1, 'RED'), skip: false, unblock: false, delay: 0 };
+  engine.s.phase = 'ATTACK_MOD_CHOICE';
+  engine.dispatch('resolveAttackModChoice', { bonus: 0 });
+  engine.dispatch('resolveCritChoice', { use: true });
+  assert.equal(engine.s.player.crit, 0);
+  assert.equal(engine.s.pendingAttack.unblock, true);
+  assert.equal(engine.s.defenseSkipped, true);
+
+  engine.s.player.crit = 1;
+  engine.s.pendingAttack = { damage: 5, unblock: false };
+  engine.s.pendingAttackMod = { card: number(1, 'RED'), skip: false, unblock: false, delay: 0 };
+  engine.s.phase = 'ATTACK_MOD_CHOICE';
+  engine.dispatch('resolveAttackModChoice', { bonus: 0, unblock: true });
+  assert.equal(engine.s.phase, 'AI_DEFEND');
+  assert.equal(engine.s.player.crit, 1);
   assert.equal(engine.s.pendingAttack.unblock, true);
 });
 

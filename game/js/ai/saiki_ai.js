@@ -5,7 +5,7 @@
     attackScore(eng, v, c, x) {
       if (v === 0) return x.oppBleed >= 2 ? 92 : x.oppBleed ? 76 : 58;
       if (v === 4) return x.oppBleed ? 88 : 54;
-      if (v === 7) return x.oppBleed >= 2 ? 86 : x.oppBleed ? 68 : -100;
+      if (v === 7) return 72 + Math.min(18, (x.oppBleed || 0) * 6);
       if (v === 5) return x.self.hp <= 20 ? 82 : x.self.hp <= 50 ? 72 : x.oppHand ? 66 : 54;
       if (v === 6) {
         const judges = x.hand.filter(card => card !== c && card.isNumberCard);
@@ -32,14 +32,13 @@
       if (!c.isNumberCard) return null;
       if (c.value === 0) return x.oppBleed ? 84 : 64;
       if (c.value === 4 && x.oppBleed) return 82;
-      if (c.value === 7) return x.oppBleed ? 78 : 30;
+      if (c.value === 7) return 70 + Math.min(16, (x.oppBleed || 0) * 5);
       if (c.value === 6 && x.hand.some(card => card !== c && card.isNumberCard)) return 72;
       return 28 + c.value * 5 + (eng.effective(c) === 'YELLOW' ? 8 : 0);
     },
 
     skip(eng, c, x, phase) {
       if (phase !== 'attack') return false;
-      if (c.value === 7 && !x.oppBleed) return true;
       if (c.value === 6 && !x.hand.some(card => card !== c && card.isNumberCard)) return true;
       return false;
     },

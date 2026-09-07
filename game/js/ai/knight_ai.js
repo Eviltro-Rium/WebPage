@@ -40,7 +40,7 @@
       return false;
     },
 
-    specialEffect(eng, n, v, c, a) {
+    specialEffect(eng, n, v, c, a, t, owner) {
       if (v !== 0) return null;
 
       const chaosCount = [
@@ -56,10 +56,15 @@
         return { d: 8, skip: false, unblock: true };
       }
 
-      a.chaos_red = true;
-      a.chaos_yellow = true;
-      a.chaos_blue = true;
-      a.chaos_green = true;
+      const who = owner || 'ai';
+      const gained = [];
+      for (const [key, label] of [['chaos_red', '红'], ['chaos_yellow', '黄'], ['chaos_blue', '蓝'], ['chaos_green', '绿']]) {
+        if (!a[key]) gained.push([key, label]);
+        a[key] = true;
+      }
+      for (const [key, label] of gained) {
+        eng.emit('buff', '[混沌-' + label + ']', null, { who, kind: key, stacks: 1 });
+      }
       return { d: 6, skip: false, unblock: false };
     }
   });

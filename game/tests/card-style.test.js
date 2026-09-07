@@ -50,7 +50,7 @@ const context = vm.createContext({
   Image: FakeImage,
   queueMicrotask,
   document: {
-    currentScript: { src: 'file:///C:/MyWeb/game/js/card_style.js' },
+    currentScript: { src: 'file:///C:/MyWeb/game/js/ui/card_style.js' },
     createElement(tag) {
       assert.equal(tag, 'canvas');
       return makeCanvas();
@@ -59,7 +59,7 @@ const context = vm.createContext({
 });
 context.window = context;
 
-const source = fs.readFileSync(path.resolve(__dirname, '../js/card_style.js'), 'utf8');
+const source = fs.readFileSync(path.resolve(__dirname, '../js/ui/card_style.js'), 'utf8');
 vm.runInContext(source, context, { filename: 'card_style.js' });
 
 function number(value, color, white = false) {

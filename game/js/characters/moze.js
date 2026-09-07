@@ -44,7 +44,7 @@
       let remaining = d, desc = '';
       if (v === 1) {
         let b = Math.ceil(d / 2);
-        defender.guard = Math.min(5, defender.guard + 1);
+        eng.addGuard(defender, 1);
         remaining = Math.max(0, d - b);
         desc = `Moze 1牌：防御${b}点+1层守护`;
       } else if (v === 2) {
@@ -53,13 +53,13 @@
         remaining = d;
         desc = `Moze 2牌：反击${cd}点`;
       } else if (v === 3) {
-        defender.guard = Math.min(5, defender.guard + 1);
+        eng.addGuard(defender, 1);
         heal(defender, Math.ceil(defender.guard / 2));
         remaining = d;
         desc = `Moze 3牌：1层守护+恢复${Math.ceil(defender.guard / 2)}点`;
       } else if (v === 0) {
         let b = Math.ceil(d / 2);
-        defender.guard = Math.min(5, defender.guard + 2);
+        eng.addGuard(defender, 2);
         let cd = defender.guard * 2;
         hurt(opponent, cd);
         remaining = Math.max(0, d - b);

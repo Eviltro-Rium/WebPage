@@ -7,9 +7,11 @@
     passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌',
     init() { return { chaos_red: false, chaos_yellow: false, chaos_blue: false, chaos_green: false }; },
     turnStart(eng, ch, w) {
-      let had = [ch.chaos_red ? '红' : '', ch.chaos_yellow ? '黄' : '', ch.chaos_blue ? '蓝' : '', ch.chaos_green ? '绿' : ''].filter(Boolean).join('');
+      const had = !!(ch.chaos_red || ch.chaos_yellow || ch.chaos_blue || ch.chaos_green);
       ch.chaos_red = false; ch.chaos_yellow = false; ch.chaos_blue = false; ch.chaos_green = false;
-      if (had) eng.emit('desc', ch.name + '的混沌[' + had + ']已清除');
+      if (had) {
+        eng.emit('buff', '[混沌重制]', null, { who: w, kind: 'chaos_reset', stacks: 0 });
+      }
     },
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs } = helpers;
@@ -59,7 +61,14 @@
             for (const k of keys) if (eng.s[k] && eng.s[k].alive) eng.hurt(eng.s[k], 8);
           }
         } else {
-          a.chaos_red = true; a.chaos_yellow = true; a.chaos_blue = true; a.chaos_green = true;
+          const gained = [];
+          for (const [key, label] of [['chaos_red', '红'], ['chaos_yellow', '黄'], ['chaos_blue', '蓝'], ['chaos_green', '绿']]) {
+            if (!a[key]) gained.push([key, label]);
+            a[key] = true;
+          }
+          for (const [key, label] of gained) {
+            eng.emit('buff', '[混沌-' + label + ']', null, { who: owner, kind: key, stacks: 1 });
+          }
           d = 6;
         }
       }
@@ -86,13 +95,23 @@
         let p = defender, chaosCount = [p.chaos_red, p.chaos_yellow, p.chaos_blue, p.chaos_green].filter(Boolean).length;
         let drain = chaosCount * 2;
         if (chaosCount >= 4) {
-          remaining = 0; hurt(opponent, drain, 'drain'); heal(defender, drain, 'drain');
+          remaining = 0;
+          if (typeof eng.drainAttack === 'function') eng.drainAttack(defender, opponent, drain, { allowAvoidance: false });
+          else { hurt(opponent, drain, 'drain'); heal(defender, drain, 'drain'); }
           desc = `Knight 0牌：4种混沌，免疫所有伤害+吸取${drain}点`;
         } else {
-          hurt(opponent, drain, 'drain'); heal(defender, drain, 'drain');
+          if (typeof eng.drainAttack === 'function') eng.drainAttack(defender, opponent, drain, { allowAvoidance: false });
+          else { hurt(opponent, drain, 'drain'); heal(defender, drain, 'drain'); }
           desc = `Knight 0牌：${chaosCount}种混沌，吸取${drain}点+补齐4种混沌`;
         }
-        p.chaos_red = true; p.chaos_yellow = true; p.chaos_blue = true; p.chaos_green = true;
+        const gained = [];
+        for (const [key, label] of [['chaos_red', '红'], ['chaos_yellow', '黄'], ['chaos_blue', '蓝'], ['chaos_green', '绿']]) {
+          if (!p[key]) gained.push([key, label]);
+          p[key] = true;
+        }
+        for (const [key, label] of gained) {
+          eng.emit('buff', '[混沌-' + label + ']', null, { who: owner, kind: key, stacks: 1 });
+        }
       }
       return { remaining, desc };
     }

@@ -25,13 +25,18 @@ context.window = context;
 const sources = [
   'js/characters/registry.js',
   'js/characters/ryan.js',
-  'adventure/js/adventure_registry.js',
-  'adventure/js/currency.js',
-  'adventure/js/room.js',
-  'adventure/js/map.js',
-  'adventure/js/adventure_deck.js',
+  'adventure/js/content/registry.js',
+  'adventure/js/content/currency.js',
+  'adventure/js/content/room.js',
+  'adventure/js/map/map.js',
+  'adventure/js/deck/adventure_deck.js',
   'adventure/js/items/item_defs.js',
-  'adventure/js/adventure_engine.js'
+  'adventure/js/items/map_effects.js',
+  'adventure/js/engine/adventure_engine.js',
+  'adventure/js/engine/shop.js',
+  'adventure/js/engine/rewards.js',
+  'adventure/js/engine/inventory.js',
+  'adventure/js/engine/combat_legacy.js'
 ];
 
 for (const relative of sources) {
@@ -606,6 +611,35 @@ test('reward room door costs two random normal beasts and accepts wuneng wildcar
   assert.equal(eng.s.pendingRoomReward.kind, room.stashedLoot.kind);
 });
 
+test('reward room only rolls once per floor and cannot be farmed after claim', () => {
+  const eng = startEngine([[0, 3]]);
+  const room = eng.s.map.get(0, 1);
+  room.doorUnlocked = true;
+  eng.move(0, 1);
+
+  const first = eng.enterCurrent();
+  assert.equal(first.ok, true);
+  assert.equal(eng.s.phase, AdventurePhase.REWARD);
+  assert.ok(eng.s.pendingRoomReward);
+  assert.ok(room.stashedLoot);
+  const locked = JSON.stringify(eng.s.pendingRoomReward);
+
+  eng.deferRoomReward();
+  eng.enterCurrent();
+  assert.equal(JSON.stringify(eng.s.pendingRoomReward), locked);
+
+  assert.equal(eng.claimRoomReward(), true);
+  assert.equal(room.rewardClaimed, true);
+  assert.equal(room.stashedLoot, null);
+
+  const farm = eng.enterCurrent();
+  assert.equal(farm.ok, true);
+  assert.equal(farm.alreadyClaimed, true);
+  assert.equal(eng.s.phase, AdventurePhase.MAP);
+  assert.equal(eng.s.pendingRoomReward, null);
+  assert.equal(room.rewardClaimed, true);
+});
+
 test('reward room rolls weighted loot matching challenge pool', () => {
   const eng = startEngine();
   const origRandom = Math.random;
@@ -649,8 +683,12 @@ test('reward room stashed loot can be claimed or deferred', () => {
   assert.equal(eng.claimRoomReward(), true);
   assert.equal(eng.s.currency.gold, goldBefore + 12);
   assert.equal(room.stashedLoot, null);
+  assert.equal(room.rewardClaimed, true);
 
+  // 领取后不能再刷；手动塞回待领也不应绕过本层已领标记以外的正常路径——
+  // 若仍有 stashedLoot 则可领同一份，但不会重新 roll。
   room.stashedLoot = { kind: 'gold', gold: 6 };
+  room.rewardClaimed = false;
   eng.enterCurrent();
   assert.equal(eng.deferRoomReward(), true);
   assert.equal(room.stashedLoot.gold, 6);

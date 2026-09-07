@@ -59,7 +59,8 @@
         eng.s.revealCards = [helpers.copy(chosen)];
         eng.emit('reveal', 'Moze 4牌守护判定', chosen, { who: owner, from: 'hand' });
         eng.discardWithEvent(chosen, owner, { from: 'reveal', faceUp: true, desc: `Moze 4牌将${eng.cardText(chosen)}置于弃牌库底` });
-        a.guard = Math.min(5, a.guard + chosen.value);
+        if (typeof eng.addGuard === 'function') eng.addGuard(a, chosen.value);
+        else a.guard = Math.min(5, (a.guard || 0) + chosen.value);
         eng.emit('desc', `Moze AI使用${eng.cardText(chosen)}并放入弃牌库底，守护提升至${a.guard}层`);
         return { d: 0, skip: true, unblock: false };
       }

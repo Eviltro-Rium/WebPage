@@ -19,10 +19,10 @@
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.forest = {
-    '*': ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia'],
-    2: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha'],
-    3: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha'],
-    4: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha']
+    '*': ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestLeech'],
+    2: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha', 'ForestLeech'],
+    3: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha', 'ForestLeech'],
+    4: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha', 'ForestLeech']
   };
 
   // ===== 丛林猴 =====
@@ -64,6 +64,7 @@
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/forest_deer.png',
+    firstStrike: true,
     attackDamage(card, ctx) {
       const v = card.value;
       if (v >= 1 && v <= 3) return 3;
@@ -89,6 +90,60 @@
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({ defendBlock: (card, incoming) => orig.defendBlock(card, incoming) + 1 })
+    }
+  });
+
+  // ===== 丛林水蛭 =====
+  R.registerMonster({
+    name: 'ForestLeech',
+    kind: '丛林水蛭',
+    hp: 18,
+    attack: 3,
+    defense: 2,
+    icon: '../icons/npc_icons/forest_leech.png',
+    attackDamage(card) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return 3;
+      return 0;
+    },
+    attackBleed(card) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return 1;
+      return 0;
+    },
+    attackDrain(card) {
+      const v = card.value;
+      if (v >= 4 && v <= 6) return 3;
+      return 0;
+    },
+    defendHeal(card) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return 2;
+      return 0;
+    },
+    defendParasite(card) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return 1;
+      return 0;
+    },
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 5 }),
+      3: orig => ({
+        attackDamage: (card, ctx) => {
+          const base = orig.attackDamage(card, ctx);
+          return base > 0 ? base + 1 : 0;
+        },
+        attackDrain: (card, ctx) => {
+          const base = orig.attackDrain(card, ctx);
+          return base > 0 ? base + 1 : 0;
+        }
+      }),
+      4: orig => ({
+        defendHeal: (card) => {
+          const base = orig.defendHeal(card);
+          return base > 0 ? base + 1 : 0;
+        }
+      })
     }
   });
 

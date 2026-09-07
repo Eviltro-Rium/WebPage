@@ -43,8 +43,9 @@
           }
         }
       } else if (v === 7) {
-        d = 2 + 2 * t.bleed;
-        heal(a, d);
+        d = 3 + (t.bleed || 0);
+        unblock = true;
+        return { d, skip, unblock, drain: d, isDrain: true };
       } else if (v === 0) {
         let totalBleed = eng.s.is1v2 ? eng.s.player.bleed + eng.s.ai.bleed + eng.s.ai2.bleed : a.bleed + t.bleed;
         let oldBleed = t.bleed;

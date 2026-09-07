@@ -170,12 +170,7 @@
 ## 相关文件
 
 定义：`game/adventure/js/items/item_defs.js`  
-持有与兽元上限：`game/adventure/js/adventure_engine.js`（`addItem`、`_syncBeastCap`、`_applyWisdomNecklaceDraw`、`_applyLifeCoreHeal`）  
-火焰之拳对战触发：`game/adventure/js/adventure_battle_engine.js`（`_tryFlameFistOnDefend`）  
-冷冻激光对战触发：`game/adventure/js/adventure_battle_engine.js`（`_tryFreezeLaserOnAttackDamage`）  
-能量盾对战触发：`game/adventure/js/adventure_battle_engine.js`（`_tryEnergyShieldOnAttack`）
-正义之锤对战触发：`game/adventure/js/adventure_battle_engine.js`（`gateAdventureAttackMod` 重写）
-净化水晶对战触发：`game/adventure/js/adventure_battle_engine.js`（`continueAfterAttackMod` 重写、`choosePurifyCrystal`）
-恶魔契约对战触发：`game/adventure/js/adventure_battle_engine.js`（`useDemonPact`）
+持有与兽元上限：`adventure/js/engine/inventory.js` / `rewards.js`（`addItem`、`_syncBeastCap` 等）
+火焰之拳等对战触发：`adventure/js/battle/battle_engine.js`
 
 一次性道具图鉴见 [consumables.md](./consumables.md)。
