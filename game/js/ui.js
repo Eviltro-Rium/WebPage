@@ -1381,31 +1381,6 @@ class GameUI {
         overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     }
 
-    _showCrystalBallChoice(cards, onChoose, onCancel) {
-        if (document.getElementById('crystal-ball-choice-dialog')) return;
-        const cardName = card => card && card.isNumberCard ? ((card.color || '') + ' ' + card.value) : (card && card.isWhite ? '白色道具牌' : '道具牌');
-        const overlay = document.createElement('div');
-        overlay.id = 'crystal-ball-choice-dialog';
-        overlay.className = 'dialog-overlay';
-        overlay.innerHTML = '<div class="dialog-box" style="max-width:430px">' +
-            '<div class="dialog-title">水晶球</div><div class="dialog-body" style="color:rgba(255,255,255,0.85);font-size:0.85rem;margin-bottom:12px">点击牌面设置放回顺序（先点击的牌放在牌库顶）</div>' +
-            '<div class="crystal-ball-cards" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px">' + cards.map((card, index) => '<button type="button" class="ctrl-btn crystal-ball-card" data-index="' + index + '">' + cardName(card) + '</button>').join('') +
-            '</div><div class="crystal-ball-order" style="min-height:24px;text-align:center;color:#c4b5fd;margin-bottom:10px">尚未排序</div><div class="dialog-buttons" style="display:flex;gap:6px;justify-content:center"><button class="ctrl-btn btn-play" id="crystal-ball-confirm" disabled>确认放回</button><button class="ctrl-btn btn-skip" id="crystal-ball-cancel">取消</button></div></div>';
-        document.body.appendChild(overlay);
-        const selected = [], orderEl = overlay.querySelector('.crystal-ball-order'), confirm = overlay.querySelector('#crystal-ball-confirm');
-        overlay.querySelectorAll('.crystal-ball-card').forEach(button => button.addEventListener('click', () => {
-            const index = Number(button.dataset.index), at = selected.indexOf(index);
-            if (at >= 0) selected.splice(at, 1); else selected.push(index);
-            button.classList.toggle('selected', selected.includes(index));
-            orderEl.textContent = selected.length ? '放回顺序：' + selected.map(i => cardName(cards[i])).join(' → ') : '尚未排序';
-            confirm.disabled = selected.length !== cards.length;
-        }));
-        const close = () => overlay.remove();
-        confirm.addEventListener('click', () => { if (selected.length === cards.length) { close(); onChoose(selected); } });
-        overlay.querySelector('#crystal-ball-cancel').addEventListener('click', () => { close(); if (onCancel) onCancel(); });
-        overlay.addEventListener('click', event => { if (event.target === overlay) { close(); if (onCancel) onCancel(); } });
-    }
-
     // Render crystal-ball choices with the same real card canvas and drag
     // ordering interaction used by Chan 5.
     _showCrystalBallChoice(cards, onChoose, onCancel) {

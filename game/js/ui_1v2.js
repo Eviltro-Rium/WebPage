@@ -1,15 +1,5 @@
 (function(){
-  const _origBuildSelect=GameUI.prototype._buildSelectScreen;
-  const _origBuildGame=GameUI.prototype._buildGameScreen;
   const _origUpdate=GameUI.prototype.updateDisplay;
-  const _origStart=GameUI.prototype._startGame;
-  const _origRenderAI=GameUI.prototype._renderAIHand;
-  const _origRenderControls=GameUI.prototype._renderControls;
-
-  GameUI.prototype._buildSelectScreen=function(){
-    if(!this._is1v2)return _origBuildSelect.call(this);
-    _origBuildSelect.call(this);
-  };
 
   GameUI.prototype._startGame1v2=async function(){
     try {
@@ -30,9 +20,6 @@
     const ai2Label=adv?'对手2':'AI2';
     const ai1HandTitle=adv?'对手手牌':'AI1 手牌';
     const ai2HandTitle=adv?'对手2手牌':'AI2 手牌';
-    const sceneLabels={castle:'城堡',desert:'沙漠',forest:'森林',ocean:'冻洋',volcano:'火山'};
-    const sceneName=sceneLabels[this.state.adventureScene]||'';
-    const stageNum=(this.state.adventureStage||this.state.stage||1);
     const gameTitle=adv?'Furry Trial 冒险':'Furry Battle 1v2';
     let html=`
       <div class="game-title">${gameTitle}</div>
@@ -155,7 +142,7 @@
     this._renderDiscardTop();
     this._renderZones();
     this._renderReveal();
-    this._renderControls1v2();
+    this._renderControls();
     this._updateAdventureInfo(s);
     this._renderAdventureItemBar(s);
     const npcDeckEl=document.getElementById('npc-deck-info');
@@ -261,10 +248,6 @@
       }
     }
   };
-
-  GameUI.prototype._renderControls1v2=function(){
-    return _origRenderControls.call(this)
-  }
 
   GameUI.prototype._playDualDiceAnimation=function(roll,target){
     return new Promise(resolve=>{
