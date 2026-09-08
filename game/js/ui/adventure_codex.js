@@ -16,23 +16,26 @@
   ];
 
   // 所有会在战斗界面显示的状态集中维护，避免规则页和冒险图鉴出现两套说明。
+  // desc 三行：堆叠上限：n / 维持效果：衰减|持续|瞬爆 / 效果说明
   const BUFF_DATA = [
-    { key: 'burn', name: '灼烧', type: '负面状态', icon: 'icons/buff_icons/burn.png', desc: '最多叠加5层。拥有灼烧的角色在自己的进攻回合结束时受到等同于层数的伤害，随后减少1层。' },
-    { key: 'bleed', name: '流血', type: '负面状态', icon: 'icons/buff_icons/bleed.png', desc: '最多叠加3层。防御方用1~3点数字牌防御时，额外承受等同于流血层数的伤害。' },
-    { key: 'poison', name: '中毒', type: '负面状态', icon: 'icons/buff_icons/poison.png', desc: '最多叠加3层。拥有中毒的角色在自己的进攻回合开始前受到等同于层数的伤害；层数不会自然减少，可被净化。' },
-    { key: 'freeze', name: '冷冻', type: '负面状态', icon: 'icons/buff_icons/freeze.png', desc: '无法防御蓝色攻击。受到蓝色攻击时只能跳过防御并承受全部伤害。' },
-    { key: 'blind', name: '致盲', type: '负面状态', icon: 'icons/buff_icons/blind.png', desc: '持续期间不能在战斗中使用一次性道具，只能等待被净化；最多1层。' },
-    { key: 'iceSeal', name: '冰封', type: '负面状态', icon: 'icons/buff_icons/ice_seal.png', desc: '最多1层。有冰封的角色在下一次补牌时少补1张牌，随后移除1层冰封；可被净化。' },
-    { key: 'bomb', name: '定时炸弹', type: '负面状态', icon: 'icons/buff_icons/time_bomb.png', desc: '初始倒计时为5。被施加者每打出1张牌倒计时减少1，归零时爆炸并受到5点伤害；可被净化。' },
-    { key: 'guard', name: '守护', type: '正面状态', icon: 'icons/buff_icons/guard.png', desc: '受到普通伤害时可消耗守护层数等额减免伤害；不能减免流血等特殊伤害。' },
-    { key: 'fly', name: '飞翔', type: '正面状态', icon: 'icons/buff_icons/fly.png', desc: '最多2层。受到伤害时可消耗1层投掷12面骰，7~12成功躲避、1~6失败；失败后可继续尝试。不能躲避攻击附带的状态。' },
-    { key: 'lush', name: '茂盛', type: '正面状态', icon: 'icons/buff_icons/lush.png', desc: '最多2层。每有1层，在自己进攻开始前恢复1点生命；可被净化移除。' },
-    { key: 'parasite', name: '寄生', type: '正面状态', icon: 'icons/buff_icons/parasite.png', desc: '最多1层。在自己进攻开始前，吸取对手1点生命（不可用守护/飞翔/道具减免）；可被净化移除。' },
-    { key: 'crit', name: '暴击', type: '正面状态', icon: 'icons/buff_icons/crit.png', desc: '角色专属的强化层数，具体效果由角色技能决定；可被净化移除。' },
-    { key: 'chaos_red', name: '混沌·红', type: '正面状态', icon: 'icons/buff_icons/chaos_red.png', desc: 'Knight专属状态。打出红色数字牌并完成防御后获得，进攻回合开始前清除；每种颜色最多1层。' },
-    { key: 'chaos_yellow', name: '混沌·黄', type: '正面状态', icon: 'icons/buff_icons/chaos_yellow.png', desc: 'Knight专属状态。打出黄色数字牌并完成防御后获得，进攻回合开始前清除；每种颜色最多1层。' },
-    { key: 'chaos_blue', name: '混沌·蓝', type: '正面状态', icon: 'icons/buff_icons/chaos_blue.png', desc: 'Knight专属状态。打出蓝色数字牌并完成防御后获得，进攻回合开始前清除；每种颜色最多1层。' },
-    { key: 'chaos_green', name: '混沌·绿', type: '正面状态', icon: 'icons/buff_icons/chaos_green.png', desc: 'Knight专属状态。打出绿色数字牌并完成防御后获得，进攻回合开始前清除；每种颜色最多1层。' }
+    { key: 'burn', name: '灼烧', type: '负面状态', icon: 'icons/buff_icons/burn.png', desc: '堆叠上限：5\n维持效果：衰减\n拥有灼烧的角色在自己的进攻回合结束时受到等同于层数的伤害，随后减少1层。' },
+    { key: 'bleed', name: '流血', type: '负面状态', icon: 'icons/buff_icons/bleed.png', desc: '堆叠上限：3\n维持效果：衰减\n防御方用0~3点数字牌防御时，额外承受等同于[流血]层数的伤害，随后减少1层流血。' },
+    { key: 'poison', name: '中毒', type: '负面状态', icon: 'icons/buff_icons/poison.png', desc: '堆叠上限：3\n维持效果：持续\n拥有中毒的角色在自己的进攻回合开始前受到等同于层数的伤害；层数不会自然减少，可被净化。' },
+    { key: 'freeze', name: '冷冻', type: '负面状态', icon: 'icons/buff_icons/freeze.png', desc: '堆叠上限：1\n维持效果：持续\n无法防御蓝色攻击。受到蓝色攻击时只能跳过防御并承受全部伤害。' },
+    { key: 'blind', name: '致盲', type: '负面状态', icon: 'icons/buff_icons/blind.png', desc: '堆叠上限：1\n维持效果：持续\n持续期间不能在战斗中使用一次性道具，只能等待被净化。' },
+    { key: 'iceSeal', name: '冰封', type: '负面状态', icon: 'icons/buff_icons/ice_seal.png', desc: '堆叠上限：1\n维持效果：衰减\n有冰封的角色在下一次补牌时少补1张牌，随后移除1层冰封；可被净化。' },
+    { key: 'bomb', name: '定时炸弹', type: '负面状态', icon: 'icons/buff_icons/time_bomb.png', desc: '堆叠上限：1\n维持效果：瞬爆\n初始倒计时为5。被施加者每打出1张牌倒计时减少1，归零时爆炸并受到5点伤害；可被净化。' },
+    { key: 'guard', name: '守护', type: '正面状态', icon: 'icons/buff_icons/guard.png', desc: '堆叠上限：5\n维持效果：持续\n受到普通伤害时可消耗守护层数等额减免伤害；不能减免流血等特殊伤害。' },
+    { key: 'fly', name: '飞翔', type: '正面状态', icon: 'icons/buff_icons/fly.png', desc: '堆叠上限：2\n维持效果：持续\n受到伤害时可消耗1层投掷12面骰，1~6成功躲避、7~12失败；失败后可继续尝试。不能躲避攻击附带的状态。' },
+    { key: 'lush', name: '茂盛', type: '正面状态', icon: 'icons/buff_icons/lush.png', desc: '堆叠上限：2\n维持效果：持续\n每有1层，在自己进攻开始前恢复1点生命；可被净化移除。' },
+    { key: 'parasite', name: '寄生', type: '正面状态', icon: 'icons/buff_icons/parasite.png', desc: '堆叠上限：1\n维持效果：持续\n在自己进攻开始前，吸取对手1点生命（不可用守护/飞翔/道具减免）；可被净化移除。' },
+    { key: 'crit', name: '暴击', type: '正面状态', icon: 'icons/buff_icons/crit.png', desc: '堆叠上限：3\n维持效果：持续\n进攻时若伤害超过4点（防御前，不含流血；含攻击修正后），可在攻击修正/破防选择之后消耗1层，使该攻击变为不可防御；若攻击本身已不可防御则不能再使用。可被净化移除。' },
+    { key: 'chaos_red', name: '混沌·红', type: '正面状态', icon: 'icons/buff_icons/chaos_red.png', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出红色数字牌并完成防御后获得，进攻回合开始前清除。' },
+    { key: 'chaos_yellow', name: '混沌·黄', type: '正面状态', icon: 'icons/buff_icons/chaos_yellow.png', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出黄色数字牌并完成防御后获得，进攻回合开始前清除。' },
+    { key: 'chaos_blue', name: '混沌·蓝', type: '正面状态', icon: 'icons/buff_icons/chaos_blue.png', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出蓝色数字牌并完成防御后获得，进攻回合开始前清除。' },
+    { key: 'chaos_green', name: '混沌·绿', type: '正面状态', icon: 'icons/buff_icons/chaos_green.png', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出绿色数字牌并完成防御后获得，进攻回合开始前清除。' },
+    { key: 'diving', name: '潜水', type: '正面状态', icon: 'icons/buff_icons/diving.png', desc: '堆叠上限：1\n维持效果：持续\n拥有潜水的角色免疫蓝色攻击（含被指定为蓝色的白牌）造成的伤害和buff施加。对手依旧可以对自己施加正面增益。冰封、诅咒等仍能命中。' },
+    { key: 'hypothermia', name: '失温', type: '负面状态', icon: 'icons/buff_icons/hypothermia.png', desc: '堆叠上限：2\n维持效果：衰减\n冻洋蓝鲸出4/5/6时，在防守方完成防御并结算伤害后，对防守方施加1层失温。当失温达到2层时，立即强制弃1张牌（玩家自选，NPC按最低优先级弃牌），随后失温削减1层。' }
   ];
 
   function stripPrefix(s) {
@@ -410,7 +413,8 @@
     html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
     html += `<div class="char-detail-hero-name">${buff.name}</div>`;
     html += `<div class="char-detail-hero-type">${buff.type}</div>`;
-    html += `<div class="char-detail-hero-passive">${buff.desc}</div>`;
+    const descLines = String(buff.desc || '').split('\n').filter(Boolean);
+    html += `<div class="char-detail-hero-passive">${descLines.map(line => formatCodexRichText(line)).join('<br>')}</div>`;
     html += '</div></div></div>';
     return html;
   }

@@ -11,13 +11,13 @@
 (function () {
   const COLORS = ['RED', 'YELLOW', 'BLUE', 'GREEN'];
 
-  const num = (color, value, white = false) => ({
+  const num = (color, value, white = false, extras = null) => Object.assign({
     value, color, drawTwo: false, drawThree: false, potion: false,
     purify: false, superPurify: false, swapHand: false, shuffleToDeck: false,
     isBlack: false, isWhite: white, isNumberCard: true, isItemCard: false
-  });
+  }, extras || {});
 
-  const item = (color, k) => ({
+  const item = (color, k, extras = null) => Object.assign({
     value: -1, color, drawTwo: k === 'drawTwo', drawThree: k === 'drawThree',
     potion: k === 'potion', magic: k === 'magic', greenMagic: k === 'greenMagic',
     magicColor: k === 'greenMagic' ? 'green' : (k === 'magic' ? 'purple' : null),
@@ -25,7 +25,7 @@
     swapHand: k === 'swap', shuffleToDeck: k === 'shuffle',
     isBlack: color === 'BLACK', isWhite: color === 'WHITE',
     isNumberCard: false, isItemCard: true
-  });
+  }, extras || {});
 
   // 战利白卡：属于玩家牌库，不占用一次性道具槽；打出后进入弃牌库，
   // 因而可以在牌库洗回后反复抽到。它仍按白牌规则自动指定当前颜色。
@@ -69,13 +69,14 @@
 
   function makeNpcDeck(opts = {}) {
     const d = [];
+    const npc = { npcCard: true };
     const whiteZeros = Math.max(0, Number(opts.whiteZeros) || 0);
-    for (let i = 0; i < whiteZeros; i++) d.push(num('WHITE', 0, true));
-    for (let v = 1; v <= 3; v++) for (let n = 0; n < 5; n++) d.push(num('WHITE', v, true));
-    for (let v = 4; v <= 6; v++) for (let n = 0; n < 3; n++) d.push(num('WHITE', v, true));
+    for (let i = 0; i < whiteZeros; i++) d.push(num('WHITE', 0, true, npc));
+    for (let v = 1; v <= 3; v++) for (let n = 0; n < 5; n++) d.push(num('WHITE', v, true, npc));
+    for (let v = 4; v <= 6; v++) for (let n = 0; n < 3; n++) d.push(num('WHITE', v, true, npc));
     // Purple magic is the original magic card; green magic cleanses the caster.
-    d.push(item('WHITE', 'magic'), item('WHITE', 'magic'));
-    d.push(item('WHITE', 'greenMagic'), item('WHITE', 'greenMagic'));
+    d.push(item('WHITE', 'magic', npc), item('WHITE', 'magic', npc));
+    d.push(item('WHITE', 'greenMagic', npc), item('WHITE', 'greenMagic', npc));
     return shuffle(d);
   }
 
@@ -157,6 +158,7 @@
           borrowedMonster: !!c.borrowedMonster,
           borrowedFrom: c.borrowedFrom || null,
           borrowedMonsterName: c.borrowedMonsterName || null,
+          npcCard: !!c.npcCard,
           isBlack: c.isBlack,
           isWhite: c.isWhite,
           isNumberCard: c.isNumberCard,

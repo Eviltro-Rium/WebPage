@@ -761,7 +761,7 @@
           break;
         case 'crit':
           from.crit--;
-          to.crit = (to.crit || 0) + 1;
+          to.crit = Math.min(3, (to.crit || 0) + 1);
           this.emit('buff', '+1[暴击]', null, { who: wTo, kind: 'crit', stacks: to.crit });
           break;
         case 'lush':

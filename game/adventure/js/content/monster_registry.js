@@ -44,6 +44,8 @@
       effect(eng, v, c, a, t, owner, helpers) {
         const { heal, guard, fly, bleed, poison, clearPositiveBuffs, draw } = helpers;
         let d = 0, skip = false, unblock = false, drain = 0;
+        // 冻洋蓝鲸专属效果：仅当攻击方是 FrozenWhale NPC 时触发
+        const isFrozenWhale = a && (a === eng.s.ai || a === eng.s.ai2) && eng.name && eng.name(a) === 'FrozenWhale';
 
         if (c && (c.magic || c.greenMagic || c.magicColor)) {
           heal(a, AdvR.getBoss(mod.name) ? 5 : 3);
@@ -67,6 +69,38 @@
         }
         if (typeof mod.attackUnblockable === 'function') {
           unblock = mod.attackUnblockable(c);
+        }
+        if (isFrozenWhale && typeof mod.attackAoEOtherChars === 'function') {
+          const aoeDmg = mod.attackAoEOtherChars(c);
+          if (aoeDmg > 0) {
+            // AOE deferred to settleAIAttack; only fire when there are OTHER characters to hit.
+            // In 1v1 adventure, FrozenWhale is the only enemy → no one else to AOE.
+            if (eng.s && eng.s.pendingAttack) {
+              const victims = [];
+              if (a === eng.s.player) {
+                if (eng.s.ai) victims.push('ai');
+                if (eng.s.is1v2 && eng.s.ai2) victims.push('ai2');
+              } else if (a === eng.s.ai) {
+                if (eng.s.player) victims.push('player');
+                if (eng.s.is1v2 && eng.s.ai2) victims.push('ai2');
+              } else if (a === eng.s.ai2) {
+                if (eng.s.ai) victims.push('ai');
+                if (eng.s.player) victims.push('player');
+              }
+              if (victims.length > 0) {
+                eng.s.pendingAttack.aoeTargets = victims;
+                eng.s.pendingAttack.aoeDamage = aoeDmg;
+              }
+            }
+          }
+        }
+        // 冻洋蓝鲸：4/5/6 失温在防御结束后施加，记录到 pendingAttack
+        if (isFrozenWhale && typeof mod.attackHypothermia === 'function' && eng.s && eng.s.pendingAttack) {
+          const hyAmt = mod.attackHypothermia(c);
+          if (hyAmt > 0) {
+            eng.s.pendingAttack.hypothermiaTarget = attackerKey === 'player' ? 'player' : 'ai';
+            eng.s.pendingAttack.hypothermiaAmount = hyAmt;
+          }
         }
         if (typeof mod.attackGuard === 'function') {
           const g = mod.attackGuard(c);
@@ -136,6 +170,15 @@
             eng.emit('buff', '+' + l + '[茂盛]', null, { who, kind: 'lush', stacks: a.lush });
           }
         }
+        // 冻洋蓝鲸专属：获得潜水（上限1）
+        if (typeof mod.attackGainDiving === 'function' && mod.attackGainDiving(c)) {
+          if (!a.diving) {
+            a.diving = true;
+            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+            eng.emit('buff', '[潜水]', null, { who, kind: 'diving', stacks: 1 });
+          }
+        }
+        // 冻洋蓝鲸专属：对场上所有其他角色造成不可防御伤害（4/5/6）
         if (typeof mod.attackDrawSelf === 'function' && mod.attackDrawSelf(c)) {
           if (draw) draw(owner, 1, true);
           else eng.draw(owner, 1, true);
@@ -539,6 +582,18 @@
     if (mod.name === 'CastleBat' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
       return '吸取' + (2 + stageBonus) + '+玩家[流血]层数点[生命]（不可防御）';
+    }
+    // FrozenWhale: AoE on 4/5/6, diving on 1/2/3, deferred hypothermia (ocean.md).
+    if (mod.name === 'FrozenWhale' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成' + (2 + stageBonus) + '点[伤害]，获得[潜水]';
+      }
+      if (v >= 4 && v <= 6) {
+        return '对场上所有角色造成' + (4 + stageBonus) + '点[伤害]（不可防御），防御结束后对对手施加1层[失温]';
+      }
+      return '无进攻效果';
     }
     let parts = [];
     let dmg = 0;

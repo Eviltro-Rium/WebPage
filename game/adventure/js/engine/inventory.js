@@ -56,7 +56,7 @@
     },
     addCrit(n) {
       if (n <= 0) return;
-      this.s.player.crit = Math.min(2, (this.s.player.crit || 0) + n);
+      this.s.player.crit = Math.min(3, (this.s.player.crit || 0) + n);
       this._log('玩家暴击+' + n + '（当前' + this.s.player.crit + '层）');
       this.emit('buff', '+' + n + '[暴击]', null, { who: 'player', kind: 'crit', stacks: this.s.player.crit });
     },

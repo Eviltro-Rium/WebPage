@@ -148,27 +148,36 @@
     return kind;
   }
 
-  function cardDescription(card) {
+  function isNpcWhiteCard(card, opts) {
+    if (!card || card.trophyWhite) return false;
+    if (!(card.isWhite || card.color === 'WHITE')) return false;
+    return !!(opts && opts.isNpc)
+      || !!(card.npcCard || card.borrowedMonster || card.source === 'npc');
+  }
+
+  function cardDescription(card, opts) {
     const color = { RED: '红色', YELLOW: '黄色', BLUE: '蓝色', GREEN: '绿色', BLACK: '黑色', WHITE: '白色' }[card.color] || '';
     const trophy = card.trophyWhite && typeof window !== 'undefined' && window.AdventureRegistry && card.trophyName
       ? window.AdventureRegistry.getItem(card.trophyName) : null;
     const content = card.isNumberCard ? `${card.value}点数字牌` : (trophy ? trophy.displayName : ITEM_META[itemKind(card)].aria + '牌');
     const chosen = card.chosenColor && COLOR_SHORT[card.chosenColor] ? `，指定${COLOR_SHORT[card.chosenColor]}色` : '';
-    return color + content + chosen;
+    const npc = isNpcWhiteCard(card, opts) ? '（怪物）' : '';
+    return color + content + chosen + npc;
   }
 
-  function renderCard(card, w, h, selected) {
+  function renderCard(card, w, h, selected, opts) {
     card = normalizeCard(card);
     const c = document.createElement('canvas');
     c.width = w; c.height = h;
     c.className = 'card-canvas' + (selected ? ' selected' : '');
     c.setAttribute('role', 'img');
-    c.setAttribute('aria-label', cardDescription(card));
+    c.setAttribute('aria-label', cardDescription(card, opts));
     if (selected) c.setAttribute('aria-selected', 'true');
     const g = c.getContext('2d');
     g.imageSmoothingEnabled = true;
     g.imageSmoothingQuality = 'high';
     const r = Math.min(CARD_RADIUS, w * 0.16);
+    const npcWhite = isNpcWhiteCard(card, opts);
     const col = CARD_COLORS[card.color] || CARD_COLORS.BLACK;
     const hasChosen = !!(card.chosenColor && (card.isBlack || card.isWhite));
     const chosenCol = hasChosen ? CARD_COLORS[card.chosenColor] : null;
@@ -191,6 +200,16 @@
 
     g.fillStyle = 'rgba(255,255,255,0.12)';
     g.fillRect(0, 0, w, Math.max(1, h * 0.018));
+
+    // Monster whites share the same cream face; only a left stripe marks them.
+    if (npcWhite) {
+      const stripeW = Math.max(3, w * 0.07);
+      const stripeGrad = g.createLinearGradient(0, 0, stripeW, 0);
+      stripeGrad.addColorStop(0, 'rgba(31,41,55,0.92)');
+      stripeGrad.addColorStop(1, 'rgba(31,41,55,0.18)');
+      g.fillStyle = stripeGrad;
+      g.fillRect(0, h * 0.12, stripeW, h * 0.76);
+    }
 
     g.restore();
 
@@ -252,7 +271,7 @@
       g.font = `700 ${Math.max(7, w * 0.13)}px "Inter", "Segoe UI", sans-serif`;
       g.textAlign = 'left'; g.textBaseline = 'top';
       g.fillStyle = isSurfaceLight ? 'rgba(35,39,46,0.78)' : 'rgba(255,255,255,0.88)';
-      g.fillText(value, RIM + 3, RIM + 2);
+      g.fillText(value, RIM + 3 + (npcWhite ? Math.max(2, w * 0.04) : 0), RIM + 2);
     } else {
       const kind = itemKind(card);
       const meta = ITEM_META[kind];
@@ -283,11 +302,11 @@
         g.fillText(card.trophyWhite ? (TROPHY_LABELS[card.trophyName] || 'TROPHY WHITE') : meta.label, centerX, labelY);
       }
 
-      const cornerMark = (card.isBlack || card.isWhite) ? '◆' : meta.fallback;
+      const cornerMark = npcWhite ? '◈' : ((card.isBlack || card.isWhite) ? '◆' : meta.fallback);
       g.font = `600 ${Math.max(6, w * 0.105)}px "Inter", "Segoe UI Symbol", sans-serif`;
       g.textAlign = 'left'; g.textBaseline = 'top';
       g.fillStyle = isSurfaceLight ? 'rgba(35,39,46,0.76)' : 'rgba(255,255,255,0.84)';
-      g.fillText(cornerMark, RIM + 3, RIM + 3);
+      g.fillText(cornerMark, RIM + 3 + (npcWhite ? Math.max(2, w * 0.04) : 0), RIM + 3);
     }
 
     return c;
@@ -348,6 +367,7 @@
     CARD_COLORS,
     COLOR_SHORT,
     normalizeCard,
+    isNpcWhiteCard,
     renderCard,
     renderCardBack,
     roundRect,

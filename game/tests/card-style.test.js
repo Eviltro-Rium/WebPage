@@ -118,3 +118,24 @@ test('card back uses the same dimensions and accessibility contract', () => {
   assert.equal(canvas.className, 'card-back-canvas');
   assert.equal(canvas.getAttribute('aria-label'), '卡牌背面');
 });
+
+test('monster white cards use canvas identity instead of a CSS black rim class', () => {
+  const npc = Object.assign(number(3, 'WHITE', true), { npcCard: true });
+  const player = number(3, 'WHITE', true);
+  const trophy = item('WHITE', { trophyWhite: true, trophyName: 'BurnTrophy' });
+
+  const npcCanvas = context.CardStyle.renderCard(npc, 70, 100, false);
+  const playerCanvas = context.CardStyle.renderCard(player, 70, 100, false);
+  const trophyCanvas = context.CardStyle.renderCard(trophy, 70, 100, false);
+
+  assert.equal(npcCanvas.className, 'card-canvas');
+  assert.equal(playerCanvas.className, 'card-canvas');
+  assert.equal(trophyCanvas.className, 'card-canvas');
+  assert.match(npcCanvas.getAttribute('aria-label'), /怪物/);
+  assert.doesNotMatch(playerCanvas.getAttribute('aria-label'), /怪物/);
+  assert.doesNotMatch(trophyCanvas.getAttribute('aria-label'), /怪物/);
+  assert.equal(context.CardStyle.isNpcWhiteCard(npc), true);
+  assert.equal(context.CardStyle.isNpcWhiteCard(player), false);
+  assert.equal(context.CardStyle.isNpcWhiteCard(trophy), false);
+  assert.equal(context.CardStyle.isNpcWhiteCard(player, { isNpc: true }), true);
+});

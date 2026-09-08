@@ -114,8 +114,7 @@ class DialogManager {
                 btn.className = 'card-choice';
                 btn.type = 'button';
                 if (typeof renderCard === 'function') {
-                    const cv = renderCard(card, 54, 78, false);
-                    if (typeof markNpcWhiteCard === 'function') markNpcWhiteCard(cv, card, true);
+                    const cv = renderCard(card, 54, 78, false, { isNpc: true });
                     btn.appendChild(cv);
                 }
                 else btn.innerHTML = `<span>${card.value || '?'}</span>`;
@@ -236,10 +235,12 @@ class DialogManager {
             if (t.ch.frozen) buffs.push(`<img src="${buffIcon('freeze')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>冷冻</span>`);
             if ((t.ch.iceSeal || 0) > 0) buffs.push(`<img src="${buffIcon('ice_seal')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>冰封</span>`);
             if (t.ch.bomb > 0) buffs.push(`<img src="${buffIcon('time_bomb')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>定时炸弹×${t.ch.bomb}</span>`);
+            if ((t.ch.hypothermia || 0) > 0) buffs.push(`<img src="${buffIcon('hypothermia')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>失温×${t.ch.hypothermia}</span>`);
             if (t.ch.guard > 0) buffs.push(`<img src="${buffIcon('guard')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>守护×${t.ch.guard}</span>`);
             if (t.ch.fly > 0) buffs.push(`<img src="${buffIcon('fly')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>飞翔×${t.ch.fly}</span>`);
             if (t.ch.crit > 0) buffs.push(`<img src="${buffIcon('crit')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>暴击×${t.ch.crit}</span>`);
             if (t.ch.lush > 0) buffs.push(`<img src="${buffIcon('lush')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>茂盛×${t.ch.lush}</span>`);
+            if (t.ch.diving) buffs.push(`<img src="${buffIcon('diving')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>潜水</span>`);
             if ((t.ch.parasite || 0) > 0) buffs.push(`<img src="${buffIcon('parasite')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>寄生×${t.ch.parasite}</span>`);
             const buffText = buffs.length ? buffs.join(' ') : '无buff';
             btn.innerHTML = `<span style="font-weight:700">${t.label}</span><span style="color:#aaa;font-size:0.85rem;margin-left:8px">${buffText}</span>`;
@@ -313,7 +314,7 @@ class DialogManager {
         const flyIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/fly.png') : 'icons/buff_icons/fly.png';
         const guardIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/guard.png') : 'icons/buff_icons/guard.png';
         if (fly > 0) {
-            addBtn(`<img src="${flyIcon}" alt=""><span>使用 1 层飞翔躲避（50%，剩余 ${fly - 1}）</span>`, { action: 'fly' });
+            addBtn(`<img src="${flyIcon}" alt=""><span>使用 1 层飞翔躲避（1-6成功，剩余 ${fly - 1}）</span>`, { action: 'fly' });
         }
         if (guard > 0) {
             const max=Math.min(guard,damage);

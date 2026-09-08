@@ -82,23 +82,14 @@ function cardLabel(card) {
     return card.value + '牌';
 }
 
-function renderCard(card, w, h, selected) {
-    const canvas = window.CardStyle && window.CardStyle.renderCard
-        ? window.CardStyle.renderCard(card, w, h, selected)
+function renderCard(card, w, h, selected, opts) {
+    return window.CardStyle && window.CardStyle.renderCard
+        ? window.CardStyle.renderCard(card, w, h, selected, opts)
         : document.createElement('canvas');
-    // Chameleon Paint temporarily puts a monster card in the player's hand.
-    // Mark it at the shared render boundary so hand, reveal and flight copies
-    // all keep the same NPC-white visual identity.
-    return markNpcWhiteCard(canvas, card);
 }
 
-// NPC hands are face-up in adventure mode. Mark their white cards so they
-// remain visually distinct from the player's white cards without changing
-// the shared card renderer or any card rules.
+// Kept for older call sites; NPC-white identity is painted by CardStyle now.
 function markNpcWhiteCard(canvas, card, isNpc = false) {
-    const isWhite = !!(card && (card.isWhite || card.color === 'WHITE'));
-    const isMonsterCard = !!(isNpc || (card && (card.borrowedMonster || card.npcCard || card.source === 'npc')));
-    if (canvas && isWhite && isMonsterCard && canvas.classList) canvas.classList.add('npc-white-card');
     return canvas;
 }
 window.markNpcWhiteCard = markNpcWhiteCard;
@@ -169,8 +160,7 @@ class AnimLayer {
             const toRect = toEl.getBoundingClientRect();
             const flyEl = document.createElement('div');
             flyEl.className = 'fly-card';
-            const cv = renderCard(card, CARD_W, CARD_H, false);
-            markNpcWhiteCard(cv, card, owner && owner !== 'player');
+            const cv = renderCard(card, CARD_W, CARD_H, false, { isNpc: !!(owner && owner !== 'player') });
             cv.style.pointerEvents = 'none';
             flyEl.appendChild(cv);
             document.body.appendChild(flyEl);
@@ -469,7 +459,7 @@ class GameUI {
                 { name: 'Serenity', hp: 80, type: '暗影', passive: '免疫冷冻；低于30生命嗜血，正常态恢复+1' },
                 { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害' },
                 { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌' },
-                { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层【暴击】使攻击不可防御' }
+                { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层【暴击】使攻击不可防御' },
             ];
         }
         this._buildSelectScreen();
@@ -1008,29 +998,31 @@ class GameUI {
             { key: 'bleed', stacks: ch.bleed, icon: 'bleed', colorClass: 'bleed-buff' },
             { key: 'poison', stacks: ch.poison || 0, icon: 'poison', colorClass: 'poison-buff' },
             { key: 'blind', stacks: ch.blind || 0, icon: 'blind', colorClass: 'blind-buff', hideCount: true },
-            { key: 'iceSeal', stacks: ch.iceSeal || 0, path: gameAssetUrl('icons/buff_icons/ice_seal.png'), label: '冰封', colorClass: 'ice-seal-buff', hideCount: true },
-            { key: 'bomb', stacks: ch.bomb || 0, path: gameAssetUrl('icons/buff_icons/time_bomb.png'), label: '炸弹', hideCount: false },
+            { key: 'iceSeal', stacks: ch.iceSeal || 0, icon: 'ice_seal', colorClass: 'ice-seal-buff', hideCount: true },
+            { key: 'bomb', stacks: ch.bomb || 0, icon: 'time_bomb', colorClass: 'bomb-mark', hideCount: false },
+            { key: 'hypothermia', stacks: ch.hypothermia || 0, icon: 'hypothermia', colorClass: 'hypothermia-buff', hideCount: false },
             { key: 'guard', stacks: ch.guard, icon: 'guard', colorClass: 'guard-buff' },
             { key: 'fly', stacks: ch.fly || 0, icon: 'fly', colorClass: 'fly-buff' },
             { key: 'lush', stacks: ch.lush || 0, icon: 'lush', colorClass: 'lush-buff' },
             { key: 'parasite', stacks: ch.parasite || 0, icon: 'parasite', colorClass: 'parasite-buff' },
-            { key: 'crit', stacks: ch.crit || 0, path: gameAssetUrl('icons/buff_icons/crit.png') },
+            { key: 'crit', stacks: ch.crit || 0, icon: 'crit' },
+            { key: 'diving', stacks: ch.diving ? 1 : 0, icon: 'diving', colorClass: 'diving-buff', hideCount: true },
             { key: 'chaos_red', stacks: ch.chaos_red ? 1 : 0, icon: 'chaos_red', hideCount: true, colorClass: 'chaos-red-buff' },
             { key: 'chaos_yellow', stacks: ch.chaos_yellow ? 1 : 0, icon: 'chaos_yellow', hideCount: true, colorClass: 'chaos-yellow-buff' },
             { key: 'chaos_blue', stacks: ch.chaos_blue ? 1 : 0, icon: 'chaos_blue', hideCount: true, colorClass: 'chaos-blue-buff' },
             { key: 'chaos_green', stacks: ch.chaos_green ? 1 : 0, icon: 'chaos_green', hideCount: true, colorClass: 'chaos-green-buff' }
         ];
-        if (ch.bloodthirst) buffs.push({ key: 'bloodthirst', stacks: 1, path: gameAssetUrl('icons/ui_icons/blood_thirsty.png'), label: '嗜血', hideCount: true });
-        if (ch.bindMark) buffs.push({ key: 'bind', stacks: 1, path: gameAssetUrl('icons/items_icons/binding.png'), label: '捆缚', hideCount: true });
+        if (ch.bloodthirst) buffs.push({ key: 'bloodthirst', stacks: 1, path: gameAssetUrl('icons/ui_icons/blood_thirsty.png'), colorClass: 'bloodthirst-buff', hideCount: true });
+        if (ch.bindMark) buffs.push({ key: 'bind', stacks: 1, path: gameAssetUrl('icons/items_icons/binding.png'), colorClass: 'bind-mark', hideCount: true });
         for (const b of buffs) {
             if (b.stacks > 0) {
                 currentKeys.push(b.key);
                 currentStacks[b.key] = b.stacks;
                 const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.png`);
-                const title = b.label || ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', blind: '致盲', iceSeal: '冰封', guard: '守护', fly: '飞翔', lush: '茂盛', parasite: '寄生', crit: '暴击', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
+                const title = ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', blind: '致盲', iceSeal: '冰封', bomb: '定时炸弹', hypothermia: '失温', guard: '守护', fly: '飞翔', lush: '茂盛', parasite: '寄生', crit: '暴击', diving: '潜水', bloodthirst: '嗜血', bind: '捆缚', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
                 const animCls = !prevSet.has(b.key) ? ' icon-appear' : '';
                 const specialClass = b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.key === 'bind' ? 'bind-mark' : b.key === 'bomb' ? 'bomb-mark' : b.colorClass || '';
-                html += `<div class="buff-icon-wrap ${specialClass}${animCls}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}${b.label ? `<span class="buff-name">${b.label}</span>` : ''}</div>`;
+                html += `<div class="buff-icon-wrap ${specialClass}${animCls}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}</div>`;
             }
         }
         const currentSet = new Set(currentKeys);
@@ -1053,8 +1045,8 @@ class GameUI {
                 const title = el.getAttribute('title');
                 const keyMap = {
                     '灼烧': 'burn', '冷冻': 'freeze', '流血': 'bleed', '中毒': 'poison', '致盲': 'blind', '冰封': 'iceSeal',
-                    '炸弹': 'bomb', '守护': 'guard', '飞翔': 'fly', '茂盛': 'lush', '寄生': 'parasite', '暴击': 'crit',
-                    '嗜血': 'bloodthirst', '捆缚': 'bind',
+                    '炸弹': 'bomb', '失温': 'hypothermia', '守护': 'guard', '飞翔': 'fly', '茂盛': 'lush', '寄生': 'parasite', '暴击': 'crit',
+                    '潜水': 'diving', '嗜血': 'bloodthirst', '捆缚': 'bind',
                     '混沌红': 'chaos_red', '混沌黄': 'chaos_yellow', '混沌蓝': 'chaos_blue', '混沌绿': 'chaos_green'
                 };
                 const key = Object.keys(keyMap).find(k => title === k);
@@ -1318,8 +1310,7 @@ class GameUI {
         for (let i = 0; i < handSize; i++) {
             const card = revealMode ? s.aiHand[i] : null;
             const focused = canPeekSkill && i === this._npcHandFocusIndex;
-            const cv = revealMode ? renderCard(card, 40, 58, focused) : renderCardBack(40, 58);
-            markNpcWhiteCard(cv, card, true);
+            const cv = revealMode ? renderCard(card, 40, 58, focused, { isNpc: true }) : renderCardBack(40, 58);
             if (revealMode && card) {
                 cv.dataset.cardId = cardId(card);
                 cv.dataset.cardMatch = cardMatchKey(card);
@@ -1746,9 +1737,8 @@ class GameUI {
         const defKey = s.defCard ? JSON.stringify(s.defCard) : 'empty';
         if (atkContainer.dataset.cardKey !== atkKey && s.atkCard) {
             atkContainer.innerHTML = '';
-            const cv = renderCard(s.atkCard, 60, 100, false);
+            const cv = renderCard(s.atkCard, 60, 100, false, { isNpc: !!(s.atkOwner && s.atkOwner !== 'player') });
             cv.classList.add('zone-card');
-            if (s.atkOwner && s.atkOwner !== 'player') markNpcWhiteCard(cv, s.atkCard, true);
             atkContainer.appendChild(cv);
             atkContainer.dataset.cardKey = atkKey;
             this._showCardSkillDesc('atk-desc', s.atkCard, s.atkOwner || 'player', false);
@@ -1760,9 +1750,8 @@ class GameUI {
 
         if (defContainer.dataset.cardKey !== defKey && s.defCard) {
             defContainer.innerHTML = '';
-            const cv = renderCard(s.defCard, 60, 100, false);
+            const cv = renderCard(s.defCard, 60, 100, false, { isNpc: !!(s.defOwner && s.defOwner !== 'player') });
             cv.classList.add('zone-card');
-            if (s.defOwner && s.defOwner !== 'player') markNpcWhiteCard(cv, s.defCard, true);
             defContainer.appendChild(cv);
             defContainer.dataset.cardKey = defKey;
             this._showCardSkillDesc('def-desc', s.defCard, s.defOwner || 'player', true);

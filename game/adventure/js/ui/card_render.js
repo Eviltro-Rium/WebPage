@@ -2,19 +2,14 @@
  * Adventure card render shim — delegates to shared CardStyle module.
  */
 (function () {
-  function renderCard(card, w, h, selected) {
-    let canvas;
+  function renderCard(card, w, h, selected, opts) {
     if (window.CardStyle && window.CardStyle.renderCard) {
-      canvas = window.CardStyle.renderCard(card, w, h, selected);
-    } else {
-      canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      canvas.className = 'card-canvas' + (selected ? ' selected' : '');
+      return window.CardStyle.renderCard(card, w, h, selected, opts);
     }
-    // Keep borrowed monster white cards marked in adventure-only renders too
-    // (the adventure shim replaces the shared global renderCard function).
-    if (typeof window.markNpcWhiteCard === 'function') return window.markNpcWhiteCard(canvas, card);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    canvas.className = 'card-canvas' + (selected ? ' selected' : '');
     return canvas;
   }
 

@@ -57,7 +57,7 @@
         let dmg = r.isItemCard ? 4 : r.value;
         if (dmg > 4) {
           eng.hurt(a, 2);
-          if (a.crit < 2) a.crit++;
+          if (a.crit < 3) a.crit++;
           eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
         }
         eng.discardWithEvent(r, owner, { from: 'reveal', faceUp: true, desc: `Otto 3牌将${eng.cardText(r)}置于弃牌库底` });
@@ -118,7 +118,7 @@
         eng.discardWithEvent(best, owner, { from: 'reveal', faceUp: true, desc: `Otto 5牌将${eng.cardText(best)}置于弃牌库底` });
         if (best.isWhite) {
           eng.heal(a, best.value);
-          if (a.crit < 2) a.crit++;
+          if (a.crit < 3) a.crit++;
           eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
           eng.emit('desc', `Otto 5牌：白牌恢复${best.value}点+1层暴击`);
           return { d: 0, skip: true, unblock: false };
@@ -129,7 +129,7 @@
 
       if (v === 6) {
         eng.hurt(a, 1);
-        if (a.crit < 2) a.crit++;
+        if (a.crit < 3) a.crit++;
         eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
         return { d: 6, skip: false, unblock: false };
       }
@@ -142,13 +142,11 @@
       }
 
       if (v === 0) {
-        let critUsed = Math.min(a.crit || 0, 2);
-        let d = 4 + critUsed * 3;
-        if (critUsed > 0) {
-          eng.hurt(a, critUsed * 2);
-          a.crit -= critUsed;
-          eng.emit('buff', `-${critUsed}[暴击]`, null, { who: owner, kind: 'crit', stacks: a.crit });
-          eng.emit('desc', `Otto 0牌：消耗${critUsed}层暴击，${d}点伤害，自伤${critUsed * 2}`);
+        let stacks = Math.min(a.crit || 0, 3);
+        let d = 4 + stacks * 3;
+        if (stacks > 0) {
+          eng.hurt(a, stacks * 2);
+          eng.emit('desc', `Otto 0牌：拥有${stacks}层暴击，${d}点伤害，自伤${stacks * 2}`);
           return { d, skip: false, unblock: false };
         }
         return { d: 4, skip: false, unblock: true };

@@ -126,7 +126,7 @@
         const text = String(desc || '');
         const n = Number(value);
         if (!Number.isFinite(n)) return null;
-        if (/飞翔/.test(text)) return n >= 7 ? 'success' : 'fail';
+        if (/飞翔/.test(text)) return n <= 6 ? 'success' : 'fail';
         if (/俄罗斯赌盘/.test(text)) return n >= 6 ? 'success' : 'fail';
         if (/成功/.test(text)) return 'success';
         if (/失败/.test(text)) return 'fail';
