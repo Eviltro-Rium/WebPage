@@ -45,7 +45,8 @@
         const { heal, guard, fly, bleed, poison, clearPositiveBuffs, draw } = helpers;
         let d = 0, skip = false, unblock = false, drain = 0;
         // 冻洋蓝鲸专属效果：仅当攻击方是 FrozenWhale NPC 时触发
-        const isFrozenWhale = a && (a === eng.s.ai || a === eng.s.ai2) && eng.name && eng.name(a) === 'FrozenWhale';
+        const isFrozenWhale = a && (a === eng.s.ai || a === eng.s.ai2) && eng.name && eng.name(a) === 'FrozenWhale'
+          || (c && c.borrowedMonster && c.borrowedMonsterName === 'FrozenWhale');
 
         if (c && (c.magic || c.greenMagic || c.magicColor)) {
           heal(a, AdvR.getBoss(mod.name) ? 5 : 3);
@@ -76,17 +77,8 @@
             // AOE deferred to settleAIAttack; only fire when there are OTHER characters to hit.
             // In 1v1 adventure, FrozenWhale is the only enemy → no one else to AOE.
             if (eng.s && eng.s.pendingAttack) {
-              const victims = [];
-              if (a === eng.s.player) {
-                if (eng.s.ai) victims.push('ai');
-                if (eng.s.is1v2 && eng.s.ai2) victims.push('ai2');
-              } else if (a === eng.s.ai) {
-                if (eng.s.player) victims.push('player');
-                if (eng.s.is1v2 && eng.s.ai2) victims.push('ai2');
-              } else if (a === eng.s.ai2) {
-                if (eng.s.ai) victims.push('ai');
-                if (eng.s.player) victims.push('player');
-              }
+              const atkKey = a === eng.s.player ? 'player' : (a === eng.s.ai2 ? 'ai2' : 'ai');
+              const victims = typeof eng._allKeysExcept === 'function' ? eng._allKeysExcept(atkKey) : [];
               if (victims.length > 0) {
                 eng.s.pendingAttack.aoeTargets = victims;
                 eng.s.pendingAttack.aoeDamage = aoeDmg;
@@ -94,11 +86,12 @@
             }
           }
         }
-        // 冻洋蓝鲸：4/5/6 失温在防御结束后施加，记录到 pendingAttack
+        // 冻洋蓝鲸：4/5/6 失温在防御结束后施加给被攻击目标，记录到 pendingAttack
         if (isFrozenWhale && typeof mod.attackHypothermia === 'function' && eng.s && eng.s.pendingAttack) {
           const hyAmt = mod.attackHypothermia(c);
           if (hyAmt > 0) {
-            eng.s.pendingAttack.hypothermiaTarget = attackerKey === 'player' ? 'player' : 'ai';
+            const hypothermiaTargetKey = t === eng.s.ai2 ? 'ai2' : (t === eng.s.ai ? 'ai' : 'player');
+            eng.s.pendingAttack.hypothermiaTarget = hypothermiaTargetKey;
             eng.s.pendingAttack.hypothermiaAmount = hyAmt;
           }
         }
@@ -168,6 +161,17 @@
             a.lush = Math.min(2, (a.lush || 0) + l);
             const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
             eng.emit('buff', '+' + l + '[茂盛]', null, { who, kind: 'lush', stacks: a.lush });
+          }
+        }
+        // 自伤：调用 attackSelfHurt(card, ctx) 返回自伤数字，bridge 通过 hurt(attacker, n) 应用
+        // 结算顺序：在主要 buff（守护/飞翔/流血/中毒/冷冻/冰封/buff 清除/茂盛）结算之后、
+        // 吸血/治疗之前执行；不绕过防守方防御；不与 buff 共享任何减免
+        if (typeof mod.attackSelfHurt === 'function') {
+          const selfAmt = Math.max(0, Number(mod.attackSelfHurt(c, ctx)) || 0);
+          if (selfAmt > 0) {
+            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+            eng.hurt(a, selfAmt);
+            eng.emit('desc', a.name + '自伤' + selfAmt + '点');
           }
         }
         // 冻洋蓝鲸专属：获得潜水（上限1）

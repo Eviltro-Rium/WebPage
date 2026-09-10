@@ -16,10 +16,10 @@
 
   GameUI.prototype._buildGameScreen1v2=function(){
     const adv=!!(this.state&&this.state.isAdventure);
-    const ai1Label=adv?'对手':'AI1';
-    const ai2Label=adv?'对手2':'AI2';
-    const ai1HandTitle=adv?'对手手牌':'AI1 手牌';
-    const ai2HandTitle=adv?'对手2手牌':'AI2 手牌';
+    const ai1Label=adv?'对手I':'对手I';
+    const ai2Label=adv?'对手II':'对手II';
+    const ai1HandTitle='对手I';
+    const ai2HandTitle='对手II';
     const gameTitle=adv?'Furry Trial 冒险':'Furry Battle 1v2';
     let html=`
       <div class="game-title">${gameTitle}</div>
@@ -45,8 +45,10 @@
         <div class="buff-icons" id="ai2-buffs"></div>
       </div>
       <div class="ai-area">
-        <div class="ai-hand-zone"><div class="zone-title">${ai1HandTitle}</div><div class="ai-hand-row" id="ai-hand"></div></div>
-        <div class="ai-hand-zone" style="border-color:#a855f7"><div class="zone-title" style="color:#c084fc">${ai2HandTitle}</div><div class="ai-hand-row" id="ai2-hand"></div></div>
+        <div class="ai-hands-stack">
+        <div class="ai-hand-zone" data-owner="ai"><div class="zone-title">${ai1HandTitle}</div><div class="ai-hand-row" id="ai-hand"></div></div>
+        <div class="ai-hand-zone" data-owner="ai2" style="border-color:#a855f7"><div class="zone-title" style="color:#c084fc">${ai2HandTitle}</div><div class="ai-hand-row" id="ai2-hand"></div></div>
+        </div>
         <div class="play-zone"><div class="play-zone-row">
           <div class="attack-zone"><div class="zone-title">进攻</div><div class="zone-cards" id="atk-cards"><span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待出牌</span></div><div class="zone-desc" id="atk-desc"></div></div>
           <div class="defend-zone"><div class="zone-title">防御</div><div class="zone-cards" id="def-cards"><span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待防御</span></div><div class="zone-desc" id="def-desc"></div></div>
@@ -64,7 +66,7 @@
       <div class="error-hint" id="error-hint"></div>
       <div class="adventure-info-bar" id="adventure-info-bar" style="display:none"></div>
       <div class="adventure-item-bar" id="adventure-item-bar" style="display:none"></div>
-      <div class="player-hand-zone"><div class="zone-title">你的手牌</div><div class="hand-row" id="player-hand"></div></div>
+      <div class="player-hand-zone"><div class="zone-title">你的</div><div class="hand-row" id="player-hand"></div></div>
       <div class="dual-dice-inline" id="dual-dice-inline" style="display:none">
         <div class="lord-dice-label">骰子索敌</div>
         <div class="lord-dice" id="dual-dice-num">?</div>
@@ -219,7 +221,9 @@
         aiEl.innerHTML='<div style="color:#ef4444;font-size:0.8rem;padding:8px">'+s.ai.name+' 已出局</div>';
       }
     }
+    let ai2Zone=document.querySelector('.ai-hands-stack > .ai-hand-zone[data-owner="ai2"]');
     let ai2El=document.getElementById('ai2-hand');
+    if(ai2Zone) ai2Zone.hidden=!s.ai2;
     if(ai2El&&s.ai2){
       ai2El.innerHTML='';
       if(s.ai2.alive){

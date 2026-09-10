@@ -880,6 +880,125 @@ test('borrowed NPC number card resolves NPC attack skill against its owner', () 
   assert.equal(engine.s.phase, 'ATTACK_MOD_CHOICE');
 });
 
+test('borrowed FrozenWhale white 6 in 1v2 applies AoE damage to all opponents', () => {
+  const engine = new AdventureBattleEngine();
+  engine.start1v2('Ryan', 'FrozenWhale', 'FrozenOceanLynx');
+  const before = { whale: engine.s.ai.hp, lynx: engine.s.ai2.hp };
+  const borrowed = number(6, 'BLUE');
+  borrowed.isWhite = true;
+  borrowed.chosenColor = 'BLUE';
+  borrowed.color = 'WHITE';
+  borrowed.borrowedMonster = true;
+  borrowed.borrowedFrom = 'ai';
+  borrowed.borrowedMonsterName = 'FrozenWhale';
+  engine.h.player = [borrowed];
+  engine.s.attackTarget = 'ai';
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.selectedCard = 0;
+  engine.play1v2();
+  assert.equal(engine.s.pendingAttack.damage, 4);
+  assert.equal(engine.s.pendingAttack.aoeTargets.length, 2);
+  assert.equal(engine.s.pendingAttack.aoeTargets[0], 'ai');
+  assert.equal(engine.s.pendingAttack.aoeTargets[1], 'ai2');
+  assert.equal(engine.s.pendingAttack.aoeDamage, 4);
+  engine.pendingSettlement = {
+    kind: 'PLAYER_ATTACK', damage: 4, bleed: 0, isDrain: false, afterEventId: engine.ver
+  };
+  engine.acknowledgeEvents(engine.ver);
+  assert.equal(engine.s.ai.hp, before.whale - 4, 'whale takes regular damage');
+  assert.equal(engine.s.ai2.hp, before.lynx - 4, 'lynx takes AoE damage');
+});
+
+test('borrowed FrozenWhale 6 in 1v2 applies AOE to non-main opponent', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure1v2({
+    player: 'Ryan',
+    opponent1: 'FrozenWhale',
+    opponent2: 'FrozenOceanLynx',
+    playerPile: { deck: [], hand: [], discard: [], handLimit: 5 },
+    discardTop: number(1, 'RED'),
+    discardTopOwner: 'player'
+  });
+  const before = { whale: engine.s.ai.hp, lynx: engine.s.ai2.hp };
+  const borrowed = number(6, 'BLUE');
+  borrowed.isWhite = true;
+  borrowed.chosenColor = 'BLUE';
+  borrowed.color = 'WHITE';
+  borrowed.borrowedMonster = true;
+  borrowed.borrowedFrom = 'ai';
+  borrowed.borrowedMonsterName = 'FrozenWhale';
+  engine.h.player = [borrowed];
+  engine.s.attackTarget = 'ai';
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.selectedCard = 0;
+  engine.s.busy = false;
+  engine.play1v2();
+  assert.equal(engine.s.pendingAttack.damage, 4);
+  assert.equal(engine.s.pendingAttack.aoeTargets.length, 2);
+  engine.pendingSettlement = {
+    kind: 'PLAYER_ATTACK', damage: 4, bleed: 0, isDrain: false, afterEventId: engine.ver
+  };
+  engine.acknowledgeEvents(engine.ver);
+  assert.equal(engine.s.ai.hp, before.whale - 4, 'whale takes regular damage');
+  assert.equal(engine.s.ai2.hp, before.lynx - 4, 'lynx takes AoE damage');
+});
+
+test('borrowed FrozenWhale 6 in 1v1 applies direct damage only', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure({
+    player: 'Ryan',
+    opponent: 'FrozenWhale',
+    playerPile: { deck: [], hand: [], discard: [], handLimit: 5 },
+    discardTop: number(1, 'RED'),
+    discardTopOwner: 'player'
+  });
+  const before = engine.s.ai.hp;
+  const borrowed = number(6, 'BLUE');
+  borrowed.isWhite = true;
+  borrowed.chosenColor = 'BLUE';
+  borrowed.color = 'WHITE';
+  borrowed.borrowedMonster = true;
+  borrowed.borrowedFrom = 'ai';
+  borrowed.borrowedMonsterName = 'FrozenWhale';
+  engine.h.player = [borrowed];
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.selectedCard = 0;
+  engine.s.busy = false;
+  engine.play();
+  assert.equal(engine.s.pendingAttack.damage, 4);
+  engine.pendingSettlement = {
+    kind: 'PLAYER_ATTACK', damage: 4, bleed: 0, isDrain: false, afterEventId: engine.ver
+  };
+  engine.acknowledgeEvents(engine.ver);
+  assert.equal(engine.s.ai.hp, before - 4, 'whale takes direct damage');
+});
+
+test('borrowed FrozenWhale white 4 applies hypothermia to the target, not self', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure({
+    player: 'Ryan',
+    opponent: 'FrozenWhale',
+    playerPile: { deck: [], hand: [], discard: [], handLimit: 5 },
+    discardTop: number(1, 'RED'),
+    discardTopOwner: 'player'
+  });
+  const borrowed = number(4, 'BLUE');
+  borrowed.isWhite = true;
+  borrowed.chosenColor = 'BLUE';
+  borrowed.color = 'WHITE';
+  borrowed.borrowedMonster = true;
+  borrowed.borrowedFrom = 'ai';
+  borrowed.borrowedMonsterName = 'FrozenWhale';
+  engine.h.player = [borrowed];
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.selectedCard = 0;
+  engine.s.busy = false;
+  engine.play();
+  assert.equal(engine.s.pendingAttack.hypothermiaTarget, 'ai', 'hypothermia lands on the target');
+  assert.equal(engine.s.pendingAttack.hypothermiaAmount, 1);
+  assert.ok(!(engine.s.player.hypothermia > 0), 'player must not gain hypothermia');
+});
+
 test('PurifyWater can clear an opponent buff', () => {
   const advEngine = new AdventureEngine();
   advEngine.s = { consumables: ['PurifyWater1'] };

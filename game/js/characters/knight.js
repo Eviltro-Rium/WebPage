@@ -54,12 +54,11 @@
         d = 4 + chaosCount * 2;
         a.chaos_red = false; a.chaos_yellow = false; a.chaos_blue = false; a.chaos_green = false;
       } else if (v === 0) {
-        if (chaosCount >= 4) {
-          d = 8; unblock = true;
-          if (eng.s.is1v2) {
-            let keys = owner === 'player' ? ['ai', 'ai2'] : ['player'];
-            for (const k of keys) if (eng.s[k] && eng.s[k].alive) eng.hurt(eng.s[k], 8);
-          }
+          if (chaosCount >= 4) {
+            d = 8; unblock = true;
+            if (eng.s.is1v2) {
+              eng.performAoeEnemies(owner, 8, {direct:true});
+            }
         } else {
           const gained = [];
           for (const [key, label] of [['chaos_red', '红'], ['chaos_yellow', '黄'], ['chaos_blue', '蓝'], ['chaos_green', '绿']]) {
@@ -96,11 +95,11 @@
         let drain = chaosCount * 2;
         if (chaosCount >= 4) {
           remaining = 0;
-          if (typeof eng.drainAttack === 'function') eng.drainAttack(defender, opponent, drain, { allowAvoidance: false });
+          if (typeof eng.performAttack === 'function') eng.performAttack({type:'drain',attacker:owner,target:owner==='player'?'ai':'player',damage:drain,allowAvoidance:false,direct:true});
           else { hurt(opponent, drain, 'drain'); heal(defender, drain, 'drain'); }
           desc = `Knight 0牌：4种混沌，免疫所有伤害+吸取${drain}点`;
         } else {
-          if (typeof eng.drainAttack === 'function') eng.drainAttack(defender, opponent, drain, { allowAvoidance: false });
+          if (typeof eng.performAttack === 'function') eng.performAttack({type:'drain',attacker:owner,target:owner==='player'?'ai':'player',damage:drain,allowAvoidance:false,direct:true});
           else { hurt(opponent, drain, 'drain'); heal(defender, drain, 'drain'); }
           desc = `Knight 0牌：${chaosCount}种混沌，吸取${drain}点+补齐4种混沌`;
         }

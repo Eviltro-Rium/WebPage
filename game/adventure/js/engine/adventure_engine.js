@@ -710,7 +710,7 @@
                     displayName: def.displayName,
                     description: def.description,
                     icon: def.icon,
-                    price: SHOP_ACCESSORY_PRICE,
+                    price: this._applyShopDiscount ? this._applyShopDiscount(SHOP_ACCESSORY_PRICE) : SHOP_ACCESSORY_PRICE,
                     refreshable: true
                   };
                 }
@@ -721,7 +721,7 @@
                   displayName: def.displayName,
                   description: def.description,
                   icon: def.icon,
-                  price: def.price || 0,
+                  price: this._applyShopDiscount ? this._applyShopDiscount(def.price || 0) : (def.price || 0),
                   refreshable: true
                 };
               })

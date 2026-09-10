@@ -52,6 +52,9 @@
       }
       engine.dealAttackHit(engine.s.player, targetChar, dmg, isDrain);
       engine.settleBleed(targetChar, pending.bleed);
+      // 冻洋蓝鲸：玩家攻击结算AOE伤害和失温（跳过主目标）
+      const pa1 = engine.s.pendingAttack || {};
+      engine.performAttack({type:'aoe',target,aoeTargets:pa1.aoeTargets,aoeDamage:pa1.aoeDamage,skipTarget:true,hypothermiaTarget:pa1.hypothermiaTarget,hypothermiaAmount:pa1.hypothermiaAmount});
       engine.resolveSerenityHalf();
       engine.afterAttack();
       if (forceEnd && !engine._allEnemiesDead()) engine.startAITurn();
@@ -73,23 +76,9 @@
       engine.dealAttackHit(attacker, engine.s.player, dmg, isDrain);
       engine.settleBleed(engine.s.player, pending.bleed);
       engine._tickBomb(bombOwner);
-      // 冻洋蓝鲸：防御结束后结算AOE伤害和失温
-      if (pending.aoeTargets && pending.aoeDamage > 0) {
-        for (const vk of pending.aoeTargets) {
-          const vc = engine.s[vk];
-          if (vc && vc.alive) {
-            engine.hurt(vc, pending.aoeDamage, false, { silent: true });
-            engine.emit('hurt', '受到' + pending.aoeDamage + '点伤害', null, { who: vk, target: vk, amount: pending.aoeDamage });
-          }
-        }
-      }
-      if (pending.hypothermiaTarget && pending.hypothermiaAmount > 0) {
-        const th = engine.s[pending.hypothermiaTarget];
-        if (th && th.alive) {
-          if (typeof engine.hypothermia === 'function') engine.hypothermia(th, pending.hypothermiaAmount);
-          else th.hypothermia = Math.min(2, (th.hypothermia || 0) + pending.hypothermiaAmount);
-        }
-      }
+      // 冻洋蓝鲸：防御结束后结算AOE伤害和失温（跳过主目标玩家）
+      const pa2 = engine.s.pendingAttack || {};
+      engine.performAttack({type:'aoe',target:'player',aoeTargets:pa2.aoeTargets,aoeDamage:pa2.aoeDamage,skipTarget:true,hypothermiaTarget:pa2.hypothermiaTarget,hypothermiaAmount:pa2.hypothermiaAmount});
       engine.resolveSerenityHalf();
       engine._grantChaosIfKnight('ai');
       if (forceEnd) engine.endAi();

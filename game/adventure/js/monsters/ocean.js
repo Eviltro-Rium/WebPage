@@ -14,10 +14,10 @@
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.ocean = {
-    '*': ['FrozenOceanLynx', 'FrozenWhale'],
-    2: ['FrozenOceanLynx', 'FrozenWhale'],
-    3: ['FrozenOceanLynx', 'FrozenWhale'],
-    4: ['FrozenOceanLynx', 'FrozenWhale']
+    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark'],
+    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark'],
+    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark'],
+    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark']
   };
 
   // ===== 冻洋猞猁 =====
@@ -118,6 +118,59 @@
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 })
+    }
+  });
+
+  // ===== 冻洋鲨 =====
+  R.registerMonster({
+    name: 'FrozenOceanShark',
+    kind: '冻洋鲨',
+    hp: 20,
+    attack: 3,
+    defense: 2,
+    icon: '../icons/npc_icons/frozen_ocean_shark.png',
+    attackDamage(card, ctx) {
+      const v = card.value;
+      const bleed = ctx.playerBleed || 0;
+      if (v >= 1 && v <= 3) return 2 * bleed;
+      if (v >= 4 && v <= 6) return 3;
+      return 0;
+    },
+    attackUnblockable(card) {
+      const v = card.value;
+      return v >= 4 && v <= 6;
+    },
+    attackBleed(card) {
+      const v = card.value;
+      return v >= 4 && v <= 6 ? 1 : 0;
+    },
+    defendCounter(card, incoming, defender, opponent) {
+      const v = card.value;
+      if (!(v >= 1 && v <= 3)) return 0;
+      return 2;
+    },
+    defendBleed(card) {
+      const v = card.value;
+      return v >= 1 && v <= 3 ? 1 : 0;
+    },
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 7 }),
+      3: orig => ({
+        attackDamage(card, ctx) {
+          const base = orig.attackDamage(card, ctx);
+          const v = card.value;
+          if (v >= 1 && v <= 3) {
+            const bleed = ctx.playerBleed || 0;
+            return 3 * bleed; // 流血层数 × 3
+          }
+          return base;
+        }
+      }),
+      4: orig => ({
+        defendBlock(card, incoming) {
+          return 2;
+        }
+      })
     }
   });
 })();

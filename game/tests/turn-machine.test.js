@@ -78,6 +78,8 @@ test('TurnMachine settles player attack after events are acknowledged', () => {
     _restoreAttackBuffs() { calls.push('restore'); },
     applyDefenderAvoidance(target, dmg) { calls.push('avoid:' + dmg); return dmg; },
     hurt(target, dmg) { calls.push('hurt:' + dmg); target.hp -= dmg; },
+    dealAttackHit(attacker, target, dmg, isDrain) { this.hurt(target, dmg); },
+    performAttack(cfg = {}) { const pa = this.s.pendingAttack || {}; if (pa.aoeTargets && pa.aoeDamage > 0) { for (const vk of pa.aoeTargets) { if (vk === cfg.target) continue; const vc = this.s[vk]; if (vc && vc.alive) this.hurt(vc, pa.aoeDamage); } } },
     settleBleed() { calls.push('bleed'); },
     resolveSerenityHalf() { calls.push('serenity'); },
     afterAttack() { calls.push('after'); },

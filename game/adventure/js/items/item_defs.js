@@ -460,6 +460,18 @@
   });
 
   R.registerItem({
+    name: 'Coupon',
+    displayName: '优惠券',
+    kind: 'accessory',
+    description: '商店所有商品价格变为原来的1/2（向上取整）',
+    icon: ICON + 'discount_coupon.png',
+    beastTradeCost: ['ben', 'wuneng', 'wuneng'],
+    price: 15,
+    maxStacks: 1,
+    shopDiscount: 2
+  });
+
+  R.registerItem({
     name: 'Bind',
     displayName: '捆缚',
     kind: 'consumable',

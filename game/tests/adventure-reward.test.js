@@ -407,6 +407,45 @@ test('shop beast slots cost 2/4 and cannot refresh', () => {
   assert.equal(refreshBeast.ok, false);
 });
 
+test('coupon halves shop prices with ceil and is single-copy accessory', () => {
+  const def = context.AdventureRegistry.getItem('Coupon');
+  assert.ok(def, 'Coupon should be registered');
+  assert.equal(def.kind, 'accessory');
+  assert.equal(def.maxStacks, 1);
+  assert.equal(JSON.stringify(def.beastTradeCost), JSON.stringify(['ben', 'wuneng', 'wuneng']));
+
+  const map = new AdventureMap([[0, 4]]);
+  const eng = new AdventureEngine();
+  eng.start(map, 'Ryan');
+  eng.addItem('Coupon');
+  assert.equal(eng.hasAccessory('Coupon'), true);
+  eng.s.currency.addGold(20);
+  eng.move(0, 1);
+  eng.enterCurrent();
+  eng.currentRoom().shopSlots = [
+    'FirstAidKit',
+    null,
+    null,
+    { kind: 'beast', beastType: 'ben' },
+    { kind: 'beast', beastType: 'wuneng' },
+    'FlameFist'
+  ];
+
+  assert.equal(eng._shopBeastPrice('ben'), 1, 'beast 2 -> ceil(2/2)=1');
+  assert.equal(eng._shopBeastPrice('wuneng'), 2, 'wuneng 4 -> ceil(4/2)=2');
+  assert.equal(eng._shopSlotPrice(5, 'FlameFist'), 8, 'accessory 15 -> ceil(15/2)=8');
+  assert.equal(eng._shopSlotPrice(0, 'FirstAidKit'), Math.ceil((context.AdventureRegistry.getItem('FirstAidKit').price || 0) / 2), 'consumable price halved with ceil');
+
+  const snap = eng.snapshot();
+  assert.equal(snap.roomInfo.shopSlots[5].price, 8, 'state display uses discounted accessory price');
+
+  const goldBefore = eng.s.currency.gold;
+  const buyBeast = eng.buyShopSlot(3);
+  assert.equal(buyBeast.ok, true);
+  assert.equal(eng.s.currency.gold, goldBefore - 1);
+  assert.equal(eng.s.currency.tokens.ben, 1);
+});
+
 test('shop refresh costs 2 gold and restocks empty slots', () => {
   const map = new AdventureMap([[0, 4]]);
   const eng = new AdventureEngine();

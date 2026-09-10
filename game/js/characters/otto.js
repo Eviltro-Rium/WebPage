@@ -8,7 +8,7 @@
     init() { return { crit: 0 }; },
     turnStart(eng, ch) {},
     effect(eng, v, c, a, t, owner, helpers) {
-      const { burn, bleed, guard, heal, draw, clearDebuffs } = helpers;
+      const { burn, bleed, guard, heal, draw, clearDebuffs, hurt } = helpers;
       let d = 0, skip = false, unblock = false;
       if (v === 1) {
         d = 4;
@@ -23,7 +23,7 @@
         return null;
       } else if (v === 6) {
         d = 6;
-        eng.hurt(a, 1);
+        hurt(a, 1);
         if (a.crit < 3) a.crit++;
         eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
       } else if (v === 7) {
@@ -34,7 +34,7 @@
         let stacks = Math.min(a.crit || 0, 3);
         if (stacks > 0) {
           d += stacks * 3;
-          eng.hurt(a, stacks * 2);
+          hurt(a, stacks * 2);
           eng.emit('desc', `Otto 0牌：拥有${stacks}层暴击，${d}点伤害，自伤${stacks * 2}`);
         } else {
           unblock = true;
@@ -42,7 +42,7 @@
       }
       return { d, skip, unblock };
     },
-    defend(eng, n, v, d, c, defender, opponent, owner, helpers) {
+    defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, burn, bleed, addGuard } = helpers;
       let remaining = d, desc = '';
       if (v === 1) {

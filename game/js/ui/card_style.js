@@ -201,14 +201,46 @@
     g.fillStyle = 'rgba(255,255,255,0.12)';
     g.fillRect(0, 0, w, Math.max(1, h * 0.018));
 
-    // Monster whites share the same cream face; only a left stripe marks them.
+    // Monster whites: purple bracket marks (top-right / bottom-left) + tiny skull bottom-right.
     if (npcWhite) {
-      const stripeW = Math.max(3, w * 0.07);
-      const stripeGrad = g.createLinearGradient(0, 0, stripeW, 0);
-      stripeGrad.addColorStop(0, 'rgba(31,41,55,0.92)');
-      stripeGrad.addColorStop(1, 'rgba(31,41,55,0.18)');
-      g.fillStyle = stripeGrad;
-      g.fillRect(0, h * 0.12, stripeW, h * 0.76);
+      const purple = '#8B5CF6';
+      const glow = 'rgba(139,92,246,0.5)';
+      const arm = Math.max(6, w * 0.2);
+      const inset = Math.max(3, w * 0.08);
+      const lw = Math.max(1.5, w * 0.045);
+      g.save();
+      g.strokeStyle = purple;
+      g.lineCap = 'round';
+      g.lineJoin = 'round';
+      g.lineWidth = lw;
+      g.shadowColor = glow;
+      g.shadowBlur = Math.max(3, w * 0.07);
+      g.beginPath();
+      g.moveTo(w - inset, inset + arm);
+      g.lineTo(w - inset, inset);
+      g.lineTo(w - inset - arm, inset);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(inset, h - inset - arm);
+      g.lineTo(inset, h - inset);
+      g.lineTo(inset + arm, h - inset);
+      g.stroke();
+      g.shadowBlur = 0;
+      const skR = Math.max(3.5, w * 0.085);
+      const skX = w - inset - skR * 0.55;
+      const skY = h - inset - skR * 0.95;
+      g.fillStyle = purple;
+      g.beginPath();
+      g.arc(skX, skY, skR, 0, Math.PI * 2);
+      g.fill();
+      g.fillRect(skX - skR * 0.5, skY + skR * 0.55, skR, skR * 0.62);
+      g.fillStyle = '#FCFBF7';
+      const eyeR = skR * 0.26;
+      g.beginPath(); g.arc(skX - skR * 0.36, skY - skR * 0.02, eyeR, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(skX + skR * 0.36, skY - skR * 0.02, eyeR, 0, Math.PI * 2); g.fill();
+      const toothW = Math.max(0.8, skR * 0.13);
+      g.fillRect(skX - toothW / 2, skY + skR * 0.55, toothW, skR * 0.62);
+      g.restore();
     }
 
     g.restore();
@@ -271,7 +303,7 @@
       g.font = `700 ${Math.max(7, w * 0.13)}px "Inter", "Segoe UI", sans-serif`;
       g.textAlign = 'left'; g.textBaseline = 'top';
       g.fillStyle = isSurfaceLight ? 'rgba(35,39,46,0.78)' : 'rgba(255,255,255,0.88)';
-      g.fillText(value, RIM + 3 + (npcWhite ? Math.max(2, w * 0.04) : 0), RIM + 2);
+      g.fillText(value, RIM + 3, RIM + 2);
     } else {
       const kind = itemKind(card);
       const meta = ITEM_META[kind];
@@ -302,11 +334,11 @@
         g.fillText(card.trophyWhite ? (TROPHY_LABELS[card.trophyName] || 'TROPHY WHITE') : meta.label, centerX, labelY);
       }
 
-      const cornerMark = npcWhite ? '◈' : ((card.isBlack || card.isWhite) ? '◆' : meta.fallback);
+      const cornerMark = (card.isBlack || card.isWhite) ? '◆' : meta.fallback;
       g.font = `600 ${Math.max(6, w * 0.105)}px "Inter", "Segoe UI Symbol", sans-serif`;
       g.textAlign = 'left'; g.textBaseline = 'top';
       g.fillStyle = isSurfaceLight ? 'rgba(35,39,46,0.76)' : 'rgba(255,255,255,0.84)';
-      g.fillText(cornerMark, RIM + 3 + (npcWhite ? Math.max(2, w * 0.04) : 0), RIM + 3);
+      g.fillText(cornerMark, RIM + 3, RIM + 3);
     }
 
     return c;

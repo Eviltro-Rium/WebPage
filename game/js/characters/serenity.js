@@ -8,7 +8,7 @@
     init() { return {}; },
     turnStart(eng, ch) { ch.bloodthirst = ch.hp < 30; },
     effect(eng, v, c, a, t, owner, helpers) {
-      const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs } = helpers;
+      const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs, hurt } = helpers;
       let d = 0, skip = false, unblock = false;
       let bt = a.hp < 30;
       if (v === 1) {
@@ -37,10 +37,10 @@
       } else if (v === 7) {
         d = 5;
         unblock = true;
-        if (!bt) eng.hurt(a, 2);
+        if (!bt) hurt(a, 2);
         if (eng.s.is1v2) {
           let aoeTarget = owner === 'player' ? (t === eng.s.ai ? 'ai2' : 'ai') : (owner === 'ai' ? 'ai2' : 'ai');
-          if (eng.s[aoeTarget] && eng.s[aoeTarget].alive) eng.hurt(eng.s[aoeTarget], 5);
+          eng.performAttack({type:'unblockable',attacker:owner,target:aoeTarget,damage:5,direct:true});
         }
       } else if (v === 0) {
         let own = eng.h[owner], bonus = Math.min(9, own.length * 3);

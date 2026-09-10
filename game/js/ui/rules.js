@@ -123,7 +123,7 @@
 
     html += '<div class="rules-section"><h2 class="rules-section-title">基本规则</h2><div class="rules-list">';
     for (const rule of GAMEPLAY_RULES) {
-      html += `<div class="rule-item"><div class="rule-item-title">${rule.title}</div><div class="rule-item-desc">${rule.desc}</div></div>`;
+      html += `<div class="rule-item"><div class="rule-item-title">${rule.title}</div><div class="rule-item-desc">${window.descToEmoji ? window.descToEmoji(rule.desc) : rule.desc}</div></div>`;
     }
     html += '</div></div>';
 
@@ -141,7 +141,7 @@
           }
           thumbs += '</div>';
         }
-        html += `<div class="rule-item">${thumbs}<div class="rule-item-title">${card.name}</div><div class="rule-item-desc">${card.desc}</div><div class="rule-item-count">牌库数量：${card.count}</div></div>`;
+        html += `<div class="rule-item">${thumbs}<div class="rule-item-title">${card.name}</div><div class="rule-item-desc">${window.descToEmoji ? window.descToEmoji(card.desc) : card.desc}</div><div class="rule-item-count">牌库数量：${card.count}</div></div>`;
       }
       html += '</div></div>';
     }

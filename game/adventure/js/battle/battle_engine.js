@@ -345,7 +345,9 @@
       if (!pile || !pile.discard.length) return false;
       const lowNpcDeck = (owner === 'ai' || owner === 'ai2') && pile.deck.length < 3;
       if (pile.deck.length && !lowNpcDeck) return false;
-      for (const card of pile.discard) {
+      // 用反向循环，因为 splice 会缩短数组长度，正向循环会跳过元素
+      for (let i = pile.discard.length - 1; i >= 0; i--) {
+        const card = pile.discard[i];
         if (card.isBlack || card.isWhite) delete card.chosenColor;
       }
       pile.deck.push(...pile.discard.splice(0, pile.discard.length));
@@ -424,7 +426,9 @@
       const key = this._activeOwner(owner);
       const pile = this._pile(key);
       if (!pile || !pile.discard.length) return;
-      for (const card of pile.discard) {
+      // 用反向循环，因为 splice 会缩短数组长度，正向循环会跳过元素
+      for (let i = pile.discard.length - 1; i >= 0; i--) {
+        const card = pile.discard[i];
         if (card.isBlack || card.isWhite) delete card.chosenColor;
       }
       pile.deck.push(...pile.discard.splice(0, pile.discard.length));
@@ -445,7 +449,7 @@
 
     fillHands(isPlayerPhase) {
       this.draw('player', this._drawNeedWithIceSeal('player', Math.max(0, this.piles.player.handLimit - this.h.player.length)), true);
-      this.draw('ai', this._drawNeedWithIceSeal('ai', Math.max(0, this.piles.ai.handLimit - this.h.ai.length)), true);
+      this.draw('ai', this._drawNeedWithIceSeal('ai', Math.max(0, this.piles.ai.handLimit - this.piles.ai.hand.length)), true);
       if (isPlayerPhase) this.emit('desc', '回合结束：玩家与NPC分别从自己的牌库补牌');
     }
 
@@ -458,7 +462,7 @@
           if (!this.s[key] || !this.s[key].alive) continue;
           const pile = this._pile(key);
           if (!pile) continue;
-          this.draw(key, this._drawNeedWithIceSeal(key, Math.max(0, pile.handLimit - this.h[key].length)), true);
+          this.draw(key, this._drawNeedWithIceSeal(key, Math.max(0, pile.handLimit - pile.hand.length)), true);
         }
         this.emit('desc', '冒险模式：存活NPC从共享牌库补牌');
         return;
@@ -472,15 +476,15 @@
           if (!this.s[key] || !this.s[key].alive) continue;
           const pile = this._pile(key);
           if (!pile) continue;
-          while (this.h[key].length > pile.handLimit) {
+          while (pile.hand.length > pile.handLimit) {
             let worst = 0;
-            for (let i = 1; i < this.h[key].length; i++) {
-              if (this.h[key][i].value < this.h[key][worst].value) worst = i;
+            for (let i = 1; i < pile.hand.length; i++) {
+              if (pile.hand[i].value < pile.hand[worst].value) worst = i;
             }
-            const card = this.h[key].splice(worst, 1)[0];
+            const card = pile.hand.splice(worst, 1)[0];
             this.discardWithEvent(card, key, { handIndex: worst, desc: this.s[key].name + '手牌超限，弃掉' + this.cardText(card) });
           }
-          this.draw(key, Math.max(0, pile.handLimit - this.h[key].length), true);
+          this.draw(key, Math.max(0, pile.handLimit - pile.hand.length), true);
         }
         this.emit('desc', '冒险模式：存活NPC手牌保持5张');
         return;
@@ -1082,6 +1086,7 @@
       const mod = window.AdventureRegistry && (window.AdventureRegistry.getMonster(monsterName) || window.AdventureRegistry.getBoss(monsterName));
       this.s.attackTarget = sourceKey;
       this.s.borrowedMonsterSkill = true;
+      this.s.pendingAttack = this.s.pendingAttack || {};
       this.rememberAttackDebuffs(sourceKey);
       const before = { bleed: monster.bleed || 0, burn: monster.burn || 0, poison: monster.poison || 0, frozen: !!monster.frozen, blind: monster.blind || 0, iceSeal: monster.iceSeal || 0 };
       try {
@@ -1095,20 +1100,27 @@
         if (result.immediateBuffs) this._restoreAttackBuffs();
         const damage = Number(result.d) || 0;
         this.emit('desc', '玩家借用' + monsterName + '技能：' + damage + '点伤害' + ((result.skip || result.unblock || damage <= 0) ? '，跳过防御' : ''), card);
-        return this.gateAdventureAttackMod(card, damage, !!result.skip, !!result.unblock);
+        const _pa = this.s.pendingAttack || {};
+        return this.gateAdventureAttackMod(card, damage, !!result.skip, !!result.unblock, 0, {
+          isDrain: !!(result.isDrain || result.drain),
+          aoeTargets: _pa.aoeTargets,
+          aoeDamage: _pa.aoeDamage,
+          hypothermiaTarget: _pa.hypothermiaTarget,
+          hypothermiaAmount: _pa.hypothermiaAmount
+        });
       } finally {
         this.s.borrowedMonsterSkill = false;
       }
     }
 
-    gateAdventureAttackMod(card, damage, skip = false, unblock = false, delay = 0) {
+    gateAdventureAttackMod(card, damage, skip = false, unblock = false, delay = 0, opts = {}) {
       if (this.s && this.s.isAdventure && damage > 0 && this._hasAccessory('JusticeHammer')) {
         const bonus = this._accessoryCount('JusticeHammer');
         damage += bonus;
         this._flashAccessory('JusticeHammer');
         this.emit('desc', '正义之锤：伤害+' + bonus);
       }
-      return super.gateAdventureAttackMod(card, damage, skip, unblock, delay);
+      return super.gateAdventureAttackMod(card, damage, skip, unblock, delay, opts);
     }
 
     continueAfterAttackMod() {

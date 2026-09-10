@@ -277,7 +277,15 @@
     _isShopAccessorySlot(index) { return index === 5; },
     _isShopItemSlot(index) { return index >= 0 && index <= 2; },
     _shopBeastPrice(beastType) {
-      return beastType === 'wuneng' ? 4 : 2;
+      const base = beastType === 'wuneng' ? 4 : 2;
+      return this._applyShopDiscount(base);
+    },
+    _hasShopDiscount() {
+      return typeof this.hasAccessory === 'function' && this.hasAccessory('Coupon');
+    },
+    _applyShopDiscount(price) {
+      if (this._hasShopDiscount() && price > 0) return Math.ceil(price / 2);
+      return price;
     },
     _rollBeastShopOffer() {
       const types = window.AdventureCurrency.ALL_BEAST_TYPES;
@@ -303,10 +311,10 @@
         return this._shopBeastPrice(slot.beastType);
       }
       if (this._isShopAccessorySlot(index) || this._isShopAccessoryName(slot)) {
-        return SHOP_ACCESSORY_PRICE;
+        return this._applyShopDiscount(SHOP_ACCESSORY_PRICE);
       }
       const def = typeof slot === 'string' ? window.AdventureRegistry.getItem(slot) : null;
-      return (def && def.price) || 0;
+      return this._applyShopDiscount((def && def.price) || 0);
     },
     buy(itemName, price) {
       if (this.s.phase !== Phase.SHOP) return false;

@@ -40,6 +40,33 @@ adventure/js/ui/        冒险地图 UI / 卡牌渲染
 - `AdventureEngine` 拆成 `engine/` 下核心 + shop / rewards / inventory / combat_legacy 混入。
 - 公共加载顺序由 `script_manifest.json` 约束，双 HTML 与 Node 测试共用同一组路径约定。
 
+## 统一攻击接口
+
+`engine.js` 中的 `performAttack(cfg)` 是所有攻击的统一入口，支持四种类型：
+
+| type | 用途 | 特性 |
+|------|------|------|
+| `normal` | 常规攻击 | 受潜水/回避影响 |
+| `unblockable` | 不可防御攻击 | 跳过防御判定 |
+| `drain` | 吸血攻击 | 伤害等量恢复攻击者 |
+| `aoe` | 范围攻击 | `skipTarget` 跳过主目标，命中 `aoeTargets` 列表 |
+
+`direct` 模式跳过潜水检查，`suppressFloat` 抑制浮动文字。AOE/失温数据通过 `opts` 透传，避免被 `gateAdventureAttackMod` 覆盖。
+
+## 描述文字 emoji 替换
+
+`ui.js` 中的 `descToEmoji(text)` 在 `parseSegments` 入口统一调用，将描述文字中的关键术语替换为 emoji：
+
+- `X点伤害` / `X点[伤害]` → `X🗡️`
+- `X点生命` / `X点[生命]` → `X❤️`
+- `格挡X点伤害` → `格挡X🛡️`、`抵消X点伤害` → `抵消X🛡️`、`减免X点伤害` → `减免X🛡️`
+
+不经过 `parseSegments` 的渲染路径（`rules.js` 规则页、`adventure_codex.js` 道具详情）通过 `window.descToEmoji` 手动调用。业务逻辑层的描述字符串不修改。
+
+## 小规则汇总
+
+边界处理规则（空手牌判定、buff 规则、先攻、AOE 跳过主目标等）统一整理在 `docs/small_rules.md`，新增此类规则时同步更新该文档。
+
 ## 加载顺序
 
 ```text

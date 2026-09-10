@@ -50,7 +50,7 @@
           let dc = Math.min(2, oh.length);
           for (let i = 0; i < dc; i++) oh.splice(Math.floor(Math.random() * oh.length), 1);
         }
-        eng.hurt(a, 2);
+        hurt(a, 2);
       }
       return { d, skip, unblock };
     },

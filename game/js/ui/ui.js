@@ -1,4 +1,15 @@
 const CARD_W = 70, CARD_H = 100;
+const CARD_W_MOBILE = 52, CARD_H_MOBILE = 74;
+const CARD_ZONE_W_MOBILE = 60, CARD_ZONE_H_MOBILE = 86;
+function isMobileLayout() {
+    return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+}
+function currentCardSize() {
+    return isMobileLayout() ? [CARD_W_MOBILE, CARD_H_MOBILE] : [CARD_W, CARD_H];
+}
+function currentZoneCardSize() {
+    return isMobileLayout() ? [CARD_ZONE_W_MOBILE, CARD_ZONE_H_MOBILE] : [CARD_W, CARD_H];
+}
 const CARD_COLORS = window.CardStyle ? window.CardStyle.CARD_COLORS : {
     RED: { fill: '#E31837', dark: '#B51228', ink: '#E31837' },
     YELLOW: { fill: '#FFCD00', dark: '#D4A900', ink: '#1A1A1A' },
@@ -108,7 +119,25 @@ function roundRect(ctx, x, y, w, h, r) {
     ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
 }
 
+function descToEmoji(text) {
+    if (text == null) return text;
+    let s = String(text);
+    s = s.replace(/(格挡(?:至多)?|抵消|减免)(\d+(?:\.\d+)?|½|¼)点?\[伤害\]/g, '$1$2🛡️');
+    s = s.replace(/(格挡(?:至多)?|抵消|减免)(\d+(?:\.\d+)?|½|¼)点伤害/g, '$1$2🛡️');
+    s = s.replace(/(\d+(?:\.\d+)?|½|¼)点?\[伤害\]/g, '$1🗡️');
+    s = s.replace(/\[伤害\]/g, '🗡️');
+    s = s.replace(/(\d+(?:\.\d+)?|½|¼)点?\[生命\]/g, '$1❤️');
+    s = s.replace(/\[生命\]/g, '❤️');
+    s = s.replace(/(\d+)点伤害/g, '$1🗡️');
+    s = s.replace(/(\d+)点生命/g, '$1❤️');
+    s = s.replace(/恢复(\d+)点(?!伤)/g, '恢复$1❤️');
+    s = s.replace(/自伤(\d+)点/g, '自伤$1🗡️');
+    return s;
+}
+window.descToEmoji = descToEmoji;
+
 function parseSegments(text, defaultColor) {
+    text = descToEmoji(text);
     const segs = []; let sb = '';
     for (let i = 0; i < text.length; i++) {
         if (text[i] === '[') {
@@ -666,6 +695,24 @@ class GameUI {
         if (adventureBtn) adventureBtn.addEventListener('click', () => {
             this._is1v2 = false; this._isLord = false; this._isAdventure = true; this._resetSelection(); this._buildSelectScreen();
         });
+
+        // 屏幕断点变化（移动/桌面切换、设备旋转）时重绘，避免卡牌尺寸与CSS不一致
+        if (typeof window !== 'undefined' && window.matchMedia) {
+            const mq = window.matchMedia('(max-width: 768px)');
+            const onChange = () => {
+                // 清掉 handRenderKey / zone cardKey 让下次 updateDisplay 强制重渲染
+                const ph = document.getElementById('player-hand');
+                if (ph) delete ph.dataset.handRenderKey;
+                const atk = document.getElementById('atk-cards');
+                if (atk) delete atk.dataset.cardKey;
+                const def = document.getElementById('def-cards');
+                if (def) delete def.dataset.cardKey;
+                if (this.state) this.updateDisplay();
+            };
+            if (mq.addEventListener) mq.addEventListener('change', onChange);
+            else if (mq.addListener) mq.addListener(onChange);
+            window.addEventListener('resize', onChange);
+        }
     }
 
     _resetSelection() {
@@ -769,8 +816,17 @@ class GameUI {
                 <div class="ai-deck-info" id="ai-deck-info" style="display:none"></div>
             </div>
             <div class="ai-area">
-                <div class="ai-hand-zone"><div class="zone-title">AI 手牌</div>
-                    <div class="ai-hand-row" id="ai-hand"></div></div>
+                <div class="ai-hands-stack">
+                    <div class="ai-hand-zone" data-owner="ai">
+                        <div class="zone-title">对手I</div>
+                        <div class="ai-hand-row" id="ai-hand"></div>
+                    </div>
+                    <div class="ai-hand-zone" data-owner="ai2" hidden>
+                        <div class="zone-title">对手II</div>
+                        <div class="ai-hand-row" id="ai2-hand"></div>
+                    </div>
+                </div>
+
                 <div class="play-zone"><div class="play-zone-row">
                     <div class="attack-zone"><div class="zone-title">进攻</div>
                         <div class="zone-cards" id="atk-cards"><span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待出牌</span></div>
@@ -795,7 +851,7 @@ class GameUI {
             </div>
             <div class="error-hint" id="error-hint"></div>
             <div class="adventure-info-bar" id="adventure-info-bar" style="display:none"></div>
-            <div class="player-hand-zone"><div class="zone-title">你的手牌</div>
+            <div class="player-hand-zone"><div class="zone-title">你的</div>
                 <div class="hand-row" id="player-hand"></div></div>
             <div class="adventure-item-bar" id="adventure-item-bar" style="display:none"></div>
             <div class="action-desc" id="action-desc"></div>
@@ -1120,7 +1176,8 @@ class GameUI {
             const card = s.playerHand[i];
             const sel = i === s.selectedCard || ((s.selectedCards || []).includes(i));
             const isUnplayable = isPlayPhase && Array.isArray(s.legalHand) && s.legalHand[i] === false;
-            const cv = renderCard(card, CARD_W, CARD_H, sel);
+            const [cw, ch] = currentCardSize();
+            const cv = renderCard(card, cw, ch, sel);
             if (!canInteract) cv.classList.add('disabled');
             else if (isUnplayable) {
                 cv.classList.add('card-unplayable');
@@ -1273,14 +1330,18 @@ class GameUI {
     }
 
     _updateAdventureNpcLabels(s) {
-        const zone = document.querySelector('.ai-hand-zone > .zone-title');
-        if (!zone) return;
-        if (s && s.isAdventure) {
-            const nm = this._combatDisplayName(s.ai && s.ai.name);
-            zone.textContent = (nm || '对手') + ' 手牌';
-        } else {
-            zone.textContent = 'AI 手牌';
-        }
+        const zones = document.querySelectorAll('.ai-hands-stack > .ai-hand-zone');
+        zones.forEach((zoneEl) => {
+            const titleEl = zoneEl.querySelector('.zone-title');
+            const owner = zoneEl.dataset.owner || 'ai';
+            const idx = owner === 'ai2' ? 'II' : 'I';
+            // 标题始终显示"对手I/II"，不附加角色名
+            if (titleEl) titleEl.textContent = '对手' + idx;
+            // 1v1 时隐藏对手II手牌区
+            if (owner === 'ai2') {
+                zoneEl.hidden = !s || !s.is1v2 || !s.ai2;
+            }
+        });
     }
 
     _findHandCardElement(handEl, card) {
@@ -1737,7 +1798,8 @@ class GameUI {
         const defKey = s.defCard ? JSON.stringify(s.defCard) : 'empty';
         if (atkContainer.dataset.cardKey !== atkKey && s.atkCard) {
             atkContainer.innerHTML = '';
-            const cv = renderCard(s.atkCard, 60, 100, false, { isNpc: !!(s.atkOwner && s.atkOwner !== 'player') });
+            const [zw, zh] = currentZoneCardSize();
+            const cv = renderCard(s.atkCard, zw, zh, false, { isNpc: !!(s.atkOwner && s.atkOwner !== 'player') });
             cv.classList.add('zone-card');
             atkContainer.appendChild(cv);
             atkContainer.dataset.cardKey = atkKey;
@@ -1750,7 +1812,8 @@ class GameUI {
 
         if (defContainer.dataset.cardKey !== defKey && s.defCard) {
             defContainer.innerHTML = '';
-            const cv = renderCard(s.defCard, 60, 100, false, { isNpc: !!(s.defOwner && s.defOwner !== 'player') });
+            const [zw, zh] = currentZoneCardSize();
+            const cv = renderCard(s.defCard, zw, zh, false, { isNpc: !!(s.defOwner && s.defOwner !== 'player') });
             cv.classList.add('zone-card');
             defContainer.appendChild(cv);
             defContainer.dataset.cardKey = defKey;

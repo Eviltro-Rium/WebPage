@@ -316,7 +316,7 @@
     html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
     html += `<div class="char-detail-hero-name">${it.displayName}</div>`;
     html += `<div class="char-detail-hero-type">${kindLabel} · ${it.kind === 'accessory' ? 15 : (it.price || 0)}金币</div>`;
-    html += `<div class="char-detail-hero-passive">${it.description || ''}</div>`;
+    html += `<div class="char-detail-hero-passive">${window.descToEmoji ? window.descToEmoji(it.description || '') : (it.description || '')}</div>`;
     if (useSceneLabel) html += `<div class="char-detail-hero-passive">${useSceneLabel}</div>`;
     html += `</div></div>`;
 
@@ -369,7 +369,7 @@
     html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
     html += `<div class="char-detail-hero-name">${it.displayName}</div>`;
     html += `<div class="char-detail-hero-type">战利白卡 · ${it.price || 0}金币</div>`;
-    html += `<div class="char-detail-hero-passive">${it.description || ''}</div>`;
+    html += `<div class="char-detail-hero-passive">${window.descToEmoji ? window.descToEmoji(it.description || '') : (it.description || '')}</div>`;
     html += `</div></div>`;
     if (it.beastTradeCost && it.beastTradeCost.length) {
       html += '<div class="codex-stat-bonus"><div class="codex-stat-title">兑换消耗</div><div class="codex-stat-list">';

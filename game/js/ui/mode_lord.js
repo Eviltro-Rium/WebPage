@@ -21,10 +21,10 @@
     if(!this.state||!this.state.isLord)return _origBuildGameScreen1v2.call(this);
     const s=this.state;
     const adv=!!s.isAdventure;
-    const ai1Label=adv?'对手':'AI';
-    const ai2Label=adv?'对手2':'AI2';
-    const ai1HandTitle=adv?'对手手牌':'AI1 手牌';
-    const ai2HandTitle=adv?'对手2手牌':'AI2 手牌';
+    const ai1Label=adv?'对手I':'对手I';
+    const ai2Label=adv?'对手II':'对手II';
+    const ai1HandTitle=adv?'对手I':'对手I';
+    const ai2HandTitle=adv?'对手II':'对手II';
     const gameTitle=adv?'Furry Trial 冒险':'Furry Battle 领主模式';
     let html=`
       <div class="game-title">${gameTitle}</div>
@@ -50,8 +50,10 @@
         <div class="buff-icons" id="ai2-buffs"></div>
       </div>
       <div class="ai-area">
-        <div class="ai-hand-zone"><div class="zone-title">${ai1HandTitle}</div><div class="ai-hand-row" id="ai-hand"></div></div>
-        <div class="ai-hand-zone" style="border-color:#a855f7"><div class="zone-title" style="color:#c084fc">${ai2HandTitle}</div><div class="ai-hand-row" id="ai2-hand"></div></div>
+        <div class="ai-hands-stack">
+        <div class="ai-hand-zone" data-owner="ai"><div class="zone-title">${ai1HandTitle}</div><div class="ai-hand-row" id="ai-hand"></div></div>
+        <div class="ai-hand-zone" data-owner="ai2" style="border-color:#a855f7"><div class="zone-title" style="color:#c084fc">${ai2HandTitle}</div><div class="ai-hand-row" id="ai2-hand"></div></div>
+        </div>
         <div class="play-zone"><div class="play-zone-row">
           <div class="attack-zone"><div class="zone-title">进攻</div><div class="zone-cards" id="atk-cards"><span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待出牌</span></div><div class="zone-desc" id="atk-desc"></div></div>
           <div class="defend-zone"><div class="zone-title">防御</div><div class="zone-cards" id="def-cards"><span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待防御</span></div><div class="zone-desc" id="def-desc"></div></div>
@@ -69,7 +71,7 @@
       <div class="error-hint" id="error-hint"></div>
       <div class="adventure-info-bar" id="adventure-info-bar" style="display:none"></div>
       <div class="adventure-item-bar" id="adventure-item-bar" style="display:none"></div>
-      <div class="player-hand-zone"><div class="zone-title">你的手牌</div><div class="hand-row" id="player-hand"></div></div>
+      <div class="player-hand-zone"><div class="zone-title">你的</div><div class="hand-row" id="player-hand"></div></div>
       <div class="lord-turn-hint" id="lord-turn-hint" style="display:none"></div>
 
       <div class="action-desc" id="action-desc"></div>

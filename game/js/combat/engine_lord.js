@@ -68,18 +68,29 @@
       let forceEnd=!!this.s.forceEndPlayerTurn;this.s.forceEndPlayerTurn=false;
       let targetKey=this.s.attackTarget||'ai';
       let target=this.s[targetKey];
-      let dmg=this.applyDefenderAvoidance(target,p.damage);
-      this.hurt(target,dmg);
+      let isDrain=!!(p.isDrain||(this.s.pendingAttack&&this.s.pendingAttack.isDrain));
+      let dmg=p.damage;
+      if(this.divingBlocksDamage(target,this.s.atkCard)){this.emit('desc',target.name+'有[潜水]，免疫蓝色攻击伤害');dmg=0;}
+      else dmg=this.applyDefenderAvoidance(target,dmg);
+      this.dealAttackHit(this.s.player,target,dmg,isDrain);
       this.settleBleed(target,p.bleed);
       this._restoreAttackBuffs();
+      // 冻洋蓝鲸：玩家攻击结算AOE伤害和失温（跳过主目标）
+      const pa1=this.s.pendingAttack||{};
+      this.performAttack({type:'aoe',target:targetKey,aoeTargets:pa1.aoeTargets,aoeDamage:pa1.aoeDamage,skipTarget:true,hypothermiaTarget:pa1.hypothermiaTarget,hypothermiaAmount:pa1.hypothermiaAmount});
       this.resolveSerenityHalf();this.afterAttack();
       if(forceEnd)this._lordStartNextAI();
       this.check();return
     }
     let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;
-    this.hurt(this.s.player,p.damage);
+    let bombOwner=this.s.atkOwner||'ai';
+    let isDrainAi=!!(p.isDrain||(this.s.pendingAttack&&this.s.pendingAttack.isDrain));
+    let dmg2=p.damage;if(this.divingBlocksDamage(this.s.player,this.s.atkCard)){this.emit('desc','你有[潜水]，免疫蓝色攻击伤害');dmg2=0;}this.dealAttackHit(this.s[bombOwner]||this.s.ai,this.s.player,dmg2,isDrainAi);
     this.settleBleed(this.s.player,p.bleed);
     this._restoreAttackBuffs();
+    // 冻洋蓝鲸：防御结束后结算AOE伤害和失温（跳过主目标玩家）
+    const pa2=this.s.pendingAttack||{};
+    this.performAttack({type:'aoe',target:'player',aoeTargets:pa2.aoeTargets,aoeDamage:pa2.aoeDamage,skipTarget:true,hypothermiaTarget:pa2.hypothermiaTarget,hypothermiaAmount:pa2.hypothermiaAmount});
     this.resolveSerenityHalf();this._grantChaosIfKnight('ai');
     if(forceEnd)this.endAi1v2();else this.continueAIAttack()
   };
@@ -148,6 +159,7 @@
   };
 
   E.prototype._lordStartNextAI=function(){
+    if(!this.s.ai.alive&&(!this.s.ai2||!this.s.ai2.alive)){this.check();return this.state()}
     this.fillHands1v2(true);
     if(this.s.player.burn){let dmg=this.s.player.burn;this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',amount:dmg});this.hurt(this.s.player,dmg)}}
     this.check();if(this.s.phase==='GAME_OVER')return this.state();

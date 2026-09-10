@@ -10,7 +10,7 @@ function makeGradient() {
 
 function makeContext2d() {
   return {
-    beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, closePath() {}, ellipse() {},
+    beginPath() {}, moveTo() {}, lineTo() {}, quadraticCurveTo() {}, closePath() {}, ellipse() {}, arc() {},
     save() {}, restore() {}, clip() {}, fillRect() {}, fill() {}, stroke() {},
     drawImage() {}, fillText() {}, strokeText() {},
     createLinearGradient: makeGradient,
