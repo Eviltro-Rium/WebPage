@@ -765,7 +765,6 @@
         '<div class="adv-blacksmith-tokens">兽元：' + beastSummary + ' <span class="adv-bs-hint">（万能可替代）</span></div>' +
         '<div class="adv-shop-slots adv-blacksmith-slots">' + slotsHtml + '</div>' +
         '<div class="adv-blacksmith-trophy-stall"><div class="adv-blacksmith-stall-title">战利白卡摊位</div>' + trophyHtml + '</div>' +
-        '<div class="adv-shop-page-hint">3个配饰槽，用兽元兑换；另设战利白卡摊位（灼伤2火、流血2本、冰冻2水、飞翔1水1草、茂盛2草、中毒1本1草、俄罗斯赌盘1火1本、定时炸弹1本1火、守护1本1草、缴械1水1本、零2万能）。所有战利白卡商店售价均为5金币。每槽可花2金币刷新（含空槽）。智慧项链3水1本1草，火焰之拳4火1本，兽元袋3本2草，生命核心3草1水1本，冷冻激光3水1万能，能量盾3草2本，正义之锤2火2水1本，净化水晶2草2水1本，恶魔契约1火1水1草1万能。</div>' +
         recycleHtml +
         '<div class="adv-shop-page-actions">' +
           '<button class="adv-btn adv-btn-primary" id="adv-blacksmith-trade"' + (tradeEnabled ? '' : ' disabled') + '>' + tradeLabel + '</button>' +

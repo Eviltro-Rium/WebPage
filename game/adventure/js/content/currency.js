@@ -143,6 +143,7 @@
       const req = { ben: 0, cao: 0, shui: 0, huo: 0 };
       for (let i = 0; i < needed.length; i++) {
         const t = needed[i];
+        if (t === UNIVERSAL_TYPE) continue;  // 万能兽元不计入普通需求，由 canPay/payBeastCost 单独处理
         if (BEAST_TYPES.indexOf(t) < 0) return null;
         req[t]++;
       }
