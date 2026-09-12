@@ -172,14 +172,19 @@
 
         /**
          * Shared life-steal hit: optional fly/guard reduction, then hurt(kind=drain)
-         * and heal attacker for HP actually lost. Item Vampire uses allowAvoidance:false.
+         * and heal attacker for HP actually lost. Defense-phase prompts are
+         * bypassed by callers, while guard/fly can still reduce the hit.
          */
         drainAttack(engine, attacker, target, amount, opts = {}) {
             if (!attacker || !target) return 0;
             let remaining = Math.max(0, Number(amount) || 0);
             if (remaining <= 0) return 0;
-            if (opts.allowAvoidance !== false && typeof engine.applyDefenderAvoidance === 'function') {
-                remaining = engine.applyDefenderAvoidance(target, remaining);
+            if (opts.allowAvoidance !== false) {
+                if (opts.forceDrainAvoidance && typeof engine.applyDrainAvoidance === 'function') {
+                    remaining = engine.applyDrainAvoidance(target, remaining);
+                } else if (typeof engine.applyDefenderAvoidance === 'function') {
+                    remaining = engine.applyDefenderAvoidance(target, remaining);
+                }
             }
             const before = target.hp;
             this.hurt(engine, target, remaining, 'drain', opts);

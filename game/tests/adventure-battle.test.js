@@ -370,6 +370,74 @@ test('1v2 skip-defense kill with empty event queue settles without freezing', ()
   assert.ok(engine.s.busy);
 });
 
+test('Otto 4 two-number branch enters NPC defense in challenge room', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure1v2({
+    player: 'Otto',
+    opponent1: 'CastleWolf',
+    opponent2: 'CastleBear',
+    stage: 1,
+    discardTop: number(1, 'RED'),
+    playerPile: {
+      // Otto 4 reveals the two cards at the end of the player deck.
+      deck: [number(2, 'BLUE'), number(3, 'GREEN')],
+      hand: [number(4, 'RED')],
+      discard: [],
+      handLimit: 5
+    }
+  });
+  engine.later = () => assert.fail('zero-delay NPC defense must not use the shared combat timer');
+  engine.h.ai.splice(0, engine.h.ai.length, number(2), number(6));
+  engine.h.ai2.splice(0, engine.h.ai2.length);
+  engine.s.attackTarget = 'ai';
+
+  engine.dispatch('selectCard', { index: 0 });
+  const pending = engine.dispatch('doPlay');
+  assert.equal(pending.phase, 'ATTACK_MOD_CHOICE');
+  assert.equal(pending.pendingAttack.damage, 5);
+
+  const after = engine.dispatch('resolveAttackModChoice', { bonus: 0 });
+  assert.equal(after.phase, 'AI_DEFEND');
+  assert.equal(engine.h.ai.length, 1, 'NPC should spend its legal defense card');
+  assert.equal(engine.pendingSettlement && engine.pendingSettlement.kind, 'PLAYER_ATTACK');
+  assert.ok(engine.events.some(event => event.type === 'aiDefend'));
+});
+
+test('Otto 4 challenge defense continues after an NPC magic bridge without replacing the defense timer', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure1v2({
+    player: 'Otto',
+    opponent1: 'CastleWolf',
+    opponent2: 'CastleBear',
+    stage: 1,
+    discardTop: number(1, 'RED'),
+    playerPile: {
+      deck: [number(2, 'BLUE'), number(3, 'GREEN')],
+      hand: [number(4, 'RED')],
+      discard: [],
+      handLimit: 5
+    }
+  });
+  engine.later = () => assert.fail('NPC defense continuation must not use the shared combat timer');
+  const magic = context.AdventureDeck.item('WHITE', 'greenMagic', { npcCard: true });
+  engine.h.ai.splice(0, engine.h.ai.length, magic, number(2));
+  engine.h.ai2.splice(0, engine.h.ai2.length);
+  engine.s.attackTarget = 'ai';
+
+  engine.dispatch('selectCard', { index: 0 });
+  engine.dispatch('doPlay');
+  engine.dispatch('resolveAttackModChoice', { bonus: 0 });
+
+  assert.ok(engine.s.pendingAIBridge, 'magic defense should request another defense card');
+  const bridgeEventId = engine.s.pendingAIBridge.afterEventId;
+  engine.acknowledgeEvents(bridgeEventId);
+
+  assert.equal(engine.s.defCard.value, 2);
+  assert.equal(engine.h.ai.length, 0);
+  assert.equal(engine.pendingSettlement && engine.pendingSettlement.kind, 'PLAYER_ATTACK');
+  assert.ok(engine.events.some(event => event.type === 'aiDefend' && event.card && event.card.value === 2));
+});
+
 test('adventure 1v2 keeps one shared NPC pile isolated from the player pile', () => {
   const engine = new AdventureBattleEngine();
   engine.later = () => {};

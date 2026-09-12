@@ -459,8 +459,23 @@
         this.s.playerPile.handLimit = Number(pile.handLimit || 5);
       }
 
-      this.s.discardTop = new window.AdventureDeck.DiscardTop(clone(result.discardTop || null));
-      this.s.discardTopOwner = result.discardTopOwner || null;
+      const savedTop = clone(result.discardTop || null);
+      // Compatibility with battle results produced before the top became part
+      // of the discard pile. New results already contain it, so never append a
+      // second copy.
+      if (savedTop && this.s.playerPile) {
+        const discard = this.s.playerPile.discard;
+        const last = discard[discard.length - 1];
+        const same = last && last.color === savedTop.color &&
+          last.value === savedTop.value && !!last.isItemCard === !!savedTop.isItemCard &&
+          (last.trophyName || null) === (savedTop.trophyName || null);
+        if (!same) discard.push(savedTop);
+      }
+      this.s.discardTop = new window.AdventureDeck.DiscardTop(savedTop);
+      this.s.discardTopOwner = savedTop ? (result.discardTopOwner || 'player') : null;
+      // Older battle results could contain the physical table-top card twice.
+      // Reuse the adventure-engine migration guard before exposing the map.
+      if (typeof this._normalizePlayerPileCount === 'function') this._normalizePlayerPileCount();
       this.emit('combatResourcesSaved', '玩家手牌、牌库与弃牌库状态已保存', {
         deck: this.s.playerPile ? this.s.playerPile.deck.length : 0,
         hand: this.s.playerPile ? this.s.playerPile.hand.length : 0,

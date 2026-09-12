@@ -279,7 +279,7 @@ async _playAIDefendAnimation(card, who = 'ai') {
 
 _settleZoneCard(zone, card, owner = 'player') {
     zone.innerHTML = '';
-    const settled = renderCard(card, 60, 100, false, { isNpc: !!(owner && owner !== 'player') });
+    const settled = renderCard(card, 60, 86, false, { isNpc: !!(owner && owner !== 'player') });
     settled.classList.add('zone-card', 'zone-card-land');
     zone.appendChild(settled);
     zone.dataset.cardKey = JSON.stringify(card);
@@ -342,7 +342,7 @@ async _playRevealAnimation(cardOrCards, fromOwner, fromSource) {
 
     const multi = cards.length > 1;
     const cw = multi ? 52 : 60;
-    const ch = multi ? 88 : 100;
+    const ch = multi ? 74 : 86;
     const to = toEl.getBoundingClientRect();
     const from = fromEl.getBoundingClientRect();
     const gap = 4;

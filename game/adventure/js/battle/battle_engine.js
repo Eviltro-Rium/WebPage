@@ -3,8 +3,8 @@
  *
  * Reuses the normal 1v1 combat state machine while replacing its shared deck
  * storage with two independent piles. The table still has one shared top card;
- * when it is replaced, the previous card returns to its recorded owner's
- * discard pile.
+ * every played top card is written to its recorded owner's discard pile
+ * immediately, so the table reference never creates an extra card.
  */
 (function () {
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
@@ -51,6 +51,15 @@
       this.pendingSettlement = clone(data.pendingSettlement) || null;
       this.tableTopOwner = data.tableTopOwner || this.s.discardTopOwner || null;
       this.s.discardTopOwner = this.tableTopOwner;
+      // Migrate old battle snapshots where the table top lived outside the
+      // discard pile. New snapshots already include it as the last discard.
+      const oldTop = this.s.discardTop;
+      const topOwner = this.tableTopOwner || 'player';
+      const topPile = this.piles[topOwner === 'ai2' ? 'ai' : topOwner] || this.piles.player;
+      const topDiscard = topPile && topPile.discard;
+      if (oldTop && topDiscard && !this._sameCard(topDiscard[topDiscard.length - 1], oldTop)) {
+        topDiscard.push(clone(oldTop));
+      }
       this.deck = this.piles.player.deck;
       this.discardBottom = this.piles.player.discard;
       // 1v2 NPCs intentionally share one deck/discard pile. JSON cloning
@@ -156,6 +165,10 @@
         top = this._drawInitialTableCard();
         topOwner = top ? 'player' : null;
       }
+      if (top) {
+        const discard = this.piles.player.discard;
+        if (!this._sameCard(discard[discard.length - 1], top)) discard.push(clone(top));
+      }
       this.s.discardTop = top;
       this.tableTopOwner = topOwner;
       this.s.discardTopOwner = topOwner;
@@ -247,6 +260,10 @@
         top = this._drawInitialTableCard();
         topOwner = top ? 'player' : null;
       }
+      if (top) {
+        const discard = this.piles.player.discard;
+        if (!this._sameCard(discard[discard.length - 1], top)) discard.push(clone(top));
+      }
 
       this.s = {
         phase: 'PLAYER_PLAY', turn: 1, busy: false,
@@ -315,6 +332,38 @@
       return null;
     }
 
+    _sameCard(a, b) {
+      if (!a || !b) return false;
+      return a.color === b.color && a.value === b.value &&
+        !!a.isItemCard === !!b.isItemCard &&
+        // Older map snapshots did not serialize trophyName/magicColor. Treat
+        // missing metadata as a wildcard so restoring those snapshots does
+        // not append the physical table-top card a second time.
+        (!a.trophyName || !b.trophyName || a.trophyName === b.trophyName) &&
+        (!a.magicColor || !b.magicColor || a.magicColor === b.magicColor);
+    }
+
+    _on1v2OpponentEliminated(defeatedKey) {
+      // A defeated monster's hand is no longer usable. Move those cards into
+      // the shared NPC discard pile immediately; the active table top remains
+      // untouched because it is tracked separately by tableTopOwner.
+      if (this.s && this.s.is1v2 && this.piles &&
+          !(this.s.eliminatedHandled && this.s.eliminatedHandled[defeatedKey])) {
+        const defeatedPile = this._pile(defeatedKey);
+        const sharedDiscard = this.piles.ai && this.piles.ai.discard;
+        if (defeatedPile && sharedDiscard && defeatedPile.hand.length) {
+          while (defeatedPile.hand.length) {
+            const card = defeatedPile.hand.pop();
+            const saved = clone(card);
+            if (saved.isBlack || saved.isWhite) delete saved.chosenColor;
+            sharedDiscard.push(saved);
+          }
+          this.emit('desc', (this.s[defeatedKey].name || '怪物') + '出局，手牌已放入怪物弃牌库');
+        }
+      }
+      return super._on1v2OpponentEliminated(defeatedKey);
+    }
+
     _syncNpcSharedPile() {
       if (!this.piles || !this.piles.ai || !this.piles.ai2) return;
       // Keep the 1v2 aliases intact after state restores or any code path that
@@ -345,12 +394,27 @@
       if (!pile || !pile.discard.length) return false;
       const lowNpcDeck = (owner === 'ai' || owner === 'ai2') && pile.deck.length < 3;
       if (pile.deck.length && !lowNpcDeck) return false;
+      // The active table top is physically stored as the last discard card,
+      // but it must stay on the table while the rest of the discard pile is
+      // recycled. Temporarily hold it out of the shuffle and put it back.
+      const topOwner = this.tableTopOwner || (this.s && this.s.discardTopOwner);
+      const sharedNpc = (owner === 'ai' || owner === 'ai2') && (topOwner === 'ai' || topOwner === 'ai2');
+      const last = pile.discard[pile.discard.length - 1];
+      const activeTop = this.s && this.s.discardTop &&
+        (topOwner === owner || sharedNpc) && this._sameCard(last, this.s.discardTop)
+        ? pile.discard.pop()
+        : null;
+      if (!pile.discard.length) {
+        if (activeTop) pile.discard.push(activeTop);
+        return false;
+      }
       // 用反向循环，因为 splice 会缩短数组长度，正向循环会跳过元素
       for (let i = pile.discard.length - 1; i >= 0; i--) {
         const card = pile.discard[i];
         if (card.isBlack || card.isWhite) delete card.chosenColor;
       }
       pile.deck.push(...pile.discard.splice(0, pile.discard.length));
+      if (activeTop) pile.discard.push(activeTop);
       this._shuffle(pile.deck);
       this.emit('desc', lowNpcDeck
         ? 'NPC牌库少于3张，弃牌库已洗回NPC牌库'
@@ -366,10 +430,15 @@
       for (let i = 0; i < attempts; i++) {
         const card = pile.deck.pop();
         if (!card) return null;
-        if (!card.isBlack && !card.isWhite) return card;
+        if (!card.isBlack && !card.isWhite) {
+          pile.discard.push(card);
+          return card;
+        }
         pile.deck.unshift(card);
       }
-      return pile.deck.pop() || null;
+      const fallback = pile.deck.pop() || null;
+      if (fallback) pile.discard.push(fallback);
+      return fallback;
     }
 
     draw(owner, count, animated = false) {
@@ -409,11 +478,29 @@
     }
 
     setDiscardTop(card, owner) {
-      if (this.s.discardTop) {
-        this.discardToBottom(this.s.discardTop, this.tableTopOwner || 'player');
-      }
       const nextOwner = card && card.borrowedFrom ? card.borrowedFrom : this._activeOwner(owner);
-      this.s.discardTop = clone(card);
+      if (this._skipNextDiscardTop) {
+        // A black-card color choice temporarily returns the staged card to the
+        // hand before resuming play. It is already in the discard pile from
+        // the staging pass, so only refresh the table reference here.
+        this._skipNextDiscardTop = false;
+        this.s.discardTop = clone(card);
+        this.tableTopOwner = nextOwner;
+        this.s.discardTopOwner = nextOwner;
+        this.s.diceRoll = null;
+        return;
+      }
+      const pile = this._pile(nextOwner);
+      if (card && pile) {
+        // The table top is also the newest card in its owner's discard pile.
+        // Keep the chosen color on this active card; it is needed for legality
+        // checks until another card replaces it.
+        const saved = clone(card);
+        pile.discard.push(saved);
+        this.s.discardTop = clone(saved);
+      } else {
+        this.s.discardTop = null;
+      }
       this.tableTopOwner = nextOwner;
       this.s.discardTopOwner = nextOwner;
       this.s.diceRoll = null;
@@ -448,6 +535,10 @@
     }
 
     fillHands(isPlayerPhase) {
+      // Adventure mode recycles an NPC discard pile as soon as its draw pile
+      // drops below three cards.  Do this before calculating the hand refill,
+      // so a full hand cannot postpone the recycle until a later draw.
+      this._refillPile('ai');
       this.draw('player', this._drawNeedWithIceSeal('player', Math.max(0, this.piles.player.handLimit - this.h.player.length)), true);
       this.draw('ai', this._drawNeedWithIceSeal('ai', Math.max(0, this.piles.ai.handLimit - this.piles.ai.hand.length)), true);
       if (isPlayerPhase) this.emit('desc', '回合结束：玩家与NPC分别从自己的牌库补牌');
@@ -455,6 +546,11 @@
 
     fillHands1v2(includePlayer = false) {
       if (this.s && this.s.isAdventure && this.piles) {
+        // Both monsters share one NPC deck/discard pile.  Recycle it once at
+        // the start of the refill phase, even when both hands are already at
+        // their limits, so the low-deck rule is deterministic and visible.
+        this._syncNpcSharedPile();
+        this._refillPile('ai');
         if (includePlayer) {
           this.draw('player', this._drawNeedWithIceSeal('player', Math.max(0, this.piles.player.handLimit - this.h.player.length)), true);
         }
@@ -558,12 +654,21 @@
             ? this._demonPactPlayTurn !== this.s.turn
             : this._demonPactDefendAttack !== this.s.pendingAttack));
       }
-      return super.state();
+      const view = super.state();
+      // In adventure mode the current table top is already part of the
+      // player's physical discard pile, so do not add a virtual +1 here.
+      if (this.piles && this.piles.player) {
+        view.discard = this.piles.player.discard.length;
+        view.discardBottomCount = this.piles.player.discard.length;
+      }
+      return view;
     }
 
     _settleTableTop() {
       if (!this.s || !this.s.discardTop) return;
-      this.discardToBottom(this.s.discardTop, this.tableTopOwner || 'player');
+      // The current top is already the last card in its owner's discard pile.
+      // Only clear the table reference when the room ends; do not append it a
+      // second time.
       this.s.discardTop = null;
       this.tableTopOwner = null;
       this.s.discardTopOwner = null;
@@ -1151,14 +1256,28 @@
 
     _proceedToDefend(d, skip, unblock, card, delay) {
       if (this.s.is1v2) {
-        if (d && !skip && !unblock) { this.s.phase = 'AI_DEFEND'; this.s.busy = true; this.later(() => this.aiDefend1v2(card, d), delay); }
+        if (d && !skip && !unblock) {
+          this.s.phase = 'AI_DEFEND';
+          this.s.busy = true;
+          // Otto 4 and most immediate adventure attacks use delay=0. Running
+          // defense synchronously prevents the single shared combat timer
+          // from being replaced by a concurrent 1v2 animation/turn task.
+          if ((Number(delay) || 0) > 0) this.later(() => this.runAIDefend1v2(card, d), delay);
+          else return this.runAIDefend1v2(card, d);
+        }
         else { this.s.phase = 'AI_DEFEND'; this.s.busy = true; this.deferSettlement('PLAYER_ATTACK', d, 0); }
         return this.check();
       }
       if (d && !skip && !unblock) { this.s.phase = 'AI_DEFEND'; this.s.busy = true; this.later(() => this.aiDefend(card, d), delay); }
       else {
         let targetKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
-        if (d > 0) this.hurt(this.s[targetKey], d);
+        if (d > 0) {
+          // Skip-defense attacks can still be life-steal attacks (for example
+          // Otto 4 with two item cards). Route them through the shared attack
+          // resolver so the attacker heals for the damage actually dealt.
+          const isDrain = !!(this.s.pendingAttack && this.s.pendingAttack.isDrain);
+          this.dealAttackHit(this.s.player, this.s[targetKey], d, isDrain);
+        }
         this.s.phase = 'AI_DEFEND'; this.s.busy = true;
         this.later(() => { this._restoreAttackBuffs(); this.afterAttack(); this.check(); }, 1700);
       }

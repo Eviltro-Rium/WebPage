@@ -53,7 +53,7 @@
     let bridge=this.s.pendingAIBridge;
     if(bridge&&through>=bridge.afterEventId){
       this.s.pendingAIBridge=null;
-      if(bridge.mode==='defense')this.later(()=>this.aiDefend1v2(bridge.attackCard,bridge.damage),220);
+      if(bridge.mode==='defense')this.runAIDefend1v2(bridge.attackCard,bridge.damage);
       else this.later(()=>this.aiTurn1v2(),220)
     }
     let continuation=this.s.pendingAIContinue;
@@ -71,7 +71,7 @@
       let isDrain=!!(p.isDrain||(this.s.pendingAttack&&this.s.pendingAttack.isDrain));
       let dmg=p.damage;
       if(this.divingBlocksDamage(target,this.s.atkCard)){this.emit('desc',target.name+'有[潜水]，免疫蓝色攻击伤害');dmg=0;}
-      else dmg=this.applyDefenderAvoidance(target,dmg);
+      else if(!isDrain)dmg=this.applyDefenderAvoidance(target,dmg);
       this.dealAttackHit(this.s.player,target,dmg,isDrain);
       this.settleBleed(target,p.bleed);
       this._restoreAttackBuffs();

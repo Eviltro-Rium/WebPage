@@ -18,10 +18,12 @@
         this.s.playerPile = new AD.AdventurePile('player', playerDeck, 5);
         this.s.playerPile.draw(5);
         const initialTop = AD.drawInitialTop(this.s.playerPile.deck);
-        this.s.discardTop = new AD.DiscardTop(initialTop);
+        if (initialTop) this.s.playerPile.discard.push(initialTop);
+        this.s.discardTop = new AD.DiscardTop(initialTop ? this.s.playerPile.discard[this.s.playerPile.discard.length - 1] : null);
+        this.s.discardTopOwner = initialTop ? 'player' : null;
       }
 
-      const npcDeck = AD.makeNpcDeck();
+      const npcDeck = AD.makeNpcDeck({ whiteZeros: kind === 'boss' ? 2 : 0 });
       this.s.combat = {
         enemy: enemy,
         enemy2: enemy2,
@@ -42,6 +44,13 @@
       this._log('战斗开始！敌方：' + enemy.name + '（HP ' + enemy.hp + '/' + enemy.maxHp + '）' + (enemy2 ? ' + ' + enemy2.name + '（HP ' + enemy2.hp + '/' + enemy2.maxHp + '）' : ''));
       this._log('牌库就绪：玩家' + this.s.playerPile.deck.length + '张库/' + this.s.playerPile.hand.length + '张手牌，NPC ' + this.s.combat.npcPile.deck.length + '张库/' + this.s.combat.npcPile.hand.length + '张明牌');
     },
+    _replaceLegacyTop(card, pile, owner) {
+      if (!card || !pile) return;
+      pile.discard.push(card);
+      const top = pile.discard[pile.discard.length - 1];
+      this.s.discardTop = new window.AdventureDeck.DiscardTop(top);
+      this.s.discardTopOwner = owner || pile.owner || 'player';
+    },
     playerSelectCard(index) {
       if (this.s.phase !== Phase.PLAYER_PLAY && this.s.phase !== Phase.PLAYER_DEFEND) return false;
       if (index < 0 || index >= this.s.playerPile.hand.length) return false;
@@ -57,8 +66,7 @@
       if (!top.legal(card)) return { error: '这张牌不符合出牌规则' };
 
       pile.playFromHand(index);
-      const oldTop = top.replace(card);
-      pile.discardCard(oldTop);
+      this._replaceLegacyTop(card, pile, 'player');
       this.s.combat.selectedCard = null;
       this.s.combat.atkCard = card;
 
@@ -176,8 +184,7 @@
       }
 
       const card = pile.playFromHand(idx);
-      const oldTop = this.s.discardTop.replace(card);
-      pile.discardCard(oldTop);
+      this._replaceLegacyTop(card, pile, 'npc');
       combat.atkCard = card;
 
       if (card.magic || card.greenMagic || card.magicColor) {
@@ -235,8 +242,7 @@
       if (!top.legal(card, true)) return { error: '这张牌不能用于防御' };
 
       pile.playFromHand(index);
-      const oldTop = top.replace(card);
-      pile.discardCard(oldTop);
+      this._replaceLegacyTop(card, pile, 'player');
       this.s.combat.defCard = card;
 
       let block = 0;
@@ -326,8 +332,7 @@
         const idx = strategy.chooseAttack(pile.hand);
         if (idx < 0) break;
         const card = pile.playFromHand(idx);
-        const oldTop = this.s.discardTop.replace(card);
-        pile.discardCard(oldTop);
+        this._replaceLegacyTop(card, pile, 'npc');
         played.push(card);
 
         if (card.magic || card.greenMagic || card.magicColor) {
@@ -378,8 +383,7 @@
       }
 
       const card = pile.playFromHand(idx);
-      const oldTop = this.s.discardTop.replace(card);
-      pile.discardCard(oldTop);
+      this._replaceLegacyTop(card, pile, 'npc');
 
       if (card.magic || card.greenMagic || card.magicColor) {
         const _mHp = (window.AdventureRegistry && window.AdventureRegistry.getBoss(combat.enemy.name)) ? 5 : 3;

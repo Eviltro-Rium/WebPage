@@ -32,6 +32,7 @@
       </div>
       <div class="hp-section" id="ai-hp-section">
         <span class="attacker-indicator">进攻方</span>
+        <span class="defender-indicator">防守方</span>
         <img class="hp-avatar" id="ai-avatar" src="" alt="">
         <span class="hp-name" id="ai-name">${ai1Label}</span>
         <div class="hp-bar-outer"><div class="hp-bar-inner" id="ai-hp-bar" style="width:100%"></div><span class="hp-text" id="ai-hp-text">100/100</span></div>
@@ -39,6 +40,7 @@
       </div>
       <div class="hp-section ai2-hp-section" id="ai2-hp-section">
         <span class="attacker-indicator">进攻方</span>
+        <span class="defender-indicator">防守方</span>
         <img class="hp-avatar" id="ai2-avatar" src="" alt="">
         <span class="hp-name" id="ai2-name">${ai2Label}</span>
         <div class="hp-bar-outer"><div class="hp-bar-inner" id="ai2-hp-bar" style="width:100%"></div><span class="hp-text" id="ai2-hp-text">100/100</span></div>
@@ -58,6 +60,7 @@
       </div>
       <div class="hp-section" id="player-hp-section">
         <span class="attacker-indicator">进攻方</span>
+        <span class="defender-indicator">防守方</span>
         <img class="hp-avatar" id="player-avatar" src="" alt="">
         <span class="hp-name" id="player-name">你</span>
         <div class="hp-bar-outer"><div class="hp-bar-inner" id="player-hp-bar" style="width:100%"></div><span class="hp-text" id="player-hp-text">70/70</span></div>
@@ -82,7 +85,9 @@
     if(!s||!s.player)return _origUpdate.call(this);
     if(!s.is1v2)return _origUpdate.call(this);
     const prev=this._prevState;
-    document.getElementById('deck-info').textContent='牌堆: '+s.deck;
+    document.getElementById('deck-info').textContent=s.isAdventure
+      ? '牌堆: '+s.deck+' | 弃牌库: '+(s.discard!=null?s.discard:0)
+      : '牌堆: '+s.deck;
     this._drawDeckIcon(s.deck);
     document.getElementById('turn-info').textContent='回合 '+s.turn;
     document.getElementById('phase-info').textContent=s.phase==='AI_DEFEND'&&s.defenseSkipped?'跳过防御':(PHASE_NAMES[s.phase]||s.phase);
@@ -99,11 +104,7 @@
     this._updateAvatar('ai',s.ai.name);
     if(s.ai2)this._updateAvatar('ai2',s.ai2.name);
     let activeAttacker=s.activeAttacker||((s.phase==='AI_TURN'||s.phase==='PLAYER_DEFEND'||s.phase==='GUARD_CHOICE')?'ai':'player');
-    document.getElementById('player-hp-section').classList.toggle('active-attacker',activeAttacker==='player');
-    document.getElementById('ai-hp-section').classList.toggle('active-attacker',activeAttacker==='ai');
-    if(document.getElementById('ai2-hp-section'))document.getElementById('ai2-hp-section').classList.toggle('active-attacker',activeAttacker==='ai2');
-    document.getElementById('ai-hp-section').classList.toggle('selected-target',s.attackTarget==='ai'&&s.activeAttacker==='player');
-    if(document.getElementById('ai2-hp-section'))document.getElementById('ai2-hp-section').classList.toggle('selected-target',s.attackTarget==='ai2'&&s.activeAttacker==='player');
+    this._updateAttackerIndicator(activeAttacker);
     if(s.isLord){
       let hint=document.getElementById('lord-turn-hint');
       if(hint){
@@ -150,7 +151,7 @@
       const deckCount=s.aiDeckCount!=null?s.aiDeckCount:0;
       const discardCount=s.aiDiscardCount!=null?s.aiDiscardCount:0;
       npcDeckEl.style.display=s.isAdventure?'':'none';
-      npcDeckEl.textContent='NPC共享牌库: '+deckCount+' | 弃牌库: '+discardCount;
+      npcDeckEl.textContent='怪物共享牌库: '+deckCount+' | 怪物弃牌库: '+discardCount;
     }
     if(s.pendingDialog==='purify')this.dialogs.showPurifyChoice(s.player,picked=>{const kind=picked&&picked.kind?picked.kind:picked;this._apiAction('choosePurify',{kind})});
     else if(s.pendingDialog==='superPurify'){const targets=[{key:'player',label:'自己',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+' (对手)',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+' (对手)',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseSuperPurifyTarget',{target}))}
@@ -185,7 +186,7 @@
       const charName=this._combatDisplayName(opponent&&opponent.name);
       const adventureOpts={stage:s.adventureStage||s.stage||1,playerHandSize:(s.playerHand&&s.playerHand.length)||0,incomingDamage:s.pendingDefenseDamage||0};
       card.addEventListener('mouseenter',()=>this._showTooltip(ownerCard,card,s.phase==='PLAYER_DEFEND',{charName,adventureOpts}));
-      card.addEventListener('mouseleave',()=>this._syncHandSkillTooltip());
+      card.addEventListener('mouseleave',()=>this._hideTooltip());
     };
     const decorateSelectable=(card,index,key)=>{
       if(!canSelect)return;
@@ -233,8 +234,8 @@
           let cv;
           if(handCards&&handCards[i]){
             cv=renderCard(handCards[i],40,58,false,{ isNpc: true });
+            attachSkillHover(cv,s.ai2,handCards[i]);
           }
-          if(handCards&&handCards[i])attachSkillHover(cv,s.ai2,handCards[i]);
           else{
             cv=renderCardBack(40,58);
             cv.style.filter='hue-rotate(240deg)';

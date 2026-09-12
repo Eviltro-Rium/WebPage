@@ -144,9 +144,10 @@
           this.s.playerPile.hand.push(AD.trophyWhite(name));
         }
       }
-      const initialTop = AD.drawInitialTop(this.s.playerPile.deck);
-      this.s.discardTop = new AD.DiscardTop(initialTop);
-      this.s.discardTopOwner = initialTop ? 'player' : null;
+      // The map view starts without a table card. A new top is revealed only
+      // when the player actually enters a combat room.
+      this.s.discardTop = new AD.DiscardTop(null);
+      this.s.discardTopOwner = null;
       if (this.s.consumables.length > CONSUMABLE_SLOT_COUNT) this._beginItemDiscard('map');
 
       if (this.s.pos) {
@@ -210,7 +211,19 @@
       this.s.playerPile = new AD.AdventurePile('player', clone(save.playerPile.deck), save.playerPile.handLimit || 5);
       this.s.playerPile.hand = clone(save.playerPile.hand) || [];
       this.s.playerPile.discard = clone(save.playerPile.discard) || [];
-      this.s.discardTop = save.discardTop ? new AD.DiscardTop(clone(save.discardTop)) : null;
+      // Older saves stored the table top outside the discard pile. Migrate it
+      // once so the card is counted exactly once under the new model.
+      const savedTop = save.discardTop ? clone(save.discardTop) : null;
+      const lastDiscard = this.s.playerPile.discard[this.s.playerPile.discard.length - 1];
+      const topAlreadyStored = savedTop && lastDiscard &&
+        lastDiscard.color === savedTop.color && lastDiscard.value === savedTop.value &&
+        !!lastDiscard.isItemCard === !!savedTop.isItemCard &&
+        (lastDiscard.trophyName || null) === (savedTop.trophyName || null);
+      if (savedTop && !topAlreadyStored) this.s.playerPile.discard.push(savedTop);
+      // Keep the DiscardTop wrapper even when the map has no revealed card;
+      // callers can safely continue using .get() and receive null.
+      this.s.discardTop = new AD.DiscardTop(savedTop);
+      this._normalizePlayerPileCount();
 
       for (let r = 0; r < map.rows; r++) {
         for (let c = 0; c < map.cols; c++) {
@@ -370,6 +383,81 @@
       return list[Math.floor(Math.random() * list.length)] || 'CastleChameleon';
     }
 
+    /**
+     * Flip a fresh number card into the player's discard pile and expose that
+     * same physical card as the current table top. The top is deliberately not
+     * counted separately; deck + hand + discard remains the complete total.
+     */
+    _initializeDiscardTop() {
+      const AD = window.AdventureDeck;
+      const pile = this.s && this.s.playerPile;
+      if (!AD || !pile) return null;
+      // A room may start after the previous fight exhausted the draw pile.
+      // Recycle the player's own discard pile before revealing the next top.
+      if (!pile.deck.length && typeof pile.refillIfNeeded === 'function') pile.refillIfNeeded();
+      const card = AD.drawInitialTop(pile.deck);
+      if (!card) {
+        this.s.discardTop = new AD.DiscardTop(null);
+        this.s.discardTopOwner = null;
+        return null;
+      }
+      pile.discard.push(card);
+      const top = pile.discard[pile.discard.length - 1];
+      this.s.discardTop = new AD.DiscardTop(top);
+      this.s.discardTopOwner = 'player';
+      return top;
+    }
+
+    /**
+     * Repair saves produced by the old virtual-table-top model. The player
+     * owns one normal adventure deck plus one physical card per trophy white
+     * card; the table top is already included in discard and must not increase
+     * that total. Only excess cards are removed, preserving the active top.
+     */
+    _normalizePlayerPileCount() {
+      const AD = window.AdventureDeck;
+      const pile = this.s && this.s.playerPile;
+      if (!AD || !pile) return 0;
+      const template = AD.makePlayerDeck ? AD.makePlayerDeck() : null;
+      const baseCount = Array.isArray(template) ? template.length : 99;
+      const trophyCount = (this.s.trophyWhiteCards || []).filter(name => {
+        const def = window.AdventureRegistry && window.AdventureRegistry.getItem(name);
+        return def && def.kind === 'trophyWhite';
+      }).length;
+      let excess = pile.deck.length + pile.hand.length + pile.discard.length - baseCount - trophyCount;
+      if (excess <= 0) return 0;
+
+      const top = this.s.discardTop && typeof this.s.discardTop.get === 'function'
+        ? this.s.discardTop.get() : null;
+      // A map save without a table top may legitimately contain a caller's
+      // custom pile contents (and has no duplicate-top evidence to migrate).
+      if (!top) return 0;
+      const sameCard = (a, b) => a && b && a.color === b.color && a.value === b.value &&
+        !!a.isItemCard === !!b.isItemCard &&
+        (!a.trophyName || !b.trophyName || a.trophyName === b.trophyName) &&
+        (!a.magicColor || !b.magicColor || a.magicColor === b.magicColor);
+      let removed = 0;
+      while (excess > 0) {
+        if (pile.discard.length) {
+          const last = pile.discard.length - 1;
+          // If the top is stored as the last discard, remove the entry before
+          // it first so the active table card remains physically available.
+          const index = top && sameCard(pile.discard[last], top) && last > 0 ? last - 1 : last;
+          pile.discard.splice(index, 1);
+        } else if (pile.deck.length) {
+          pile.deck.pop();
+        } else if (pile.hand.length) {
+          pile.hand.pop();
+        } else {
+          break;
+        }
+        excess--;
+        removed++;
+      }
+      if (removed) this._log('存档迁移：移除重复牌' + removed + '张，恢复玩家牌库总数');
+      return removed;
+    }
+
     _handleNormal(room) {
       if (room.cleared) {
         if (room.stashedLoot) {
@@ -393,6 +481,7 @@
         return;
       }
       monster.init(this);
+      this._initializeDiscardTop();
       this._initCombat(monster, 'monster');
       this.emit('combatStart', '遭遇 ' + monster.name, { enemy: monster.name });
     }
@@ -429,6 +518,7 @@
       }
       boss.init(this);
 
+      this._initializeDiscardTop();
       this._initCombat(boss, 'boss');
       this.emit('combatStart', 'Boss 出现：' + boss.name, { enemy: boss.name });
     }
@@ -456,6 +546,7 @@
       }
       monster1.init(this);
       monster2.init(this);
+      this._initializeDiscardTop();
       this._initCombat(monster1, 'challenge', monster2);
       this.emit('combatStart', '挑战房：' + monster1.name + ' + ' + monster2.name, { enemy: monster1.name, enemy2: monster2.name, is1v2: true });
     }
@@ -601,6 +692,27 @@
     snapshot() {
       if (!this.s) return null;
       const room = this.currentRoom();
+      const topCard = this.s.discardTop && typeof this.s.discardTop.get === 'function'
+        ? this.s.discardTop.get()
+        : null;
+      const discardTop = topCard ? {
+        color: topCard.color,
+        value: topCard.value,
+        isWhite: !!topCard.isWhite,
+        isBlack: !!topCard.isBlack,
+        isNumberCard: !!topCard.isNumberCard,
+        isItemCard: !!topCard.isItemCard,
+        chosenColor: topCard.chosenColor || null,
+        magicColor: topCard.magicColor || null,
+        trophyWhite: !!topCard.trophyWhite,
+        trophyName: topCard.trophyName || null,
+        trophyEffect: topCard.trophyEffect || null
+      } : null;
+      const playerPile = this.s.playerPile ? this.s.playerPile.summary() : null;
+      if (playerPile) {
+        playerPile.totalCount = playerPile.deckCount + playerPile.handCount +
+          playerPile.discardCount;
+      }
       const itemDetail = name => {
         const def = window.AdventureRegistry.getItem(name);
         return def ? { name, displayName: def.displayName, kind: def.kind, description: def.description, icon: def.icon, useScene: def.useScene || null, price: def.price || 0 } : { name, displayName: name, kind: 'unknown' };
@@ -618,7 +730,9 @@
         phase: this.s.phase,
         phaseLabel: PHASE_LABEL[this.s.phase] || this.s.phase,
         map: this.s.map.summary(),
-        playerPile: this.s.playerPile ? this.s.playerPile.summary() : null,
+        playerPile,
+        discardTop,
+        discardTopOwner: this.s.discardTopOwner || null,
         combat: this.s.combat ? {
           enemy: this.s.combat.enemy.name,
           enemyHp: this.s.combat.enemy.hp,
@@ -638,7 +752,7 @@
           npcHandCount: this.s.combat.npcPile.hand.length,
           npcDeckCount: this.s.combat.npcPile.deck.length,
           npcDiscardCount: this.s.combat.npcPile.discard.length,
-          discardTop: this.s.discardTop ? (this.s.discardTop.get() ? { color: this.s.discardTop.get().color, value: this.s.discardTop.get().value, isWhite: this.s.discardTop.get().isWhite, isItemCard: this.s.discardTop.get().isItemCard, chosenColor: this.s.discardTop.get().chosenColor || null } : null) : null
+          discardTop
         } : null,
         beastReward: this.s.beastReward ? {
           scenario: this.s.beastReward.scenario,

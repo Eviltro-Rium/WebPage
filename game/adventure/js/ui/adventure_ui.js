@@ -417,7 +417,13 @@
         this._buildAccessoryPanel(snap);
 
       if (snap.playerPile) {
-        html += '<div class="adv-deck-info">牌库' + snap.playerPile.deckCount + ' | 弃牌' + snap.playerPile.discardCount + '</div>';
+        const totalCount = Number(snap.playerPile.totalCount) ||
+          snap.playerPile.deckCount + snap.playerPile.handCount + snap.playerPile.discardCount;
+        html += '<div class="adv-deck-info" title="牌库、手牌与弃牌库合计为玩家当前全部牌张">' +
+          '牌库' + snap.playerPile.deckCount +
+          ' | 手牌' + snap.playerPile.handCount +
+          ' | 弃牌' + snap.playerPile.discardCount +
+          ' <span class="adv-deck-total">（合计' + totalCount + '）</span></div>';
         html += '<div class="adv-hand-zone" id="adv-hand-zone"></div>';
       }
       html += '</div></div>';
@@ -1296,6 +1302,9 @@
       const opponents = this._test.opponents.slice();
       const map = window.AdventureMap.fromGrid([[0, 1, 2]]);
       this.eng.start(map, this._test.characterName, { consumables: this._test.items, trophyWhiteCards: this._test.trophyWhiteCards, accessories: this._test.accessories, stage: 1, scene: 'castle' });
+      // Test mode enters combat directly instead of going through a map room,
+      // so reveal the room's initial table card here.
+      if (!this.eng.s.discardTop || !this.eng.s.discardTop.get()) this.eng._initializeDiscardTop();
       const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
       const initialState = {
         playerState: clone(this.eng.s.player),

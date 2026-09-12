@@ -47,7 +47,7 @@
       if (typeof engine.divingBlocksDamage === 'function' && engine.divingBlocksDamage(targetChar, engine.s.atkCard)) {
         engine.emit('desc', targetChar.name + '有[潜水]，免疫蓝色攻击伤害');
         dmg = 0;
-      } else {
+      } else if (!isDrain) {
         dmg = engine.applyDefenderAvoidance(targetChar, dmg);
       }
       engine.dealAttackHit(engine.s.player, targetChar, dmg, isDrain);

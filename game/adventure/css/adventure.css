@@ -282,6 +282,7 @@
 .adv-currency, .adv-inventory { font-size: 13px; margin-top: 6px; color: #cfcfe0; }
 .adv-currency b { color: #fbbf24; }
 .adv-deck-info { font-size: 12px; margin-top: 6px; color: #9ca3af; }
+.adv-deck-total { color: #c4b5fd; font-weight: 700; }
 .adv-hand-zone {
   display: flex;
   flex-wrap: wrap;

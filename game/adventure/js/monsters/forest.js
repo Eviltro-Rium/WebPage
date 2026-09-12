@@ -316,7 +316,7 @@
       if (v >= 1 && v <= 3) return 1;
       return 0;
     },
-    defendAllLush(card) {
+    defendLush(card) {
       const v = card.value;
       if (v >= 1 && v <= 3) return 1;
       return 0;
@@ -469,8 +469,11 @@
       if (v === 0) return 1;
       return 0;
     },
-    attackDrawSelf(card) {
-      return card.value >= 1 && card.value <= 3 ? 1 : 0;
+    attackDrawSelf(card, ctx) {
+      const v = card.value;
+      if (v < 1 || v > 3) return 0;
+      const poison = (ctx && ctx.playerPoison) || 0;
+      return poison >= 2 ? 1 : 0;
     },
     defendCounter(card) {
       const v = card.value;

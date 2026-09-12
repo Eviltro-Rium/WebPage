@@ -37,6 +37,7 @@
       </div>
       <div class="hp-section" id="ai-hp-section">
         <span class="attacker-indicator">进攻方</span>
+        <span class="defender-indicator">防守方</span>
         <img class="hp-avatar" id="ai-avatar" src="" alt="">
         <span class="hp-name" id="ai-name">${ai1Label}</span>
         <div class="hp-bar-outer"><div class="hp-bar-inner" id="ai-hp-bar" style="width:100%"></div><span class="hp-text" id="ai-hp-text">100/100</span></div>
@@ -44,6 +45,7 @@
       </div>
       <div class="hp-section ai2-hp-section" id="ai2-hp-section">
         <span class="attacker-indicator">进攻方</span>
+        <span class="defender-indicator">防守方</span>
         <img class="hp-avatar" id="ai2-avatar" src="" alt="">
         <span class="hp-name" id="ai2-name">${ai2Label}</span>
         <div class="hp-bar-outer"><div class="hp-bar-inner" id="ai2-hp-bar" style="width:100%"></div><span class="hp-text" id="ai2-hp-text">100/100</span></div>
@@ -63,6 +65,7 @@
       </div>
       <div class="hp-section" id="player-hp-section">
         <span class="attacker-indicator">进攻方</span>
+        <span class="defender-indicator">防守方</span>
         <img class="hp-avatar" id="player-avatar" src="" alt="">
         <span class="hp-name" id="player-name">你</span>
         <div class="hp-bar-outer"><div class="hp-bar-inner" id="player-hp-bar" style="width:100%"></div><span class="hp-text" id="player-hp-text">70/70</span></div>

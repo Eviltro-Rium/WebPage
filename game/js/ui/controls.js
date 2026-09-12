@@ -233,18 +233,25 @@ _showSkillOverlay() {
     if (existing) { existing.remove(); return; }
     const s = this.state;
     if (!s || !s.player) return;
+    const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine &&
+        window.AdventureCombatBridge.activeEngine()._adventureEngine;
+    const stage = (advEngine && advEngine.s && advEngine.s.stage) || s.stage || 1;
     const chars = [];
-    chars.push({ name: s.player.name.replace(/^AI\d*\s+/, ''), label: '玩家', color: '#3b82f6' });
+    chars.push({ name: s.player.name.replace(/^AI\d*\s+/, ''), label: '玩家', color: '#3b82f6', isNpc: false });
     chars.push({
         name: s.ai.name.replace(/^AI\d*\s+/, ''),
         label: s.isAdventure ? '对手' : 'AI',
-        color: '#ef4444'
+        color: '#ef4444',
+        isNpc: !!s.isAdventure,
+        stage
     });
     if (s.ai2 && s.ai2.name) {
         chars.push({
             name: s.ai2.name.replace(/^AI\d*\s+/, ''),
             label: s.isAdventure ? '对手2' : 'AI2',
-            color: '#a855f7'
+            color: '#a855f7',
+            isNpc: !!s.isAdventure,
+            stage
         });
     }
 
@@ -253,29 +260,70 @@ _showSkillOverlay() {
     overlay.className = 'skill-overlay';
     let html = '<div class="skill-overlay-inner">';
     html += '<div class="skill-overlay-header"><button class="rules-back-btn" id="skill-back">&larr; 返回</button><h1 class="rules-title">角色技能</h1></div>';
+    const PLAYER_SKILL_GRID = [
+        { atkKey: 0, defKey: 0, label: '1' }, { atkKey: 1, defKey: 1, label: '2' },
+        { atkKey: 2, defKey: 2, label: '3' }, { atkKey: 7, defKey: 3, label: '0' },
+        { atkKey: 3, defKey: -1, label: '4' }, { atkKey: 4, defKey: -1, label: '5' },
+        { atkKey: 5, defKey: -1, label: '6' }, { atkKey: 6, defKey: -1, label: '7' }
+    ];
+    const NPC_SKILL_GRID = [
+        { label: '1' }, { label: '2' }, { label: '3' }, { label: '0' },
+        { label: '4' }, { label: '5' }, { label: '6' }
+    ];
+    const stripPrefix = t => (t || '').replace(/^\d+\s*/, '');
+    const colorize = t => {
+        if (typeof parseSegments !== 'function') return t;
+        const segs = parseSegments(t, '');
+        return segs.map(sg => sg.color ? `<span style="color:${sg.color}">${sg.text}</span>` : sg.text).join('');
+    };
     for (const ch of chars) {
-        const atk = (SKILL_DATA && SKILL_DATA.attack && SKILL_DATA.attack[ch.name]) || [];
-        const def = (SKILL_DATA && SKILL_DATA.defend && SKILL_DATA.defend[ch.name]) || [];
-        if (!atk.length && !def.length) continue;
-        html += `<div class="skill-overlay-char"><span class="skill-overlay-char-label" style="color:${ch.color}">${ch.label}：${ch.name}</span></div>`;
+        let atk = (SKILL_DATA && SKILL_DATA.attack && SKILL_DATA.attack[ch.name]) || [];
+        let def = (SKILL_DATA && SKILL_DATA.defend && SKILL_DATA.defend[ch.name]) || [];
+        if (ch.stage && ch.stage > 1 && SKILL_DATA && SKILL_DATA.castleStageMods) {
+            const modTable = SKILL_DATA.castleStageMods[ch.name];
+            if (modTable && modTable[ch.stage]) {
+                if (modTable[ch.stage].attack) atk = modTable[ch.stage].attack;
+                if (modTable[ch.stage].defend) def = modTable[ch.stage].defend;
+            }
+        }
+        let dynAtk = null, dynDef = null;
+        if (!atk.length && !def.length && ch.isNpc) {
+            const fn = window.AdventureMonsterBridge && window.AdventureMonsterBridge.getAdventureNpcSkillDesc;
+            if (fn) {
+                const mkCard = vv => ({ value: vv, isNumberCard: true, isItemCard: false, isBlack: false, isWhite: false });
+                const st = ch.stage || 1;
+                for (const vv of [1, 2, 3, 4, 5, 6, 0]) {
+                    const aDesc = fn(ch.name, mkCard(vv), false, { stage: st });
+                    const dDesc = fn(ch.name, mkCard(vv), true, { stage: st });
+                    if (aDesc && aDesc !== '无进攻效果') { if (!dynAtk) dynAtk = {}; dynAtk[vv] = aDesc; }
+                    if (dDesc && dDesc !== '无防御效果') { if (!dynDef) dynDef = {}; dynDef[vv] = dDesc; }
+                }
+            }
+        }
+        if (!atk.length && !def.length && !dynAtk && !dynDef) continue;
+        const labelExtra = (ch.stage && ch.stage > 1) ? (' (第' + ch.stage + '层)') : '';
+        html += `<div class="skill-overlay-char"><span class="skill-overlay-char-label" style="color:${ch.color}">${ch.label}：${ch.name}${labelExtra}</span></div>`;
         html += '<div class="skill-grid">';
-        const SKILL_GRID = [
-            { atkKey: 0, defKey: 0, label: '1' }, { atkKey: 1, defKey: 1, label: '2' },
-            { atkKey: 2, defKey: 2, label: '3' }, { atkKey: 7, defKey: 3, label: '0' },
-            { atkKey: 3, defKey: -1, label: '4' }, { atkKey: 4, defKey: -1, label: '5' },
-            { atkKey: 5, defKey: -1, label: '6' }, { atkKey: 6, defKey: -1, label: '7' }
-        ];
-        const stripPrefix = t => (t || '').replace(/^\d+\s*/, '');
-        const colorize = t => {
-            if (typeof parseSegments !== 'function') return t;
-            const segs = parseSegments(t, '');
-            return segs.map(sg => sg.color ? `<span style="color:${sg.color}">${sg.text}</span>` : sg.text).join('');
-        };
-        for (const row of SKILL_GRID) {
-            const atkDesc = atk[row.atkKey] ? colorize(stripPrefix(atk[row.atkKey])) : '—';
-            const defDesc = row.defKey >= 0 && def[row.defKey] ? colorize(stripPrefix(def[row.defKey])) : (row.defKey >= 0 ? '无防御效果' : '');
+        const npcMod = ch.isNpc && window.AdventureRegistry
+            ? (window.AdventureRegistry.getMonster(ch.name) || window.AdventureRegistry.getBoss(ch.name))
+            : null;
+        const includeZero = !!(npcMod && npcMod.whiteZeros) || !!(dynAtk && dynAtk[0]) || !!(dynDef && dynDef[0]);
+        const canDefendHigh = !!(npcMod && npcMod.canDefendHigh);
+        const grid = ch.isNpc
+            ? NPC_SKILL_GRID.filter(row => row.label !== '0' || includeZero)
+            : PLAYER_SKILL_GRID;
+        for (const row of grid) {
+            const rv = parseInt(row.label, 10);
+            let atkDesc, defDesc;
+            const hasDefSlot = ch.isNpc
+                ? (['1', '2', '3', '0'].includes(row.label) || (canDefendHigh && ['4', '5', '6'].includes(row.label)))
+                : (row.defKey >= 0);
+            if (dynAtk) atkDesc = dynAtk[rv] ? colorize(dynAtk[rv]) : '—';
+            else atkDesc = atk[row.atkKey] ? colorize(stripPrefix(atk[row.atkKey])) : '—';
+            if (dynDef) defDesc = hasDefSlot ? (dynDef[rv] ? colorize(dynDef[rv]) : '无防御效果') : '';
+            else defDesc = hasDefSlot && def[row.defKey] ? colorize(stripPrefix(def[row.defKey])) : (hasDefSlot ? '无防御效果' : '');
             html += `<div class="skill-row"><div class="skill-cell skill-atk">${atkDesc}</div><div class="skill-num">${row.label}</div>`;
-            html += row.defKey >= 0 ? `<div class="skill-cell skill-def">${defDesc}</div>` : `<div class="skill-cell skill-def skill-no-def"></div>`;
+            html += hasDefSlot ? `<div class="skill-cell skill-def">${defDesc}</div>` : `<div class="skill-cell skill-def skill-no-def"></div>`;
             html += '</div>';
         }
         html += '</div>';

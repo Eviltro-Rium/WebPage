@@ -1,6 +1,6 @@
 const CARD_W = 70, CARD_H = 100;
 const CARD_W_MOBILE = 52, CARD_H_MOBILE = 74;
-const CARD_ZONE_W_MOBILE = 60, CARD_ZONE_H_MOBILE = 86;
+const CARD_ZONE_W_MOBILE = 52, CARD_ZONE_H_MOBILE = 74;
 function isMobileLayout() {
     return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
 }
@@ -808,12 +808,12 @@ class GameUI {
             </div>
             <div class="hp-section" id="ai-hp-section">
                 <span class="attacker-indicator">进攻方</span>
+                <span class="defender-indicator">防守方</span>
                 <img class="hp-avatar" id="ai-avatar" src="" alt="">
                 <span class="hp-name" id="ai-name">AI</span>
                 <div class="hp-bar-outer"><div class="hp-bar-inner" id="ai-hp-bar" style="width:100%"></div>
                 <span class="hp-text" id="ai-hp-text">100/100</span></div>
                 <div class="buff-icons" id="ai-buffs"></div>
-                <div class="ai-deck-info" id="ai-deck-info" style="display:none"></div>
             </div>
             <div class="ai-area">
                 <div class="ai-hands-stack">
@@ -843,6 +843,7 @@ class GameUI {
             </div>
             <div class="hp-section" id="player-hp-section">
                 <span class="attacker-indicator">进攻方</span>
+                <span class="defender-indicator">防守方</span>
                 <img class="hp-avatar" id="player-avatar" src="" alt="">
                 <span class="hp-name" id="player-name">你</span>
                 <div class="hp-bar-outer"><div class="hp-bar-inner" id="player-hp-bar" style="width:100%"></div>
@@ -865,7 +866,9 @@ class GameUI {
         const prev = this._prevState;
         if (prev && prev.phase !== s.phase) this._selectedCombatItem = null;
 
-        document.getElementById('deck-info').textContent = `牌堆: ${s.deck}`;
+        document.getElementById('deck-info').textContent = s.isAdventure
+            ? `牌堆: ${s.deck} | 弃牌库: ${s.discard != null ? s.discard : 0}`
+            : `牌堆: ${s.deck}`;
         this._drawDeckIcon(s.deck);
         document.getElementById('turn-info').textContent = `回合 ${s.turn}`;
         let phaseText = s.phase === 'AI_DEFEND' && s.defenseSkipped ? '跳过防御' : (PHASE_NAMES[s.phase] || s.phase);
@@ -881,8 +884,7 @@ class GameUI {
         this._updateAvatar('player', s.player.name);
         this._updateAvatar('ai', s.ai.name);
         const activeAttacker = s.activeAttacker || (['AI_TURN', 'PLAYER_DEFEND', 'GUARD_CHOICE'].includes(s.phase) ? 'ai' : 'player');
-        document.getElementById('player-hp-section').classList.toggle('active-attacker', activeAttacker === 'player');
-        document.getElementById('ai-hp-section').classList.toggle('active-attacker', activeAttacker === 'ai');
+        this._updateAttackerIndicator(activeAttacker);
 
         const skipStateDiffAnimations = !!this._skipStateDiffAnimations;
         this._skipStateDiffAnimations = false;
@@ -896,7 +898,6 @@ class GameUI {
         this._renderControls();
         this._updateAdventureInfo(s);
         this._renderAdventureItemBar(s);
-        this._syncHandSkillTooltip();
         this._updateAdventureNpcLabels(s);
 
         if (s.pendingDialog === 'purify') {
@@ -989,14 +990,25 @@ class GameUI {
     }
 
     _updateAttackerIndicator(who) {
-        const is1v2 = this.state && this.state.is1v2;
-        document.getElementById('player-hp-section')?.classList.toggle('active-attacker', who === 'player');
-        document.getElementById('ai-hp-section')?.classList.toggle('active-attacker', who === 'ai');
-        if (is1v2) {
-            document.getElementById('ai2-hp-section')?.classList.toggle('active-attacker', who === 'ai2');
-            document.getElementById('ai-hp-section')?.classList.toggle('selected-target', this.state?.attackTarget === 'ai' && who === 'player');
-            document.getElementById('ai2-hp-section')?.classList.toggle('selected-target', this.state?.attackTarget === 'ai2' && who === 'player');
-        }
+        const s = this.state || {};
+        const is1v2 = !!s.is1v2;
+        const fallback = s.activeAttacker || (['AI_TURN', 'PLAYER_DEFEND', 'GUARD_CHOICE'].includes(s.phase) ? 'ai' : 'player');
+        const attacker = ['player', 'ai', 'ai2'].includes(who) ? who : fallback;
+        const defender = attacker === 'player'
+            ? (is1v2 ? (s.attackTarget || (s.ai && s.ai.alive ? 'ai' : 'ai2')) : 'ai')
+            : 'player';
+        const sections = {
+            player: document.getElementById('player-hp-section'),
+            ai: document.getElementById('ai-hp-section'),
+            ai2: document.getElementById('ai2-hp-section')
+        };
+        Object.keys(sections).forEach(key => {
+            const section = sections[key];
+            if (!section) return;
+            section.classList.toggle('active-attacker', key === attacker);
+            section.classList.toggle('active-defender', key === defender);
+            section.classList.toggle('selected-target', is1v2 && attacker === 'player' && key === defender);
+        });
     }
 
     _updateAvatar(prefix, name) {
@@ -1215,16 +1227,13 @@ class GameUI {
                 });
             }
 
-            // Illegal cards remain hoverable so their skill text can still be
-            // inspected, but they have no click handler and therefore cannot
-            // be selected or played.
+            // Keep the skill explanation attached to the card itself.  The
+            // old centered tooltip under the title has been removed.
             if (canInteract) {
-                cv.addEventListener('mouseenter', () => {
-                    if (this._npcHandFocusIndex >= 0) return;
-                    this._showTooltip(card, cv, isDefend);
-                });
-                cv.addEventListener('mouseleave', () => this._syncHandSkillTooltip());
+                cv.addEventListener('mouseenter', () => this._showTooltip(card, cv, isDefend));
+                cv.addEventListener('mouseleave', () => this._hideTooltip());
             }
+
             container.appendChild(cv);
         }
         if (s.chanFiveCards && s.chanFiveCards.length > 0) {
@@ -1249,7 +1258,7 @@ class GameUI {
     _showTooltip(card, anchorEl, isDefend, opts = {}) {
         this._hideTooltip();
         const s = this.state;
-        if (!s || !card) return;
+        if (!s || !card || !anchorEl) return;
         const charName = opts.charName || card.borrowedMonsterName || (s.player ? s.player.name.replace(/^AI\d*\s+/, '') : '');
         if (!charName) return;
         let desc = this._resolveHandSkillDesc(charName, card, isDefend, opts.adventureOpts);
@@ -1259,16 +1268,13 @@ class GameUI {
         const tip = document.createElement('div');
         tip.id = 'card-tooltip';
         tip.className = 'card-tooltip';
-
         const title = document.createElement('div');
         title.className = 'tooltip-title';
         title.textContent = charName + ' ' + (card.isItemCard ? (card.isBlack ? '黑牌' : card.isWhite ? '白牌' : '道具') : card.value + '牌');
         tip.appendChild(title);
-
         const body = document.createElement('div');
         body.className = 'tooltip-body';
-        const segs = parseSegments(desc, '#e6e6f0');
-        for (const seg of segs) {
+        for (const seg of parseSegments(desc, '#e6e6f0')) {
             const span = document.createElement('span');
             span.textContent = seg.text;
             span.style.color = seg.color;
@@ -1276,53 +1282,14 @@ class GameUI {
         }
         tip.appendChild(body);
         document.body.appendChild(tip);
-
-        if (anchorEl) {
-            const r = anchorEl.getBoundingClientRect();
-            tip.style.left = Math.min(r.left, window.innerWidth - tip.offsetWidth - 10) + 'px';
-            tip.style.top = Math.max(10, r.top - tip.offsetHeight - 8) + 'px';
-        } else {
-            tip.style.left = (window.innerWidth / 2 - tip.offsetWidth / 2) + 'px';
-            tip.style.top = '80px';
-        }
+        const r = anchorEl.getBoundingClientRect();
+        tip.style.left = Math.min(r.left, window.innerWidth - tip.offsetWidth - 10) + 'px';
+        tip.style.top = Math.max(10, r.top - tip.offsetHeight - 8) + 'px';
     }
 
     _hideTooltip() {
         const el = document.getElementById('card-tooltip');
         if (el) el.remove();
-    }
-
-    /** 玩家/NPC 手牌技能说明共用 card-tooltip，二者互斥 */
-    _syncHandSkillTooltip() {
-        this._hideTooltip();
-        const legacy = document.getElementById('ai-hand-skills');
-        if (legacy) legacy.remove();
-
-        const s = this.state;
-        if (!s) return;
-
-        if (s.isAdventure && this._npcHandFocusIndex >= 0 && Array.isArray(s.aiHand)) {
-            const card = s.aiHand[this._npcHandFocusIndex];
-            const showDefend = s.phase === 'PLAYER_PLAY';
-            const showAttack = s.phase === 'PLAYER_DEFEND';
-            if (card && (showDefend || showAttack)) {
-                const charName = this._combatDisplayName(s.ai && s.ai.name);
-                const adventureOpts = {
-                    stage: s.adventureStage || s.stage || 1,
-                    playerHandSize: (s.playerHand && s.playerHand.length) || 0,
-                    incomingDamage: s.pendingDefenseDamage || 0
-                };
-                this._showTooltip(card, null, showDefend, { charName, adventureOpts });
-                return;
-            }
-        }
-
-        const canInteract = ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
-            'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD'].includes(s.phase);
-        if (s.selectedCard >= 0 && canInteract && s.playerHand) {
-            const card = s.playerHand[s.selectedCard];
-            if (card) this._showTooltip(card, null, s.phase === 'PLAYER_DEFEND');
-        }
     }
 
     _combatDisplayName(name) {
@@ -1406,10 +1373,8 @@ class GameUI {
                     playerHandSize: (s.playerHand && s.playerHand.length) || 0,
                     incomingDamage: s.pendingDefenseDamage || 0
                 };
-                cv.addEventListener('mouseenter', () => {
-                    this._showTooltip(card, cv, s.phase === 'PLAYER_DEFEND', { charName, adventureOpts });
-                });
-                cv.addEventListener('mouseleave', () => this._syncHandSkillTooltip());
+                cv.addEventListener('mouseenter', () => this._showTooltip(card, cv, true, { charName, adventureOpts }));
+                cv.addEventListener('mouseleave', () => this._hideTooltip());
             }
             container.appendChild(cv);
         }
@@ -1753,26 +1718,18 @@ class GameUI {
             for (const k of AC.ALL_BEAST_TYPES) {
                 if (tokens[k] > 0) {
                     html += '<span class="adv-info-currency"><img src="' + AC.BEAST_ICON[k] + '" class="adv-info-icon" alt="' + (AC.BEAST_LABEL[k] || k) + '">' + tokens[k] + '</span>';
-                }
-            }
+          }
+        }
         }
         bar.innerHTML = html;
 
-        const deckInfo = document.getElementById('ai-deck-info');
         const npcDeckInfo = document.getElementById('npc-deck-info');
         const hasNpcPile = s.isAdventure && (s.aiDeckCount != null || s.aiDiscardCount != null);
-        const pileText = 'NPC牌库: ' + (s.aiDeckCount != null ? s.aiDeckCount : 0) +
-            ' | 弃牌库: ' + (s.aiDiscardCount != null ? s.aiDiscardCount : 0);
+        const pileText = '怪物牌库: ' + (s.aiDeckCount != null ? s.aiDeckCount : 0) +
+            ' | 怪物弃牌库: ' + (s.aiDiscardCount != null ? s.aiDiscardCount : 0);
         if (npcDeckInfo) {
             npcDeckInfo.style.display = hasNpcPile ? '' : 'none';
             npcDeckInfo.textContent = pileText;
-        }
-        // Keep the legacy in-panel element in sync for layouts that still
-        // reserve it, while the visible adventure layout uses the top bar.
-        if (deckInfo) {
-            deckInfo.style.display = hasNpcPile ? '' : 'none';
-            deckInfo.innerHTML = '<span class="ai-deck-count">牌库 ' + (s.aiDeckCount != null ? s.aiDeckCount : 0) + '</span>' +
-                '<span class="ai-discard-count">弃牌 ' + (s.aiDiscardCount != null ? s.aiDiscardCount : 0) + '</span>';
         }
     }
 
@@ -1781,7 +1738,7 @@ class GameUI {
         const container = document.getElementById('discard-top');
         container.innerHTML = '';
         if (s.discardTop) {
-            const cv = renderCard(s.discardTop, 60, 100, false);
+            const cv = renderCard(s.discardTop, 60, 86, false);
             cv.classList.add('disabled'); cv.style.cursor = 'default';
             container.appendChild(cv);
         } else {
@@ -1844,7 +1801,7 @@ class GameUI {
         } else {
             if (!cards.length) box.innerHTML = '<span class="reveal-empty">等待判定</span>';
             const cw = cards.length > 1 ? 52 : 60;
-            const ch = cards.length > 1 ? 88 : 100;
+            const ch = cards.length > 1 ? 74 : 86;
             for (const card of cards) {
                 const cv = renderCard(card, cw, ch, false);
                 cv.classList.add('revealed-card'); box.appendChild(cv);

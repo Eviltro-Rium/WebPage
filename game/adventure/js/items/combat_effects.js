@@ -153,9 +153,10 @@
 
   register('vampire', (eng, def, ctx) => {
     const amt = def.vampireAmount || 3;
-    // Item Vampire ignores guard/fly; always deal full drain up to target HP.
+    // Vampire cannot open a defense phase, but existing guard/fly still
+    // reduces the amount actually drained.
     if (typeof eng.performAttack === 'function') {
-      const taken = eng.performAttack({type:'drain',attacker:'player',target:'ai',damage:amt,allowAvoidance:false,direct:true,suppressFloat:true});
+      const taken = eng.performAttack({type:'drain',attacker:'player',target:'ai',damage:amt,allowAvoidance:true,direct:true,suppressFloat:true});
       return { ok: true, message: '吸取对手' + taken + '点生命' };
     }
     const before = ctx.ai.hp;

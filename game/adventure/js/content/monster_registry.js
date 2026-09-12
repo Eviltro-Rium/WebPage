@@ -182,8 +182,8 @@
             eng.emit('buff', '[潜水]', null, { who, kind: 'diving', stacks: 1 });
           }
         }
-        // 冻洋蓝鲸专属：对场上所有其他角色造成不可防御伤害（4/5/6）
-        if (typeof mod.attackDrawSelf === 'function' && mod.attackDrawSelf(c)) {
+        // 蟒蛇专属：满足条件时抽一张牌（仅当玩家有 ≥2 层中毒时）
+        if (typeof mod.attackDrawSelf === 'function' && mod.attackDrawSelf(c, ctx)) {
           if (draw) draw(owner, 1, true);
           else eng.draw(owner, 1, true);
           eng.emit('desc', a.name + '抽取1张牌');
@@ -677,7 +677,7 @@
     if (typeof mod.attackStealItem === 'function' && mod.attackStealItem(card)) {
       parts.push('玩家随机丢失1个道具');
     }
-    if (typeof mod.attackDrawSelf === 'function' && mod.attackDrawSelf(card)) {
+    if (typeof mod.attackDrawSelf === 'function' && mod.attackDrawSelf(card, ctx)) {
       parts.push('抽取1张牌');
     }
     if (typeof mod.attackTransferDebuff === 'function' && mod.attackTransferDebuff(card)) {
