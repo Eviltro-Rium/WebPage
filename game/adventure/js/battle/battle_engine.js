@@ -102,8 +102,9 @@
       const rawDef = window.AdventureRegistry.getMonster(opponentName) ||
         window.AdventureRegistry.getBoss(opponentName);
       if (rawDef) {
+        const oppStage = config.opponentStage || stage;
         const moddedDef = (window.AdventureMonsterBridge && window.AdventureMonsterBridge.applyStageMods)
-          ? window.AdventureMonsterBridge.applyStageMods(rawDef, stage)
+          ? window.AdventureMonsterBridge.applyStageMods(rawDef, oppStage)
           : rawDef;
         window.AdventureMonsterBridge.registerMonsterChar(moddedDef);
         window.AdventureMonsterBridge.registerMonsterAI(moddedDef);
@@ -217,12 +218,14 @@
         const tmp = opponent1Name; opponent1Name = opponent2Name; opponent2Name = tmp;
       }
 
-      for (const oppName of [opponent1Name, opponent2Name]) {
+      const oppStages = [config.opponent1Stage || stage, config.opponent2Stage || stage];
+      for (let i = 0; i < 2; i++) {
+        const oppName = [opponent1Name, opponent2Name][i];
         const rawDef = window.AdventureRegistry.getMonster(oppName) ||
           window.AdventureRegistry.getBoss(oppName);
         if (rawDef) {
           const moddedDef = (window.AdventureMonsterBridge && window.AdventureMonsterBridge.applyStageMods)
-            ? window.AdventureMonsterBridge.applyStageMods(rawDef, stage)
+            ? window.AdventureMonsterBridge.applyStageMods(rawDef, oppStages[i])
             : rawDef;
           window.AdventureMonsterBridge.registerMonsterChar(moddedDef);
           window.AdventureMonsterBridge.registerMonsterAI(moddedDef);
@@ -761,7 +764,7 @@
 
       const effects = window.AdventureCombatEffects;
       const result = effects && typeof effects.apply === 'function'
-        ? effects.apply(this, def, { choice, purifyChoices, player, ai, advEngine })
+        ? effects.apply(this, def, { choice, purifyChoices, player, ai, advEngine, targetKey })
         : { ok: true, message: '使用' + def.displayName };
 
       if (result && result.pending) return this.state();
@@ -947,7 +950,7 @@
       if (!this._hasAccessory('FlameFist')) return;
       const i = this.s.selectedCard;
       const c = this.h.player && this.h.player[i];
-      if (!c || (c.isBlack && !c.chosenColor)) return;
+      if (!c || c.isItemCard || (c.isBlack && !c.chosenColor)) return;
       const attackerKey = (this.s.atkOwner && this.s.atkOwner !== 'player') ? this.s.atkOwner : 'ai';
       const attacker = this.s[attackerKey];
       if (!attacker || !attacker.alive) return;
@@ -1090,6 +1093,7 @@
 
     _tryFreezeLaserOnAttackDamage(target, amount, kind) {
       if (!this.s || !this.s.isAdventure) return;
+      if (this.s.phase === 'PLAYER_DEFEND') return;
       if (!(amount > 0) || kind) return;
       if (!target || target === this.s.player) return;
       if (this._freezeLaserAppliedThisAttack) return;

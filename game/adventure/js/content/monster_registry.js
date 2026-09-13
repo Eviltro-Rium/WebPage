@@ -68,6 +68,26 @@
         } else {
           d = v;
         }
+        // 冻洋海豹专属：进攻1/2/3从牌堆抽一张牌展示，造成对应数字伤害
+        if (typeof mod.attackRevealDraw === 'function' && mod.attackRevealDraw(c)) {
+          const pile = eng.piles && eng.piles[attackerKey];
+          if (pile) {
+            if (typeof eng._refillPile === 'function') eng._refillPile(attackerKey);
+            if (pile.deck.length) {
+              const drawn = pile.deck.pop();
+              eng.emit('reveal', a.name + '从牌堆抽出' + eng.cardText(drawn) + '展示', drawn, { who: attackerKey, from: 'deck' });
+              if (drawn.isItemCard) {
+                pile.hand.push(drawn);
+                d = 0;
+                eng.emit('desc', eng.cardText(drawn) + '加入' + a.name + '手牌');
+              } else {
+                d = drawn.value;
+                pile.discard.push(drawn);
+                eng.emit('desc', a.name + '造成' + d + '点伤害，' + eng.cardText(drawn) + '放入弃牌堆');
+              }
+            }
+          }
+        }
         if (typeof mod.attackUnblockable === 'function') {
           unblock = mod.attackUnblockable(c);
         }
@@ -602,6 +622,9 @@
     let parts = [];
     let dmg = 0;
     let bleedDmgDesc = null;
+    if (typeof mod.attackRevealDraw === 'function' && mod.attackRevealDraw(card)) {
+      parts.push('从牌堆抽1张牌展示，造成对应数字的伤害');
+    }
     const drainAmount = typeof mod.attackDrain === 'function'
       ? Math.max(0, Number(mod.attackDrain(card, ctx)) || 0)
       : 0;

@@ -14,10 +14,10 @@
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.ocean = {
-    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark'],
-    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark'],
-    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark'],
-    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark']
+    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal'],
+    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal'],
+    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal'],
+    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal']
   };
 
   // ===== 冻洋猞猁 =====
@@ -169,6 +169,53 @@
       4: orig => ({
         defendBlock(card, incoming) {
           return 2;
+        }
+      })
+    }
+  });
+
+  // ===== 冻洋海豹 =====
+  R.registerMonster({
+    name: 'FrozenOceanSeal',
+    kind: '冻洋海豹',
+    hp: 20,
+    attack: 3,
+    defense: 1,
+    icon: '../icons/npc_icons/frozen_ocean_seal.png',
+    // 进攻1/2/3：从牌堆抽一张牌展示，造成对应数字伤害，随后放入弃牌堆；魔法牌加入手牌
+    attackRevealDraw(card) {
+      const v = card.value;
+      return v >= 1 && v <= 3;
+    },
+    attackDamage(card) {
+      const v = card.value;
+      if (v >= 4 && v <= 6) return 4;
+      return 0;
+    },
+    // 进攻4/5/6：施加致盲
+    attackBlind(card) {
+      const v = card.value;
+      return v >= 4 && v <= 6;
+    },
+    // 防御1/2：防止1/2（向上取整）点伤害
+    defendBlock(card, incoming) {
+      const v = card.value;
+      if (v >= 1 && v <= 2) return Math.ceil((incoming || 0) / 2);
+      return 0;
+    },
+    // 防御3：反击相同点伤害（使用守护/飞翔前的点数）
+    defendCounter(card, incoming) {
+      const v = card.value;
+      if (v === 3) return incoming || 0;
+      return 0;
+    },
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 5 }),
+      3: orig => ({ attackFreeze: () => true }),
+      4: orig => ({
+        defendBlock: (card, incoming) => {
+          if (card.value === 3) return incoming || 0;
+          return orig.defendBlock(card, incoming);
         }
       })
     }

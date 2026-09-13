@@ -359,7 +359,7 @@
     icon: '../icons/npc_icons/forest_piranha.png',
     attackDamage(card, ctx) {
       const v = card.value;
-      if (v >= 1 && v <= 3) return ((ctx && ctx.playerBleed) || 0) * 3;
+      if (v >= 1 && v <= 3) return ((ctx && ctx.playerBleed) || 0) * 2;
       if (v >= 4 && v <= 6) return 2;
       return 0;
     },
@@ -378,7 +378,7 @@
       return card.value >= 1 && card.value <= 3 ? 1 : 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 8 }),
+
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({ defendCounter: (card, incoming) => orig.defendCounter(card, incoming) + 1 })
     }

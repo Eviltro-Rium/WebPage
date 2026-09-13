@@ -153,14 +153,15 @@
 
   register('vampire', (eng, def, ctx) => {
     const amt = def.vampireAmount || 3;
+    const targetKey = ctx.targetKey || 'ai';
     // Vampire cannot open a defense phase, but existing guard/fly still
     // reduces the amount actually drained.
     if (typeof eng.performAttack === 'function') {
-      const taken = eng.performAttack({type:'drain',attacker:'player',target:'ai',damage:amt,allowAvoidance:true,direct:true,suppressFloat:true});
+      const taken = eng.performAttack({type:'drain',attacker:'player',target:targetKey,damage:amt,allowAvoidance:true,direct:true});
       return { ok: true, message: '吸取对手' + taken + '点生命' };
     }
     const before = ctx.ai.hp;
-    eng.hurt(ctx.ai, amt, 'drain', { suppressFloat: true });
+    eng.hurt(ctx.ai, amt, 'drain');
     const drained = before - ctx.ai.hp;
     eng.heal(ctx.player, drained, 'drain');
     return { ok: true, message: '吸取对手' + drained + '点生命' };

@@ -402,6 +402,7 @@
       this.s.pendingDialog = null;
       this.s.phase = 'PLAYER_PLAY';
       this.s.busy = false;
+      this.s.attackTarget = null;
       this.emit('desc', (target.name || '对手') + '被缴械，弃掉1张手牌');
       this._tickBomb('player');
       return this.check();
@@ -1256,6 +1257,7 @@
     if(!this.s)return{phase:'SELECT_MODE',deck:0,turn:1};
     Object.assign(this.s,{deck:this.deck.length,discard:1+this.discardBottom.length,discardBottomCount:this.discardBottom.length,
       playerHand:this.h.player,legalHand:this._computeLegalHand(),aiHandSize:this.h.ai.length,ai2HandSize:this.h.ai2.length,
+      aiHand:this.s.revealAIHand?cp(this.h.ai):null,ai2Hand:this.s.revealAIHand?cp(this.h.ai2):null,
       eventLogVersion:this.ver,events:cp(this.events)});
     return cp(this.s)
   };

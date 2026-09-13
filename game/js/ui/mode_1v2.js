@@ -165,6 +165,7 @@
       return this._apiAction('chooseGuard',{stacks:choice});
     });
     else if(s.pendingDialog==='flyRetry')this.dialogs.showFlyRetryChoice(s.player,s.pendingGuardDamage,again=>this._apiAction('chooseFlyContinue',{again}));
+    else if(s.pendingDialog==='trophyDisarm'){const pending=s.pendingTrophyDisarm||{};this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s,pending.targetKey),choice=>this._apiAction('chooseTrophyDisarm',choice),'缴械 · 选择要弃掉的手牌');}
     if(s.phase==='ATTACK_MOD_CHOICE')this._ensureAttackModChoicePrompt(s);
     else{this._attackModPromptOpen=false;this._attackModActive=false;}
     if(s.phase==='GAME_OVER')this._showGameOver();
@@ -185,7 +186,7 @@
       if(!revealFace||!ownerCard||!(s.phase==='PLAYER_PLAY'||s.phase==='PLAYER_DEFEND'))return;
       const charName=this._combatDisplayName(opponent&&opponent.name);
       const adventureOpts={stage:s.adventureStage||s.stage||1,playerHandSize:(s.playerHand&&s.playerHand.length)||0,incomingDamage:s.pendingDefenseDamage||0};
-      card.addEventListener('mouseenter',()=>this._showTooltip(ownerCard,card,s.phase==='PLAYER_DEFEND',{charName,adventureOpts}));
+      card.addEventListener('mouseenter',()=>this._showTooltip(ownerCard,card,true,{charName,adventureOpts}));
       card.addEventListener('mouseleave',()=>this._hideTooltip());
     };
     const decorateSelectable=(card,index,key)=>{

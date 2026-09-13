@@ -551,6 +551,11 @@
 .adv-test-mode { display:flex; flex-direction:column; gap:4px; padding:14px; text-align:left; color:#eeeaff; background:rgba(50,44,75,.48); border:1px solid rgba(167,139,250,.22); border-radius:11px; cursor:pointer; }
 .adv-test-mode strong { color:#f5f3ff; font-size:1rem; }
 .adv-test-mode span { color:rgba(232,232,240,.65); font-size:.75rem; }
+.adv-test-stage-row { display:flex; align-items:center; gap:12px; margin:0 0 18px; }
+.adv-test-stage-label { color:rgba(232,232,240,.7); font-size:.82rem; flex:none; }
+.adv-test-stage-btns { display:flex; gap:8px; }
+.adv-test-stage { padding:6px 16px; color:#eeeaff; background:rgba(50,44,75,.48); border:1px solid rgba(167,139,250,.22); border-radius:8px; cursor:pointer; font-size:.82rem; }
+.adv-test-stage.selected { border-color:#c4b5fd; background:rgba(124,58,237,.28); box-shadow:0 0 0 2px rgba(168,85,247,.2); color:#f5f3ff; }
 .adv-test-opponent-icon { width:38px; height:38px; object-fit:contain; flex:none; }
 .adv-test-opponent-name { font-weight:700; font-size:.86rem; }
 .adv-test-opponent-meta { display:block; color:rgba(232,232,240,.55); font-size:.68rem; margin-top:3px; }

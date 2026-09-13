@@ -267,8 +267,10 @@ _showSkillOverlay() {
         { atkKey: 5, defKey: -1, label: '6' }, { atkKey: 6, defKey: -1, label: '7' }
     ];
     const NPC_SKILL_GRID = [
-        { label: '1' }, { label: '2' }, { label: '3' }, { label: '0' },
-        { label: '4' }, { label: '5' }, { label: '6' }
+        { atkKey: 0, defKey: 0, label: '1' }, { atkKey: 1, defKey: 1, label: '2' },
+        { atkKey: 2, defKey: 2, label: '3' }, { atkKey: 7, defKey: 3, label: '0' },
+        { atkKey: 3, defKey: -1, label: '4' }, { atkKey: 4, defKey: -1, label: '5' },
+        { atkKey: 5, defKey: -1, label: '6' }
     ];
     const stripPrefix = t => (t || '').replace(/^\d+\s*/, '');
     const colorize = t => {
@@ -279,8 +281,9 @@ _showSkillOverlay() {
     for (const ch of chars) {
         let atk = (SKILL_DATA && SKILL_DATA.attack && SKILL_DATA.attack[ch.name]) || [];
         let def = (SKILL_DATA && SKILL_DATA.defend && SKILL_DATA.defend[ch.name]) || [];
-        if (ch.stage && ch.stage > 1 && SKILL_DATA && SKILL_DATA.castleStageMods) {
-            const modTable = SKILL_DATA.castleStageMods[ch.name];
+        if (ch.stage && ch.stage > 1 && SKILL_DATA) {
+            const modTable = (SKILL_DATA.castleStageMods && SKILL_DATA.castleStageMods[ch.name]) ||
+                (SKILL_DATA.forestStageMods && SKILL_DATA.forestStageMods[ch.name]);
             if (modTable && modTable[ch.stage]) {
                 if (modTable[ch.stage].attack) atk = modTable[ch.stage].attack;
                 if (modTable[ch.stage].defend) def = modTable[ch.stage].defend;

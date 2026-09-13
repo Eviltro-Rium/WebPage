@@ -890,6 +890,7 @@
         const testAccessoryBtn = e.target.closest('[data-test-accessory]');
         const testModeBtn = e.target.closest('[data-test-mode]');
         const testOpponentBtn = e.target.closest('[data-test-opponent]');
+        const testStageBtn = e.target.closest('[data-test-stage]');
         if (id === 'adv-test-cancel' || id === 'adv-test-home') {
           window.location.href = '../index.html';
           return;
@@ -942,6 +943,11 @@
         if (testModeBtn && this._test) {
           this._test.mode = testModeBtn.getAttribute('data-test-mode');
           this._test.opponents = [];
+          this._renderTestMode();
+          return;
+        }
+        if (testStageBtn && this._test) {
+          this._test.stage = Number(testStageBtn.getAttribute('data-test-stage'));
           this._renderTestMode();
           return;
         }
@@ -1226,7 +1232,7 @@
       if (window.AdventureCombatBridge && typeof window.AdventureCombatBridge.clearCombatSession === 'function') {
         window.AdventureCombatBridge.clearCombatSession();
       }
-      this._test = { characterName, items: [], trophyWhiteCards: [], accessories: [], mode: null, opponents: [], running: false, result: null };
+      this._test = { characterName, items: [], trophyWhiteCards: [], accessories: [], mode: null, opponents: [], stage: 1, running: false, result: null };
       const bg = document.getElementById('castle-bg');
       if (bg) bg.style.display = 'block';
       this._renderTestLoadout();
@@ -1279,6 +1285,12 @@
         '<button type="button" class="adv-test-mode' + (mode === '1v2' ? ' selected' : '') + '" data-test-mode="1v2"><strong>1v2</strong><span>挑战房 · 选择 2 个普通怪物</span></button>' +
         '<button type="button" class="adv-test-mode' + (mode === 'boss' ? ' selected' : '') + '" data-test-mode="boss"><strong>Boss</strong><span>Boss房 · 选择 1 个 Boss</span></button>' +
         '</div>';
+      const curStage = this._test.stage || 1;
+      html += '<div class="adv-test-stage-row"><span class="adv-test-stage-label">Stage 强化</span><div class="adv-test-stage-btns">';
+      for (let s = 1; s <= 4; s++) {
+        html += '<button type="button" class="adv-test-stage' + (curStage === s ? ' selected' : '') + '" data-test-stage="' + s + '">Stage ' + s + '</button>';
+      }
+      html += '</div></div>';
       if (mode) {
         html += '<section class="adv-test-section"><div class="adv-test-section-head"><h3>' + (mode === 'boss' ? 'Boss 列表' : '普通怪物列表') + '</h3><span>' + this._test.opponents.length + ' / ' + needed + '</span></div><div class="adv-test-opponent-grid">';
         pool.forEach(def => {
@@ -1300,8 +1312,14 @@
       }
       const mode = this._test.mode;
       const opponents = this._test.opponents.slice();
+      const userStage = this._test.stage || 1;
+      const effStage = (name) => {
+        const def = window.AdventureRegistry.getMonster(name) || window.AdventureRegistry.getBoss(name);
+        const minS = def && Number.isFinite(Number(def.minStage)) ? Number(def.minStage) : 1;
+        return Math.max(userStage, minS);
+      };
       const map = window.AdventureMap.fromGrid([[0, 1, 2]]);
-      this.eng.start(map, this._test.characterName, { consumables: this._test.items, trophyWhiteCards: this._test.trophyWhiteCards, accessories: this._test.accessories, stage: 1, scene: 'castle' });
+      this.eng.start(map, this._test.characterName, { consumables: this._test.items, trophyWhiteCards: this._test.trophyWhiteCards, accessories: this._test.accessories, stage: userStage, scene: 'castle' });
       // Test mode enters combat directly instead of going through a map room,
       // so reveal the room's initial table card here.
       if (!this.eng.s.discardTop || !this.eng.s.discardTop.get()) this.eng._initializeDiscardTop();
@@ -1313,10 +1331,16 @@
         discardTopOwner: this.eng.s.discardTopOwner || null,
         adventureCurrency: this.eng.s.currency,
         adventureEngine: this.eng,
-        stage: 1,
+        stage: userStage,
         scene: 'castle',
         testMode: true
       };
+      if (mode === '1v2') {
+        initialState.opponent1Stage = effStage(opponents[0]);
+        initialState.opponent2Stage = effStage(opponents[1]);
+      } else {
+        initialState.opponentStage = effStage(opponents[0]);
+      }
       this._test.running = true;
       this._bridgeCombatStarting = true;
       const done = (result, state, persistentState, meta) => this._onTestBattleEnd(result, state, persistentState, meta);

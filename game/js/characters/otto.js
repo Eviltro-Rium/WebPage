@@ -68,8 +68,8 @@
       } else if (v === 0) {
         addGuard(defender, 5);
         hurt(opponent, d);
-        remaining = 0;
-        desc = `Otto 0牌：获得5层守护+反击${d}点`;
+        remaining = d;
+        desc = `Otto 0牌：获得5层守护+反击${d}点+承受${d}点伤害`;
       }
       return { remaining, desc };
     }
