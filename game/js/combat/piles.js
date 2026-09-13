@@ -2,12 +2,15 @@
  * while this service owns pile movement and its event payloads. */
 (function (global) {
     const root = global.FurryGame || (global.FurryGame = {});
+    const deckService = () => root.CombatDeck;
 
     const label = who => who === 'player' ? '玩家' : who === 'ai2' ? 'AI2' : 'AI';
     const copy = value => value && typeof value === 'object' ? Object.assign({}, value) : value;
 
     const EnginePiles = {
         shuffleDiscardIntoDeck(engine) {
+            const deck = deckService();
+            if (deck && deck.shuffleDiscardIntoDeck) return deck.shuffleDiscardIntoDeck(engine);
             for (const card of engine.discardBottom || []) {
                 if (card && (card.isBlack || card.isWhite)) delete card.chosenColor;
             }
@@ -20,12 +23,16 @@
         },
 
         refillIfNeeded(engine) {
+            const deck = deckService();
+            if (deck && deck.refillIfNeeded) return deck.refillIfNeeded(engine);
             if (engine.deck.length || !engine.discardBottom.length) return;
             this.shuffleDiscardIntoDeck(engine);
             engine.emit('desc', '牌库已空，弃牌库洗回牌堆');
         },
 
         draw(engine, owner, count, animated = false) {
+            const deck = deckService();
+            if (deck && deck.draw) return deck.draw(engine, owner, count, animated);
             const cards = [];
             let remaining = Math.max(0, Number(count) || 0);
             while (remaining-- > 0) {
@@ -44,6 +51,8 @@
         },
 
         emitDrawDiff(engine, before) {
+            const deck = deckService();
+            if (deck && deck.emitDrawDiff) return deck.emitDrawDiff(engine, before);
             for (const owner of ['player', 'ai', 'ai2']) {
                 const count = (engine.h[owner] || []).length - (before[owner] || 0);
                 if (count > 0) {

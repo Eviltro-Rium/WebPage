@@ -51,7 +51,10 @@
     <script src="../js/ai/moze_ai.js"></script>
     <script src="../js/ai/chan_ai.js"></script>
     <script src="../js/ai/otto_ai.js"></script>
+    <script src="../js/combat/protocol.js"></script>
     <script src="../js/combat/events.js"></script>
+    <script src="../js/combat/state.js"></script>
+    <script src="../js/combat/deck.js"></script>
     <script src="../js/combat/piles.js"></script>
     <script src="../js/combat/status.js"></script>
     <script src="../js/combat/damage.js"></script>
@@ -186,8 +189,17 @@
                     { atkKey: 5, defKey: -1, label: '6' }, { atkKey: 6, defKey: -1, label: '7' }
                 ];
                 const NPC_SKILL_GRID = [
-                    { label: '1' }, { label: '2' }, { label: '3' }, { label: '0' },
-                    { label: '4' }, { label: '5' }, { label: '6' }
+                    // NPC attack arrays use 1/2/3/4/5/6/7/0 order while
+                    // defense arrays only contain 1/2/3/0. Keep explicit
+                    // indexes here; without them atk[undefined]/def[undefined]
+                    // rendered every NPC skill as “—/无防御效果”.
+                    { atkKey: 0, defKey: 0, label: '1' },
+                    { atkKey: 1, defKey: 1, label: '2' },
+                    { atkKey: 2, defKey: 2, label: '3' },
+                    { atkKey: 7, defKey: 3, label: '0' },
+                    { atkKey: 3, defKey: -1, label: '4' },
+                    { atkKey: 4, defKey: -1, label: '5' },
+                    { atkKey: 5, defKey: -1, label: '6' }
                 ];
                 const stripPrefix = t => (t || '').replace(/^\d+\s*/, '');
                 const colorize = t => {

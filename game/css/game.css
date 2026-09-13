@@ -2571,6 +2571,17 @@ body {
 .icon-appear { animation: iconAppear 0.25s ease-out; }
 .icon-disappear { animation: iconDisappear 0.16s ease-in forwards; pointer-events: none; }
 
+/* One-shot feedback when a persistent buff actually prevents or changes an
+   action.  This is intentionally separate from the icon's idle styling so a
+   trigger never causes the status to look permanently active. */
+@keyframes buffTriggerFlash {
+    0% { filter: brightness(1); transform: scale(1); box-shadow: 0 0 0 rgba(255,255,255,0); }
+    32% { filter: brightness(1.9) saturate(1.35); transform: scale(1.16); box-shadow: 0 0 18px rgba(125,211,252,0.95), 0 0 7px rgba(255,255,255,0.9); }
+    68% { filter: brightness(1.35) saturate(1.15); transform: scale(1.06); box-shadow: 0 0 11px rgba(125,211,252,0.7); }
+    100% { filter: brightness(1); transform: scale(1); box-shadow: 0 0 0 rgba(255,255,255,0); }
+}
+.buff-icon-wrap.buff-trigger-flash { animation: buffTriggerFlash 0.58s ease-out; z-index: 2; }
+
 /* Lightweight transparent glass surfaces.
    Backdrop blur is expensive during card animations and state updates; keep
    the translucent fills, borders and shadows while avoiding full-screen

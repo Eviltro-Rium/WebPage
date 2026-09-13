@@ -1090,7 +1090,7 @@ class GameUI {
                 const title = ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', blind: '致盲', iceSeal: '冰封', bomb: '定时炸弹', hypothermia: '失温', guard: '守护', fly: '飞翔', lush: '茂盛', parasite: '寄生', crit: '暴击', diving: '潜水', bloodthirst: '嗜血', bind: '捆缚', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
                 const animCls = !prevSet.has(b.key) ? ' icon-appear' : '';
                 const specialClass = b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.key === 'bind' ? 'bind-mark' : b.key === 'bomb' ? 'bomb-mark' : b.colorClass || '';
-                html += `<div class="buff-icon-wrap ${specialClass}${animCls}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}</div>`;
+                html += `<div class="buff-icon-wrap ${specialClass}${animCls}" data-buff-key="${b.key}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}</div>`;
             }
         }
         const currentSet = new Set(currentKeys);
@@ -1133,6 +1133,25 @@ class GameUI {
         } else {
             container.innerHTML = html;
         }
+    }
+
+    _flashBuffIcon(prefix, kind) {
+        const container = document.getElementById(`${prefix}-buffs`);
+        if (!container || !kind) return;
+        const icon = Array.from(container.querySelectorAll('.buff-icon-wrap'))
+            .find(el => el.dataset && el.dataset.buffKey === kind);
+        if (!icon) return;
+        const key = `${prefix}:${kind}`;
+        const timers = this._buffFlashTimers || (this._buffFlashTimers = {});
+        if (timers[key]) clearTimeout(timers[key]);
+        icon.classList.remove('buff-trigger-flash');
+        // Force a reflow so consecutive triggers always replay the animation.
+        void icon.offsetWidth;
+        icon.classList.add('buff-trigger-flash');
+        timers[key] = setTimeout(() => {
+            icon.classList.remove('buff-trigger-flash');
+            timers[key] = null;
+        }, 620);
     }
 
     _renderPlayerHand(options = {}) {

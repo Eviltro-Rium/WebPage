@@ -43,7 +43,7 @@
       if (!data || !data.s || !data.piles) throw new Error('战斗快照无效');
       this._adventureEngine = adventureEngine || null;
       this.testMode = !!data.testMode;
-      this.s = clone(data.s);
+      this.s = window.FurryGame.CombatState.create(clone(data.s));
       this.piles = clone(data.piles);
       this.h = clone(data.h) || { player: [], ai: [] };
       this.events = clone(data.events) || [];
@@ -268,7 +268,7 @@
         if (!this._sameCard(discard[discard.length - 1], top)) discard.push(clone(top));
       }
 
-      this.s = {
+      this.s = window.FurryGame.CombatState.create({
         phase: 'PLAYER_PLAY', turn: 1, busy: false,
         selectedCard: -1, selectedCards: [], selectedAICard: -1,
         handLimit: this.piles.player.handLimit,
@@ -287,7 +287,7 @@
         atkCard: null, atkOwner: null, defCard: null, defOwner: null, revealCards: [], diceRoll: null,
         lordPlayerTargetIdx: 0,
         revealAIHand: true
-      };
+      });
 
       this.s.ai.name = opponent1Name;
       this.s.ai2.name = opponent2Name;

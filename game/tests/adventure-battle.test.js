@@ -438,6 +438,55 @@ test('Otto 4 challenge defense continues after an NPC magic bridge without repla
   assert.ok(engine.events.some(event => event.type === 'aiDefend' && event.card && event.card.value === 2));
 });
 
+test('Otto 7 keeps HP/10 in challenge rooms and makes small hits unblockable', () => {
+  const otto = CharacterRegistry.get('Otto');
+  const emitted = [];
+  const hurtCalls = [];
+  const eng = { s: { is1v2: true, isAdventure: true }, emit: (...args) => emitted.push(args) };
+  const helpers = {
+    burn() {}, bleed() {}, guard() {}, heal() {}, draw() {}, clearDebuffs() {},
+    hurt(...args) { hurtCalls.push(args); }
+  };
+
+  const fullHealth = { hp: 100, crit: 0 };
+  const normal = otto.effect(eng, 7, number(7), fullHealth, {}, 'player', helpers);
+  assert.equal(normal.d, 10);
+  assert.equal(normal.unblock, false);
+
+  const lowHealth = { hp: 30, crit: 0 };
+  const small = otto.effect(eng, 7, number(7), lowHealth, {}, 'player', helpers);
+  assert.equal(small.d, 3);
+  assert.equal(small.unblock, true);
+  assert.equal(hurtCalls.length, 0);
+  assert.equal(emitted.length, 0);
+
+  const classicDuo = otto.effect(
+    { s: { is1v2: true, isAdventure: false }, emit() {} },
+    7,
+    number(7),
+    { hp: 200, crit: 0 },
+    {},
+    'player',
+    helpers
+  );
+  assert.equal(classicDuo.d, 10, 'classic 1v2 doubles HP and scales Otto 7 by /20');
+});
+
+test('Otto attack 0 no longer causes self damage', () => {
+  const otto = CharacterRegistry.get('Otto');
+  const hurtCalls = [];
+  const eng = { s: { is1v2: true }, emit() {} };
+  const actor = { hp: 100, crit: 2 };
+  const result = otto.effect(eng, 0, number(0), actor, {}, 'player', {
+    burn() {}, bleed() {}, guard() {}, heal() {}, draw() {}, clearDebuffs() {},
+    hurt(...args) { hurtCalls.push(args); }
+  });
+
+  assert.equal(result.d, 10);
+  assert.equal(hurtCalls.length, 0);
+  assert.equal(actor.hp, 100);
+});
+
 test('adventure 1v2 keeps one shared NPC pile isolated from the player pile', () => {
   const engine = new AdventureBattleEngine();
   engine.later = () => {};

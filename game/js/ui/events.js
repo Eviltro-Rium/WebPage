@@ -266,6 +266,11 @@ async _playEvents(events, fast = false) {
             await this._playDiscardAnimation(evt);
             this._showZoneDesc('reveal-desc', evt.desc || (evt.destination === 'top' ? '卡牌成为弃牌库顶' : '卡牌已放入弃牌库底'));
             await wait(140);
+        } else if (evt.type === EVENT_TYPES.BUFF_TRIGGER || evt.type === 'buffTrigger') {
+            const side = this._eventTarget(evt);
+            if (this.state[side]) this._updateBuffs(side, this.state[side]);
+            if (typeof this._flashBuffIcon === 'function') this._flashBuffIcon(side, evt.kind);
+            await wait(320);
         } else if (evt.type === 'desc') {
             this._showZoneDesc('reveal-desc', evt.desc);
             await wait(1500);

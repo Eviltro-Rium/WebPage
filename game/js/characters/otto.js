@@ -27,15 +27,18 @@
         if (a.crit < 3) a.crit++;
         eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
       } else if (v === 7) {
-        let divisor = eng.s.is1v2 ? 20 : 10;
+        // Classic 1v2 doubles the starting HP, so it scales by /20. Adventure
+        // challenge rooms keep the normal 100 HP pool and therefore use /10.
+        const divisor = eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10;
         d = Math.ceil(a.hp / divisor);
+        // Small Otto 7 attacks cannot be defended against.
+        unblock = d <= 3;
       } else if (v === 0) {
         d = 4;
         let stacks = Math.min(a.crit || 0, 3);
         if (stacks > 0) {
           d += stacks * 3;
-          hurt(a, stacks * 2);
-          eng.emit('desc', `Otto 0牌：拥有${stacks}层暴击，${d}点伤害，自伤${stacks * 2}`);
+          eng.emit('desc', `Otto 0牌：拥有${stacks}层暴击，造成${d}点伤害`);
         } else {
           unblock = true;
         }

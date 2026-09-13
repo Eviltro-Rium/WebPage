@@ -24,7 +24,10 @@
     "js/ai/otto_ai.js"
   ],
   "combat": [
+    "js/combat/protocol.js",
     "js/combat/events.js",
+    "js/combat/state.js",
+    "js/combat/deck.js",
     "js/combat/piles.js",
     "js/combat/status.js",
     "js/combat/damage.js",

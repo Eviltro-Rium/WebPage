@@ -40,7 +40,10 @@ context.window = context;
 
 for (const file of [
   ...characterFiles,
+  path.join(gameRoot, 'js', 'combat', 'protocol.js'),
   path.join(gameRoot, 'js', 'combat', 'events.js'),
+  path.join(gameRoot, 'js', 'combat', 'state.js'),
+  path.join(gameRoot, 'js', 'combat', 'deck.js'),
   path.join(gameRoot, 'js', 'combat', 'piles.js'),
   path.join(gameRoot, 'js', 'combat', 'status.js'),
   path.join(gameRoot, 'js', 'combat', 'damage.js'),

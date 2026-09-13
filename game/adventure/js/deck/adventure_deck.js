@@ -10,37 +10,48 @@
  */
 (function () {
   const COLORS = ['RED', 'YELLOW', 'BLUE', 'GREEN'];
+  const Card = window.FurryGame && window.FurryGame.Card;
 
-  const num = (color, value, white = false, extras = null) => Object.assign({
-    value, color, drawTwo: false, drawThree: false, potion: false,
-    purify: false, superPurify: false, swapHand: false, shuffleToDeck: false,
-    isBlack: false, isWhite: white, isNumberCard: true, isItemCard: false
-  }, extras || {});
+  const num = (color, value, white = false, extras = null) => Card
+    ? Card.number(color, value, white, extras)
+    : Object.assign({
+      value, color, drawTwo: false, drawThree: false, potion: false,
+      purify: false, superPurify: false, swapHand: false, shuffleToDeck: false,
+      isBlack: false, isWhite: white, isNumberCard: true, isItemCard: false
+    }, extras || {});
 
-  const item = (color, k, extras = null) => Object.assign({
-    value: -1, color, drawTwo: k === 'drawTwo', drawThree: k === 'drawThree',
-    potion: k === 'potion', magic: k === 'magic', greenMagic: k === 'greenMagic',
-    magicColor: k === 'greenMagic' ? 'green' : (k === 'magic' ? 'purple' : null),
-    purify: k === 'purify', superPurify: k === 'superPurify',
-    swapHand: k === 'swap', shuffleToDeck: k === 'shuffle',
-    isBlack: color === 'BLACK', isWhite: color === 'WHITE',
-    isNumberCard: false, isItemCard: true
-  }, extras || {});
+  const item = (color, k, extras = null) => Card
+    ? Card.item(color, k, extras)
+    : Object.assign({
+      value: -1, color, drawTwo: k === 'drawTwo', drawThree: k === 'drawThree',
+      potion: k === 'potion', magic: k === 'magic', greenMagic: k === 'greenMagic',
+      magicColor: k === 'greenMagic' ? 'green' : (k === 'magic' ? 'purple' : null),
+      purify: k === 'purify', superPurify: k === 'superPurify',
+      swapHand: k === 'swap', shuffleToDeck: k === 'shuffle',
+      isBlack: color === 'BLACK', isWhite: color === 'WHITE',
+      isNumberCard: false, isItemCard: true
+    }, extras || {});
 
   // 战利白卡：属于玩家牌库，不占用一次性道具槽；打出后进入弃牌库，
   // 因而可以在牌库洗回后反复抽到。它仍按白牌规则自动指定当前颜色。
-  const trophyWhite = (name = 'BurnTrophy') => ({
-    value: -1,
-    color: 'WHITE',
-    trophyWhite: true,
-    trophyName: name,
-    trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', RussianRouletteTrophy: 'roulette', FlyTrophy: 'fly', LushTrophy: 'lush', PoisonTrophy: 'poison', TimeBombTrophy: 'bomb', GuardTrophy: 'guard', DisarmTrophy: 'disarm', ZeroTrophy: 'zero' })[name] || null,
-    chosenColor: null,
-    isBlack: false,
-    isWhite: true,
-    isNumberCard: false,
-    isItemCard: true
-  });
+  const trophyWhite = (name = 'BurnTrophy') => Object.assign(
+    Card ? Card.item('WHITE', 'trophy') : {
+      value: -1, color: 'WHITE', isBlack: false, isWhite: true,
+      isNumberCard: false, isItemCard: true
+    },
+    {
+      value: -1,
+      color: 'WHITE',
+      trophyWhite: true,
+      trophyName: name,
+      trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', RussianRouletteTrophy: 'roulette', FlyTrophy: 'fly', LushTrophy: 'lush', PoisonTrophy: 'poison', TimeBombTrophy: 'bomb', GuardTrophy: 'guard', DisarmTrophy: 'disarm', ZeroTrophy: 'zero' })[name] || null,
+      chosenColor: null,
+      isBlack: false,
+      isWhite: true,
+      isNumberCard: false,
+      isItemCard: true
+    }
+  );
 
   function shuffle(arr) {
     for (let i = arr.length - 1; i; i--) {

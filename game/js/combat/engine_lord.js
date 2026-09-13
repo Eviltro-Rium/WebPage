@@ -1,14 +1,13 @@
 (function(){
   const E=window.Engine;
-  const clone=value=>JSON.parse(JSON.stringify(value));
 
   E.prototype.startLord=function(p,a1,a2){
     clearTimeout(this.timer);this.pendingSettlement=null;
-    this.deck=this.makeDeck();this.discardBottom=[];
+    const initial=window.FurryGame.CombatDeck.createStandard();
+    this.deck=initial.deck;this.discardBottom=initial.discardBottom;
     this.h={player:[],ai:[],ai2:[]};this.events=[];
-    let top=this.deck.pop();
-    while(top.isBlack||top.isWhite){this.deck.unshift(top);top=this.deck.pop()}
-    this.s={phase:'PLAYER_PLAY',turn:1,busy:false,selectedCard:-1,selectedCards:[],selectedAICard:-1,
+    let top=initial.discardTop;
+    this.s=window.FurryGame.CombatState.create({phase:'PLAYER_PLAY',turn:1,busy:false,selectedCard:-1,selectedCards:[],selectedAICard:-1,
       handLimit:7,forcedDiscard:false,hasPlayedThisTurn:false,hasPlayedBlackDefend:false,
       defenseSkipped:false,aiTurnStarted:false,aiHasPlayed:false,pendingAIBridge:null,
       pendingAIContinue:null,pendingDefenseDamage:0,pendingFiveChoice:false,fiveChoiceCard:null,
@@ -18,7 +17,7 @@
       player:this.character(p),ai:this.character(a1,true),ai2:Object.assign(this.character(a2,true),{name:'AI2 '+a2}),
       currentAITarget:0,attackTarget:null,eliminatedHandled:{ai:false,ai2:false},
       atkCard:null,atkOwner:null,defCard:null,defOwner:null,revealCards:[],diceRoll:null,
-      lordPlayerTargetIdx:0};
+      lordPlayerTargetIdx:0});
     this.s.attackTarget='ai';
     this.draw('player',7);this.draw('ai',5);this.draw('ai2',5);
     let _hands=this.handCounts();this.silentDraws(function(){this.turnStart('player')});this.emitDrawDiff(_hands);return this.state()
@@ -269,9 +268,10 @@
 
   const origState=E.prototype.state;
   E.prototype.state=function(){
-    if(!this.s||!this.s.isLord)return origState.call(this);
-    Object.assign(this.s,{deck:this.deck.length,discard:1+this.discardBottom.length,discardBottomCount:this.discardBottom.length,playerHand:this.h.player,legalHand:typeof this._computeLegalHand==='function'?this._computeLegalHand():null,aiHandSize:this.h.ai.length,ai2HandSize:this.h.ai2?this.h.ai2.length:0,aiHand:this.s.revealAIHand?clone(this.h.ai):null,ai2Hand:this.s.revealAIHand&&this.h.ai2?clone(this.h.ai2):null,eventLogVersion:this.ver,events:clone(this.events)});
-    return clone(this.s)
+    // All combat modes now share the CombatState projection.  Lord mode only
+    // adds lord-specific fields to `s`; it must not maintain a second,
+    // slightly different serializer here.
+    return origState.call(this);
   };
 
   const origCheck=E.prototype.check;

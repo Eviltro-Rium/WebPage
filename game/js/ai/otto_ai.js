@@ -11,7 +11,7 @@
       }
       if (v === 6) return x.opponent.hp <= 6 ? 88 : 68;
       if (v === 7) {
-        let divisor = eng.s.is1v2 ? 20 : 10;
+        let divisor = eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10;
         let dmg = Math.ceil(x.self.hp / divisor);
         return dmg >= x.opponent.hp ? 92 : 50 + dmg * 4;
       }
@@ -39,7 +39,7 @@
     keepScore(eng, c, x) {
       if (!c.isNumberCard) return null;
       if (c.value === 0) return 78;
-      if (c.value === 7) return 55 + Math.ceil(x.self.hp / (eng.s.is1v2 ? 20 : 10)) * 3;
+      if (c.value === 7) return 55 + Math.ceil(x.self.hp / (eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10)) * 3;
       if (c.value === 6) return 66;
       if (c.value === 5) return x.hand.filter(card => card !== c && card.isNumberCard).length ? 60 : 20;
       if (c.value === 4) return 48;
@@ -135,18 +135,18 @@
       }
 
       if (v === 7) {
-        let divisor = eng.s.is1v2 ? 20 : 10;
+        let divisor = eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10;
         let dmg = Math.ceil(a.hp / divisor);
-        eng.emit('desc', `Otto 7牌：自身生命${a.hp}/${divisor}=${dmg}点伤害`);
-        return { d: dmg, skip: false, unblock: false };
+        let unblock = dmg <= 3;
+        eng.emit('desc', `Otto 7牌：自身生命${a.hp}/${divisor}=${dmg}点伤害${unblock ? '（不可防御）' : ''}`);
+        return { d: dmg, skip: false, unblock };
       }
 
       if (v === 0) {
         let stacks = Math.min(a.crit || 0, 3);
         let d = 4 + stacks * 3;
         if (stacks > 0) {
-          eng.hurt(a, stacks * 2);
-          eng.emit('desc', `Otto 0牌：拥有${stacks}层暴击，${d}点伤害，自伤${stacks * 2}`);
+          eng.emit('desc', `Otto 0牌：拥有${stacks}层暴击，造成${d}点伤害`);
           return { d, skip: false, unblock: false };
         }
         return { d: 4, skip: false, unblock: true };

@@ -1,6 +1,11 @@
 (function () {
-  const num = (color, value, white = false) => ({ value, color, drawTwo: false, drawThree: false, potion: false, purify: false, superPurify: false, swapHand: false, shuffleToDeck: false, isBlack: false, isWhite: white, isNumberCard: true, isItemCard: false });
-  const item = (color, k) => ({ value: -1, color, drawTwo: k === 'drawTwo', drawThree: k === 'drawThree', potion: k === 'potion', purify: k === 'purify', superPurify: k === 'superPurify', swapHand: k === 'swap', shuffleToDeck: k === 'shuffle', isBlack: color === 'BLACK', isWhite: color === 'WHITE', isNumberCard: false, isItemCard: true });
+  const Card = window.FurryGame && window.FurryGame.Card;
+  const num = (color, value, white = false) => Card
+    ? Card.number(color, value, white)
+    : { value, color, drawTwo: false, drawThree: false, potion: false, purify: false, superPurify: false, swapHand: false, shuffleToDeck: false, isBlack: false, isWhite: white, isNumberCard: true, isItemCard: false };
+  const item = (color, k) => Card
+    ? Card.item(color, k)
+    : { value: -1, color, drawTwo: k === 'drawTwo', drawThree: k === 'drawThree', potion: k === 'potion', purify: k === 'purify', superPurify: k === 'superPurify', swapHand: k === 'swap', shuffleToDeck: k === 'shuffle', isBlack: color === 'BLACK', isWhite: color === 'WHITE', isNumberCard: false, isItemCard: true };
 
   const CARD_DATA = [
     {

@@ -201,7 +201,10 @@
     g.fillStyle = 'rgba(255,255,255,0.12)';
     g.fillRect(0, 0, w, Math.max(1, h * 0.018));
 
-    // Monster whites: purple bracket marks (top-right / bottom-left) + tiny skull bottom-right.
+    // Monster whites: purple bracket marks plus a compact monster badge at
+    // bottom-right.  The badge stays legible on small hand cards and remains
+    // visible during card-flight animations because it is painted into the
+    // card itself rather than added as a separate DOM element.
     if (npcWhite) {
       const purple = '#8B5CF6';
       const glow = 'rgba(139,92,246,0.5)';
@@ -226,20 +229,41 @@
       g.lineTo(inset + arm, h - inset);
       g.stroke();
       g.shadowBlur = 0;
-      const skR = Math.max(3.5, w * 0.085);
-      const skX = w - inset - skR * 0.55;
-      const skY = h - inset - skR * 0.95;
+      const badgeR = Math.max(5, w * 0.12);
+      const badgeX = w - inset - badgeR;
+      const badgeY = h - inset - badgeR;
+      g.fillStyle = 'rgba(23, 12, 48, 0.86)';
+      g.strokeStyle = '#C4B5FD';
+      g.lineWidth = Math.max(1, w * 0.028);
+      g.shadowColor = 'rgba(196,181,253,0.72)';
+      g.shadowBlur = Math.max(3, w * 0.055);
+      g.beginPath();
+      g.arc(badgeX, badgeY, badgeR, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+      g.shadowBlur = 0;
+      // Two small ears and a simple mask create a friendly monster silhouette.
       g.fillStyle = purple;
       g.beginPath();
-      g.arc(skX, skY, skR, 0, Math.PI * 2);
+      g.moveTo(badgeX - badgeR * 0.58, badgeY - badgeR * 0.2);
+      g.lineTo(badgeX - badgeR * 0.64, badgeY - badgeR * 0.78);
+      g.lineTo(badgeX - badgeR * 0.18, badgeY - badgeR * 0.48);
+      g.lineTo(badgeX + badgeR * 0.18, badgeY - badgeR * 0.48);
+      g.lineTo(badgeX + badgeR * 0.64, badgeY - badgeR * 0.78);
+      g.lineTo(badgeX + badgeR * 0.58, badgeY - badgeR * 0.2);
+      g.quadraticCurveTo(badgeX + badgeR * 0.52, badgeY + badgeR * 0.57, badgeX, badgeY + badgeR * 0.68);
+      g.quadraticCurveTo(badgeX - badgeR * 0.52, badgeY + badgeR * 0.57, badgeX - badgeR * 0.58, badgeY - badgeR * 0.2);
       g.fill();
-      g.fillRect(skX - skR * 0.5, skY + skR * 0.55, skR, skR * 0.62);
       g.fillStyle = '#FCFBF7';
-      const eyeR = skR * 0.26;
-      g.beginPath(); g.arc(skX - skR * 0.36, skY - skR * 0.02, eyeR, 0, Math.PI * 2); g.fill();
-      g.beginPath(); g.arc(skX + skR * 0.36, skY - skR * 0.02, eyeR, 0, Math.PI * 2); g.fill();
-      const toothW = Math.max(0.8, skR * 0.13);
-      g.fillRect(skX - toothW / 2, skY + skR * 0.55, toothW, skR * 0.62);
+      const eyeR = Math.max(0.75, badgeR * 0.16);
+      g.beginPath(); g.arc(badgeX - badgeR * 0.27, badgeY - badgeR * 0.08, eyeR, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(badgeX + badgeR * 0.27, badgeY - badgeR * 0.08, eyeR, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#FCFBF7';
+      g.lineWidth = Math.max(0.8, badgeR * 0.1);
+      g.beginPath();
+      g.moveTo(badgeX - badgeR * 0.24, badgeY + badgeR * 0.3);
+      g.quadraticCurveTo(badgeX, badgeY + badgeR * 0.48, badgeX + badgeR * 0.24, badgeY + badgeR * 0.3);
+      g.stroke();
       g.restore();
     }
 

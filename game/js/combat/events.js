@@ -11,7 +11,7 @@
     const Types = Object.freeze({
         PLAYER_PLAY: 'playerPlay', AI_PLAY: 'aiPlay', PLAYER_DEFEND: 'defend', AI_DEFEND: 'aiDefend',
         DRAW: 'draw', REVEAL: 'reveal', DISCARD: 'discard', DISCARD_MANY: 'discardMany',
-        HIT: 'hit', HURT: 'hurt', HEAL: 'heal', BUFF: 'buff', BUFF_SETTLE: 'buffSettle',
+        HIT: 'hit', HURT: 'hurt', HEAL: 'heal', BUFF: 'buff', BUFF_TRIGGER: 'buffTrigger', BUFF_SETTLE: 'buffSettle',
         BURN_SETTLE: 'burnSettle', BLEED_SETTLE: 'bleedSettle', POISON_SETTLE: 'poisonSettle',
         BOMB_EXPLODE: 'bombExplode', ITEM_EFFECT: 'itemEffect', COLOR_CHOICE: 'colorChoice',
         DESC: 'desc', FLOAT: 'float', CLEAR_ZONES: 'clearZones', GAME_OVER: 'gameOver',
