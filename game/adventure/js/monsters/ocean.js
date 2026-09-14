@@ -14,10 +14,10 @@
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.ocean = {
-    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal'],
-    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal'],
-    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal'],
-    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal']
+    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear'],
+    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear'],
+    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear'],
+    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear']
   };
 
   // ===== 冻洋猞猁 =====
@@ -216,6 +216,75 @@
         defendBlock: (card, incoming) => {
           if (card.value === 3) return incoming || 0;
           return orig.defendBlock(card, incoming);
+        }
+      })
+    }
+  });
+
+  // ===== 冻洋北极熊 =====
+  R.registerMonster({
+    name: 'FrozenPolarBear',
+    kind: '冻洋北极熊',
+    hp: 25,
+    attack: 3,
+    defense: 2,
+    icon: '../icons/npc_icons/polar_bear.png',
+    // 进攻1/2/3：造成对手 buff 总层数点伤害
+    attackDamage(card, ctx) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return ctx.playerBuffTotal || 0;
+      if (v >= 4 && v <= 6) return 3;
+      return 0;
+    },
+    // 进攻1/2/3：有暴击时消耗1层使攻击不可防御
+    attackUseCrit(card) {
+      const v = card.value;
+      return v >= 1 && v <= 3;
+    },
+    // 进攻4/5/6：获得1层暴击
+    attackGainCrit(card) {
+      const v = card.value;
+      return v >= 4 && v <= 6 ? 1 : 0;
+    },
+    // 进攻4/5/6：施加1层流血
+    attackBleed(card) {
+      const v = card.value;
+      return v >= 4 && v <= 6 ? 1 : 0;
+    },
+    // 防御1/2/3：格挡2点
+    defendBlock(card, incoming) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return Math.min(2, incoming);
+      return 0;
+    },
+    // 防御1/2/3：施加1层失温
+    defendHypothermia(card) {
+      const v = card.value;
+      return v >= 1 && v <= 3 ? 1 : 0;
+    },
+    // 防御1/2/3：施加1层流血
+    defendBleed(card) {
+      const v = card.value;
+      return v >= 1 && v <= 3 ? 1 : 0;
+    },
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 5 }),
+      3: orig => ({
+        attackDamage: (card, ctx) => {
+          const v = card.value;
+          if (v >= 4 && v <= 6) return 4;
+          return orig.attackDamage(card, ctx);
+        },
+        attackBleed: (card) => {
+          const v = card.value;
+          if (v >= 4 && v <= 6) return 2;
+          return orig.attackBleed(card);
+        }
+      }),
+      4: orig => ({
+        defendBlock: (card, incoming) => {
+          const base = orig.defendBlock(card, incoming);
+          return base > 0 ? Math.min(base + 1, incoming) : 0;
         }
       })
     }

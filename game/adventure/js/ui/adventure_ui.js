@@ -630,13 +630,15 @@
         const isSel = selected === i;
         const isBeastSlot = i === 3 || i === 4;
         const isAccessorySlot = i === 5;
+        const isTrophySlot = i === 2;
         let slotCls = '';
         if (isBeastSlot) slotCls += ' adv-shop-slot-beast';
         if (isAccessorySlot) slotCls += ' adv-shop-slot-accessory';
+        if (isTrophySlot) slotCls += ' adv-shop-slot-trophy';
         if (item && item.kind === 'trophyWhite') slotCls += ' adv-shop-slot-trophy';
         if (item) {
           const price = item.price || 0;
-          const tag = isBeastSlot ? '兽元' : (isAccessorySlot ? '配饰' : '');
+          const tag = isBeastSlot ? '兽元' : (isAccessorySlot ? '配饰' : (isTrophySlot ? '战利白卡' : ''));
           const icon = item.kind === 'trophyWhite'
             ? this._trophyCardMarkup(item.name, 54, 78)
             : (item.icon ? '<img class="adv-shop-slot-icon" src="' + item.icon + '" alt="">' : '');
@@ -648,7 +650,7 @@
             '<div class="adv-shop-slot-price">' + price + ' 金币</div>' +
             '</button>';
         } else {
-          const tag = isBeastSlot ? '兽元' : (isAccessorySlot ? '配饰' : '');
+          const tag = isBeastSlot ? '兽元' : (isAccessorySlot ? '配饰' : (isTrophySlot ? '战利白卡' : ''));
           slotsHtml += '<button type="button" class="adv-shop-slot empty' + slotCls + (isSel ? ' selected' : '') + '" data-shop-slot="' + i + '">' +
             (tag ? '<div class="adv-shop-slot-tag">' + tag + '</div>' : '') +
             '<div class="adv-shop-slot-empty-label">sold-out</div>' +
@@ -668,7 +670,7 @@
         '<div class="adv-shop-page-title">商店</div>' +
         '<div class="adv-shop-page-gold"><img src="' + AC.GOLD_ICON + '" class="adv-gold-icon" alt="金币"><b>' + gold + '</b></div>' +
         '<div class="adv-shop-slots">' + slotsHtml + '</div>' +
-        '<div class="adv-shop-page-hint">前3槽道具、第6槽配饰（刷新2金币，配饰15金币），第4–5槽兽元（普通2/万能4，不可刷新）。铁匠铺仍可用兽元兑换配饰。</div>' +
+        '<div class="adv-shop-page-hint">前2槽道具、第3槽战利白卡、第6槽配饰（刷新2金币，配饰15金币），第4–5槽兽元（普通2/万能4，不可刷新）。铁匠铺仍可用兽元兑换配饰。</div>' +
         '<div class="adv-shop-page-actions">' +
           '<button class="adv-btn adv-btn-primary" id="adv-shop-buy"' + (canBuy && gold >= selectedPrice ? '' : ' disabled') + '>' + buyLabel + '</button>' +
           '<button class="adv-btn" id="adv-shop-refresh"' + (canRefresh && gold >= refreshCost ? '' : ' disabled') + '>刷新 · ' + refreshCost + '金币</button>' +

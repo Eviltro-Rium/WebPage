@@ -30,7 +30,8 @@
         return {
           guard: 0,
           fly: 0,
-          lush: Math.max(0, Number(mod.initialLush) || 0)
+          lush: Math.max(0, Number(mod.initialLush) || 0),
+          crit: 0
         };
       },
       turnStart(eng, x, w) {
@@ -57,11 +58,17 @@
         }
 
         const attackerKey = a === eng.s.ai2 ? 'ai2' : (a === eng.s.ai ? 'ai' : 'player');
+        const buffTotal = (t) =>
+          (t.burn || 0) + (t.bleed || 0) + (t.poison || 0) + (t.blind || 0) + (t.iceSeal || 0) +
+          (t.guard || 0) + (t.fly || 0) + (t.parasite || 0) + (t.bomb || 0) + (t.hypothermia || 0) +
+          (t.crit || 0) + (t.lush || 0) + (t.frozen ? 1 : 0) + (t.diving ? 1 : 0) + (t.bloodthirst ? 1 : 0) +
+          (t.chaos_red ? 1 : 0) + (t.chaos_yellow ? 1 : 0) + (t.chaos_blue ? 1 : 0) + (t.chaos_green ? 1 : 0);
         const ctx = {
           playerHandSize: eng.h.player ? eng.h.player.length : 0,
           attackerHandSize: eng.h[attackerKey] ? eng.h[attackerKey].length : 0,
           attackerHand: eng.h[attackerKey] || [],
-          playerBleed: (t.bleed || 0), playerPoison: (t.poison || 0), attackerLush: (a.lush || 0)
+          playerBleed: (t.bleed || 0), playerPoison: (t.poison || 0), attackerLush: (a.lush || 0),
+          playerBuffTotal: buffTotal(t)
         };
         if (typeof mod.attackDamage === 'function') {
           d = mod.attackDamage(c, ctx);
@@ -234,6 +241,23 @@
           }
           eng.emit('desc', '清除双方所有buff');
         }
+        // 冻洋北极熊：进攻1/2/3 有暴击时消耗1层使攻击不可防御
+        if (typeof mod.attackUseCrit === 'function' && mod.attackUseCrit(c) && (a.crit || 0) > 0) {
+          a.crit--;
+          unblock = true;
+          const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+          eng.emit('buff', '-1[暴击]', null, { who, kind: 'crit', stacks: a.crit });
+          eng.emit('desc', a.name + '消耗1层暴击使攻击不可防御');
+        }
+        // 冻洋北极熊：进攻4/5/6 获得1层暴击
+        if (typeof mod.attackGainCrit === 'function') {
+          const gc = mod.attackGainCrit(c);
+          if (gc > 0) {
+            a.crit = Math.min(3, (a.crit || 0) + gc);
+            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+            eng.emit('buff', '+' + gc + '[暴击]', null, { who, kind: 'crit', stacks: a.crit });
+          }
+        }
 
         return { d, skip, unblock, drain, isDrain: drain > 0 };
       },
@@ -260,9 +284,16 @@
         const applyBleed = () => {
           if (bleedAmt > 0 && bleed) bleed(opponent, bleedAmt);
         };
+        const hypothermiaAmt = typeof mod.defendHypothermia === 'function' ? (mod.defendHypothermia(c) || 0) : 0;
+        const applyHypothermia = () => {
+          if (hypothermiaAmt > 0 && typeof eng.hypothermia === 'function') {
+            eng.hypothermia(opponent, hypothermiaAmt);
+          }
+        };
         const suffix = () =>
           (poisonAmt ? '，施加' + poisonAmt + '层中毒' : '') +
-          (bleedAmt ? '，施加' + bleedAmt + '层流血' : '');
+          (bleedAmt ? '，施加' + bleedAmt + '层流血' : '') +
+          (hypothermiaAmt ? '，施加' + hypothermiaAmt + '层失温' : '');
         if (typeof mod.defendRollImmune === 'function' && mod.defendRollImmune(c, eng, defender, d, owner)) {
           return { remaining: 0, desc: '12面骰判定成功，免疫所有伤害和buff' };
         }
@@ -320,7 +351,7 @@
           if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c) && clearDebuffs) {
             clearDebuffs(defender);
           }
-          applyPoison(); applyBleed(); applyDrawSelf(); applyAllExtras();
+          applyPoison(); applyBleed(); applyHypothermia(); applyDrawSelf(); applyAllExtras();
           const clearText = (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c))
             ? '，免疫buff，清除自身所有debuff'
             : '';
@@ -353,7 +384,7 @@
         if (typeof mod.defendSplit === 'function' && mod.defendSplit(c)) {
           const split = Math.ceil(d / 2);
           if (hurt) hurt(opponent, split);
-          applyPoison(); applyBleed(); applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
+          applyPoison(); applyBleed(); applyHypothermia(); applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
           return {
             remaining: split,
             desc: '均摊伤害，双方各受' + split + '点' + suffix() + drawSelfDesc + lushParasiteDesc + allExtrasDesc
@@ -368,14 +399,14 @@
               const block = mod.defendBlock(c, d, defender, eng);
               if (block > 0) {
                 const remaining = Math.max(0, d - block);
-                applyPoison(); applyBleed(); applyLushAndParasite(); applyAllExtras();
+                applyPoison(); applyBleed(); applyHypothermia(); applyLushAndParasite(); applyAllExtras();
                 return {
                   remaining,
                   desc: '恢复' + healAmt + '生命，格挡' + block + '点' + suffix() + lushParasiteDesc + allExtrasDesc
                 };
               }
             }
-            applyPoison(); applyBleed(); applyLushAndParasite(); applyAllExtras();
+            applyPoison(); applyBleed(); applyHypothermia(); applyLushAndParasite(); applyAllExtras();
             return {
               remaining: d,
               desc: '防御恢复' + healAmt + '生命' + suffix() + lushParasiteDesc + allExtrasDesc
@@ -403,7 +434,7 @@
             }
           }
           if (descParts.length) {
-            applyPoison(); applyBleed(); applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
+            applyPoison(); applyBleed(); applyHypothermia(); applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
             return {
               remaining: hasBlock ? remaining : d,
               desc: descParts.join('，') + suffix() + drawSelfDesc + lushParasiteDesc + allExtrasDesc
@@ -411,7 +442,7 @@
           }
         }
 
-        applyPoison(); applyBleed(); applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
+        applyPoison(); applyBleed(); applyHypothermia(); applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
         if (v === 1) return { remaining: Math.max(0, d - Math.ceil(d / 2)), desc: '1牌防御' + suffix() + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
         if (v === 3) return { remaining: Math.max(0, d - Math.floor(d / 2)), desc: '3牌防御' + suffix() + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
         return { remaining: d, desc: '直接承受' + suffix() + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
@@ -506,6 +537,10 @@
       if (typeof mod.defendBleed === 'function') {
         const b = mod.defendBleed(card);
         if (b > 0) parts.push('施加' + b + '层流血');
+      }
+      if (typeof mod.defendHypothermia === 'function') {
+        const h = mod.defendHypothermia(card);
+        if (h > 0) parts.push('施加' + h + '层失温');
       }
       if (typeof mod.defendBlock === 'function') {
         if (mod.name === 'CastleFirefly') {
@@ -619,6 +654,20 @@
       }
       return '无进攻效果';
     }
+    // FrozenPolarBear: buff-total damage on 1/2/3, crit+bleed on 4/5/6.
+    if (mod.name === 'FrozenPolarBear' && card.isNumberCard) {
+      const v = card.value;
+      const stage3 = (Number(opts.stage) || 1) >= 3;
+      if (v >= 1 && v <= 3) {
+        return '造成对手buff总层数点[伤害]（有[暴击]时消耗1层使攻击不可防御）';
+      }
+      if (v >= 4 && v <= 6) {
+        const dmg = stage3 ? 4 : 3;
+        const bleed = stage3 ? 2 : 1;
+        return '造成' + dmg + '点[伤害]，获得1层[暴击]，施加' + bleed + '层[流血]';
+      }
+      return '无进攻效果';
+    }
     let parts = [];
     let dmg = 0;
     let bleedDmgDesc = null;
@@ -665,6 +714,10 @@
     if (typeof mod.attackFly === 'function') {
       const f = mod.attackFly(card);
       if (f > 0) parts.push('获得' + f + '层飞翔');
+    }
+    if (typeof mod.attackGainCrit === 'function') {
+      const gc = mod.attackGainCrit(card);
+      if (gc > 0) parts.push('获得' + gc + '层暴击');
     }
     if (typeof mod.attackClearPositive === 'function' && mod.attackClearPositive(card)) {
       parts.push('清除玩家所有正面buff');

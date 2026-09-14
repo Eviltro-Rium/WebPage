@@ -32,7 +32,7 @@ const sources = expand(['characters', 'ai', 'combat', 'adventure_content']).conc
   'adventure/js/engine/inventory.js',
   'adventure/js/engine/combat_legacy.js',
   'adventure/js/battle/battle_engine.js',
-  'js/ui/ui.js',
+  'js/ui/ui_core.js',
   'adventure/js/battle/combat_bridge.js'
 ]);
 

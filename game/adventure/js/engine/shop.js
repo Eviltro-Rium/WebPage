@@ -244,17 +244,26 @@
         if (typeof slot === 'string' && this._isShopAccessoryName(slot)) return slot;
         return this._rollAccessoryDrop();
       }
+      if (this._isShopTrophySlot(index)) {
+        if (!slot) return null;
+        if (typeof slot === 'string') {
+          const def = window.AdventureRegistry.getItem(slot);
+          if (def && def.kind === 'trophyWhite') return slot;
+        }
+        return this._rollTrophyWhiteSlot();
+      }
       if (!slot) return null;
       if (typeof slot === 'string') {
-        return this._isShopConsumableName(slot) ? slot : this._rollItemDrop();
+        const def = window.AdventureRegistry.getItem(slot);
+        return (def && def.kind === 'consumable') ? slot : this._rollConsumableDrop();
       }
-      return this._rollItemDrop();
+      return this._rollConsumableDrop();
     },
     _initShopSlots(room) {
       room.shopSlots = [
-        this._rollItemDrop(),
-        this._rollItemDrop(),
-        this._rollItemDrop(),
+        this._rollConsumableDrop(),
+        this._rollConsumableDrop(),
+        this._rollTrophyWhiteSlot(),
         this._rollBeastShopOffer(),
         this._rollBeastShopOffer(),
         this._rollAccessoryDrop()
@@ -275,7 +284,13 @@
     },
     _isShopBeastSlot(index) { return index === 3 || index === 4; },
     _isShopAccessorySlot(index) { return index === 5; },
+    _isShopTrophySlot(index) { return index === 2; },
     _isShopItemSlot(index) { return index >= 0 && index <= 2; },
+    _rollConsumableDrop() {
+      const consumables = window.AdventureRegistry.itemsByKind('consumable');
+      if (!consumables.length) return null;
+      return consumables[Math.floor(Math.random() * consumables.length)].name;
+    },
     _shopBeastPrice(beastType) {
       const base = beastType === 'wuneng' ? 4 : 2;
       return this._applyShopDiscount(base);
@@ -400,7 +415,8 @@
         return { ok: true };
       }
       if (def.kind !== 'consumable' && def.kind !== 'trophyWhite') {
-        if (this._isShopItemSlot(index)) room.shopSlots[index] = this._rollItemDrop();
+        if (this._isShopTrophySlot(index)) room.shopSlots[index] = this._rollTrophyWhiteSlot();
+        else if (this._isShopItemSlot(index)) room.shopSlots[index] = this._rollConsumableDrop();
         else if (this._isShopAccessorySlot(index)) room.shopSlots[index] = this._rollAccessoryDrop();
         this.emit('buyFail', '不可购买', { itemName, reason: 'invalid' });
         return { ok: false, message: '不可购买' };
@@ -436,7 +452,9 @@
         this.emit('buyFail', '金币不足', { action: 'refresh', price, gold: this.s.currency.gold });
         return { ok: false, message: '金币不足（需要' + price + '）' };
       }
-      const itemName = this._isShopAccessorySlot(index) ? this._rollAccessoryDrop() : this._rollItemDrop();
+      const itemName = this._isShopAccessorySlot(index)
+        ? this._rollAccessoryDrop()
+        : (this._isShopTrophySlot(index) ? this._rollTrophyWhiteSlot() : this._rollConsumableDrop());
       room.shopSlots[index] = itemName;
       this.s.shopSelectedSlot = index;
       const def = itemName ? window.AdventureRegistry.getItem(itemName) : null;

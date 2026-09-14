@@ -828,7 +828,13 @@
                     refreshable: true
                   };
                 }
-                if ((def.kind !== 'consumable' && def.kind !== 'trophyWhite') || !this._isShopItemSlot(index)) return null;
+                if (this._isShopTrophySlot(index)) {
+                  if (def.kind !== 'trophyWhite') return null;
+                } else if (this._isShopItemSlot(index)) {
+                  if (def.kind !== 'consumable') return null;
+                } else {
+                  return null;
+                }
                 return {
                   kind: def.kind,
                   name,
