@@ -30,10 +30,11 @@ const sources = expand(['characters', 'ai', 'combat', 'adventure_content']).conc
   'adventure/js/engine/shop.js',
   'adventure/js/engine/rewards.js',
   'adventure/js/engine/inventory.js',
-  'adventure/js/engine/combat_legacy.js',
+  'adventure/js/engine/combat_result.js',
   'adventure/js/battle/battle_engine.js',
+  'adventure/js/battle/adventure_battle_items.js',
   'js/ui/ui_core.js',
-  'adventure/js/battle/combat_bridge.js'
+  'adventure/js/battle/adventure_battle_controller.js'
 ]);
 
 for (const relative of sources) {
@@ -151,10 +152,10 @@ test('adventure opponent is registered for the ordinary 1v1 character and AI int
   assert.ok(context.AIRegistry.get('CastleWolf'));
 });
 
-test('adventure combat bridge detects the exported shared 1v1 UI', () => {
+test('adventure battle controller detects the exported shared 1v1 UI', () => {
   assert.equal(typeof context.GameUI, 'function');
   assert.equal(typeof context.AnimLayer, 'function');
-  assert.equal(context.AdventureCombatBridge.isAvailable(), true);
+  assert.equal(context.AdventureBattleController.isAvailable(), true);
 });
 
 test('black cards pause for a color choice before resolving in adventure combat', () => {
@@ -165,12 +166,15 @@ test('black cards pause for a color choice before resolving in adventure combat'
   assert.equal(pending.needColorChoice, true);
   assert.equal(pending.pendingDialog, 'color');
   assert.equal(pending.playerHand.length, 1);
+  assert.equal(pending.atkCard, null, 'black card must not be painted into attack zone before color selection');
+  assert.equal(pending.events.filter(event => event.type === 'playerPlay').length, 0, 'color staging must not emit a play animation');
 
   const resolved = engine.dispatch('chooseColor', { color: 'GREEN' });
   assert.equal(resolved.needColorChoice, false);
   assert.equal(resolved.pendingDialog, null);
   assert.equal(resolved.discardTop.chosenColor, 'GREEN');
   assert.equal(resolved.playerHand.length, 0);
+  assert.equal(resolved.events.filter(event => event.type === 'playerPlay').length, 1, 'confirmed black card emits one play animation');
 });
 
 test('battle startup preserves the player pile and gives the NPC its own two-card hand', () => {
@@ -682,6 +686,121 @@ test('lord mode player discard ends turn with correct alternating AI attacker', 
   assert.equal(engine.s.activeAttacker, 'ai2');
   assert.equal(engine.s.phase, 'AI2_TURN');
   assert.equal(engine.s.currentAITarget, 1);
+});
+
+test('challenge targeted trophy cards apply to the selected NPC2 target', () => {
+  const runtime = context.FurryGame && context.FurryGame.CombatRuntime;
+  const targeted = [
+    ['BurnTrophy', 'burn', 1],
+    ['PiercingTrophy', 'bleed', 1],
+    ['FreezeTrophy', 'frozen', true],
+    ['PoisonTrophy', 'poison', 1],
+    ['TimeBombTrophy', 'bomb', 5]
+  ];
+
+  try {
+    // Challenge rooms use the lord adapter's alternating target selector.
+    // Start this turn on NPC2 so a stale/default NPC1 target cannot pass.
+    for (const [name, field, expected] of targeted) {
+      const engine = new AdventureBattleEngine();
+      engine.later = () => {};
+      engine.startAdventure1v2({
+        player: 'Ryan',
+        opponent1: 'CastleWolf',
+        opponent2: 'CastleBear',
+        stage: 1,
+        discardTop: number(2, 'RED'),
+        playerPile: {
+          deck: [number(3, 'BLUE')],
+          hand: [context.AdventureDeck.trophyWhite(name)],
+          discard: [],
+          handLimit: 5
+        }
+      });
+      engine.h.ai = [number(2, 'RED')];
+      engine.h.ai2 = [number(2, 'RED')];
+      engine.s.lordPlayerTargetIdx = 1;
+      engine.s.phase = 'PLAYER_PLAY';
+      engine.s.busy = false;
+      engine.select(0);
+      engine.dispatch('doPlay');
+
+      assert.equal(engine.s.ai[field] || false, false, `${name} must not affect NPC1`);
+      assert.equal(engine.s.ai2[field], expected, `${name} should affect NPC2`);
+    }
+
+    const disarm = new AdventureBattleEngine();
+    disarm.later = () => {};
+    disarm.startAdventure1v2({
+      player: 'Ryan', opponent1: 'CastleWolf', opponent2: 'CastleBear', stage: 1,
+      discardTop: number(2, 'RED'),
+      playerPile: {
+        deck: [number(3, 'BLUE')],
+        hand: [context.AdventureDeck.trophyWhite('DisarmTrophy')],
+        discard: [], handLimit: 5
+      }
+    });
+    disarm.h.ai = [number(2, 'RED')];
+    disarm.h.ai2 = [number(2, 'RED')];
+    disarm.s.lordPlayerTargetIdx = 1;
+    disarm.s.phase = 'PLAYER_PLAY';
+    disarm.s.busy = false;
+    disarm.select(0);
+    disarm.dispatch('doPlay');
+    assert.equal(disarm.s.pendingTrophyDisarm.targetKey, 'ai2', 'Disarm should open the NPC2 hand picker');
+
+    runtime.setRandomSource(() => 0.99);
+    const roulette = new AdventureBattleEngine();
+    roulette.later = () => {};
+    roulette.startAdventure1v2({
+      player: 'Ryan', opponent1: 'CastleWolf', opponent2: 'CastleBear', stage: 1,
+      discardTop: number(2, 'RED'),
+      playerPile: {
+        deck: [number(3, 'BLUE')],
+        hand: [context.AdventureDeck.trophyWhite('RussianRouletteTrophy')],
+        discard: [], handLimit: 5
+      }
+    });
+    roulette.h.ai = [number(2, 'RED')];
+    roulette.h.ai2 = [number(2, 'RED')];
+    roulette.s.lordPlayerTargetIdx = 1;
+    roulette.s.phase = 'PLAYER_PLAY';
+    roulette.s.busy = false;
+    const aiHp = roulette.s.ai.hp;
+    const ai2Hp = roulette.s.ai2.hp;
+    roulette.select(0);
+    roulette.dispatch('doPlay');
+    assert.equal(roulette.s.ai.hp, aiHp, 'Russian roulette must not damage NPC1');
+    assert.equal(roulette.s.ai2.hp, ai2Hp - 10, 'Russian roulette must damage the selected NPC2 on a hit roll');
+  } finally {
+    runtime.resetRandomSource();
+  }
+});
+
+test('challenge AI2 ends its turn after its hand is exhausted', () => {
+  const engine = new AdventureBattleEngine();
+  const callbacks = [];
+  engine.later = fn => { callbacks.push(fn); };
+  engine.startAdventure1v2({
+    player: 'Leon',
+    opponent1: 'CastleWolf',
+    opponent2: 'CastleBear',
+    stage: 1,
+    playerPile: { deck: [], hand: [number(2, 'RED')], discard: [], handLimit: 5 }
+  });
+
+  engine.later = fn => { callbacks.push(fn); };
+  engine.s.currentAITarget = 1;
+  engine.s.phase = 'AI2_TURN';
+  engine.s.busy = true;
+  engine.s.aiTurnStarted = true;
+  engine.s.aiHasPlayed = true;
+  engine.h.ai2.splice(0, engine.h.ai2.length);
+  engine.aiTurn1v2();
+  assert.equal(callbacks.length, 0);
+  assert.equal(engine.s.phase, 'PLAYER_PLAY');
+  assert.equal(engine.s.activeAttacker, 'player');
+  assert.equal(engine.s.busy, false);
 });
 
 test('ArmorBreakSpear makes defensible attack unblockable via attack mod choice', () => {

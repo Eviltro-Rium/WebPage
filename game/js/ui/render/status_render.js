@@ -6,6 +6,11 @@
         console.error('[UI status] GameUI must be loaded first');
         return;
     }
+    const statusRegistry = global.FurryGame && (global.FurryGame.StatusService || global.FurryGame.StatusRegistry);
+    const schedule = (fn, ms, owner = null, channel = 'ui-status') => {
+        const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
+        return runtime ? runtime.schedule(owner, fn, ms, channel) : setTimeout(fn, ms);
+    };
     Object.assign(GameUI.prototype, {
         _updateAttackerIndicator(who) {
             const s = this.state || {};
@@ -78,34 +83,38 @@
             const currentKeys = [];
             const currentStacks = {};
             let html = '';
-            const buffs = [
-                { key: 'burn', stacks: ch.burn, icon: 'burn', colorClass: 'burn-buff' },
-                { key: 'freeze', stacks: ch.frozen ? 1 : 0, icon: 'freeze', colorClass: 'freeze-buff' },
-                { key: 'bleed', stacks: ch.bleed, icon: 'bleed', colorClass: 'bleed-buff' },
-                { key: 'poison', stacks: ch.poison || 0, icon: 'poison', colorClass: 'poison-buff' },
-                { key: 'blind', stacks: ch.blind || 0, icon: 'blind', colorClass: 'blind-buff', hideCount: true },
-                { key: 'iceSeal', stacks: ch.iceSeal || 0, icon: 'ice_seal', colorClass: 'ice-seal-buff', hideCount: true },
-                { key: 'bomb', stacks: ch.bomb || 0, icon: 'time_bomb', colorClass: 'bomb-mark', hideCount: false },
-                { key: 'hypothermia', stacks: ch.hypothermia || 0, icon: 'hypothermia', colorClass: 'hypothermia-buff', hideCount: false },
-                { key: 'guard', stacks: ch.guard, icon: 'guard', colorClass: 'guard-buff' },
-                { key: 'fly', stacks: ch.fly || 0, icon: 'fly', colorClass: 'fly-buff' },
-                { key: 'lush', stacks: ch.lush || 0, icon: 'lush', colorClass: 'lush-buff' },
-                { key: 'parasite', stacks: ch.parasite || 0, icon: 'parasite', colorClass: 'parasite-buff' },
-                { key: 'crit', stacks: ch.crit || 0, icon: 'crit' },
-                { key: 'diving', stacks: ch.diving ? 1 : 0, icon: 'diving', colorClass: 'diving-buff', hideCount: true },
-                { key: 'chaos_red', stacks: ch.chaos_red ? 1 : 0, icon: 'chaos_red', hideCount: true, colorClass: 'chaos-red-buff' },
-                { key: 'chaos_yellow', stacks: ch.chaos_yellow ? 1 : 0, icon: 'chaos_yellow', hideCount: true, colorClass: 'chaos-yellow-buff' },
-                { key: 'chaos_blue', stacks: ch.chaos_blue ? 1 : 0, icon: 'chaos_blue', hideCount: true, colorClass: 'chaos-blue-buff' },
-                { key: 'chaos_green', stacks: ch.chaos_green ? 1 : 0, icon: 'chaos_green', hideCount: true, colorClass: 'chaos-green-buff' }
-            ];
-            if (ch.bloodthirst) buffs.push({ key: 'bloodthirst', stacks: 1, path: gameAssetUrl('icons/ui_icons/blood_thirsty.png'), colorClass: 'bloodthirst-buff', hideCount: true });
-            if (ch.bindMark) buffs.push({ key: 'bind', stacks: 1, path: gameAssetUrl('icons/items_icons/binding.png'), colorClass: 'bind-mark', hideCount: true });
+            const uiOverrides = {
+                burn: { colorClass: 'burn-buff' }, freeze: { colorClass: 'freeze-buff' },
+                bleed: { colorClass: 'bleed-buff' }, poison: { colorClass: 'poison-buff' },
+                blind: { colorClass: 'blind-buff' }, iceSeal: { colorClass: 'ice-seal-buff' },
+                bomb: { colorClass: 'bomb-mark' }, hypothermia: { colorClass: 'hypothermia-buff' },
+                guard: { colorClass: 'guard-buff' }, fly: { colorClass: 'fly-buff' },
+                lush: { colorClass: 'lush-buff' }, parasite: { colorClass: 'parasite-buff' },
+                diving: { colorClass: 'diving-buff' }, bloodthirst: { colorClass: 'bloodthirst-buff' },
+                bind: { colorClass: 'bind-mark' }, chaos_red: { colorClass: 'chaos-red-buff' },
+                chaos_yellow: { colorClass: 'chaos-yellow-buff' }, chaos_blue: { colorClass: 'chaos-blue-buff' },
+                chaos_green: { colorClass: 'chaos-green-buff' }
+            };
+            const buffs = statusRegistry
+                ? statusRegistry.list(ch).map(def => Object.assign({
+                    key: def.id,
+                    stacks: statusRegistry.amount(ch, def.id),
+                    path: gameAssetUrl(`icons/${def.icon}`),
+                    hideCount: !def.stack,
+                    label: def.label
+                }, uiOverrides[def.id] || {}))
+                : [
+                    { key: 'burn', stacks: ch.burn, icon: 'burn', label: '灼烧', colorClass: 'burn-buff' },
+                    { key: 'freeze', stacks: ch.frozen ? 1 : 0, icon: 'freeze', label: '冷冻', colorClass: 'freeze-buff' },
+                    { key: 'bleed', stacks: ch.bleed, icon: 'bleed', label: '流血', colorClass: 'bleed-buff' },
+                    { key: 'poison', stacks: ch.poison || 0, icon: 'poison', label: '中毒', colorClass: 'poison-buff' }
+                ];
             for (const b of buffs) {
                 if (b.stacks > 0) {
                     currentKeys.push(b.key);
                     currentStacks[b.key] = b.stacks;
                     const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.png`);
-                    const title = ({ burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', blind: '致盲', iceSeal: '冰封', bomb: '定时炸弹', hypothermia: '失温', guard: '守护', fly: '飞翔', lush: '茂盛', parasite: '寄生', crit: '暴击', diving: '潜水', bloodthirst: '嗜血', bind: '捆缚', chaos_red: '混沌红', chaos_yellow: '混沌黄', chaos_blue: '混沌蓝', chaos_green: '混沌绿' }[b.key] || b.key);
+                    const title = b.label || b.key;
                     const animCls = !prevSet.has(b.key) ? ' icon-appear' : '';
                     const specialClass = b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.key === 'bind' ? 'bind-mark' : b.key === 'bomb' ? 'bomb-mark' : b.colorClass || '';
                     html += `<div class="buff-icon-wrap ${specialClass}${animCls}" data-buff-key="${b.key}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}</div>`;
@@ -129,25 +138,19 @@
             if (removed.length) {
                 container.querySelectorAll('.buff-icon-wrap').forEach(el => {
                     const title = el.getAttribute('title');
-                    const keyMap = {
-                        '灼烧': 'burn', '冷冻': 'freeze', '流血': 'bleed', '中毒': 'poison', '致盲': 'blind', '冰封': 'iceSeal',
-                        '炸弹': 'bomb', '失温': 'hypothermia', '守护': 'guard', '飞翔': 'fly', '茂盛': 'lush', '寄生': 'parasite', '暴击': 'crit',
-                        '潜水': 'diving', '嗜血': 'bloodthirst', '捆缚': 'bind',
-                        '混沌红': 'chaos_red', '混沌黄': 'chaos_yellow', '混沌蓝': 'chaos_blue', '混沌绿': 'chaos_green'
-                    };
-                    const key = Object.keys(keyMap).find(k => title === k);
-                    if (key && removed.includes(keyMap[key])) el.classList.add('icon-disappear');
+                    const key = el.dataset && el.dataset.buffKey;
+                    if (key && removed.includes(key)) el.classList.add('icon-disappear');
                 });
                 const expectedKeys = currentKeys.slice();
                 const expectedStacks = Object.assign({}, currentStacks);
-                renderTimers[prefix] = setTimeout(() => {
+                renderTimers[prefix] = schedule(() => {
                     renderTimers[prefix] = null;
                     const latestKeys = (this._prevBuffKeys && this._prevBuffKeys[prefix]) || [];
                     const latestStacks = (this._prevBuffStacks && this._prevBuffStacks[prefix]) || {};
                     if (JSON.stringify(latestKeys) !== JSON.stringify(expectedKeys) ||
                         JSON.stringify(latestStacks) !== JSON.stringify(expectedStacks)) return;
                     container.innerHTML = html;
-                }, 160);
+                }, 160, this, `buff-render-${prefix}`);
             } else {
                 container.innerHTML = html;
             }
@@ -166,10 +169,10 @@
             // Force a reflow so consecutive triggers always replay the animation.
             void icon.offsetWidth;
             icon.classList.add('buff-trigger-flash');
-            timers[key] = setTimeout(() => {
+            timers[key] = schedule(() => {
                 icon.classList.remove('buff-trigger-flash');
                 timers[key] = null;
-            }, 620);
+            }, 620, this, `buff-flash-${key}`);
         }
     });
 })(window);

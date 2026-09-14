@@ -12,6 +12,9 @@
         console.error('[UI feedback] GameUI must be loaded first');
         return;
     }
+    const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
+    const schedule = (fn, ms) => runtime ? runtime.schedule(null, fn, ms) : setTimeout(fn, ms);
+    const random = () => runtime ? runtime.random() : Math.random();
 
     const proto = GameUI.prototype;
 
@@ -96,7 +99,7 @@
         el.style.setProperty('--float-drift-x', `${layout.x === 0 ? 0 : layout.x > 0 ? 12 : -12}px`);
         document.body.appendChild(el);
         active.push({ el, lane });
-        setTimeout(() => {
+        schedule(() => {
             el.remove();
             this._floatingTextLanes[target] = (this._floatingTextLanes[target] || [])
                 .filter(entry => entry.el !== el && entry.el.isConnected);
@@ -114,8 +117,8 @@
             const elapsed = now - start;
             if (elapsed >= dur) { container.style.transform = ''; this._shakeTimer = null; return; }
             const decay = 1 - elapsed / dur;
-            const dx = (Math.random() - 0.5) * 2 * int * decay;
-            const dy = (Math.random() - 0.5) * 2 * int * decay;
+            const dx = (random() - 0.5) * 2 * int * decay;
+            const dy = (random() - 0.5) * 2 * int * decay;
             container.style.transform = `translate(${dx}px, ${dy}px)`;
             this._shakeTimer = requestAnimationFrame(tick);
         };
@@ -158,7 +161,7 @@
                 i++;
                 let n = finalValue;
                 if (i < ticks) {
-                    do { n = 1 + Math.floor(Math.random() * 12); } while (n === last);
+                    do { n = 1 + Math.floor(random() * 12); } while (n === last);
                     last = n;
                 }
                 face.textContent = String(n);
@@ -174,13 +177,13 @@
                     face.textContent = String(finalValue);
                     die.setAttribute('aria-label', '12面骰结果 ' + finalValue);
                     box.dataset.cardKey = 'd12-landed:' + finalValue;
-                    setTimeout(resolve, 480);
+                    schedule(resolve, 480);
                     return;
                 }
                 const t = i / ticks;
-                setTimeout(tick, 36 + t * t * 100);
+                    schedule(tick, 36 + t * t * 100);
             };
-            setTimeout(tick, 40);
+                schedule(tick, 40);
         });
     };
 
@@ -192,9 +195,9 @@
     proto.burstParticles = function (x, y, color, count) {
         const particles = [];
         for (let i = 0; i < (count || 12); i++) {
-            const angle = (Math.PI * 2 * i) / (count || 12) + (Math.random() - 0.5) * 0.5;
-            const speed = 40 + Math.random() * 80;
-            const size = 3 + Math.random() * 4;
+            const angle = (Math.PI * 2 * i) / (count || 12) + (random() - 0.5) * 0.5;
+            const speed = 40 + random() * 80;
+            const size = 3 + random() * 4;
             const el = document.createElement('div');
             el.className = 'burst-particle';
             el.style.left = x + 'px'; el.style.top = y + 'px';
@@ -223,7 +226,7 @@
 
     /** Flash an equipped accessory icon in the combat item bar before its effect float. */
     proto._flashAccessorySlot = function (itemName) {
-        const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+        const wait = ms => runtime ? runtime.wait(ms) : new Promise(resolve => setTimeout(resolve, ms));
         const bar = document.getElementById('adventure-item-bar');
         if (!bar || !itemName) return wait(280);
         const slots = bar.querySelectorAll('.adv-combat-acc-slot[data-acc-name="' + itemName + '"]');

@@ -6,6 +6,10 @@
         console.error('[UI adventure bar] GameUI must be loaded first');
         return;
     }
+    const schedule = (fn, ms, owner = null, channel = 'ui-adventure-bar') => {
+        const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
+        return runtime ? runtime.schedule(owner, fn, ms, channel) : setTimeout(fn, ms);
+    };
     Object.assign(GameUI.prototype, {
         _canUseAdventureCombatItem(s, def) {
             if (!s || !s.isAdventure || !def) return false;
@@ -80,8 +84,8 @@
         _renderAdventureItemBar(s) {
             const bar = document.getElementById('adventure-item-bar');
             if (!bar) return;
-            const activeBattle = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine
-                ? window.AdventureCombatBridge.activeEngine() : null;
+            const activeBattle = window.AdventureBattleController && window.AdventureBattleController.activeEngine
+                ? window.AdventureBattleController.activeEngine() : null;
             const advEngine = activeBattle && activeBattle._adventureEngine;
             if (!s.isAdventure) { bar.style.display = 'none'; return; }
             const snap = advEngine && typeof advEngine.snapshot === 'function'
@@ -174,7 +178,7 @@
                     if (removedAccs.some(n => { const d = window.AdventureRegistry.getItem(n); return d && d.displayName === title; }))
                         el.classList.add('icon-disappear');
                 });
-                setTimeout(() => { bar.innerHTML = html; this._bindItemBarEvents(bar, consumables, s, inAttackMod); }, 160);
+                schedule(() => { bar.innerHTML = html; this._bindItemBarEvents(bar, consumables, s, inAttackMod); }, 160, this, 'item-render');
             } else {
                 bar.innerHTML = html;
                 this._bindItemBarEvents(bar, consumables, s, inAttackMod);
@@ -202,7 +206,7 @@
                 };
                 btn.addEventListener('click', (event) => {
                     if (event.detail !== 1) return;
-                    clickTimer = setTimeout(selectItem, 230);
+                    clickTimer = schedule(selectItem, 230, btn, 'item-click');
                 });
                 btn.addEventListener('dblclick', async (event) => {
                     event.preventDefault();
@@ -222,7 +226,7 @@
             if (!btn) return;
             const idx = this._selectedCombatItem;
             if (idx == null) { btn.disabled = true; btn.textContent = '使用道具'; return; }
-            const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine && window.AdventureCombatBridge.activeEngine()._adventureEngine;
+            const advEngine = window.AdventureBattleController && window.AdventureBattleController.activeEngine && window.AdventureBattleController.activeEngine()._adventureEngine;
             const snap = advEngine && advEngine.snapshot();
             const item = snap && (snap.consumables || [])[idx];
             btn.disabled = false;
@@ -233,7 +237,7 @@
             const idx = this._selectedCombatItem;
             if (idx == null) return;
             const s = this.state;
-            const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine && window.AdventureCombatBridge.activeEngine()._adventureEngine;
+            const advEngine = window.AdventureBattleController && window.AdventureBattleController.activeEngine && window.AdventureBattleController.activeEngine()._adventureEngine;
             if (!advEngine || !s) return;
             const snap = advEngine.snapshot();
             const consumables = snap.consumables || [];

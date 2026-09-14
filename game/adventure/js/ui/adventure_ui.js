@@ -7,6 +7,9 @@
   const PHASE_LABEL = window.AdventurePhaseLabel || {};
   const T = window.RoomType;
   const AC = window.AdventureCurrency;
+  const runtime = window.FurryGame && window.FurryGame.CombatRuntime;
+  const random = () => runtime ? runtime.random() : Math.random();
+  const schedule = (fn, ms) => runtime ? runtime.schedule(null, fn, ms) : setTimeout(fn, ms);
   const GAME_TIPS = [
     '房间清理完后不会自动补牌，也不会清除身上的 Buff。',
     '进入挑战房后有一次补牌机会。',
@@ -41,7 +44,17 @@
       this._test = null;
       this._tipsTimer = null;
       this._tipsIndex = -1;
+      this._mapClickTimer = null;
+      this._lastEnterRoomAt = 0;
+      this._pendingMapReturnEffect = null;
       this._bindEngine();
+    }
+
+    _clearMapClickTimer() {
+      if (this._mapClickTimer) {
+        clearTimeout(this._mapClickTimer);
+        this._mapClickTimer = null;
+      }
     }
 
     _stopTipsRotation() {
@@ -83,17 +96,35 @@
     /** 优先恢复本地存档；无存档或角色不匹配时用默认地图开始新冒险 */
     async restoreOrStart(defaultMapFn, characterName) {
       const save = window.AdventureSave ? window.AdventureSave.load() : null;
-      const combatSession = window.AdventureCombatBridge && typeof window.AdventureCombatBridge.loadCombatSession === 'function'
-        ? window.AdventureCombatBridge.loadCombatSession() : null;
+      const combatSession = window.AdventureBattleController && typeof window.AdventureBattleController.loadCombatSession === 'function'
+        ? window.AdventureBattleController.loadCombatSession() : null;
       if (save && save.characterName === characterName) {
         try {
           await this.restoreFromSave(save);
+          // Reward settlement is a persistent checkpoint, not an in-combat
+          // session.  Recreate its overlay after refresh so the cleared room
+          // and pending loot remain actionable instead of silently returning
+          // to the map.
+          const settlementPhases = [
+            window.AdventurePhase.COMBAT_SETTLE,
+            window.AdventurePhase.BEAST_CHOICE,
+            window.AdventurePhase.BEAST_DISCARD,
+            window.AdventurePhase.ITEM_DISCARD
+          ];
+          if (settlementPhases.includes(this.eng.s.phase) &&
+              window.AdventureBattleController &&
+              typeof window.AdventureBattleController.resumeSettlement === 'function') {
+            const resumedSettlement = window.AdventureBattleController.resumeSettlement(this.eng, () => this.render());
+            if (resumedSettlement) return true;
+          }
           // 战斗中的快照保存在 sessionStorage（只在同一标签页刷新时有效），
           // 冒险存档则保留地图、房间和战斗前的玩家状态。先恢复后者，再重建
           // 当前房间的桥接战斗，最后由战斗引擎注回精确的回合/牌堆状态。
-          const canResumeCombat = combatSession && combatSession.characterName === characterName &&
-            combatSession.battle && save.phase === window.AdventurePhase.MAP &&
-            (!combatSession.mapName || combatSession.mapName === this.eng.mapName);
+          const sessionMatches = window.AdventureBattleSession && typeof window.AdventureBattleSession.matches === 'function'
+            ? window.AdventureBattleSession.matches(combatSession, characterName, this.eng.mapName)
+            : !!(combatSession && combatSession.characterName === characterName &&
+              (!combatSession.mapName || combatSession.mapName === this.eng.mapName));
+          const canResumeCombat = sessionMatches && combatSession.battle && save.phase === window.AdventurePhase.MAP;
           if (canResumeCombat && this.eng.s.phase === window.AdventurePhase.MAP && this.eng.currentRoom()) {
             const room = this.eng.currentRoom();
             if (room.type === window.RoomType.NORMAL && combatSession.enemy) room.monsterName = combatSession.enemy;
@@ -106,20 +137,20 @@
               if (resumed) return true;
             }
           }
-          if (combatSession && window.AdventureCombatBridge && typeof window.AdventureCombatBridge.clearCombatSession === 'function') {
-            window.AdventureCombatBridge.clearCombatSession();
+          if (combatSession && window.AdventureBattleController && typeof window.AdventureBattleController.clearCombatSession === 'function') {
+            window.AdventureBattleController.clearCombatSession();
           }
           if (window.cardIconsReady) window.cardIconsReady.then(() => this.render());
           return true;
         } catch (e) {
           if (window.AdventureSave) window.AdventureSave.clear();
-          if (window.AdventureCombatBridge && typeof window.AdventureCombatBridge.clearCombatSession === 'function') {
-            window.AdventureCombatBridge.clearCombatSession();
+          if (window.AdventureBattleController && typeof window.AdventureBattleController.clearCombatSession === 'function') {
+            window.AdventureBattleController.clearCombatSession();
           }
         }
       }
-      if (combatSession && window.AdventureCombatBridge && typeof window.AdventureCombatBridge.clearCombatSession === 'function') {
-        window.AdventureCombatBridge.clearCombatSession();
+      if (combatSession && window.AdventureBattleController && typeof window.AdventureBattleController.clearCombatSession === 'function') {
+        window.AdventureBattleController.clearCombatSession();
       }
       await this.start(typeof defaultMapFn === 'function' ? defaultMapFn() : defaultMapFn, characterName);
       return false;
@@ -140,6 +171,7 @@
     }
 
     render() {
+      this._clearMapClickTimer();
       this._stopTipsRotation();
       const snap = this.eng.snapshot();
       if (!snap) return;
@@ -159,48 +191,9 @@
         }
       }
 
-      if (snap.phase === window.AdventurePhase.GAME_OVER) {
-        window.location.href = '../index.html';
-        return;
+      if (window.AdventureUIViews && typeof window.AdventureUIViews.render === 'function') {
+        window.AdventureUIViews.render(this, snap);
       }
-
-      this.container.innerHTML = '';
-
-      const combatPhases = ['ADVENTURE_PLAYER_PLAY', 'ADVENTURE_PLAYER_DEFEND', 'ADVENTURE_NPC_TURN'];
-      if (snap.combat && combatPhases.includes(snap.phase)) {
-        if (!this._bridgeCombatStarting && !this._bridgeCombatActive) {
-          this._showCombatLaunchError('1v1 战斗界面未启动，请重新进入房间');
-        }
-        return;
-      }
-
-      const wrap = document.createElement('div');
-      wrap.className = 'adventure-wrap';
-
-      wrap.appendChild(this._buildHeader(snap));
-      if (snap.phase === window.AdventurePhase.SHOP) {
-        wrap.appendChild(this._buildShopPage(snap));
-      } else if (snap.phase === window.AdventurePhase.BLACKSMITH) {
-        wrap.appendChild(this._buildBlacksmithPage(snap));
-      } else if (snap.phase === window.AdventurePhase.REWARD && snap.roomInfo && snap.roomInfo.type === window.RoomType.BOSS && snap.roomInfo.cleared) {
-        wrap.appendChild(this._buildBossRewardPage(snap));
-      } else if (snap.phase === window.AdventurePhase.REWARD && snap.pendingRoomReward) {
-        wrap.appendChild(this._buildRewardPage(snap));
-      } else if (snap.phase === window.AdventurePhase.BEAST_DISCARD) {
-        wrap.appendChild(this._buildBeastDiscardPage(snap));
-      } else if (snap.phase === window.AdventurePhase.ITEM_DISCARD) {
-        wrap.appendChild(this._buildItemDiscardPage(snap));
-      } else {
-        const mapPanel = document.createElement('div');
-        mapPanel.className = 'adv-map-panel';
-        mapPanel.appendChild(this._buildMap(snap));
-        if (snap.phase === window.AdventurePhase.MAP) mapPanel.appendChild(this._buildTipsBanner());
-        wrap.appendChild(mapPanel);
-      }
-      wrap.appendChild(this._buildSidebar(snap));
-      wrap.appendChild(this._buildLog());
-
-      this.container.appendChild(wrap);
     }
 
     _buildTipsBanner() {
@@ -210,7 +203,7 @@
       const text = banner.querySelector('.adv-tips-text');
       const showNext = () => {
         if (!GAME_TIPS.length || !text) return;
-        let next = Math.floor(Math.random() * GAME_TIPS.length);
+        let next = Math.floor(random() * GAME_TIPS.length);
         if (GAME_TIPS.length > 1 && next === this._tipsIndex) next = (next + 1) % GAME_TIPS.length;
         this._tipsIndex = next;
         text.classList.remove('adv-tips-fade');
@@ -293,8 +286,24 @@
             (room.stashedLoot ? '（有待领奖励）' : '') +
             (room.type === T.ITEM && !room.doorUnlocked && room.doorCost
               ? '（开门：' + room.doorCost.map(k => AC.BEAST_LABEL[k] || k).join('+') + '）'
-              : room.type === T.ITEM && room.doorUnlocked ? '（已开门）' : '');
-          cell.addEventListener('click', () => this._onCellClick(r, c));
+              : room.type === T.ITEM && room.doorUnlocked ? '（已开门）' : '') +
+            (this.eng.canMoveTo(r, c) ? '（单击移动，双击进入）' : '');
+          // Delay the single-click move just long enough to distinguish a
+          // double-click.  Without this, the first click re-renders the map
+          // and detaches the cell before the browser dispatches dblclick.
+          cell.addEventListener('click', event => {
+            if (event.detail > 1) return;
+            this._clearMapClickTimer();
+            this._mapClickTimer = setTimeout(() => {
+              this._mapClickTimer = null;
+              this._onCellClick(r, c);
+            }, 240);
+          });
+          cell.addEventListener('dblclick', event => {
+            event.preventDefault();
+            this._clearMapClickTimer();
+            this._onCellDoubleClick(r, c);
+          });
           board.appendChild(cell);
         }
       }
@@ -456,11 +465,23 @@
             handZone.appendChild(cv);
           }
         };
+        const animatePendingEffect = () => {
+          if (!this._pendingMapReturnEffect) return;
+          const effect = this._pendingMapReturnEffect;
+          this._pendingMapReturnEffect = null;
+          // Let the map/sidebar finish mounting before applying transforms.
+          schedule(() => this._animateMapReturnEffects(effect), 30);
+        };
         paintHand();
         if (window.cardIconsReady) {
           window.cardIconsReady.then(() => {
-            if (side.isConnected && side.querySelector('#adv-hand-zone') === handZone) paintHand();
+            if (side.isConnected && side.querySelector('#adv-hand-zone') === handZone) {
+              paintHand();
+              animatePendingEffect();
+            }
           });
+        } else {
+          animatePendingEffect();
         }
       }
 
@@ -603,7 +624,7 @@
           ? '<img class="adv-acc-col-icon" src="' + item.icon + '" alt="' + item.displayName + '">'
           : '<span class="adv-acc-col-noicon">' + (item.displayName || '?').charAt(0) + '</span>';
         const badge = g.count > 1 ? '<span class="adv-acc-col-stack">×' + g.count + '</span>' : '';
-        return '<div class="adv-acc-col-slot" title="' + tip.replace(/"/g, '&quot;') + '">' + icon + badge + '</div>';
+        return '<div class="adv-acc-col-slot" data-accessory-name="' + name + '" title="' + tip.replace(/"/g, '&quot;') + '">' + icon + badge + '</div>';
       });
       return '<div class="adv-acc-panel">' +
         '<div class="adv-acc-panel-label">配饰</div>' +
@@ -866,6 +887,22 @@
       const room = this.eng.s.map.get(r, c);
       if (room && room.type !== T.EMPTY) {
         this._toast('(' + (r + 1) + ',' + (c + 1) + ') ' + room.label() + '房间' + (room.cleared ? '（已清除）' : room.visited ? '（已访问）' : ''));
+      }
+    }
+
+    _onCellDoubleClick(r, c) {
+      if (this.eng.canMoveTo(r, c)) {
+        if (this.eng.move(r, c)) this._handleEnterRoom();
+        return;
+      }
+      const pos = this.eng.s && this.eng.s.pos;
+      if (pos && pos.r === r && pos.c === c) {
+        this._handleEnterRoom();
+        return;
+      }
+      const room = this.eng.s && this.eng.s.map && this.eng.s.map.get(r, c);
+      if (room && room.type !== T.EMPTY) {
+        this._toast('请先移动到可达房间，再双击进入');
       }
     }
 
@@ -1140,6 +1177,12 @@
 
 
     _handleEnterRoom() {
+      // A double-click on the action button produces two click events as
+      // well.  Ignore the second one while the first room transition is
+      // being processed, so combat/map initialization cannot run twice.
+      const now = Date.now();
+      if (now - this._lastEnterRoomAt < 450) return;
+      this._lastEnterRoomAt = now;
       const result = this.eng.enterCurrent();
       if (result && result.ok === false) {
         this._toast(result.message || '无法进入');
@@ -1148,7 +1191,7 @@
       }
       const combatPhases = ['ADVENTURE_PLAYER_PLAY', 'ADVENTURE_PLAYER_DEFEND', 'ADVENTURE_NPC_TURN'];
       if (combatPhases.includes(this.eng.s.phase)) {
-        if (!window.AdventureCombatBridge || !window.AdventureCombatBridge.isAvailable()) {
+        if (!window.AdventureBattleController || !window.AdventureBattleController.isAvailable()) {
           this._showCombatLaunchError('1v1 战斗模块加载失败，请刷新页面后重试');
           return;
         }
@@ -1190,13 +1233,13 @@
 
       try {
         if (is1v2) {
-          await window.AdventureCombatBridge.startCombat1v2(
+          await window.AdventureBattleController.startCombat1v2(
             playerName, monsterName, monsterName2,
             (result, state, persistentState, meta) => this._onBridgeCombatEnd(result, state, persistentState, meta),
             initialState
           );
         } else {
-          await window.AdventureCombatBridge.startCombat(
+          await window.AdventureBattleController.startCombat(
             playerName, monsterName,
             (result, state, persistentState, meta) => this._onBridgeCombatEnd(result, state, persistentState, meta),
             initialState
@@ -1227,12 +1270,42 @@
         else if (state && state.player) this.eng.s.player.hp = Math.max(0, state.player.hp);
         this.eng.onCombatEnd(result);
       }
+      let returnEffect = null;
+      if (result === 'win' && (!meta || !meta.test) && this.eng.s.phase === window.AdventurePhase.MAP &&
+          typeof this.eng.onCombatReturnToMap === 'function') {
+        returnEffect = this.eng.onCombatReturnToMap();
+      }
+      if (returnEffect) this._pendingMapReturnEffect = returnEffect;
       this.render();
     }
 
+    _animateMapReturnEffects(effect) {
+      if (!effect || effect.itemName !== 'WisdomNecklace') return;
+      const slot = this.container.querySelector('[data-accessory-name="WisdomNecklace"]');
+      if (slot) {
+        slot.classList.remove('adv-accessory-trigger');
+        void slot.offsetWidth;
+        slot.classList.add('adv-accessory-trigger');
+        schedule(() => slot.classList.remove('adv-accessory-trigger'), 1000);
+      }
+
+      const zone = this.container.querySelector('#adv-hand-zone');
+      if (!zone) return;
+      const cards = Array.from(zone.children);
+      const count = Math.min(Math.max(0, Number(effect.drawn) || 0), cards.length);
+      cards.slice(cards.length - count).forEach((card, index) => {
+        card.classList.add('adv-wisdom-draw-card');
+        card.style.animationDelay = (420 + index * 120) + 'ms';
+        schedule(() => {
+          card.classList.remove('adv-wisdom-draw-card');
+          card.style.animationDelay = '';
+        }, 1800 + index * 120);
+      });
+    }
+
     startTest(characterName) {
-      if (window.AdventureCombatBridge && typeof window.AdventureCombatBridge.clearCombatSession === 'function') {
-        window.AdventureCombatBridge.clearCombatSession();
+      if (window.AdventureBattleController && typeof window.AdventureBattleController.clearCombatSession === 'function') {
+        window.AdventureBattleController.clearCombatSession();
       }
       this._test = { characterName, items: [], trophyWhiteCards: [], accessories: [], mode: null, opponents: [], stage: 1, running: false, result: null };
       const bg = document.getElementById('castle-bg');
@@ -1308,7 +1381,7 @@
 
     _startTestBattle() {
       if (!this._test || this._test.running) return;
-      if (!window.AdventureCombatBridge || !window.AdventureCombatBridge.isAvailable()) {
+      if (!window.AdventureBattleController || !window.AdventureBattleController.isAvailable()) {
         this._showCombatLaunchError('战斗模块加载失败，请刷新页面后重试');
         return;
       }
@@ -1347,8 +1420,8 @@
       this._bridgeCombatStarting = true;
       const done = (result, state, persistentState, meta) => this._onTestBattleEnd(result, state, persistentState, meta);
       const promise = mode === '1v2'
-        ? window.AdventureCombatBridge.startCombat1v2(this._test.characterName, opponents[0], opponents[1], done, initialState)
-        : window.AdventureCombatBridge.startCombat(this._test.characterName, opponents[0], done, initialState);
+        ? window.AdventureBattleController.startCombat1v2(this._test.characterName, opponents[0], opponents[1], done, initialState)
+        : window.AdventureBattleController.startCombat(this._test.characterName, opponents[0], done, initialState);
       Promise.resolve(promise).catch(error => {
         this._test.running = false;
         this._bridgeCombatStarting = false;
@@ -1441,8 +1514,8 @@
       let stage = this.eng.s.stage || 1;
       let scene = this.eng.s.scene || 'castle';
       stage++;
-      if (stage > 4) { stage = 1; scene = scenes[Math.floor(Math.random() * scenes.length)]; }
-      const variant = 1 + Math.floor(Math.random() * 3);
+      if (stage > 4) { stage = 1; scene = scenes[Math.floor(random() * scenes.length)]; }
+      const variant = 1 + Math.floor(random() * 3);
       const mapName = 'stage_' + String(stage).padStart(2, '0') + '_' + scene + '_' + variant;
       const mapUrl = 'maps/' + mapName + '.csv';
       try {
@@ -1453,6 +1526,10 @@
           map = await window.AdventureMap.fromCsvUrl(mapUrl);
         }
         this.eng.continueTo(map, { stage: stage, scene: scene });
+        if (typeof this.eng.onCombatReturnToMap === 'function') {
+          const returnEffect = this.eng.onCombatReturnToMap();
+          if (returnEffect) this._pendingMapReturnEffect = returnEffect;
+        }
         this.render();
       } catch (e) {
         this._toast('加载下一层失败：' + (e.message || e));
@@ -1549,7 +1626,7 @@
       t.className = 'adv-toast';
       t.textContent = msg;
       this.container.appendChild(t);
-      setTimeout(() => t.remove(), 1500);
+      schedule(() => t.remove(), 1500);
     }
   }
 

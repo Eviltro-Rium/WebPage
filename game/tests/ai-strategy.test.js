@@ -50,7 +50,10 @@ for (const file of [
   path.join(gameRoot, 'js', 'combat', 'modes.js'),
   path.join(gameRoot, 'js', 'combat', 'deck_port.js'),
   path.join(gameRoot, 'js', 'combat', 'turn_machine.js'),
+  path.join(gameRoot, 'js', 'combat', 'card_effects.js'),
   path.join(gameRoot, 'js', 'combat', 'engine.js'),
+  path.join(gameRoot, 'js', 'combat', 'engine_turns.js'),
+  path.join(gameRoot, 'js', 'combat', 'engine_ai.js'),
   ...aiFiles
 ]) {
   vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });

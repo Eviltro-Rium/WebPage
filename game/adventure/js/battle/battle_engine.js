@@ -53,6 +53,7 @@
       this.pendingSettlement = clone(data.pendingSettlement) || null;
       this.tableTopOwner = data.tableTopOwner || this.s.discardTopOwner || null;
       this.s.discardTopOwner = this.tableTopOwner;
+      this._ensureStatuses();
       // Migrate old battle snapshots where the table top lived outside the
       // discard pile. New snapshots already include it as the last discard.
       const oldTop = this.s.discardTop;
@@ -85,6 +86,9 @@
       };
       register(this.s.ai && this.s.ai.name);
       register(this.s.ai2 && this.s.ai2.name);
+      this._invariantReady = true;
+      this._invariantBaseline = null;
+      this._checkInvariants('restoreSession');
       return this.state();
     }
 
@@ -92,6 +96,14 @@
       // 冒险模式不给 NPC 加 "AI " 前缀
       const ch = super.character(n, false);
       return ch;
+    }
+
+    _ensureStatuses() {
+      const status = window.FurryGame && window.FurryGame.StatusService;
+      if (!status || !this.s) return;
+      ['player', 'ai', 'ai2'].forEach(key => {
+        if (this.s[key]) status.ensure(this.s[key]);
+      });
     }
 
     startAdventure(config = {}) {
@@ -159,6 +171,7 @@
         this.s.player.hp = Math.max(0, Math.min(this.s.player.maxHp, Number(config.playerState.hp)));
         this.s.player.alive = this.s.player.hp > 0;
       }
+      this._ensureStatuses();
       this.s.ai = this.character(opponentName, true);
       this.s.ai.name = opponentName;
       this.s.handLimit = this.piles.player.handLimit;
@@ -213,6 +226,9 @@
         this.emitDrawDiff(openingHands);
         this._tryEnergyShieldOnAttack();
       }
+      this._invariantReady = true;
+      this._invariantBaseline = null;
+      this._checkInvariants('startAdventure');
       return this.state();
     }
 
@@ -340,6 +356,9 @@
         this._tryEnergyShieldOnAttack();
       }
 
+      this._invariantReady = true;
+      this._invariantBaseline = null;
+      this._checkInvariants('startAdventure1v2');
       return this.state();
     }
 
@@ -482,6 +501,7 @@
       if (animated && cards.length && !this._suppressDrawAnim) {
         this.emit('draw', `${key === 'player' ? '玩家' : 'NPC'}从自己的牌库抽${cards.length}张牌`, null, { who: key, count: cards.length });
       }
+      this._checkInvariants('draw');
       return cards;
     }
 
@@ -497,6 +517,7 @@
       const saved = clone(card);
       if (saved.isBlack || saved.isWhite) delete saved.chosenColor;
       pile.discard.push(saved);
+      this._checkInvariants('discard');
     }
 
     setDiscardTop(card, owner) {
@@ -510,6 +531,7 @@
         this.tableTopOwner = nextOwner;
         this.s.discardTopOwner = nextOwner;
         this.s.diceRoll = null;
+        this._checkInvariants('setDiscardTop');
         return;
       }
       const pile = this._pile(nextOwner);
@@ -529,6 +551,7 @@
       const actor = this.s.defOwner || this.s.atkOwner;
       const bombOwner = actor === 'ai2' ? 'ai2' : actor === 'ai' ? 'ai' : null;
       if (bombOwner) this._markBombPlay(bombOwner);
+      this._checkInvariants('setDiscardTop');
     }
 
     _shuffleDiscardIntoDeck(owner) {
@@ -542,6 +565,7 @@
       }
       pile.deck.push(...pile.discard.splice(0, pile.discard.length));
       this._shuffle(pile.deck);
+      this._checkInvariants('shuffle');
     }
 
     reveal(desc, owner) {
@@ -732,6 +756,7 @@
       if (is1v2) this.piles.ai2.hand.splice(0, this.piles.ai2.hand.length);
       this.piles.ai.discard.splice(0, this.piles.ai.discard.length);
 
+      this._checkInvariants('finishAdventureBattle');
       return {
         playerState: clone(this.s.player),
         playerPile: clone({
@@ -746,239 +771,7 @@
       };
     }
 
-    useAdventureCombatItem(itemIndex, choice) {
-      const advEngine = this._adventureEngine;
-      if (!advEngine) return this.state();
-      const snap = advEngine.snapshot();
-      const item = snap.consumables[itemIndex];
-      if (!item) return this.state();
-      const def = window.AdventureRegistry.getItem(item.name);
-      if (!def || def.kind !== 'consumable') return this.state();
-      if (!this._canUseAdventureCombatItemNow(def)) {
-        if (this.s.player && (this.s.player.blind || 0) > 0 && def.kind === 'consumable') {
-          this.emit('desc', '玩家处于致盲状态，无法使用一次性道具');
-          return this.state();
-        }
-        const dodgeOnly = def.combatUse === 'dodge';
-        this.emit('desc', dodgeOnly
-          ? '闪避只能在防御出牌阶段使用'
-          : def.defendOnly ? def.displayName + '只能在防御出牌阶段使用'
-          : '当前不能使用道具（仅可在选牌出牌/防御时使用）');
-        return this.state();
-      }
-      if (def.combatUse === 'attackMod') return this.state();
-      if ((def.combatUse === 'dodge' || def.defendOnly) && !this.s.pendingAttack) {
-        this.emit('desc', '当前没有可闪避的攻击');
-        return this.state();
-      }
-
-      const player = this.s.player;
-      const purifyChoices = Array.isArray(choice) ? choice : null;
-      let targetKey = this.s.attackTarget;
-      if (!targetKey && this.s.is1v2) {
-        targetKey = (this.s.activeAttacker === 'ai2') ? 'ai2' : 'ai';
-      }
-      if (!targetKey) targetKey = 'ai';
-      const ai = this.s[targetKey] || this.s.ai;
-
-      const effects = window.AdventureCombatEffects;
-      const result = effects && typeof effects.apply === 'function'
-        ? effects.apply(this, def, { choice, purifyChoices, player, ai, advEngine, targetKey })
-        : { ok: true, message: '使用' + def.displayName };
-
-      if (result && result.pending) return this.state();
-      if (!result || !result.ok) {
-        this.emit('desc', (result && result.message) || '无法使用该道具');
-        return this.state();
-      }
-
-      this.emit('desc', '使用道具[' + def.displayName + ']：' + result.message);
-      advEngine.s.consumables.splice(itemIndex, 1);
-      if (result.dodgeResolved) {
-        this.s.phase = 'AI_TURN';
-        this.deferSettlement('AI_ATTACK', 0, 0);
-        return this.check();
-      }
-      this.check();
-      return this.state();
-    }
-
-    _canUseAdventureCombatItemNow(def) {
-      if (!this.s || !this.s.isAdventure) return false;
-      if (this.s.busy) return false;
-      if (this.s.needColorChoice) return false;
-      if (this.s.player && (this.s.player.blind || 0) > 0 && def && def.kind === 'consumable') return false;
-      if (def && (def.combatUse === 'dodge' || def.defendOnly)) {
-        return this.s.phase === 'PLAYER_DEFEND' && !!this.s.pendingAttack;
-      }
-      if (def && def.combatUse === 'bind') {
-        return this.s.phase === 'PLAYER_PLAY' && !this.s.bindUsedThisTurn;
-      }
-      if (def && def.combatUse === 'chameleonPaint') {
-        return this.s.phase === 'PLAYER_PLAY';
-      }
-      // 仅在玩家可选择出牌/防御牌时（含不可防御时的跳过窗口）
-      return this.s.phase === 'PLAYER_PLAY' || this.s.phase === 'PLAYER_DEFEND';
-    }
-
-    _applyCardMaster(choice) {
-      if (choice !== 'draw2' && choice !== 'mulligan') {
-        return { ok: false, message: '请选择：抽两张，或弃牌重抽' };
-      }
-      if (choice === 'draw2') {
-        const drawn = this.draw('player', 2, true);
-        return { ok: true, message: '抽取' + drawn.length + '张牌' };
-      }
-      const n = this.h.player.length;
-      const dropped = this.h.player.splice(0, n);
-      for (let i = dropped.length - 1; i >= 0; i--) {
-        this.discardWithEvent(dropped[i], 'player', {
-          handIndex: i,
-          desc: '卡牌大师：弃掉' + this.cardText(dropped[i])
-        });
-      }
-      const redrawn = this.draw('player', n, true);
-      return { ok: true, message: '弃掉' + n + '张并重抽' + redrawn.length + '张' };
-    }
-
-    _listTransferableBuffs(ch) {
-      const kinds = [];
-      if (!ch) return kinds;
-      if (ch.burn > 0) kinds.push('burn');
-      if (ch.bleed > 0) kinds.push('bleed');
-      if ((ch.poison || 0) > 0) kinds.push('poison');
-      if (ch.frozen) kinds.push('freeze');
-      if ((ch.iceSeal || 0) > 0) kinds.push('iceSeal');
-      if (ch.guard > 0) kinds.push('guard');
-      if ((ch.fly || 0) > 0) kinds.push('fly');
-      if ((ch.crit || 0) > 0) kinds.push('crit');
-      if ((ch.lush || 0) > 0) kinds.push('lush');
-      if ((ch.parasite || 0) > 0) kinds.push('parasite');
-      return kinds;
-    }
-
-    _moveBuffLayer(from, to, kind, wTo) {
-      const labels = { burn: '灼烧', bleed: '流血', poison: '中毒', freeze: '冷冻', iceSeal: '冰封', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生' };
-      switch (kind) {
-        case 'burn':
-          from.burn--;
-          this.burn(to, 1);
-          break;
-        case 'bleed':
-          from.bleed--;
-          this.bleed(to, 1);
-          break;
-        case 'poison':
-          from.poison = Math.max(0, (from.poison || 0) - 1);
-          this.poison(to, 1);
-          break;
-        case 'freeze':
-          from.frozen = false;
-          this.freeze(to);
-          break;
-        case 'iceSeal':
-          from.iceSeal = 0;
-          this.iceSeal(to);
-          break;
-        case 'guard':
-          from.guard--;
-          to.guard = Math.min(5, (to.guard || 0) + 1);
-          this.emit('buff', '+1[守护]', null, { who: wTo, kind: 'guard', stacks: to.guard });
-          break;
-        case 'fly':
-          from.fly--;
-          to.fly = Math.min(2, (to.fly || 0) + 1);
-          this.emit('buff', '+1[飞翔]', null, { who: wTo, kind: 'fly', stacks: to.fly });
-          break;
-        case 'crit':
-          from.crit--;
-          to.crit = Math.min(3, (to.crit || 0) + 1);
-          this.emit('buff', '+1[暴击]', null, { who: wTo, kind: 'crit', stacks: to.crit });
-          break;
-        case 'lush':
-          from.lush--;
-          to.lush = Math.min(2, (to.lush || 0) + 1);
-          this.emit('buff', '+1[茂盛]', null, { who: wTo, kind: 'lush', stacks: to.lush });
-          break;
-        case 'parasite':
-          from.parasite--;
-          to.parasite = Math.min(1, (to.parasite || 0) + 1);
-          this.emit('buff', '+1[寄生]', null, { who: wTo, kind: 'parasite', stacks: to.parasite });
-          break;
-        default:
-          return null;
-      }
-      return labels[kind] || kind;
-    }
-
-    _applyBuffTransfer(choice, player, opponent) {
-      const fromSelf = this._listTransferableBuffs(player);
-      const fromOpp = this._listTransferableBuffs(opponent);
-      if (!fromSelf.length && !fromOpp.length) {
-        return { ok: false, message: '双方都没有可转移的buff' };
-      }
-      let kind = choice;
-      let from = 'self';
-      if (choice && typeof choice === 'object') {
-        kind = choice.kind;
-        const src = choice.from;
-        if (src === 'opp' || src === 'opponent' || src === 'ai' || src === 'ai2') from = 'opp';
-        else if (src === 'self' || src === 'player') from = 'self';
-      }
-      if (!kind) return { ok: false, message: '请选择要转移的一层buff' };
-      if (from === 'opp') {
-        if (!fromOpp.includes(kind)) return { ok: false, message: '无效的buff选择' };
-        const label = this._moveBuffLayer(opponent, player, kind, 'player');
-        if (!label) return { ok: false, message: '无效的buff选择' };
-        return { ok: true, message: '将对手1层' + label + '转移到自己' };
-      }
-      if (!fromSelf.includes(kind)) return { ok: false, message: '无效的buff选择' };
-      const wTo = opponent === this.s.ai2 ? 'ai2' : 'ai';
-      const label = this._moveBuffLayer(player, opponent, kind, wTo);
-      if (!label) return { ok: false, message: '无效的buff选择' };
-      return { ok: true, message: '将1层' + label + '转移给对手' };
-    }
-
-    _hasAccessory(name) {
-      const eng = this._adventureEngine;
-      return !!(eng && typeof eng.hasAccessory === 'function' && eng.hasAccessory(name));
-    }
-
-    /** Emit accessory bar flash before applying the accessory effect / buff float. */
-    _flashAccessory(itemName) {
-      if (!itemName || !this._hasAccessory(itemName)) return;
-      const def = window.AdventureRegistry && window.AdventureRegistry.getItem(itemName);
-      this.emit('accessoryTrigger', (def && def.displayName) || itemName, null, {
-        who: 'player',
-        target: 'player',
-        itemName
-      });
-    }
-
-    _flameFistBurnAmount() {
-      const def = window.AdventureRegistry && window.AdventureRegistry.getItem('FlameFist');
-      const perFist = (def && def.onDefendBurn) || 1;
-      const eng = this._adventureEngine;
-      const count = eng && typeof eng.accessoryCount === 'function' ? eng.accessoryCount('FlameFist') : 1;
-      return perFist * count;
-    }
-
-    _tryFlameFistOnDefend(skip) {
-      if (!this.s || !this.s.isAdventure) return;
-      if (skip) return;
-      if (!this._hasAccessory('FlameFist')) return;
-      const i = this.s.selectedCard;
-      const c = this.h.player && this.h.player[i];
-      if (!c || c.isItemCard || (c.isBlack && !c.chosenColor)) return;
-      const attackerKey = (this.s.atkOwner && this.s.atkOwner !== 'player') ? this.s.atkOwner : 'ai';
-      const attacker = this.s[attackerKey];
-      if (!attacker || !attacker.alive) return;
-      const stacks = this._flameFistBurnAmount();
-      this._flashAccessory('FlameFist');
-      this.burn(attacker, stacks);
-    }
-
-    defend(skip = false) {
+   defend(skip = false) {
       this._tryFlameFistOnDefend(skip);
       return super.defend(skip);
     }
@@ -1051,8 +844,9 @@
           this.turnStart('player');
           this._tryEnergyShieldOnAttack();
         });
-        if (this.s.ai) this.s.ai.bindMark = true;
-        if (this.s.ai2 && this.s.ai2.alive) this.s.ai2.bindMark = true;
+        const status = window.FurryGame && window.FurryGame.StatusService;
+        if (this.s.ai) { if (status) status.set(this.s.ai, 'bind', true); else this.s.ai.bindMark = true; }
+        if (this.s.ai2 && this.s.ai2.alive) { if (status) status.set(this.s.ai2, 'bind', true); else this.s.ai2.bindMark = true; }
         this.s.bindExtraTurn = true;
         this.s.bindUsedThisTurn = false;
         this.s.phase = 'PLAYER_PLAY';
@@ -1066,8 +860,9 @@
         return this.check();
       }
       if (this.s && this.s.bindExtraTurn) {
-        if (this.s.ai) this.s.ai.bindMark = false;
-        if (this.s.ai2) this.s.ai2.bindMark = false;
+        const status = window.FurryGame && window.FurryGame.StatusService;
+        if (this.s.ai) { if (status) status.set(this.s.ai, 'bind', false); else this.s.ai.bindMark = false; }
+        if (this.s.ai2) { if (status) status.set(this.s.ai2, 'bind', false); else this.s.ai2.bindMark = false; }
         this.s.bindExtraTurn = false;
       }
       // Opening first-strike: refill NPC only; skip player hand fill and the
@@ -1158,7 +953,9 @@
         }
       } else if (stage >= 3) {
         if (advEngine.s.consumables && advEngine.s.consumables.length) {
-          const idx = Math.floor(Math.random() * advEngine.s.consumables.length);
+          const random = window.FurryGame && window.FurryGame.CombatRuntime
+            ? window.FurryGame.CombatRuntime.random : Math.random;
+          const idx = Math.floor(random() * advEngine.s.consumables.length);
           const removed = advEngine.s.consumables.splice(idx, 1)[0];
           const def = window.AdventureRegistry.getItem(removed);
           this.emit('desc', '城堡哥布林被动：玩家损失道具[' + (def ? def.displayName : removed) + ']');
@@ -1322,9 +1119,14 @@
 
     _hasPurifyableBuff(ch) {
       if (!ch) return false;
+      const registry = window.FurryGame && window.FurryGame.StatusRegistry;
+      if (registry) return registry.list(ch).length > 0;
       return (ch.burn > 0) || (ch.bleed > 0) || ((ch.poison || 0) > 0) || ((ch.blind || 0) > 0) ||
              ((ch.bomb || 0) > 0) || !!ch.frozen || ((ch.iceSeal || 0) > 0) ||
-             (ch.guard > 0) || ((ch.fly || 0) > 0) || ((ch.crit || 0) > 0) || ((ch.lush || 0) > 0) || ((ch.parasite || 0) > 0);
+             ((ch.hypothermia || 0) > 0) || (ch.guard > 0) || ((ch.fly || 0) > 0) ||
+             ((ch.crit || 0) > 0) || ((ch.lush || 0) > 0) || ((ch.parasite || 0) > 0) ||
+             !!ch.diving || !!ch.bloodthirst || !!ch.bindMark || !!ch.chaos_red ||
+             !!ch.chaos_yellow || !!ch.chaos_blue || !!ch.chaos_green;
     }
 
     choosePurifyCrystal(choice) {
@@ -1334,7 +1136,7 @@
       const opponentKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
       const target = who === 'opp' ? this.s[opponentKey] : this.s.player;
       const targetLabel = who === 'opp' ? (this.s.is1v2 && opponentKey === 'ai2' ? 'AI2' : '对手') : '玩家';
-      const kindLabel = { burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', iceSeal: '冰封', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生' }[kind] || 'buff';
+      const kindLabel = { burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', iceSeal: '冰封', bomb: '定时炸弹', blind: '致盲', hypothermia: '失温', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生', diving: '潜水', bloodthirst: '嗜血', bind: '捆缚', chaos_red: '混沌·红', chaos_yellow: '混沌·黄', chaos_blue: '混沌·蓝', chaos_green: '混沌·绿' }[kind] || 'buff';
       this._flashAccessory('PurifyCrystal');
       this.clean(target, false, kind);
       this.emit('desc', '净化水晶：清除' + targetLabel + '一层' + kindLabel);
@@ -1348,7 +1150,8 @@
       this.trimAI();
       if (this.s.ai.burn) {
         let dmg = this.s.ai.burn;
-        this.s.ai.burn--;
+        const status = window.FurryGame && window.FurryGame.StatusService;
+        if (status) status.remove(this.s.ai, 'burn', 1); else this.s.ai.burn--;
         if (this.name(this.s.ai) !== 'Leon') {
           this.emit('burnSettle', `-${dmg}[灼烧]，-1[灼烧层数]`, null, { who: 'ai', target: 'ai', amount: dmg, kind: 'burn' });
           this.s.ai.hp = Math.max(0, this.s.ai.hp - dmg);

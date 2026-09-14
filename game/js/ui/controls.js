@@ -5,6 +5,10 @@
         console.error('[UI controls] GameUI must be loaded first');
         return;
     }
+    const schedule = (fn, ms, owner = null, channel = 'ui-controls') => {
+        const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
+        return runtime ? runtime.schedule(owner, fn, ms, channel) : setTimeout(fn, ms);
+    };
     Object.assign(GameUI.prototype, {
 _renderControls() {
     const s = this.state;
@@ -225,7 +229,7 @@ _closeGameMenu(overlay) {
     overlay.style.transition = 'opacity 0.15s ease';
     const box = overlay.querySelector('.game-menu-box');
     if (box) { box.style.transform = 'scale(0.92) translateY(8px)'; box.style.opacity = '0'; box.style.transition = 'all 0.15s ease'; }
-    setTimeout(() => overlay.remove(), 150);
+    schedule(() => overlay.remove(), 150, this, 'error-overlay');
 },
 
 _showSkillOverlay() {
@@ -233,8 +237,8 @@ _showSkillOverlay() {
     if (existing) { existing.remove(); return; }
     const s = this.state;
     if (!s || !s.player) return;
-    const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine &&
-        window.AdventureCombatBridge.activeEngine()._adventureEngine;
+    const advEngine = window.AdventureBattleController && window.AdventureBattleController.activeEngine &&
+      window.AdventureBattleController.activeEngine()._adventureEngine;
     const stage = (advEngine && advEngine.s && advEngine.s.stage) || s.stage || 1;
     const chars = [];
     chars.push({ name: s.player.name.replace(/^AI\d*\s+/, ''), label: '玩家', color: '#3b82f6', isNpc: false });
@@ -340,8 +344,8 @@ _showSkillOverlay() {
 
 _getAvailableAttackMods(s) {
     const state = s || this.state;
-    const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine &&
-        window.AdventureCombatBridge.activeEngine()._adventureEngine;
+    const advEngine = window.AdventureBattleController && window.AdventureBattleController.activeEngine &&
+      window.AdventureBattleController.activeEngine()._adventureEngine;
     if (!advEngine || !state) return [];
     const consumables = (advEngine.snapshot().consumables) || [];
     const mod = state.pendingAttackMod || {};
@@ -388,8 +392,8 @@ _confirmAttackMod() {
     if (idx == null) return;
     const am = attackMods.find(a => a.index === idx);
     if (!am) return;
-    const advEngine = window.AdventureCombatBridge && window.AdventureCombatBridge.activeEngine &&
-        window.AdventureCombatBridge.activeEngine()._adventureEngine;
+    const advEngine = window.AdventureBattleController && window.AdventureBattleController.activeEngine &&
+      window.AdventureBattleController.activeEngine()._adventureEngine;
     this._attackModPromptOpen = true;
     (async () => {
         try {
@@ -516,7 +520,9 @@ async _pollAI() {
     try {
       for (let i = 0; i < 80; i++) {
         if (this._isConsumingEvents || this._isHandlingAction) break;
-        await new Promise(r => setTimeout(r, 350));
+        await (global.FurryGame && global.FurryGame.CombatRuntime
+            ? global.FurryGame.CombatRuntime.wait(350)
+            : new Promise(r => setTimeout(r, 350)));
         if (this._isConsumingEvents || this._isHandlingAction) break;
         const newState = await Bridge.getState();
         if (!newState || newState.error) continue;

@@ -117,7 +117,10 @@ _animationOrder(events) {
 
 
 async _playEvents(events, fast = false) {
-    const wait = ms => new Promise(resolve => setTimeout(resolve, fast ? Math.max(60, Math.round(ms * 0.22)) : ms));
+    const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
+    const wait = ms => runtime
+        ? runtime.wait(fast ? Math.max(60, Math.round(ms * 0.22)) : ms)
+        : new Promise(resolve => setTimeout(resolve, fast ? Math.max(60, Math.round(ms * 0.22)) : ms));
     const orderedEvents = this._animationOrder(events);
     if (orderedEvents.some(evt => this._isDefenseJudgmentEvent(evt))) {
         // Clear a judgment card that may have been painted from the final

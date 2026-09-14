@@ -8,6 +8,8 @@
   const SHOP_ACCESSORY_PRICE = C.SHOP_ACCESSORY_PRICE || 15;
   const CONSUMABLE_SLOT_COUNT = C.CONSUMABLE_SLOT_COUNT || 6;
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
+  const random = () => window.FurryGame && window.FurryGame.CombatRuntime
+    ? window.FurryGame.CombatRuntime.random() : Math.random();
   Object.assign(AdventureEngine.prototype, {
 
     _handleShop(room) {
@@ -58,7 +60,7 @@
     _rollTrophyWhiteSlot() {
       const trophies = window.AdventureRegistry.allItems().filter(item => item.kind === 'trophyWhite');
       if (!trophies.length) return null;
-      return trophies[Math.floor(Math.random() * trophies.length)].name;
+      return trophies[Math.floor(random() * trophies.length)].name;
     },
     _rollBlacksmithSlot() {
       return this._rollAccessoryDrop();
@@ -289,7 +291,7 @@
     _rollConsumableDrop() {
       const consumables = window.AdventureRegistry.itemsByKind('consumable');
       if (!consumables.length) return null;
-      return consumables[Math.floor(Math.random() * consumables.length)].name;
+      return consumables[Math.floor(random() * consumables.length)].name;
     },
     _shopBeastPrice(beastType) {
       const base = beastType === 'wuneng' ? 4 : 2;
@@ -304,7 +306,7 @@
     },
     _rollBeastShopOffer() {
       const types = window.AdventureCurrency.ALL_BEAST_TYPES;
-      const beastType = types[Math.floor(Math.random() * types.length)];
+      const beastType = types[Math.floor(random() * types.length)];
       return { kind: 'beast', beastType };
     },
     _rollAccessoryDrop() {
@@ -318,7 +320,7 @@
         return count < it.maxStacks;
       });
       if (!available.length) return null;
-      return available[Math.floor(Math.random() * available.length)].name;
+      return available[Math.floor(random() * available.length)].name;
     },
     _shopSlotPrice(index, slot) {
       if (!slot) return 0;
@@ -461,14 +463,6 @@
       this._log('刷新商店槽位' + (index + 1) + '：' + (def ? def.displayName : '空') + '（-' + price + '金币）');
       this.emit('shopRefresh', '刷新商店槽位', { slot: index, itemName, price, gold: this.s.currency.gold });
       return { ok: true, itemName };
-    },
-    _applyWisdomNecklaceDraw() {
-      if (!this.hasAccessory('WisdomNecklace') || !this.s.playerPile) return;
-      const def = window.AdventureRegistry.getItem('WisdomNecklace');
-      const n = (def && def.onCombatWinDraw) || 2;
-      const drawn = this.s.playerPile.draw(n);
-      this._log('智慧项链：补' + drawn.length + '张牌');
-      this.emit('accessory', '智慧项链补牌', { itemName: 'WisdomNecklace', drawn: drawn.length });
     },
     leaveShop() {
       if (this.s.phase !== Phase.SHOP) return;

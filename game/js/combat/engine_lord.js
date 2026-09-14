@@ -28,7 +28,12 @@
 
   E.prototype._lordNeedsTarget=function(c){
     if(c.isBlack)return false;
-    if(c.isItemCard&&!c.swapHand)return false;
+    // Trophy white cards are item-shaped cards. Only the opponent-targeting
+    // effects need the alternating target selector; self buffs (guard/fly/
+    // lush) should not rotate the target just to play a bridge card.
+    const trophyTargetsOpponent = c.trophyWhite &&
+      ['burn','bleed','freeze','poison','bomb','disarm','roulette','zero'].includes(c.trophyEffect);
+    if(c.isItemCard&&!c.swapHand&&!trophyTargetsOpponent)return false;
     let who=this.name(this.s.player);
     if(who==='Leon'&&c.value===0)return false;
     if(who==='Serenity'&&c.value===7)return false;
@@ -150,8 +155,8 @@
     }
     if(m==='chooseGuard')return this.chooseGuard(p.stacks);
     if(m==='chooseFly')return this.chooseFly();
-    if(m==='chooseFlyContinue')return this.chooseFlyContinue(!!p.again);
-    if(m==='choosePurify'){this.clean(this.s.player,false,p.kind);this.s.pendingDialog=null;this.emit('desc','净化移除一层'+({burn:'灼烧',freeze:'冷冻',bleed:'流血',poison:'中毒',blind:'致盲',bomb:'炸弹',guard:'守护',fly:'飞翔',crit:'暴击',lush:'茂盛'}[p.kind]||'buff'));return this.state()}
+    if(m==='chooseFlyContinue')return this.chooseFlyContinue(p);
+    if(m==='choosePurify'){this.clean(this.s.player,false,p.kind);this.s.pendingDialog=null;this.emit('desc','净化移除一层'+({burn:'灼烧',freeze:'冷冻',bleed:'流血',poison:'中毒',blind:'致盲',bomb:'定时炸弹',hypothermia:'失温',guard:'守护',fly:'飞翔',crit:'暴击',lush:'茂盛',parasite:'寄生',diving:'潜水',bloodthirst:'嗜血',bind:'捆缚'}[p.kind]||'buff'));return this.state()}
     if(m==='selectCard')return this.select(p.index);
     if(m==='clearEvents'){let through=Number(p.throughId);if(Number.isFinite(through))this.acknowledgeEvents(through);else this.events=[];return{ok:true,remaining:this.events.length}}
     if(m==='restart'){clearTimeout(this.timer);this.pendingSettlement=null;this.s=null;this.h={player:[],ai:[]};this.events=[];return{ok:true}}
@@ -163,7 +168,7 @@
   E.prototype._lordStartNextAI=function(){
     if(!this.s.ai.alive&&(!this.s.ai2||!this.s.ai2.alive)){this.check();return this.state()}
     this.fillHands1v2(true);
-    if(this.s.player.burn){let dmg=this.s.player.burn;this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',amount:dmg});this.hurt(this.s.player,dmg)}}
+    if(this.s.player.burn){let dmg=this.s.player.burn;let status=window.FurryGame&&window.FurryGame.StatusService;if(status)status.remove(this.s.player,'burn',1);else this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',amount:dmg});this.hurt(this.s.player,dmg)}}
     this.check();if(this.s.phase==='GAME_OVER')return this.state();
 
     let idx=this.s.lordPlayerTargetIdx||0;
@@ -188,7 +193,7 @@
 
     let key=this._curAI();
     let ch=this.s[key];
-    if(ch.burn){let dmg=ch.burn;ch.burn--;if(this.name(ch)!=='Leon'){let w=this._who(ch);this.emit('burnSettle','-'+dmg+'[灼烧]，-1[灼烧层数]',null,{who:w,amount:dmg});ch.hp=Math.max(0,ch.hp-dmg);ch.alive=ch.hp>0}}
+    if(ch.burn){let dmg=ch.burn;let status=window.FurryGame&&window.FurryGame.StatusService;if(status)status.remove(ch,'burn',1);else ch.burn--;if(this.name(ch)!=='Leon'){let w=this._who(ch);this.emit('burnSettle','-'+dmg+'[灼烧]，-1[灼烧层数]',null,{who:w,amount:dmg});ch.hp=Math.max(0,ch.hp-dmg);ch.alive=ch.hp>0}}
     this.check();if(this.s.phase==='GAME_OVER')return;
 
     this._handleEliminated1v2();

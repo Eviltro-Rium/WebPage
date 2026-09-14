@@ -16,8 +16,9 @@
             }
             engine.deck.push(...(engine.discardBottom || []));
             engine.discardBottom = [];
+            const random = root.CombatRuntime ? root.CombatRuntime.random : Math.random;
             for (let i = engine.deck.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
+                const j = Math.floor(random() * (i + 1));
                 [engine.deck[i], engine.deck[j]] = [engine.deck[j], engine.deck[i]];
             }
         },

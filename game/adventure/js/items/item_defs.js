@@ -366,7 +366,7 @@
     name: 'WisdomNecklace',
     displayName: '智慧项链',
     kind: 'accessory',
-    description: '战斗胜利后从牌库补2张牌',
+    description: '战斗胜利返回地图时从牌库补2张牌',
     icon: ICON + 'wisdom_necklace.png',
     beastTradeCost: ['shui', 'shui', 'shui', 'ben', 'cao'],
     onCombatWinDraw: 2

@@ -5,6 +5,9 @@
         console.error('[UI renderer] GameUI must be loaded first');
         return;
     }
+    const wait = ms => global.FurryGame && global.FurryGame.CombatRuntime
+        ? global.FurryGame.CombatRuntime.wait(ms)
+        : new Promise(resolve => setTimeout(resolve, ms));
     Object.assign(GameUI.prototype, {
 _showZoneDesc(id, desc) {
     const el = document.getElementById(id);
@@ -176,7 +179,7 @@ async _playDiscardManyAnimation(evt) {
         return hand || document.getElementById('reveal-cards');
     });
     for (let index = 0; index < cards.length; index++) {
-        if (index) await new Promise(resolve => setTimeout(resolve, 70));
+        if (index) await wait(70);
         await this.anim.discardCard(cards[index], sources[index], discard, faceUp, { landsOnTop });
     }
 },
@@ -233,7 +236,7 @@ _prevAiHandFor(who = 'ai') {
 async _playAICardAnimation(card, who = 'ai') {
     const aiHand = document.getElementById(who === 'ai2' ? 'ai2-hand' : 'ai-hand');
     const atkZone = document.getElementById('atk-cards');
-    if (!aiHand || !atkZone) { await new Promise(r => setTimeout(r, 500)); return; }
+    if (!aiHand || !atkZone) { await wait(500); return; }
     const revealFace = !!(this.state && (this.state.revealAIHand || this.state.isAdventure));
     const prevHand = this._prevAiHandFor(who);
     // 明牌：先还原出牌前手牌，再定位源牌，避免剩余手牌被误当成飞出牌
@@ -288,7 +291,7 @@ _settleZoneCard(zone, card, owner = 'player') {
 async _playPlayerCardAnimation(card) {
     const playerHand = document.getElementById('player-hand');
     const atkZone = document.getElementById('atk-cards');
-    if (!playerHand || !atkZone) { await new Promise(r => setTimeout(r, 500)); return; }
+    if (!playerHand || !atkZone) { await wait(500); return; }
     const selectedIndex = this._prevState ? this._prevState.selectedCard : -1;
     const source = selectedIndex >= 0 && playerHand.children[selectedIndex]
         ? playerHand.children[selectedIndex]
@@ -302,7 +305,7 @@ async _playPlayerCardAnimation(card) {
 async _playPlayerDefendAnimation(card) {
     const playerHand = document.getElementById('player-hand');
     const defZone = document.getElementById('def-cards');
-    if (!playerHand || !defZone) { await new Promise(r => setTimeout(r, 400)); return; }
+    if (!playerHand || !defZone) { await wait(400); return; }
     const selectedIndex = this._prevState ? this._prevState.selectedCard : -1;
     const source = selectedIndex >= 0 && playerHand.children[selectedIndex]
         ? playerHand.children[selectedIndex]
@@ -364,11 +367,11 @@ async _playRevealAnimation(cardOrCards, fromOwner, fromSource) {
         flying.style.left = (from.left + from.width / 2 - cw / 2) + 'px';
         flying.style.top = (from.top + from.height / 2 - ch / 2) + 'px';
         document.body.appendChild(flying);
-        await new Promise(r => setTimeout(r, 30));
+        await wait(30);
         flying.style.left = (startX + i * (cw + gap)) + 'px';
         flying.style.top = (to.top + to.height / 2 - ch / 2) + 'px';
         flying.style.transform = fromHand && fromOwner === 'player' ? 'scale(.9)' : 'rotateY(90deg) scale(.9)';
-        await new Promise(r => setTimeout(r, multi ? 320 : 430));
+        await wait(multi ? 320 : 430);
         flying.remove();
         const shown = renderCard(card, cw, ch, false);
         shown.classList.add('revealed-card');

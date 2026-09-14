@@ -58,6 +58,28 @@ test('CombatState and CombatEvent expose stable JSON-compatible contracts', () =
   assert.equal(projected.ai2HandSize, 1);
 });
 
+test('CombatState.project is a pure serializer and does not ask the engine to mutate context', () => {
+  const { CombatState } = context.FurryGame;
+  let calls = 0;
+  const state = { phase: 'PLAYER_PLAY', turn: 2, player: { name: 'Player' }, ai: { name: 'Fox' } };
+  const engine = {
+    s: state,
+    h: { player: [{ value: 1 }], ai: [] },
+    deck: [{ value: 2 }],
+    discardBottom: [],
+    events: [],
+    ver: 4,
+    _computeLegalHand() { calls++; return [false]; }
+  };
+  const before = JSON.stringify(state);
+  const projected = CombatState.project(engine);
+  assert.equal(calls, 0);
+  assert.equal(projected.legalHand, null);
+  assert.equal(JSON.stringify(state), before);
+  const explicit = CombatState.project(engine, { legalHand: [false] });
+  assert.deepEqual(Array.from(explicit.legalHand), [false]);
+});
+
 test('standard deck service builds the classic deck and a numeric opening top', () => {
   const { CombatDeck } = context.FurryGame;
   const initial = CombatDeck.createStandard();

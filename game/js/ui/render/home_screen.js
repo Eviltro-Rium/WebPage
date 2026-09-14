@@ -8,7 +8,7 @@
     Object.assign(GameUI.prototype, {
         _buildSelectScreen() {
             // Adventure NPCs are registered in CharacterRegistry so the shared
-            // combat bridge can use them, but they must never be selectable as
+            // the battle controller can use them, but they must never be selectable as
             // player characters.  Check both the marker and the adventure
             // registries because HTTP character lists may omit custom fields.
             const chars = (this.characters || []).filter(ch => {

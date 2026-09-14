@@ -23,6 +23,7 @@ const context = vm.createContext({
 context.window = context;
 
 const sources = [
+  'js/combat/runtime.js',
   'js/characters/registry.js',
   'js/characters/ryan.js',
   'adventure/js/content/registry.js',
@@ -36,7 +37,7 @@ const sources = [
   'adventure/js/engine/shop.js',
   'adventure/js/engine/rewards.js',
   'adventure/js/engine/inventory.js',
-  'adventure/js/engine/combat_legacy.js'
+  'adventure/js/engine/combat_result.js'
 ];
 
 for (const relative of sources) {
@@ -464,7 +465,7 @@ test('shop refresh costs 2 gold and restocks empty slots', () => {
   assert.equal(context.AdventureRegistry.getItem(eng.currentRoom().shopSlots[0]).kind, 'consumable');
 });
 
-test('wisdom necklace draws 2 after win and accessories have beast trade costs', () => {
+test('wisdom necklace draws 2 when returning to map and accessories have beast trade costs', () => {
   const map = new AdventureMap([[0, 1]]);
   const eng = new AdventureEngine();
   eng.start(map, 'Ryan');
@@ -476,7 +477,11 @@ test('wisdom necklace draws 2 after win and accessories have beast trade costs',
   const before = pile.hand.length;
   eng.s.combat = { enemy: { name: 'x' }, kind: 'normal' };
   eng.onCombatEnd('win');
+  assert.equal(pile.hand.length, before, 'the draw is deferred while the settlement is open');
+  const effect = eng.onCombatReturnToMap();
   assert.equal(pile.hand.length, before + 2);
+  assert.deepEqual(effect, { itemName: 'WisdomNecklace', drawn: 2 });
+  assert.equal(eng.onCombatReturnToMap(), null, 'the deferred trigger is one-shot');
   const necklace = context.AdventureRegistry.getItem('WisdomNecklace');
   assert.equal(JSON.stringify(necklace.beastTradeCost), '["shui","shui","shui","ben","cao"]');
   assert.ok(necklace.icon.indexOf('wisdom_necklace') >= 0);

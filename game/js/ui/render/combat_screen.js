@@ -139,7 +139,11 @@
                     return this._apiAction('chooseGuard', { stacks: choice });
                 });
             } else if (s.pendingDialog === 'flyRetry') {
-                this.dialogs.showFlyRetryChoice(s.player, s.pendingGuardDamage, again => this._apiAction('chooseFlyContinue', { again }));
+                this.dialogs.showFlyRetryChoice(s.player, s.pendingGuardDamage, choice => {
+                    if (choice && choice.action === 'guard') return this._apiAction('chooseGuard', { stacks: choice.stacks });
+                    if (choice && choice.action === 'none') return this._apiAction('chooseFlyContinue', { again: false, skipGuard: true });
+                    return this._apiAction('chooseFlyContinue', { again: true });
+                });
             } else if (s.pendingDialog === 'purifyCrystal') {
                 const oppKey = s.is1v2 ? (s.attackTarget || 'ai') : 'ai';
                 const opponent = s[oppKey];

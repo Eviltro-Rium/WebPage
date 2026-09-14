@@ -3,6 +3,8 @@
  * 使 1v1 引擎和 UI 可以直接用于冒险模式战斗。
  */
 (function () {
+  const random = () => window.FurryGame && window.FurryGame.CombatRuntime
+    ? window.FurryGame.CombatRuntime.random() : Math.random();
   const CR = window.CharacterRegistry;
   const AR = window.AIRegistry;
   const AdvR = window.AdventureRegistry;
@@ -218,7 +220,7 @@
         if (typeof mod.attackStealItem === 'function' && mod.attackStealItem(c) && !(eng.s && eng.s.borrowedMonsterSkill)) {
           const advEng = eng._adventureEngine;
           if (advEng && advEng.s && Array.isArray(advEng.s.consumables) && advEng.s.consumables.length > 0) {
-            const idx = Math.floor(Math.random() * advEng.s.consumables.length);
+            const idx = Math.floor(random() * advEng.s.consumables.length);
             const stolen = advEng.s.consumables.splice(idx, 1)[0];
             const def = window.AdventureRegistry && window.AdventureRegistry.getItem(stolen);
             eng.emit('desc', '玩家被夺走道具：' + (def ? def.displayName : stolen));

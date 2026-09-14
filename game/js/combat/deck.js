@@ -11,8 +11,9 @@
     const COLORS = ['RED', 'YELLOW', 'BLUE', 'GREEN'];
 
     function shuffle(deck) {
+        const random = root.CombatRuntime ? root.CombatRuntime.random : Math.random;
         for (let i = deck.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
+            const j = Math.floor(random() * (i + 1));
             [deck[i], deck[j]] = [deck[j], deck[i]];
         }
         return deck;

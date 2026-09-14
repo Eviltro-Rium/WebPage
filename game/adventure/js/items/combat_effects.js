@@ -101,7 +101,9 @@
     if (eng.s.pendingAttack) eng.s.pendingAttack.damage = damage - blocked;
     eng.s.pendingDefenseDamage = Math.max(0, damage - blocked);
     const before = player.guard || 0;
-    player.guard = Math.min(5, before + 1);
+    const status = window.FurryGame && window.FurryGame.StatusService;
+    if (status) status.add(player, 'guard', 1);
+    else player.guard = Math.min(5, before + 1);
     if (player.guard > before) {
       eng.emit('buff', '+1[守护]', null, { who: 'player', target: 'player', kind: 'guard', stacks: player.guard });
     }
@@ -147,7 +149,9 @@
   });
 
   register('freeze', (eng, def, ctx) => {
-    ctx.ai.frozen = true;
+    const status = window.FurryGame && window.FurryGame.StatusService;
+    if (status) status.set(ctx.ai, 'freeze', true);
+    else ctx.ai.frozen = true;
     return { ok: true, message: '对对手施加冷冻' };
   });
 
@@ -201,8 +205,9 @@
     }
     eng._bindSkipNextAITurn = true;
     eng.s.bindUsedThisTurn = true;
-    if (eng.s.ai) eng.s.ai.bindMark = true;
-    if (eng.s.ai2 && eng.s.ai2.alive) eng.s.ai2.bindMark = true;
+    const status = window.FurryGame && window.FurryGame.StatusService;
+    if (eng.s.ai) { if (status) status.set(eng.s.ai, 'bind', true); else eng.s.ai.bindMark = true; }
+    if (eng.s.ai2 && eng.s.ai2.alive) { if (status) status.set(eng.s.ai2, 'bind', true); else eng.s.ai2.bindMark = true; }
     return { ok: true, message: '本回合结束后将跳过对手进攻，再进行一次进攻' };
   });
 

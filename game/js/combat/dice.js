@@ -1,9 +1,11 @@
 /* Shared dice primitives for battle effects. */
 (function (global) {
+  const root = global.FurryGame || (global.FurryGame = {});
+  const fallbackRandom = () => root.CombatRuntime ? root.CombatRuntime.random() : Math.random();
   class D12 {
-    constructor(random = Math.random) {
+    constructor(random = fallbackRandom) {
       this.sides = 12;
-      this.random = typeof random === 'function' ? random : Math.random;
+      this.random = typeof random === 'function' ? random : fallbackRandom;
     }
 
     roll() {

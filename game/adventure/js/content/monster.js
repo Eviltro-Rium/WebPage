@@ -23,7 +23,7 @@
       this.fly = 0;
       this.lush = Math.max(0, Number(opts.initialLush) || 0);
 
-      // Keep the registry hooks available to the legacy adventure path too.
+      // Keep registry hooks available to the shared adventure monster adapter.
       for (const hook of [
         'attackDamage', 'attackUnblockable', 'attackHeal', 'attackDrain', 'attackLush', 'attackTurnStart',
         'attackSelfHurt',

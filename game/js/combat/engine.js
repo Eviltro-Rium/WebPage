@@ -9,13 +9,15 @@
   if(!Card||!CombatDeck||!CombatState)throw new Error('Combat protocol modules must load before engine.js');
   const cp=x=>Card.clone(x);
   // Fallback used by the legacy non-turn-machine settlement path.
-  const later=(fn,ms=550)=>setTimeout(fn,ms);
+  const later=(fn,ms=550)=>Combat.CombatRuntime
+    ? Combat.CombatRuntime.schedule(null,fn,ms)
+    : setTimeout(fn,ms);
   const num=(color,value,white=false)=>Card.number(color,value,white);
   const item=(color,k)=>Card.item(color,k);
   class Engine{
     constructor(){this.s=null;this.mode=false;this.deck=[];this.discardBottom=[];this.h={player:[],ai:[]};this.events=[];this.ver=0;this.timer=0;this.pendingSettlement=null;this._buffTriggerSeq=0;this._buffTriggerCards=new WeakMap();this._buffTriggerSeen=new Set()}
     chars(){return CharacterRegistry.all().map(m=>({name:m.name,hp:m.hp,type:m.type,passive:m.passive}))}
-    character(n,ai=false){let m=CharacterRegistry.get(n);return Object.assign({name:(ai?'AI ': '')+n,hp:m.hp,maxHp:m.hp,burn:0,frozen:false,bleed:0,poison:0,blind:0,iceSeal:0,guard:0,fly:0,parasite:0,alive:true,bloodthirst:false,bomb:0,diving:false,hypothermia:0},m.init())}
+    character(n,ai=false){let m=CharacterRegistry.get(n);let ch=Object.assign({name:(ai?'AI ': '')+n,hp:m.hp,maxHp:m.hp,burn:0,frozen:false,bleed:0,poison:0,blind:0,iceSeal:0,guard:0,fly:0,parasite:0,alive:true,bloodthirst:false,bomb:0,diving:false,hypothermia:0},m.init());let S=window.FurryGame&&window.FurryGame.StatusService;if(S&&S.ensure)S.ensure(ch);return ch}
     name(x){return x.name.replace(/^AI\d*\s+/,'')}
     makeDeck(){return CombatDeck.makeStandard()}
     start(p,a){
@@ -32,7 +34,7 @@
       this.draw('player',5);this.draw('ai',5);let _hands=this.handCounts();
       this.silentDraws(function(){this.turnStart('player')});this.emitDrawDiff(_hands);return this.state()
     }
-    state(){return CombatState.project(this)}
+    state(){return CombatState.project(this,{legalHand:this._computeLegalHand()})}
     _computeLegalHand(){if(!this.s||!this.s.discardTop)return null;const p=this.s.phase;if(p!=='PLAYER_PLAY'&&p!=='PLAYER_DEFEND')return null;if(p==='PLAYER_DEFEND'&&this.s.unblockDefend)return null;const def=p==='PLAYER_DEFEND';return this.h.player.map(c=>this.legal(c,def))}
     _deckPort(){const adapter=this._adapter();if(adapter&&!adapter.sharedDeck)return null;return window.FurryGame&&window.FurryGame.DeckPort&&window.FurryGame.DeckPort.shared}
     _turnMachine(){return window.FurryGame&&window.FurryGame.TurnMachine}
@@ -40,11 +42,11 @@
     _adapter(id){const M=this._mode();if(!M)return null;if(id&&M.adapters&&M.adapters[id])return M.adapters[id];return M.forEngine?M.forEngine(this):M.current(this.s)}
     _shuffleDiscardIntoDeck(){const D=this._deckPort();if(D&&D.shuffleDiscardIntoDeck){D.shuffleDiscardIntoDeck(this);return}return CombatDeck.shuffleDiscardIntoDeck(this)}
     refillDeckIfNeeded(){const D=this._deckPort();if(D&&D.refillIfNeeded){D.refillIfNeeded(this);return}return CombatDeck.refillIfNeeded(this)}
-    draw(w,n,animated=false){const D=this._deckPort();if(D&&D.draw)return D.draw(this,w,n,animated);return CombatDeck.draw(this,w,n,animated)}
+    draw(w,n,animated=false){const D=this._deckPort();const result=D&&D.draw?D.draw(this,w,n,animated):CombatDeck.draw(this,w,n,animated);this._checkInvariants('draw');return result}
     handCounts(){const adapter=this._adapter();const owners=adapter&&adapter.participants||['player','ai'];const counts={};for(const owner of owners)counts[owner]=(this.h[owner]||[]).length;return counts}
     emitDrawDiff(before){const D=this._deckPort();if(D&&D.emitDrawDiff){D.emitDrawDiff(this,before);return}return CombatDeck.emitDrawDiff(this,before)}
     silentDraws(fn){this._suppressDrawAnim=true;try{fn.call(this)}finally{this._suppressDrawAnim=false}}
-    discardToBottom(card){const D=this._deckPort();if(D&&D.discardToBottom){D.discardToBottom(this,card);return}return CombatDeck.discardToBottom(this,card)}
+    discardToBottom(card){const D=this._deckPort();const result=D&&D.discardToBottom?D.discardToBottom(this,card):CombatDeck.discardToBottom(this,card);this._checkInvariants('discard');return result}
     discardWithEvent(card,who='player',extra={}){
       const D=this._deckPort();
       if(D&&D.discard){D.discard(this,card,who,extra);return}
@@ -61,7 +63,7 @@
       let label=who==='player'?'玩家':who==='ai2'?'AI2':'AI';
       this.emit('discardMany',extra.desc||`${label}弃掉${batch.length}张牌`,batch[0],Object.assign({who,from:'hand',destination:'bottom',cards:batch.map(c=>Object.assign({},c))},extra))
     }
-    setDiscardTop(card){if(this.s.discardTop&&!this._skipNextDiscardTop)this.discardToBottom(this.s.discardTop);this._skipNextDiscardTop=false;this.s.discardTop=Card.normalize(card)||Object.assign({},card);this.s.diceRoll=null;const actor=this.s.defOwner||this.s.atkOwner;const owner=actor==='ai2'?'ai2':actor==='ai'?'ai':null;if(owner)this._markBombPlay(owner)}
+    setDiscardTop(card){if(this.s.discardTop&&!this._skipNextDiscardTop)this.discardToBottom(this.s.discardTop);this._skipNextDiscardTop=false;this.s.discardTop=Card.normalize(card)||Object.assign({},card);this.s.diceRoll=null;const actor=this.s.defOwner||this.s.atkOwner;const owner=actor==='ai2'?'ai2':actor==='ai'?'ai':null;if(owner)this._markBombPlay(owner);this._checkInvariants('setDiscardTop')}
     emit(type,desc,card,extra={}){
       const createEvent=Combat.CombatEvent&&Combat.CombatEvent.create;
       const make=(payload)=>createEvent?createEvent(payload):Object.assign({},payload);
@@ -237,7 +239,8 @@
         && (this.s.player.crit||0)>0;
     }
     _applyOttoCritSpend(d){
-      this.s.player.crit--;
+      const status = window.FurryGame && window.FurryGame.StatusService;
+      if (status) status.remove(this.s.player, 'crit', 1); else this.s.player.crit--;
       if(this.s.pendingAttack)this.s.pendingAttack.unblock=true;
       this.s.defenseSkipped=true;
       this.emit('buff','-1[暴击]',null,{who:'player',kind:'crit',stacks:this.s.player.crit});
@@ -306,8 +309,8 @@
     heal(x,n,kind='heal'){const S=this._status();if(S&&S.heal){S.heal(this,x,n,kind);return}if(n<=0)return;let _before=x.hp;x.hp=Math.min(x.maxHp,x.hp+n);let _actual=x.hp-_before;if(this.name(x)==='Serenity')x.bloodthirst=x.hp<30;let w=x===this.s.player?'player':'ai';this.emit('heal',`+${_actual}[${kind==='drain'?'吸血':kind==='passive'?'被动':'生命'}]`,null,{who:w,amount:_actual,kind});if(kind!=='drain'&&this.name(x)==='Serenity'&&x.hp>=30){x.hp=Math.min(x.maxHp,x.hp+1);this.emit('heal','+1[被动]',null,{who:w,amount:1,kind:'passive'})}}
     freeze(x,opts){const S=this._status();if(S&&S.freeze){S.freeze(this,x,opts);return}if(this.name(x)!=='Serenity'){x.frozen=true;if(!opts||opts.silent!==true){let w=x===this.s.player?'player':'ai';this.emit('buff','[冷冻]',null,{who:w,kind:'freeze',stacks:1})}}}
     blind(x,opts){const S=this._status();if(S&&S.blind){S.blind(this,x,opts);return}if(!x)return;x.blind=1;if(!opts||opts.silent!==true){let w=x===this.s.player?'player':(x===this.s.ai2?'ai2':'ai');this.emit('buff','[致盲]',null,{who:w,kind:'blind',stacks:1})}}
-    iceSeal(x,opts){if(!x)return;x.iceSeal=Math.min(1,(x.iceSeal||0)+1);if(!opts||opts.silent!==true){let w=x===this.s.player?'player':(x===this.s.ai2?'ai2':'ai');this.emit('buff','[冰封]',null,{who:w,kind:'iceSeal',stacks:x.iceSeal})}}
-    _drawNeedWithIceSeal(w,need){const ch=this.s[w];if(!ch||need<=0||(ch.iceSeal||0)<=0)return need;ch.iceSeal=Math.max(0,(ch.iceSeal||0)-1);const who=w==='player'?'player':(w==='ai2'?'ai2':'ai');this.emit('buff','-[冰封]',null,{who,kind:'iceSeal',stacks:ch.iceSeal});this.emit('desc',(who==='player'?'玩家':(ch.name||'AI'))+'因[冰封]少补1张牌');return Math.max(0,need-1)}
+    iceSeal(x,opts){if(!x)return;const S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.add(x,'iceSeal',1);else x.iceSeal=Math.min(1,(x.iceSeal||0)+1);if(!opts||opts.silent!==true){let w=x===this.s.player?'player':(x===this.s.ai2?'ai2':'ai');this.emit('buff','[冰封]',null,{who:w,kind:'iceSeal',stacks:x.iceSeal})}}
+    _drawNeedWithIceSeal(w,need){const ch=this.s[w];if(!ch||need<=0||(ch.iceSeal||0)<=0)return need;const S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.remove(ch,'iceSeal',1);else ch.iceSeal=Math.max(0,(ch.iceSeal||0)-1);const who=w==='player'?'player':(w==='ai2'?'ai2':'ai');this.emit('buff','-[冰封]',null,{who,kind:'iceSeal',stacks:ch.iceSeal});this.emit('desc',(who==='player'?'玩家':(ch.name||'AI'))+'因[冰封]少补1张牌');return Math.max(0,need-1)}
     burn(x,n,opts){const S=this._status();if(S&&S.burn){S.burn(this,x,n,opts);return}if(n>0&&this.name(x)!=='Leon'){x.burn=Math.min(5,x.burn+n);if(!opts||opts.silent!==true){let w=x===this.s.player?'player':'ai';this.emit('buff',`+${n}[灼烧]`,null,{who:w,kind:'burn',stacks:x.burn})}}}
     bleed(x,n,opts){const S=this._status();if(S&&S.bleed){S.bleed(this,x,n,opts);return}if(n>0){x.bleed=Math.min(3,x.bleed+n);if(!opts||opts.silent!==true){let w=x===this.s.player?'player':'ai';this.emit('buff',`${n>1?n:''}[流血]`,null,{who:w,kind:'bleed',stacks:x.bleed})}}}
     _hasPurifyableBuff(ch){
@@ -321,9 +324,9 @@
     /** 冻洋蓝鲸专属：潜水（正面buff，免疫蓝色攻击的伤害和buff施加）。 */
     divingBlocksDamage(entity,atkCard){if(!entity||!entity.diving)return false;const card=atkCard||this.s.atkCard||this.s.discardTop;if(!card)return false;const blocked=this.effective(card)==='BLUE';if(blocked)this._emitBuffTrigger(entity,'diving',`${this.name(entity)}的[潜水]触发：免疫蓝色攻击`,card);return blocked}
     /** 冻洋蓝鲸专属：施加或移除潜水 buff。 */
-    setDiving(entity,on,opts){if(!entity)return;const was=!!entity.diving;entity.diving=!!on;if(!opts||opts.silent!==true){const w=this._who(entity);const label=this.name(entity);if(on&&!was)this.emit('buff','[潜水]',null,{who:w,kind:'diving',stacks:1});else if(!on&&was)this.emit('buff','-[潜水]',null,{who:w,kind:'diving',stacks:0})}}
+    setDiving(entity,on,opts){if(!entity)return;const was=!!entity.diving;const S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.set(entity,'diving',!!on);else entity.diving=!!on;if(!opts||opts.silent!==true){const w=this._who(entity);const label=this.name(entity);if(on&&!was)this.emit('buff','[潜水]',null,{who:w,kind:'diving',stacks:1});else if(!on&&was)this.emit('buff','-[潜水]',null,{who:w,kind:'diving',stacks:0})}}
     /** 冻洋蓝鲸专属：施加失温。失温达到2层时强制弃1张牌。 */
-    hypothermia(x,n,opts){if(!x||n<=0)return;const prev=(x.hypothermia||0);x.hypothermia=Math.min(2,prev+n);const w=this._who(x);const label=this.name(x);if(!opts||opts.silent!==true){if(n>0)this.emit('buff',`+${n}[失温]`,null,{who:w,kind:'hypothermia',stacks:x.hypothermia})}if(x.hypothermia>=2&&prev<2){if(x===this.s.player){this.s.forcedDiscard=true;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','[失温]达到2层，必须弃掉1张牌');}else if(x===this.s.ai||(this.s.ai2&&x===this.s.ai2)){const hand=this.h[this._who(x)]||[];if(hand.length>0){let worst=this.chooseAIDiscard(hand),card=hand.splice(worst,1)[0];this.discardWithEvent(card,w,{handIndex:worst,desc:label+'[失温]2层，AI自动弃牌：'+this.cardText(card)})}}x.hypothermia=Math.max(0,x.hypothermia-1);if(!opts||opts.silent!==true)this.emit('buff','-[1层失温]',null,{who:w,kind:'hypothermia',stacks:x.hypothermia})}}
+    hypothermia(x,n,opts){if(!x||n<=0)return;const prev=(x.hypothermia||0);const S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.add(x,'hypothermia',n);else x.hypothermia=Math.min(2,prev+n);const w=this._who(x);const label=this.name(x);if(!opts||opts.silent!==true){if(n>0)this.emit('buff',`+${n}[失温]`,null,{who:w,kind:'hypothermia',stacks:x.hypothermia})}if(x.hypothermia>=2&&prev<2){if(x===this.s.player){this.s.forcedDiscard=true;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','[失温]达到2层，必须弃掉1张牌');}else if(x===this.s.ai||(this.s.ai2&&x===this.s.ai2)){const hand=this.h[this._who(x)]||[];if(hand.length>0){let worst=this.chooseAIDiscard(hand),card=hand.splice(worst,1)[0];this.discardWithEvent(card,w,{handIndex:worst,desc:label+'[失温]2层，AI自动弃牌：'+this.cardText(card)})}}if(S)S.remove(x,'hypothermia',1);else x.hypothermia=Math.max(0,x.hypothermia-1);if(!opts||opts.silent!==true)this.emit('buff','-[1层失温]',null,{who:w,kind:'hypothermia',stacks:x.hypothermia})}}
     clearDebuffs(x){const S=this._status();if(S&&S.clearDebuffs){S.clearDebuffs(x);return}x.burn=0;x.bleed=0;x.poison=0;x.frozen=false;x.bomb=0;x.blind=0;x.iceSeal=0;if(x.hypothermia)x.hypothermia=0}
     rememberAttackDebuffs(owner){let old=this.s.attackDebuffSnapshot;if(old&&old.owner===owner)return;let x=this.s[owner];this.s.attackDebuffSnapshot={owner,burn:x.burn,bleed:x.bleed,poison:x.poison||0,frozen:x.frozen,blind:x.blind||0,iceSeal:x.iceSeal||0}}
     cancelAttackDebuffs(owner,reflect=false){let snap=this.s.attackDebuffSnapshot;if(!snap||snap.owner!==owner)return;let x=this.s[owner],attackerKey=owner==='player'?(this.s.is1v2&&this.s.atkOwner&&this.s.atkOwner!=='player'?this.s.atkOwner:'ai'):'player',attacker=this.s[attackerKey],burn=Math.max(0,x.burn-snap.burn),bleed=Math.max(0,x.bleed-snap.bleed),poison=Math.max(0,(x.poison||0)-(snap.poison||0)),froze=!snap.frozen&&x.frozen,blinded=!(snap.blind||0)&&!!(x.blind||0),sealed=((x.iceSeal||0)>(snap.iceSeal||0));let pending=this.s.pendingBuffRestore;if(pending&&pending.target===owner){bleed+=Math.max(0,pending.after.bleed-pending.before.bleed);burn+=Math.max(0,pending.after.burn-pending.before.burn);poison+=Math.max(0,pending.after.poison-pending.before.poison);if(pending.after.frozen&&!pending.before.frozen)froze=true;if(pending.after.blind&&!pending.before.blind)blinded=true;if((pending.after.iceSeal||0)>(pending.before.iceSeal||0))sealed=true;this.s.pendingBuffRestore=null}x.burn=snap.burn;x.bleed=snap.bleed;x.poison=snap.poison||0;x.frozen=snap.frozen;x.blind=snap.blind||0;x.iceSeal=snap.iceSeal||0;if(reflect){this.burn(attacker,burn);this.bleed(attacker,bleed);this.poison(attacker,poison);if(froze)this.freeze(attacker);if(blinded)this.blind(attacker);if(sealed)this.iceSeal(attacker)}}
@@ -338,8 +341,8 @@
     performAoeAllExceptSelf(attacker='player',damage=0,opts={}){const targets=this._allKeysExcept(attacker);if(!targets.length)return 0;return this.performAttack({type:'aoe',attacker,target:targets[0],aoeTargets:targets,aoeDamage:damage,skipTarget:false,...opts})}
     chooseMozeGuardUse(guard,damage,hp){if(damage>=hp)return Math.min(guard,damage);if(damage<=2)return 0;if(guard>=3&&damage>=5)return Math.min(guard,damage);if(guard>=2&&damage>=4)return Math.min(guard,damage);if(hp<=30)return Math.min(guard,damage);return 0}
     chooseDefenderGuardUse(defender,damage){let guard=defender.guard||0;if(damage<=0||guard<=0)return 0;if(this.s.isAdventure)return Math.min(guard,damage);return this.chooseMozeGuardUse(guard,damage,defender.hp)}
-    applyDefenderGuard(defender,damage){if(!defender||damage<=0)return Math.max(0,damage);let use=this.chooseDefenderGuardUse(defender,damage);if(use<=0)return Math.max(0,damage);defender.guard-=use;let remaining=Math.max(0,damage-use);this.emit('desc',defender.name+'消耗'+use+'层[守护]，减免'+use+'点伤害');return remaining}
-    applyDefenderFly(defender,damage){if(!defender||damage<=0)return Math.max(0,damage);while((defender.fly||0)>0&&damage>0){defender.fly--;this.emit('desc',defender.name+'消耗1层[飞翔]尝试躲避');const roll=this.rollD12('飞翔判定',{who:this._who(defender)});if(roll<=6){this.emit('desc',defender.name+'飞翔躲避成功（'+roll+'，1-6成功）');return 0}this.emit('desc',defender.name+'飞翔躲避失败（'+roll+'，7-12失败）')}return Math.max(0,damage)}
+    applyDefenderGuard(defender,damage){if(!defender||damage<=0)return Math.max(0,damage);let use=this.chooseDefenderGuardUse(defender,damage);if(use<=0)return Math.max(0,damage);let S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.remove(defender,'guard',use);else defender.guard-=use;let remaining=Math.max(0,damage-use);this.emit('desc',defender.name+'消耗'+use+'层[守护]，减免'+use+'点伤害');return remaining}
+    applyDefenderFly(defender,damage){if(!defender||damage<=0)return Math.max(0,damage);let S=window.FurryGame&&window.FurryGame.StatusService;while((defender.fly||0)>0&&damage>0){if(S)S.remove(defender,'fly',1);else defender.fly--;this.emit('desc',defender.name+'消耗1层[飞翔]尝试躲避');const roll=this.rollD12('飞翔判定',{who:this._who(defender)});if(roll<=6){this.emit('desc',defender.name+'飞翔躲避成功（'+roll+'，1-6成功）');return 0}this.emit('desc',defender.name+'飞翔躲避失败（'+roll+'，7-12失败）')}return Math.max(0,damage)}
     applyDefenderAvoidance(defender,damage){let remaining=this.applyDefenderFly(defender,damage);if(remaining>0)remaining=this.applyDefenderGuard(defender,remaining);return remaining}
     applyDrainAvoidance(defender,damage){
       let remaining=this.applyDefenderFly(defender,damage);
@@ -354,8 +357,8 @@
     askGuard(d,bleed=0){this.s.pendingGuardDamage=Math.max(0,d);this.s.pendingGuardBleed=bleed;this.s.pendingDefenseDamage=Math.max(0,d);this.s.pendingDialog='guard';this.s.phase='GUARD_CHOICE';this.s.busy=false}
     _pendingBleedActive(){let defCard=this.s.defCard;return defCard&&defCard.isNumberCard&&defCard.value<=3?(this.s.pendingGuardBleed||this.s.player.bleed||0):0}
     _settleAvoidedAttack(remaining){this.s.pendingDialog=null;this.s.pendingGuardDamage=0;this.s.pendingGuardBleed=0;this.s.phase='AI_TURN';this.deferSettlement('AI_ATTACK',Math.max(0,remaining),remaining>0?this._pendingBleedActive():0);return this.check()}
-    chooseFly(){let incoming=this.s.pendingGuardDamage||0,p=this.s.player;if((p.fly||0)<=0)return this._settleAvoidedAttack(incoming);p.fly--;this.emit('desc','消耗1层[飞翔]尝试躲避');const roll=this.rollD12('飞翔判定',{who:'player'});if(roll<=6){this.emit('desc','飞翔躲避成功（'+roll+'，1-6成功）');return this._settleAvoidedAttack(0)}this.emit('desc','飞翔躲避失败（'+roll+'，7-12失败）');if((p.fly||0)>0){this.s.pendingDialog='flyRetry';this.s.phase='GUARD_CHOICE';this.s.busy=false;return this.state()}return this._settleAvoidedAttack(incoming)}
-    chooseFlyContinue(again){if(again)return this.chooseFly();return this._settleAvoidedAttack(this.s.pendingGuardDamage||0)}
+    chooseFly(){let incoming=this.s.pendingGuardDamage||0,p=this.s.player;if((p.fly||0)<=0)return this._settleAvoidedAttack(incoming);p.fly--;this.emit('desc','消耗1层[飞翔]尝试躲避');const roll=this.rollD12('飞翔判定',{who:'player'});if(roll<=6){this.emit('desc','飞翔躲避成功（'+roll+'，1-6成功）');return this._settleAvoidedAttack(0)}this.emit('desc','飞翔躲避失败（'+roll+'，7-12失败）');this.s.pendingDialog='flyRetry';this.s.phase='GUARD_CHOICE';this.s.busy=false;return this.state()}
+    chooseFlyContinue(again){if(again)return this.chooseFly();this.askGuard(this.s.pendingGuardDamage||0,this.s.pendingGuardBleed||0);return this.state()}
     clearPositiveBuffs(x){const S=this._status();if(S&&S.clearPositiveBuffs){S.clearPositiveBuffs(x);return}if(!x)return;x.guard=0;x.fly=0;x.crit=0;x.lush=0;x.parasite=0;x.chaos_red=false;x.chaos_yellow=false;x.chaos_blue=false;x.chaos_green=false}
     _markBombPlay(owner){if(!this.s||!this.s[owner]||!(this.s[owner].bomb||0))return;this.s.bombPlayTokens=this.s.bombPlayTokens||{};this.s.bombPlayTokens[owner]=(this.s.bombPlayTokens[owner]||0)+1}
     _tickBomb(owner='ai'){const D=this._damage();if(D&&D.tickBomb){D.tickBomb(this,owner);return}let target=this.s&&this.s[owner],tokens=this.s&&this.s.bombPlayTokens;if(!target||!target.alive||(target.bomb||0)<=0||!tokens||!tokens[owner])return;if(--tokens[owner]<=0)delete tokens[owner];target.bomb--;const who=owner==='player'?'player':(owner==='ai2'?'ai2':'ai');if(target.bomb<=0){this.hurt(target,5,false,{silent:true});this.emit('bombExplode','定时炸弹爆炸！造成5点伤害',null,{who,amount:5})}else{this.emit('buff','炸弹倒计时：'+target.bomb,null,{who,kind:'bomb',stacks:target.bomb})}}
@@ -365,7 +368,7 @@
   acknowledgeEvents(through){const T=this._turnMachine();if(T&&T.acknowledgeEvents){T.acknowledgeEvents(this,through);return}this.events=this.events.filter(e=>(e.id||0)>through);let bridge=this.s.pendingAIBridge;if(bridge&&through>=bridge.afterEventId){this.s.pendingAIBridge=null;this._tickBomb(bridge.owner||'ai');if(bridge.mode==='defense')this.later(()=>this.aiDefend(bridge.attackCard,bridge.damage),220);else later(()=>this.aiTurn(),220)}let continuation=this.s.pendingAIContinue;if(continuation&&through>=continuation.afterEventId){this.s.pendingAIContinue=null;this._tickBomb(this.s.atkOwner||'ai');this.continueAIAttack();return}let p=this.pendingSettlement;if(!p||through<p.afterEventId)return;this.pendingSettlement=null;this.s.pendingDefenseDamage=0;if(p.kind==='PLAYER_ATTACK'){let forceEnd=!!this.s.forceEndPlayerTurn;this.s.forceEndPlayerTurn=false;this._restoreAttackBuffs();let target=this.s.attackTarget||'ai',targetChar=this.s[target]||this.s.ai;let isDrain=!!(p.isDrain||(this.s.pendingAttack&&this.s.pendingAttack.isDrain));let dmg=p.damage;if(this.divingBlocksDamage(targetChar,this.s.atkCard)){this.emit('desc',targetChar.name+'有[潜水]，免疫蓝色攻击伤害');dmg=0;}else if(!isDrain)dmg=this.applyDefenderAvoidance(targetChar,dmg);this.dealAttackHit(this.s.player,targetChar,dmg,isDrain);this.settleBleed(targetChar,p.bleed);this.resolveSerenityHalf();this.afterAttack();if(forceEnd&&!this._allEnemiesDead())this.startAITurn();this.check();return}let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;let bombOwner=this.s.atkOwner||'ai';this._restoreAttackBuffs();let isDrain=!!(p.isDrain||(this.s.pendingAttack&&this.s.pendingAttack.isDrain));let dmg=p.damage;if(this.divingBlocksDamage(this.s.player,this.s.atkCard)){this.emit('desc','你有[潜水]，免疫蓝色攻击伤害');dmg=0;}this.dealAttackHit(this.s[bombOwner]||this.s.ai,this.s.player,dmg,isDrain);this.settleBleed(this.s.player,p.bleed);this._tickBomb(bombOwner);this.resolveSerenityHalf();this._grantChaosIfKnight('ai');if(forceEnd)this.endAi();else this.continueAIAttack()}
     continueAIAttack(){const T=this._turnMachine();if(T&&T.continueAIAttack)return T.continueAIAttack(this);if(!this.s)return;if(!this.s.player.alive||!this.s.ai.alive){this.check();return}this.s.phase='AI_TURN';this.s.busy=true;this.s.pendingAttack=null;this.s.pendingDefenseDamage=0;this.s.attackDebuffSnapshot=null;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];this.later(()=>this.aiTurn(),220);return this.check()}
     resolveSerenityHalf(){let key=this.s.serenityHalfTarget;if(!key)return;let x=this.s[key],before=x.hp;x.hp=Math.ceil(x.hp/2);x.alive=x.hp>0;this.s.serenityHalfTarget=null;this.emit('desc',`Serenity 0牌：攻防结束，${key==='player'?'玩家':'AI'}生命减半（-${before-x.hp}）`)}
-    chooseGuard(stacks){let incoming=this.s.pendingGuardDamage||0,use=Math.max(0,Math.min(stacks||0,this.s.player.guard,incoming)),remaining=Math.max(0,incoming-use),bleed=this.s.pendingGuardBleed||0,defCard=this.s.defCard,bleedActive=defCard&&defCard.isNumberCard&&defCard.value<=3?bleed:0;this.s.player.guard-=use;this.s.pendingDialog=null;this.s.pendingGuardDamage=0;this.s.pendingGuardBleed=0;this.s.phase='AI_TURN';this.emit('desc',`消耗${use}层[守护]，减免${use}点[伤害]，剩余${remaining}点待结算`);this.deferSettlement('AI_ATTACK',remaining,bleedActive);return this.check()}
+    chooseGuard(stacks){let incoming=this.s.pendingGuardDamage||0,use=Math.max(0,Math.min(stacks||0,this.s.player.guard,incoming)),remaining=Math.max(0,incoming-use),bleed=this.s.pendingGuardBleed||0,defCard=this.s.defCard,bleedActive=defCard&&defCard.isNumberCard&&defCard.value<=3?bleed:0;let S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.remove(this.s.player,'guard',use);else this.s.player.guard-=use;this.s.pendingDialog=null;this.s.pendingGuardDamage=0;this.s.pendingGuardBleed=0;this.s.phase='AI_TURN';this.emit('desc',`消耗${use}层[守护]，减免${use}点[伤害]，剩余${remaining}点待结算`);this.deferSettlement('AI_ATTACK',remaining,bleedActive);return this.check()}
     clean(x,all=false,kind=null){const S=this._status();if(S&&S.clean){S.clean(x,all,kind);return}if(all){x.burn=0;x.bleed=0;x.poison=0;x.frozen=false;x.bomb=0;x.blind=0;x.iceSeal=0;x.guard=0;x.fly=0;x.lush=0;x.crit=0;x.parasite=0;x.chaos_red=false;x.chaos_yellow=false;x.chaos_blue=false;x.chaos_green=false}else if(kind==='burn'&&x.burn)x.burn--;else if(kind==='bleed'&&x.bleed)x.bleed--;else if(kind==='poison'&&x.poison)x.poison--;else if(kind==='freeze')x.frozen=false;else if(kind==='bomb')x.bomb=0;else if(kind==='blind')x.blind=0;else if(kind==='iceSeal')x.iceSeal=0;else if(kind==='guard'&&x.guard)x.guard--;else if(kind==='fly'&&x.fly)x.fly--;else if(kind==='lush'&&x.lush)x.lush--;else if(kind==='crit'&&x.crit)x.crit--;else if(kind==='parasite'&&x.parasite)x.parasite--;else if(x.burn)x.burn--;else if(x.bleed)x.bleed--;else if(x.poison)x.poison--;else if(x.bomb)x.bomb=0;else x.frozen=false}
     chooseSuperPurifyTarget(target){this.s.pendingDialog=null;let ch=this.s[target];if(!ch||!ch.alive)throw Error('目标已出局');this.clean(ch,true);let label=target==='player'?'玩家':(this.s.is1v2&&target==='ai2'?'AI2':'AI');this.emit('desc','超级净化：清除'+label+'所有buff与debuff');return this.state()}
     turnStart(w){let x=this.s[w];if(!x||!x.alive)return;if((x.poison||0)>0){let dmg=x.poison,who=w==='player'?'player':(w==='ai2'?'ai2':'ai');this.emit('poisonSettle',`-${dmg}[中毒]`,null,{who,amount:dmg});x.hp=Math.max(0,x.hp-dmg);x.alive=x.hp>0;if(this.name(x)==='Serenity')x.bloodthirst=x.hp<30}if((x.parasite||0)>0){let opp=null;if(w==='player'){opp=(this.s.ai&&this.s.ai.alive)?this.s.ai:((this.s.ai2&&this.s.ai2.alive)?this.s.ai2:null)}else opp=this.s.player;if(opp&&opp.alive)this.drainAttack(x,opp,1,{allowAvoidance:false})}let n=this.name(x),m=CharacterRegistry.get(n);if(m)m.turnStart(this,x,w)}
@@ -376,11 +379,22 @@
     itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}let label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='fly'?'获得1层飞翔':effect==='lush'?'获得1层茂盛':effect==='poison'?'施加1层中毒':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部buff与debuff，然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
     useTrophyWhite(c, target, w='player'){
       if (!c || !c.trophyWhite) return false;
-      // Keep single-target trophy effects aligned with the active 1v2 target
-      // even when an older caller omitted the target object.
-      target = target || (this.s.is1v2
-        ? this.s[this.s.attackTarget || (this.s.ai && this.s.ai.alive ? 'ai' : 'ai2')]
-        : this.s.ai);
+      // The caller resolves the target for the current card before entering
+      // this method. Keep that object authoritative: falling back to the
+      // state-wide attackTarget here can redirect a card to NPC1 when an old
+      // snapshot still contains the default 1v2 target. Only use the state
+      // target when a legacy caller omitted the target argument entirely.
+      if (!target || !target.alive) {
+        const selectedTargetKey = this.s && this.s.is1v2 &&
+          (this.s.attackTarget === 'ai' || this.s.attackTarget === 'ai2') &&
+          this.s[this.s.attackTarget] && this.s[this.s.attackTarget].alive
+          ? this.s.attackTarget : null;
+        target = selectedTargetKey
+          ? this.s[selectedTargetKey]
+          : (this.s.is1v2
+            ? this.s[this.s.ai && this.s.ai.alive ? 'ai' : 'ai2']
+            : this.s.ai);
+      }
       let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;
       let effect=c.trophyEffect||def&&def.trophyEffect||'burn';
       if (effect === 'zero') {
@@ -389,9 +403,9 @@
           let d=Math.max(0,Number(this.s.pendingAttack&&this.s.pendingAttack.damage)||0);
           let incomingCard=this.s.discardTop||this.s.atkCard,inheritedColor=this.effective(incomingCard);
           let m=CharacterRegistry.get(who);
-          if(m){let r=m.defend(this,who,0,d,c,this.s.player,this.s.ai,'player',inheritedColor,{hurt:(x,n,b)=>this.hurt(x,n,b),heal:(x,n,k)=>this.heal(x,n,k),draw:(w2,n,an)=>this.draw(w2,n,an),burn:(x,n)=>this.burn(x,n),bleed:(x,n)=>this.bleed(x,n),poison:(x,n)=>this.poison(x,n),cancelAttackDebuffs:(o,r)=>this.cancelAttackDebuffs(o,r),clearDebuffs:x=>this.clearDebuffs(x),addGuard:(x,n)=>this.addGuard(x,n)});if(r){this.s.pendingAttack.damage=Math.max(0,r.remaining);this.s.pendingDefenseDamage=this.s.pendingAttack.damage;if(r.desc)this.emit('desc',r.desc)}}
+          if(m){let r=m.defend(this,who,0,d,c,this.s.player,target,'player',inheritedColor,{hurt:(x,n,b)=>this.hurt(x,n,b),heal:(x,n,k)=>this.heal(x,n,k),draw:(w2,n,an)=>this.draw(w2,n,an),burn:(x,n)=>this.burn(x,n),bleed:(x,n)=>this.bleed(x,n),poison:(x,n)=>this.poison(x,n),cancelAttackDebuffs:(o,r)=>this.cancelAttackDebuffs(o,r),clearDebuffs:x=>this.clearDebuffs(x),addGuard:(x,n)=>this.addGuard(x,n)});if(r){this.s.pendingAttack.damage=Math.max(0,r.remaining);this.s.pendingDefenseDamage=this.s.pendingAttack.damage;if(r.desc)this.emit('desc',r.desc)}}
         } else {
-          let r=this.effect(who,0,c,this.s.player,this.s.ai);
+          let r=this.effect(who,0,c,this.s.player,target);
           this.emit('desc',`${this.s.player.name} 0牌：${r.d}点伤害${(r.skip||r.unblock||r.d<=0)?'，跳过防御':''}`,c);
           this.gateAdventureAttackMod(c,r.d,r.skip,r.unblock,0,{isDrain:!!(r.isDrain||r.drain)});
         }
@@ -476,38 +490,35 @@
       return{d,skip,unblock}
     }
     _stagePendingBlackCard(index, card, mode='attack') {
-      const played = cp(card);
-      this.h.player.splice(index, 1);
-      this.s.selectedCard = -1;
+      // Color selection is a pre-play decision.  Keep the card in the hand
+      // until the color is confirmed so a state refresh cannot paint a copy
+      // into the attack/defense zone before the real play event is emitted.
+      // The previous implementation removed the card, assigned atkCard/
+      // defCard, and updated discardTop here; that caused a first "flash" in
+      // the zone, followed by a second hand-to-zone animation after chooseColor.
+      const played = card;
+      this.s.selectedCard = index;
       this.s.pendingBlackPlay = { card: played, index, mode };
       this.s.needColorChoice = true;
       this.s.pendingDialog = 'color';
-      if (mode === 'defend') {
-        this.s.defCard = played;
-        this.s.defOwner = 'player';
-      } else {
-        this.s.atkCard = played;
-        this.s.atkOwner = 'player';
-        this.s.hasPlayedThisTurn = true;
-      }
-      this.setDiscardTop(played);
       return this.state();
     }
 
     _resumePendingBlackCard(color) {
       const pending = this.s && this.s.pendingBlackPlay;
       if (!pending || !pending.card) return null;
-      pending.card.chosenColor = color;
-      const index = Math.max(0, Math.min(Number(pending.index) || 0, this.h.player.length));
-      this.h.player.splice(index, 0, pending.card);
+      let index = Math.max(0, Math.min(Number(pending.index) || 0, this.h.player.length));
+      // Restore compatibility with a suspended session created before the
+      // animation fix, where staging had already removed the card from hand.
+      // New sessions always take the first branch and never duplicate a card.
+      if (!this.h.player[index]) this.h.player.splice(index, 0, pending.card);
+      const card = this.h.player[index];
+      card.chosenColor = color;
+      pending.card = card;
       this.s.selectedCard = index;
       this.s.needColorChoice = false;
       this.s.pendingDialog = null;
       this.s.pendingBlackPlay = null;
-      // The card was already placed on the table when color selection opened;
-      // prevent the second pass through play/defend from putting that same
-      // card into the discard pile twice.
-      this._skipNextDiscardTop = true;
       return pending.mode || 'attack';
     }
 
@@ -812,19 +823,19 @@
       return this.check()
     }
     afterAttack(){let target=this.s.attackTarget||'ai';this._tickBomb(target);this._tickBomb('player');let optionalDiscard=!!this.s.mayDiscardAfterSkill;if(this.s.atkOwner)this._grantChaosIfKnight(this.s.atkOwner);this.s.pendingAttack=null;this.s.pendingFiveChoice=false;this.s.fiveChoiceCard=null;this.s.pendingNumberJudge=null;this.s.pendingAttackMod=null;this.s.attackDebuffSnapshot=null;this.s.defenseSkipped=false;this.s.unblockDefend=false;this.s.phase=optionalDiscard?'PLAYER_DISCARD':'PLAYER_PLAY';this.s.busy=false;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];if(optionalDiscard){this.s.forcedDiscard=false;this.s.selectedCard=-1;this.s.selectedCards=[]}}
-    _grantChaosForCard(ch,card){if(!ch||!ch.alive||this.name(ch)!=='Knight')return;if(!card||card.isBlack||card.isWhite||card.isItemCard)return;let color=this.effective(card);if(!C.includes(color))return;let key='chaos_'+color.toLowerCase();if(ch[key])return;ch[key]=true;const who=this._who(ch);this.emit('buff','[混沌-'+this.colorName(color).replace('色','')+']',null,{who,kind:key,stacks:1});this.emit('desc',ch.name+'获得[混沌-'+this.colorName(color)+']',card)}
+    _grantChaosForCard(ch,card){if(!ch||!ch.alive||this.name(ch)!=='Knight')return;if(!card||card.isBlack||card.isWhite||card.isItemCard)return;let color=this.effective(card);if(!C.includes(color))return;let key='chaos_'+color.toLowerCase();if(ch[key])return;let S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.set(ch,key,true);else ch[key]=true;const who=this._who(ch);this.emit('buff','[混沌-'+this.colorName(color).replace('色','')+']',null,{who,kind:key,stacks:1});this.emit('desc',ch.name+'获得[混沌-'+this.colorName(color)+']',card)}
     _grantChaosIfKnight(who){this._grantChaosForCard(this.s[who],this.s.atkCard);let defWho=this.s.defOwner;if(defWho&&defWho!==who)this._grantChaosForCard(this.s[defWho],this.s.defCard)}
     fillHands(isPlayerPhase){const adapter=this._adapter();const limit=adapter&&adapter.handLimit?owner=>adapter.handLimit(this,owner):owner=>owner==='player'?(this.s.handLimit||5):5;let playerLimit=limit('player'),aiLimit=limit('ai');this.draw('player',this._drawNeedWithIceSeal('player',Math.max(0,playerLimit-this.h.player.length)),true);this.draw('ai',this._drawNeedWithIceSeal('ai',Math.max(0,aiLimit-this.h.ai.length)),true);if(isPlayerPhase)this.emit('desc','回合结束：双方手牌补至5张')}
     trimAI(){while(this.h.ai.length>5){let worst=this.chooseAIDiscard(this.h.ai),card=this.h.ai.splice(worst,1)[0];this.discardWithEvent(card,'ai',{handIndex:worst,desc:`AI手牌超限，按角色策略弃掉${this.cardText(card)}`})}}
     startAITurn(){this.fillHands(true);this.s.phase='AI_TURN';this.s.busy=true;this.s.activeAttacker='ai';this.s.forceEndAITurn=false;this.s.pendingAIContinue=null;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.selectedCards=[];this.later(()=>this.aiTurn());return this.check()}
-    endTurn(){if(this.s.phase!=='PLAYER_PLAY')throw Error('当前不能结束回合');if(this.h.player.length>this.s.handLimit){this.s.forcedDiscard=true;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc',`手牌超过${this.s.handLimit}张，请弃至不超过${this.s.handLimit}张`);return this.state()}if(this.s.player.burn){let dmg=this.s.player.burn;this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle',`-${dmg}[灼烧]，-1[灼烧层数]`,null,{who:'player',amount:dmg});this.s.player.hp=Math.max(0,this.s.player.hp-dmg);this.s.player.alive=this.s.player.hp>0}}return this.startAITurn()}
+    endTurn(){if(this.s.phase!=='PLAYER_PLAY')throw Error('当前不能结束回合');if(this.h.player.length>this.s.handLimit){this.s.forcedDiscard=true;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc',`手牌超过${this.s.handLimit}张，请弃至不超过${this.s.handLimit}张`);return this.state()}if(this.s.player.burn){let dmg=this.s.player.burn;let S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.remove(this.s.player,'burn',1);else this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle',`-${dmg}[灼烧]，-1[灼烧层数]`,null,{who:'player',amount:dmg});this.s.player.hp=Math.max(0,this.s.player.hp-dmg);this.s.player.alive=this.s.player.hp>0}}return this.startAITurn()}
     enterDiscard(){if(this.s.hasPlayedThisTurn)throw Error('本回合已出牌，不能再弃牌');this.s.forcedDiscard=false;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];return this.state()}
     confirmDiscard(){let selected=this.s.selectedCards||[];if(!selected.length)throw Error('请选择要弃掉的牌');selected.sort((a,b)=>b-a);for(const i of selected)if(this.h.player[i]){let card=this.h.player.splice(i,1)[0];this.discardWithEvent(card,'player',{handIndex:i,desc:`玩家弃掉${this.cardText(card)}`})}this.s.selectedCard=-1;this.s.selectedCards=[];if(this.s.mayDiscardAfterSkill){this.s.mayDiscardAfterSkill=false;this.s.phase='PLAYER_PLAY';this.emit('desc','Ryan 3牌：已完成可选弃牌');return this.state()}if(this.s.forcedDiscard&&this.h.player.length>this.s.handLimit){this.emit('desc',`仍需弃牌，手牌必须不超过${this.s.handLimit}张`);return this.state()}this.s.forcedDiscard=false;return this.startAITurn()}
     cancelDiscard(){if(this.s.forcedDiscard)throw Error(`手牌超过${this.s.handLimit}张，不能取消弃牌`);this.s.mayDiscardAfterSkill=false;this.s.phase='PLAYER_PLAY';this.s.selectedCard=-1;this.s.selectedCards=[];return this.state()}
     aiSpecialEffect(n,v,c){let a=this.s.ai,t=this.s.player,owner=this.s.atkOwner&&this.s.atkOwner!=='player'?this.s.atkOwner:'ai',m=AIRegistry.get(n);if(!m)return null;let silent={silent:true},helpers={burnTarget:q=>this.burn(t,q,silent),burnSelf:q=>this.burn(a,q,silent),bleedTarget:q=>this.bleed(t,q,silent),gainGuard:q=>this.addGuard(a,q),healSelf:(q,k)=>this.heal(a,q,k),drawSelf:(q,an)=>this.draw(owner,q,an),clearSelf:()=>this.clearDebuffs(a),selfHand:this.h[owner],targetHand:this.h.player,owner,target:t,self:a,copy:cp};return m.specialEffect(this,n,v,c,a,t,owner,helpers,this.aiContext())}
     aiTurn(){if(!this.s.aiTurnStarted){this.turnStart('ai');this.s.aiTurnStarted=true;this.s.aiHasPlayed=false;if(!this.s.ai.alive)return this.check()}let _noAtkMod=this._getAdventureMod(this.name(this.s.ai));if(_noAtkMod&&_noAtkMod.noAttack){this.emit('desc',this.s.ai.name+'无进攻阶段，跳过进攻');if(typeof _noAtkMod.attackSkipEffect==='function')_noAtkMod.attackSkipEffect(this,this.s.ai,this.s.player);return this.later(()=>this.endAi(),700)}let top=this.s.discardTop,chosen=this.chooseAIPlay(top);if(!chosen){if(!this.s.aiHasPlayed&&this.h.ai.length){let dropped=this.h.ai.splice(0,this.h.ai.length);for(let i=dropped.length-1;i>=0;i--)this.discardWithEvent(dropped[i],'ai',{handIndex:i,desc:`AI无牌可出，弃掉${this.cardText(dropped[i])}`});this.emit('desc',`AI无牌可出，弃掉全部${dropped.length}张手牌`)}return this.later(()=>this.endAi(),700)}let i=this.h.ai.indexOf(chosen),c=this.h.ai.splice(i,1)[0];this.setAIWildColor(c,top,false);this.s.aiHasPlayed=true;this.s.atkCard=cp(c);this.s.atkOwner='ai';this.setDiscardTop(c,'ai');this.rememberAttackDebuffs('player');let _buffBefore={bleed:this.s.player.bleed||0,burn:this.s.player.burn||0,poison:this.s.player.poison||0,frozen:!!this.s.player.frozen};this.applySaikiPassive(this.s.ai,this.s.player,c);this.emit('aiPlay',`AI ${this.name(this.s.ai)} 按角色策略出牌`,c);this.announceAIColor(c);if(c.isItemCard){let kind=this.itemKind(c);this.emit('itemEffect',this.itemEffectDesc(c,'ai'),c,{effect:kind,who:'ai'});this.useItem(c,this.s.ai,this.s.player,'ai');this.s.pendingAIBridge={mode:'attack',afterEventId:this.ver,effect:kind,owner:'ai'};return this.check()}this._deferAttackBuffs('player',_buffBefore);let r=this.aiSpecialEffect(this.name(this.s.ai),c.value,c)||this.effect(this.name(this.s.ai),c.value,c,this.s.ai,this.s.player);this._deferAttackBuffs('player',_buffBefore);if(r.immediateBuffs)this._restoreAttackBuffs();this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain)};{let freezeBlock=this._freezeBlocksDefend(this.s.player,this.s.atkCard);if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){this.s.phase='PLAYER_DEFEND';this.s.busy=false;this.s.unblockDefend=false;return}if(r.d&&(r.unblock||freezeBlock)){if(this._enterPlayerDefend(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}if(!r.d)this.emit('desc',`AI ${this.name(this.s.ai)} 本次技能分支未造成伤害，跳过防御`,c);if(r.d&&this.playerNeedsAvoidChoice()){this.askGuard(r.d);return}this._restoreAttackBuffs();this.dealAttackHit(this.s.ai,this.s.player,r.d,!!(r.isDrain||r.drain));this.s.phase='AI_TURN';this.s.busy=true;this.s.pendingAIContinue={afterEventId:this.ver};return this.check()}
-    endAi(){this.trimAI();if(this.s.ai.burn){let dmg=this.s.ai.burn;this.s.ai.burn--;if(this.name(this.s.ai)!=='Leon'){this.emit('burnSettle',`-${dmg}[灼烧]，-1[灼烧层数]`,null,{who:'ai',amount:dmg});this.s.ai.hp=Math.max(0,this.s.ai.hp-dmg);this.s.ai.alive=this.s.ai.hp>0}}this.s.turn++;this.s.phase='PLAYER_PLAY';this.s.busy=false;this.s.activeAttacker='player';this.s.pendingAttack=null;this.s.pendingAIBridge=null;this.s.pendingAIContinue=null;this.s.forceEndAITurn=false;this.s.attackDebuffSnapshot=null;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];this.s.hasPlayedThisTurn=false;this.s.aiTurnStarted=false;this.s.aiHasPlayed=false;let _hands=this.handCounts();this.silentDraws(function(){this.fillHands(false);this.turnStart('player')});this.emitDrawDiff(_hands);this.check()}
-    check(){for(const k of ['player','ai']){this.s[k].alive=this.s[k].hp>0}if(!this.s.player.alive||!this.s.ai.alive){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer)}return this.state()}
+    endAi(){this.trimAI();if(this.s.ai.burn){let dmg=this.s.ai.burn;let S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.remove(this.s.ai,'burn',1);else this.s.ai.burn--;if(this.name(this.s.ai)!=='Leon'){this.emit('burnSettle',`-${dmg}[灼烧]，-1[灼烧层数]`,null,{who:'ai',amount:dmg});this.s.ai.hp=Math.max(0,this.s.ai.hp-dmg);this.s.ai.alive=this.s.ai.hp>0}}this.s.turn++;this.s.phase='PLAYER_PLAY';this.s.busy=false;this.s.activeAttacker='player';this.s.pendingAttack=null;this.s.pendingAIBridge=null;this.s.pendingAIContinue=null;this.s.forceEndAITurn=false;this.s.attackDebuffSnapshot=null;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];this.s.hasPlayedThisTurn=false;this.s.aiTurnStarted=false;this.s.aiHasPlayed=false;let _hands=this.handCounts();this.silentDraws(function(){this.fillHands(false);this.turnStart('player')});this.emitDrawDiff(_hands);this.check()}
+    check(){for(const k of ['player','ai']){this.s[k].alive=this.s[k].hp>0}if(!this.s.player.alive||!this.s.ai.alive){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer)}const result=this.state();this._checkInvariants('phase');return result}
     _allEnemiesDead(){
       if(!this.s)return false;
       const adapter=this._adapter();
@@ -846,621 +857,22 @@
       return this.check()
     };
 
-  Engine.prototype.start1v2=function(p,a1,a2){
-    clearTimeout(this.timer);this.pendingSettlement=null;
-    const adapter=this._adapter('1v2');
-    const initial=adapter&&adapter.createPiles?adapter.createPiles():CombatDeck.createStandard();
-    this.deck=initial.deck;this.discardBottom=initial.discardBottom;
-    this.h={player:[],ai:[],ai2:[]};this.events=[];
-    let top=initial.discardTop;
-    const stateFields={phase:'PLAYER_PLAY',turn:1,busy:false,selectedCard:-1,selectedCards:[],selectedAICard:-1,
-      handLimit:10,forcedDiscard:false,hasPlayedThisTurn:false,hasPlayedBlackDefend:false,
-      defenseSkipped:false,unblockDefend:false,attackModBonus:0,aiTurnStarted:false,aiHasPlayed:false,pendingAIBridge:null,
-      pendingAIContinue:null,pendingDefenseDamage:0,pendingFiveChoice:false,fiveChoiceCard:null,
-      pendingNumberJudge:null,mayDiscardAfterSkill:false,serenityHalfTarget:null,
-      forceEndAITurn:false,activeAttacker:'player',is1v2:true,needColorChoice:false,
-      pendingDialog:null,discardTop:top,
-      player:this.character(p),ai:this.character(a1,true),ai2:Object.assign(this.character(a2,true),{name:'AI2 '+a2}),
-      currentAITarget:0,attackTarget:null,eliminatedHandled:{ai:false,ai2:false},
-      atkCard:null,atkOwner:null,defCard:null,defOwner:null,revealCards:[],diceRoll:null};
-    this.s=adapter&&adapter.createState?adapter.createState(stateFields):CombatState.create(stateFields);
-    this.s.player.maxHp*=2;this.s.player.hp=this.s.player.maxHp;
-    this.draw('player',10);this.draw('ai',5);this.draw('ai2',5);
-    let _hands=this.handCounts();this.silentDraws(function(){this.turnStart('player')});this.emitDrawDiff(_hands);return this.state()
+  Engine.prototype._checkInvariants=function(reason='manual'){
+    const checker=window.CombatInvariants;
+    if(!checker||typeof checker.check!=='function')return {ok:true,reason,errors:[]};
+    // A few skills temporarily hold cards outside a physical pile while a
+    // dialog/animation is open (Chan 5 reorder, Chan/Saiki keep-or-discard,
+    // and similar reveal choices).  Keep checking topology and duplicates,
+    // but defer the "missing card" part until the staged card is returned.
+    const s=this.s||{};
+    const staged=!!(
+      (Array.isArray(s.chanFiveCards)&&s.chanFiveCards.length) ||
+      s.chanFourSwapDrawn || s.chanSevenChosenCard || s.saikiThreeDrawn ||
+      s.ottoFourMyCard || s.ottoFourOpponentCard ||
+      (s.phase==='OPPONENT_CARD_CHOICE'&&s.pendingOpponentSkill)
+    );
+    this.lastInvariantReport=checker.check(this,reason,{transient:reason==='draw'||reason==='discard'||staged});
+    return this.lastInvariantReport;
   };
-
-  Engine.prototype._curAI=function(){return this.s.currentAITarget===1?'ai2':'ai'};
-  Engine.prototype._curAIChar=function(){return this.s[this._curAI()]};
-  Engine.prototype._curAIHand=function(){return this.h[this._curAI()]};
-  Engine.prototype._aiFillTarget=function(){
-    if(!this.s.is1v2)return 5;
-    let dead1=!this.s.ai.alive,dead2=!this.s.ai2||!this.s.ai2.alive;
-    return(dead1||dead2)?10:5
-  };
-  Engine.prototype._on1v2OpponentEliminated=function(defeatedKey){
-    if(!this.s||!this.s.is1v2||!defeatedKey)return;
-    if(!this.s.eliminatedHandled)this.s.eliminatedHandled={ai:false,ai2:false};
-    if(this.s.eliminatedHandled[defeatedKey])return;
-    this.s.eliminatedHandled[defeatedKey]=true;
-    if(this.s.isAdventure&&this.s.player&&this.s.player.alive){
-      this.heal(this.s.player,3,'passive');
-      const name=(this.s[defeatedKey]&&this.s[defeatedKey].name)||defeatedKey;
-      this.emit('desc','击败'+name+'，恢复3点生命');
-    }
-    const survivor=(this.s.ai&&this.s.ai.alive)?'ai':((this.s.ai2&&this.s.ai2.alive)?'ai2':null);
-    if(this.s.attackTarget===defeatedKey)this.s.attackTarget=survivor;
-    const curKey=this.s.currentAITarget===1?'ai2':'ai';
-    if(this.s[curKey]&&!this.s[curKey].alive){
-      this.s.currentAITarget=(this.s.ai&&this.s.ai.alive)?0:1;
-    }
-  };
-  Engine.prototype._checkDeath1v2=function(){
-    if(!this.s.player.alive){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer);return true}
-    let allDead=!this.s.ai.alive&&(!this.s.ai2||!this.s.ai2.alive);
-    if(allDead){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer);return true}
-    let defeatedKey=!this.s.ai.alive?'ai':(!this.s.ai2||!this.s.ai2.alive?'ai2':null);
-    if(defeatedKey&&!this.s.eliminatedHandled[defeatedKey]){
-      this._on1v2OpponentEliminated(defeatedKey);
-      if(!this.s.isLord&&!this.s.isAdventure){
-        let aliveKey=defeatedKey==='ai'?'ai2':'ai',need=10-this.h[aliveKey].length;
-        if(need>0){this.draw(aliveKey,need,true);this.emit('desc',this.s[defeatedKey].name+'出局，'+this.s[aliveKey].name+'补齐10张手牌')}
-      }
-    }
-    return false
-  };
-  Engine.prototype._advanceAI=function(){
-    if(!this.s.is1v2)return false;
-    if(this.s.currentAITarget===0&&this.s.ai2&&this.s.ai2.alive){
-      this.s.currentAITarget=1;
-      this.s.aiTurnStarted=false;this.s.aiHasPlayed=false;
-      this.s.phase='AI2_TURN';this.s.busy=true;this.s.activeAttacker='ai2';
-      this.fillAIHands1v2();
-      return true
-    }
-    return false
-  };
-  Engine.prototype.fillHands1v2=function(includePlayer=false){
-    let limit=this._aiFillTarget();
-    if(includePlayer)this.draw('player',this._drawNeedWithIceSeal('player',Math.max(0,this.s.handLimit-this.h.player.length)),true);
-    if(this.s.ai.alive)this.draw('ai',this._drawNeedWithIceSeal('ai',Math.max(0,limit-this.h.ai.length)),true);
-    if(this.s.ai2.alive)this.draw('ai2',this._drawNeedWithIceSeal('ai2',Math.max(0,limit-this.h.ai2.length)),true);
-    this.emit('desc','双方按当前手牌上限完成补牌')
-  };
-  Engine.prototype.fillAIHands1v2=function(){
-    let limit=this._aiFillTarget();
-    if(this.s.ai.alive)this.draw('ai',Math.max(0,limit-this.h.ai.length),true);
-    if(this.s.ai2.alive)this.draw('ai2',Math.max(0,limit-this.h.ai2.length),true);
-    this.emit('desc','AI1与AI2补牌至'+limit+'张')
-  };
-  Engine.prototype.endAi1v2=function(){
-    let key=this._curAI();
-    this.trimAI1v2();
-    let ch=this.s[key];
-    if(ch.burn){let dmg=ch.burn;ch.burn--;if(this.name(ch)!=='Leon'){let w=this._who(ch);this.emit('burnSettle',`-${dmg}[灼烧]，-1[灼烧层数]`,null,{who:w,amount:dmg});ch.hp=Math.max(0,ch.hp-dmg);ch.alive=ch.hp>0}}
-    this.check();if(this.s.phase==='GAME_OVER')return;
-    if(this._advanceAI()){
-      this.later(()=>this.aiTurn1v2());return this.check()
-    }
-    this.s.turn++;this.s.phase='PLAYER_PLAY';this.s.busy=false;this.s.activeAttacker='player';
-    this.s.pendingAttack=null;this.s.pendingAIBridge=null;this.s.pendingAIContinue=null;
-    this.s.forceEndAITurn=false;this.s.attackDebuffSnapshot=null;
-    this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];
-    this.s.hasPlayedThisTurn=false;this.s.aiTurnStarted=false;this.s.aiHasPlayed=false;
-    this.s.currentAITarget=0;
-    let _hands=this.handCounts();this.silentDraws(function(){this.fillHands1v2(true);this.turnStart('player')});this.emitDrawDiff(_hands);this.check()
-  };
-  Engine.prototype.trimAI1v2=function(){
-    let key=this._curAI(),limit=this._aiFillTarget();
-    while(this.h[key].length>limit){
-      let worst=this._swapAIContext(key,()=>this.chooseAIDiscard(this.h.ai));
-      let card=this.h[key].splice(worst,1)[0];
-      this.discardWithEvent(card,key,{handIndex:worst,desc:this.s[key].name+'手牌超限，按角色策略弃掉'+this.cardText(card)})
-    }
-  };
-  Engine.prototype._swapAIContext=function(key,fn){
-    if(key==='ai')return fn();
-    let origAI=this.s.ai,origHand=this.h.ai;
-    this.s.ai=this.s.ai2;this.h.ai=this.h.ai2;
-    try{let r=fn();return r}finally{this.s.ai2=this.s.ai;this.h.ai2=this.h.ai;this.s.ai=origAI;this.h.ai=origHand}
-  };
-  Engine.prototype._swapAITarget=function(targetKey,fn){
-    if(targetKey==='ai')return fn();
-    let origAI=this.s.ai,origHand=this.h.ai;
-    this.s.ai=this.s.ai2;this.h.ai=this.h.ai2;
-    try{let r=fn();return r}finally{this.s.ai2=this.s.ai;this.h.ai2=this.h.ai;this.s.ai=origAI;this.h.ai=origHand}
-  };
-  Engine.prototype._chooseAIPlay1v2=function(key,top){
-    let hand=this.h[key];
-    return this._swapAIContext(key,()=>{
-      let best=null,score=-1;
-      for(const c of hand){if(!this.legal(c))continue;let s=this.aiAttackScore(c,top);if(s>score){score=s;best=c}}
-      return best
-    })
-  };
-  Engine.prototype._chooseAIDefend1v2=function(key,top,incomingDamage=0){
-    let hand=this.h[key];
-    return this._swapAIContext(key,()=>{
-      if(this.s.isAdventure){let r=this._chooseAIDefendAdventure(hand,top,incomingDamage);if(r!==null)return r}
-      let x=this.aiContext({incomingDamage}),best=null,score=-Infinity;
-      for(const c of hand){if(!this.aiDefendLegal(c,top,x))continue;let s=this.aiDefendScore(c,top,incomingDamage);if(s>score){score=s;best=c}}
-      return best
-    })
-  };
-  Engine.prototype._chooseAIColor1v2=function(key){
-    return this._swapAIContext(key,()=>{
-      let counts={RED:0,YELLOW:0,BLUE:0,GREEN:0};
-      for(const card of this.h.ai){let color=this.effective(card);if(counts[color]!==undefined)counts[color]++}
-      return['RED','YELLOW','BLUE','GREEN'].reduce((a,b)=>counts[b]>counts[a]?b:a)
-    })
-  };
-  Engine.prototype.useItem1v2=function(c,owner,target,w){
-    if(c.potion)this.heal(owner,this.s.isAdventure&&w!=='player'?3:5);
-    if(c.greenMagic||c.magicColor==='green'){this.heal(owner,w!=='player'&&this._isAdventureBoss(owner)?5:3);this.clearDebuffs(owner);}
-    else if(c.magic||c.magicColor==='purple'){this.heal(owner,w!=='player'&&this._isAdventureBoss(owner)?5:3);this.clearPositiveBuffs(target);}
-    if(c.drawThree)this.draw(w,3,true);
-    if(c.drawTwo)this.draw(w,2,true);
-    if(c.purify&&w==='player'&&this._hasPurifyableBuff(owner)){this.s.pendingDialog='purify'}
-    else if(c.purify)this.clean(owner);
-    if(c.superPurify&&w==='player'){this.s.pendingDialog='superPurify'}
-    else if(c.superPurify){
-      let ownerDeb=owner.burn+owner.bleed+(owner.poison||0)+(owner.frozen?1:0),targetGuard=target?target.guard:0;
-      if(targetGuard>=2&&ownerDeb<2)this.clean(target,true);
-      else this.clean(owner,true);
-    }
-    if(c.swapHand){let targetKey=w==='player'?(this.s.atkOwner&&this.s.atkOwner!=='player'?this.s.atkOwner:(this.s.attackTarget||'ai')):'player';[this.h[w],this.h[targetKey]]=[this.h[targetKey],this.h[w]];if(this.h.player)this.h.player.forEach(card=>{if(card)card.npcCard=true;})}
-    // 1v2 冒险模式有独立的玩家牌堆和共享 NPC 牌堆。这里必须使用
-    // 当前出牌者的显式归属，不能依赖仍可能残留的 defOwner/atkOwner。
-    if(c.shuffleToDeck){this._shuffleDiscardIntoDeck(w);this.emit('desc','弃牌库已洗回牌堆')}
-  };
-  Engine.prototype.aiTurn1v2=function(){
-    let key=this._curAI(),ch=this.s[key],hand=this.h[key];
-    if(!ch.alive)return this.endAi1v2();
-    if(!this.s.aiTurnStarted){this.turnStart(key==='ai2'?'ai2':'ai');this.s.aiTurnStarted=true;this.s.aiHasPlayed=false}
-    let _noAtkMod=this._getAdventureMod(this.name(ch));if(_noAtkMod&&_noAtkMod.noAttack){this.emit('desc',ch.name+'无进攻阶段，跳过进攻',null,{who:key});if(typeof _noAtkMod.attackSkipEffect==='function')_noAtkMod.attackSkipEffect(this,ch,this.s.player);return this.later(()=>this.endAi1v2(),700)}
-    let top=this.s.discardTop,chosen=this._chooseAIPlay1v2(key,top);
-    if(!chosen){
-      if(!this.s.aiHasPlayed&&hand.length){let dropped=hand.splice(0,hand.length);for(let i=dropped.length-1;i>=0;i--)this.discardWithEvent(dropped[i],key,{handIndex:i,desc:ch.name+'无牌可出，弃掉'+this.cardText(dropped[i])});this.emit('desc',ch.name+'无牌可出，弃掉全部'+dropped.length+'张手牌')}
-      return this.later(()=>this.endAi1v2(),700)
-    }
-    let i=hand.indexOf(chosen),c=hand.splice(i,1)[0];
-    if(c.isBlack)c.chosenColor=this._chooseAIColor1v2(key);
-    else if(c.isWhite)c.chosenColor=this.effective(top);
-    this.s.aiHasPlayed=true;this.s.atkCard=cp(c);this.s.atkOwner=key;
-    this.setDiscardTop(c,key);this.rememberAttackDebuffs('player');let _buffBefore={bleed:this.s.player.bleed||0,burn:this.s.player.burn||0,poison:this.s.player.poison||0,blind:this.s.player.blind||0,iceSeal:this.s.player.iceSeal||0,frozen:!!this.s.player.frozen};this.applySaikiPassive(ch,this.s.player,c);
-    this.emit('aiPlay',ch.name+' 按角色策略出牌',c,{who:key});
-    if(c.isBlack||c.isWhite)this.emit('colorChoice',ch.name+'指定'+this.colorName(c.chosenColor),c);
-    if(c.isItemCard){
-      let kind=this.itemKind(c);
-      this.emit('itemEffect',this.itemEffectDesc(c,key),c,{effect:kind,who:key});
-      this.useItem1v2(c,ch,this.s.player,key);
-      this.s.pendingAIBridge={mode:'attack',afterEventId:this.ver,effect:kind,owner:key};
-      return this.check()
-    }
-    this._deferAttackBuffs('player',_buffBefore);
-    let r=this._swapAIContext(key,()=>this.aiSpecialEffect(this.name(ch),c.value,c))||this.effect(this.name(ch),c.value,c,ch,this.s.player);
-    this._deferAttackBuffs('player',_buffBefore);
-    if(r.immediateBuffs)this._restoreAttackBuffs();
-    this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain)};
-    {let freezeBlock=this._freezeBlocksDefend(this.s.player,this.s.atkCard);
-    if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){this.s.phase='PLAYER_DEFEND';this.s.busy=false;this.s.unblockDefend=false;return}
-     if(r.d&&(r.unblock||freezeBlock)&&!(r.isDrain||r.drain)){if(this._enterPlayerDefend(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}
-    if(!r.d)this.emit('desc',ch.name+' 本次技能分支未造成伤害，跳过防御',c);
-     if(r.d&&!r.isDrain&&!r.drain&&this.playerNeedsAvoidChoice()){this.askGuard(r.d);return}
-    this._restoreAttackBuffs();this.dealAttackHit(ch,this.s.player,r.d,!!(r.isDrain||r.drain));this.s.phase=key.toUpperCase()+'_TURN';this.s.busy=true;
-    this.s.pendingAIContinue={afterEventId:this.ver};return this.check()
-  };
-
-  Engine.prototype.play1v2=function(){
-    let i=this.s.selectedCard,c=this.h.player[i];
-    if(!c)throw Error('请选择要打出的牌');
-    if(!this.legal(c))throw Error('该牌不能用于进攻');
-    let who=this.name(this.s.player);
-    const needsNumberFollowup = !c.borrowedMonster && ((who==='Ryan'&&c.value===5)||(who==='Saiki'&&c.value===6)||(who==='Moze'&&c.value===4)||(who==='Otto'&&c.value===5));
-    if(needsNumberFollowup&&!this.h.player.some((x,j)=>j!==i&&x.isNumberCard)){
-      this.emit('desc',who+' '+c.value+'牌：没有可用的追加数字牌，自动判定为0点',c);
-      this.h.player.splice(i,1); this.s.selectedCard=-1; this.s.atkCard=cp(c); this.s.atkOwner='player';
-      this.setDiscardTop(c,'player'); this.s.hasPlayedThisTurn=true; this._markBombPlay('player'); this._tickBomb('player');
-      return this.gateAdventureAttackMod(c,0,true,false);
-    }
-    if(c.isBlack&&!c.chosenColor)return this._stagePendingBlackCard(i,c,'attack');
-    if(c.isWhite)c.chosenColor=this.effective(this.s.discardTop);
-    let target=this.s.attackTarget||(this.s.ai.alive?'ai':(this.s.ai2&&this.s.ai2.alive?'ai2':'ai')),targetChar=this.s[target];
-    if(!targetChar||!targetChar.alive)throw Error('所选目标已经出局，请重新选择目标');
-    this.h.player.splice(i,1);this.s.selectedCard=-1;
-    this.s.atkCard=cp(c);this.s.atkOwner='player';this.s.hasPlayedThisTurn=true;
-    // Keep the exact attack-card reference used by emit(). A cloned object makes
-    // the automatic animation guard treat the same play as a second new card.
-    this._animatedPlayerAttack=this.s.atkCard;
-    this.setDiscardTop(c,'player');this._markBombPlay('player'); this._tickBomb('player');let _buffBefore={bleed:targetChar.bleed||0,burn:targetChar.burn||0,poison:targetChar.poison||0,blind:targetChar.blind||0,iceSeal:targetChar.iceSeal||0,frozen:!!targetChar.frozen};if(!c.borrowedMonster){this.rememberAttackDebuffs(target);this.applySaikiPassive(this.s.player,targetChar,c);}
-    this.emit('playerPlay','玩家打出进攻牌',c);
-    if(c.isBlack)this.emit('colorChoice','黑牌指定'+this.colorName(c.chosenColor),c);
-    else if(c.isWhite)this.emit('colorChoice','白色牌自动指定'+this.colorName(c.chosenColor),c);
-    if(c.borrowedMonster && typeof this.playBorrowedMonsterCard==='function') return this.playBorrowedMonsterCard(c);
-    if(c.isItemCard){
-      let kind=this.itemKind(c);
-      this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:kind,who:'player',target});
-      if(c.trophyWhite)this.useTrophyWhite(c,targetChar,'player');else this.useItem1v2(c,this.s.player,targetChar,'player');
-      if(!this.s.pendingDialog)this._tickBomb('player');
-      if(!this.s.pendingDialog && this.s.phase==='PLAYER_PLAY'){this.s.busy=false;this.s.attackTarget=null;}
-      return this.check()
-    }
-     this._deferAttackBuffs(target,_buffBefore);
-     if(who==='Moze'&&c.value===7){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc','Moze 7牌：请选择自己或一名对手作为清除目标',c);return this.state()}
-     if(who==='Leon'&&c.value===0)return this.leonZero1v2(c);
-    if(who==='Ryan'&&c.value===5)return this.startRyanFive(c);
-    if(who==='Saiki'&&c.value===6)return this.startNumberJudge('Saiki',c);
-    if(who==='Moze'&&c.value===4)return this.startNumberJudge('Moze',c);
-    if(who==='Chan'&&c.value===5)return this.startChanFive();
-    if(who==='Otto'&&c.value===3)return this.startOttoThree(c);
-    if(who==='Otto'&&c.value===4)return this.startOttoFour(c);
-    if(who==='Otto'&&c.value===5)return this.startNumberJudge('Otto',c);
-    if(this.opponentChoiceSkill(who,c.value)){
-      let p={name:who,value:c.value,attackCard:cp(c)};this.s.pendingOpponentSkill=p;this.s.selectedAICard=-1;
-      if(!this.h[target].length)return this.opponentEmpty(p);
-      this.s.phase='OPPONENT_CARD_CHOICE';this.s.busy=false;this.emit('desc',who+' '+c.value+'牌：请选择'+targetChar.name+'的一张手牌并确认',c);return this.state()
-    }
-    let r=this.effect(who,c.value,c,this.s.player,targetChar);
-    this._deferAttackBuffs(target,_buffBefore);
-    if(r.immediateBuffs)this._restoreAttackBuffs();
-
-    return this.gateAdventureAttackMod(c,r.d,r.skip,r.unblock,0,{isDrain:!!(r.isDrain||r.drain)})
-  };
-
-  Engine.prototype.leonZero1v2=function(card){
-    this._restoreAttackBuffs();
-    let targets=['ai','ai2'].filter(key=>this.s[key]&&this.s[key].alive);
-    for(const key of targets)this.burn(this.s[key],1);
-    for(const key of targets)this.hurt(this.s[key],7);
-    this.hurt(this.s.player,targets.length*2);
-    let combined=[];
-    for(const key of targets)for(let i=0;i<this.h[key].length;i++)combined.push({key,index:i});
-    if(combined.length===0){
-      this.s.pendingAttack=null;this.s.defenseSkipped=true;this.s.phase='AI_DEFEND';this.s.busy=true;
-      this.emit('desc','Leon 0牌：对所有对手+1层灼烧、7点不可防御伤害；自身受到'+(targets.length*2)+'点伤害',card);
-      this.later(()=>{this.afterAttack();this.check()},1700);return this.check()
-    }
-    this.s.pendingLeonZeroDiscard={remaining:2};
-    this.s.phase='OPPONENT_CARD_CHOICE';
-    this.s.selectedAICard=-1;
-    this.s.busy=false;
-    this.emit('desc','Leon 0牌：选择对手手牌弃掉（还需选2张）',card);
-    return this.check()
-  };
-
-  Engine.prototype._finishLeonZeroDiscard=function(){
-    let p=this.s.pendingLeonZeroDiscard;
-    if(!p)return;
-    let idx=this.s.selectedAICard;
-    if(idx<0)return;
-    let combined=[];
-    for(const key of ['ai','ai2'])if(this.s[key]&&this.s[key].alive)for(let i=0;i<this.h[key].length;i++)combined.push({key,index:i});
-    if(idx>=combined.length)return;
-    let entry=combined[idx];
-    let card=this.h[entry.key].splice(entry.index,1)[0];
-    if(card)this.discardWithEvent(card,entry.key,{handIndex:entry.index,desc:'Leon 0牌弃掉'+this.cardText(card)});
-    p.remaining--;
-    this.s.selectedAICard=-1;
-    if(p.remaining>0&&(this.h.ai.length||(this.s.ai2&&this.s.ai2.alive&&this.h.ai2.length))){
-      this.s.phase='OPPONENT_CARD_CHOICE';
-      this.s.busy=false;
-      this.emit('desc','Leon 0牌：选择对手手牌弃掉（还需选'+p.remaining+'张）');
-      return this.check()
-    }
-    delete this.s.pendingLeonZeroDiscard;
-    this.s.pendingAttack=null;this.s.defenseSkipped=true;this.s.phase='AI_DEFEND';this.s.busy=true;
-    this.later(()=>{this.afterAttack();this.check()},1700);return this.check()
-  };
-
-  Engine.prototype.aiDefend1v2=function(atk,d){
-    let key=this.s.attackTarget||'ai';
-    if(!this.s[key]||!this.s[key].alive)key=this.s.ai.alive?'ai':'ai2';
-    // Keep the settlement target aligned with the defender chosen above. A
-    // stale target can otherwise make a valid defense appear to hang in a
-    // challenge room after the previous opponent was eliminated.
-    this.s.attackTarget=key;
-    let ch=this.s[key],hand=this.h[key];
-    let frozen=this._freezeBlocksDefend(ch,atk),
-        chosen=frozen?null:this._chooseAIDefend1v2(key,this.s.discardTop,d),
-        i=chosen?hand.indexOf(chosen):-1;
-    if(i>=0){
-      let top=this.s.discardTop,c=hand.splice(i,1)[0];
-      if(c.isBlack)c.chosenColor=hand.find(q=>!q.isBlack&&!q.isWhite&&q.value<=3)?.color||this._chooseAIColor1v2(key);
-      else if(c.isWhite)c.chosenColor=this.effective(top);
-      this.s.defCard=cp(c);this.s.defOwner=key;this.setDiscardTop(c,key);
-      if(c.isItemCard){
-        this.emit('aiDefend',ch.name+'打出搭桥牌并立即结算道具效果',c,{who:key});
-        if(c.isBlack||c.isWhite)this.emit('colorChoice',ch.name+'指定'+this.colorName(c.chosenColor),c);
-        let kind=this.itemKind(c);
-        this.emit('itemEffect',this.itemEffectDesc(c,key),c,{effect:kind,who:key});
-        this.useItem1v2(c,ch,this.s.player,key);
-        this.s.pendingAIBridge={mode:'defense',afterEventId:this.ver,attackCard:cp(atk),damage:d,owner:key};
-        return this.check()
-      }
-      let n=this.name(ch),v=c.value;
-      this.emit('aiDefend',ch.name+'打出'+n+' '+v+'牌，触发防御技能',c,{who:key});
-      if(c.isBlack||c.isWhite)this.emit('colorChoice',ch.name+'指定'+this.colorName(c.chosenColor),c);
-      let judged=this.defenseJudge(key,c,d),b=0,remaining,desc='';
-      if(judged){remaining=Math.max(0,judged.remaining);desc=ch.name+'完成防御判定'}
-      else{let m=CharacterRegistry.get(n);if(m){let r=m.defend(this,n,v,d,c,ch,this.s.player,key,this.effective(atk),{hurt:(x,n,b)=>this.hurt(x,n,b),heal:(x,n,k)=>this.heal(x,n,k),draw:(w,n,an)=>this.draw(w,n,an),burn:(x,n)=>this.burn(x,n),bleed:(x,n)=>this.bleed(x,n),poison:(x,n)=>this.poison(x,n),cancelAttackDebuffs:(o,r)=>this.cancelAttackDebuffs(o,r),clearDebuffs:x=>this.clearDebuffs(x),addGuard:(x,n)=>this.addGuard(x,n)});if(r){remaining=r.remaining;desc=r.desc}}if(desc===''){b=c.isNumberCard?(c.value===1?Math.ceil(d/2):c.value===3?Math.floor(d/2):0):0;remaining=Math.max(0,d-b);desc=ch.name+'抵消'+b+'点伤害，剩余'+remaining+'点待结算'}}
-      if(!judged)this.emit('desc',desc);
-      this.deferSettlement('PLAYER_ATTACK',remaining,c.isNumberCard&&c.value<=3?ch.bleed:0)
-    }else{
-      this.emit('desc',frozen?ch.name+'处于冷冻状态，无法防御蓝色攻击':ch.name+'根据防御策略选择跳过');
-      this.deferSettlement('PLAYER_ATTACK',d,0)
-    }
-    return this.check()
-  };
-
-  // 防御阶段由 later() 异步触发。若某个冒险怪物的技能适配器抛出异常，
-  // 旧路径只会在定时器里打印错误，战斗会永远停留在 AI_DEFEND。统一从
-  // 这个安全入口进入，异常时按“跳过防御”继续结算，避免挑战房软锁。
-  Engine.prototype.runAIDefend1v2=function(atk,d){
-    try {
-      return this.aiDefend1v2(atk,d);
-    } catch (error) {
-      console.error('[Combat] AI 1v2 防御处理失败，按跳过防御恢复', error);
-      if (!this.s || this.s.phase !== 'AI_DEFEND') return this.check();
-      this.s.pendingAIBridge = null;
-      this.s.defCard = null;
-      this.s.defOwner = null;
-      this.emit('desc', 'NPC防御判定异常，跳过防御并继续结算');
-      this.deferSettlement('PLAYER_ATTACK', Math.max(0, Number(d) || 0), 0);
-      return this.check();
-    }
-  };
-
-  Engine.prototype.defend1v2=function(skip=false){
-    let d=this.s.pendingAttack.damage;
-    let target=this._curAI();
-    let targetChar=this.s[target];
-    let triggeredDefense=!skip;
-    if(skip){this.s.hasPlayedBlackDefend=false;this.emit('desc','玩家选择跳过防御，'+d+'点伤害待结算')}
-    else{
-      let i=this.s.selectedCard,c=this.h.player[i];
-      if(!c)throw Error('请选择防御牌');
-      if(!this.legal(c,true))throw Error('该牌不能用于防御');
-      let inheritedColor=this.effective(this.s.discardTop||this.s.atkCard);
-      if(this._freezeBlocksDefend(this.s.player,this.s.discardTop||this.s.atkCard))throw Error('冷冻状态无法防御蓝色攻击');
-      if(c.isBlack&&!c.chosenColor)return this._stagePendingBlackCard(i,c,'defend');
-      if(c.isWhite)c.chosenColor=inheritedColor;
-      this.h.player.splice(i,1);this.s.selectedCard=-1;
-      this.s.defCard=cp(c);this.s.defOwner='player';this.setDiscardTop(c,'player');this._markBombPlay('player'); this._tickBomb('player');
-      this._animatedPlayerAttack=this.s.atkCard;
-      let n=this.name(this.s.player),v=c.value,b=0,desc='';
-      if(c.isBlack)this.emit('colorChoice','黑牌指定'+this.colorName(c.chosenColor),c);
-      else if(c.isWhite)this.emit('colorChoice','白色牌自动指定'+this.colorName(c.chosenColor),c);
-      if(c.trophyWhite&&(c.trophyEffect==='zero'||(window.AdventureRegistry&&c.trophyName&&(window.AdventureRegistry.getItem(c.trophyName)||{}).trophyEffect==='zero'))){
-        this.emit('defend','白色牌指定'+this.colorName(c.chosenColor||c.color)+'，释放防御0技能',c);
-        this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player',target});
-        this.useTrophyWhite(c,targetChar,'player');
-        d=Math.max(0,Number(this.s.pendingAttack&&this.s.pendingAttack.damage)||0);
-        if(d&&this.playerNeedsAvoidChoice()){this.askGuard(d,this.s.player.bleed);return this.check()}
-        let curAIKey2=this._curAI();
-        this.s.phase=curAIKey2.toUpperCase()+'_TURN';
-        this.deferSettlement('AI_ATTACK',d,0);
-        return this.check()
-      }
-      if(c.isItemCard){
-        let bridgeLabel=c.isBlack?'黑牌':c.isWhite?'白色':'道具';
-        this.emit('defend',bridgeLabel+'牌指定'+this.colorName(c.chosenColor||c.color)+'并搭桥，请继续选择防御牌',c);
-        this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player',target});
-        if(c.trophyWhite)this.useTrophyWhite(c,targetChar,'player');else this.useItem1v2(c,this.s.player,targetChar,'player');
-        if(!this.s.pendingDialog)this._tickBomb('player');
-        this.s.phase='PLAYER_DEFEND';this.s.busy=false;
-        return this.check()
-      }
-      this.emit('defend','玩家打出防御牌',c);
-      let judged=this.defenseJudge('player',c,d);
-      if(judged){d=Math.max(0,Number(judged.remaining)||0);desc='防御判定完成'}
-        else{let m=CharacterRegistry.get(n);if(m){let r=m.defend(this,n,v,d,c,this.s.player,targetChar,'player',inheritedColor,{hurt:(x,n,b)=>this.hurt(x,n,b),heal:(x,n,k)=>this.heal(x,n,k),draw:(w,n,an)=>this.draw(w,n,an),burn:(x,n)=>this.burn(x,n),bleed:(x,n)=>this.bleed(x,n),poison:(x,n)=>this.poison(x,n),cancelAttackDebuffs:(o,r)=>this.cancelAttackDebuffs(o,r),clearDebuffs:x=>this.clearDebuffs(x),addGuard:(x,n)=>this.addGuard(x,n)});if(r){d=r.remaining;desc=r.desc}}if(desc===''){b=c.value===1?Math.ceil(d/2):c.value===3?Math.floor(d/2):0;d=Math.max(0,d-b);desc='抵消'+b+'点伤害，剩余'+d+'点待结算'}}
-      if(!judged)this.emit('desc',desc)
-    }
-    if(d&&this.playerNeedsAvoidChoice()){this.askGuard(d,this.s.player.bleed);return this.check()}
-    let curAIKey=this._curAI();
-    this.s.phase=curAIKey.toUpperCase()+'_TURN';
-    this.deferSettlement('AI_ATTACK',d,triggeredDefense&&this.s.defCard&&this.s.defCard.isNumberCard&&this.s.defCard.value<=3?this.s.player.bleed:0);
-    return this.check()
-  };
-
-  // Route shared character-skill callbacks back into the active 1v2 context.
-  const origAfterAttack1v2=Engine.prototype.afterAttack;
-  Engine.prototype.afterAttack=function(){
-    let result=origAfterAttack1v2.call(this);
-
-    return result
-  };
-
-  const origAIDefendShared=Engine.prototype.aiDefend;
-  Engine.prototype.aiDefend=function(atk,d){
-    if(this.s&&this.s.is1v2)return this.runAIDefend1v2(atk,d);
-    return origAIDefendShared.call(this,atk,d)
-  };
-
-  const origContinueAIShared=Engine.prototype.continueAIAttack;
-  Engine.prototype.continueAIAttack=function(){
-    if(!this.s||!this.s.is1v2)return origContinueAIShared.call(this);
-    if(!this.s.player.alive||(!this.s.ai.alive&&!this.s.ai2.alive)){this.check();return}
-    let key=this._curAI();
-    if(!this.s[key].alive)return this.endAi1v2();
-    this.s.phase=key==='ai2'?'AI2_TURN':'AI_TURN';this.s.busy=true;this.s.activeAttacker=key;
-    this.s.pendingAttack=null;this.s.pendingDefenseDamage=0;this.s.attackDebuffSnapshot=null;
-    this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];
-    this.later(()=>this.aiTurn1v2(),220);return this.check()
-  };
-
-  Engine.prototype._startAISequence1v2=function(){
-    this.fillHands1v2(true);
-    if(this.s.player.burn){let dmg=this.s.player.burn;this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',amount:dmg});this.hurt(this.s.player,dmg)}}
-    this.check();if(this.s.phase==='GAME_OVER')return this.state();
-    this.s.currentAITarget=this.s.ai.alive?0:1;let key=this._curAI();
-    this.s.phase=key==='ai2'?'AI2_TURN':'AI_TURN';this.s.busy=true;this.s.activeAttacker=key;
-    this.s.forceEndAITurn=false;this.s.pendingAIContinue=null;this.s.pendingAttack=null;
-    this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.selectedCards=[];
-    this.s.aiTurnStarted=false;this.s.aiHasPlayed=false;this.s.attackTarget=null;
-    this.later(()=>this.aiTurn1v2());return this.check()
-  };
-
-  const origStartAIShared=Engine.prototype.startAITurn;
-  Engine.prototype.startAITurn=function(){
-    if(this.s&&this.s.is1v2)return this._startAISequence1v2();
-    return origStartAIShared.call(this)
-  };
-
-  const origChooseGuardShared=Engine.prototype.chooseGuard;
-  Engine.prototype.chooseGuard=function(stacks){
-    let result=origChooseGuardShared.call(this,stacks);
-    if(this.s&&this.s.is1v2){let key=this._curAI();this.s.phase=key==='ai2'?'AI2_TURN':'AI_TURN';return this.check()}
-    return result
-  };
-
-  // --- 1v2 state/check/acknowledgeEvents overrides ---
-  const origState=Engine.prototype.state;
-  Engine.prototype.state=function(){
-    if(this.s&&this.s.is1v2)return this._state1v2();
-    return origState.call(this)
-  };
-  Engine.prototype._state1v2=function(){
-    // Keep 1v2 on the same state projection as 1v1 and adventure.  The
-    // protocol already includes ai2 hand/count fields, so this adapter only
-    // selects the combat topology and does not duplicate serialization.
-    return CombatState.project(this)
-  };
-
-  const origCheck=Engine.prototype.check;
-  Engine.prototype.check=function(){
-    if(this.s&&this.s.is1v2)return this._check1v2();
-    return origCheck.call(this)
-  };
-  Engine.prototype._check1v2=function(){
-    const adapter=this._adapter();
-    const participants=adapter&&adapter.participants||['player','ai','ai2'];
-    for(const k of participants){if(this.s[k])this.s[k].alive=this.s[k].hp>0}
-    if(this._checkDeath1v2()){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer)}
-    return this._state1v2()
-  };
-
-  const origAck=Engine.prototype.acknowledgeEvents;
-  Engine.prototype.acknowledgeEvents=function(through){
-    if(this.s&&this.s.is1v2)return this._acknowledgeEvents1v2(through);
-    return origAck.call(this,through)
-  };
-  Engine.prototype._acknowledgeEvents1v2=function(through){
-    this.events=this.events.filter(e=>(e.id||0)>through);
-    let bridge=this.s.pendingAIBridge;
-    if(bridge&&through>=bridge.afterEventId){
-      this.s.pendingAIBridge=null;
-      this._tickBomb(bridge.owner || 'ai');
-      if(bridge.mode==='defense')this.runAIDefend1v2(bridge.attackCard,bridge.damage);
-      else this.later(()=>this.aiTurn1v2(),220)
-    }
-    let continuation=this.s.pendingAIContinue;
-    if(continuation&&through>=continuation.afterEventId){this.s.pendingAIContinue=null;this._tickBomb(this.s.atkOwner || this._curAI() || 'ai');this.continueAIAttack();return}
-    let p=this.pendingSettlement;
-    if(!p||through<p.afterEventId)return;
-    this.pendingSettlement=null;this.s.pendingDefenseDamage=0;
-    if(p.kind==='PLAYER_ATTACK'){
-      let forceEnd=!!this.s.forceEndPlayerTurn;this.s.forceEndPlayerTurn=false;
-      let target=this.s.attackTarget||(this.s.ai.alive?'ai':(this.s.ai2&&this.s.ai2.alive?'ai2':'ai')),targetChar=this.s[target];
-      let isDrain=!!(p.isDrain||(this.s.pendingAttack&&this.s.pendingAttack.isDrain));
-      let dmg=p.damage;
-      if(this.divingBlocksDamage(targetChar,this.s.atkCard)){this.emit('desc',targetChar.name+'有[潜水]，免疫蓝色攻击伤害');dmg=0;}
-      else if(!isDrain)dmg=this.applyDefenderAvoidance(targetChar,dmg);
-      this.dealAttackHit(this.s.player,targetChar,dmg,isDrain);
-      this.settleBleed(targetChar,p.bleed);
-      this._restoreAttackBuffs();
-      // 冻洋蓝鲸：玩家攻击结算AOE伤害和失温（跳过主目标）
-      const pa1=this.s.pendingAttack||{};
-      this.performAttack({type:'aoe',target,aoeTargets:pa1.aoeTargets,aoeDamage:pa1.aoeDamage,skipTarget:true,hypothermiaTarget:pa1.hypothermiaTarget,hypothermiaAmount:pa1.hypothermiaAmount});
-      this.resolveSerenityHalf();this.afterAttack();
-      if(forceEnd)this.startAITurn();
-      this.check();return
-    }
-    let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;let bombOwner=this.s.atkOwner || this._curAI() || 'ai';
-    let isDrainAi=!!(p.isDrain||(this.s.pendingAttack&&this.s.pendingAttack.isDrain));
-    let dmg2=p.damage;if(this.divingBlocksDamage(this.s.player,this.s.atkCard)){this.emit('desc','你有[潜水]，免疫蓝色攻击伤害');dmg2=0;}this.dealAttackHit(this.s[bombOwner]||this.s.ai,this.s.player,dmg2,isDrainAi);
-    this.settleBleed(this.s.player,p.bleed);
-    this._tickBomb(bombOwner);
-    this._restoreAttackBuffs();
-    // 冻洋蓝鲸：防御结束后结算AOE伤害和失温（跳过主目标玩家）
-    const pa2=this.s.pendingAttack||{};
-    this.performAttack({type:'aoe',target:'player',aoeTargets:pa2.aoeTargets,aoeDamage:pa2.aoeDamage,skipTarget:true,hypothermiaTarget:pa2.hypothermiaTarget,hypothermiaAmount:pa2.hypothermiaAmount});
-    this.resolveSerenityHalf();
-    this._grantChaosIfKnight('ai');
-    if(forceEnd)this.endAi1v2();else this.continueAIAttack()
-  };
-
-  // --- 1v2 dispatch override ---
-  const origEmit=Engine.prototype.emit;
-  Engine.prototype.emit=function(type,desc,card,extra={}){
-    const id=origEmit.call(this,type,desc,card,extra);
-    if(type==='aiPlay')this._tickBomb(this.s&&this.s.atkOwner||'ai');
-    else if(type==='aiDefend')this._tickBomb(this.s&&this.s.defOwner||'ai');
-    return id;
-  };
-  const origDispatch=Engine.prototype.dispatch;
-  Engine.prototype.dispatch=function(m,p={}){
-    if(m==='selectCharacters1v2')return this.start1v2(p.player,p.ai,p.ai2);
-    if(m==='chooseMozeSeven')return this.resolveMozeSevenChoice(p.choice);
-
-    if(!this.s||!this.s.is1v2)return origDispatch.call(this,m,p);
-    if(m==='chooseColor'){
-      if(this.s.pendingBlackPlay){
-        const mode=this._resumePendingBlackCard(p.color);
-        return mode==='defend'?this.defend1v2():this.play1v2();
-      }
-      let card=this.h.player[this.s.selectedCard];if(!card)throw Error('请选择要指定颜色的牌');
-      card.chosenColor=p.color;this.s.needColorChoice=false;this.s.pendingDialog=null;
-      return this.s.phase==='PLAYER_DEFEND'?this.defend1v2():this.play1v2()
-    }
-    if(m==='doOpponentCardConfirm'&&this.s.pendingLeonZeroDiscard)return this._finishLeonZeroDiscard();
-    if(m==='chooseAICard'||m==='doOpponentCardConfirm'||m==='doSevenConfirm'||m==='doChanSevenKeep'||m==='doChanSevenDiscard'||m==='doSaikiThreeKeep'||m==='doSaikiThreeDiscard'||m==='doChanFourSwap'||m==='doChanFourDiscard'||m==='doFiveHeal'||m==='doFiveDamage'||m==='doSaikiSixConfirm'||m==='chanFiveReorder')return origDispatch.call(this,m,p);
-    if(m==='doPlay'){
-      let c=this.h.player[this.s.selectedCard];
-      if(!c||!this.legal(c))return this.state();
-      this.s.attackTarget=null;
-      // In 1v2, trophy white cards are single-target effects too.  Include
-      // them in target selection so burn/bleed/freeze/poison/bomb/disarm and
-      // Russian roulette use the currently selected opponent instead of
-      // silently falling back to opponent I.
-      let needsTarget=(!c.isItemCard||c.swapHand||c.trophyWhite)&&!c.isBlack;
-      if(needsTarget){
-        let alive1=this.s.ai.alive,alive2=this.s.ai2&&this.s.ai2.alive;
-        if(alive1&&alive2){
-          let roll=Math.floor(Math.random()*6)+1;
-          this.s.attackTarget=roll<=3?'ai':'ai2';
-          let targetName=this.s.attackTarget==='ai2'?this.s.ai2.name:this.s.ai.name;
-          this.emit('dualDice','骰子：'+roll+' → '+targetName,c,{roll,target:this.s.attackTarget})
-        }else{
-          this.s.attackTarget=alive1?'ai':'ai2'
-        }
-      }
-      return this.play1v2()
-    }
-    if(m==='doEndTurn'){
-      if(this.s.phase!=='PLAYER_PLAY')throw Error('当前不能结束回合');
-      if(this.h.player.length>this.s.handLimit){this.s.forcedDiscard=true;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','手牌超过'+this.s.handLimit+'张，请弃至不超过'+this.s.handLimit+'张');return this.state()}
-      return this._startAISequence1v2()
-    }
-    if(m==='doDefend'||m==='doSkipDefend'){
-      let target=this.s.attackTarget||(this.s.ai.alive?'ai':(this.s.ai2&&this.s.ai2.alive?'ai2':'ai'));
-      this.s.attackTarget=target;
-      return this.defend1v2(m==='doSkipDefend')
-    }
-    return origDispatch.call(this,m,p)
-  };
-
-  // Resume a black card that was already placed in the attack/defense zone.
-  // This keeps the card animation/order correct: play first, choose color,
-  // then resolve the item effect.
-  const dispatchBeforeBlackResume = Engine.prototype.dispatch;
-  Engine.prototype.dispatch = function (m, p = {}) {
-    if (m === 'chooseColor' && this.s && !this.s.is1v2 && this.s.pendingBlackPlay) {
-      const mode = this._resumePendingBlackCard(p.color);
-      return mode === 'defend' ? this.defend() : this.play();
-    }
-    return dispatchBeforeBlackResume.call(this, m, p);
-  };
-
   window.Engine=Engine;
-  const e=new Engine();window.furryBattle={dispatch:(m,p)=>e.dispatch(m,p),getState:()=>e.state()};
 })();

@@ -18,7 +18,8 @@
             const tokens = engine.s && engine.s.bombPlayTokens;
             if (!entity || !entity.alive || (entity.bomb || 0) <= 0 || !tokens || !tokens[owner]) return;
             if (--tokens[owner] <= 0) delete tokens[owner];
-            entity.bomb--;
+            const status = root.StatusService;
+            if (status) status.remove(entity, 'bomb', 1); else entity.bomb--;
             const target = owner === 'player' ? 'player' : owner === 'ai2' ? 'ai2' : 'ai';
             if (entity.bomb <= 0) {
                 this.apply(engine, entity, 5, false, { silent: true });

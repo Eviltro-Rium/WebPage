@@ -33,6 +33,7 @@ function createContext() {
 }
 
 const SOURCES = [
+  'js/combat/runtime.js',
   'js/characters/registry.js',
   'js/characters/ryan.js',
   'js/characters/leon.js',
@@ -55,7 +56,7 @@ const SOURCES = [
   'adventure/js/engine/shop.js',
   'adventure/js/engine/rewards.js',
   'adventure/js/engine/inventory.js',
-  'adventure/js/engine/combat_legacy.js'
+  'adventure/js/engine/combat_result.js'
 ];
 
 function loadSources(ctx) {
@@ -152,6 +153,40 @@ test('save and load persist through localStorage with room diffs', () => {
 
   AdventureSave.clear();
   assert.equal(AdventureSave.load(), null);
+});
+
+test('settlement save preserves cleared room and pending reward after refresh', () => {
+  const ctx = createContext();
+  loadSources(ctx);
+  const { AdventureEngine, AdventureSave, AdventurePhase } = ctx;
+
+  const map = makeMap(ctx);
+  const eng = new AdventureEngine();
+  eng.mapName = 'stage_01_castle_1';
+  eng.start(map, 'Ryan', { gold: 0, stage: 1, scene: 'castle' });
+  assert.equal(eng.move(0, 1), true);
+  const room = eng.currentRoom();
+  eng.s.combat = { enemy: 'CastleWolf', enemy2: null, kind: 'normal', is1v2: false };
+
+  eng.onCombatEnd('win');
+  assert.equal(eng.s.phase, AdventurePhase.COMBAT_SETTLE);
+  assert.equal(room.cleared, true);
+  assert.ok(eng.s.pendingCombatReward);
+
+  AdventureSave.save(eng);
+  const saved = AdventureSave.load();
+  assert.equal(saved.phase, AdventurePhase.COMBAT_SETTLE);
+  assert.equal(saved.rooms['0,1'].visited, true);
+  assert.equal(saved.rooms['0,1'].cleared, true);
+  assert.ok(saved.pendingCombatReward);
+
+  const restoredMap = makeMap(ctx);
+  const restored = new AdventureEngine();
+  restored.mapName = saved.mapName;
+  restored.restoreFromSave(saved, restoredMap);
+  assert.equal(restored.s.phase, AdventurePhase.COMBAT_SETTLE);
+  assert.equal(restored.currentRoom().cleared, true);
+  assert.ok(restored.s.pendingCombatReward);
 });
 
 test('normal room fixes monster name on first entry', () => {

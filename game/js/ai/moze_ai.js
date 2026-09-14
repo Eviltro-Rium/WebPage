@@ -1,4 +1,5 @@
 (function () {
+  const random = () => window.FurryGame && window.FurryGame.CombatRuntime ? window.FurryGame.CombatRuntime.random() : Math.random();
   AIRegistry.register({
     name: 'Moze',
 
@@ -67,7 +68,7 @@
 
       if (v === 5) {
         if (!helpers.targetHand.length) return { d: 0, skip: true, unblock: false };
-        const drawn = helpers.targetHand.splice(Math.floor(Math.random() * helpers.targetHand.length), 1)[0];
+        const drawn = helpers.targetHand.splice(Math.floor(random() * helpers.targetHand.length), 1)[0];
         eng.s.revealCards = [helpers.copy(drawn)];
         eng.emit('reveal', 'Moze 5牌抽取玩家手牌', drawn, { who: 'player', from: 'hand' });
         helpers.selfHand.push(drawn);

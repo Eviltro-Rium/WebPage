@@ -54,12 +54,15 @@ const adventureExpected = expand(['characters', 'ai', 'combat']).concat([
   'adventure/js/engine/shop.js',
   'adventure/js/engine/rewards.js',
   'adventure/js/engine/inventory.js',
-  'adventure/js/engine/combat_legacy.js',
+  'adventure/js/engine/combat_result.js',
   'adventure/js/battle/battle_engine.js',
+  'adventure/js/battle/adventure_battle_items.js',
   'adventure/js/save/adventure_save.js',
   'adventure/js/ui/card_render.js',
-  'adventure/js/battle/combat_bridge.js',
-  'adventure/js/ui/adventure_ui.js'
+  'adventure/js/battle/adventure_battle_session.js',
+  'adventure/js/battle/adventure_battle_controller.js',
+  'adventure/js/ui/adventure_ui.js',
+  'adventure/js/ui/adventure_ui_views.js'
 ]);
 
 function diff(label, actual, expected) {
@@ -113,6 +116,18 @@ function verifyUiComposition(label, actual) {
 }
 
 let code = 0;
+const removedAdventureFiles = [
+  path.join(gameRoot, 'adventure', 'js', 'engine', 'combat_legacy.js'),
+  path.join(gameRoot, 'adventure', 'js', 'battle', 'combat_bridge.js')
+];
+const staleAdventureFiles = removedAdventureFiles.filter(file => fs.existsSync(file));
+if (staleAdventureFiles.length) {
+  console.error('FAIL adventure legacy combat files still exist:');
+  staleAdventureFiles.forEach(file => console.error('  ' + path.relative(gameRoot, file)));
+  code = 1;
+} else {
+  console.log('OK adventure legacy combat files removed');
+}
 code |= diff(
   'index.html',
   scriptsFromHtml(path.join(gameRoot, 'index.html'), s => s),

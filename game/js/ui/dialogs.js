@@ -1,3 +1,19 @@
+const statusIconPath = name => {
+    const folder = name === 'blood_thirsty' ? 'ui_icons' : name === 'binding' ? 'items_icons' : 'buff_icons';
+    return window.gameAssetUrl ? window.gameAssetUrl(`icons/${folder}/${name}.png`) : `icons/${folder}/${name}.png`;
+};
+const statusRegistry = window.FurryGame && (window.FurryGame.StatusService || window.FurryGame.StatusRegistry);
+const statusIcon = def => {
+    if (!def || !def.icon) return '';
+    return window.gameAssetUrl ? window.gameAssetUrl(`icons/${def.icon}`) : `icons/${def.icon}`;
+};
+const snapshotStatuses = entity => {
+    if (!entity || !statusRegistry) return entity || {};
+    const snapshot = {};
+    statusRegistry.all.forEach(def => { snapshot[def.property] = entity[def.property]; });
+    return snapshot;
+};
+
 class DialogManager {
     constructor(apiActionFn) {
         this._apiAction = apiActionFn;
@@ -131,18 +147,16 @@ class DialogManager {
 
     collectPurifyChoices(ch, maxCount, onDone, extra) {
         extra = extra || {};
-        const selfSnap = {
-            burn: ch.burn || 0, bleed: ch.bleed || 0, poison: ch.poison || 0, blind: ch.blind || 0, bomb: ch.bomb || 0, frozen: !!ch.frozen, iceSeal: ch.iceSeal || 0,
-            guard: ch.guard || 0, fly: ch.fly || 0, crit: ch.crit || 0, lush: ch.lush || 0, parasite: ch.parasite || 0
-        };
+        const selfSnap = snapshotStatuses(ch);
         const opp = extra.opponent || null;
-        const oppSnap = opp ? {
-            burn: opp.burn || 0, bleed: opp.bleed || 0, poison: opp.poison || 0, blind: opp.blind || 0, bomb: opp.bomb || 0, frozen: !!opp.frozen, iceSeal: opp.iceSeal || 0,
-            guard: opp.guard || 0, fly: opp.fly || 0, crit: opp.crit || 0, lush: opp.lush || 0, parasite: opp.parasite || 0
-        } : null;
-        const hasAny = snap => snap && (snap.burn > 0 || snap.bleed > 0 || snap.poison > 0 || snap.blind > 0 || snap.bomb > 0 || snap.frozen || snap.iceSeal > 0 ||
-            snap.guard > 0 || snap.fly > 0 || snap.crit > 0 || snap.lush > 0 || snap.parasite > 0);
+        const oppSnap = opp ? snapshotStatuses(opp) : null;
+        const hasAny = snap => statusRegistry
+            ? statusRegistry.list(snap).length > 0
+            : snap && (snap.burn > 0 || snap.bleed > 0 || snap.poison > 0 || snap.blind > 0 || snap.bomb > 0 || snap.frozen || snap.iceSeal > 0 ||
+                snap.guard > 0 || snap.fly > 0 || snap.crit > 0 || snap.lush > 0 || snap.parasite > 0 ||
+                snap.diving || snap.hypothermia > 0 || snap.bloodthirst || snap.bind);
         const applyLocal = (snap, kind) => {
+            if (statusRegistry && statusRegistry.clear(snap, kind)) return;
             if (kind === 'burn') snap.burn = Math.max(0, snap.burn - 1);
             else if (kind === 'bleed') snap.bleed = Math.max(0, snap.bleed - 1);
             else if (kind === 'poison') snap.poison = Math.max(0, snap.poison - 1);
@@ -155,6 +169,10 @@ class DialogManager {
             else if (kind === 'crit') snap.crit = Math.max(0, snap.crit - 1);
             else if (kind === 'lush') snap.lush = Math.max(0, snap.lush - 1);
             else if (kind === 'parasite') snap.parasite = Math.max(0, snap.parasite - 1);
+            else if (kind === 'diving') snap.diving = false;
+            else if (kind === 'hypothermia') snap.hypothermia = 0;
+            else if (kind === 'bloodthirst') snap.bloodthirst = false;
+            else if (kind === 'bind') snap.bind = false;
         };
         const choices = [];
         const step = () => {
@@ -183,23 +201,36 @@ class DialogManager {
         const list = document.createElement('div'); list.className = 'choice-list';
         const addGroup = (snap, who, prefix) => {
             if (!snap) return;
-            const rows = [];
-            if (snap.burn > 0) rows.push(['burn', `灼烧 ×${snap.burn}`, 'burn']);
-            if (snap.frozen) rows.push(['freeze', '冷冻', 'freeze']);
-            if (snap.bleed > 0) rows.push(['bleed', `流血 ×${snap.bleed}`, 'bleed']);
-            if (snap.poison > 0) rows.push(['poison', `中毒 ×${snap.poison}`, 'poison']);
-            if (snap.blind > 0) rows.push(['blind', '致盲', 'blind']);
-            if (snap.iceSeal > 0) rows.push(['iceSeal', '冰封', 'ice_seal']);
-            if (snap.bomb > 0) rows.push(['bomb', `炸弹 ×${snap.bomb}`, 'poison']);
-            if (snap.guard > 0) rows.push(['guard', `守护 ×${snap.guard}`, 'guard']);
-            if (snap.fly > 0) rows.push(['fly', `飞翔 ×${snap.fly}`, 'guard']);
-            if (snap.crit > 0) rows.push(['crit', `暴击 ×${snap.crit}`, 'crit']);
-            if (snap.lush > 0) rows.push(['lush', `茂盛 ×${snap.lush}`, 'lush']);
-            if (snap.parasite > 0) rows.push(['parasite', `寄生 ×${snap.parasite}`, 'parasite']);
+            const rows = statusRegistry
+                ? statusRegistry.list(snap).map(def => [
+                    def.id,
+                    `${def.label}${def.stack && statusRegistry.amount(snap, def.id) > 1 ? ` ×${statusRegistry.amount(snap, def.id)}` : ''}`,
+                    def
+                ])
+                : (() => {
+                    const legacy = [];
+                    if (snap.burn > 0) legacy.push(['burn', `灼烧 ×${snap.burn}`, 'burn']);
+                    if (snap.frozen) legacy.push(['freeze', '冷冻', 'freeze']);
+                    if (snap.bleed > 0) legacy.push(['bleed', `流血 ×${snap.bleed}`, 'bleed']);
+                    if (snap.poison > 0) legacy.push(['poison', `中毒 ×${snap.poison}`, 'poison']);
+                    if (snap.blind > 0) legacy.push(['blind', '致盲', 'blind']);
+                    if (snap.iceSeal > 0) legacy.push(['iceSeal', '冰封', 'ice_seal']);
+                    if (snap.bomb > 0) legacy.push(['bomb', `炸弹 ×${snap.bomb}`, 'poison']);
+                    if (snap.guard > 0) legacy.push(['guard', `守护 ×${snap.guard}`, 'guard']);
+                    if (snap.fly > 0) legacy.push(['fly', `飞翔 ×${snap.fly}`, 'guard']);
+                    if (snap.crit > 0) legacy.push(['crit', `暴击 ×${snap.crit}`, 'crit']);
+                    if (snap.lush > 0) legacy.push(['lush', `茂盛 ×${snap.lush}`, 'lush']);
+                    if (snap.parasite > 0) legacy.push(['parasite', `寄生 ×${snap.parasite}`, 'parasite']);
+                    if (snap.diving) legacy.push(['diving', '潜水', 'diving']);
+                    if (snap.hypothermia > 0) legacy.push(['hypothermia', `失温 ×${snap.hypothermia}`, 'hypothermia']);
+                    if (snap.bloodthirst) legacy.push(['bloodthirst', '嗜血', 'blood_thirsty']);
+                    if (snap.bind) legacy.push(['bind', '捆缚', 'binding']);
+                    return legacy;
+                })();
             for (const [kind, label, icon] of rows) {
                 const btn = document.createElement('button');
                 btn.className = 'choice-row';
-                const iconPath = window.gameAssetUrl ? window.gameAssetUrl(`icons/buff_icons/${icon}.png`) : `icons/buff_icons/${icon}.png`;
+                const iconPath = statusRegistry ? statusIcon(icon) : statusIconPath(icon);
                 btn.innerHTML = `<img src="${iconPath}" alt=""><span>${prefix}${label}</span>`;
                 btn.addEventListener('click', async () => { overlay.remove(); await onChoose({ who, kind }); });
                 list.appendChild(btn);
@@ -224,10 +255,17 @@ class DialogManager {
         heading.textContent = title;
         box.appendChild(heading);
         const list = document.createElement('div'); list.className = 'choice-list';
-        const buffIcon = name => window.gameAssetUrl ? window.gameAssetUrl(`icons/buff_icons/${name}.png`) : `icons/buff_icons/${name}.png`;
+        const buffIcon = name => statusIconPath(name);
         for (const t of targets) {
             const btn = document.createElement('button'); btn.className = 'choice-row';
             const buffs = [];
+            if (statusRegistry) {
+                statusRegistry.list(t.ch).forEach(def => {
+                    const amount = statusRegistry.amount(t.ch, def.id);
+                    const suffix = def.stack && amount > 1 ? `×${amount}` : '';
+                    buffs.push(`<img src="${statusIcon(def)}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>${def.label}${suffix}</span>`);
+                });
+            } else {
             if (t.ch.burn > 0) buffs.push(`<img src="${buffIcon('burn')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>灼烧×${t.ch.burn}</span>`);
             if (t.ch.bleed > 0) buffs.push(`<img src="${buffIcon('bleed')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>流血×${t.ch.bleed}</span>`);
             if (t.ch.blind > 0) buffs.push(`<img src="${buffIcon('blind')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>致盲</span>`);
@@ -242,6 +280,12 @@ class DialogManager {
             if (t.ch.lush > 0) buffs.push(`<img src="${buffIcon('lush')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>茂盛×${t.ch.lush}</span>`);
             if (t.ch.diving) buffs.push(`<img src="${buffIcon('diving')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>潜水</span>`);
             if ((t.ch.parasite || 0) > 0) buffs.push(`<img src="${buffIcon('parasite')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>寄生×${t.ch.parasite}</span>`);
+            if (t.ch.bloodthirst) buffs.push(`<img src="${buffIcon('blood_thirsty')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>嗜血</span>`);
+            if (t.ch.bindMark) buffs.push(`<img src="${buffIcon('binding')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>捆缚</span>`);
+            for (const [key, label] of [['chaos_red', '混沌·红'], ['chaos_yellow', '混沌·黄'], ['chaos_blue', '混沌·蓝'], ['chaos_green', '混沌·绿']]) {
+                if (t.ch[key]) buffs.push(`<img src="${buffIcon(key)}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>${label}</span>`);
+            }
+            }
             const buffText = buffs.length ? buffs.join(' ') : '无buff';
             btn.innerHTML = `<span style="font-weight:700">${t.label}</span><span style="color:#aaa;font-size:0.85rem;margin-left:8px">${buffText}</span>`;
             btn.addEventListener('click', async () => { overlay.remove(); await onChoose(t.key); });
@@ -263,7 +307,11 @@ class DialogManager {
         list.className = 'choice-list';
         const addRows = (target, from, prefix) => {
             if (!target) return;
-            const rows = [];
+            const rows = statusRegistry
+                ? statusRegistry.list(target, def => def.polarity === 'buff' && def.transferable)
+                    .map(def => [def.id, `${def.label}${def.stack && statusRegistry.amount(target, def.id) > 1 ? ` ×${statusRegistry.amount(target, def.id)}` : ''}`, def])
+                : [];
+            if (!statusRegistry) {
             if (target.burn > 0) rows.push(['burn', `灼烧 ×${target.burn}`, 'burn']);
             if (target.bleed > 0) rows.push(['bleed', `流血 ×${target.bleed}`, 'bleed']);
             if ((target.poison || 0) > 0) rows.push(['poison', `中毒 ×${target.poison}`, 'poison']);
@@ -272,10 +320,11 @@ class DialogManager {
             if (target.guard > 0) rows.push(['guard', `守护 ×${target.guard}`, 'guard']);
             if ((target.fly || 0) > 0) rows.push(['fly', `飞翔 ×${target.fly}`, 'guard']);
             if ((target.crit || 0) > 0) rows.push(['crit', `暴击 ×${target.crit}`, 'crit']);
+            }
             for (const [kind, label, icon] of rows) {
                 const btn = document.createElement('button');
                 btn.className = 'choice-row';
-                const iconPath = window.gameAssetUrl ? window.gameAssetUrl(`icons/buff_icons/${icon}.png`) : `icons/buff_icons/${icon}.png`;
+                const iconPath = statusRegistry ? statusIcon(icon) : statusIconPath(icon);
                 btn.innerHTML = `<img src="${iconPath}" alt=""><span>${prefix}${label}</span>`;
                 btn.addEventListener('click', async () => { overlay.remove(); await onChoose({ from, kind }); });
                 list.appendChild(btn);
@@ -332,14 +381,21 @@ class DialogManager {
         const box=document.createElement('div'); box.className='dialog-box compact-choice-box';
         box.innerHTML=`<h3>飞翔躲避失败 · 仍将受到 ${damage} 点伤害</h3>`;
         const list=document.createElement('div'); list.className='choice-list';
-        const addBtn = (label, again) => {
+        const addBtn = (label, payload, iconPath) => {
             const btn=document.createElement('button'); btn.className='choice-row';
-            btn.innerHTML=`<span>${label}</span>`;
-            btn.addEventListener('click',async()=>{overlay.remove();await onChoose(again)});
+            const icon = iconPath ? `<img src="${iconPath}" alt="">` : '';
+            btn.innerHTML=`${icon}<span>${label}</span>`;
+            btn.addEventListener('click',async()=>{overlay.remove();await onChoose(payload)});
             list.appendChild(btn);
         };
-        if ((ch.fly || 0) > 0) addBtn(`继续使用 1 层飞翔躲避（剩余 ${ch.fly}）`, true);
-        addBtn('不再躲避，承受伤害', false);
+        const flyIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/fly.png') : 'icons/buff_icons/fly.png';
+        const guardIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/guard.png') : 'icons/buff_icons/guard.png';
+        if ((ch.fly || 0) > 0) addBtn(`继续使用 1 层飞翔躲避（剩余 ${ch.fly - 1}）`, { action: 'fly' }, flyIcon);
+        const guard = Math.min(ch.guard || 0, Math.max(0, damage));
+        for (let i = 1; i <= guard; i++) {
+            addBtn(`改用 ${i} 层守护（剩余伤害 ${Math.max(0, damage - i)}）`, { action: 'guard', stacks: i }, guardIcon);
+        }
+        addBtn('不再躲避，承受伤害', { action: 'none' });
         box.appendChild(list);overlay.appendChild(box);document.body.appendChild(overlay);
     }
 }

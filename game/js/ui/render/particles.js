@@ -5,6 +5,8 @@
         console.error('[UI particles] GameUI must be loaded first');
         return;
     }
+    const random = () => global.FurryGame && global.FurryGame.CombatRuntime
+        ? global.FurryGame.CombatRuntime.random() : Math.random();
     Object.assign(GameUI.prototype, {
         _initParticles() {
             const canvas = document.createElement('canvas');
@@ -13,8 +15,8 @@
             const ctx = canvas.getContext('2d');
             const particles = [];
             for (let i = 0; i < 15; i++) {
-                particles.push({ x: Math.random() * 1200, y: Math.random() * 800,
-                    size: 2 + Math.random() * 3, phase: Math.random() * 360, speed: 0.5 + Math.random() * 1.5 });
+                particles.push({ x: random() * 1200, y: random() * 800,
+                    size: 2 + random() * 3, phase: random() * 360, speed: 0.5 + random() * 1.5 });
             }
             function animate() {
                 canvas.width = window.innerWidth; canvas.height = window.innerHeight;

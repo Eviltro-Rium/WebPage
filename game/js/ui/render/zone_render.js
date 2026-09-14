@@ -6,6 +6,10 @@
         console.error('[UI zones] GameUI must be loaded first');
         return;
     }
+    const schedule = (fn, ms) => {
+        const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
+        return runtime ? runtime.schedule(null, fn, ms) : setTimeout(fn, ms);
+    };
     Object.assign(GameUI.prototype, {
         _renderDiscardTop() {
             const s = this.state;
@@ -25,31 +29,41 @@
             const atkContainer = document.getElementById('atk-cards');
             const defContainer = document.getElementById('def-cards');
 
-            const atkKey = s.atkCard ? JSON.stringify(s.atkCard) : 'empty';
-            const defKey = s.defCard ? JSON.stringify(s.defCard) : 'empty';
-            if (atkContainer.dataset.cardKey !== atkKey && s.atkCard) {
+            // A black card remains selected in the hand while its color is
+            // being chosen.  Hide any legacy/stale zone copy during that
+            // transient state; the confirmed play event is the only point at
+            // which the card should enter the table and animate.
+            const pendingAttack = s.pendingBlackPlay && s.pendingBlackPlay.mode === 'attack';
+            const pendingDefense = s.pendingBlackPlay && s.pendingBlackPlay.mode === 'defend';
+            const visibleAtkCard = pendingAttack ? null : s.atkCard;
+            const visibleDefCard = pendingDefense ? null : s.defCard;
+            if (pendingAttack) this._hideZoneDesc('atk-desc');
+            if (pendingDefense) this._hideZoneDesc('def-desc');
+            const atkKey = visibleAtkCard ? JSON.stringify(visibleAtkCard) : 'empty';
+            const defKey = visibleDefCard ? JSON.stringify(visibleDefCard) : 'empty';
+            if (atkContainer.dataset.cardKey !== atkKey && visibleAtkCard) {
                 atkContainer.innerHTML = '';
                 const [zw, zh] = currentZoneCardSize();
-                const cv = renderCard(s.atkCard, zw, zh, false, { isNpc: !!(s.atkOwner && s.atkOwner !== 'player') });
+                const cv = renderCard(visibleAtkCard, zw, zh, false, { isNpc: !!(s.atkOwner && s.atkOwner !== 'player') });
                 cv.classList.add('zone-card');
                 atkContainer.appendChild(cv);
                 atkContainer.dataset.cardKey = atkKey;
-                this._showCardSkillDesc('atk-desc', s.atkCard, s.atkOwner || 'player', false);
-            } else if (atkContainer.dataset.cardKey !== 'empty' && !s.atkCard) {
+                this._showCardSkillDesc('atk-desc', visibleAtkCard, s.atkOwner || 'player', false);
+            } else if (atkContainer.dataset.cardKey !== 'empty' && !visibleAtkCard) {
                 atkContainer.innerHTML = '<span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待出牌</span>';
                 atkContainer.dataset.cardKey = 'empty';
                 this._hideZoneDesc('atk-desc');
             }
 
-            if (defContainer.dataset.cardKey !== defKey && s.defCard) {
+            if (defContainer.dataset.cardKey !== defKey && visibleDefCard) {
                 defContainer.innerHTML = '';
                 const [zw, zh] = currentZoneCardSize();
-                const cv = renderCard(s.defCard, zw, zh, false, { isNpc: !!(s.defOwner && s.defOwner !== 'player') });
+                const cv = renderCard(visibleDefCard, zw, zh, false, { isNpc: !!(s.defOwner && s.defOwner !== 'player') });
                 cv.classList.add('zone-card');
                 defContainer.appendChild(cv);
                 defContainer.dataset.cardKey = defKey;
-                this._showCardSkillDesc('def-desc', s.defCard, s.defOwner || 'player', true);
-            } else if (defContainer.dataset.cardKey !== 'empty' && !s.defCard) {
+                this._showCardSkillDesc('def-desc', visibleDefCard, s.defOwner || 'player', true);
+            } else if (defContainer.dataset.cardKey !== 'empty' && !visibleDefCard) {
                 defContainer.innerHTML = '<span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待防御</span>';
                 defContainer.dataset.cardKey = 'empty';
                 this._hideZoneDesc('def-desc');
@@ -87,7 +101,7 @@
         showError(msg) {
             const el = document.getElementById('error-hint');
             if (!el) return;
-            el.textContent = msg; setTimeout(() => { el.textContent = ''; }, 2000);
+            el.textContent = msg; schedule(() => { el.textContent = ''; }, 2000);
         },
 
         _showGameOver() {

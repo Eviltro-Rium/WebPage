@@ -1,4 +1,7 @@
 (function(){
+  const runtime=window.FurryGame&&window.FurryGame.CombatRuntime;
+  const random=()=>runtime?runtime.random():Math.random();
+  const schedule=(fn,ms)=>runtime?runtime.schedule(null,fn,ms):setTimeout(fn,ms);
   const _origUpdate=GameUI.prototype.updateDisplay;
 
   GameUI.prototype._startGame1v2=async function(){
@@ -164,7 +167,11 @@
       }
       return this._apiAction('chooseGuard',{stacks:choice});
     });
-    else if(s.pendingDialog==='flyRetry')this.dialogs.showFlyRetryChoice(s.player,s.pendingGuardDamage,again=>this._apiAction('chooseFlyContinue',{again}));
+    else if(s.pendingDialog==='flyRetry')this.dialogs.showFlyRetryChoice(s.player,s.pendingGuardDamage,choice=>{
+      if(choice&&choice.action==='guard')return this._apiAction('chooseGuard',{stacks:choice.stacks});
+      if(choice&&choice.action==='none')return this._apiAction('chooseFlyContinue',{again:false,skipGuard:true});
+      return this._apiAction('chooseFlyContinue',{again:true});
+    });
     else if(s.pendingDialog==='trophyDisarm'){const pending=s.pendingTrophyDisarm||{};this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s,pending.targetKey),choice=>this._apiAction('chooseTrophyDisarm',choice),'缴械 · 选择要弃掉的手牌');}
     if(s.phase==='ATTACK_MOD_CHOICE')this._ensureAttackModChoicePrompt(s);
     else{this._attackModPromptOpen=false;this._attackModActive=false;}
@@ -264,7 +271,7 @@
       let count=0;
       const maxCount=12;
       const interval=setInterval(()=>{
-        dice.textContent=Math.floor(Math.random()*6)+1;
+        dice.textContent=Math.floor(random()*6)+1;
         dice.classList.add('lord-dice-spin');
         count++;
         if(count>=maxCount){
@@ -274,7 +281,7 @@
           const targetName=target==='ai2'?(this.state.ai2?this.state.ai2.name:'AI2'):(this.state.ai?this.state.ai.name:'AI1');
           result.textContent=roll+' → '+targetName;
           result.style.color=target==='ai2'?'#c084fc':'#f87171';
-          setTimeout(()=>{container.style.display='none';resolve()},1200);
+          schedule(()=>{container.style.display='none';resolve()},1200);
         }
       },80);
     });

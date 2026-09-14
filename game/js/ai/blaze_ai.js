@@ -1,4 +1,5 @@
 (function () {
+  const random = () => window.FurryGame && window.FurryGame.CombatRuntime ? window.FurryGame.CombatRuntime.random() : Math.random();
   AIRegistry.register({
     name: 'Blaze',
 
@@ -42,7 +43,7 @@
         return { d: 2 + (a.burn ? 1 : 0), skip: false, unblock: false };
       }
 
-      const drawn = helpers.targetHand.splice(Math.floor(Math.random() * helpers.targetHand.length), 1)[0];
+      const drawn = helpers.targetHand.splice(Math.floor(random() * helpers.targetHand.length), 1)[0];
       eng.s.revealCards = [helpers.copy(drawn)];
       eng.emit('reveal', 'Blaze 4牌抽取玩家手牌', drawn, { who: 'player', from: 'hand' });
 

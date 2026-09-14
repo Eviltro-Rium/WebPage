@@ -8,6 +8,9 @@
   const SHOP_ACCESSORY_PRICE = C.SHOP_ACCESSORY_PRICE || 15;
   const CONSUMABLE_SLOT_COUNT = C.CONSUMABLE_SLOT_COUNT || 6;
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
+  const random = () => window.FurryGame && window.FurryGame.CombatRuntime
+    ? window.FurryGame.CombatRuntime.random() : Math.random();
+  const statusRegistry = window.FurryGame && (window.FurryGame.StatusService || window.FurryGame.StatusRegistry);
   Object.assign(AdventureEngine.prototype, {
 
     hasAccessory(name) {
@@ -24,61 +27,73 @@
       if (n <= 0) return;
       if (target === this.s.player && this.s.player.name === 'Leon') return;
       const prev = target.burn || 0;
-      target.burn = Math.min(5, prev + n);
+      if (statusRegistry && statusRegistry.add) statusRegistry.add(target, 'burn', n);
+      else target.burn = Math.min(5, prev + n);
       this._log((target === this.s.player ? '玩家' : '敌方') + '灼烧+' + n + '（当前' + target.burn + '层）');
       this.emit('buff', '+' + n + '[灼烧]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'burn', stacks: target.burn });
     },
     bleed(target, n) {
       if (n <= 0) return;
       const prev = target.bleed || 0;
-      target.bleed = Math.min(3, prev + n);
+      if (statusRegistry && statusRegistry.add) statusRegistry.add(target, 'bleed', n);
+      else target.bleed = Math.min(3, prev + n);
       this._log((target === this.s.player ? '玩家' : '敌方') + '流血+' + n + '（当前' + target.bleed + '层）');
       this.emit('buff', '+' + n + '[流血]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'bleed', stacks: target.bleed });
     },
     poison(target, n) {
       if (n <= 0) return;
       const prev = target.poison || 0;
-      target.poison = Math.min(3, prev + n);
+      if (statusRegistry && statusRegistry.add) statusRegistry.add(target, 'poison', n);
+      else target.poison = Math.min(3, prev + n);
       this._log((target === this.s.player ? '玩家' : '敌方') + '中毒+' + n + '（当前' + target.poison + '层）');
       this.emit('buff', '+' + n + '[中毒]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'poison', stacks: target.poison });
     },
     freeze(target) {
       if (target === this.s.player && this.s.player.name === 'Serenity') return;
-      target.frozen = true;
+      if (statusRegistry && statusRegistry.set) statusRegistry.set(target, 'freeze', true);
+      else target.frozen = true;
       this._log((target === this.s.player ? '玩家' : '敌方') + '被冷冻');
       this.emit('buff', '[冷冻]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'freeze', stacks: 1 });
     },
     addGuard(target, n) {
       if (n <= 0) return;
-      target.guard = Math.min(5, (target.guard || 0) + n);
+      if (statusRegistry && statusRegistry.add) statusRegistry.add(target, 'guard', n);
+      else target.guard = Math.min(5, (target.guard || 0) + n);
       this._log((target === this.s.player ? '玩家' : '敌方') + '守护+' + n + '（当前' + target.guard + '层）');
       this.emit('buff', '+' + n + '[守护]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'guard', stacks: target.guard });
     },
     addCrit(n) {
       if (n <= 0) return;
-      this.s.player.crit = Math.min(3, (this.s.player.crit || 0) + n);
+      if (statusRegistry && statusRegistry.add) statusRegistry.add(this.s.player, 'crit', n);
+      else this.s.player.crit = Math.min(3, (this.s.player.crit || 0) + n);
       this._log('玩家暴击+' + n + '（当前' + this.s.player.crit + '层）');
       this.emit('buff', '+' + n + '[暴击]', null, { who: 'player', kind: 'crit', stacks: this.s.player.crit });
     },
     setChaos(color, on) {
       const key = 'chaos_' + color;
-      this.s.player[key] = !!on;
+      if (statusRegistry && statusRegistry.set) statusRegistry.set(this.s.player, key, !!on);
+      else this.s.player[key] = !!on;
       this._log('玩家混沌' + color + (on ? '开启' : '关闭'));
       this.emit('buff', (on ? '+' : '-') + '[混沌' + color + ']', null, { who: 'player', kind: 'chaos_' + color, stacks: on ? 1 : 0 });
     },
     clearDebuffs(target) {
+      if (statusRegistry) statusRegistry.clearGroup(target, 'debuff', 'all');
+      else {
       target.burn = 0;
       target.bleed = 0;
       target.poison = 0;
       target.blind = 0;
       target.iceSeal = 0;
       target.frozen = false;
+      }
       this._log((target === this.s.player ? '玩家' : '敌方') + 'debuff已清除');
       this.emit('buff', '清除debuff', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'clearDebuffs' });
     },
     _clearPlayerPositiveBuffs() {
       const p = this.s.player;
       if (!p) return;
+      if (statusRegistry) statusRegistry.clearGroup(p, 'buff', 'all');
+      else {
       p.guard = 0;
       p.fly = 0;
       p.crit = 0;
@@ -88,31 +103,36 @@
       p.chaos_yellow = false;
       p.chaos_blue = false;
       p.chaos_green = false;
+      }
       this._log('玩家正面buff已清除');
     },
     tickBuffs(target) {
       const who = target === this.s.player ? '玩家' : '敌方';
       if (target.burn > 0) {
         const dmg = target.burn;
-        target.burn--;
+        if (statusRegistry && statusRegistry.remove) statusRegistry.remove(target, 'burn', 1);
+        else target.burn--;
         target.hp = Math.max(0, target.hp - dmg);
         this._log(who + '灼烧结算：-' + dmg + '生命，灼烧层数-1');
         this.emit('buffSettle', '-' + dmg + '[灼烧]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
       }
       if (target.bleed > 0) {
         const dmg = target.bleed;
-        target.bleed--;
+        if (statusRegistry && statusRegistry.remove) statusRegistry.remove(target, 'bleed', 1);
+        else target.bleed--;
         target.hp = Math.max(0, target.hp - dmg);
         this._log(who + '流血结算：-' + dmg + '生命，流血层数-1');
         this.emit('bleedSettle', '-' + dmg + '[流血]，-1[流血层数]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
       }
       if (target.frozen) {
-        target.frozen = false;
+        if (statusRegistry && statusRegistry.clear) statusRegistry.clear(target, 'freeze', 'all');
+        else target.frozen = false;
         this._log(who + '冷冻解除');
         this.emit('buff', '-[冷冻]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'freeze', stacks: 0 });
       }
     },
     isDebuffed(target) {
+      if (statusRegistry) return statusRegistry.list(target, def => def.polarity === 'debuff').length > 0;
       return (target.burn || 0) > 0 || (target.bleed || 0) > 0 || (target.poison || 0) > 0 || (target.blind || 0) > 0 || (target.iceSeal || 0) > 0 || !!target.frozen;
     },
     playerBuffs() {
@@ -127,6 +147,11 @@
         guard: p.guard || 0,
         fly: p.fly || 0,
         crit: p.crit || 0,
+        lush: p.lush || 0,
+        parasite: p.parasite || 0,
+        diving: !!p.diving,
+        hypothermia: p.hypothermia || 0,
+        bindMark: !!p.bindMark,
         chaos_red: !!p.chaos_red,
         chaos_yellow: !!p.chaos_yellow,
         chaos_blue: !!p.chaos_blue,
@@ -279,6 +304,7 @@
     _listPurifyKinds(ch) {
       const kinds = [];
       if (!ch) return kinds;
+      if (statusRegistry) return statusRegistry.list(ch).map(def => def.id);
       if ((ch.burn || 0) > 0) kinds.push('burn');
       if ((ch.bleed || 0) > 0) kinds.push('bleed');
       if ((ch.poison || 0) > 0) kinds.push('poison');
@@ -291,6 +317,10 @@
       if ((ch.crit || 0) > 0) kinds.push('crit');
       if ((ch.lush || 0) > 0) kinds.push('lush');
       if ((ch.parasite || 0) > 0) kinds.push('parasite');
+      if (ch.diving) kinds.push('diving');
+      if ((ch.hypothermia || 0) > 0) kinds.push('hypothermia');
+      if (ch.bloodthirst) kinds.push('bloodthirst');
+      if (ch.bindMark) kinds.push('bind');
       return kinds;
     },
     _hasPurifyableDebuff(player, opponent) {
@@ -298,6 +328,7 @@
       return this._listPurifyKinds(opponent).length > 0;
     },
     _applyPurifyKind(player, kind) {
+      if (statusRegistry && statusRegistry.clear(player, kind)) return true;
       if (kind === 'burn' && (player.burn || 0) > 0) {
         player.burn = Math.max(0, player.burn - 1);
         return true;
@@ -344,6 +375,22 @@
       }
       if (kind === 'parasite' && (player.parasite || 0) > 0) {
         player.parasite--;
+        return true;
+      }
+      if (kind === 'diving' && player.diving) {
+        player.diving = false;
+        return true;
+      }
+      if (kind === 'hypothermia' && (player.hypothermia || 0) > 0) {
+        player.hypothermia = 0;
+        return true;
+      }
+      if (kind === 'bloodthirst' && player.bloodthirst) {
+        player.bloodthirst = false;
+        return true;
+      }
+      if (kind === 'bind' && player.bindMark) {
+        player.bindMark = false;
         return true;
       }
       return false;
@@ -398,12 +445,12 @@
       const trophyWhites = window.AdventureRegistry.itemsByKind('trophyWhite');
       const dropable = consumables.concat(trophyWhites);
       if (!dropable.length) return null;
-      return dropable[Math.floor(Math.random() * dropable.length)].name;
+      return dropable[Math.floor(random() * dropable.length)].name;
     },
     _rollCombatDrop() {
       const bonus = this.getAccessoryStatBonuses();
       const baseRate = 0.25 + (bonus.dropRateBonus || 0);
-      if (Math.random() >= baseRate) return null;
+      if (random() >= baseRate) return null;
       return this._rollItemDrop();
     }
   });

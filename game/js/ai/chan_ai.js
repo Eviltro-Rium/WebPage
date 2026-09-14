@@ -1,4 +1,5 @@
 (function () {
+  const random = () => window.FurryGame && window.FurryGame.CombatRuntime ? window.FurryGame.CombatRuntime.random() : Math.random();
   AIRegistry.register({
     name: 'Chan',
 
@@ -38,7 +39,7 @@
     specialEffect(eng, n, v, c, a, t, owner, helpers) {
       const pull = label => {
         if (!helpers.targetHand.length) return null;
-        const card = helpers.targetHand.splice(Math.floor(Math.random() * helpers.targetHand.length), 1)[0];
+        const card = helpers.targetHand.splice(Math.floor(random() * helpers.targetHand.length), 1)[0];
         eng.s.revealCards = [helpers.copy(card)];
         eng.emit('reveal', label, card, { who: 'player', from: 'hand' });
         return card;

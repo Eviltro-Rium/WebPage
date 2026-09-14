@@ -59,6 +59,19 @@ test('EngineModes exposes topology adapters for each battle mode', () => {
   const adventure = M.adapters.adventure.createPiles();
   assert.equal(adventure.player.owner, 'player');
   assert.ok(Array.isArray(adventure.player.deck));
+
+  const view = M.invariantView({
+    s: { isAdventure: true, is1v2: true, phase: 'PLAYER_PLAY', discardTopOwner: 'ai' },
+    h: { player: [], ai: [], ai2: [] },
+    piles: {
+      player: { deck: [], hand: [], discard: [] },
+      ai: { deck: [], hand: [], discard: [] },
+      ai2: { deck: [], hand: [], discard: [] }
+    }
+  });
+  assert.equal(view.topology, 'isolated');
+  assert.equal(view.participants.join(','), 'player,ai,ai2');
+  assert.equal(view.sharedNpcDeck, false);
 });
 
 test('DeckPort.shared draws from the shared deck and emits target', () => {

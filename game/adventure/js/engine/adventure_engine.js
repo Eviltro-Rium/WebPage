@@ -11,6 +11,8 @@
  *   - 商店：6 槽（3 道具 + 2 兽元 + 1 配饰）；道具/配饰刷新 2 金币，配饰 15 金币购买；兽元 2/万能 4 金币。
  */
 (function () {
+  const random = () => window.FurryGame && window.FurryGame.CombatRuntime
+    ? window.FurryGame.CombatRuntime.random() : Math.random();
   const SHOP_SLOT_COUNT = 6;
   const SHOP_REFRESH_COST = 2;
   const SHOP_ACCESSORY_PRICE = 15;
@@ -361,7 +363,7 @@
       const configured = (pool[scene] && (pool[scene][stage] || pool[scene]['*'])) || fallback;
       const list = this._availableNames(configured, stage, 'monster');
       if (!list.length) return fallback[0] || 'CastleWolf';
-      return list[Math.floor(Math.random() * list.length)];
+      return list[Math.floor(random() * list.length)];
     }
 
     _pickBossName(room) {
@@ -380,7 +382,7 @@
         : ((scenePool && (scenePool[stage] || scenePool['*'])) || fallback);
       const list = this._availableNames(configured, stage, 'boss');
       if (!list.length) return fallback[0] || 'CastleChameleon';
-      return list[Math.floor(Math.random() * list.length)] || 'CastleChameleon';
+      return list[Math.floor(random() * list.length)] || 'CastleChameleon';
     }
 
     /**
@@ -482,7 +484,7 @@
       }
       monster.init(this);
       this._initializeDiscardTop();
-      this._initCombat(monster, 'monster');
+      this._prepareCombatEncounter(monster, 'monster');
       this.emit('combatStart', '遭遇 ' + monster.name, { enemy: monster.name });
     }
 
@@ -519,7 +521,7 @@
       boss.init(this);
 
       this._initializeDiscardTop();
-      this._initCombat(boss, 'boss');
+      this._prepareCombatEncounter(boss, 'boss');
       this.emit('combatStart', 'Boss 出现：' + boss.name, { enemy: boss.name });
     }
 
@@ -547,7 +549,7 @@
       monster1.init(this);
       monster2.init(this);
       this._initializeDiscardTop();
-      this._initCombat(monster1, 'challenge', monster2);
+      this._prepareCombatEncounter(monster1, 'challenge', monster2);
       this.emit('combatStart', '挑战房：' + monster1.name + ' + ' + monster2.name, { enemy: monster1.name, enemy2: monster2.name, is1v2: true });
     }
 
@@ -631,7 +633,7 @@
 
     _rollChallengeBonusReward() {
       const total = 12;
-      let r = Math.random() * total;
+      let r = random() * total;
       if (r < 1) return { kind: 'gold', gold: 6 };
       r -= 1;
       if (r < 2) return { kind: 'gold', gold: 12 };
@@ -733,27 +735,37 @@
         playerPile,
         discardTop,
         discardTopOwner: this.s.discardTopOwner || null,
-        combat: this.s.combat ? {
-          enemy: this.s.combat.enemy.name,
-          enemyHp: this.s.combat.enemy.hp,
-          enemyMaxHp: this.s.combat.enemy.maxHp,
-          enemyGuard: this.s.combat.enemy.guard || 0,
-          enemy2: this.s.combat.enemy2 ? this.s.combat.enemy2.name : null,
-          enemy2Hp: this.s.combat.enemy2 ? this.s.combat.enemy2.hp : null,
-          enemy2MaxHp: this.s.combat.enemy2 ? this.s.combat.enemy2.maxHp : null,
-          is1v2: !!this.s.combat.is1v2,
-          kind: this.s.combat.kind,
-          round: this.s.combat.round,
-          selectedCard: this.s.combat.selectedCard,
-          atkCard: this.s.combat.atkCard ? ((this.s.combat.atkCard.magic || this.s.combat.atkCard.magicColor === 'purple') ? '紫魔' : ((this.s.combat.atkCard.greenMagic || this.s.combat.atkCard.magicColor === 'green') ? '绿魔' : (this.s.combat.atkCard.potion ? '药' : this.s.combat.atkCard.value))) : null,
-          defCard: this.s.combat.defCard ? ((this.s.combat.defCard.magic || this.s.combat.defCard.magicColor === 'purple') ? '紫魔' : ((this.s.combat.defCard.greenMagic || this.s.combat.defCard.magicColor === 'green') ? '绿魔' : (this.s.combat.defCard.potion ? '药' : this.s.combat.defCard.value))) : null,
-          pendingDamage: this.s.combat.pendingDamage || 0,
-          npcHand: this.s.combat.npcPile.hand.map(c => (c.magic || c.magicColor === 'purple') ? '紫魔' : ((c.greenMagic || c.magicColor === 'green') ? '绿魔' : (c.potion ? '药' : c.value))),
-          npcHandCount: this.s.combat.npcPile.hand.length,
-          npcDeckCount: this.s.combat.npcPile.deck.length,
-          npcDiscardCount: this.s.combat.npcPile.discard.length,
-          discardTop
-        } : null,
+        combat: this.s.combat ? (() => {
+          const combat = this.s.combat;
+          const enemy = combat.enemy || null;
+          const enemy2 = combat.enemy2 || null;
+          const hand = combat.npcPile && Array.isArray(combat.npcPile.hand) ? combat.npcPile.hand : [];
+          const deck = combat.npcPile && Array.isArray(combat.npcPile.deck) ? combat.npcPile.deck : [];
+          const discard = combat.npcPile && Array.isArray(combat.npcPile.discard) ? combat.npcPile.discard : [];
+          const cardLabel = c => !c ? null : ((c.magic || c.magicColor === 'purple') ? '紫魔' : ((c.greenMagic || c.magicColor === 'green') ? '绿魔' : (c.potion ? '药' : c.value)));
+          const nameOf = value => typeof value === 'string' ? value : value && value.name;
+          return {
+            enemy: nameOf(enemy),
+            enemyHp: enemy && typeof enemy === 'object' ? enemy.hp : null,
+            enemyMaxHp: enemy && typeof enemy === 'object' ? enemy.maxHp : null,
+            enemyGuard: enemy && typeof enemy === 'object' ? (enemy.guard || 0) : 0,
+            enemy2: nameOf(enemy2),
+            enemy2Hp: enemy2 && typeof enemy2 === 'object' ? enemy2.hp : null,
+            enemy2MaxHp: enemy2 && typeof enemy2 === 'object' ? enemy2.maxHp : null,
+            is1v2: !!combat.is1v2,
+            kind: combat.kind,
+            round: combat.round || 1,
+            selectedCard: combat.selectedCard == null ? null : combat.selectedCard,
+            atkCard: cardLabel(combat.atkCard),
+            defCard: cardLabel(combat.defCard),
+            pendingDamage: combat.pendingDamage || 0,
+            npcHand: hand.map(cardLabel),
+            npcHandCount: hand.length,
+            npcDeckCount: deck.length,
+            npcDiscardCount: discard.length,
+            discardTop
+          };
+        })() : null,
         beastReward: this.s.beastReward ? {
           scenario: this.s.beastReward.scenario,
           auto: this.s.beastReward.auto,

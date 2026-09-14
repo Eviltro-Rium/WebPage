@@ -2,6 +2,10 @@
  * GameUI class skeleton. Rendering mixins live in ui/render/*.js and are
  * assigned onto GameUI.prototype after this file loads. */
 const CARD_W = 70, CARD_H = 100;
+const uiSchedule = (fn, ms, owner = null, channel = 'ui') => {
+    const runtime = window.FurryGame && window.FurryGame.CombatRuntime;
+    return runtime ? runtime.schedule(owner, fn, ms, channel) : setTimeout(fn, ms);
+};
 const CARD_W_MOBILE = 52, CARD_H_MOBILE = 74;
 const CARD_ZONE_W_MOBILE = 52, CARD_ZONE_H_MOBILE = 74;
 function isMobileLayout() {
@@ -257,10 +261,11 @@ class AnimLayer {
 
     async drawCards(count, isPlayer, targetEl) {
         const srcEl = document.getElementById('deck-area') || document.querySelector('.top-bar') || document.body;
+        const timerOwner = {};
         const promises = Array.from({ length: Math.max(0, count) }, (_, i) => new Promise(resolve => {
             const spread = Math.min(24, 72 / Math.max(1, count - 1));
             const offsetX = (i - (count - 1) / 2) * spread;
-            setTimeout(() => resolve(this.flyCardBack(srcEl, targetEl, 440, isPlayer ? 58 : 44, offsetX, isPlayer ? 2 : -2)), i * 82);
+            uiSchedule(() => resolve(this.flyCardBack(srcEl, targetEl, 440, isPlayer ? 58 : 44, offsetX, isPlayer ? 2 : -2)), i * 82, timerOwner, `draw-card-${i}`);
         }));
         await Promise.all(promises);
     }
@@ -302,7 +307,7 @@ class AnimLayer {
             if (reducedMotion) {
                 if (landsOnTop) {
                     discardZone.classList.add('discard-impact');
-                    setTimeout(() => discardZone.classList.remove('discard-impact'), 180);
+                    uiSchedule(() => discardZone.classList.remove('discard-impact'), 180, this, 'discard-impact');
                 }
                 if (fromEl.classList && fromEl.classList.contains('card-canvas')) fromEl.remove();
                 resolve();
@@ -353,7 +358,7 @@ class AnimLayer {
                 if (landsOnTop) {
                     discardZone.classList.remove('discard-catching');
                     discardZone.classList.add('discard-impact');
-                    setTimeout(() => discardZone.classList.remove('discard-impact'), 260);
+                    uiSchedule(() => discardZone.classList.remove('discard-impact'), 260, this, 'discard-impact');
                 }
                 resolve();
             };

@@ -1,7 +1,7 @@
 /**
  * 冒险模式存档系统
  * 在安全的非战斗阶段将引擎状态序列化到 localStorage；
- * 战斗过程另由 combat_bridge 使用 sessionStorage 保存当前标签页快照。
+ * 战斗过程另由 adventure_battle_controller 使用 sessionStorage 保存当前标签页快照。
  * 因此页面刷新时优先恢复精确战斗状态，找不到战斗快照才回到安全快照。
  */
 (function () {

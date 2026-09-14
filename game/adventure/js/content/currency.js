@@ -10,6 +10,8 @@
  *   情况7：直接获得1个万能兽元
  */
 (function () {
+  const random = () => window.FurryGame && window.FurryGame.CombatRuntime
+    ? window.FurryGame.CombatRuntime.random() : Math.random();
   const BEAST_TYPES = ['ben', 'cao', 'shui', 'huo'];
   const UNIVERSAL_TYPE = 'wuneng';
   const ALL_BEAST_TYPES = ['ben', 'cao', 'shui', 'huo', 'wuneng'];
@@ -174,7 +176,7 @@
     }
 
     static rollBeastReward() {
-      const r = Math.floor(Math.random() * 8);
+      const r = Math.floor(random() * 8);
       if (r === 7) {
         return { scenario: r, auto: true, offered: { wuneng: 1 }, pickCount: 0 };
       }
@@ -191,8 +193,8 @@
 
     /** 奖励房开门：随机两个普通兽元（可相同，不含万能） */
     static rollDoorCost() {
-      const a = BEAST_TYPES[Math.floor(Math.random() * BEAST_TYPES.length)];
-      const b = BEAST_TYPES[Math.floor(Math.random() * BEAST_TYPES.length)];
+      const a = BEAST_TYPES[Math.floor(random() * BEAST_TYPES.length)];
+      const b = BEAST_TYPES[Math.floor(random() * BEAST_TYPES.length)];
       return [a, b];
     }
 

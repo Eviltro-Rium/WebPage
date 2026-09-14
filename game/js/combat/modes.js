@@ -77,6 +77,47 @@
         return (engine && engine.s && engine.s.handLimit) || 5;
     }
 
+    // The invariant checker must not infer pile topology from mode flags or
+    // reach into every engine implementation.  Each adapter exposes the
+    // physical card containers and the table-top ownership rules it owns.
+    function invariantView(adapter, engine) {
+        const state = stateOf(engine) || {};
+        const hands = (engine && engine.h) || {};
+        const piles = (engine && engine.piles) || null;
+        const participants = adapter.participants.slice();
+        if (adapter.dualPile) {
+            const npcPiles = participants
+                .filter(key => key !== 'player' && piles && piles[key])
+                .map(key => ({ key, pile: piles[key] }));
+            return {
+                mode: adapter.id,
+                topology: 'isolated',
+                participants,
+                playerPile: piles && piles.player || null,
+                npcPiles,
+                sharedNpcDeck: !!(piles && piles.ai && piles.ai2 && piles.ai.deck === piles.ai2.deck),
+                sharedNpcDiscard: !!(piles && piles.ai && piles.ai2 && piles.ai.discard === piles.ai2.discard),
+                tableTop: state.discardTop || null,
+                tableTopOwner: state.discardTopOwner || (engine && engine.tableTopOwner) || null,
+                roomEnded: state.phase === 'GAME_OVER' || state.phase === 'COMBAT_SETTLE'
+            };
+        }
+        return {
+            mode: adapter.id,
+            topology: 'shared',
+            participants,
+            deck: engine && engine.deck || [],
+            discard: engine && engine.discardBottom || [],
+            hands: participants.reduce((out, key) => {
+                out[key] = hands[key] || [];
+                return out;
+            }, {}),
+            tableTop: state.discardTop || null,
+            tableTopOwner: null,
+            roomEnded: state.phase === 'GAME_OVER'
+        };
+    }
+
     function adapter(spec) {
         const defaults = Object.freeze(Object.assign({
             is1v2: false,
@@ -105,6 +146,9 @@
             },
             enemyKeys(state) {
                 return this.targets(state).filter(key => key !== 'player');
+            },
+            invariantView(engine) {
+                return invariantView(this, engine);
             },
             targetFor(state, value, fallback = 'ai') {
                 const normalizedFallback = this.participants.includes(fallback) ? fallback : 'ai';
@@ -181,6 +225,10 @@
         targetFor,
         resolveAttackTarget,
         enemyKeys,
+        invariantView(value) {
+            const adapter = current(value);
+            return adapter.invariantView(value);
+        },
         handLimit,
         current,
         forEngine,

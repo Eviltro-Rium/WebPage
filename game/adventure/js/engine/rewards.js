@@ -7,6 +7,8 @@
   const SHOP_REFRESH_COST = C.SHOP_REFRESH_COST || 2;
   const SHOP_ACCESSORY_PRICE = C.SHOP_ACCESSORY_PRICE || 15;
   const CONSUMABLE_SLOT_COUNT = C.CONSUMABLE_SLOT_COUNT || 6;
+  const random = () => window.FurryGame && window.FurryGame.CombatRuntime
+    ? window.FurryGame.CombatRuntime.random() : Math.random();
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
   Object.assign(AdventureEngine.prototype, {
 
@@ -34,7 +36,7 @@
     _rollBasicCombatReward() {
       // 无×1，5–10金币各×1，道具×1权重3，道具×2权重2 → 合计 12
       const total = 12;
-      let r = Math.random() * total;
+      let r = random() * total;
       if (r < 1) return { kind: 'none' };
       r -= 1;
       for (let gold = 5; gold <= 10; gold++) {
@@ -346,7 +348,7 @@
         this.s.phase = Phase.MAP;
         return true;
       }
-      const r = Math.floor(Math.random() * 8);
+      const r = Math.floor(random() * 8);
       let offered;
       let scenario;
       if (r === 7) {

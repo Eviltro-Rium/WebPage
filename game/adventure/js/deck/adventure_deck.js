@@ -54,8 +54,10 @@
   );
 
   function shuffle(arr) {
+    const random = window.FurryGame && window.FurryGame.CombatRuntime
+      ? window.FurryGame.CombatRuntime.random : Math.random;
     for (let i = arr.length - 1; i; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;

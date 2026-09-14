@@ -1,4 +1,5 @@
 (function() {
+  const random = () => window.FurryGame && window.FurryGame.CombatRuntime ? window.FurryGame.CombatRuntime.random() : Math.random();
   const C = CharacterRegistry;
   C.register({
     name: 'Leon',
@@ -37,7 +38,7 @@
         burn(2);
         let oh = eng.h[owner === 'player' ? 'ai' : 'player'];
         if (oh && oh.length) {
-          let dropped = oh.splice(Math.floor(Math.random() * oh.length), 1)[0];
+          let dropped = oh.splice(Math.floor(random() * oh.length), 1)[0];
           eng.s.revealCards = [JSON.parse(JSON.stringify(dropped))];
           eng.emit('reveal', 'Leon 7牌弃掉目标手牌', dropped, { who: owner === 'player' ? 'ai' : 'player', from: 'hand' });
         }
@@ -48,7 +49,7 @@
         let oh = eng.h[owner === 'player' ? 'ai' : 'player'];
         if (oh) {
           let dc = Math.min(2, oh.length);
-          for (let i = 0; i < dc; i++) oh.splice(Math.floor(Math.random() * oh.length), 1);
+          for (let i = 0; i < dc; i++) oh.splice(Math.floor(random() * oh.length), 1);
         }
         hurt(a, 2);
       }

@@ -1,4 +1,5 @@
 (function () {
+  const random = () => window.FurryGame && window.FurryGame.CombatRuntime ? window.FurryGame.CombatRuntime.random() : Math.random();
   AIRegistry.register({
     name: 'Leon',
 
@@ -43,7 +44,7 @@
       if (v === 7) {
         helpers.burnTarget(2);
         if (helpers.targetHand.length) {
-          const index = Math.floor(Math.random() * helpers.targetHand.length);
+          const index = Math.floor(random() * helpers.targetHand.length);
           const dropped = helpers.targetHand.splice(index, 1)[0];
           eng.s.revealCards = [helpers.copy(dropped)];
           eng.emit('reveal', 'Leon 7牌弃掉目标手牌', dropped, { who: 'player', from: 'hand' });
@@ -57,7 +58,7 @@
         helpers.burnTarget(1);
         const count = Math.min(2, helpers.targetHand.length);
         for (let i = 0; i < count; i += 1) {
-          const dropped = helpers.targetHand.splice(Math.floor(Math.random() * helpers.targetHand.length), 1)[0];
+          const dropped = helpers.targetHand.splice(Math.floor(random() * helpers.targetHand.length), 1)[0];
           eng.discardWithEvent(dropped, 'player', { faceUp: true, desc: `Leon 0牌弃掉${eng.cardText(dropped)}` });
         }
         eng.hurt(a, 2);

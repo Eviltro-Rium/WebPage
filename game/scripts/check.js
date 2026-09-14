@@ -7,8 +7,9 @@
  * Default:
  *   - verifies both HTML script graphs and the split UI composition;
  *   - parses every game JavaScript file with Node's syntax checker;
- *   - runs the stable protocol/event/adapter/UI test set, including the
- *     player/ai/ai2 × normal/bleed/poison/bomb event matrix.
+ *   - runs the stable protocol/event/adapter/UI/runtime test set, including
+ *     the player/ai/ai2 × normal/bleed/poison/bomb event matrix and pile
+ *     conservation/ownership checks.
  *
  * `node game/scripts/check.js --all` additionally runs every test file. The
  * latter is intentionally opt-in because some legacy adventure tests rely on
@@ -77,7 +78,12 @@ const stableTests = [
   'turn-machine.test.js',
   'ai-strategy.test.js',
   'card-style.test.js',
-  'ui-feedback.test.js'
+  'ui-feedback.test.js',
+  'fly-guard.test.js',
+  'status-registry.test.js',
+  'card-effects.test.js',
+  'engine-modules.test.js',
+  'runtime-invariants.test.js'
 ].map(file => path.join(gameRoot, 'tests', file));
 const tests = allTests
   ? fs.readdirSync(path.join(gameRoot, 'tests'))

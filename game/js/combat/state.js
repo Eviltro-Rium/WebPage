@@ -70,13 +70,21 @@
         });
     }
 
-    function project(engine) {
-        if (!engine || !engine.s) return { phase: 'SELECT_MODE', deck: 0, turn: 1 };
-        const state = engine.s;
-        const hands = engine.h || {};
-        const deck = engine.deck || [];
-        const discard = engine.discardBottom || [];
-        Object.assign(state, {
+    function project(source, options = {}) {
+        // Projection is deliberately a pure serializer.  It must not call
+        // engine methods (some modes calculate legality by updating transient
+        // context) or write anything back to the live combat state.  Engines
+        // calculate mode-specific values first and pass them through options.
+        const engine = source && source.s && typeof source.s === 'object' ? source : null;
+        const state = engine ? engine.s : (source && source.state ? source.state : source);
+        if (!state || typeof state !== 'object') return { phase: 'SELECT_MODE', deck: 0, turn: 1 };
+        const hands = options.hands || (engine ? engine.h : source && source.h) || {};
+        const deck = options.deck || (engine ? engine.deck : source && source.deck) || [];
+        const discard = options.discard || (engine ? engine.discardBottom : source && source.discardBottom) || [];
+        const legalHand = Array.isArray(options.legalHand)
+            ? options.legalHand.slice()
+            : (Array.isArray(state.legalHand) ? state.legalHand.slice() : null);
+        const projected = Object.assign({}, clone(state), {
             deck: deck.length,
             discard: 1 + discard.length,
             discardBottomCount: discard.length,
@@ -85,11 +93,11 @@
             aiHand: state.revealAIHand ? clone(hands.ai || []) : null,
             ai2HandSize: (hands.ai2 || []).length,
             ai2Hand: state.revealAIHand ? clone(hands.ai2 || []) : null,
-            eventLogVersion: engine.ver || 0,
-            events: (engine.events || []).slice(),
-            legalHand: typeof engine._computeLegalHand === 'function' ? engine._computeLegalHand() : null
+            eventLogVersion: options.eventLogVersion != null ? options.eventLogVersion : (engine ? engine.ver || 0 : source && source.ver || 0),
+            events: (options.events || (engine ? engine.events : source && source.events) || []).slice(),
+            legalHand
         });
-        return clone(state);
+        return clone(projected);
     }
 
     function validate(state) {
