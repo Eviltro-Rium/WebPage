@@ -43,7 +43,9 @@
       if (!data || !data.s || !data.piles) throw new Error('战斗快照无效');
       this._adventureEngine = adventureEngine || null;
       this.testMode = !!data.testMode;
-      this.s = window.FurryGame.CombatState.create(clone(data.s));
+      const modeAdapter = window.FurryGame.EngineModes && window.FurryGame.EngineModes.adapters && window.FurryGame.EngineModes.adapters.adventure;
+      if (!modeAdapter) throw new Error('Adventure mode adapter must load before battle_engine.js');
+      this.s = modeAdapter.createState(clone(data.s));
       this.piles = clone(data.piles);
       this.h = clone(data.h) || { player: [], ai: [] };
       this.events = clone(data.events) || [];
@@ -111,8 +113,9 @@
       }
       if (!window.CharacterRegistry.get(opponentName)) throw new Error('未知冒险对手：' + opponentName);
 
-      // Build the ordinary 1v1 state once, then replace only its resource layer.
-      super.start(playerName, opponentName);
+      const modeAdapter = window.FurryGame.EngineModes && window.FurryGame.EngineModes.adapters && window.FurryGame.EngineModes.adapters.adventure;
+      if (!modeAdapter) throw new Error('Adventure mode adapter must load before battle_engine.js');
+
       clearTimeout(this.timer);
       this.pendingSettlement = null;
       this.events = [];
@@ -120,10 +123,24 @@
 
       const AD = window.AdventureDeck;
       const aiSpec = resolveNpcPileSpec(opponentName);
-      this.piles = {
+      // Adventure owns a different pile topology, so create the session
+      // directly through its adapter instead of bootstrapping a transient
+      // shared 1v1 session and replacing it afterward.
+      this.piles = modeAdapter.createPiles({
         player: normalizePile('player', config.playerPile, AD.makePlayerDeck(), 5),
         ai: normalizePile('ai', null, AD.makeNpcDeck({ whiteZeros: aiSpec.whiteZeros }), aiSpec.handLimit)
-      };
+      });
+
+      this.s = modeAdapter.createState({
+        phase: 'PLAYER_PLAY',
+        player: this.character(playerName),
+        ai: this.character(opponentName, true),
+        handLimit: this.piles.player.handLimit,
+        isAdventure: true,
+        is1v2: false,
+        isLord: false,
+        activeAttacker: 'player'
+      });
 
       this.h = {
         player: this.piles.player.hand,
@@ -238,16 +255,18 @@
       this.events = [];
       this.ver = 0;
 
+      const modeAdapter = window.FurryGame.EngineModes && window.FurryGame.EngineModes.adapters && window.FurryGame.EngineModes.adapters.adventure;
+      if (!modeAdapter) throw new Error('Adventure mode adapter must load before battle_engine.js');
       const AD = window.AdventureDeck;
       const aiSpec = resolveNpcPileSpec(opponent1Name);
       const ai2Spec = resolveNpcPileSpec(opponent2Name);
       const sharedNpcDeck = AD.makeNpcDeck({ whiteZeros: aiSpec.whiteZeros });
       const sharedNpcDiscard = [];
-      this.piles = {
+      this.piles = modeAdapter.createPiles({
         player: normalizePile('player', config.playerPile, AD.makePlayerDeck(), 5),
         ai: { deck: sharedNpcDeck, hand: [], discard: sharedNpcDiscard, handLimit: aiSpec.handLimit },
         ai2: { deck: sharedNpcDeck, hand: [], discard: sharedNpcDiscard, handLimit: ai2Spec.handLimit }
-      };
+      });
 
       this.h = {
         player: this.piles.player.hand,
@@ -268,7 +287,7 @@
         if (!this._sameCard(discard[discard.length - 1], top)) discard.push(clone(top));
       }
 
-      this.s = window.FurryGame.CombatState.create({
+      this.s = modeAdapter.createState({
         phase: 'PLAYER_PLAY', turn: 1, busy: false,
         selectedCard: -1, selectedCards: [], selectedAICard: -1,
         handLimit: this.piles.player.handLimit,

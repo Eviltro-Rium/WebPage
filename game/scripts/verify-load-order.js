@@ -78,6 +78,40 @@ function diff(label, actual, expected) {
   return 1;
 }
 
+function verifyUiComposition(label, actual) {
+  const required = [
+    'js/ui/ui_core.js',
+    'js/ui/render/particles.js',
+    'js/ui/render/home_screen.js',
+    'js/ui/render/combat_screen.js',
+    'js/ui/render/status_render.js',
+    'js/ui/render/hand_render.js',
+    'js/ui/render/adventure_bar.js',
+    'js/ui/render/zone_render.js',
+    'js/ui/feedback.js',
+    'js/ui/renderer.js',
+    'js/ui/events.js',
+    'js/ui/controls.js',
+    'js/ui/mode_1v2.js',
+    'js/ui/mode_lord.js'
+  ];
+  const stale = actual.includes('js/ui/ui.js');
+  const positions = required.map(file => actual.indexOf(file));
+  const missing = required.filter((file, index) => positions[index] < 0);
+  const outOfOrder = positions.some((position, index) =>
+    index > 0 && position <= positions[index - 1]
+  );
+  if (stale || missing.length || outOfOrder) {
+    console.error('FAIL', label, 'UI composition');
+    if (stale) console.error('  stale monolithic UI script is still loaded: js/ui/ui.js');
+    if (missing.length) console.error('  missing UI modules:', missing.join(', '));
+    if (outOfOrder) console.error('  ui_core.js must load before render/feedback/renderer/events/controls modules');
+    return 1;
+  }
+  console.log('OK', label, 'UI composition (split core/render/feedback/events/controls/modes)');
+  return 0;
+}
+
 let code = 0;
 code |= diff(
   'index.html',
@@ -92,5 +126,17 @@ code |= diff(
     return s;
   }),
   adventureExpected
+);
+code |= verifyUiComposition(
+  'index.html',
+  scriptsFromHtml(path.join(gameRoot, 'index.html'), s => s)
+);
+code |= verifyUiComposition(
+  'adventure/adventure.html',
+  scriptsFromHtml(path.join(gameRoot, 'adventure/adventure.html'), s => {
+    if (s.startsWith('../')) return s.slice(3);
+    if (s.startsWith('js/')) return 'adventure/' + s;
+    return s;
+  })
 );
 process.exit(code);

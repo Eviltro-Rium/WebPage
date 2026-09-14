@@ -110,6 +110,9 @@
     shared: SharedDeckPort,
     /** Adventure dual-pile engines override Engine draw/refill/discard instead. */
     usesSharedDeck(engine) {
+      const modes = root.EngineModes;
+      const adapter = modes && modes.forEngine ? modes.forEngine(engine) : null;
+      if (adapter) return !!adapter.sharedDeck;
       return !(engine && engine.s && engine.s.isAdventure && engine.piles);
     },
     for(engine) {

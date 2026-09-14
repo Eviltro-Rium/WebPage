@@ -445,9 +445,9 @@ class AnimLayer {
 
 class GameUI {
     // Screen builders and render mixins live in ui/render/*.js; event
-    // playback, controls and feedback live in ui_events.js / ui_controls.js /
-    // ui_renderer.js / ui_feedback.js (loaded after this file).  Keep GameUI
-    // here as state/bootstrap only.
+    // playback, controls and feedback live in events.js / controls.js /
+    // renderer.js / feedback.js (loaded after this file). Keep GameUI here as
+    // the shared state/bootstrap layer.
 
     constructor() {
         this._shakeTimer = null;

@@ -3,7 +3,7 @@
  *
  * This module owns presentation-only effects: target lane mapping, floating
  * text, hit flashes, screen shake and particles. Keeping these methods out of
- * ui.js makes new combat events easier to add without touching card rendering
+ * This makes new combat events easier to add without touching card rendering
  * or turn controls.
  */
 (function (global) {

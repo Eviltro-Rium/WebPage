@@ -41,6 +41,7 @@
         serenityHalfTarget: null,
         forceEndAITurn: false,
         activeAttacker: 'player',
+        modeId: null,
         is1v2: false,
         isLord: false,
         isAdventure: false,

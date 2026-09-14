@@ -3,11 +3,13 @@
 
   E.prototype.startLord=function(p,a1,a2){
     clearTimeout(this.timer);this.pendingSettlement=null;
-    const initial=window.FurryGame.CombatDeck.createStandard();
+    const modes=window.FurryGame.EngineModes;
+    const adapter=modes&&modes.adapters&&modes.adapters.lord;
+    const initial=adapter&&adapter.createPiles?adapter.createPiles():window.FurryGame.CombatDeck.createStandard();
     this.deck=initial.deck;this.discardBottom=initial.discardBottom;
     this.h={player:[],ai:[],ai2:[]};this.events=[];
     let top=initial.discardTop;
-    this.s=window.FurryGame.CombatState.create({phase:'PLAYER_PLAY',turn:1,busy:false,selectedCard:-1,selectedCards:[],selectedAICard:-1,
+    const stateFields={phase:'PLAYER_PLAY',turn:1,busy:false,selectedCard:-1,selectedCards:[],selectedAICard:-1,
       handLimit:7,forcedDiscard:false,hasPlayedThisTurn:false,hasPlayedBlackDefend:false,
       defenseSkipped:false,aiTurnStarted:false,aiHasPlayed:false,pendingAIBridge:null,
       pendingAIContinue:null,pendingDefenseDamage:0,pendingFiveChoice:false,fiveChoiceCard:null,
@@ -17,7 +19,8 @@
       player:this.character(p),ai:this.character(a1,true),ai2:Object.assign(this.character(a2,true),{name:'AI2 '+a2}),
       currentAITarget:0,attackTarget:null,eliminatedHandled:{ai:false,ai2:false},
       atkCard:null,atkOwner:null,defCard:null,defOwner:null,revealCards:[],diceRoll:null,
-      lordPlayerTargetIdx:0});
+      lordPlayerTargetIdx:0};
+    this.s=adapter&&adapter.createState?adapter.createState(stateFields):window.FurryGame.CombatState.create(stateFields);
     this.s.attackTarget='ai';
     this.draw('player',7);this.draw('ai',5);this.draw('ai2',5);
     let _hands=this.handCounts();this.silentDraws(function(){this.turnStart('player')});this.emitDrawDiff(_hands);return this.state()
@@ -277,7 +280,9 @@
   const origCheck=E.prototype.check;
   E.prototype.check=function(){
     if(!this.s||!this.s.isLord)return origCheck.call(this);
-    for(const k of ['player','ai','ai2']){
+    const adapter=this._adapter&&this._adapter();
+    const participants=adapter&&adapter.participants||['player','ai','ai2'];
+    for(const k of participants){
       if(this.s[k])this.s[k].alive=this.s[k].hp>0
     }
     if(!this.s.player.alive||(!this.s.ai.alive&&(!this.s.ai2||!this.s.ai2.alive))){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer)}

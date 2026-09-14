@@ -16,7 +16,10 @@ const context = vm.createContext({
 context.window = context;
 
 for (const relative of [
+  'js/combat/protocol.js',
   'js/combat/events.js',
+  'js/combat/state.js',
+  'js/combat/deck.js',
   'js/combat/piles.js',
   'js/combat/status.js',
   'js/combat/damage.js',
@@ -40,6 +43,22 @@ test('EngineModes exposes topology adapters for each battle mode', () => {
   assert.equal(M.resolveAttackTarget({ attackTarget: 'ai2', is1v2: true }), 'ai2');
   assert.equal(M.current({ isAdventure: true }).sharedDeck, false);
   assert.equal(M.current({}).sharedDeck, true);
+  const one = M.adapters['1v1'];
+  const dual = M.adapters['1v2'];
+  const oneState = one.createState({ player: { name: 'Player' }, ai: { name: 'Fox' } });
+  const dualState = dual.createState({ player: { name: 'Player' }, ai: { name: 'Fox' }, ai2: { name: 'Bear' } });
+  assert.equal(oneState.is1v2, false);
+  assert.equal(dualState.is1v2, true);
+  assert.equal(oneState.modeId, '1v1');
+  assert.equal(dualState.modeId, '1v2');
+  assert.equal(Array.from(one.participants).join(','), 'player,ai');
+  assert.equal(Array.from(dual.participants).join(','), 'player,ai,ai2');
+  assert.equal(one.createPiles().deck.length + 1, 101);
+  assert.equal(M.adapterFor({ s: { isAdventure: true, is1v2: true } }), 'adventure');
+  assert.equal(M.forEngine({ s: dualState }).id, '1v2');
+  const adventure = M.adapters.adventure.createPiles();
+  assert.equal(adventure.player.owner, 'player');
+  assert.ok(Array.isArray(adventure.player.deck));
 });
 
 test('DeckPort.shared draws from the shared deck and emits target', () => {
