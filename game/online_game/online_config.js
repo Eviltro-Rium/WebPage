@@ -3,6 +3,8 @@
  */
 (function (global) {
     if (!global.FURRY_SIGNAL_URL) {
-        global.FURRY_SIGNAL_URL = 'https://furry-trial-online-signal.g4dbwnb95s.workers.dev/online-signal';
+        // Production custom domain configured on the signaling Worker.
+        // The client converts this HTTP URL to WSS automatically for rooms.
+        global.FURRY_SIGNAL_URL = 'https://signal.riumfurry.com/online-signal';
     }
 })(window);

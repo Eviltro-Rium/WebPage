@@ -40,7 +40,12 @@
             if (signal) {
                 let savedSignal = '';
                 try { savedSignal = localStorage.getItem('furry-online-signal') || ''; } catch (_) {}
-                signal.value = savedSignal || this.defaultSignalUrl();
+                const configuredSignal = this.defaultSignalUrl();
+                // Migrate users from the temporary workers.dev endpoint to the
+                // production custom domain. Keep an explicitly configured
+                // staging endpoint intact.
+                const isLegacyWorker = /workers\.dev(?:\/|$)/i.test(savedSignal);
+                signal.value = !savedSignal || isLegacyWorker ? configuredSignal : savedSignal;
             }
             if (name) {
                 try { name.value = localStorage.getItem('furry-online-name') || ''; } catch (_) { name.value = ''; }
