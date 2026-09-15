@@ -156,10 +156,12 @@
       npcDeckEl.style.display=s.isAdventure?'':'none';
       npcDeckEl.textContent='怪物共享牌库: '+deckCount+' | 怪物弃牌库: '+discardCount;
     }
-    if(s.pendingDialog==='purify')this.dialogs.showPurifyChoice(s.player,picked=>{const kind=picked&&picked.kind?picked.kind:picked;this._apiAction('choosePurify',{kind})});
-    else if(s.pendingDialog==='superPurify'){const targets=[{key:'player',label:'自己',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+' (对手)',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+' (对手)',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseSuperPurifyTarget',{target}))}
-    else if(s.pendingDialog==='mozeSeven'){const targets=[{key:'player',label:'自己（清除负面）',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+'（清除正面）',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+'（清除正面）',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseMozeSeven',{choice:{target}}),'Moze 7牌 · 选择目标')}
-    else if(s.pendingDialog==='guard')this.dialogs.showGuardChoice(s.player,s.pendingGuardDamage,choice=>{
+    const canShowDecisionDialog=s.onlineCanAct!==false;
+    if(this.dialogs&&typeof this.dialogs.syncCombatDialog==='function')this.dialogs.syncCombatDialog(s.pendingDialog,canShowDecisionDialog,s.phase);
+    if(canShowDecisionDialog&&s.pendingDialog==='purify')this.dialogs.showPurifyChoice(s.player,picked=>{const kind=picked&&picked.kind?picked.kind:picked;this._apiAction('choosePurify',{kind})});
+    else if(canShowDecisionDialog&&s.pendingDialog==='superPurify'){const targets=[{key:'player',label:'自己',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+' (对手)',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+' (对手)',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseSuperPurifyTarget',{target}))}
+    else if(canShowDecisionDialog&&s.pendingDialog==='mozeSeven'){const targets=[{key:'player',label:'自己（清除负面）',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+'（清除正面）',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+'（清除正面）',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseMozeSeven',{choice:{target}}),'Moze 7牌 · 选择目标')}
+    else if(canShowDecisionDialog&&s.pendingDialog==='guard')this.dialogs.showGuardChoice(s.player,s.pendingGuardDamage,choice=>{
       if(choice&&typeof choice==='object'){
         if(choice.action==='fly')return this._apiAction('chooseFly');
         if(choice.action==='guard')return this._apiAction('chooseGuard',{stacks:choice.stacks});
@@ -167,12 +169,12 @@
       }
       return this._apiAction('chooseGuard',{stacks:choice});
     });
-    else if(s.pendingDialog==='flyRetry')this.dialogs.showFlyRetryChoice(s.player,s.pendingGuardDamage,choice=>{
+    else if(canShowDecisionDialog&&s.pendingDialog==='flyRetry')this.dialogs.showFlyRetryChoice(s.player,s.pendingGuardDamage,choice=>{
       if(choice&&choice.action==='guard')return this._apiAction('chooseGuard',{stacks:choice.stacks});
       if(choice&&choice.action==='none')return this._apiAction('chooseFlyContinue',{again:false,skipGuard:true});
       return this._apiAction('chooseFlyContinue',{again:true});
     });
-    else if(s.pendingDialog==='trophyDisarm'){const pending=s.pendingTrophyDisarm||{};this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s,pending.targetKey),choice=>this._apiAction('chooseTrophyDisarm',choice),'缴械 · 选择要弃掉的手牌');}
+    else if(canShowDecisionDialog&&s.pendingDialog==='trophyDisarm'){const pending=s.pendingTrophyDisarm||{};this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s,pending.targetKey),choice=>this._apiAction('chooseTrophyDisarm',choice),'缴械 · 选择要弃掉的手牌');}
     if(s.phase==='ATTACK_MOD_CHOICE')this._ensureAttackModChoicePrompt(s);
     else{this._attackModPromptOpen=false;this._attackModActive=false;}
     if(s.phase==='GAME_OVER')this._showGameOver();
@@ -185,7 +187,7 @@
     const hideTrailing=this._hideTrailingCount(options, hideWho||'ai');
     const s=this.state;if(!s)return;
     const revealFace=!!(s.revealAIHand||s.isAdventure);
-    const canSelect=s.phase==='OPPONENT_CARD_CHOICE'||(s.phase==='PLAYER_SEVEN_CHOICE'&&!s.chanFourSwapMode&&!s.chanSevenKeepMode)||(s.phase==='SAIKI_THREE_CHOICE'&&!s.saikiThreeDrawn);
+    const canSelect=s.onlineCanAct!==false&&(s.phase==='OPPONENT_CARD_CHOICE'||(s.phase==='PLAYER_SEVEN_CHOICE'&&!s.chanFourSwapMode&&!s.chanSevenKeepMode)||(s.phase==='SAIKI_THREE_CHOICE'&&!s.saikiThreeDrawn));
     const leonZeroDiscard=!!s.pendingLeonZeroDiscard;
     const selectedTarget=s.attackTarget||(s.ai.alive?'ai':'ai2');
     let leonZeroOffset=0;

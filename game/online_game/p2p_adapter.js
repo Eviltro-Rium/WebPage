@@ -1,9 +1,10 @@
 /* WebRTC transport for the online MVP.
  *
- * The signaling service only relays SDP/ICE and room messages.  Game state
- * travels through a single WebRTC data channel after the connection opens.
- * There is intentionally no TURN server in this first small-scale release;
- * the public STUN server improves direct-connect discovery where possible.
+ * The signaling service relays SDP/ICE and room messages.  Game state prefers
+ * a single WebRTC data channel after the connection opens, and falls back to
+ * the same room socket until direct P2P is available. There is intentionally
+ * no TURN server in this first small-scale release; the public STUN server
+ * improves direct-connect discovery where possible.
  */
 (function (global) {
     const STUN_CONFIG = Object.freeze({
@@ -84,13 +85,26 @@
                 try { payload = JSON.parse(event.data); } catch (_) { return; }
                 this._onSignal(payload);
             });
-            socket.addEventListener('close', event => { this.emit('close', event); });
+            socket.addEventListener('close', event => {
+                if (this.heartbeat) clearInterval(this.heartbeat);
+                this.heartbeat = null;
+                if (this.ws === socket) this.ws = null;
+                this.emit('close', event);
+            });
             socket.addEventListener('error', event => { this.emit('error', new Error('信令连接失败')); });
         }
 
         _sendSignal(payload) {
-            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) { this.queue.push(payload); return; }
-            try { this.ws.send(JSON.stringify(payload)); } catch (error) { this.emit('error', error); }
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                if (this.queue.length >= 64) {
+                    this.emit('error', new Error('信令发送队列已满'));
+                    return false;
+                }
+                this.queue.push(payload);
+                return true;
+            }
+            try { this.ws.send(JSON.stringify(payload)); return true; }
+            catch (error) { this.emit('error', error); return false; }
         }
 
         _flushSignalQueue() {
@@ -101,6 +115,9 @@
         _onSignal(message) {
             if (!message || typeof message.type !== 'string') return;
             if (message.type === 'helloAck') {
+                // The signaling Worker is authoritative for connection
+                // identity. Keep its id for relay self-echo filtering.
+                if (message.peerId) this.peerId = String(message.peerId).slice(0, 80);
                 this._flushSignalQueue();
                 this.emit('hello', message);
                 if (Array.isArray(message.players)) this.emit('roster', message.players);
@@ -237,7 +254,12 @@
                     this.transportMode = 'p2p';
                     this.emit('transportMode', 'p2p');
                 }
-                try { this.channel.send(JSON.stringify(payload)); return true; }
+                const encoded = JSON.stringify(payload);
+                if (Number(this.channel.bufferedAmount) > 262144) {
+                    this.emit('error', new Error('数据通道发送缓冲区已满'));
+                    return false;
+                }
+                try { this.channel.send(encoded); return true; }
                 catch (error) { this.emit('error', error); }
             }
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -245,11 +267,10 @@
                     this.transportMode = 'relay';
                     this.emit('transportMode', 'relay');
                 }
-                this._sendSignal({
+                return this._sendSignal({
                     type: 'roomMessage',
                     payload: { __onlineTransport: 1, data: payload }
                 });
-                return true;
             }
             return false;
         }

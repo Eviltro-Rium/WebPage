@@ -124,17 +124,21 @@
             this._renderAdventureItemBar(s);
             this._updateAdventureNpcLabels(s);
 
-            if (s.pendingDialog === 'purify') {
+            const canShowDecisionDialog = s.onlineCanAct !== false;
+            if (this.dialogs && typeof this.dialogs.syncCombatDialog === 'function') {
+                this.dialogs.syncCombatDialog(s.pendingDialog, canShowDecisionDialog, s.phase);
+            }
+            if (canShowDecisionDialog && s.pendingDialog === 'purify') {
                 this.dialogs.showPurifyChoice(s.player, picked => {
                     const kind = picked && picked.kind ? picked.kind : picked;
                     this._apiAction('choosePurify', { kind });
                 });
-            } else if (s.pendingDialog === 'superPurify') {
+            } else if (canShowDecisionDialog && s.pendingDialog === 'superPurify') {
                 const targets = [{ key: 'player', label: '自己', ch: s.player }];
                 if (s.ai && s.ai.alive) targets.push({ key: 'ai', label: s.ai.name + ' (对手)', ch: s.ai });
                 if (s.is1v2 && s.ai2 && s.ai2.alive) targets.push({ key: 'ai2', label: s.ai2.name + ' (对手)', ch: s.ai2 });
                 this.dialogs.showSuperPurifyChoice(targets, target => this._apiAction('chooseSuperPurifyTarget', { target }));
-            } else if (s.pendingDialog === 'guard') {
+            } else if (canShowDecisionDialog && s.pendingDialog === 'guard') {
                 this.dialogs.showGuardChoice(s.player, s.pendingGuardDamage, choice => {
                     if (choice && typeof choice === 'object') {
                         if (choice.action === 'fly') return this._apiAction('chooseFly');
@@ -143,23 +147,23 @@
                     }
                     return this._apiAction('chooseGuard', { stacks: choice });
                 });
-            } else if (s.pendingDialog === 'flyRetry') {
+            } else if (canShowDecisionDialog && s.pendingDialog === 'flyRetry') {
                 this.dialogs.showFlyRetryChoice(s.player, s.pendingGuardDamage, choice => {
                     if (choice && choice.action === 'guard') return this._apiAction('chooseGuard', { stacks: choice.stacks });
                     if (choice && choice.action === 'none') return this._apiAction('chooseFlyContinue', { again: false, skipGuard: true });
                     return this._apiAction('chooseFlyContinue', { again: true });
                 });
-            } else if (s.pendingDialog === 'purifyCrystal') {
+            } else if (canShowDecisionDialog && s.pendingDialog === 'purifyCrystal') {
                 const oppKey = s.is1v2 ? (s.attackTarget || 'ai') : 'ai';
                 const opponent = s[oppKey];
                 this.dialogs.showPurifyChoice(s.player, picked => {
                     this._apiAction('choosePurifyCrystal', { choice: picked });
              }, { opponent, allowOpponent: true });
-            } else if (s.pendingDialog === 'mozeSeven') {
+            } else if (canShowDecisionDialog && s.pendingDialog === 'mozeSeven') {
                 const targets = [{ key: 'player', label: '自己（清除负面）', ch: s.player }];
                 if (s.ai && s.ai.alive) targets.push({ key: 'ai', label: (s.ai.name || '对手') + '（清除正面）', ch: s.ai });
                 this.dialogs.showSuperPurifyChoice(targets, target => this._apiAction('chooseMozeSeven', { choice: { target } }), 'Moze 7牌 · 选择目标');
-            } else if (s.pendingDialog === 'trophyDisarm') {
+            } else if (canShowDecisionDialog && s.pendingDialog === 'trophyDisarm') {
                 const pending = s.pendingTrophyDisarm || {};
                 this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s, pending.targetKey), choice => this._apiAction('chooseTrophyDisarm', choice), '缴械 · 选择要弃掉的手牌');
             }

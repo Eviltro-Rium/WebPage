@@ -9,6 +9,24 @@
 (function (global) {
     const F = global.FurryGame || {};
     const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
+    const PROTOCOL_VERSION = 2;
+    const COMMANDS = new Set([
+        'selectCard', 'doPlay', 'doDefend', 'doSkipDefend', 'doEndTurn',
+        'doEnterDiscard', 'doCancelDiscard', 'doConfirmDiscard',
+        'doFiveHeal', 'doFiveDamage', 'doSaikiSixConfirm',
+        'resolveAttackModChoice', 'resolveCritChoice', 'chooseTarget',
+        'chooseColor', 'choosePurify', 'choosePurifyCrystal',
+        'chooseSuperPurifyTarget', 'chooseMozeSeven', 'chooseGuard',
+        'chooseFly', 'chooseFlyContinue', 'chooseTrophyDisarm',
+        'chooseAICard', 'doOpponentCardConfirm', 'doSevenConfirm',
+        'doChanSevenKeep', 'doChanSevenDiscard', 'doSaikiThreeKeep',
+        'doSaikiThreeDiscard', 'doChanFourSwap', 'doChanFourDiscard',
+        'doOttoFourConfirm', 'chanFiveReorder'
+    ]);
+    const makeMatchId = () => {
+        if (global.crypto && typeof global.crypto.randomUUID === 'function') return global.crypto.randomUUID();
+        return 'match-' + Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
+    };
 
     function swapKey(value) {
         return value === 'player' ? 'ai' : value === 'ai' ? 'player' : value;
@@ -62,6 +80,14 @@
             playerInfo = playerInfo || {};
             this.hostNickname = String(playerInfo.hostNickname || hostCharacter || '房主').trim().slice(0, 18) || '房主';
             this.guestNickname = String(playerInfo.guestNickname || guestCharacter || '玩家').trim().slice(0, 18) || '玩家';
+            this.matchId = makeMatchId();
+            this.protocolVersion = PROTOCOL_VERSION;
+            this.stateVersion = 0;
+            // Standalone adapter tests and local callers are already inside a
+            // battle. OnlineUI pauses this flag until the guest acknowledges
+            // the initial private snapshot.
+            this.started = true;
+            this._requestCache = new Map();
             this._installHooks();
             this.engine.start(hostCharacter, guestCharacter);
             this.hostEntity = this.engine.s.player;
@@ -72,11 +98,16 @@
             this.engine.s.activeAttacker = firstActor === 'guest' ? 'ai' : 'player';
             this.engine.s.phase = 'PLAYER_PLAY';
             this.engine.s.busy = false;
+            // Engine.start() initializes the local player. If the first-roll
+            // winner is the guest, run that side's opening status/passive once
+            // after the absolute actor has been chosen.
+            if (firstActor === 'guest') this.engine.turnStart('ai');
             if (Number.isInteger(firstRoll) && firstRoll >= 1 && firstRoll <= 12) {
                 this.engine.s.diceRoll = { sides: 12, value: firstRoll, desc: '先手判定' };
                 this.engine.emit('diceRoll', '先手判定：' + firstRoll, null, { kind: 'd12', sides: 12, value: firstRoll });
             }
             this.initialEvents = this._drainEvents();
+            this.stateVersion = 1;
         }
 
         _actorFor(entity) {
@@ -96,6 +127,7 @@
             };
             e.startAITurn = function () {
                 this.fillHands(true);
+                this.turnStart('ai');
                 this.s.phase = 'PLAYER_PLAY';
                 this.s.busy = false;
                 this.s.onlineActor = self._actorFor(this.s.ai);
@@ -104,6 +136,8 @@
                 this.s.pendingAIContinue = null;
                 this.s.atkCard = this.s.defCard = null;
                 this.s.atkOwner = this.s.defOwner = null;
+                this.s.selectedCard = -1;
+                this.s.selectedAICard = -1;
                 this.s.selectedCards = [];
                 return this.check();
             };
@@ -112,6 +146,8 @@
                 this.s.busy = false;
                 this.s.onlineActor = self._actorFor(this.s.ai);
                 this.s.activeAttacker = 'ai';
+                this.s.selectedCard = -1;
+                this.s.selectedAICard = -1;
                 return this.check();
             };
             e.aiDefend = function (attackCard, damage) {
@@ -121,6 +157,8 @@
                 this.s.activeAttacker = 'player';
                 this.s.pendingDefenseDamage = Math.max(0, Number(damage) || 0);
                 this.s.unblockDefend = false;
+                this.s.selectedCard = -1;
+                this.s.selectedAICard = -1;
                 return this.check();
             };
             e.continueAIAttack = function () {
@@ -134,6 +172,8 @@
                 this.s.atkCard = this.s.defCard = null;
                 this.s.atkOwner = this.s.defOwner = null;
                 this.s.revealCards = [];
+                this.s.selectedCard = -1;
+                this.s.selectedAICard = -1;
                 return this.check();
             };
             e.endAi = function () {
@@ -147,6 +187,8 @@
                 this.s.atkOwner = this.s.defOwner = null;
                 this.s.revealCards = [];
                 this.s.hasPlayedThisTurn = false;
+                this.s.selectedCard = -1;
+                this.s.selectedAICard = -1;
                 this.fillHands(false);
                 this.turnStart('player');
                 return this.check();
@@ -163,6 +205,113 @@
         _expectedActor() {
             if (!this.engine.s || this.engine.s.phase === 'GAME_OVER') return null;
             return this.engine.s.onlineActor || 'host';
+        }
+
+        setStarted(value) {
+            this.started = value !== false;
+            return this.project('host');
+        }
+
+        _cacheKey(actor, requestId) {
+            if (requestId === null || requestId === undefined || requestId === '') return null;
+            return String(actor) + ':' + String(requestId);
+        }
+
+        _rememberRequest(actor, requestId, outcome) {
+            const key = this._cacheKey(actor, requestId);
+            if (!key) return;
+            this._requestCache.set(key, clone(outcome));
+            // Keep the cache bounded. A request id is only useful during the
+            // current match; old entries must not become an unbounded memory
+            // sink in a long-lived browser tab.
+            while (this._requestCache.size > 256) {
+                const first = this._requestCache.keys().next().value;
+                this._requestCache.delete(first);
+            }
+        }
+
+        _cachedRequest(actor, requestId) {
+            const key = this._cacheKey(actor, requestId);
+            return key && this._requestCache.has(key) ? clone(this._requestCache.get(key)) : null;
+        }
+
+        _reject(actor, requestId, error) {
+            const viewer = actor === 'guest' ? 'guest' : 'host';
+            const outcome = { ok: false, error, state: this.project(viewer), matchId: this.matchId,
+                protocolVersion: this.protocolVersion, stateVersion: this.stateVersion };
+            this._rememberRequest(actor, requestId, outcome);
+            return outcome;
+        }
+
+        _validateCommand(actor, method, params = {}, meta = {}) {
+            const s = this.engine.s;
+            if (!COMMANDS.has(method)) return '该联机操作不被允许';
+            if (!['host', 'guest'].includes(actor)) return '无效的玩家身份';
+            if (meta.matchId && meta.matchId !== this.matchId) return '对战房间已切换，请刷新对局';
+            if (meta.expectedStateVersion != null
+                && Number(meta.expectedStateVersion) !== this.stateVersion) return '操作基于过期状态，请等待同步';
+            if (!this.started) return '对战尚未完成同步，请稍候';
+            if (!s || s.phase === 'GAME_OVER') return '本局已经结束';
+
+            const index = value => Number.isInteger(Number(value)) && Number(value) >= 0;
+            // Before a guest command is dispatched, the engine is still in
+            // the host orientation. Resolve the command's own/opponent hand
+            // against the requested actor; `_dispatchGuest()` performs the
+            // actual temporary swap afterwards.
+            const hand = this.engine.h && (actor === 'guest' ? this.engine.h.ai : this.engine.h.player) || [];
+            const aiHand = this.engine.h && (actor === 'guest' ? this.engine.h.player : this.engine.h.ai) || [];
+            const selected = Number(s.selectedCard);
+            const selectedAI = Number(s.selectedAICard);
+            if (method === 'selectCard') {
+                if (!index(params.index) || Number(params.index) >= hand.length) return '无效的手牌索引';
+                if (!['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_DISCARD', 'PLAYER_FIVE_CHOICE',
+                    'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE'].includes(s.phase)) return '当前阶段不能选择手牌';
+            }
+            if (method === 'doPlay' && (s.phase !== 'PLAYER_PLAY' || selected < 0 || selected >= hand.length)) return '请先选择可出的牌';
+            if (method === 'doDefend' && (s.phase !== 'PLAYER_DEFEND' || selected < 0 || selected >= hand.length)) return '请先选择防御牌';
+            if (method === 'doSkipDefend' && s.phase !== 'PLAYER_DEFEND') return '当前不是防御阶段';
+            if (method === 'doEndTurn' && s.phase !== 'PLAYER_PLAY') return '当前不能结束回合';
+            if (['doEnterDiscard', 'doCancelDiscard', 'doConfirmDiscard'].includes(method) && s.phase !== 'PLAYER_DISCARD') return '当前不是弃牌阶段';
+            if (['doFiveHeal', 'doFiveDamage'].includes(method) && (s.phase !== 'PLAYER_FIVE_CHOICE' || selected < 0 || selected >= hand.length)) return '当前不能处理 Ryan 5牌';
+            if (method === 'doSaikiSixConfirm' && (s.phase !== 'SAIKI_SIX_JUDGE' || selected < 0 || selected >= hand.length)) return '当前不能处理判定牌';
+            if (method === 'resolveAttackModChoice') {
+                if (s.phase !== 'ATTACK_MOD_CHOICE') return '当前没有攻击修正选择';
+                const bonus = Number(params.bonus || 0);
+                if (!Number.isInteger(bonus) || bonus < 0 || bonus > 10 || (params.unblock != null && typeof params.unblock !== 'boolean')) return '无效的攻击修正';
+            }
+            if (method === 'resolveCritChoice') {
+                if (s.phase !== 'CRIT_CHOICE') return '当前没有暴击选择';
+                if (typeof params.use !== 'boolean') return '无效的暴击选择';
+            }
+            if (method === 'chooseTarget') {
+                if (s.phase !== 'TARGET_CHOICE') return '当前没有目标选择';
+                if (![0, 1].includes(Number(params.target))) return '无效的攻击目标';
+            }
+            if (method === 'chooseColor') {
+                if (!s.needColorChoice || selected < 0 || selected >= hand.length) return '当前没有待指定颜色的牌';
+                if (!['RED', 'YELLOW', 'BLUE', 'GREEN'].includes(String(params.color || ''))) return '无效的颜色';
+            }
+            const purifyKinds = new Set(['burn', 'bleed', 'freeze', 'poison', 'blind', 'bomb', 'guard', 'fly', 'crit', 'lush', 'parasite', 'iceSeal', 'diving', 'hypothermia', 'bind', 'chaos_red', 'chaos_yellow', 'chaos_blue', 'chaos_green']);
+            if (method === 'choosePurify' && (s.pendingDialog !== 'purify' || !purifyKinds.has(String(params.kind || '')))) return '当前没有该净化选择';
+            if (method === 'choosePurifyCrystal' && s.pendingDialog !== 'purifyCrystal') return '当前没有水晶球净化选择';
+            if (method === 'chooseSuperPurifyTarget' && (s.pendingDialog !== 'superPurify' || !['player', 'ai', 'ai2'].includes(params.target) || !s[params.target] || !s[params.target].alive)) return '当前没有该超级净化目标';
+            if (method === 'chooseMozeSeven' && s.pendingDialog !== 'mozeSeven') return '当前没有 Moze 7牌选择';
+            if (['chooseGuard', 'chooseFly'].includes(method) && s.pendingDialog !== 'guard') return '当前没有防御选择';
+            if (method === 'chooseGuard' && (!Number.isInteger(Number(params.stacks)) || Number(params.stacks) < 0)) return '无效的守护层数';
+            if (method === 'chooseFlyContinue' && (s.pendingDialog !== 'flyRetry' || typeof params.again !== 'boolean')) return '当前没有飞翔重试选择';
+            if (method === 'chooseTrophyDisarm') {
+                if (s.pendingDialog !== 'trophyDisarm') return '当前没有缴械选择';
+                if (!s.pendingTrophyDisarm || params.target !== s.pendingTrophyDisarm.targetKey) return '无效的缴械目标';
+                const disarmHand = this.engine.h[params.target] || [];
+                if (!Number.isInteger(Number(params.index)) || Number(params.index) < 0 || Number(params.index) >= disarmHand.length) return '无效的缴械手牌';
+            }
+            if (['chooseAICard', 'doOpponentCardConfirm', 'doSevenConfirm'].includes(method) && s.phase !== 'OPPONENT_CARD_CHOICE') return '当前不能选择对手手牌';
+            if (method === 'chooseAICard' && (!index(params.index) || Number(params.index) >= aiHand.length)) return '无效的对手手牌索引';
+            if (['doChanSevenKeep', 'doChanSevenDiscard', 'doChanFourSwap', 'doChanFourDiscard', 'doOttoFourConfirm'].includes(method)
+                && s.phase !== 'PLAYER_SEVEN_CHOICE') return '当前不是角色选择阶段';
+            if (['doSaikiThreeKeep', 'doSaikiThreeDiscard'].includes(method) && s.phase !== 'SAIKI_THREE_CHOICE') return '当前不是 Saiki 选择阶段';
+            if (method === 'chanFiveReorder' && (s.phase !== 'CHAN_FIVE_REORDER' || !Array.isArray(s.chanFiveCards))) return '当前没有 Chan 5牌排序';
+            return null;
         }
 
         _drainEvents() {
@@ -223,11 +372,16 @@
             }
         }
 
-        dispatch(actor, method, params = {}) {
+        dispatch(actor, method, params = {}, meta = {}) {
+            const requestId = meta && typeof meta === 'object' ? meta.requestId : meta;
+            const cached = this._cachedRequest(actor, requestId);
+            if (cached) return cached;
             const expected = this._expectedActor();
             if (expected && actor !== expected) {
-                return { ok: false, error: '当前不是你的行动阶段', state: this.project(actor) };
+                return this._reject(actor, requestId, '当前不是你的行动阶段');
             }
+            const validationError = this._validateCommand(actor, method, params || {}, meta || {});
+            if (validationError) return this._reject(actor, requestId, validationError);
             let raw;
             let events = [];
             try {
@@ -245,10 +399,17 @@
             events = actor === 'guest' ? (this._lastGuestEvents || []) : this._drainEvents();
             this._lastGuestEvents = [];
             const state = this.project(actor);
+            this.stateVersion += 1;
+            state.stateVersion = this.stateVersion;
+            state.matchId = this.matchId;
+            state.protocolVersion = this.protocolVersion;
             const winner = state.phase === 'GAME_OVER'
                 ? (this.engine.s.player.alive ? 'host' : this.engine.s.ai.alive ? 'guest' : null)
                 : null;
-            return { ok: true, result: clone(raw), state, events, winner };
+            const outcome = { ok: true, result: clone(raw), state, events, winner,
+                matchId: this.matchId, protocolVersion: this.protocolVersion, stateVersion: this.stateVersion };
+            this._rememberRequest(actor, requestId, outcome);
+            return clone(outcome);
         }
 
         eventsForViewer(events, viewer, source = 'host') {
@@ -263,6 +424,9 @@
             state.isOnline = true;
             state.modeId = 'online-1v1';
             state.onlineActor = e.s.onlineActor || 'host';
+            state.matchId = this.matchId;
+            state.protocolVersion = this.protocolVersion;
+            state.stateVersion = this.stateVersion;
             state.onlineRole = viewer === 'guest' ? 'guest' : 'host';
             const viewerRole = viewer === 'guest' ? 'guest' : 'host';
             const opponentRole = viewerRole === 'host' ? 'guest' : 'host';
@@ -283,7 +447,10 @@
                 for (const key of ['activeAttacker', 'atkOwner', 'defOwner', 'attackTarget', 'discardTopOwner']) {
                     if (state[key] === 'player' || state[key] === 'ai') state[key] = swapKey(state[key]);
                 }
-                state.selectedAICard = -1;
+                // The guest's own selection is still meaningful after the
+                // participant projection. Only hide the opponent's transient
+                // selection from this view.
+                if (state.onlineActor !== 'guest') state.selectedAICard = -1;
                 // CombatState.project() calculated legalHand from the host's
                 // hand. Recalculate against the guest's private hand without
                 // mutating engine state so illegal cards stay visibly
@@ -292,6 +459,18 @@
                 state.legalHand = (e.h.ai || []).map(card => e.legal(card, defending));
             }
             state.onlineCanAct = state.onlineActor === viewer;
+            if (!this.started) state.onlineCanAct = false;
+            // Selection fields are transient UI state, not shared combat
+            // state.  Only the active player may see (or act on) the current
+            // selection; otherwise a host's selected card appears highlighted
+            // in the guest's hand (and vice versa), and stale card-choice
+            // actions can collide with the real actor's decision dialog.
+            if (!state.onlineCanAct) {
+                state.selectedCard = -1;
+                state.selectedCards = [];
+                state.selectedAICard = -1;
+            }
+            if (!(state.onlineCanAct && state.phase === 'CHAN_FIVE_REORDER')) state.chanFiveCards = null;
             state.onlineOpponentHandSize = state.aiHandSize;
             return state;
         }

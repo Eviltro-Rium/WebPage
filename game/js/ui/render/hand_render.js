@@ -18,6 +18,10 @@
             // legalHand is only a play/defend legality mask.  Do not apply a
             // stale mask while selecting cards for discard or a skill choice.
             const isPlayPhase = s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND';
+            // NPC hand focus is a separate, local hover/peek affordance.  If a
+            // player card is selected, never leave a stale NPC focus marker in
+            // place — otherwise the opponent hand looks selected as well.
+            if (s.selectedCard >= 0) this._npcHandFocusIndex = -1;
             const handKey = JSON.stringify([
                 s.phase,
                 s.selectedCard,
@@ -114,7 +118,7 @@
 
                 container.appendChild(cv);
             }
-            if (s.chanFiveCards && s.chanFiveCards.length > 0) {
+            if (s.chanFiveCards && s.chanFiveCards.length > 0 && s.onlineCanAct !== false) {
                 this.dialogs.showChanFiveDialog(s);
             }
         },
@@ -216,7 +220,12 @@
             for (let i = 0; i < handSize; i++) {
                 const card = revealMode ? s.aiHand[i] : null;
                 const focused = canPeekSkill && i === this._npcHandFocusIndex;
-                const cv = revealMode ? renderCard(card, 40, 58, focused, { isNpc: true }) : renderCardBack(40, 58);
+                // Do not pass NPC focus through the shared `selected` flag.
+                // That flag is reserved for the player's active card and its
+                // global `.selected` style made a stale NPC peek look like a
+                // second player selection.  Use a dedicated class instead.
+                const cv = revealMode ? renderCard(card, 40, 58, false, { isNpc: true }) : renderCardBack(40, 58);
+                if (focused) cv.classList.add('npc-card-focused');
                 if (revealMode && card) {
                     cv.dataset.cardId = cardId(card);
                     cv.dataset.cardMatch = cardMatchKey(card);

@@ -1362,6 +1362,16 @@ body {
     transform: translateY(-5px) scale(1.025);
     box-shadow: 0 0 0 2px rgba(248,250,252,0.92), 0 0 0 4px rgba(129,140,248,0.62), 0 10px 22px rgba(15,23,42,0.22);
 }
+/* NPC skill peek is intentionally distinct from the player's selected card.
+   Keeping it out of `.selected` prevents a player selection from appearing
+   on the opponent hand after a shared state refresh. */
+.card-canvas.npc-card-focused {
+    transform: translateY(-3px) scale(1.015);
+    outline: 2px solid rgba(167,139,250,0.82);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.34), 0 8px 18px rgba(15,23,42,0.24);
+    z-index: 1;
+}
 .card-canvas.disabled { opacity: 0.5; cursor: not-allowed; }
 .card-canvas.disabled:hover { transform: none; filter: none; box-shadow: 0 1px 2px rgba(15,23,42,0.24), 0 5px 14px rgba(15,23,42,0.18); }
 .card-canvas.card-playable {

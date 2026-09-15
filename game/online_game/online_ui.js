@@ -61,16 +61,25 @@
             const el = this.root.querySelector('#online-landing-status');
             if (el) { el.textContent = text || ''; el.className = 'online-status' + (kind ? ' ' + kind : ''); }
         }
-        connect(role) {
-            const nickname = (this.root.querySelector('#online-nickname') || {}).value || '';
+        connect(role, reconnect = {}) {
+            reconnect = reconnect || {};
+            const nickname = reconnect.nickname != null
+                ? reconnect.nickname
+                : (this.root.querySelector('#online-nickname') || {}).value || '';
             // The signaling endpoint is deployment configuration, not a player
             // setting. This prevents stale localStorage values from sending
             // players to an old Worker or an untrusted endpoint.
-            const signalUrl = this.defaultSignalUrl();
-            let code = ((this.root.querySelector('#online-room-code') || {}).value || '').trim().toUpperCase();
-            if (!nickname.trim()) { this.setLandingStatus('请先填写昵称', 'error'); return; }
-            if (role === 'host') code = randomCode();
-            if (!/^[A-Z0-9]{4}$/.test(code)) { this.setLandingStatus('房间码需要 4 位字母或数字', 'error'); return; }
+            const signalUrl = reconnect.signalUrl || this.defaultSignalUrl();
+            let code = reconnect.roomCode != null
+                ? String(reconnect.roomCode).trim().toUpperCase()
+                : ((this.root.querySelector('#online-room-code') || {}).value || '').trim().toUpperCase();
+            const report = (message, kind = 'error') => {
+                if (this.root.querySelector('#online-landing-status')) this.setLandingStatus(message, kind);
+                else this.setRoomStatus(message, kind);
+            };
+            if (!nickname.trim()) { report('请先填写昵称'); return; }
+            if (role === 'host' && !reconnect.roomCode) code = randomCode();
+            if (!/^[A-Z0-9]{4}$/.test(code)) { report('房间码需要 4 位字母或数字'); return; }
             try {
                 localStorage.setItem('furry-online-name', nickname.trim());
                 localStorage.removeItem('furry-online-signal');
@@ -101,6 +110,19 @@
                     : '直连已建立，可以开始对战');
                 this.renderRoom();
             });
+            this.peer.on('peerDisconnected', reason => {
+                const detail = reason ? `对手连接中断（${reason}），正在尝试信令中继` : '对手连接中断，正在尝试信令中继';
+                this.connectionState = '对手连接中断';
+                this.setRoomStatus(detail, 'error');
+                if (this.battleUI) this.battleUI.showError(detail);
+                else this.renderRoom();
+            });
+            this.peer.on('channelClose', () => {
+                if (!this.match) return;
+                this.connectionState = this.peer && this.peer.ws ? '信令中继连接中' : '连接已断开';
+                const detail = this.peer && this.peer.ws ? 'P2P 数据通道已关闭，已切换信令中继' : '数据通道已关闭，请重新连接';
+                if (this.battleUI) this.battleUI.showError(detail);
+            });
             this.peer.on('channelOpen', () => {
                 const relayed = this.peer && this.peer.transportMode === 'relay';
                 this.connectionState = relayed ? '信令中继已连接' : 'P2P 已连接';
@@ -109,7 +131,7 @@
                 this._flushPendingSync();
                 this.renderRoom();
             });
-            this.peer.on('roomMessage', payload => this._handleRoomMessage(payload));
+            this.peer.on('roomMessage', (payload, from) => this._handleRoomMessage(payload, from));
             this.peer.on('message', payload => this._handlePeerMessage(payload));
             this.peer.on('error', error => {
                 this.error = error && error.message ? error.message : '连接失败';
@@ -168,7 +190,9 @@
             this.root.querySelectorAll('[data-char]').forEach(button => button.addEventListener('click', () => { this.character = button.dataset.char; this.ready = false; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); }));
             this.root.querySelector('#online-ready').addEventListener('click', () => { if (!this.character) return; this.ready = !this.ready; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); });
             this.root.querySelector('#online-leave').addEventListener('click', () => { if (this.peer) this.peer.close(); this.peer = null; this.showLanding(); });
-            this.root.querySelector('#online-retry').addEventListener('click', () => this.connect(this.role));
+            this.root.querySelector('#online-retry').addEventListener('click', () => this.connect(this.role, {
+                nickname: this.nickname, roomCode: this.roomCode, signalUrl: this.signalUrl
+            }));
             const start = this.root.querySelector('#online-start-match'); if (start) start.addEventListener('click', () => this.startMatch());
             const copyButton = this.root.querySelector('#online-copy-code'); if (copyButton) copyButton.addEventListener('click', async () => { try { await navigator.clipboard.writeText(this.roomCode); copyButton.textContent = '已复制'; setTimeout(() => { copyButton.textContent = '复制'; }, 1200); } catch (_) { copyButton.textContent = this.roomCode; } });
         }
@@ -177,9 +201,14 @@
             this._ensureOwnPlayer();
             const player = { peerId: this.peer.peerId, role: this.role, nickname: this.nickname, character: this.character, ready: this.ready };
             this.peer.sendRoom({ type: 'lobbyUpdate', ...player });
-            if (this.peer.channel && this.peer.channel.readyState === 'open') this.peer.send({ kind: 'lobby', player });
         }
-        _handleRoomMessage(payload) { if (payload && payload.type === 'lobbyUpdate') { this._upsertPlayer(payload); this.renderRoom(); } }
+        _handleRoomMessage(payload, from) {
+            if (!payload || payload.type !== 'lobbyUpdate') return;
+            // The Worker stamps the sender. Ignore a client payload that tries
+            // to update another player's lobby record.
+            if (from && payload.peerId && payload.peerId !== from) return;
+            this._upsertPlayer(payload); this.renderRoom();
+        }
         startMatch() {
             if (this.role !== 'host' || !this.peer) return;
             const host = this.players.find(item => item.role === 'host') || this.ownPlayer;
@@ -194,6 +223,9 @@
                     hostNickname: host.nickname,
                     guestNickname: guest.nickname
                 });
+                // Pause both projections until the guest has mounted the same
+                // initial private snapshot and acknowledged it.
+                this.match.setStarted(false);
                 const events = this.match.initialEvents || [];
                 const hostState = this.match.project('host');
                 this.state = hostState;
@@ -208,9 +240,10 @@
                 this._mountSharedBattle(this.battleSession, hostState, events);
                 this._matchStartPayload = {
                     kind: 'matchStart',
+                    protocolVersion: this.match.protocolVersion,
+                    matchId: this.match.matchId,
                     roomCode: this.roomCode,
                     firstActor,
-                    hostState,
                     guestState: this.match.project('guest'),
                     events: this.match.eventsForViewer ? this.match.eventsForViewer(events, 'guest', 'host') : events
                 };
@@ -221,15 +254,36 @@
         }
         _handlePeerMessage(message) {
             if (!message || typeof message.kind !== 'string') return;
-            if (message.kind === 'lobby') { this._upsertPlayer(message.player); this.renderRoom(); return; }
+            if (message.kind === 'lobby') {
+                // Direct DataChannel payloads have no authenticated `from`.
+                // Accept them only when the peer id already belongs to the
+                // roster's opponent; authoritative lobby updates arrive via
+                // the Worker-stamped roomMessage path.
+                const opponent = this.opponentPlayer;
+                if (!opponent || !message.player || message.player.peerId !== opponent.peerId) return;
+                this._upsertPlayer(message.player); this.renderRoom(); return;
+            }
             if (message.kind === 'matchStartAck') {
                 if (this.role !== 'host') return;
+                if (!this.match || !this.battleSession || !this.match.matchId) return;
+                if (message.matchId !== this.match.matchId) return;
                 this._matchStartAcked = true;
                 this._matchStartPayload = null;
                 this._matchStartAttempts = 0;
                 if (this._matchStartRetryTimer) clearTimeout(this._matchStartRetryTimer);
                 this._matchStartRetryTimer = null;
                 if (this.pendingSync && this.pendingSync.kind === 'matchStart') this.pendingSync = null;
+                this.match.setStarted(true);
+                const hostReady = this.match.project('host');
+                const guestReady = this.match.project('guest');
+                this.state = hostReady;
+                if (this.battleSession) this.battleSession.state = clone(hostReady);
+                void this._queueSharedBattleResult({ ok: true, state: hostReady, events: [] }, true);
+                if (this.peer) this.peer.send({
+                    kind: 'matchReady', protocolVersion: this.match.protocolVersion,
+                    matchId: this.match.matchId, stateVersion: this.match.stateVersion,
+                    guestState: guestReady
+                });
                 return;
             }
             if (message.kind === 'matchStart') {
@@ -238,13 +292,19 @@
                 // Duplicate packets can arrive while the host retries; once
                 // mounted, acknowledge them without rebuilding the UI.
                 if (this.match && this.match.remote && this.battleSession) {
-                    if (this.peer) this.peer.send({ kind: 'matchStartAck' });
+                    if (this.peer) this.peer.send({ kind: 'matchStartAck', matchId: message.matchId || null });
                     return;
                 }
                 this.match = { remote: true };
                 const guestState = clone(message.guestState || message.state);
                 try {
+                    if (message.protocolVersion != null && Number(message.protocolVersion) !== 2) {
+                        throw new Error('协议版本不兼容，请刷新页面');
+                    }
                     if (!guestState) throw new Error('未收到对战初始状态');
+                    if (!message.matchId || !guestState.matchId || message.matchId !== guestState.matchId) {
+                        throw new Error('对战房间标识不一致');
+                    }
                     this.state = guestState;
                     this.battleSession = new global.OnlineGuestSession({
                         peer: this.peer,
@@ -252,7 +312,7 @@
                         onUnsolicitedState: result => this._queueSharedBattleResult(result)
                     });
                     this._mountSharedBattle(this.battleSession, guestState, message.events || []);
-                    if (this.peer) this.peer.send({ kind: 'matchStartAck' });
+                    if (this.peer) this.peer.send({ kind: 'matchStartAck', matchId: message.matchId || null });
                 } catch (error) {
                     this.match = null;
                     this.battleSession = null;
@@ -261,6 +321,25 @@
                     this.setRoomStatus('进入对战失败：' + this.error, 'error');
                     this.renderRoom();
                 }
+                return;
+            }
+            if (message.kind === 'matchReady') {
+                if (this.role !== 'guest' || !this.match || !this.match.remote || !this.battleSession) return;
+                if (message.protocolVersion != null && Number(message.protocolVersion) !== 2) return;
+                if (!message.matchId || !this.battleSession._matchId || message.matchId !== this.battleSession._matchId) return;
+                this.battleSession.receiveState({
+                    kind: 'state', protocolVersion: message.protocolVersion,
+                    matchId: message.matchId, stateVersion: message.stateVersion,
+                    guestState: message.guestState, events: []
+                });
+                return;
+            }
+            if (message.kind === 'matchStartFailed') {
+                if (message.matchId && this.battleSession && this.battleSession._matchId
+                    && message.matchId !== this.battleSession._matchId) return;
+                this.error = message.error || '对战初始同步失败';
+                if (this.match) this._resetToLobby(false);
+                else this.setRoomStatus(this.error, 'error');
                 return;
             }
             if (message.kind === 'state') {
@@ -379,7 +458,15 @@
             if (!payload || this._matchStartAcked || !this.peer) return;
             this._sendSync(payload);
             this._matchStartAttempts += 1;
-            if (this._matchStartAcked || this._matchStartAttempts >= 12) return;
+            if (this._matchStartAcked) return;
+            if (this._matchStartAttempts >= 12) {
+                const matchId = this.match && this.match.matchId;
+                if (this.peer) this.peer.send({ kind: 'matchStartFailed', matchId: matchId || null,
+                    error: '客机未确认初始状态，对战已取消' });
+                this.error = '客机未确认初始状态，对战已取消';
+                this._resetToLobby(false);
+                return;
+            }
             if (this._matchStartRetryTimer) clearTimeout(this._matchStartRetryTimer);
             this._matchStartRetryTimer = setTimeout(() => {
                 this._matchStartRetryTimer = null;

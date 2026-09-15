@@ -472,6 +472,7 @@ class GameUI {
         this._isPollingAI = false;
         this._isHandlingAction = false;
         this._isConsumingEvents = false;
+        this._consumedEventIds = new Set();
         this._lastAnimatedAIDefenseKey = null;
         this._animatedPlayerDraws = 0;
         this._npcHandFocusIndex = -1;
@@ -510,6 +511,7 @@ class GameUI {
         window._gameUI = this;
         this.state = state || null;
         this._prevState = null;
+        this._consumedEventIds = new Set();
         this.gameScreen = gameScreen || document.getElementById('game-screen');
         if (!this.gameScreen) throw new Error('战斗界面容器不存在');
         this._buildGameScreen();

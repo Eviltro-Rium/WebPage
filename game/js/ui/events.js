@@ -41,17 +41,18 @@ async _consumeEvents(events, options = {}) {
     if (events && events.length) this._skipStateDiffAnimations = true;
     const wasConsumingEvents = this._isConsumingEvents;
     this._isConsumingEvents = true;
-    let pending = [...(events || [])];
-    const consumedIds = new Set();
-    let batches = 0;
-    try {
-        while (pending.length && batches++ < 40) {
-            const batch = pending.filter((evt, index) => {
-                const key = Number.isFinite(Number(evt.id)) ? `id:${evt.id}` : `batch:${batches}:${index}`;
-                if (consumedIds.has(key)) return false;
-                consumedIds.add(key);
-                return true;
-            });
+        let pending = [...(events || [])];
+        const consumedIds = new Set();
+        let batches = 0;
+        try {
+            while (pending.length && batches++ < 40) {
+                const batch = pending.filter((evt, index) => {
+                    const key = Number.isFinite(Number(evt.id)) ? `id:${evt.id}` : `batch:${batches}:${index}`;
+                    if (consumedIds.has(key) || (Number.isFinite(Number(evt.id)) && this._consumedEventIds && this._consumedEventIds.has(key))) return false;
+                    consumedIds.add(key);
+                    if (Number.isFinite(Number(evt.id)) && this._consumedEventIds) this._consumedEventIds.add(key);
+                    return true;
+                });
             if (!batch.length) {
                 await this._ackEvents(pending);
                 break;

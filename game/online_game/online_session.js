@@ -3,6 +3,8 @@
 (function (global) {
     const Base = global.CombatSession || class {};
     const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
+    const PROTOCOL_VERSION = 2;
+    const REQUEST_TIMEOUT = 12000;
     const resultWithState = (outcome, state) => {
         const snapshot = clone(state || (outcome && outcome.state) || null) || {};
         return Object.assign({}, snapshot, outcome || {}, { state: snapshot });
@@ -16,6 +18,7 @@
             this.match = match || null;
             this.state = clone(state || (match && match.project('host')));
             this.onStateChange = typeof onStateChange === 'function' ? onStateChange : null;
+            this._requestId = 0;
         }
 
         getState() { return clone(this.state); }
@@ -27,8 +30,10 @@
                 : clone(outcome.events || []);
             this.peer.send({
                 kind: 'state',
+                protocolVersion: this.match.protocolVersion || PROTOCOL_VERSION,
+                matchId: this.match.matchId,
+                stateVersion: this.match.stateVersion,
                 requestId,
-                hostState: this.match.project('host'),
                 guestState: this.match.project('guest'),
                 events,
                 winner: outcome.winner || null
@@ -38,10 +43,11 @@
         dispatch(method, params = {}) {
             if (!this.match) return Promise.resolve(resultWithState({ ok: false, error: '联机战斗尚未开始' }, this.getState()));
             let outcome;
-            try { outcome = this.match.dispatch('host', method, params || {}); }
+            const requestId = ++this._requestId;
+            try { outcome = this.match.dispatch('host', method, params || {}, { requestId }); }
             catch (error) { return Promise.resolve(resultWithState({ ok: false, error: error.message || String(error) }, this.getState())); }
             if (outcome && outcome.state) this.state = clone(outcome.state);
-            if (outcome && outcome.ok) this._broadcast(outcome, null, 'host');
+            if (outcome && outcome.ok) this._broadcast(outcome, requestId, 'host');
             const result = resultWithState(outcome, this.state);
             if (this.onStateChange) this.onStateChange(result);
             return Promise.resolve(result);
@@ -49,8 +55,32 @@
 
         handleCommand(message) {
             if (!this.match || !message) return;
+            if (Number(message.protocolVersion) !== (this.match.protocolVersion || PROTOCOL_VERSION)) {
+                if (this.peer && typeof this.peer.send === 'function') this.peer.send({ kind: 'commandError', requestId: message.requestId || null,
+                    protocolVersion: this.match.protocolVersion || PROTOCOL_VERSION, matchId: this.match.matchId,
+                    stateVersion: this.match.stateVersion, error: '协议版本不兼容，请刷新页面', guestState: this.match.project('guest') });
+                return;
+            }
+            if (message.matchId !== this.match.matchId) {
+                if (this.peer && typeof this.peer.send === 'function') this.peer.send({ kind: 'commandError', requestId: message.requestId || null,
+                    protocolVersion: this.match.protocolVersion || PROTOCOL_VERSION, matchId: this.match.matchId,
+                    stateVersion: this.match.stateVersion, error: '对战房间标识不一致', guestState: this.match.project('guest') });
+                return;
+            }
+            if (message.requestId == null) {
+                if (this.peer && typeof this.peer.send === 'function') this.peer.send({ kind: 'commandError', requestId: null,
+                    protocolVersion: this.match.protocolVersion || PROTOCOL_VERSION, matchId: this.match.matchId,
+                    stateVersion: this.match.stateVersion, error: '缺少请求编号', guestState: this.match.project('guest') });
+                return;
+            }
             let outcome;
-            try { outcome = this.match.dispatch('guest', message.method, message.params || {}); }
+            try {
+                outcome = this.match.dispatch('guest', message.method, message.params || {}, {
+                    requestId: message.requestId,
+                    matchId: message.matchId,
+                    expectedStateVersion: message.expectedStateVersion
+                });
+            }
             catch (error) { outcome = { ok: false, error: error.message || String(error), state: this.getState() }; }
             if (outcome && outcome.ok) {
                 // match.dispatch('guest', ...) returns the guest projection;
@@ -61,8 +91,11 @@
                 this.peer.send({
                     kind: 'commandError',
                     requestId: message.requestId || null,
+                    protocolVersion: this.match.protocolVersion || PROTOCOL_VERSION,
+                    matchId: this.match.matchId,
+                    stateVersion: this.match.stateVersion,
                     error: outcome && outcome.error || '操作未执行',
-                    state: this.match.project('guest')
+                    guestState: this.match.project('guest')
                 });
             }
             // Errors are projected for the guest on the wire, but the host UI
@@ -91,6 +124,9 @@
             this._requestId = 0;
             this._pending = new Map();
             this._onUnsolicitedState = typeof onUnsolicitedState === 'function' ? onUnsolicitedState : null;
+            this._protocolVersion = Number(this.state && this.state.protocolVersion) || PROTOCOL_VERSION;
+            this._matchId = this.state && this.state.matchId || null;
+            this._stateVersion = Number(this.state && this.state.stateVersion) || 0;
         }
 
         getState() { return clone(this.state); }
@@ -99,8 +135,17 @@
             if (!this.peer || typeof this.peer.send !== 'function') return Promise.resolve(resultWithState({ ok: false, error: 'P2P 尚未连接' }, this.getState()));
             const requestId = ++this._requestId;
             return new Promise(resolve => {
-                this._pending.set(requestId, resolve);
-                if (!this.peer.send({ kind: 'command', requestId, method, params: params || {} })) {
+                const timer = setTimeout(() => {
+                    const pending = this._pending.get(requestId);
+                    if (!pending) return;
+                    this._pending.delete(requestId);
+                    pending.resolve(resultWithState({ ok: false, error: '主机响应超时，请检查连接后重试' }, this.getState()));
+                }, REQUEST_TIMEOUT);
+                this._pending.set(requestId, { resolve, timer });
+                if (!this.peer.send({ kind: 'command', protocolVersion: this._protocolVersion,
+                    matchId: this._matchId, expectedStateVersion: this._stateVersion,
+                    requestId, method, params: params || {} })) {
+                    clearTimeout(timer);
                     this._pending.delete(requestId);
                     resolve(resultWithState({ ok: false, error: 'P2P 尚未连接' }, this.getState()));
                 }
@@ -109,10 +154,11 @@
 
         _resolve(requestId, result) {
             const id = Number(requestId);
-            const resolve = Number.isFinite(id) ? this._pending.get(id) : null;
-            if (resolve) {
+            const pending = Number.isFinite(id) ? this._pending.get(id) : null;
+            if (pending) {
                 this._pending.delete(id);
-                resolve(result);
+                clearTimeout(pending.timer);
+                pending.resolve(result);
                 return true;
             }
             return false;
@@ -120,16 +166,34 @@
 
         receiveState(message) {
             if (!message) return;
+            if (Number(message.protocolVersion) !== this._protocolVersion) return;
+            if (this._matchId && message.matchId !== this._matchId) return;
+            const incomingVersion = Number(message.stateVersion != null
+                ? message.stateVersion
+                : (message.guestState && message.guestState.stateVersion));
+            if (Number.isFinite(incomingVersion) && incomingVersion < this._stateVersion) return;
             const state = message.guestState || message.state;
-            if (state) this.state = clone(state);
+            if (state) {
+                this.state = clone(state);
+                this._stateVersion = Number.isFinite(incomingVersion) ? incomingVersion : this._stateVersion;
+                this._matchId = this.state.matchId || this._matchId;
+            }
             const result = resultWithState({ ok: true, events: clone(message.events || []), winner: message.winner || null }, this.state);
             if (!this._resolve(message.requestId, result) && this._onUnsolicitedState) this._onUnsolicitedState(result);
             return result;
         }
 
         receiveCommandError(message) {
-            const result = resultWithState({ ok: false, error: message && message.error || '操作未执行', events: [] }, clone(message && message.state || this.state));
-            if (result.state) this.state = clone(result.state);
+            if (!message || Number(message.protocolVersion) !== this._protocolVersion) return;
+            if (this._matchId && message.matchId !== this._matchId) return;
+            const errorVersion = Number(message && message.stateVersion);
+            if (Number.isFinite(errorVersion) && errorVersion < this._stateVersion) return;
+            const errorState = message && (message.guestState || message.state) || this.state;
+            const result = resultWithState({ ok: false, error: message && message.error || '操作未执行', events: [] }, clone(errorState));
+            if (result.state) {
+                this.state = clone(message && (message.guestState || message.state) || result.state);
+                if (Number.isFinite(errorVersion)) this._stateVersion = errorVersion;
+            }
             if (!this._resolve(message && message.requestId, result) && this._onUnsolicitedState) this._onUnsolicitedState(result);
             return result;
         }
@@ -137,7 +201,10 @@
         acknowledgeEvents() { return Promise.resolve({ ok: true }); }
 
         close() {
-            for (const resolve of this._pending.values()) resolve({ ok: false, error: '联机连接已关闭', state: this.getState() });
+            for (const pending of this._pending.values()) {
+                clearTimeout(pending.timer);
+                pending.resolve({ ok: false, error: '联机连接已关闭', state: this.getState() });
+            }
             this._pending.clear();
         }
     }

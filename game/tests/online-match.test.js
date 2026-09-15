@@ -48,6 +48,16 @@ test('online host adapter preserves private hands and swaps guest commands', () 
   assert.equal(host.aiHand, null);
   assert.equal(guest.aiHand, null);
 
+  // A selection belongs only to the active viewer.  It must never appear as
+  // a highlighted card in the other player's hand after projection.
+  match.dispatch('host', 'selectCard', { index: 0 });
+  host = match.project('host');
+  guest = match.project('guest');
+  assert.equal(host.selectedCard, 0);
+  assert.equal(guest.selectedCard, -1);
+  assert.equal(guest.selectedCards.length, 0);
+  assert.equal(guest.selectedAICard, -1);
+
   let outcome = match.dispatch('host', 'doEndTurn');
   assert.equal(outcome.ok, true);
   assert.equal(outcome.state.onlineActor, 'guest');
@@ -68,6 +78,81 @@ test('online host adapter preserves private hands and swaps guest commands', () 
     assert.equal(outcome.ok, true);
     assert.equal(outcome.state.onlineActor, 'guest');
   }
+});
+
+test('online protocol keeps guest packets private and rejects stale or duplicate commands', () => {
+  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'guest');
+  const Card = context.FurryGame.Card;
+  const sent = [];
+  const session = new context.OnlineHostSession({
+    match,
+    peer: { send(message) { sent.push(message); return true; } },
+    state: match.project('host')
+  });
+
+  match.engine.s.ai.burn = 2;
+  const beforeBurn = match.engine.s.ai.burn;
+  const invalid = match.dispatch('guest', 'choosePurify', { kind: 'burn' }, {
+    requestId: 'invalid-1', matchId: match.matchId, expectedStateVersion: match.stateVersion
+  });
+  assert.equal(invalid.ok, false);
+  assert.equal(match.engine.s.ai.burn, beforeBurn);
+
+  // A host update contains only the recipient's private projection. The
+  // previous implementation sent both hostState and guestState.
+  session.handleCommand({ requestId: 'select-1', protocolVersion: 2, matchId: match.matchId,
+    expectedStateVersion: match.stateVersion, method: 'selectCard', params: { index: 0 } });
+  const packet = sent.at(-1);
+  assert.equal(packet.hostState, undefined);
+  assert.ok(packet.guestState);
+
+  const first = match.dispatch('guest', 'selectCard', { index: 0 }, {
+    requestId: 'dedupe-1', matchId: match.matchId, expectedStateVersion: match.stateVersion
+  });
+  const second = match.dispatch('guest', 'selectCard', { index: 0 }, {
+    requestId: 'dedupe-1', matchId: match.matchId, expectedStateVersion: match.stateVersion
+  });
+  assert.equal(first.ok, true);
+  assert.deepEqual(second, first);
+
+  const guest = new context.OnlineGuestSession({ state: match.project('guest'), peer: { send() { return true; } } });
+  const latest = match.project('guest');
+  guest.receiveState({ guestState: Object.assign({}, latest, { stateVersion: latest.stateVersion + 2 }),
+    stateVersion: latest.stateVersion + 2, matchId: match.matchId, protocolVersion: 2 });
+  const currentVersion = guest.getState().stateVersion;
+  guest.receiveState({ guestState: Object.assign({}, latest, { stateVersion: currentVersion - 1 }),
+    stateVersion: currentVersion - 1, matchId: match.matchId, protocolVersion: 2 });
+  assert.equal(guest.getState().stateVersion, currentVersion);
+  assert.equal(Card.number('RED', 1).value, 1);
+});
+
+test('online match blocks commands until the initial snapshot is acknowledged', () => {
+  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host');
+  match.setStarted(false);
+  assert.equal(match.project('host').onlineCanAct, false);
+  assert.equal(match.project('guest').onlineCanAct, false);
+  const blocked = match.dispatch('host', 'selectCard', { index: 0 }, {
+    requestId: 'before-ready', matchId: match.matchId, expectedStateVersion: match.stateVersion
+  });
+  assert.equal(blocked.ok, false);
+  assert.equal(match.engine.s.selectedCard, -1);
+  match.setStarted(true);
+  assert.equal(match.project('host').onlineCanAct, true);
+  assert.equal(match.dispatch('host', 'selectCard', { index: 0 }, {
+    requestId: 'after-ready', matchId: match.matchId, expectedStateVersion: match.stateVersion
+  }).ok, true);
+});
+
+test('online transitions apply the guest turn-start status exactly once', () => {
+  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host');
+  match.engine.s.ai.hp = 50;
+  match.engine.s.ai.poison = 3;
+  match.dispatch('host', 'selectCard', { index: 0 });
+  const outcome = match.dispatch('host', 'doEndTurn');
+  assert.equal(outcome.ok, true);
+  // Ryan's turn-start passive heals 1 after poison resolves: 50 - 3 + 1.
+  assert.equal(match.engine.s.ai.hp, 48);
+  assert.equal(outcome.state.onlineActor, 'guest');
 });
 
 test('online guest defense settles against the real attacker', () => {
@@ -108,6 +193,7 @@ test('online sessions expose the shared GameUI result shape', async () => {
   const pending = guestSession.dispatch('selectCard', { index: 0 });
   const received = guestSession.receiveState({
     requestId: 1,
+    protocolVersion: 2, matchId: match.matchId, stateVersion: match.stateVersion,
     guestState: match.project('guest'),
     events: []
   });

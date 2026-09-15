@@ -20,12 +20,50 @@ class DialogManager {
         this._chanFiveOrder = null;
     }
 
+    /**
+     * Keep combat decision dialogs owned by the active local player.  Online
+     * snapshots are broadcast to both clients, so a pending dialog must not be
+     * mounted by the non-actor; stale overlays are also removed when the
+     * decision changes, preventing a purify overlay from blocking card-choice
+     * skills (or vice versa).
+     */
+    syncCombatDialog(pendingDialog, canAct = true, phase = null) {
+        const desired = {
+            purify: 'purify-choice-dialog',
+            purifyCrystal: 'purify-choice-dialog',
+            superPurify: 'super-purify-choice-dialog',
+            mozeSeven: 'super-purify-choice-dialog',
+            guard: 'guard-choice-dialog',
+            flyRetry: 'fly-retry-choice-dialog',
+            trophyDisarm: 'opponent-card-choice-dialog'
+        }[pendingDialog] || (phase === 'CHAN_FIVE_REORDER' ? 'chan-five-dialog' : null);
+        const ids = [
+            'purify-choice-dialog', 'super-purify-choice-dialog',
+            'guard-choice-dialog', 'fly-retry-choice-dialog',
+            'opponent-card-choice-dialog', 'chan-five-dialog'
+        ];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            // The opponent-card dialog is also used by non-combat item flows
+            // (for example chameleon paint). Keep those overlays while the
+            // same flow is active, but replace one immediately when a combat
+            // trophy-disarm decision needs the shared dialog id.
+            if (id === 'opponent-card-choice-dialog' && el.dataset.combatDecision !== 'trophyDisarm') {
+                if (desired === id) el.remove();
+                return;
+            }
+            if (!canAct || id !== desired) el.remove();
+        });
+    }
+
     showChanFiveDialog(s) {
         if (document.getElementById('chan-five-dialog')) return;
         this._chanFiveOrder = s.chanFiveCards.map((_, i) => i);
         const overlay = document.createElement('div');
         overlay.id = 'chan-five-dialog';
         overlay.className = 'dialog-overlay';
+        overlay.dataset.combatDecision = 'chanFive';
         const box = document.createElement('div');
         box.className = 'dialog-box';
         box.innerHTML = `<h3>5 排序牌库顶</h3><div style="font-size:0.75rem;color:#dbeafe;margin-bottom:10px">拖拽排序，最左=最顶</div>`;
@@ -110,6 +148,7 @@ class DialogManager {
         const overlay = document.createElement('div');
         overlay.id = 'opponent-card-choice-dialog';
         overlay.className = 'dialog-overlay';
+        if (String(title).startsWith('缴械')) overlay.dataset.combatDecision = 'trophyDisarm';
         const box = document.createElement('div');
         box.className = 'dialog-box';
         box.innerHTML = `<h3>${title}</h3>`;
@@ -196,6 +235,7 @@ class DialogManager {
         if (document.getElementById('purify-choice-dialog')) return;
         const overlay = document.createElement('div');
         overlay.id = 'purify-choice-dialog'; overlay.className = 'dialog-overlay';
+        overlay.dataset.combatDecision = 'purify';
         const box = document.createElement('div'); box.className = 'dialog-box compact-choice-box';
         box.innerHTML = '<h3>净化 · 选择移除一层 Buff</h3>';
         const list = document.createElement('div'); list.className = 'choice-list';
@@ -250,6 +290,7 @@ class DialogManager {
         if (document.getElementById('super-purify-choice-dialog')) return;
         const overlay = document.createElement('div');
         overlay.id = 'super-purify-choice-dialog'; overlay.className = 'dialog-overlay';
+        overlay.dataset.combatDecision = 'superPurify';
         const box = document.createElement('div'); box.className = 'dialog-box compact-choice-box';
         const heading = document.createElement('h3');
         heading.textContent = title;
@@ -348,7 +389,7 @@ class DialogManager {
 
     showGuardOrFlyChoice(ch, damage, onChoose) {
         if (document.getElementById('guard-choice-dialog')) return;
-        const overlay=document.createElement('div'); overlay.id='guard-choice-dialog'; overlay.className='dialog-overlay';
+        const overlay=document.createElement('div'); overlay.id='guard-choice-dialog'; overlay.className='dialog-overlay'; overlay.dataset.combatDecision='guard';
         const box=document.createElement('div'); box.className='dialog-box compact-choice-box';
         const fly = ch.fly || 0;
         const guard = ch.guard || 0;
@@ -377,7 +418,7 @@ class DialogManager {
 
     showFlyRetryChoice(ch, damage, onChoose) {
         if (document.getElementById('fly-retry-choice-dialog')) return;
-        const overlay=document.createElement('div'); overlay.id='fly-retry-choice-dialog'; overlay.className='dialog-overlay';
+        const overlay=document.createElement('div'); overlay.id='fly-retry-choice-dialog'; overlay.className='dialog-overlay'; overlay.dataset.combatDecision='flyRetry';
         const box=document.createElement('div'); box.className='dialog-box compact-choice-box';
         box.innerHTML=`<h3>飞翔躲避失败 · 仍将受到 ${damage} 点伤害</h3>`;
         const list=document.createElement('div'); list.className='choice-list';
