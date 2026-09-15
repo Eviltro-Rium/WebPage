@@ -1,7 +1,8 @@
 /* Cloudflare Worker signaling relay for Furry Trial online rooms.
  *
- * The Worker never sees cards or battle state.  A Durable Object keeps at
- * most two WebSocket clients for a room and relays lobby/SDP/ICE messages.
+ * A Durable Object keeps at most two WebSocket clients for a room and relays
+ * lobby/SDP/ICE messages. If WebRTC is unavailable, the same socket also
+ * carries the host-authoritative game packets for that small room.
  */
 const CODE = /^[A-Z0-9]{4}$/;
 

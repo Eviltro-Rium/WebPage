@@ -16,7 +16,7 @@
 |-------|--------|
 |在线对决页面仅允许在 HTTPS 环境运行，检测不支持 WebRTC 的浏览器并给出提示|已实现（MVP）|
 |静态网页通过独立的信令服务地址连接房间，不把信令逻辑混入单机战斗引擎|已实现（MVP）|
-|配置生产环境与本地开发环境的信令地址、协议版本和 ICE 服务器|部分实现：页面可配置信令地址，当前固定公开 STUN，尚未引入版本协商|
+|配置生产环境与本地开发环境的信令地址、协议版本和 ICE 服务器|部分实现：信令地址由管理员配置，当前固定公开 STUN，尚未引入版本协商|
 |页面离开、刷新和浏览器关闭时主动发送离开消息并清理本地连接状态|已实现（MVP）：关闭 DataChannel/WebSocket 并由 Worker 广播离开|
 
 ## 房间与大厅
@@ -38,9 +38,9 @@
 |-------|--------|
 |使用 WebSocket/WSS 信令交换 offer、answer 和 ICE candidate|已实现（MVP）|
 |信令服务使用 Durable Object 或等价的房间隔离机制保存临时连接状态|已实现（MVP）|
-|建立连接后切换到 WebRTC DataChannel，游戏事件不经过信令服务转发|已实现（MVP）|
-|DataChannel 建立失败、超时或关闭时显示连接失败原因并允许重试|部分实现：失败会显示状态，重试按钮待补充|
-|配置 STUN 服务器，并支持 TURN 中继作为无法直连时的回退方案|部分实现：仅配置 STUN，按本次小规模上线要求不使用 TURN|
+|建立连接后切换到 WebRTC DataChannel，游戏事件不经过信令服务转发|已实现（MVP）：优先 DataChannel；直连未建立时自动锁定为信令 WebSocket 中继|
+|DataChannel 建立失败、超时或关闭时显示连接失败原因并允许重试|已实现（MVP）：显示当前传输模式，直连未建立时自动使用信令中继|
+|配置 STUN 服务器，并支持 TURN 中继作为无法直连时的回退方案|部分实现：配置公开 STUN；按小规模上线要求不使用 TURN，暂以信令 WebSocket 兜底|
 |为每位玩家分配稳定的 peerId，禁止客户端伪造另一位玩家身份|部分实现：Worker 分配/校验 peerId，签名令牌待补充|
 |心跳、连接质量和最后活动时间监测，显示在线、连接中和已断线状态|部分实现：信令 ping 与 WebRTC connectionState 已显示|
 |信令服务校验 Origin、房间令牌和请求频率，避免任意客户端占用房间|部分实现：可用 ALLOWED_ORIGINS 限制来源并限制消息大小，令牌/频率限制待补充|
@@ -49,7 +49,7 @@
 
 |功能清单|实现状态|
 |-------|--------|
-|P2P 适配器实现与本地 1v1 相同的 start、dispatch、snapshot、subscribe 和 close 接口||
+|P2P 适配器实现与本地 1v1 相同的 start、dispatch、snapshot、subscribe 和 close 接口|已实现（MVP）：在线 CombatSession 复用单机 GameUI，底层可在 P2P/信令中继间选择|
 |统一定义 hello、ready、selectCharacter、command、event、snapshot、ack、ping 和 leave 消息||
 |每条战斗消息包含协议版本、房间号、peerId、递增序号和幂等请求 ID||
 |主机运行权威战斗引擎，客户端只能提交出牌、使用道具、选色和结束回合等指令||

@@ -42,6 +42,11 @@
             this.channel = null;
             this.queue = [];
             this.pendingIce = [];
+            // Prefer the WebRTC data channel. If a match starts before that
+            // channel opens, lock this room to the existing signaling socket
+            // as a lightweight relay so both players still receive commands
+            // and snapshots without requiring TURN.
+            this.transportMode = 'pending';
             this.listeners = Object.create(null);
             this.closed = false;
             this._offerStarted = false;
@@ -110,7 +115,20 @@
             }
             if (message.type === 'peerLeft') { this.emit('peerLeft', message.player || message); return; }
             if (message.type === 'signal') { this._onRemoteSignal(message.signal, message.from); return; }
-            if (message.type === 'roomMessage') { this.emit('roomMessage', message.payload, message.from); return; }
+            if (message.type === 'roomMessage') {
+                const payload = message.payload;
+                if (payload && payload.__onlineTransport === 1) {
+                    if (message.from === this.peerId) return;
+                    if (this.transportMode !== 'relay') {
+                        this.transportMode = 'relay';
+                        this.emit('transportMode', 'relay');
+                    }
+                    this.emit('message', payload.data);
+                    return;
+                }
+                this.emit('roomMessage', payload, message.from);
+                return;
+            }
             if (message.type === 'error') { this.emit('error', new Error(message.message || '房间服务错误')); }
         }
 
@@ -146,7 +164,13 @@
         _attachChannel(channel) {
             if (this.channel && this.channel !== channel) try { this.channel.close(); } catch (_) {}
             this.channel = channel;
-            channel.addEventListener('open', () => this.emit('channelOpen'));
+            channel.addEventListener('open', () => {
+                if (this.transportMode === 'pending') {
+                    this.transportMode = 'p2p';
+                    this.emit('transportMode', 'p2p');
+                }
+                this.emit('channelOpen');
+            });
             channel.addEventListener('close', () => this.emit('channelClose'));
             channel.addEventListener('error', error => this.emit('error', new Error('数据通道错误')));
             channel.addEventListener('message', event => {
@@ -208,9 +232,26 @@
         }
 
         send(payload) {
-            if (!this.channel || this.channel.readyState !== 'open') return false;
-            try { this.channel.send(JSON.stringify(payload)); return true; }
-            catch (error) { this.emit('error', error); return false; }
+            if (this.transportMode !== 'relay' && this.channel && this.channel.readyState === 'open') {
+                if (this.transportMode !== 'p2p') {
+                    this.transportMode = 'p2p';
+                    this.emit('transportMode', 'p2p');
+                }
+                try { this.channel.send(JSON.stringify(payload)); return true; }
+                catch (error) { this.emit('error', error); }
+            }
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                if (this.transportMode !== 'relay') {
+                    this.transportMode = 'relay';
+                    this.emit('transportMode', 'relay');
+                }
+                this._sendSignal({
+                    type: 'roomMessage',
+                    payload: { __onlineTransport: 1, data: payload }
+                });
+                return true;
+            }
+            return false;
         }
 
         sendRoom(payload) { this._sendSignal({ type: 'roomMessage', payload }); }
@@ -224,6 +265,7 @@
             if (this.heartbeat) clearInterval(this.heartbeat);
             this.heartbeat = null;
             this.pendingIce = [];
+            this.transportMode = 'pending';
             this.channel = this.pc = this.ws = null;
         }
     }

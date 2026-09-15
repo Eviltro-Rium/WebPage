@@ -35,7 +35,7 @@
         }
         showLanding() {
             this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial</div><div class="online-brand-sub">在线对决 · WebRTC P2P</div></div></div><a class="online-link" href="../index.html">← 返回游戏主页</a></div>' +
-                '<section class="online-panel online-landing"><div class="online-intro"><h1>与你的朋友<br><span>面对面出牌</span></h1><p>建立一个小型房间，使用浏览器原生 WebRTC 直接传输战斗指令。房主运行单机同一套战斗引擎，双方只交换必要的同步状态。</p><div class="online-notice"><div><b>01</b><span>不需要安装客户端，分享 4 位房间码即可加入。</span></div><div><b>02</b><span>当前版本仅使用 STUN，不配置 TURN，适合小规模测试。</span></div><div><b>03</b><span>请使用 HTTPS 域名；本地调试可用 Wrangler Dev。</span></div></div></div>' +
+                '<section class="online-panel online-landing"><div class="online-intro"><h1>与你的朋友<br><span>面对面出牌</span></h1><p>建立一个小型房间，优先使用浏览器原生 WebRTC 直接传输战斗指令；直连尚未建立时自动通过信令连接同步。房主运行单机同一套战斗引擎，双方只交换必要的同步状态。</p><div class="online-notice"><div><b>01</b><span>不需要安装客户端，分享 4 位房间码即可加入。</span></div><div><b>02</b><span>当前版本不配置 TURN，适合小规模测试。</span></div><div><b>03</b><span>请使用 HTTPS 域名；本地调试可用 Wrangler Dev。</span></div></div></div>' +
                 '<form class="online-form" id="online-connect-form"><h2>进入在线房间</h2><label class="online-label">昵称<input class="online-input" id="online-nickname" maxlength="18" placeholder="例如：Rium" autocomplete="nickname"></label><div class="online-form-row"><button class="online-btn primary" id="online-create" type="button">创建房间</button><button class="online-btn" id="online-join" type="button">加入房间</button></div><label class="online-label">房间码（加入时填写）<input class="online-input" id="online-room-code" maxlength="4" placeholder="ABCD" autocapitalize="characters"></label><div class="online-status" id="online-landing-status"></div></form></section>';
             const name = this.root.querySelector('#online-nickname');
             if (name) {
@@ -88,10 +88,23 @@
             this.peer.on('roster', players => { for (const player of players || []) this._upsertPlayer(player); this._ensureOwnPlayer(); this.renderRoom(); });
             this.peer.on('peerJoined', player => { this._upsertPlayer(player); this.setRoomStatus('对手已连接，选择角色并准备'); this.renderRoom(); });
             this.peer.on('peerLeft', player => { if (player && player.peerId) this.players = this.players.filter(item => item.peerId !== player.peerId); this.setRoomStatus('对手已离开房间'); this.renderRoom(); });
-            this.peer.on('connectionState', value => { this.connectionState = value || '连接中'; this.renderRoom(); });
+            this.peer.on('connectionState', value => {
+                this.connectionState = this.peer && this.peer.transportMode === 'relay'
+                    ? '信令中继已连接'
+                    : (value || '连接中');
+                this.renderRoom();
+            });
+            this.peer.on('transportMode', mode => {
+                this.connectionState = mode === 'relay' ? '信令中继已连接' : 'P2P 已连接';
+                this.setRoomStatus(mode === 'relay'
+                    ? 'P2P 尚未建立，已自动切换信令中继，可以开始对战'
+                    : '直连已建立，可以开始对战');
+                this.renderRoom();
+            });
             this.peer.on('channelOpen', () => {
-                this.connectionState = 'P2P 已连接';
-                this.setRoomStatus('直连已建立，可以开始对战');
+                const relayed = this.peer && this.peer.transportMode === 'relay';
+                this.connectionState = relayed ? '信令中继已连接' : 'P2P 已连接';
+                this.setRoomStatus(relayed ? '已使用信令中继，可以开始对战' : '直连已建立，可以开始对战');
                 this._sendLobbyUpdate();
                 this._flushPendingSync();
                 this.renderRoom();

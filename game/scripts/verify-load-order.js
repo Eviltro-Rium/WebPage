@@ -15,7 +15,9 @@ function scriptsFromHtml(htmlPath, rewrite) {
   const out = [];
   const re = /<script\s+src="([^"]+)"/g;
   let m;
-  while ((m = re.exec(html))) out.push(rewrite(m[1]));
+  // Cache-busting query strings are part of the browser URL, not the local
+  // filesystem path or module identity used by the load-order manifest.
+  while ((m = re.exec(html))) out.push(rewrite(m[1].split(/[?#]/, 1)[0]));
   return out;
 }
 

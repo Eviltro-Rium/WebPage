@@ -30,6 +30,7 @@ for (const relative of files) {
 vm.runInContext(fs.readFileSync(path.join(root, 'online_game/online_match.js'), 'utf8'), context, { filename: 'online_match.js' });
 vm.runInContext(fs.readFileSync(path.join(root, 'js/combat/session.js'), 'utf8'), context, { filename: 'session.js' });
 vm.runInContext(fs.readFileSync(path.join(root, 'online_game/online_session.js'), 'utf8'), context, { filename: 'online_session.js' });
+vm.runInContext(fs.readFileSync(path.join(root, 'online_game/p2p_adapter.js'), 'utf8'), context, { filename: 'p2p_adapter.js' });
 
 test('online host adapter preserves private hands and swaps guest commands', () => {
   const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host', null, {
@@ -134,4 +135,46 @@ test('online hand swaps keep the received white card as a player card', () => {
   match.engine.useItem(swap, match.engine.s.player, match.engine.s.ai, 'player');
   assert.equal(match.engine.h.player[0], receivedWhite);
   assert.equal(match.engine.h.player[0].npcCard, undefined);
+});
+
+test('online transport falls back to signaling relay before WebRTC opens', () => {
+  context.WebSocket = { OPEN: 1 };
+  const peer = new context.OnlinePeer({ roomCode: 'ABCD', role: 'host', peerId: 'host-1' });
+  const wire = [];
+  const received = [];
+  peer.ws = { readyState: 1, send(value) { wire.push(JSON.parse(value)); } };
+  peer.on('message', value => received.push(value));
+
+  assert.equal(peer.send({ kind: 'matchStart', state: { turn: 1 } }), true);
+  assert.equal(peer.transportMode, 'relay');
+  assert.equal(wire[0].type, 'roomMessage');
+  assert.equal(wire[0].payload.__onlineTransport, 1);
+
+  peer._onSignal({
+    type: 'roomMessage',
+    from: 'guest-1',
+    payload: { __onlineTransport: 1, data: { kind: 'matchStartAck' } }
+  });
+  assert.deepEqual(received, [{ kind: 'matchStartAck' }]);
+
+  peer._onSignal({
+    type: 'roomMessage',
+    from: 'host-1',
+    payload: { __onlineTransport: 1, data: { kind: 'should-not-echo' } }
+  });
+  assert.equal(received.length, 1);
+});
+
+test('online transport still prefers an open WebRTC data channel', () => {
+  context.WebSocket = { OPEN: 1 };
+  const peer = new context.OnlinePeer({ roomCode: 'ABCD', role: 'host' });
+  const direct = [];
+  const relayed = [];
+  peer.channel = { readyState: 'open', send(value) { direct.push(JSON.parse(value)); } };
+  peer.ws = { readyState: 1, send(value) { relayed.push(value); } };
+
+  assert.equal(peer.send({ kind: 'command', method: 'doPlay' }), true);
+  assert.equal(peer.transportMode, 'p2p');
+  assert.deepEqual(direct, [{ kind: 'command', method: 'doPlay' }]);
+  assert.equal(relayed.length, 0);
 });
