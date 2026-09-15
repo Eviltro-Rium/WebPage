@@ -41,6 +41,7 @@
             this.pc = null;
             this.channel = null;
             this.queue = [];
+            this.pendingIce = [];
             this.listeners = Object.create(null);
             this.closed = false;
             this._offerStarted = false;
@@ -122,7 +123,17 @@
             const pc = new RTCPeerConnection(STUN_CONFIG);
             this.pc = pc;
             pc.addEventListener('icecandidate', event => {
-                if (event.candidate) this._sendSignal({ type: 'signal', signal: { type: 'ice', candidate: event.candidate } });
+                if (event.candidate) {
+                    // RTCIceCandidate instances are not guaranteed to serialize
+                    // consistently across browsers, so send a plain object.
+                    const candidate = event.candidate.toJSON ? event.candidate.toJSON() : {
+                        candidate: event.candidate.candidate,
+                        sdpMid: event.candidate.sdpMid,
+                        sdpMLineIndex: event.candidate.sdpMLineIndex,
+                        usernameFragment: event.candidate.usernameFragment
+                    };
+                    this._sendSignal({ type: 'signal', signal: { type: 'ice', candidate } });
+                }
             });
             pc.addEventListener('connectionstatechange', () => {
                 this.emit('connectionState', pc.connectionState);
@@ -154,7 +165,7 @@
                 this._attachChannel(pc.createDataChannel('game', { ordered: true }));
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
-                this._sendSignal({ type: 'signal', signal: { type: 'offer', description: pc.localDescription } });
+                this._sendSignal({ type: 'signal', signal: { type: 'offer', description: this._description(pc.localDescription || offer) } });
             } catch (error) {
                 this._offerStarted = false;
                 this.emit('error', error);
@@ -167,16 +178,33 @@
             if (!pc) return;
             try {
                 if (signal.type === 'offer' && this.role === 'guest') {
-                    await pc.setRemoteDescription(signal.description || signal);
+                    await pc.setRemoteDescription(this._description(signal.description || signal));
+                    await this._flushIce(pc);
                     const answer = await pc.createAnswer();
                     await pc.setLocalDescription(answer);
-                    this._sendSignal({ type: 'signal', signal: { type: 'answer', description: pc.localDescription } });
+                    this._sendSignal({ type: 'signal', signal: { type: 'answer', description: this._description(pc.localDescription || answer) } });
                 } else if (signal.type === 'answer' && this.role === 'host') {
-                    await pc.setRemoteDescription(signal.description || signal);
+                    await pc.setRemoteDescription(this._description(signal.description || signal));
+                    await this._flushIce(pc);
                 } else if (signal.type === 'ice' && signal.candidate) {
-                    await pc.addIceCandidate(signal.candidate);
+                    // ICE can arrive before the SDP message.  Adding it then
+                    // throws "The remote description was null" and aborts the
+                    // connection, so queue it until the description is ready.
+                    if (!pc.remoteDescription) this.pendingIce.push(signal.candidate);
+                    else await pc.addIceCandidate(signal.candidate);
                 }
             } catch (error) { this.emit('error', error); }
+        }
+
+        _description(value) {
+            if (!value) return value;
+            return { type: value.type, sdp: value.sdp };
+        }
+
+        async _flushIce(pc) {
+            if (!pc || !pc.remoteDescription || !this.pendingIce.length) return;
+            const pending = this.pendingIce.splice(0);
+            for (const candidate of pending) await pc.addIceCandidate(candidate);
         }
 
         send(payload) {
@@ -195,6 +223,7 @@
             try { if (this.ws) this.ws.close(); } catch (_) {}
             if (this.heartbeat) clearInterval(this.heartbeat);
             this.heartbeat = null;
+            this.pendingIce = [];
             this.channel = this.pc = this.ws = null;
         }
     }
