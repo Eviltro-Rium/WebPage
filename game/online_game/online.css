@@ -78,6 +78,10 @@ body {
 .online-char.selected { border-color: #c4b5fd; background: rgba(124,58,237,.23); box-shadow: 0 0 0 2px rgba(167,139,250,.16); }
 .online-char strong { display: block; font-size: .78rem; }
 .online-char small { display: block; margin-top: 5px; color: var(--muted); font-size: .63rem; }
+.online-emojis { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+.online-emoji { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid rgba(165,207,255,.18); border-radius: 10px; padding: 0; cursor: pointer; background: rgba(255,255,255,.045); font-size: 1.15rem; transition: .18s ease; }
+.online-emoji:hover { transform: translateY(-2px); border-color: rgba(196,181,253,.52); }
+.online-emoji.selected { border-color: #c4b5fd; background: rgba(124,58,237,.23); box-shadow: 0 0 0 2px rgba(167,139,250,.16); }
 .online-room-actions { display: flex; justify-content: flex-end; gap: 9px; padding-top: 9px; }
 
 /* The battle surface is rendered by the classic single-player GameUI.  Keep

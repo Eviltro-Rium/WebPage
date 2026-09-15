@@ -100,6 +100,8 @@
             playerInfo = playerInfo || {};
             this.hostNickname = String(playerInfo.hostNickname || hostCharacter || '房主').trim().slice(0, 18) || '房主';
             this.guestNickname = String(playerInfo.guestNickname || guestCharacter || '玩家').trim().slice(0, 18) || '玩家';
+            this.hostAvatar = playerInfo.hostAvatar || '';
+            this.guestAvatar = playerInfo.guestAvatar || '';
             this.matchId = makeMatchId();
             this.protocolVersion = PROTOCOL_VERSION;
             this.stateVersion = 0;
@@ -465,6 +467,9 @@
             state.onlineNickname = nicknames[viewerRole];
             state.onlineOpponentNickname = nicknames[opponentRole];
             state.onlineNicknames = nicknames;
+            const avatars = { host: this.hostAvatar, guest: this.guestAvatar };
+            state.onlineAvatar = avatars[viewerRole];
+            state.onlineOpponentAvatar = avatars[opponentRole];
             state.playerHand = clone(e.h.player || []);
             state.aiHandSize = (e.h.ai || []).length;
             state.aiHand = null;

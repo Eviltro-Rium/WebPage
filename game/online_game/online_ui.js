@@ -16,7 +16,7 @@
     class OnlineUI {
         constructor(root) {
             this.root = root; this.peer = null; this.role = null; this.roomCode = '';
-            this.nickname = ''; this.signalUrl = ''; this.players = []; this.character = null;
+            this.nickname = ''; this.signalUrl = ''; this.players = []; this.character = null; this.avatar = null;
             this.ready = false; this.match = null; this.state = null;
             this.error = ''; this.pendingSync = null; this.connectionState = '未连接'; this.roomStatus = '';
             this.battleSession = null; this.battleUI = null; this._battleAnimation = Promise.resolve();
@@ -188,7 +188,7 @@
         }
         _ensureOwnPlayer() {
             if (!this.peer) return;
-            this._upsertPlayer({ peerId: this.peer.peerId, role: this.role, nickname: this.nickname, character: this.character, ready: this.ready });
+            this._upsertPlayer({ peerId: this.peer.peerId, role: this.role, nickname: this.nickname, character: this.character, ready: this.ready, avatar: this.avatar });
             this._dedupePlayers();
         }
         _reconcileOwnPeerId(previousId, currentId) {
@@ -238,7 +238,8 @@
             if (incoming.nickname) existing.nickname = String(incoming.nickname).slice(0, 18);
             if (!isOwn || incoming.character != null) existing.character = incoming.character || null;
             if (!isOwn || incoming.ready != null) existing.ready = !!incoming.ready;
-            if (isOwn) { this.character = existing.character; this.ready = existing.ready; }
+            if (!isOwn || incoming.avatar != null) existing.avatar = incoming.avatar || existing.avatar;
+            if (isOwn) { this.character = existing.character; this.ready = existing.ready; this.avatar = existing.avatar; }
         }
         get ownPlayer() { return this.peer && this.players.find(item => item.peerId === this.peer.peerId); }
         get opponentPlayer() { return this.players.find(item => item.peerId !== (this.peer && this.peer.peerId)); }
@@ -251,9 +252,12 @@
             const own = this.ownPlayer || { nickname: this.nickname, role: this.role, character: this.character, ready: this.ready };
             const opponent = this.opponentPlayer;
             const cards = this.chars().map(ch => '<button class="online-char' + (this.character === ch.name ? ' selected' : '') + '" data-char="' + safeText(ch.name) + '" type="button"><strong>' + safeText(ch.name) + '</strong><small>' + safeText(ch.type || '角色') + ' · HP ' + (Number(ch.hp) || 0) + '</small></button>').join('');
+            const currentAvatar = this.avatar || (this.ownPlayer && this.ownPlayer.avatar) || PLAYER_EMOJIS[0];
+            const emojiButtons = PLAYER_EMOJIS.map(em => '<button class="online-emoji' + (currentAvatar === em ? ' selected' : '') + '" data-emoji="' + em + '" type="button">' + em + '</button>').join('');
             const playerMarkup = (player, revealCharacter) => player ? '<div class="online-player"><div class="online-player-avatar">' + safeText(player.avatar || (player.nickname || '?').slice(0, 1).toUpperCase()) + '</div><div class="online-player-meta"><strong>' + safeText(player.nickname || 'Player') + (player.role === 'host' ? ' · 房主' : '') + '</strong><small>' + (player.character ? (revealCharacter ? safeText(player.character) : '已选择角色') : '尚未选择角色') + '</small></div><span class="online-ready' + (player.ready ? ' yes' : '') + '">' + (player.ready ? '已准备' : '未准备') + '</span></div>' : '<div class="online-help">等待另一位玩家加入…</div>';
-            this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线房间</div><div class="online-brand-sub">' + safeText(this.connectionState || '连接中') + '</div></div></div><a class="online-link" href="../index.html">退出房间</a></div><section class="online-panel online-room"><div class="online-room-head"><div><div class="online-brand-sub">房间码</div><div class="online-room-code"><strong>' + safeText(this.roomCode) + '</strong><button class="online-copy-code" id="online-copy-code" type="button">复制</button></div></div><div class="online-status" id="online-room-status">' + safeText(this.roomStatus || '等待连接') + '</div></div><div class="online-room-grid"><div class="online-roster"><h3>玩家</h3>' + playerMarkup(own, true) + playerMarkup(opponent, false) + '<div class="online-help">房主负责运行战斗引擎；双方的手牌只发送给自己。</div></div><div class="online-select"><h3>选择你的角色</h3><div class="online-chars">' + cards + '</div><div class="online-room-actions"><button class="online-btn ghost" id="online-leave" type="button">离开房间</button><button class="online-btn ghost" id="online-retry" type="button">重试连接</button><button class="online-btn good" id="online-ready" type="button" ' + (this.character ? '' : 'disabled') + '>' + (this.ready ? '取消准备' : '准备') + '</button>' + (this.role === 'host' ? '<button class="online-btn primary" id="online-start-match" type="button">开始对战</button>' : '') + '</div><div class="online-status error" id="online-room-error">' + safeText(this.error) + '</div></div></div></section>';
+            this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线房间</div><div class="online-brand-sub">' + safeText(this.connectionState || '连接中') + '</div></div></div><a class="online-link" href="../index.html">退出房间</a></div><section class="online-panel online-room"><div class="online-room-head"><div><div class="online-brand-sub">房间码</div><div class="online-room-code"><strong>' + safeText(this.roomCode) + '</strong><button class="online-copy-code" id="online-copy-code" type="button">复制</button></div></div><div class="online-status" id="online-room-status">' + safeText(this.roomStatus || '等待连接') + '</div></div><div class="online-room-grid"><div class="online-roster"><h3>玩家</h3>' + playerMarkup(own, true) + playerMarkup(opponent, false) + '<div class="online-help">房主负责运行战斗引擎；双方的手牌只发送给自己。</div></div><div class="online-select"><h3>选择你的头像</h3><div class="online-emojis">' + emojiButtons + '</div><h3>选择你的角色</h3><div class="online-chars">' + cards + '</div><div class="online-room-actions"><button class="online-btn ghost" id="online-leave" type="button">离开房间</button><button class="online-btn ghost" id="online-retry" type="button">重试连接</button><button class="online-btn good" id="online-ready" type="button" ' + (this.character ? '' : 'disabled') + '>' + (this.ready ? '取消准备' : '准备') + '</button>' + (this.role === 'host' ? '<button class="online-btn primary" id="online-start-match" type="button">开始对战</button>' : '') + '</div><div class="online-status error" id="online-room-error">' + safeText(this.error) + '</div></div></div></section>';
             this.root.querySelectorAll('[data-char]').forEach(button => button.addEventListener('click', () => { this.character = button.dataset.char; this.ready = false; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); }));
+            this.root.querySelectorAll('[data-emoji]').forEach(button => button.addEventListener('click', () => { this.avatar = button.dataset.emoji; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); }));
             this.root.querySelector('#online-ready').addEventListener('click', () => { if (!this.character) return; this.ready = !this.ready; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); });
             this.root.querySelector('#online-leave').addEventListener('click', () => { if (this.peer) this.peer.close(); this.peer = null; this.showLanding(); });
             this.root.querySelector('#online-retry').addEventListener('click', () => this.connect(this.role, {
@@ -265,7 +269,7 @@
         _sendLobbyUpdate() {
             if (!this.peer) return;
             this._ensureOwnPlayer();
-            const player = { peerId: this.peer.peerId, role: this.role, nickname: this.nickname, character: this.character, ready: this.ready };
+            const player = { peerId: this.peer.peerId, role: this.role, nickname: this.nickname, character: this.character, ready: this.ready, avatar: this.avatar };
             this.peer.sendRoom({ type: 'lobbyUpdate', ...player });
         }
         _handleRoomMessage(payload, from) {
@@ -287,7 +291,9 @@
                 const firstActor = firstRoll <= 6 ? 'host' : 'guest';
                 this.match = new global.OnlineMatchHost(host.character, guest.character, firstActor, firstRoll, {
                     hostNickname: host.nickname,
-                    guestNickname: guest.nickname
+                    guestNickname: guest.nickname,
+                    hostAvatar: host.avatar,
+                    guestAvatar: guest.avatar
                 });
                 // Pause both projections until the guest has mounted the same
                 // initial private snapshot and acknowledged it.

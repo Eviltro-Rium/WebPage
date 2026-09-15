@@ -102,9 +102,9 @@
             const playerCharacter = this._combatDisplayName(s.player.name);
             const opponentCharacter = this._combatDisplayName(s.ai.name);
             document.getElementById('player-name').textContent = s.isOnline && s.onlineNickname
-                ? `${s.onlineNickname} · ${playerCharacter}` : playerCharacter;
+                ? `${s.onlineAvatar || ''} ${s.onlineNickname} · ${playerCharacter}` : playerCharacter;
             document.getElementById('ai-name').textContent = s.isOnline && s.onlineOpponentNickname
-                ? `${s.onlineOpponentNickname} · ${opponentCharacter}` : opponentCharacter;
+                ? `${s.onlineOpponentAvatar || ''} ${s.onlineOpponentNickname} · ${opponentCharacter}` : opponentCharacter;
             this._updateAvatar('player', s.player.name);
             this._updateAvatar('ai', s.ai.name);
             const activeAttacker = s.activeAttacker || (['AI_TURN', 'PLAYER_DEFEND', 'GUARD_CHOICE'].includes(s.phase) ? 'ai' : 'player');
