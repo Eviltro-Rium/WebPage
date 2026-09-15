@@ -37,7 +37,7 @@ window.gameAssetUrl = gameAssetUrl;
 
 const TAG_COLORS = {
     '[生命]': '#86efac', '[伤害]': '#fda4af', '[灼烧]': '#fdba74',
-    '[冷冻]': '#93c5fd', '[流血]': '#fb7185', '[吸血]': '#86efac', '[牌]': '#c4b5fd',
+    '[冷冻]': '#93c5fd', '[流血]': '#fb7185', '[吸血]': '#86efac',
     '[战斗]': '#fcd34d', '[交换]': '#c4b5fd', '[洗入]': '#c4b5fd',
     '[净化]': '#ddd6fe', '[解冻]': '#bae6fd',
     '[红]': '#fda4af', '[黄]': '#fde047', '[蓝]': '#93c5fd',

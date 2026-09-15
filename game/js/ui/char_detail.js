@@ -42,6 +42,7 @@
   }
 
   function colorize(text) {
+    text = String(text || '').replace(/\[牌\]/g, '🃏');
     if (typeof parseSegments !== 'function') return text;
     const segs = parseSegments(text, '');
     return segs.map(s => s.color ? `<span style="color:${s.color}">${s.text}</span>` : s.text).join('');

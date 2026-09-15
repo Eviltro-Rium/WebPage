@@ -30,11 +30,11 @@
                 html += `<button class="home-cta home-cta-adventure${this._isAdventure?' active':''}" id="adventure-start-btn" type="button">`;
                 html += `<span class="home-cta-glow" aria-hidden="true"></span><span class="home-cta-icon" aria-hidden="true">⚔</span>`;
                 html += `<span class="home-cta-copy"><span class="home-cta-label">开始冒险</span><span class="home-cta-hint">Roguelike 地牢探索</span></span></button>`;
-                html += `<div class="home-section-label">对战模式</div>`;
+                html += `<button class="home-online-btn" id="online-start-btn" type="button"><span class="home-online-dot" aria-hidden="true"></span><span><strong>在线对决</strong><small>WebRTC P2P · 小规模测试</small></span><span class="home-online-arrow" aria-hidden="true">→</span></button>`;
+                html += `<div class="home-section-label">单机对战模式</div>`;
                 html += `<div class="mode-toggle home-mode-grid"><button class="mode-btn home-mode-btn${!this._is1v2&&!this._isLord&&!this._isAdventure?' active':''}" id="mode-1v1" type="button"><span class="home-mode-name">1v1</span><span class="home-mode-desc">单挑</span></button>`;
                 html += `<button class="mode-btn home-mode-btn${this._is1v2&&!this._isLord?' active':''}" id="mode-1v2" type="button"><span class="home-mode-name">1v2</span><span class="home-mode-desc">双雄</span></button>`;
                 html += `<button class="mode-btn home-mode-btn${this._isLord?' active':''}" id="mode-lord" type="button"><span class="home-mode-name">领主</span><span class="home-mode-desc">模式</span></button></div>`;
-                html += `<button class="home-online-btn" id="online-start-btn" type="button"><span class="home-online-dot" aria-hidden="true"></span><span><strong>在线对决</strong><small>WebRTC P2P · 小规模测试</small></span><span class="home-online-arrow" aria-hidden="true">→</span></button>`;
                 html += `<div class="home-section-label">资料库</div>`;
                 html += `<div class="home-secondary-row">`;
                 html += `<button class="home-secondary-btn rules-entry-btn" id="rules-entry-btn" type="button"><span class="home-secondary-icon" aria-hidden="true">📖</span><span>规则介绍</span></button>`;

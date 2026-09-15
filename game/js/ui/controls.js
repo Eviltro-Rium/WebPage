@@ -290,6 +290,7 @@ _showSkillOverlay() {
     ];
     const stripPrefix = t => (t || '').replace(/^\d+\s*/, '');
     const colorize = t => {
+        t = String(t || '').replace(/\[牌\]/g, '🃏');
         if (typeof parseSegments !== 'function') return t;
         const segs = parseSegments(t, '');
         return segs.map(sg => sg.color ? `<span style="color:${sg.color}">${sg.text}</span>` : sg.text).join('');
