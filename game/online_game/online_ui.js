@@ -50,7 +50,11 @@
                 '<section class="online-panel online-landing"><div class="online-intro"><h1>与你的朋友<br><span>面对面出牌</span></h1><p>建立一个小型房间，使用浏览器原生 WebRTC 直接传输战斗指令。房主运行单机同一套战斗引擎，双方只交换必要的同步状态。</p><div class="online-notice"><div><b>01</b><span>不需要安装客户端，分享 4 位房间码即可加入。</span></div><div><b>02</b><span>当前版本仅使用 STUN，不配置 TURN，适合小规模测试。</span></div><div><b>03</b><span>请使用 HTTPS 域名；本地调试可用 Wrangler Dev。</span></div></div></div>' +
                 '<form class="online-form" id="online-connect-form"><h2>进入在线房间</h2><label class="online-label">昵称<input class="online-input" id="online-nickname" maxlength="18" placeholder="例如：Rium" autocomplete="nickname"></label><label class="online-label">信令地址<input class="online-input" id="online-signal" spellcheck="false"></label><div class="online-form-row"><button class="online-btn primary" id="online-create" type="button">创建房间</button><button class="online-btn" id="online-join" type="button">加入房间</button></div><label class="online-label">房间码（加入时填写）<input class="online-input" id="online-room-code" maxlength="4" placeholder="ABCD" autocapitalize="characters"></label><div class="online-status" id="online-landing-status"></div><div class="online-help">信令地址示例：<code>https://你的域名/online-signal</code>。输入 http/https 也可以，连接时会自动转换为 ws/wss。</div></form></section>';
             const signal = this.root.querySelector('#online-signal'), name = this.root.querySelector('#online-nickname');
-            if (signal) signal.value = this.defaultSignalUrl();
+            if (signal) {
+                let savedSignal = '';
+                try { savedSignal = localStorage.getItem('furry-online-signal') || ''; } catch (_) {}
+                signal.value = savedSignal || this.defaultSignalUrl();
+            }
             if (name) name.value = localStorage.getItem('furry-online-name') || '';
             this.root.querySelector('#online-create').addEventListener('click', () => this.connect('host'));
             this.root.querySelector('#online-join').addEventListener('click', () => this.connect('guest'));
@@ -79,7 +83,10 @@
             if (!nickname.trim()) { this.setLandingStatus('请先填写昵称', 'error'); return; }
             if (role === 'host') code = randomCode();
             if (!/^[A-Z0-9]{4}$/.test(code)) { this.setLandingStatus('房间码需要 4 位字母或数字', 'error'); return; }
-            localStorage.setItem('furry-online-name', nickname.trim());
+            try {
+                localStorage.setItem('furry-online-name', nickname.trim());
+                localStorage.setItem('furry-online-signal', signalUrl.trim());
+            } catch (_) {}
             if (this.peer) this.peer.close();
             this.role = role; this.roomCode = code; this.nickname = nickname.trim().slice(0, 18);
             this.signalUrl = signalUrl; this.players = []; this.character = null; this.ready = false; this.error = ''; this.match = null; this.state = null;
