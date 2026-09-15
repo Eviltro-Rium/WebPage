@@ -32,11 +32,12 @@
     }
 
     class OnlinePeer {
-        constructor({ signalUrl, roomCode, role, nickname, peerId } = {}) {
+        constructor({ signalUrl, roomCode, role, nickname, avatar, peerId } = {}) {
             this.signalUrl = signalUrl;
             this.roomCode = String(roomCode || '').toUpperCase();
             this.role = role === 'guest' ? 'guest' : 'host';
             this.nickname = String(nickname || 'Player').trim().slice(0, 18) || 'Player';
+            this.avatar = String(avatar || '').slice(0, 16);
             this.peerId = peerId || makeId();
             this.ws = null;
             this.pc = null;
@@ -76,7 +77,7 @@
             catch (error) { this.emit('error', error); return; }
             this.ws = socket;
             socket.addEventListener('open', () => {
-                this._sendSignal({ type: 'hello', role: this.role, nickname: this.nickname, peerId: this.peerId });
+                this._sendSignal({ type: 'hello', role: this.role, nickname: this.nickname, avatar: this.avatar, peerId: this.peerId });
                 this.heartbeat = setInterval(() => this._sendSignal({ type: 'ping' }), 20000);
                 this.emit('signalOpen');
             });

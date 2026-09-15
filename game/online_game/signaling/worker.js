@@ -74,7 +74,7 @@ export class Room {
         if (role === 'host' && [...this.clients.values()].some(item => item.meta.role === 'host')) {
           close(1008, 'host-exists'); return;
         }
-        metadata = { peerId: clientId, role, nickname: String(message.nickname || 'Player').slice(0, 18), ready: false, character: null };
+        metadata = { peerId: clientId, role, nickname: String(message.nickname || 'Player').slice(0, 18), avatar: String(message.avatar || '').slice(0, 16), ready: false, character: null };
         this.clients.set(clientId, { socket: server, meta: metadata });
         const players = [...this.clients.values()].map(item => item.meta);
         this.send(server, { type: 'helloAck', peerId: clientId, players });
@@ -90,11 +90,12 @@ export class Room {
         const incoming = message.payload && typeof message.payload === 'object' ? message.payload : null;
         if (incoming && incoming.type === 'lobbyUpdate') {
           metadata.nickname = String(incoming.nickname || metadata.nickname || 'Player').slice(0, 18);
+          metadata.avatar = incoming.avatar == null ? metadata.avatar : String(incoming.avatar).slice(0, 16);
           metadata.character = incoming.character == null ? null : String(incoming.character).slice(0, 40);
           metadata.ready = !!incoming.ready;
           this.broadcast({ type: 'roomMessage', from: clientId, payload: {
             type: 'lobbyUpdate', peerId: clientId, role: metadata.role,
-            nickname: metadata.nickname, character: metadata.character, ready: metadata.ready
+            nickname: metadata.nickname, avatar: metadata.avatar, character: metadata.character, ready: metadata.ready
           }});
         } else {
           this.broadcast({ type: 'roomMessage', from: clientId, payload: incoming });

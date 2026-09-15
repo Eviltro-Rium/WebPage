@@ -1,7 +1,8 @@
 /* Lobby and battle view for the online MVP. It speaks the same dispatch
  * vocabulary as GameUI so the online adapter never duplicates card rules. */
 (function (global) {
-    const PLAYER_EMOJIS = ['🦊', '🐺', '🐼', '🦉', '🐯', '🦋', '🐸', '🦌'];
+    const PLAYER_EMOJIS = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐺', '🦄'];
+    const normalizeAvatar = avatar => PLAYER_EMOJIS.includes(avatar) ? avatar : PLAYER_EMOJIS[0];
     const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
     const safeText = value => String(value == null ? '' : value).replace(/[<>]/g, '');
     const randomCode = () => {
@@ -49,17 +50,33 @@
             return (global.location ? global.location.origin : '') + '/online-signal';
         }
         showLanding() {
-            if (!this.avatar) { try { this.avatar = localStorage.getItem('furry-online-avatar') || null; } catch (_) {} }
-            const currentAvatar = this.avatar || PLAYER_EMOJIS[0];
-            const emojiButtons = PLAYER_EMOJIS.map(em => '<button class="online-emoji' + (currentAvatar === em ? ' selected' : '') + '" data-emoji="' + em + '" type="button">' + em + '</button>').join('');
+            const currentAvatar = normalizeAvatar(this.avatar);
+            const emojiButtons = PLAYER_EMOJIS.map(em => '<button class="online-emoji' + (currentAvatar === em ? ' selected' : '') + '" data-emoji="' + em + '" type="button" aria-label="选择头像 ' + em + '">' + em + '</button>').join('');
             this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial</div><div class="online-brand-sub">在线对决 · WebRTC P2P</div></div></div><a class="online-link" href="../index.html">← 返回游戏主页</a></div>' +
                 '<section class="online-panel online-landing"><div class="online-intro"><h1>与你的朋友<br><span>面对面出牌</span></h1><p>建立一个小型房间，优先使用浏览器原生 WebRTC 直接传输战斗指令；直连尚未建立时自动通过信令连接同步。房主运行单机同一套战斗引擎，双方只交换必要的同步状态。</p><div class="online-notice"><div><b>01</b><span>不需要安装客户端，分享 4 位房间码即可加入。</span></div><div><b>02</b><span>当前版本不配置 TURN，适合小规模测试。</span></div><div><b>03</b><span>请使用 HTTPS 域名；本地调试可用 Wrangler Dev。</span></div></div></div>' +
-                '<form class="online-form" id="online-connect-form"><h2>进入在线房间</h2><label class="online-label">昵称<input class="online-input" id="online-nickname" maxlength="18" placeholder="例如：Rium" autocomplete="nickname"></label><label class="online-label">选择头像</label><div class="online-emojis">' + emojiButtons + '</div><div class="online-form-row"><button class="online-btn primary" id="online-create" type="button">创建房间</button><button class="online-btn" id="online-join" type="button">加入房间</button></div><label class="online-label">房间码（加入时填写）<input class="online-input" id="online-room-code" maxlength="4" placeholder="ABCD" autocapitalize="characters"></label><div class="online-status" id="online-landing-status"></div></form></section>';
+                '<form class="online-form" id="online-connect-form"><h2>进入在线房间</h2><label class="online-label">房间码（加入时填写）<input class="online-input" id="online-room-code" maxlength="4" placeholder="ABCD" autocapitalize="characters"></label><div class="online-identity-row"><label class="online-label">昵称<input class="online-input" id="online-nickname" maxlength="18" placeholder="例如：Rium" autocomplete="nickname"></label><div class="online-avatar-field"><button class="online-avatar-toggle" id="online-avatar-toggle" type="button" aria-expanded="false"><span>头像</span><strong id="online-avatar-current">' + currentAvatar + '</strong><small>展开</small></button><div class="online-avatar-card" id="online-avatar-card" hidden><div class="online-emojis">' + emojiButtons + '</div></div></div></div><div class="online-form-row"><button class="online-btn primary" id="online-create" type="button">创建房间</button><button class="online-btn" id="online-join" type="button">加入房间</button></div><div class="online-status" id="online-landing-status"></div></form></section>';
             const name = this.root.querySelector('#online-nickname');
             if (name) {
                 try { name.value = localStorage.getItem('furry-online-name') || ''; } catch (_) { name.value = ''; }
             }
-            this.root.querySelectorAll('[data-emoji]').forEach(button => button.addEventListener('click', () => { this.avatar = button.dataset.emoji; try { localStorage.setItem('furry-online-avatar', this.avatar); } catch (_) {} this.root.querySelectorAll('[data-emoji]').forEach(btn => btn.classList.toggle('selected', btn.dataset.emoji === this.avatar)); }));
+            try { this.avatar = normalizeAvatar(localStorage.getItem('furry-online-avatar') || currentAvatar); } catch (_) { this.avatar = currentAvatar; }
+            this.root.querySelectorAll('[data-emoji]').forEach(item => item.classList.toggle('selected', item.dataset.emoji === this.avatar));
+            this.root.querySelector('#online-avatar-current').textContent = this.avatar;
+            const avatarToggle = this.root.querySelector('#online-avatar-toggle');
+            const avatarCard = this.root.querySelector('#online-avatar-card');
+            const setAvatarExpanded = expanded => {
+                avatarCard.hidden = !expanded;
+                avatarToggle.setAttribute('aria-expanded', String(expanded));
+                avatarToggle.classList.toggle('expanded', expanded);
+                avatarToggle.querySelector('small').textContent = expanded ? '收回' : '展开';
+            };
+            avatarToggle.addEventListener('click', () => setAvatarExpanded(avatarCard.hidden));
+            this.root.querySelectorAll('[data-emoji]').forEach(button => button.addEventListener('click', () => {
+                this.avatar = normalizeAvatar(button.dataset.emoji);
+                try { localStorage.setItem('furry-online-avatar', this.avatar); } catch (_) {}
+                this.root.querySelectorAll('[data-emoji]').forEach(item => item.classList.toggle('selected', item === button));
+                this.root.querySelector('#online-avatar-current').textContent = this.avatar;
+            }));
             this.root.querySelector('#online-create').addEventListener('click', () => this.connect('host'));
             this.root.querySelector('#online-join').addEventListener('click', () => this.connect('guest'));
             this.root.querySelector('#online-room-code').addEventListener('input', event => { event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
@@ -85,6 +102,7 @@
             const nickname = reconnect.nickname != null
                 ? reconnect.nickname
                 : (this.root.querySelector('#online-nickname') || {}).value || '';
+            this.avatar = normalizeAvatar(reconnect.avatar != null ? reconnect.avatar : this.avatar);
             // The signaling endpoint is deployment configuration, not a player
             // setting. This prevents stale localStorage values from sending
             // players to an old Worker or an untrusted endpoint.
@@ -101,6 +119,7 @@
             if (!/^[A-Z0-9]{4}$/.test(code)) { report('房间码需要 4 位字母或数字'); return; }
             try {
                 localStorage.setItem('furry-online-name', nickname.trim());
+                localStorage.setItem('furry-online-avatar', this.avatar);
                 localStorage.removeItem('furry-online-signal');
             } catch (_) {}
             if (this.peer) this.peer.close();
@@ -110,11 +129,11 @@
             // called a removed showRoom() method and also tried to register the
             // local player before this.peer existed, so clicking "创建房间"
             // stopped here without opening a WebSocket.
-            this.peer = new global.OnlinePeer({ signalUrl, roomCode: code, role, nickname: this.nickname });
+            this.peer = new global.OnlinePeer({ signalUrl, roomCode: code, role, nickname: this.nickname, avatar: this.avatar });
             this._ensureOwnPlayer(); this.renderRoom(); this.setRoomStatus('正在连接信令服务…');
             this.peer.on('hello', message => {
                 this._reconcileOwnPeerId(message && message.previousPeerId, message && message.peerId);
-                this._upsertPlayer({ peerId: message.peerId || this.peer.peerId, role, nickname: this.nickname, character: this.character, ready: this.ready });
+                this._upsertPlayer({ peerId: message.peerId || this.peer.peerId, role, nickname: this.nickname, character: this.character, ready: this.ready, avatar: this.avatar });
                 this._dedupePlayers();
                 this.setRoomStatus(role === 'host' ? '房间已创建，等待朋友加入' : '已加入房间，等待房主开始'); this.renderRoom();
             });
@@ -256,15 +275,13 @@
             const own = this.ownPlayer || { nickname: this.nickname, role: this.role, character: this.character, ready: this.ready };
             const opponent = this.opponentPlayer;
             const cards = this.chars().map(ch => '<button class="online-char' + (this.character === ch.name ? ' selected' : '') + '" data-char="' + safeText(ch.name) + '" type="button"><strong>' + safeText(ch.name) + '</strong><small>' + safeText(ch.type || '角色') + ' · HP ' + (Number(ch.hp) || 0) + '</small></button>').join('');
-
             const playerMarkup = (player, revealCharacter) => player ? '<div class="online-player"><div class="online-player-avatar">' + safeText(player.avatar || (player.nickname || '?').slice(0, 1).toUpperCase()) + '</div><div class="online-player-meta"><strong>' + safeText(player.nickname || 'Player') + (player.role === 'host' ? ' · 房主' : '') + '</strong><small>' + (player.character ? (revealCharacter ? safeText(player.character) : '已选择角色') : '尚未选择角色') + '</small></div><span class="online-ready' + (player.ready ? ' yes' : '') + '">' + (player.ready ? '已准备' : '未准备') + '</span></div>' : '<div class="online-help">等待另一位玩家加入…</div>';
             this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线房间</div><div class="online-brand-sub">' + safeText(this.connectionState || '连接中') + '</div></div></div><a class="online-link" href="../index.html">退出房间</a></div><section class="online-panel online-room"><div class="online-room-head"><div><div class="online-brand-sub">房间码</div><div class="online-room-code"><strong>' + safeText(this.roomCode) + '</strong><button class="online-copy-code" id="online-copy-code" type="button">复制</button></div></div><div class="online-status" id="online-room-status">' + safeText(this.roomStatus || '等待连接') + '</div></div><div class="online-room-grid"><div class="online-roster"><h3>玩家</h3>' + playerMarkup(own, true) + playerMarkup(opponent, false) + '<div class="online-help">房主负责运行战斗引擎；双方的手牌只发送给自己。</div></div><div class="online-select"><h3>选择你的角色</h3><div class="online-chars">' + cards + '</div><div class="online-room-actions"><button class="online-btn ghost" id="online-leave" type="button">离开房间</button><button class="online-btn ghost" id="online-retry" type="button">重试连接</button><button class="online-btn good" id="online-ready" type="button" ' + (this.character ? '' : 'disabled') + '>' + (this.ready ? '取消准备' : '准备') + '</button>' + (this.role === 'host' ? '<button class="online-btn primary" id="online-start-match" type="button">开始对战</button>' : '') + '</div><div class="online-status error" id="online-room-error">' + safeText(this.error) + '</div></div></div></section>';
             this.root.querySelectorAll('[data-char]').forEach(button => button.addEventListener('click', () => { this.character = button.dataset.char; this.ready = false; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); }));
-
             this.root.querySelector('#online-ready').addEventListener('click', () => { if (!this.character) return; this.ready = !this.ready; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); });
             this.root.querySelector('#online-leave').addEventListener('click', () => { if (this.peer) this.peer.close(); this.peer = null; this.showLanding(); });
             this.root.querySelector('#online-retry').addEventListener('click', () => this.connect(this.role, {
-                nickname: this.nickname, roomCode: this.roomCode, signalUrl: this.signalUrl
+                nickname: this.nickname, avatar: this.avatar, roomCode: this.roomCode, signalUrl: this.signalUrl
             }));
             const start = this.root.querySelector('#online-start-match'); if (start) start.addEventListener('click', () => this.startMatch());
             const copyButton = this.root.querySelector('#online-copy-code'); if (copyButton) copyButton.addEventListener('click', async () => { try { await navigator.clipboard.writeText(this.roomCode); copyButton.textContent = '已复制'; setTimeout(() => { copyButton.textContent = '复制'; }, 1200); } catch (_) { copyButton.textContent = this.roomCode; } });
