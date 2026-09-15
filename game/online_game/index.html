@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Furry Trial 在线对决：基于 WebRTC 的小规模 P2P 试玩。">
+    <title>Furry Trial · 在线对决</title>
+    <link rel="stylesheet" href="online.css">
+</head>
+<body>
+    <div class="online-backdrop" aria-hidden="true"><i></i><i></i><i></i></div>
+    <main id="online-app" class="online-app"></main>
+
+    <!-- The online MVP reuses the same Card/CombatState/Engine implementation
+         as the single-player game.  Keeping these scripts unbundled preserves
+         file:// compatibility and makes the adapter easy to inspect. -->
+    <script src="../js/characters/registry.js"></script>
+    <script src="../js/characters/ryan.js"></script>
+    <script src="../js/characters/leon.js"></script>
+    <script src="../js/characters/chan.js"></script>
+    <script src="../js/characters/saiki.js"></script>
+    <script src="../js/characters/blaze.js"></script>
+    <script src="../js/characters/serenity.js"></script>
+    <script src="../js/characters/moze.js"></script>
+    <script src="../js/characters/knight.js"></script>
+    <script src="../js/characters/otto.js"></script>
+    <script src="../js/ai/registry.js"></script>
+    <script src="../js/ai/knight_ai.js"></script>
+    <script src="../js/ai/leon_ai.js"></script>
+    <script src="../js/ai/ryan_ai.js"></script>
+    <script src="../js/ai/blaze_ai.js"></script>
+    <script src="../js/ai/serenity_ai.js"></script>
+    <script src="../js/ai/saiki_ai.js"></script>
+    <script src="../js/ai/moze_ai.js"></script>
+    <script src="../js/ai/chan_ai.js"></script>
+    <script src="../js/ai/otto_ai.js"></script>
+    <script src="../js/combat/protocol.js"></script>
+    <script src="../js/combat/runtime.js"></script>
+    <script src="../js/combat/events.js"></script>
+    <script src="../js/combat/state.js"></script>
+    <script src="../js/combat/deck.js"></script>
+    <script src="../js/combat/piles.js"></script>
+    <script src="../js/combat/invariants.js"></script>
+    <script src="../js/combat/status_registry.js"></script>
+    <script src="../js/combat/status_service.js"></script>
+    <script src="../js/combat/status.js"></script>
+    <script src="../js/combat/damage.js"></script>
+    <script src="../js/combat/modes.js"></script>
+    <script src="../js/combat/deck_port.js"></script>
+    <script src="../js/combat/turn_machine.js"></script>
+    <script src="../js/combat/dice.js"></script>
+    <script src="../js/combat/card_effects.js"></script>
+    <script src="../js/combat/engine.js"></script>
+    <script src="../js/combat/engine_1v2.js"></script>
+    <script src="../js/combat/engine_1v2_adapter.js"></script>
+    <script src="../js/combat/engine_turns.js"></script>
+    <script src="../js/combat/engine_attack.js"></script>
+    <script src="../js/combat/engine_ai.js"></script>
+    <script src="../js/combat/engine_snapshot.js"></script>
+    <script src="../js/combat/engine_lord.js"></script>
+    <script src="../js/ui/card_style.js"></script>
+
+    <script src="p2p_adapter.js"></script>
+    <script src="online_match.js"></script>
+    <script src="online_ui.js"></script>
+</body>
+</html>

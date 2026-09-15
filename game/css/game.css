@@ -323,6 +323,45 @@ body {
     opacity: 0.72;
 }
 
+/* ---- 在线对决入口 ---- */
+.home-online-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 11px 13px;
+    border: 1px solid rgba(134,239,172,0.28);
+    border-radius: 12px;
+    background: linear-gradient(110deg, rgba(16,185,129,0.14), rgba(59,130,246,0.11));
+    color: #ecfdf5;
+    text-align: left;
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: transform .22s ease, border-color .22s ease, background .22s ease;
+}
+.home-online-btn:hover {
+    transform: translateY(-2px);
+    border-color: rgba(167,243,208,0.62);
+    background: linear-gradient(110deg, rgba(16,185,129,0.23), rgba(59,130,246,0.18));
+}
+.home-online-dot {
+    width: 10px;
+    height: 10px;
+    flex: 0 0 10px;
+    border-radius: 999px;
+    background: #86efac;
+    box-shadow: 0 0 0 4px rgba(134,239,172,0.1), 0 0 15px rgba(134,239,172,0.75);
+}
+.home-online-btn > span:nth-child(2) {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.home-online-btn strong { font-size: .82rem; letter-spacing: .04em; }
+.home-online-btn small { color: rgba(209,250,229,.67); font-size: .66rem; }
+.home-online-arrow { margin-left: auto; font-size: 1.05rem; color: #a7f3d0; }
+
 /* ---- 资料库按钮 ---- */
 .home-secondary-row {
     display: grid;

@@ -83,7 +83,8 @@ const stableTests = [
   'status-registry.test.js',
   'card-effects.test.js',
   'engine-modules.test.js',
-  'runtime-invariants.test.js'
+  'runtime-invariants.test.js',
+  'online-match.test.js'
 ].map(file => path.join(gameRoot, 'tests', file));
 const tests = allTests
   ? fs.readdirSync(path.join(gameRoot, 'tests'))

@@ -115,6 +115,32 @@ function verifyUiComposition(label, actual) {
   return 0;
 }
 
+function verifyOnlinePage() {
+  const onlineRoot = path.join(gameRoot, 'online_game');
+  const htmlPath = path.join(onlineRoot, 'index.html');
+  if (!fs.existsSync(htmlPath)) {
+    console.error('FAIL online_game/index.html is missing');
+    return 1;
+  }
+  const scripts = scriptsFromHtml(htmlPath, source => source);
+  const missing = scripts.filter(source => {
+    if (/^(https?:)?\/\//.test(source)) return false;
+    const relative = source.startsWith('../') ? source.slice(3) : 'online_game/' + source;
+    return !fs.existsSync(path.join(gameRoot, relative));
+  });
+  const worker = fs.readFileSync(path.join(onlineRoot, 'signaling', 'worker.js'), 'utf8');
+  const config = fs.readFileSync(path.join(onlineRoot, 'signaling', 'wrangler.jsonc'), 'utf8');
+  if (missing.length || /"assets"\s*:/.test(config) || /turn:/i.test(worker)) {
+    console.error('FAIL online_game static/signaling checks');
+    if (missing.length) console.error('  missing scripts:', missing.join(', '));
+    if (/"assets"\s*:/.test(config)) console.error('  signaling Worker must not configure assets');
+    if (/turn:/i.test(worker)) console.error('  online MVP must not silently add TURN');
+    return 1;
+  }
+  console.log('OK online_game page, P2P adapter and signaling Worker');
+  return 0;
+}
+
 let code = 0;
 const removedAdventureFiles = [
   path.join(gameRoot, 'adventure', 'js', 'engine', 'combat_legacy.js'),
@@ -154,4 +180,5 @@ code |= verifyUiComposition(
     return s;
   })
 );
+code |= verifyOnlinePage();
 process.exit(code);

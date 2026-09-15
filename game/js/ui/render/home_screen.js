@@ -34,6 +34,7 @@
                 html += `<div class="mode-toggle home-mode-grid"><button class="mode-btn home-mode-btn${!this._is1v2&&!this._isLord&&!this._isAdventure?' active':''}" id="mode-1v1" type="button"><span class="home-mode-name">1v1</span><span class="home-mode-desc">单挑</span></button>`;
                 html += `<button class="mode-btn home-mode-btn${this._is1v2&&!this._isLord?' active':''}" id="mode-1v2" type="button"><span class="home-mode-name">1v2</span><span class="home-mode-desc">双雄</span></button>`;
                 html += `<button class="mode-btn home-mode-btn${this._isLord?' active':''}" id="mode-lord" type="button"><span class="home-mode-name">领主</span><span class="home-mode-desc">模式</span></button></div>`;
+                html += `<button class="home-online-btn" id="online-start-btn" type="button"><span class="home-online-dot" aria-hidden="true"></span><span><strong>在线对决</strong><small>WebRTC P2P · 小规模测试</small></span><span class="home-online-arrow" aria-hidden="true">→</span></button>`;
                 html += `<div class="home-section-label">资料库</div>`;
                 html += `<div class="home-secondary-row">`;
                 html += `<button class="home-secondary-btn rules-entry-btn" id="rules-entry-btn" type="button"><span class="home-secondary-icon" aria-hidden="true">📖</span><span>规则介绍</span></button>`;
@@ -49,6 +50,8 @@
                 if (mL) mL.addEventListener('click', () => { this._is1v2 = false; this._isLord = true; this._isAdventure = false; this._modeChosen = true; this._resetSelection(); this._buildSelectScreen(); });
                 const advBtn = document.getElementById('adventure-start-btn');
                 if (advBtn) advBtn.addEventListener('click', () => { this._is1v2 = false; this._isLord = false; this._isAdventure = true; this._modeChosen = true; this._resetSelection(); this._buildSelectScreen(); });
+                const onlineBtn = document.getElementById('online-start-btn');
+                if (onlineBtn) onlineBtn.addEventListener('click', () => { window.location.href = 'online_game/index.html'; });
                 const rulesBtn0 = document.getElementById('rules-entry-btn');
                 if (rulesBtn0) rulesBtn0.addEventListener('click', () => {
                     if (window.RulesPage) { window.RulesPage.build(); this.selectScreen.classList.remove('active'); document.getElementById('rules-screen').classList.add('active'); }
