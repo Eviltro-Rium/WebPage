@@ -98,7 +98,19 @@
             this.peer.on('roomMessage', payload => this._handleRoomMessage(payload));
             this.peer.on('message', payload => this._handlePeerMessage(payload));
             this.peer.on('error', error => { this.error = error && error.message ? error.message : '连接失败'; this.setRoomStatus(this.error, 'error'); if (this.state) this.renderBattle([]); else this.renderRoom(); });
-            this.peer.on('close', event => { if (!this.match) this.setRoomStatus(event && event.reason === 'room-not-found' ? '未找到对应房间，请检查房间码' : '信令连接已关闭', 'error'); });
+            this.peer.on('close', event => {
+                if (this.match) return;
+                const code = Number(event && event.code) || 0;
+                const reason = String(event && event.reason || '').trim();
+                const messages = {
+                    'room-not-found': '未找到对应房间，请检查房间码',
+                    'room-full': '房间已满（最多两名玩家）',
+                    'host-exists': '该房间已有房主，请重新创建房间',
+                    'message-too-large': '信令消息过大，连接已拒绝'
+                };
+                const detail = messages[reason] || (code ? `信令连接已关闭（${code}${reason ? ' · ' + reason : ''}）` : '信令连接已关闭');
+                this.setRoomStatus(detail, 'error');
+            });
             this.peer.connect();
         }
         _ensureOwnPlayer() {
