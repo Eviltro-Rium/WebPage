@@ -117,9 +117,10 @@
             if (message.type === 'helloAck') {
                 // The signaling Worker is authoritative for connection
                 // identity. Keep its id for relay self-echo filtering.
+                const previousPeerId = this.peerId;
                 if (message.peerId) this.peerId = String(message.peerId).slice(0, 80);
                 this._flushSignalQueue();
-                this.emit('hello', message);
+                this.emit('hello', Object.assign({}, message, { previousPeerId }));
                 if (Array.isArray(message.players)) this.emit('roster', message.players);
                 if (this.role === 'host' && Array.isArray(message.players) && message.players.length > 1) this._startOffer();
                 return;

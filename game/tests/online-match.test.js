@@ -5,7 +5,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..');
-const context = vm.createContext({ console, Math, JSON, Date, setTimeout, clearTimeout });
+const context = vm.createContext({ console, Math, JSON, Date, setTimeout, clearTimeout, addEventListener() {} });
 context.window = context;
 const files = [
   'js/characters/registry.js', 'js/characters/ryan.js', 'js/characters/leon.js',
@@ -31,6 +31,7 @@ vm.runInContext(fs.readFileSync(path.join(root, 'online_game/online_match.js'), 
 vm.runInContext(fs.readFileSync(path.join(root, 'js/combat/session.js'), 'utf8'), context, { filename: 'session.js' });
 vm.runInContext(fs.readFileSync(path.join(root, 'online_game/online_session.js'), 'utf8'), context, { filename: 'online_session.js' });
 vm.runInContext(fs.readFileSync(path.join(root, 'online_game/p2p_adapter.js'), 'utf8'), context, { filename: 'p2p_adapter.js' });
+vm.runInContext(fs.readFileSync(path.join(root, 'online_game/online_ui.js'), 'utf8'), context, { filename: 'online_ui.js' });
 
 test('online host adapter preserves private hands and swaps guest commands', () => {
   const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host', null, {
@@ -141,6 +142,16 @@ test('online match blocks commands until the initial snapshot is acknowledged', 
   assert.equal(match.dispatch('host', 'selectCard', { index: 0 }, {
     requestId: 'after-ready', matchId: match.matchId, expectedStateVersion: match.stateVersion
   }).ok, true);
+});
+
+test('online lobby reconciles the temporary peer id with the Worker identity', () => {
+  const ui = Object.create(context.OnlineUI.prototype);
+  ui.peer = { peerId: 'server-peer' };
+  ui.players = [{ peerId: 'local-temporary', role: 'host', nickname: 'Rium', character: 'Leon', ready: true }];
+  ui._reconcileOwnPeerId('local-temporary', 'server-peer');
+  ui._dedupePlayers();
+  assert.deepEqual(ui.players.map(player => player.peerId), ['server-peer']);
+  assert.equal(ui.players[0].nickname, 'Rium');
 });
 
 test('online transitions apply the guest turn-start status exactly once', () => {

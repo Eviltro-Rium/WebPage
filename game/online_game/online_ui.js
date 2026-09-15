@@ -93,7 +93,12 @@
             // stopped here without opening a WebSocket.
             this.peer = new global.OnlinePeer({ signalUrl, roomCode: code, role, nickname: this.nickname });
             this._ensureOwnPlayer(); this.renderRoom(); this.setRoomStatus('正在连接信令服务…');
-            this.peer.on('hello', message => { this._upsertPlayer({ peerId: message.peerId || this.peer.peerId, role, nickname: this.nickname, character: this.character, ready: this.ready }); this.setRoomStatus(role === 'host' ? '房间已创建，等待朋友加入' : '已加入房间，等待房主开始'); this.renderRoom(); });
+            this.peer.on('hello', message => {
+                this._reconcileOwnPeerId(message && message.previousPeerId, message && message.peerId);
+                this._upsertPlayer({ peerId: message.peerId || this.peer.peerId, role, nickname: this.nickname, character: this.character, ready: this.ready });
+                this._dedupePlayers();
+                this.setRoomStatus(role === 'host' ? '房间已创建，等待朋友加入' : '已加入房间，等待房主开始'); this.renderRoom();
+            });
             this.peer.on('roster', players => { for (const player of players || []) this._upsertPlayer(player); this._ensureOwnPlayer(); this.renderRoom(); });
             this.peer.on('peerJoined', player => { this._upsertPlayer(player); this.setRoomStatus('对手已连接，选择角色并准备'); this.renderRoom(); });
             this.peer.on('peerLeft', player => { if (player && player.peerId) this.players = this.players.filter(item => item.peerId !== player.peerId); this.setRoomStatus('对手已离开房间'); this.renderRoom(); });
@@ -157,6 +162,40 @@
         _ensureOwnPlayer() {
             if (!this.peer) return;
             this._upsertPlayer({ peerId: this.peer.peerId, role: this.role, nickname: this.nickname, character: this.character, ready: this.ready });
+            this._dedupePlayers();
+        }
+        _reconcileOwnPeerId(previousId, currentId) {
+            if (!previousId || !currentId || previousId === currentId) return;
+            const old = this.players.find(item => item.peerId === previousId);
+            if (!old) return;
+            const current = this.players.find(item => item.peerId === currentId);
+            if (current && current !== old) {
+                // Keep the authoritative roster entry while carrying over
+                // local UI state that may have been selected before helloAck.
+                current.nickname = old.nickname || current.nickname;
+                current.character = old.character || current.character;
+                current.ready = old.ready || current.ready;
+                this.players = this.players.filter(item => item !== old);
+            } else {
+                old.peerId = currentId;
+            }
+        }
+        _dedupePlayers() {
+            const seen = new Set();
+            this.players = this.players.filter(player => {
+                if (!player || !player.peerId || seen.has(player.peerId)) return false;
+                seen.add(player.peerId); return true;
+            });
+            // A transient local id can survive only until the Worker identity
+            // is known. Never render two local entries after reconciliation.
+            if (this.peer) {
+                let keptOwn = false;
+                this.players = this.players.filter(player => {
+                    if (player.peerId !== this.peer.peerId) return true;
+                    if (keptOwn) return false;
+                    keptOwn = true; return true;
+                });
+            }
         }
         _upsertPlayer(incoming) {
             if (!incoming) return;
