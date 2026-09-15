@@ -83,8 +83,12 @@
             if (this.peer) this.peer.close();
             this.role = role; this.roomCode = code; this.nickname = nickname.trim().slice(0, 18);
             this.signalUrl = signalUrl; this.players = []; this.character = null; this.ready = false; this.error = ''; this.match = null; this.state = null;
-            this._ensureOwnPlayer(); this.showRoom(); this.setRoomStatus('正在连接信令服务…');
+            // Create the peer before rendering the room.  The previous order
+            // called a removed showRoom() method and also tried to register the
+            // local player before this.peer existed, so clicking "创建房间"
+            // stopped here without opening a WebSocket.
             this.peer = new global.OnlinePeer({ signalUrl, roomCode: code, role, nickname: this.nickname });
+            this._ensureOwnPlayer(); this.renderRoom(); this.setRoomStatus('正在连接信令服务…');
             this.peer.on('hello', message => { this._upsertPlayer({ peerId: message.peerId || this.peer.peerId, role, nickname: this.nickname, character: this.character, ready: this.ready }); this.setRoomStatus(role === 'host' ? '房间已创建，等待朋友加入' : '已加入房间，等待房主开始'); this.renderRoom(); });
             this.peer.on('roster', players => { for (const player of players || []) this._upsertPlayer(player); this._ensureOwnPlayer(); this.renderRoom(); });
             this.peer.on('peerJoined', player => { this._upsertPlayer(player); this.setRoomStatus('对手已连接，选择角色并准备'); this.renderRoom(); });
