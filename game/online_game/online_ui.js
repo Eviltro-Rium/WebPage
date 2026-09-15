@@ -21,6 +21,12 @@
             this.error = ''; this.pendingSync = null; this.connectionState = '未连接'; this.roomStatus = '';
             this.battleSession = null; this.battleUI = null; this._battleAnimation = Promise.resolve();
             this._matchStartPayload = null; this._matchStartAcked = false; this._matchStartAttempts = 0; this._matchStartRetryTimer = null;
+            // The initial snapshot is sent in two phases: matchStart mounts
+            // the guest session, then matchReady enables the first actor.  A
+            // lost second packet used to leave the guest permanently marked
+            // as non-interactive even though the host had already started.
+            this._matchReadyPayload = null; this._matchReadyAcked = false;
+            this._matchReadyAttempts = 0; this._matchReadyRetryTimer = null;
             this.showLanding();
         }
 
@@ -318,11 +324,26 @@
                 this.state = hostReady;
                 if (this.battleSession) this.battleSession.state = clone(hostReady);
                 void this._queueSharedBattleResult({ ok: true, state: hostReady, events: [] }, true);
-                if (this.peer) this.peer.send({
+                this._matchReadyPayload = {
                     kind: 'matchReady', protocolVersion: this.match.protocolVersion,
                     matchId: this.match.matchId, stateVersion: this.match.stateVersion,
                     guestState: guestReady
-                });
+                };
+                this._matchReadyAcked = false;
+                this._matchReadyAttempts = 0;
+                if (this._matchReadyRetryTimer) clearTimeout(this._matchReadyRetryTimer);
+                this._matchReadyRetryTimer = null;
+                this._sendMatchReady();
+                return;
+            }
+            if (message.kind === 'matchReadyAck') {
+                if (this.role !== 'host' || !this.match || !this.match.matchId) return;
+                if (message.matchId !== this.match.matchId) return;
+                this._matchReadyAcked = true;
+                this._matchReadyPayload = null;
+                this._matchReadyAttempts = 0;
+                if (this._matchReadyRetryTimer) clearTimeout(this._matchReadyRetryTimer);
+                this._matchReadyRetryTimer = null;
                 return;
             }
             if (message.kind === 'matchStart') {
@@ -366,11 +387,12 @@
                 if (this.role !== 'guest' || !this.match || !this.match.remote || !this.battleSession) return;
                 if (message.protocolVersion != null && Number(message.protocolVersion) !== 2) return;
                 if (!message.matchId || !this.battleSession._matchId || message.matchId !== this.battleSession._matchId) return;
-                this.battleSession.receiveState({
+                const result = this.battleSession.receiveState({
                     kind: 'state', protocolVersion: message.protocolVersion,
                     matchId: message.matchId, stateVersion: message.stateVersion,
                     guestState: message.guestState, events: []
                 });
+                if (result && this.peer) this.peer.send({ kind: 'matchReadyAck', matchId: message.matchId });
                 return;
             }
             if (message.kind === 'matchStartFailed') {
@@ -512,12 +534,41 @@
                 this._sendMatchStart();
             }, 350);
         }
+        _sendMatchReady() {
+            const payload = this._matchReadyPayload;
+            if (!payload || this._matchReadyAcked || !this.peer) return;
+            // Send both the explicit barrier packet and a normal state packet.
+            // The latter is harmless for an already-mounted guest and allows a
+            // late listener to recover if only one packet crosses the relay.
+            this.peer.send(payload);
+            this.peer.send({
+                kind: 'state', protocolVersion: payload.protocolVersion,
+                matchId: payload.matchId, stateVersion: payload.stateVersion,
+                guestState: payload.guestState, events: []
+            });
+            this._matchReadyAttempts += 1;
+            if (this._matchReadyAcked) return;
+            if (this._matchReadyAttempts >= 12) {
+                this._matchReadyRetryTimer = null;
+                return;
+            }
+            if (this._matchReadyRetryTimer) clearTimeout(this._matchReadyRetryTimer);
+            this._matchReadyRetryTimer = setTimeout(() => {
+                this._matchReadyRetryTimer = null;
+                this._sendMatchReady();
+            }, 350);
+        }
         _resetToLobby(notify) {
             if (this._matchStartRetryTimer) clearTimeout(this._matchStartRetryTimer);
+            if (this._matchReadyRetryTimer) clearTimeout(this._matchReadyRetryTimer);
             this._matchStartRetryTimer = null;
+            this._matchReadyRetryTimer = null;
             this._matchStartPayload = null;
             this._matchStartAcked = false;
             this._matchStartAttempts = 0;
+            this._matchReadyPayload = null;
+            this._matchReadyAcked = false;
+            this._matchReadyAttempts = 0;
             this._destroySharedBattle();
             this.match = null; this.state = null; this.error = ''; this.ready = false;
             this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom();

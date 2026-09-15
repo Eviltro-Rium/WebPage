@@ -144,6 +144,42 @@ test('online match blocks commands until the initial snapshot is acknowledged', 
   }).ok, true);
 });
 
+test('online guest opening projection keeps the attacking guest interactive', () => {
+  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'guest');
+  const guest = match.project('guest');
+  assert.equal(guest.phase, 'PLAYER_PLAY');
+  assert.equal(guest.onlineActor, 'guest');
+  assert.equal(guest.onlineCanAct, true);
+  assert.equal(guest.legalHand.length, guest.playerHand.length);
+});
+
+test('online discard button enters discard phase from the opening play phase', () => {
+  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'guest');
+  const outcome = match.dispatch('guest', 'doEnterDiscard', {}, {
+    requestId: 'enter-discard', matchId: match.matchId, expectedStateVersion: match.stateVersion
+  });
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.state.phase, 'PLAYER_DISCARD');
+});
+
+test('online guest applies matchReady and acknowledges the opening snapshot', () => {
+  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'guest');
+  match.setStarted(false);
+  const opening = match.project('guest');
+  match.setStarted(true);
+  const ready = match.project('guest');
+  const sent = [];
+  const ui = Object.create(context.OnlineUI.prototype);
+  ui.role = 'guest';
+  ui.match = { remote: true };
+  ui.peer = { send(message) { sent.push(message); return true; } };
+  ui.battleSession = new context.OnlineGuestSession({ peer: ui.peer, state: opening });
+  ui._handlePeerMessage({ kind: 'matchReady', protocolVersion: 2, matchId: match.matchId,
+    stateVersion: ready.stateVersion, guestState: ready });
+  assert.equal(ui.battleSession.getState().onlineCanAct, true);
+  assert.ok(sent.some(message => message.kind === 'matchReadyAck' && message.matchId === match.matchId));
+});
+
 test('online lobby reconciles the temporary peer id with the Worker identity', () => {
   const ui = Object.create(context.OnlineUI.prototype);
   ui.peer = { peerId: 'server-peer' };

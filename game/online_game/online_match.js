@@ -271,7 +271,13 @@
             if (method === 'doDefend' && (s.phase !== 'PLAYER_DEFEND' || selected < 0 || selected >= hand.length)) return '请先选择防御牌';
             if (method === 'doSkipDefend' && s.phase !== 'PLAYER_DEFEND') return '当前不是防御阶段';
             if (method === 'doEndTurn' && s.phase !== 'PLAYER_PLAY') return '当前不能结束回合';
-            if (['doEnterDiscard', 'doCancelDiscard', 'doConfirmDiscard'].includes(method) && s.phase !== 'PLAYER_DISCARD') return '当前不是弃牌阶段';
+            // The discard button is shown during PLAYER_PLAY and is the
+            // transition into PLAYER_DISCARD.  Only cancel/confirm actions
+            // require that the discard phase is already active; treating the
+            // entry action as a discard-phase action made the online guest
+            // receive “当前不在弃牌阶段” even though the button was valid.
+            if (method === 'doEnterDiscard' && s.phase !== 'PLAYER_PLAY') return '当前不能进入弃牌阶段';
+            if (['doCancelDiscard', 'doConfirmDiscard'].includes(method) && s.phase !== 'PLAYER_DISCARD') return '当前不是弃牌阶段';
             if (['doFiveHeal', 'doFiveDamage'].includes(method) && (s.phase !== 'PLAYER_FIVE_CHOICE' || selected < 0 || selected >= hand.length)) return '当前不能处理 Ryan 5牌';
             if (method === 'doSaikiSixConfirm' && (s.phase !== 'SAIKI_SIX_JUDGE' || selected < 0 || selected >= hand.length)) return '当前不能处理判定牌';
             if (method === 'resolveAttackModChoice') {
