@@ -243,19 +243,19 @@
           }
           eng.emit('desc', '清除双方所有buff');
         }
-        // 冻洋北极熊：进攻1/2/3 有暴击时消耗1层使攻击不可防御
-        if (typeof mod.attackUseCrit === 'function' && mod.attackUseCrit(c) && (a.crit || 0) > 0) {
+        // 冻洋北极熊：进攻1/2/3 伤害>4且有暴击时消耗1层使攻击不可防御（暴击通用设定）
+        if (typeof mod.attackUseCrit === 'function' && mod.attackUseCrit(c) && (a.crit || 0) > 0 && d > 4) {
           a.crit--;
           unblock = true;
           const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
           eng.emit('buff', '-1[暴击]', null, { who, kind: 'crit', stacks: a.crit });
           eng.emit('desc', a.name + '消耗1层暴击使攻击不可防御');
         }
-        // 冻洋北极熊：进攻4/5/6 获得1层暴击
+        // 冻洋北极熊：进攻4/5/6 获得1层暴击（上限2）
         if (typeof mod.attackGainCrit === 'function') {
           const gc = mod.attackGainCrit(c);
           if (gc > 0) {
-            a.crit = Math.min(3, (a.crit || 0) + gc);
+            a.crit = Math.min(2, (a.crit || 0) + gc);
             const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
             eng.emit('buff', '+' + gc + '[暴击]', null, { who, kind: 'crit', stacks: a.crit });
           }
@@ -661,12 +661,12 @@
       const v = card.value;
       const stage3 = (Number(opts.stage) || 1) >= 3;
       if (v >= 1 && v <= 3) {
-        return '造成对手buff总层数点[伤害]（有[暴击]时消耗1层使攻击不可防御）';
+        return '造成对手buff总层数点[伤害]（伤害>4且有[暴击]时消耗1层使攻击不可防御）';
       }
       if (v >= 4 && v <= 6) {
         const dmg = stage3 ? 4 : 3;
         const bleed = stage3 ? 2 : 1;
-        return '造成' + dmg + '点[伤害]，获得1层[暴击]，施加' + bleed + '层[流血]';
+        return '造成' + dmg + '点[伤害]，获得1层[暴击]（上限2），施加' + bleed + '层[流血]';
       }
       return '无进攻效果';
     }
