@@ -20,6 +20,7 @@
             this.ready = false; this.match = null; this.state = null;
             this.error = ''; this.pendingSync = null; this.connectionState = '未连接'; this.roomStatus = '';
             this.battleSession = null; this.battleUI = null; this._battleAnimation = Promise.resolve();
+            this._matchStartPayload = null; this._matchStartAcked = false; this._matchStartAttempts = 0; this._matchStartRetryTimer = null;
             this.showLanding();
         }
 
@@ -88,7 +89,13 @@
             this.peer.on('peerJoined', player => { this._upsertPlayer(player); this.setRoomStatus('对手已连接，选择角色并准备'); this.renderRoom(); });
             this.peer.on('peerLeft', player => { if (player && player.peerId) this.players = this.players.filter(item => item.peerId !== player.peerId); this.setRoomStatus('对手已离开房间'); this.renderRoom(); });
             this.peer.on('connectionState', value => { this.connectionState = value || '连接中'; this.renderRoom(); });
-            this.peer.on('channelOpen', () => { this.connectionState = 'P2P 已连接'; this.setRoomStatus('直连已建立，可以开始对战'); this._sendLobbyUpdate(); if (this.pendingSync) { const payload = this.pendingSync; this.pendingSync = null; this.peer.send(payload); } this.renderRoom(); });
+            this.peer.on('channelOpen', () => {
+                this.connectionState = 'P2P 已连接';
+                this.setRoomStatus('直连已建立，可以开始对战');
+                this._sendLobbyUpdate();
+                this._flushPendingSync();
+                this.renderRoom();
+            });
             this.peer.on('roomMessage', payload => this._handleRoomMessage(payload));
             this.peer.on('message', payload => this._handlePeerMessage(payload));
             this.peer.on('error', error => {
@@ -186,30 +193,61 @@
                     }
                 });
                 this._mountSharedBattle(this.battleSession, hostState, events);
-                this._sendSync({
+                this._matchStartPayload = {
                     kind: 'matchStart',
                     roomCode: this.roomCode,
                     firstActor,
                     hostState,
                     guestState: this.match.project('guest'),
                     events: this.match.eventsForViewer ? this.match.eventsForViewer(events, 'guest', 'host') : events
-                });
+                };
+                this._matchStartAcked = false;
+                this._matchStartAttempts = 0;
+                this._sendMatchStart();
             } catch (error) { this.error = error && error.message ? error.message : String(error); this.match = null; this.state = null; this.renderRoom(); }
         }
         _handlePeerMessage(message) {
             if (!message || typeof message.kind !== 'string') return;
             if (message.kind === 'lobby') { this._upsertPlayer(message.player); this.renderRoom(); return; }
+            if (message.kind === 'matchStartAck') {
+                if (this.role !== 'host') return;
+                this._matchStartAcked = true;
+                this._matchStartPayload = null;
+                this._matchStartAttempts = 0;
+                if (this._matchStartRetryTimer) clearTimeout(this._matchStartRetryTimer);
+                this._matchStartRetryTimer = null;
+                if (this.pendingSync && this.pendingSync.kind === 'matchStart') this.pendingSync = null;
+                return;
+            }
             if (message.kind === 'matchStart') {
                 if (this.role !== 'guest') return;
+                // Acknowledgement makes the host's initial snapshot reliable.
+                // Duplicate packets can arrive while the host retries; once
+                // mounted, acknowledge them without rebuilding the UI.
+                if (this.match && this.match.remote && this.battleSession) {
+                    if (this.peer) this.peer.send({ kind: 'matchStartAck' });
+                    return;
+                }
                 this.match = { remote: true };
                 const guestState = clone(message.guestState || message.state);
-                this.state = guestState;
-                this.battleSession = new global.OnlineGuestSession({
-                    peer: this.peer,
-                    state: guestState,
-                    onUnsolicitedState: result => this._queueSharedBattleResult(result)
-                });
-                this._mountSharedBattle(this.battleSession, guestState, message.events || []);
+                try {
+                    if (!guestState) throw new Error('未收到对战初始状态');
+                    this.state = guestState;
+                    this.battleSession = new global.OnlineGuestSession({
+                        peer: this.peer,
+                        state: guestState,
+                        onUnsolicitedState: result => this._queueSharedBattleResult(result)
+                    });
+                    this._mountSharedBattle(this.battleSession, guestState, message.events || []);
+                    if (this.peer) this.peer.send({ kind: 'matchStartAck' });
+                } catch (error) {
+                    this.match = null;
+                    this.battleSession = null;
+                    this.state = null;
+                    this.error = error && error.message ? error.message : String(error);
+                    this.setRoomStatus('进入对战失败：' + this.error, 'error');
+                    this.renderRoom();
+                }
                 return;
             }
             if (message.kind === 'state') {
@@ -305,8 +343,42 @@
             else if (this.peer) this.peer.send({ kind: 'returnLobby' });
         }
 
-        _sendSync(payload) { if (!this.peer || !this.peer.send(payload)) this.pendingSync = payload; }
+        _sendSync(payload) {
+            if (!this.peer) { this.pendingSync = payload; return false; }
+            if (this.peer.send(payload)) {
+                if (this.pendingSync === payload) this.pendingSync = null;
+                return true;
+            }
+            this.pendingSync = payload;
+            return false;
+        }
+        _flushPendingSync() {
+            if (!this.pendingSync || !this.peer) return false;
+            const payload = this.pendingSync;
+            if (this.peer.send(payload)) {
+                this.pendingSync = null;
+                return true;
+            }
+            return false;
+        }
+        _sendMatchStart() {
+            const payload = this._matchStartPayload;
+            if (!payload || this._matchStartAcked || !this.peer) return;
+            this._sendSync(payload);
+            this._matchStartAttempts += 1;
+            if (this._matchStartAcked || this._matchStartAttempts >= 12) return;
+            if (this._matchStartRetryTimer) clearTimeout(this._matchStartRetryTimer);
+            this._matchStartRetryTimer = setTimeout(() => {
+                this._matchStartRetryTimer = null;
+                this._sendMatchStart();
+            }, 350);
+        }
         _resetToLobby(notify) {
+            if (this._matchStartRetryTimer) clearTimeout(this._matchStartRetryTimer);
+            this._matchStartRetryTimer = null;
+            this._matchStartPayload = null;
+            this._matchStartAcked = false;
+            this._matchStartAttempts = 0;
             this._destroySharedBattle();
             this.match = null; this.state = null; this.error = ''; this.ready = false;
             this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom();

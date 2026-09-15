@@ -103,6 +103,12 @@ export class Room {
   send(socket, payload) { try { socket.send(JSON.stringify(payload)); } catch (_) {} }
 
   broadcast(payload, except = null) {
-    for (const { socket } of this.clients.values()) if (socket !== except) this.send(socket, payload);
+    // Callers identify peers by their stable client id, while the map stores
+    // the actual WebSocket. Resolve ids here so SDP/ICE is never echoed back
+    // to the sender (self-signals can otherwise trigger spurious ICE errors).
+    const exceptSocket = typeof except === 'string'
+      ? (this.clients.get(except) || {}).socket
+      : except;
+    for (const { socket } of this.clients.values()) if (socket !== exceptSocket) this.send(socket, payload);
   }
 }
