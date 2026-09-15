@@ -48,7 +48,7 @@ body {
 .online-notice b { color: #c4b5fd; font-weight: 700; }
 .online-form { display: grid; align-content: center; gap: 12px; padding: 18px; border: 1px solid rgba(186,230,253,.15); border-radius: 15px; background: rgba(5, 19, 35, .42); }
 .online-form h2 { margin: 0 0 3px; font-size: 1.12rem; }
-.online-identity-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+.online-identity-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; }
 .online-avatar-field { display: grid; gap: 6px; }
 .online-label-title { color: #bfdbfe; font-size: .72rem; font-weight: 720; }
 .online-avatar-toggle { display: grid; grid-template-columns: auto auto; align-items: center; gap: 5px 9px; min-width: 94px; padding: 7px 10px; border: 1px solid rgba(165,207,255,.24); border-radius: 9px; color: var(--ink); background: rgba(3,12,25,.52); cursor: pointer; font: inherit; text-align: left; transition: border-color .18s ease, background .18s ease, transform .18s ease; }
