@@ -51,6 +51,13 @@ body {
 .online-identity-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; }
 .online-avatar-field { display: grid; gap: 6px; }
 .online-label-title { color: #bfdbfe; font-size: .72rem; font-weight: 720; }
+.online-avatar-toggle { display: grid; grid-template-columns: auto auto; align-items: center; gap: 5px 9px; min-width: 94px; padding: 7px 10px; border: 1px solid rgba(165,207,255,.24); border-radius: 9px; color: var(--ink); background: rgba(3,12,25,.52); cursor: pointer; font: inherit; text-align: left; transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+.online-avatar-toggle:hover, .online-avatar-toggle.expanded { border-color: rgba(196,181,253,.8); background: rgba(47,39,90,.48); }
+.online-avatar-toggle strong { font-size: 1.25rem; line-height: 1; }
+.online-avatar-toggle span { color: #bfdbfe; font-size: .68rem; font-weight: 720; }
+.online-avatar-toggle small { grid-column: 1 / -1; color: var(--muted); font-size: .62rem; }
+.online-avatar-card { padding: 8px; border: 1px solid rgba(196,181,253,.38); border-radius: 12px; background: rgba(8,22,40,.94); box-shadow: 0 12px 26px rgba(0,0,0,.28); animation: online-avatar-card-in .16s ease-out; }
+@keyframes online-avatar-card-in { from { opacity: 0; transform: translateY(-5px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .online-label { display: grid; gap: 6px; color: #bfdbfe; font-size: .72rem; font-weight: 720; }
 .online-input { width: 100%; border: 1px solid rgba(165,207,255,.24); border-radius: 9px; outline: 0; padding: 10px 11px; color: var(--ink); background: rgba(3, 12, 25, .52); font: inherit; }
 .online-input:focus { border-color: rgba(196,181,253,.8); box-shadow: 0 0 0 3px rgba(167,139,250,.14); }
@@ -83,6 +90,7 @@ body {
 .online-char small { display: block; margin-top: 5px; color: var(--muted); font-size: .63rem; }
 .online-emojis { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
 .online-avatar-field .online-emojis { flex-wrap: nowrap; margin-bottom: 0; }
+.online-avatar-card .online-emojis { flex-wrap: wrap; max-width: 250px; }
 .online-emoji { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid rgba(165,207,255,.18); border-radius: 10px; padding: 0; cursor: pointer; background: rgba(255,255,255,.045); font-size: 1.15rem; transition: .18s ease; }
 .online-emoji:hover { transform: translateY(-2px); border-color: rgba(196,181,253,.52); }
 .online-emoji.selected { border-color: #c4b5fd; background: rgba(124,58,237,.23); box-shadow: 0 0 0 2px rgba(167,139,250,.16); }
