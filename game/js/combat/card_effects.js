@@ -138,7 +138,13 @@
         ? (engine.s.is1v2 ? (engine.s.atkOwner && engine.s.atkOwner !== 'player' ? engine.s.atkOwner : (engine.s.attackTarget || 'ai')) : 'ai')
         : 'player';
       if (engine.h[swapTarget]) [engine.h[who], engine.h[swapTarget]] = [engine.h[swapTarget], engine.h[who]];
-      if (engine.h.player) engine.h.player.forEach(item => { if (item) item.npcCard = true; });
+      // Only adventure battles need to preserve the visual identity of cards
+      // transferred from an NPC hand. In online/classic PvP both hands belong
+      // to human players; marking the received white cards as npcCard would
+      // incorrectly paint the monster badge after a hand swap.
+      if (engine.s && engine.s.isAdventure && engine.h.player) {
+        engine.h.player.forEach(item => { if (item) item.npcCard = true; });
+      }
     } else if (info.id === 'shuffleToDeck') {
       if (typeof engine._shuffleDiscardIntoDeck === 'function') engine._shuffleDiscardIntoDeck(who);
       engine.emit('desc', '弃牌库已洗回牌堆');

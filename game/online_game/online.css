@@ -17,7 +17,10 @@ html, body { min-height: 100%; margin: 0; }
 body {
     min-height: 100vh;
     color: var(--ink);
-    background: #101a2c url("../backgrounds/Castle.png") center/cover fixed no-repeat;
+    /* game.css defines --bg-gradient for the main game page. Reuse it here
+       instead of loading a second scene image for the online lobby. */
+    background: var(--bg-gradient, linear-gradient(145deg, #081c2c, #0b2940 55%, #123524));
+    background-attachment: fixed;
     overflow-x: hidden;
 }
 body::before {
@@ -117,6 +120,17 @@ body::before {
 }
 .online-battle-topbar {
     margin-bottom: 4px;
+}
+.online-battle-player {
+    margin-left: auto;
+    padding: 6px 10px;
+    border: 1px solid rgba(196, 181, 253, .34);
+    border-radius: 8px;
+    color: #ddd6fe;
+    background: rgba(47, 39, 90, .34);
+    font-size: .72rem;
+    font-weight: 760;
+    white-space: nowrap;
 }
 .online-battle-topbar .online-link {
     font-size: .72rem;

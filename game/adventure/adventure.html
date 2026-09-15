@@ -8,7 +8,9 @@
     <link rel="stylesheet" href="../css/game.css">
     <link rel="stylesheet" href="css/adventure.css">
     <style>
-        #castle-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: url('../backgrounds/Castle.png') center/cover no-repeat; display: none; transition: background 0.6s ease; }
+        /* Keep the initial/test screens on the shared game-home background.
+           Adventure scene artwork is assigned only when a real map starts. */
+        #castle-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: var(--bg-gradient); display: none; transition: background 0.6s ease; }
         #adventure-container, #game-container { position: relative; z-index: 1; }
 
     </style>

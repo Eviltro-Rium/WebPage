@@ -32,9 +32,16 @@ vm.runInContext(fs.readFileSync(path.join(root, 'js/combat/session.js'), 'utf8')
 vm.runInContext(fs.readFileSync(path.join(root, 'online_game/online_session.js'), 'utf8'), context, { filename: 'online_session.js' });
 
 test('online host adapter preserves private hands and swaps guest commands', () => {
-  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host');
+  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host', null, {
+    hostNickname: 'Rium',
+    guestNickname: 'Fox'
+  });
   let host = match.project('host');
   let guest = match.project('guest');
+  assert.equal(host.onlineNickname, 'Rium');
+  assert.equal(host.onlineOpponentNickname, 'Fox');
+  assert.equal(guest.onlineNickname, 'Fox');
+  assert.equal(guest.onlineOpponentNickname, 'Rium');
   assert.equal(host.playerHand.length, 5);
   assert.equal(guest.playerHand.length, 5);
   assert.equal(host.aiHand, null);
@@ -115,4 +122,16 @@ test('online event batches are projected to the recipient orientation', () => {
   assert.deepEqual(match.eventsForViewer(events, 'guest', 'host')[0], {
     type: 'aiPlay', who: 'ai', target: 'player', owner: 'ai', aoeTargets: ['ai', 'player']
   });
+});
+
+test('online hand swaps keep the received white card as a player card', () => {
+  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host');
+  const Card = context.FurryGame.Card;
+  const receivedWhite = Card.number('WHITE', 4, true);
+  const swap = Card.item('WHITE', 'swap');
+  match.engine.h.player = [swap];
+  match.engine.h.ai = [receivedWhite];
+  match.engine.useItem(swap, match.engine.s.player, match.engine.s.ai, 'player');
+  assert.equal(match.engine.h.player[0], receivedWhite);
+  assert.equal(match.engine.h.player[0].npcCard, undefined);
 });

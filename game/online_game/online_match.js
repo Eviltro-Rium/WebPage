@@ -50,12 +50,18 @@
     }
 
     class OnlineMatchHost {
-        constructor(hostCharacter, guestCharacter, firstActor = 'host', firstRoll = null) {
+        constructor(hostCharacter, guestCharacter, firstActor = 'host', firstRoll = null, playerInfo = {}) {
             if (typeof global.Engine !== 'function') throw new Error('战斗引擎尚未加载');
             this.engine = new global.Engine();
             this.hostEntity = null;
             this.guestEntity = null;
             this.context = 'host';
+            // Nicknames are session metadata, not character state. Keep them
+            // on the online adapter so every viewer receives the correct
+            // player/opponent labels without mutating the shared engine.
+            playerInfo = playerInfo || {};
+            this.hostNickname = String(playerInfo.hostNickname || hostCharacter || '房主').trim().slice(0, 18) || '房主';
+            this.guestNickname = String(playerInfo.guestNickname || guestCharacter || '玩家').trim().slice(0, 18) || '玩家';
             this._installHooks();
             this.engine.start(hostCharacter, guestCharacter);
             this.hostEntity = this.engine.s.player;
@@ -258,6 +264,12 @@
             state.modeId = 'online-1v1';
             state.onlineActor = e.s.onlineActor || 'host';
             state.onlineRole = viewer === 'guest' ? 'guest' : 'host';
+            const viewerRole = viewer === 'guest' ? 'guest' : 'host';
+            const opponentRole = viewerRole === 'host' ? 'guest' : 'host';
+            const nicknames = { host: this.hostNickname, guest: this.guestNickname };
+            state.onlineNickname = nicknames[viewerRole];
+            state.onlineOpponentNickname = nicknames[opponentRole];
+            state.onlineNicknames = nicknames;
             state.playerHand = clone(e.h.player || []);
             state.aiHandSize = (e.h.ai || []).length;
             state.aiHand = null;

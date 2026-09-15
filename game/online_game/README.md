@@ -34,8 +34,8 @@ localhost）和一个 WebSocket 信令端点。建议在项目根目录执行：
     cd game/online_game/signaling
     npx wrangler deploy --config wrangler.jsonc
 
-部署后可以使用 https://<worker-domain>/health 检查服务。将在线页面的
-“信令地址”填写为：
+部署后可以使用 https://<worker-domain>/health 检查服务。将生产信令地址
+写入 `game/online_game/online_config.js` 的 `FURRY_SIGNAL_URL`，例如：
 
     https://<worker-domain>/online-signal
 
@@ -55,8 +55,8 @@ localhost）和一个 WebSocket 信令端点。建议在项目根目录执行：
   Buff、特殊判定等协议字段；开局先手由房主统一投掷 12 面骰并广播。
   重连、结算后自动再战、种子随机数和更严
   格的令牌/Origin 校验属于下一阶段。
-- 页面默认信令地址是当前域名的 /online-signal；如果 Worker 使用
-  workers.dev 或其他域名，请在页面输入框修改。
+- 页面不再向玩家展示信令地址输入框；更换 Worker 或域名时由网站管理员
+  修改 `online_config.js` 后重新部署静态网页。
 
 不要把 npx wrangler deploy 在仓库根目录执行；信令 Worker 的配置目录已
 独立放在这里，以避免 Cloudflare Workers Assets 上传整个 Git 历史。

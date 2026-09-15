@@ -35,18 +35,8 @@
         showLanding() {
             this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial</div><div class="online-brand-sub">在线对决 · WebRTC P2P</div></div></div><a class="online-link" href="../index.html">← 返回游戏主页</a></div>' +
                 '<section class="online-panel online-landing"><div class="online-intro"><h1>与你的朋友<br><span>面对面出牌</span></h1><p>建立一个小型房间，使用浏览器原生 WebRTC 直接传输战斗指令。房主运行单机同一套战斗引擎，双方只交换必要的同步状态。</p><div class="online-notice"><div><b>01</b><span>不需要安装客户端，分享 4 位房间码即可加入。</span></div><div><b>02</b><span>当前版本仅使用 STUN，不配置 TURN，适合小规模测试。</span></div><div><b>03</b><span>请使用 HTTPS 域名；本地调试可用 Wrangler Dev。</span></div></div></div>' +
-                '<form class="online-form" id="online-connect-form"><h2>进入在线房间</h2><label class="online-label">昵称<input class="online-input" id="online-nickname" maxlength="18" placeholder="例如：Rium" autocomplete="nickname"></label><label class="online-label">信令地址<input class="online-input" id="online-signal" spellcheck="false"></label><div class="online-form-row"><button class="online-btn primary" id="online-create" type="button">创建房间</button><button class="online-btn" id="online-join" type="button">加入房间</button></div><label class="online-label">房间码（加入时填写）<input class="online-input" id="online-room-code" maxlength="4" placeholder="ABCD" autocapitalize="characters"></label><div class="online-status" id="online-landing-status"></div><div class="online-help">信令地址示例：<code>https://你的域名/online-signal</code>。输入 http/https 也可以，连接时会自动转换为 ws/wss。</div></form></section>';
-            const signal = this.root.querySelector('#online-signal'), name = this.root.querySelector('#online-nickname');
-            if (signal) {
-                let savedSignal = '';
-                try { savedSignal = localStorage.getItem('furry-online-signal') || ''; } catch (_) {}
-                const configuredSignal = this.defaultSignalUrl();
-                // Migrate users from the temporary workers.dev endpoint to the
-                // production custom domain. Keep an explicitly configured
-                // staging endpoint intact.
-                const isLegacyWorker = /workers\.dev(?:\/|$)/i.test(savedSignal);
-                signal.value = !savedSignal || isLegacyWorker ? configuredSignal : savedSignal;
-            }
+                '<form class="online-form" id="online-connect-form"><h2>进入在线房间</h2><label class="online-label">昵称<input class="online-input" id="online-nickname" maxlength="18" placeholder="例如：Rium" autocomplete="nickname"></label><div class="online-form-row"><button class="online-btn primary" id="online-create" type="button">创建房间</button><button class="online-btn" id="online-join" type="button">加入房间</button></div><label class="online-label">房间码（加入时填写）<input class="online-input" id="online-room-code" maxlength="4" placeholder="ABCD" autocapitalize="characters"></label><div class="online-status" id="online-landing-status"></div></form></section>';
+            const name = this.root.querySelector('#online-nickname');
             if (name) {
                 try { name.value = localStorage.getItem('furry-online-name') || ''; } catch (_) { name.value = ''; }
             }
@@ -72,14 +62,17 @@
         }
         connect(role) {
             const nickname = (this.root.querySelector('#online-nickname') || {}).value || '';
-            const signalUrl = (this.root.querySelector('#online-signal') || {}).value || this.defaultSignalUrl();
+            // The signaling endpoint is deployment configuration, not a player
+            // setting. This prevents stale localStorage values from sending
+            // players to an old Worker or an untrusted endpoint.
+            const signalUrl = this.defaultSignalUrl();
             let code = ((this.root.querySelector('#online-room-code') || {}).value || '').trim().toUpperCase();
             if (!nickname.trim()) { this.setLandingStatus('请先填写昵称', 'error'); return; }
             if (role === 'host') code = randomCode();
             if (!/^[A-Z0-9]{4}$/.test(code)) { this.setLandingStatus('房间码需要 4 位字母或数字', 'error'); return; }
             try {
                 localStorage.setItem('furry-online-name', nickname.trim());
-                localStorage.setItem('furry-online-signal', signalUrl.trim());
+                localStorage.removeItem('furry-online-signal');
             } catch (_) {}
             if (this.peer) this.peer.close();
             this.role = role; this.roomCode = code; this.nickname = nickname.trim().slice(0, 18);
@@ -177,7 +170,10 @@
                 const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
                 const firstRoll = runtime && typeof runtime.randomInt === 'function' ? runtime.randomInt(12) + 1 : Math.floor(Math.random() * 12) + 1;
                 const firstActor = firstRoll <= 6 ? 'host' : 'guest';
-                this.match = new global.OnlineMatchHost(host.character, guest.character, firstActor, firstRoll);
+                this.match = new global.OnlineMatchHost(host.character, guest.character, firstActor, firstRoll, {
+                    hostNickname: host.nickname,
+                    guestNickname: guest.nickname
+                });
                 const events = this.match.initialEvents || [];
                 const hostState = this.match.project('host');
                 this.state = hostState;
@@ -247,7 +243,8 @@
             if (!session || !state || !global.GameUI) throw new Error('共享战斗 UI 尚未加载');
             this.battleSession = session;
             this.state = clone(state);
-            this.root.innerHTML = '<div class="online-topbar online-battle-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线对决</div><div class="online-brand-sub">房间 ' + safeText(this.roomCode) + ' · ' + safeText(this.connectionState || 'P2P') + '</div></div></div><button class="online-link" id="online-battle-lobby" type="button">返回准备大厅</button></div><section class="online-shared-game" id="online-shared-game"><div id="game-container"><div id="select-screen"></div><div id="game-screen"></div></div></section>';
+            const ownNickname = (state.onlineNickname || this.nickname || '玩家');
+            this.root.innerHTML = '<div class="online-topbar online-battle-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线对决</div><div class="online-brand-sub">房间 ' + safeText(this.roomCode) + ' · ' + safeText(this.connectionState || 'P2P') + '</div></div></div><div class="online-battle-player">玩家：' + safeText(ownNickname) + '</div><button class="online-link" id="online-battle-lobby" type="button">返回准备大厅</button></div><section class="online-shared-game" id="online-shared-game"><div id="game-container"><div id="select-screen"></div><div id="game-screen"></div></div></section>';
             const screen = this.root.querySelector('#game-screen');
             this.battleUI = new global.GameUI({ session, root: document });
             if (!document.getElementById('particles-canvas') && typeof this.battleUI._initParticles === 'function') {

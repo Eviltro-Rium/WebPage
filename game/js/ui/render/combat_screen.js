@@ -18,7 +18,7 @@
                 <div class="top-bar">
                     <div class="deck-area" id="deck-area">
                         <canvas id="deck-icon" width="40" height="52"></canvas>
-                        <span class="deck-info" id="deck-info">牌堆: 0</span>
+                        <span class="deck-info" id="deck-info">牌堆: 0 | 弃牌库: 0</span>
                     </div>
                     <div class="npc-deck-info" id="npc-deck-info" style="display:none"></div>
                     <span class="phase-info" id="phase-info">出牌阶段</span>
@@ -85,21 +85,26 @@
             const prev = this._prevState;
             if (prev && prev.phase !== s.phase) this._selectedCombatItem = null;
 
-            document.getElementById('deck-info').textContent = s.isAdventure
-                ? `牌堆: ${s.deck} | 弃牌库: ${s.discard != null ? s.discard : 0}`
-                : `牌堆: ${s.deck}`;
+            const discardCount = s.discard != null
+                ? s.discard
+                : (s.discardBottomCount != null ? Number(s.discardBottomCount) + (s.discardTop ? 1 : 0) : 0);
+            document.getElementById('deck-info').textContent = `牌堆: ${s.deck} | 弃牌库: ${discardCount}`;
             this._drawDeckIcon(s.deck);
             document.getElementById('turn-info').textContent = `回合 ${s.turn}`;
             let phaseText = s.phase === 'AI_DEFEND' && s.defenseSkipped ? '跳过防御' : (PHASE_NAMES[s.phase] || s.phase);
-            if (s.isAdventure) phaseText = String(phaseText).replace(/AI2/g, '对手2').replace(/AI/g, '对手');
+            if (s.isAdventure || s.isOnline) phaseText = String(phaseText).replace(/AI2/g, '敌人2').replace(/AI/g, '敌人');
             document.getElementById('phase-info').textContent = phaseText;
 
             this._updateHpBar('player', s.player);
             this._updateHpBar('ai', s.ai);
             this._updateBuffs('player', s.player);
             this._updateBuffs('ai', s.ai);
-            document.getElementById('player-name').textContent = this._combatDisplayName(s.player.name);
-            document.getElementById('ai-name').textContent = this._combatDisplayName(s.ai.name);
+            const playerCharacter = this._combatDisplayName(s.player.name);
+            const opponentCharacter = this._combatDisplayName(s.ai.name);
+            document.getElementById('player-name').textContent = s.isOnline && s.onlineNickname
+                ? `${s.onlineNickname} · ${playerCharacter}` : playerCharacter;
+            document.getElementById('ai-name').textContent = s.isOnline && s.onlineOpponentNickname
+                ? `${s.onlineOpponentNickname} · ${opponentCharacter}` : opponentCharacter;
             this._updateAvatar('player', s.player.name);
             this._updateAvatar('ai', s.ai.name);
             const activeAttacker = s.activeAttacker || (['AI_TURN', 'PLAYER_DEFEND', 'GUARD_CHOICE'].includes(s.phase) ? 'ai' : 'player');

@@ -1308,8 +1308,11 @@
         window.AdventureBattleController.clearCombatSession();
       }
       this._test = { characterName, items: [], trophyWhiteCards: [], accessories: [], mode: null, opponents: [], stage: 1, running: false, result: null };
+      // The test loadout is part of the game home flow. Do not show the
+      // adventure scene image behind it; game.css supplies the shared main
+      // page gradient background.
       const bg = document.getElementById('castle-bg');
-      if (bg) bg.style.display = 'block';
+      if (bg) bg.style.display = 'none';
       this._renderTestLoadout();
     }
 

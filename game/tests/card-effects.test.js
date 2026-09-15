@@ -47,3 +47,30 @@ test('CardEffects.apply routes generic effects through the engine boundary', () 
   assert.deepEqual(calls.map(call => call[0]), ['heal', 'clearDebuffs', 'draw', 'shuffle', 'emit']);
   assert.equal(calls[2][2], 2);
 });
+
+test('hand swaps do not mark transferred PvP cards as monster cards', () => {
+  const { Card, CardEffects } = context.FurryGame;
+  const player = { hp: 10, alive: true };
+  const ai = { hp: 10, alive: true };
+  const receivedWhite = Card.number('WHITE', 4, true);
+  const engine = {
+    s: { player, ai, isAdventure: false, attackTarget: 'ai' },
+    h: { player: [Card.item('WHITE', 'swap')], ai: [receivedWhite] }
+  };
+  CardEffects.apply(engine, engine.h.player[0], { owner: player, target: ai, who: 'player' });
+  assert.equal(engine.h.player[0], receivedWhite);
+  assert.equal(engine.h.player[0].npcCard, undefined);
+});
+
+test('adventure hand swaps retain monster-card identity', () => {
+  const { Card, CardEffects } = context.FurryGame;
+  const player = { hp: 10, alive: true };
+  const ai = { hp: 10, alive: true };
+  const receivedWhite = Card.number('WHITE', 4, true);
+  const engine = {
+    s: { player, ai, isAdventure: true, attackTarget: 'ai' },
+    h: { player: [Card.item('WHITE', 'swap')], ai: [receivedWhite] }
+  };
+  CardEffects.apply(engine, engine.h.player[0], { owner: player, target: ai, who: 'player' });
+  assert.equal(engine.h.player[0].npcCard, true);
+});

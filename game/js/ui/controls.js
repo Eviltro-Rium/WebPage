@@ -129,7 +129,10 @@ _renderControls() {
         html += `<button class="ctrl-btn btn-play" id="btn-restart">再来一局</button>`;
         html += `<button class="ctrl-btn btn-skip" id="btn-back-select">重新选择</button>`;
     } else if (phase === 'AI_TURN' || phase === 'AI_DEFEND' || phase === 'AI2_TURN' || !canAct) {
-        html += `<span class="ctrl-hint">${phase === 'AI_DEFEND' && s.defenseSkipped ? '本技能分支未造成伤害，已跳过防御，正在结算...' : (s.isAdventure ? '对手行动中...' : 'AI思考中...')}</span>`;
+        const waitingLabel = phase === 'AI_DEFEND' && s.defenseSkipped
+            ? '本技能分支未造成伤害，已跳过防御，正在结算...'
+            : (s.isAdventure || s.isOnline ? '对手思考中...' : 'AI思考中...');
+        html += `<span class="ctrl-hint">${waitingLabel}</span>`;
     }
     container.innerHTML = html;
     this._bindControls();
@@ -198,8 +201,8 @@ _showGameMenu() {
     overlay.innerHTML = `
         <div class="game-menu-box">
             <div class="game-menu-title">⛭ 菜单</div>
-            <button class="game-menu-btn game-menu-skills" id="gm-skills">📖 查看技能</button>
-            <button class="game-menu-btn game-menu-quit" id="gm-quit">🚪 退出对局</button>
+            <button class="game-menu-btn game-menu-skills" id="gm-skills">📖 查看角色技能</button>
+            <button class="game-menu-btn game-menu-quit" id="gm-quit">🚪 退出游戏</button>
             <button class="game-menu-btn game-menu-cancel" id="gm-cancel">✕ 继续游戏</button>
         </div>`;
     document.body.appendChild(overlay);
@@ -253,7 +256,7 @@ _showSkillOverlay() {
     chars.push({ name: s.player.name.replace(/^AI\d*\s+/, ''), label: '玩家', color: '#3b82f6', isNpc: false });
     chars.push({
         name: s.ai.name.replace(/^AI\d*\s+/, ''),
-        label: s.isAdventure ? '对手' : 'AI',
+        label: s.isAdventure || s.isOnline || !s.is1v2 ? '敌人' : 'AI',
         color: '#ef4444',
         isNpc: !!s.isAdventure,
         stage
@@ -261,7 +264,7 @@ _showSkillOverlay() {
     if (s.ai2 && s.ai2.name) {
         chars.push({
             name: s.ai2.name.replace(/^AI\d*\s+/, ''),
-            label: s.isAdventure ? '对手2' : 'AI2',
+            label: s.isAdventure || s.isOnline || !s.is1v2 ? '敌人2' : 'AI2',
             color: '#a855f7',
             isNpc: !!s.isAdventure,
             stage

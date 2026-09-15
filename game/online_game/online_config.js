@@ -1,5 +1,6 @@
-/* Deployment-specific online settings.  Keep the input editable so a
- * staging Worker or a same-origin /online-signal route can still override it.
+/* Deployment-specific online settings.  This is intentionally kept in the
+ * administrator-controlled deployment files; players do not edit the
+ * signaling endpoint in the lobby.
  */
 (function (global) {
     if (!global.FURRY_SIGNAL_URL) {
