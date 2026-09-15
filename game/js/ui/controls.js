@@ -126,8 +126,13 @@ _renderControls() {
     } else if (phase === 'GUARD_CHOICE' && canAct) {
         html += `<span class="ctrl-hint">请选择要消耗的守护层数</span>`;
     } else if (phase === 'GAME_OVER') {
-        html += `<button class="ctrl-btn btn-play" id="btn-restart">再来一局</button>`;
-        html += `<button class="ctrl-btn btn-skip" id="btn-back-select">重新选择</button>`;
+        if (s.isOnline) {
+            html += `<button class="ctrl-btn btn-play" id="btn-online-room">返回房间</button>`;
+            html += `<button class="ctrl-btn btn-skip" id="btn-online-home">返回主页</button>`;
+        } else {
+            html += `<button class="ctrl-btn btn-play" id="btn-restart">再来一局</button>`;
+            html += `<button class="ctrl-btn btn-skip" id="btn-back-select">重新选择</button>`;
+        }
     } else if (phase === 'AI_TURN' || phase === 'AI_DEFEND' || phase === 'AI2_TURN' || !canAct) {
         const waitingLabel = phase === 'AI_DEFEND' && s.defenseSkipped
             ? '本技能分支未造成伤害，已跳过防御，正在结算...'
@@ -185,8 +190,17 @@ async _bindControls() {
         this._selectedPlayerChar = null; this._selectedAIChar = null;
         this._buildSelectScreen();
     };
+    const onlineGameOverFn = async action => {
+        if (typeof this.onGameOverClose === 'function') {
+            await this.onGameOverClose(action);
+            return;
+        }
+        await restartFn();
+    };
     bind('btn-restart', restartFn);
     bind('btn-back-select', restartFn);
+    bind('btn-online-room', () => onlineGameOverFn('room'));
+    bind('btn-online-home', () => onlineGameOverFn('home'));
 
     const menuBtn = document.getElementById('menu-btn');
     if (menuBtn && !menuBtn._menuBound) { menuBtn._menuBound = true; menuBtn.addEventListener('click', () => this._showGameMenu()); }

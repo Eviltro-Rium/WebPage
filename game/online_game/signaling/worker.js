@@ -116,7 +116,14 @@ export class Room {
       if (helloTimer) clearTimeout(helloTimer);
       helloTimer = null;
       if (!clientId) return;
-      this.clients.delete(clientId);
+      if (!this.clients.delete(clientId)) return;
+      if (metadata.role === 'host') {
+        const successor = this.clients.values().next().value;
+        if (successor) {
+          successor.meta.role = 'host';
+          successor.meta.ready = false;
+        }
+      }
       this.broadcast({ type: 'peerLeft', player: metadata });
       this.broadcast({ type: 'roster', players: [...this.clients.values()].map(item => item.meta) });
     };

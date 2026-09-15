@@ -114,7 +114,19 @@
                 this._dedupePlayers();
                 this.setRoomStatus(role === 'host' ? '房间已创建，等待朋友加入' : '已加入房间，等待房主开始'); this.renderRoom();
             });
-            this.peer.on('roster', players => { for (const player of players || []) this._upsertPlayer(player); this._ensureOwnPlayer(); this.renderRoom(); });
+            this.peer.on('roster', players => {
+                const own = (players || []).find(player => player.peerId === this.peer.peerId);
+                const promoted = own && own.role === 'host' && this.role !== 'host';
+                if (own) this.role = own.role;
+                this.players = [];
+                for (const player of players || []) this._upsertPlayer(player);
+                if (promoted) {
+                    this.ready = false;
+                    this._resetToLobby(false);
+                    this.setRoomStatus('原房主已离开，你已成为新房主，房间码保持不变');
+                }
+                this._ensureOwnPlayer(); this.renderRoom();
+            });
             this.peer.on('peerJoined', player => { this._upsertPlayer(player); this.setRoomStatus('对手已连接，选择角色并准备'); this.renderRoom(); });
             this.peer.on('peerLeft', player => { if (player && player.peerId) this.players = this.players.filter(item => item.peerId !== player.peerId); this.setRoomStatus('对手已离开房间'); this.renderRoom(); });
             this.peer.on('connectionState', value => {
@@ -454,7 +466,9 @@
             const title = screen && screen.querySelector('.game-title');
             if (title) title.textContent = 'Furry Trial · 在线对决';
             this.battleUI.onBattleExit = () => this.exitBattle();
-            this.battleUI.onGameOverClose = () => this.exitBattle();
+            this.battleUI.onGameOverClose = action => action === 'home'
+                ? this.exitToHome()
+                : this.exitBattle();
             const leave = this.root.querySelector('#online-battle-lobby');
             if (leave) leave.addEventListener('click', () => this.exitBattle());
 
@@ -503,6 +517,14 @@
             if (!this.match) return;
             if (this.role === 'host') this._resetToLobby(true);
             else if (this.peer) this.peer.send({ kind: 'returnLobby' });
+        }
+
+        exitToHome() {
+            if (this.peer) this.peer.close();
+            this._destroySharedBattle();
+            this.match = null;
+            this.state = null;
+            if (global.location) global.location.href = '../index.html';
         }
 
         _sendSync(payload) {

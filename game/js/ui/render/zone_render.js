@@ -106,7 +106,7 @@
 
         _showGameOver() {
             const close = typeof this.onGameOverClose === 'function'
-                ? () => this.onGameOverClose()
+                ? action => this.onGameOverClose(action)
                 : async () => {
                     await this._sessionDispatch('restart');
                     this.state = null; this._prevState = null;

@@ -127,20 +127,21 @@ class DialogManager {
         if (document.getElementById('game-over-overlay')) return;
         const allAIsDefeated = !s.ai.alive && (!s.is1v2 || !s.ai2 || !s.ai2.alive);
         const playerWon = s.player.alive && allAIsDefeated;
+        const online = !!s.isOnline;
         const overlay = document.createElement('div');
         overlay.id = 'game-over-overlay'; overlay.className = 'game-over-overlay';
         overlay.innerHTML = `<div class="game-over-box">
             <h2>${playerWon ? '胜利!' : '败北...'}</h2>
             <div class="winner-text">${playerWon ? s.player.name : (s.is1v2 ? 'AI阵营' : s.ai.name)}赢得了比赛</div>
-            <button id="btn-restart-overlay">再来一局</button>
-            <button id="btn-back-select-overlay">重新选择</button></div>`;
+            <button id="btn-restart-overlay">${online ? '返回房间' : '再来一局'}</button>
+            <button id="btn-back-select-overlay">${online ? '返回主页' : '重新选择'}</button></div>`;
         document.body.appendChild(overlay);
-        const closeFn = async () => {
+        const closeFn = async action => {
             overlay.remove();
-            if (onClose) onClose();
+            if (onClose) await onClose(online ? action : undefined);
         };
-        document.getElementById('btn-restart-overlay').addEventListener('click', closeFn);
-        document.getElementById('btn-back-select-overlay').addEventListener('click', closeFn);
+        document.getElementById('btn-restart-overlay').addEventListener('click', () => closeFn('room'));
+        document.getElementById('btn-back-select-overlay').addEventListener('click', () => closeFn('home'));
     }
 
     showOpponentCardChoice(groups, onChoose, title = '选择一张对手手牌') {

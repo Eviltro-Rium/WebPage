@@ -125,13 +125,29 @@
                 if (this.role === 'host' && Array.isArray(message.players) && message.players.length > 1) this._startOffer();
                 return;
             }
-            if (message.type === 'roster') { this.emit('roster', message.players || []); return; }
+            if (message.type === 'roster') {
+                const players = message.players || [];
+                const own = players.find(player => player.peerId === this.peerId);
+                if (own) this.role = own.role;
+                this.emit('roster', players);
+                return;
+            }
             if (message.type === 'peerJoined') {
                 this.emit('peerJoined', message.player || message);
                 if (this.role === 'host') this._startOffer();
                 return;
             }
-            if (message.type === 'peerLeft') { this.emit('peerLeft', message.player || message); return; }
+            if (message.type === 'peerLeft') {
+                const channel = this.channel, pc = this.pc;
+                this.channel = this.pc = null;
+                this.pendingIce = [];
+                this._offerStarted = false;
+                this.transportMode = 'pending';
+                try { if (channel) channel.close(); } catch (_) {}
+                try { if (pc) pc.close(); } catch (_) {}
+                this.emit('peerLeft', message.player || message);
+                return;
+            }
             if (message.type === 'signal') { this._onRemoteSignal(message.signal, message.from); return; }
             if (message.type === 'roomMessage') {
                 const payload = message.payload;
@@ -159,6 +175,7 @@
             const pc = new RTCPeerConnection(STUN_CONFIG);
             this.pc = pc;
             pc.addEventListener('icecandidate', event => {
+                if (this.pc !== pc) return;
                 if (event.candidate) {
                     // RTCIceCandidate instances are not guaranteed to serialize
                     // consistently across browsers, so send a plain object.
@@ -172,6 +189,7 @@
                 }
             });
             pc.addEventListener('connectionstatechange', () => {
+                if (this.pc !== pc) return;
                 this.emit('connectionState', pc.connectionState);
                 if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) this.emit('peerDisconnected', pc.connectionState);
             });
