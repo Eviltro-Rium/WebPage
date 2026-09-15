@@ -14,6 +14,26 @@
         return value === 'player' ? 'ai' : value === 'ai' ? 'player' : value;
     }
 
+    // Engine events are emitted from the local `player`/`ai` orientation. A
+    // guest command temporarily swaps those participants, so event routing
+    // fields must be projected for each viewer before the shared UI renders
+    // the batch. Human-readable descriptions are intentionally unchanged.
+    function projectEvents(events, viewer, source = 'host') {
+        if (viewer === source) return clone(events || []);
+        const keys = ['who', 'target', 'owner', 'attacker', 'defender', 'fromOwner', 'toOwner', 'attackTarget', 'discardTopOwner'];
+        return (events || []).map(event => {
+            const projected = clone(event);
+            if (!projected || typeof projected !== 'object') return projected;
+            if (projected.type === 'playerPlay') projected.type = 'aiPlay';
+            else if (projected.type === 'aiPlay') projected.type = 'playerPlay';
+            else if (projected.type === 'defend') projected.type = 'aiDefend';
+            else if (projected.type === 'aiDefend') projected.type = 'defend';
+            for (const key of keys) if (Object.prototype.hasOwnProperty.call(projected, key)) projected[key] = swapKey(projected[key]);
+            if (Array.isArray(projected.aoeTargets)) projected.aoeTargets = projected.aoeTargets.map(swapKey);
+            return projected;
+        });
+    }
+
     function swapParticipants(engine) {
         const state = engine.s;
         [state.player, state.ai] = [state.ai, state.player];
@@ -223,6 +243,10 @@
                 ? (this.engine.s.player.alive ? 'host' : this.engine.s.ai.alive ? 'guest' : null)
                 : null;
             return { ok: true, result: clone(raw), state, events, winner };
+        }
+
+        eventsForViewer(events, viewer, source = 'host') {
+            return projectEvents(events, viewer, source);
         }
 
         project(viewer = 'host') {

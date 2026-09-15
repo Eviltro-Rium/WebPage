@@ -16,13 +16,14 @@ _renderControls() {
     container.classList.remove('controls-settling');
     let html = '';
     const phase = s.phase;
+    const canAct = s.onlineCanAct !== false;
     const hasCard = s.selectedCard >= 0;
     const selectedCard = hasCard && s.playerHand ? s.playerHand[s.selectedCard] : null;
     const hasNumberCard = !!(selectedCard && selectedCard.isNumberCard);
     const hasDiscardCards = (s.selectedCards || []).length > 0;
     const hasAICard = s.selectedAICard >= 0;
 
-    if (phase === 'PLAYER_PLAY') {
+    if (phase === 'PLAYER_PLAY' && canAct) {
         if (s.needColorChoice) {
             html += `<span class="ctrl-hint">选择颜色</span>`;
             html += `<button class="ctrl-btn color-btn" id="btn-color-RED" style="background:#ff1e28">红</button>`;
@@ -37,7 +38,7 @@ _renderControls() {
             html += `<button class="ctrl-btn btn-discard" id="btn-discard" ${s.hasPlayedThisTurn ? 'disabled' : ''}>弃牌</button>`;
             html += `<button class="ctrl-btn btn-end" id="btn-end">结束回合</button>`;
         }
-    } else if (phase === 'PLAYER_DEFEND') {
+    } else if (phase === 'PLAYER_DEFEND' && canAct) {
         if (s.needColorChoice) {
             html += `<span class="ctrl-hint">黑牌选色</span>`;
             html += `<button class="ctrl-btn color-btn" id="btn-color-RED" style="background:#ff1e28">红</button>`;
@@ -60,17 +61,17 @@ _renderControls() {
                 html += `<button class="ctrl-btn btn-skip" id="btn-skip">${s.hasPlayedBlackDefend ? '放弃防御' : '跳过'}</button>`;
             }
         }
-    } else if (phase === 'PLAYER_DISCARD') {
+    } else if (phase === 'PLAYER_DISCARD' && canAct) {
         html += `<span class="ctrl-hint">${s.forcedDiscard ? `手牌超限：需弃至 ${s.handLimit || 5} 张` : s.mayDiscardAfterSkill ? 'Ryan 3牌：可选择1张牌弃掉，也可取消' : '可同时选择多张牌弃掉'}</span>`;
         html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!hasDiscardCards ? 'disabled' : ''}>确认弃牌 (${(s.selectedCards || []).length})</button>`;
         if (!s.forcedDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
-    } else if (phase === 'ATTACK_MOD_CHOICE') {
+    } else if (phase === 'ATTACK_MOD_CHOICE' && canAct) {
         const dmg = s.pendingAttack && s.pendingAttack.damage != null ? s.pendingAttack.damage : 0;
         const hasSelection = this._attackModSelectedItem != null;
         html += `<span class="ctrl-hint">已确认 ${dmg} 点伤害，请点击道具栏中的攻击修正道具选择</span>`;
         html += `<button class="ctrl-btn btn-play" id="btn-attack-mod-confirm" ${!hasSelection ? 'disabled' : ''}>确认修正</button>`;
         html += `<button class="ctrl-btn btn-skip" id="btn-attack-mod-skip">不修正</button>`;
-    } else if (phase === 'CRIT_CHOICE') {
+    } else if (phase === 'CRIT_CHOICE' && canAct) {
         const dmg = s.pendingCritChoice && s.pendingCritChoice.damage != null
             ? s.pendingCritChoice.damage
             : (s.pendingAttack && s.pendingAttack.damage) || 0;
@@ -78,15 +79,15 @@ _renderControls() {
         html += `<span class="ctrl-hint">伤害 ${dmg} 点（>4），可消耗1层暴击变为不可防御（剩余 ${stacks}）</span>`;
         html += `<button class="ctrl-btn btn-play" id="btn-crit-use">使用暴击</button>`;
         html += `<button class="ctrl-btn btn-skip" id="btn-crit-skip">不使用</button>`;
-    } else if (phase === 'PLAYER_FIVE_CHOICE') {
+    } else if (phase === 'PLAYER_FIVE_CHOICE' && canAct) {
         html += `<span class="ctrl-hint">请选择一张数字牌：恢复牌面生命，或造成1.5倍伤害</span>`;
         html += `<button class="ctrl-btn btn-play" id="btn-five-heal" ${!hasNumberCard ? 'disabled' : ''}>恢复${hasNumberCard ? ` ${selectedCard.value}` : ''}</button>`;
         html += `<button class="ctrl-btn btn-play" id="btn-five-damage" ${!hasNumberCard ? 'disabled' : ''}>进攻${hasNumberCard ? ` ${Math.ceil(selectedCard.value * 1.5)}` : ''}</button>`;
-    } else if (phase === 'OPPONENT_CARD_CHOICE') {
+    } else if (phase === 'OPPONENT_CARD_CHOICE' && canAct) {
         const skill = s.pendingOpponentSkill;
         html += `<span class="ctrl-hint">${skill ? `${skill.name} ${skill.value}牌：` : ''}点击一张对手手牌</span>`;
         html += `<button class="ctrl-btn btn-play" id="btn-opponent-confirm" ${!hasAICard ? 'disabled' : ''}>确认选择</button>`;
-    } else if (phase === 'PLAYER_SEVEN_CHOICE') {
+    } else if (phase === 'PLAYER_SEVEN_CHOICE' && canAct) {
         if (s.ottoFourPhase === 'selectOwn') {
             html += `<span class="ctrl-hint">4牌: 请选择自己的一张手牌</span>`;
             html += `<button class="ctrl-btn btn-play" id="btn-otto-four-confirm" ${!hasCard ? 'disabled' : ''}>确认出牌</button>`;
@@ -105,7 +106,7 @@ _renderControls() {
             html += `<span class="ctrl-hint">点击AI手牌选择一张</span>`;
             html += `<button class="ctrl-btn btn-play" id="btn-seven-confirm" ${!hasAICard ? 'disabled' : ''}>确认选择</button>`;
         }
-    } else if (phase === 'SAIKI_THREE_CHOICE') {
+    } else if (phase === 'SAIKI_THREE_CHOICE' && canAct) {
         if (s.saikiThreeDrawn) {
             html += `<span class="ctrl-hint">3牌抽取: ${cardLabel(s.saikiThreeDrawn)}</span>`;
             html += `<button class="ctrl-btn btn-play" id="btn-saiki-three-keep">加入手牌</button>`;
@@ -114,20 +115,20 @@ _renderControls() {
             html += `<span class="ctrl-hint">点击AI手牌选择一张</span>`;
             html += `<button class="ctrl-btn btn-play" id="btn-opponent-confirm" ${!hasAICard ? 'disabled' : ''}>确认选择</button>`;
         }
-    } else if (phase === 'SAIKI_SIX_JUDGE') {
+    } else if (phase === 'SAIKI_SIX_JUDGE' && canAct) {
         const judgeType = s.pendingNumberJudge && s.pendingNumberJudge.type;
         html += `<span class="ctrl-hint">${judgeType === 'Moze' ? '选择一张数字牌转化为守护' : '选择一张数字牌计算伤害'}</span>`;
         html += `<button class="ctrl-btn btn-play" id="btn-saiki-six" ${!hasNumberCard ? 'disabled' : ''}>${judgeType === 'Moze' ? '确认守护判定' : '确认伤害判定'}</button>`;
-    } else if (phase === 'TARGET_CHOICE') {
+    } else if (phase === 'TARGET_CHOICE' && canAct) {
         html += `<span class="ctrl-hint">选择攻击目标</span>`;
         if (s.ai && s.ai.alive) html += `<button class="ctrl-btn btn-play" id="btn-target-0">${s.ai.name}</button>`;
         if (s.ai2 && s.ai2.alive) html += `<button class="ctrl-btn btn-play" id="btn-target-1">${s.ai2.name}</button>`;
-    } else if (phase === 'GUARD_CHOICE') {
+    } else if (phase === 'GUARD_CHOICE' && canAct) {
         html += `<span class="ctrl-hint">请选择要消耗的守护层数</span>`;
     } else if (phase === 'GAME_OVER') {
         html += `<button class="ctrl-btn btn-play" id="btn-restart">再来一局</button>`;
         html += `<button class="ctrl-btn btn-skip" id="btn-back-select">重新选择</button>`;
-    } else if (phase === 'AI_TURN' || phase === 'AI_DEFEND' || phase === 'AI2_TURN') {
+    } else if (phase === 'AI_TURN' || phase === 'AI_DEFEND' || phase === 'AI2_TURN' || !canAct) {
         html += `<span class="ctrl-hint">${phase === 'AI_DEFEND' && s.defenseSkipped ? '本技能分支未造成伤害，已跳过防御，正在结算...' : (s.isAdventure ? '对手行动中...' : 'AI思考中...')}</span>`;
     }
     container.innerHTML = html;
@@ -169,7 +170,11 @@ async _bindControls() {
     });
 
     const restartFn = async () => {
-        await Bridge.call('restart');
+        if (typeof this.onBattleExit === 'function') {
+            await this.onBattleExit();
+            return;
+        }
+        await this._sessionDispatch('restart');
         this.state = null; this._prevState = null;
         if (this._pollInterval) clearInterval(this._pollInterval);
         this.gameScreen.classList.remove('active');
@@ -213,7 +218,11 @@ _showGameMenu() {
     });
     document.getElementById('gm-quit').addEventListener('click', async () => {
         overlay.remove();
-        await Bridge.call('restart');
+        if (typeof this.onBattleExit === 'function') {
+            await this.onBattleExit();
+            return;
+        }
+        await this._sessionDispatch('restart');
         this.state = null; this._prevState = null;
         if (this._pollInterval) clearInterval(this._pollInterval);
         this.gameScreen.classList.remove('active');
@@ -432,7 +441,9 @@ async _apiAction(method, params) {
     this._showActionPending(method);
     try {
         this._prevState = this.state;
-        const result = await Bridge.call(method, params);
+        const result = typeof this._sessionDispatch === 'function'
+            ? await this._sessionDispatch(method, params)
+            : await Bridge.call(method, params);
         if (result && !result.error) {
             this.state = result;
             const hasEvents = result.events && result.events.length > 0;
@@ -524,7 +535,9 @@ async _pollAI() {
             ? global.FurryGame.CombatRuntime.wait(350)
             : new Promise(r => setTimeout(r, 350)));
         if (this._isConsumingEvents || this._isHandlingAction) break;
-        const newState = await Bridge.getState();
+        const newState = typeof this._sessionGetState === 'function'
+            ? await this._sessionGetState()
+            : await Bridge.getState();
         if (!newState || newState.error) continue;
 
         if (newState.events && newState.events.length > 0) {

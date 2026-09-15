@@ -25,6 +25,10 @@ _missingAIPlay(previous, current) {
 async _ackEvents(events) {
     const ids = (events || []).map(evt => Number(evt.id)).filter(Number.isFinite);
     if (!ids.length) return;
+    if (typeof this._sessionAcknowledgeEvents === 'function') {
+        await this._sessionAcknowledgeEvents(Math.max(...ids));
+        return;
+    }
     await Bridge.call('clearEvents', { throughId: Math.max(...ids) });
 },
 
@@ -62,7 +66,9 @@ async _consumeEvents(events, options = {}) {
                 // event cannot be replayed forever by the AI poller.
                 await this._ackEvents(batch);
             }
-            const freshState = await Bridge.getState();
+            const freshState = typeof this._sessionGetState === 'function'
+                ? await this._sessionGetState()
+                : await Bridge.getState();
             if (!freshState || freshState.error) break;
             this.state = freshState;
             pending = freshState.events || [];

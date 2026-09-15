@@ -454,10 +454,12 @@ class GameUI {
     // renderer.js / feedback.js (loaded after this file). Keep GameUI here as
     // the shared state/bootstrap layer.
 
-    constructor() {
+    constructor(options = {}) {
         this._shakeTimer = null;
         this.state = null;
         this._prevState = null;
+        this.session = options.session || null;
+        this.root = options.root || document;
         this.characters = null;
         this._pollInterval = null;
         this._selectedPlayerChar = null;
@@ -477,6 +479,43 @@ class GameUI {
         this._floatingTextLanes = { player: [], ai: [], ai2: [] };
         this.anim = new AnimLayer();
         this.dialogs = new DialogManager((method, params) => this._apiAction(method, params));
+    }
+
+    setSession(session) {
+        this.session = session || null;
+        return this;
+    }
+
+    async _sessionDispatch(method, params = {}) {
+        if (this.session && typeof this.session.dispatch === 'function') {
+            return this.session.dispatch(method, params || {});
+        }
+        return Bridge.call(method, params || {});
+    }
+
+    async _sessionGetState() {
+        if (this.session && typeof this.session.getState === 'function') return this.session.getState();
+        return Bridge.getState();
+    }
+
+    async _sessionAcknowledgeEvents(throughId) {
+        if (this.session && typeof this.session.acknowledgeEvents === 'function') {
+            return this.session.acknowledgeEvents(throughId);
+        }
+        return Bridge.call('clearEvents', { throughId });
+    }
+
+    mountBattle(session, state, gameScreen) {
+        this.setSession(session);
+        window._gameUI = this;
+        this.state = state || null;
+        this._prevState = null;
+        this.gameScreen = gameScreen || document.getElementById('game-screen');
+        if (!this.gameScreen) throw new Error('战斗界面容器不存在');
+        this._buildGameScreen();
+        this.gameScreen.classList.add('active');
+        this.updateDisplay();
+        return this;
     }
 
     async init() {
@@ -503,8 +542,8 @@ class GameUI {
     }
 
     async _startGame() {
-        await Bridge.call('selectMode', { mode1v2: this._is1v2 });
-        const result = await Bridge.call('selectCharacters', { player: this._selectedPlayerChar, ai: this._selectedAIChar });
+        await this._sessionDispatch('selectMode', { mode1v2: this._is1v2 });
+        const result = await this._sessionDispatch('selectCharacters', { player: this._selectedPlayerChar, ai: this._selectedAIChar });
         if (result.error) { this.showError(result.error); return; }
         this.state = result;
         this.selectScreen.classList.remove('active');
@@ -547,7 +586,7 @@ class GameUI {
         if (!events.length) return;
         this._hidePendingDraws();
         await this._consumeEvents(events);
-        const fresh = await Bridge.getState();
+        const fresh = await this._sessionGetState();
         if (fresh && !fresh.error) this.state = fresh;
         this.updateDisplay();
     }

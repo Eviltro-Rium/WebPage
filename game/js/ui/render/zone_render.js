@@ -105,15 +105,18 @@
         },
 
         _showGameOver() {
-            this.dialogs.showGameOver(this.state, async () => {
-                await Bridge.call('restart');
-                this.state = null; this._prevState = null;
-                if (this._pollInterval) clearInterval(this._pollInterval);
-                this.gameScreen.classList.remove('active');
-                this.selectScreen.classList.add('active');
-                this._selectedPlayerChar = null; this._selectedAIChar = null;
-                this._buildSelectScreen();
-            });
+            const close = typeof this.onGameOverClose === 'function'
+                ? () => this.onGameOverClose()
+                : async () => {
+                    await this._sessionDispatch('restart');
+                    this.state = null; this._prevState = null;
+                    if (this._pollInterval) clearInterval(this._pollInterval);
+                    this.gameScreen.classList.remove('active');
+                    this.selectScreen.classList.add('active');
+                    this._selectedPlayerChar = null; this._selectedAIChar = null;
+                    this._buildSelectScreen();
+                };
+            this.dialogs.showGameOver(this.state, close);
         }
     });
 })(window);

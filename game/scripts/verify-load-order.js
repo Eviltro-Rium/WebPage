@@ -123,6 +123,25 @@ function verifyOnlinePage() {
     return 1;
   }
   const scripts = scriptsFromHtml(htmlPath, source => source);
+  const sharedUiScripts = [
+    '../js/combat/session.js',
+    '../js/ui/card_style.js',
+    '../js/ui/skills.js',
+    '../js/ui/dialogs.js',
+    '../js/ui/ui_core.js',
+    '../js/ui/render/particles.js',
+    '../js/ui/render/combat_screen.js',
+    '../js/ui/render/status_render.js',
+    '../js/ui/render/hand_render.js',
+    '../js/ui/render/adventure_bar.js',
+    '../js/ui/render/zone_render.js',
+    '../js/ui/feedback.js',
+    '../js/ui/renderer.js',
+    '../js/ui/events.js',
+    '../js/ui/controls.js',
+    'online_session.js'
+  ];
+  const missingSharedUi = sharedUiScripts.filter(source => !scripts.includes(source));
   const missing = scripts.filter(source => {
     if (/^(https?:)?\/\//.test(source)) return false;
     const relative = source.startsWith('../') ? source.slice(3) : 'online_game/' + source;
@@ -130,9 +149,14 @@ function verifyOnlinePage() {
   });
   const worker = fs.readFileSync(path.join(onlineRoot, 'signaling', 'worker.js'), 'utf8');
   const config = fs.readFileSync(path.join(onlineRoot, 'signaling', 'wrangler.jsonc'), 'utf8');
-  if (missing.length || /"assets"\s*:/.test(config) || /turn:/i.test(worker)) {
+  const onlineUi = fs.readFileSync(path.join(onlineRoot, 'online_ui.js'), 'utf8');
+  const staleRendererMethods = ['renderBattle', 'renderCard', 'playSelected', 'cardDescription', 'combatantMarkup', 'renderControls', 'renderDialog']
+    .filter(name => new RegExp('(?:^|[,{;])\\s*' + name + '\\s*\\(').test(onlineUi));
+  if (missing.length || missingSharedUi.length || staleRendererMethods.length || /"assets"\s*:/.test(config) || /turn:/i.test(worker)) {
     console.error('FAIL online_game static/signaling checks');
     if (missing.length) console.error('  missing scripts:', missing.join(', '));
+    if (missingSharedUi.length) console.error('  online page must load shared UI:', missingSharedUi.join(', '));
+    if (staleRendererMethods.length) console.error('  online_ui.js still contains duplicate battle renderers:', staleRendererMethods.join(', '));
     if (/"assets"\s*:/.test(config)) console.error('  signaling Worker must not configure assets');
     if (/turn:/i.test(worker)) console.error('  online MVP must not silently add TURN');
     return 1;

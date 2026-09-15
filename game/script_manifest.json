@@ -48,7 +48,8 @@
     "js/combat/engine_ai.js",
     "js/combat/engine_snapshot.js",
     "js/combat/engine_lord.js",
-    "js/combat/bridge.js"
+    "js/combat/bridge.js",
+    "js/combat/session.js"
   ],
   "ui_shell": [
     "js/ui/skills.js",

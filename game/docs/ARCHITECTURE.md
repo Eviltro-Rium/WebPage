@@ -108,6 +108,20 @@
 `sessionStorage`；测试战斗也不会写入会话。主动从菜单退出时先清理会话和地图存档，
 正常结算则由控制器把结果交回地图引擎。
 
+## 在线战斗 UI 适配
+
+`online_game/online_ui.js` 只负责在线大厅、房间生命周期和 P2P 消息路由。
+创建对局后，房主使用 `OnlineHostSession`，加入者使用 `OnlineGuestSession`；
+两者都实现 `CombatSession` 的 `getState()`、`dispatch()` 和事件确认接口。
+`GameUI.mountBattle(session, state, gameScreen)` 将会话注入单机 1v1 UI，之后
+所有选牌、双击出牌、颜色选择、技能/净化弹窗、卡牌飞行动画、飘字和状态渲染
+都走 `js/ui/` 的同一套实现，在线代码不再复制战斗 DOM。
+
+房主仍持有唯一的 `Engine` 和共享牌库；`OnlineMatchHost.project(viewer)` 按
+`host`/`guest` 生成视角快照，只暴露自己的手牌和对手手牌数量。动作结果统一
+为包含状态字段、`events` 和 `winner` 的快照，避免 UI 为本地和远程分别判断
+返回结构。在线退出或结算返回大厅由会话回调处理，不调用本地 `Bridge`。
+
 ## 状态注册表
 
 `js/combat/status_registry.js` 暴露 `FurryGame.StatusRegistry`，而

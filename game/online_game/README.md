@@ -4,15 +4,27 @@
 game/js/combat/ 的单机代码提供，online_match.js 只负责把本地
 Engine.dispatch() 适配成“房主权威 + 客户端指令”的模式。
 
+战斗页面不再维护第二套在线渲染器：`online_session.js` 将房主和加入者
+分别适配为 `CombatSession`，然后把状态、动作和事件交给单机的
+`GameUI`。因此在线对战会直接复用单机 1v1 的卡牌、悬停说明、双击出牌、
+颜色选择、技能弹窗、飘字和动画；在线层只负责大厅、P2P 信令和双方状态投影。
+双方使用同一份共享牌库，手牌仍按角色私有投影传输。
+
 ## 本地检查
 
 直接打开 index.html 可以查看界面；要真正建立房间，需要 HTTPS（或
 localhost）和一个 WebSocket 信令端点。建议在项目根目录执行：
 
     node --check game/online_game/p2p_adapter.js
+    node --check game/js/combat/session.js
+    node --check game/online_game/online_session.js
     node --check game/online_game/online_match.js
     node --check game/online_game/online_ui.js
     node --check game/online_game/signaling/worker.js
+
+提交前建议从仓库根目录运行：
+
+    node game/scripts/check.js
 
 ## 部署信令 Worker
 

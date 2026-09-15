@@ -28,6 +28,8 @@ for (const relative of files) {
   vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
 }
 vm.runInContext(fs.readFileSync(path.join(root, 'online_game/online_match.js'), 'utf8'), context, { filename: 'online_match.js' });
+vm.runInContext(fs.readFileSync(path.join(root, 'js/combat/session.js'), 'utf8'), context, { filename: 'session.js' });
+vm.runInContext(fs.readFileSync(path.join(root, 'online_game/online_session.js'), 'utf8'), context, { filename: 'online_session.js' });
 
 test('online host adapter preserves private hands and swaps guest commands', () => {
   const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host');
@@ -75,4 +77,42 @@ test('online guest defense settles against the real attacker', () => {
   assert.equal(outcome.ok, true);
   assert.equal(outcome.state.phase, 'PLAYER_PLAY');
   assert.equal(outcome.state.onlineActor, 'host');
+});
+
+test('online sessions expose the shared GameUI result shape', async () => {
+  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host');
+  const sent = [];
+  const hostSession = new context.OnlineHostSession({
+    match,
+    peer: { send(message) { sent.push(message); return true; } },
+    state: match.project('host')
+  });
+  const selected = await hostSession.dispatch('selectCard', { index: 0 });
+  assert.equal(selected.ok, true);
+  assert.deepEqual(selected.state, hostSession.getState());
+  assert.equal(selected.phase, selected.state.phase);
+  assert.ok(sent.some(message => message.kind === 'state'));
+
+  const guestSession = new context.OnlineGuestSession({
+    peer: { send() { return true; } },
+    state: match.project('guest')
+  });
+  const pending = guestSession.dispatch('selectCard', { index: 0 });
+  const received = guestSession.receiveState({
+    requestId: 1,
+    guestState: match.project('guest'),
+    events: []
+  });
+  assert.equal((await pending).ok, true);
+  assert.equal(received.phase, received.state.phase);
+  assert.equal(guestSession.getState().onlineRole, 'guest');
+});
+
+test('online event batches are projected to the recipient orientation', () => {
+  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host');
+  const events = [{ type: 'playerPlay', who: 'player', target: 'ai', owner: 'player', aoeTargets: ['player', 'ai'] }];
+  assert.deepEqual(match.eventsForViewer(events, 'host', 'host'), events);
+  assert.deepEqual(match.eventsForViewer(events, 'guest', 'host')[0], {
+    type: 'aiPlay', who: 'ai', target: 'player', owner: 'ai', aoeTargets: ['ai', 'player']
+  });
 });

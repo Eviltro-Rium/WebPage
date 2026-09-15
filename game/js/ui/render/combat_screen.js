@@ -12,7 +12,7 @@
             const sceneLabels = { castle: '城堡', desert: '沙漠', forest: '森林', ocean: '冻洋', volcano: '火山' };
             const sceneName = sceneLabels[s.adventureScene] || '';
             const stageNum = s.adventureStage || s.stage || 1;
-            const titleText = s.isAdventure ? 'Furry Trial 冒险' : 'Furry Battle';
+            const titleText = s.isOnline ? 'Furry Trial · 在线对决' : s.isAdventure ? 'Furry Trial 冒险' : 'Furry Battle';
             let html = `
                 <div class="game-title">${titleText}</div>
                 <div class="top-bar">

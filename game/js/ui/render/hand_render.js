@@ -12,7 +12,7 @@
             const container = document.getElementById('player-hand');
             if (!container || !s || !s.playerHand) return;
             const hideTrailing = this._hideTrailingCount(options, 'player');
-            const canInteract = ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
+            const canInteract = s.onlineCanAct !== false && ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
                 'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD'].includes(s.phase);
             const isDefend = s.phase === 'PLAYER_DEFEND';
             // legalHand is only a play/defend legality mask.  Do not apply a
@@ -37,14 +37,16 @@
                 const state = this.state;
                 if (!state || !Array.isArray(state.playerHand)) return;
                 const phase = state.phase;
-                if (phase !== 'PLAYER_PLAY' && phase !== 'PLAYER_DEFEND') return;
+                if (state.onlineCanAct === false || (phase !== 'PLAYER_PLAY' && phase !== 'PLAYER_DEFEND')) return;
                 if (state.needColorChoice || (phase === 'PLAYER_DEFEND' && state.unblockDefend)) return;
                 if (this._isHandlingAction) return;
                 const card = state.playerHand[index];
                 if (!card || (state.legalHand && state.legalHand[index] === false)) return;
                 this._npcHandFocusIndex = -1;
                 if (state.selectedCard !== index) {
-                    const selected = await Bridge.call('selectCard', { index });
+                    const selected = typeof this._sessionDispatch === 'function'
+                        ? await this._sessionDispatch('selectCard', { index })
+                        : await Bridge.call('selectCard', { index });
                     if (!selected || selected.error) return;
                     this.state = selected;
                     this.updateDisplay();
@@ -52,7 +54,9 @@
                 const action = phase === 'PLAYER_DEFEND' ? 'doDefend' : 'doPlay';
                 if (typeof this._apiAction === 'function') await this._apiAction(action);
                 else {
-                    const result = await Bridge.call(action);
+                    const result = typeof this._sessionDispatch === 'function'
+                        ? await this._sessionDispatch(action)
+                        : await Bridge.call(action);
                     if (result && !result.error) { this.state = result; this.updateDisplay(); }
                 }
             };
@@ -75,7 +79,7 @@
                 if (!isUnplayable) {
                     cv.addEventListener('click', async (event) => {
                         if (cv.classList.contains('disabled')) return;
-                        if (this.state && this.state.needColorChoice) return;
+                        if (this.state && (this.state.needColorChoice || this.state.onlineCanAct === false)) return;
                         const idx = parseInt(cv.dataset.index, 10);
                         if (!Number.isInteger(idx)) return;
                         this._npcHandFocusIndex = -1;
@@ -91,7 +95,9 @@
                         }
                         this._lastPlayerHandClick = { index: idx, time: now, promise: null };
                         const selection = (async () => {
-                            const result = await Bridge.call('selectCard', { index: idx });
+                            const result = typeof this._sessionDispatch === 'function'
+                                ? await this._sessionDispatch('selectCard', { index: idx })
+                                : await Bridge.call('selectCard', { index: idx });
                             if (result && !result.error) { this.state = result; this.updateDisplay(); }
                         })();
                         this._lastPlayerHandClick.promise = selection;
@@ -199,7 +205,7 @@
             const s = this.state;
             const container = document.getElementById('ai-hand');
             container.innerHTML = '';
-            const canSelect = s.phase === 'OPPONENT_CARD_CHOICE' || (s.phase === 'PLAYER_SEVEN_CHOICE' && !s.chanFourSwapMode && !s.chanSevenKeepMode) || (s.phase === 'SAIKI_THREE_CHOICE' && !s.saikiThreeDrawn);
+            const canSelect = s.onlineCanAct !== false && (s.phase === 'OPPONENT_CARD_CHOICE' || (s.phase === 'PLAYER_SEVEN_CHOICE' && !s.chanFourSwapMode && !s.chanSevenKeepMode) || (s.phase === 'SAIKI_THREE_CHOICE' && !s.saikiThreeDrawn));
             const hideTrailing = this._hideTrailingCount(options, 'ai');
             const revealMode = !!s.aiHand && Array.isArray(s.aiHand);
             const handSize = Math.max(Number(s.aiHandSize) || 0, revealMode ? s.aiHand.length : 0);
