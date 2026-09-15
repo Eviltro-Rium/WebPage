@@ -11,7 +11,7 @@ export default {
     const url = new URL(request.url);
     const origin = request.headers.get('Origin');
     const allowedOrigins = String(env.ALLOWED_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean);
-    if (allowedOrigins.length && origin && !allowedOrigins.includes(origin)) {
+    if (allowedOrigins.length && (!origin || !allowedOrigins.includes(origin))) {
       return new Response('origin not allowed', { status: 403 });
     }
     if (url.pathname === '/health') return new Response('ok', { headers: { 'cache-control': 'no-store' } });
@@ -44,18 +44,29 @@ export class Room {
 
     let clientId = null;
     let metadata = null;
+    let helloTimer = setTimeout(() => { if (!clientId) close(1008, 'hello-timeout'); }, 15000);
+    let rateWindow = Date.now();
+    let rateCount = 0;
     const close = (code = 1000, reason = '') => { try { server.close(code, reason); } catch (_) {} };
 
     server.addEventListener('message', event => {
-      if (typeof event.data === 'string' && event.data.length > 65536) { close(1009, 'message-too-large'); return; }
+      if (typeof event.data !== 'string') { close(1003, 'text-messages-only'); return; }
+      if (new TextEncoder().encode(event.data).byteLength > 65536) { close(1009, 'message-too-large'); return; }
+      const now = Date.now();
+      if (now - rateWindow >= 10000) { rateWindow = now; rateCount = 0; }
+      if (++rateCount > 240) { close(1013, 'rate-limit'); return; }
       let message;
       try { message = JSON.parse(event.data); } catch (_) { return; }
       if (!message || typeof message.type !== 'string') return;
 
       if (message.type === 'hello') {
         if (clientId) return;
+        clearTimeout(helloTimer);
+        helloTimer = null;
         if (this.clients.size >= 2) { close(1008, 'room-full'); return; }
-        clientId = String(message.peerId || crypto.randomUUID()).slice(0, 80);
+        // Never trust a client supplied peerId. A reconnect or a malicious
+        // client must not be able to overwrite an existing Map entry.
+        clientId = crypto.randomUUID();
         const role = message.role === 'guest' ? 'guest' : 'host';
         if (role === 'guest' && ![...this.clients.values()].some(item => item.meta.role === 'host')) {
           close(1008, 'room-not-found'); return;
@@ -74,9 +85,20 @@ export class Room {
 
       if (!clientId || !metadata) return;
       if (message.type === 'roomMessage') {
-        // Lobby messages are deliberately small and non-authoritative.  The
-        // host still validates the final character/ready state before start.
-        this.broadcast({ type: 'roomMessage', from: clientId, payload: message.payload });
+        // Lobby updates are stamped from the authenticated connection. Do not
+        // forward a payload that can impersonate the other participant.
+        const incoming = message.payload && typeof message.payload === 'object' ? message.payload : null;
+        if (incoming && incoming.type === 'lobbyUpdate') {
+          metadata.nickname = String(incoming.nickname || metadata.nickname || 'Player').slice(0, 18);
+          metadata.character = incoming.character == null ? null : String(incoming.character).slice(0, 40);
+          metadata.ready = !!incoming.ready;
+          this.broadcast({ type: 'roomMessage', from: clientId, payload: {
+            type: 'lobbyUpdate', peerId: clientId, role: metadata.role,
+            nickname: metadata.nickname, character: metadata.character, ready: metadata.ready
+          }});
+        } else {
+          this.broadcast({ type: 'roomMessage', from: clientId, payload: incoming });
+        }
         return;
       }
       if (message.type === 'signal') {
@@ -91,6 +113,8 @@ export class Room {
     const onClose = () => {
       if (removed) return;
       removed = true;
+      if (helloTimer) clearTimeout(helloTimer);
+      helloTimer = null;
       if (!clientId) return;
       this.clients.delete(clientId);
       this.broadcast({ type: 'peerLeft', player: metadata });
