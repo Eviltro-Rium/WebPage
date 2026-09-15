@@ -438,7 +438,7 @@ _skipAttackMod() {
 },
 
 async _apiAction(method, params) {
-    if (this._isHandlingAction) return;
+    if (this._isHandlingAction || this._isSelectingCard || this._isConsumingEvents) return;
     this._isHandlingAction = true;
     let shouldPollAI = false;
     const quickDecision = this._isDecisionAction(method);

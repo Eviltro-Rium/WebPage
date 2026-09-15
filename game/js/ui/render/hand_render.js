@@ -23,6 +23,7 @@
             // place — otherwise the opponent hand looks selected as well.
             if (s.selectedCard >= 0) this._npcHandFocusIndex = -1;
             const handKey = JSON.stringify([
+                s.onlineCanAct,
                 s.phase,
                 s.selectedCard,
                 s.selectedCards || [],
@@ -43,7 +44,7 @@
                 const phase = state.phase;
                 if (state.onlineCanAct === false || (phase !== 'PLAYER_PLAY' && phase !== 'PLAYER_DEFEND')) return;
                 if (state.needColorChoice || (phase === 'PLAYER_DEFEND' && state.unblockDefend)) return;
-                if (this._isHandlingAction) return;
+                if (this._isHandlingAction || this._isConsumingEvents) return;
                 const card = state.playerHand[index];
                 if (!card || (state.legalHand && state.legalHand[index] === false)) return;
                 this._npcHandFocusIndex = -1;
@@ -82,6 +83,7 @@
                 // path, and does not steal hover focus from a playable card.
                 if (!isUnplayable) {
                     cv.addEventListener('click', async (event) => {
+                        if (this._isHandlingAction || this._isConsumingEvents) return;
                         if (cv.classList.contains('disabled')) return;
                         if (this.state && (this.state.needColorChoice || this.state.onlineCanAct === false)) return;
                         const idx = parseInt(cv.dataset.index, 10);
@@ -97,12 +99,16 @@
                             await handleDoubleClick(idx);
                             return;
                         }
+                        if (this._isSelectingCard) return;
                         this._lastPlayerHandClick = { index: idx, time: now, promise: null };
                         const selection = (async () => {
+                            this._isSelectingCard = true;
+                            try {
                             const result = typeof this._sessionDispatch === 'function'
                                 ? await this._sessionDispatch('selectCard', { index: idx })
                                 : await Bridge.call('selectCard', { index: idx });
                             if (result && !result.error) { this.state = result; this.updateDisplay(); }
+                            } finally { this._isSelectingCard = false; }
                         })();
                         this._lastPlayerHandClick.promise = selection;
                         await selection;

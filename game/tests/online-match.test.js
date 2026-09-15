@@ -219,6 +219,92 @@ test('online guest defense settles against the real attacker', () => {
   assert.equal(outcome.state.onlineActor, 'host');
 });
 
+test('online guest defense keeps attack debuffs on the original target', () => {
+  const Card = context.FurryGame.Card;
+  const cases = [
+    // Leon 3 applies burn to the defender.
+    { character: 'Leon', card: Card.number('RED', 3), expected: 'burn' },
+    // Chan 0 applies freeze to the defender while still allowing defense.
+    { character: 'Chan', card: Card.number('RED', 0), expected: 'frozen' },
+    // Saiki's yellow-card passive applies bleed to the defender.
+    { character: 'Saiki', card: Card.number('YELLOW', 1), expected: 'bleed' }
+  ];
+
+  for (const scenario of cases) {
+    const match = new context.OnlineMatchHost(scenario.character, 'Ryan', 'host');
+    match.engine.h.player = [scenario.card];
+    // Keep the guest's hand non-empty so the normal defense flow is used.
+    match.engine.h.ai = [Card.number('BLUE', 2)];
+    match.engine.s.discardTop = Card.number(scenario.card.color, 9);
+    match.engine.s.phase = 'PLAYER_PLAY';
+    match.engine.s.busy = false;
+
+    match.dispatch('host', 'selectCard', { index: 0 });
+    const attack = match.dispatch('host', 'doPlay');
+    assert.equal(attack.ok, true, `${scenario.character} attack should resolve`);
+    assert.equal(attack.state.phase, 'PLAYER_DEFEND', `${scenario.character} should enter defense`);
+
+    const outcome = match.dispatch('guest', 'doSkipDefend');
+    assert.equal(outcome.ok, true, `${scenario.character} defense should resolve`);
+    assert.equal(match.engine.s.player[scenario.expected] || false, false,
+      `${scenario.character} must not apply ${scenario.expected} to the attacker`);
+    assert.equal(match.engine.s.ai[scenario.expected] || false, scenario.expected === 'frozen' ? true : 1,
+      `${scenario.character} must apply ${scenario.expected} to the defender`);
+  }
+});
+
+test('online guest attack keeps its debuff on the host target', () => {
+  const Card = context.FurryGame.Card;
+  const match = new context.OnlineMatchHost('Leon', 'Saiki', 'guest');
+  match.engine.h.player = [Card.number('BLUE', 2)];
+  match.engine.h.ai = [Card.number('YELLOW', 1)];
+  match.engine.s.discardTop = Card.number('YELLOW', 9);
+  match.engine.s.phase = 'PLAYER_PLAY';
+  match.engine.s.busy = false;
+
+  let outcome = match.dispatch('guest', 'selectCard', { index: 0 });
+  assert.equal(outcome.ok, true);
+  outcome = match.dispatch('guest', 'doPlay');
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.state.phase, 'PLAYER_DEFEND');
+  assert.equal(outcome.state.onlineActor, 'host');
+
+  outcome = match.dispatch('host', 'doSkipDefend');
+  assert.equal(outcome.ok, true);
+  // Saiki's yellow-card passive belongs to the host's character (the target
+  // in the guest's temporary orientation), never to the guest attacker.
+  assert.equal(match.engine.s.player.bleed, 1);
+  assert.equal(match.engine.s.ai.bleed, 0);
+});
+
+test('online turn handoff resets discard eligibility for both players', () => {
+  const match = new context.OnlineMatchHost('Ryan', 'Otto', 'host');
+  for (const actor of ['host', 'guest', 'host']) {
+    match.engine.s.hasPlayedThisTurn = true;
+    assert.equal(match.dispatch(actor, 'doEndTurn').ok, true);
+    const next = actor === 'host' ? 'guest' : 'host';
+    assert.equal(match.project(next).hasPlayedThisTurn, false);
+    assert.equal(match.dispatch(next, 'doEnterDiscard').ok, true);
+    assert.equal(match.dispatch(next, 'doCancelDiscard').ok, true);
+  }
+});
+
+test('host broadcasts cannot acknowledge a guest request with the same number', async () => {
+  const match = new context.OnlineMatchHost('Ryan', 'Otto', 'host');
+  const packets = [];
+  const host = new context.OnlineHostSession({ match, peer: { send(packet) { packets.push(packet); return true; } } });
+  const guest = new context.OnlineGuestSession({ state: match.project('guest'), peer: { send() { return true; } } });
+  const pending = guest.dispatch('selectCard', { index: 0 });
+  const rapid = await guest.dispatch('doEndTurn');
+  assert.equal(rapid.ok, false);
+  await host.dispatch('doEndTurn');
+  assert.equal(packets[0].requestId, null);
+  guest.receiveState(packets[0]);
+  assert.equal(guest._pending.size, 1);
+  guest.close();
+  await pending;
+});
+
 test('online sessions expose the shared GameUI result shape', async () => {
   const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host');
   const sent = [];

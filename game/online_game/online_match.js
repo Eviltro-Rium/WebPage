@@ -59,8 +59,28 @@
         for (const key of ['activeAttacker', 'atkOwner', 'defOwner', 'attackTarget', 'discardTopOwner']) {
             if (state[key] === 'player' || state[key] === 'ai') state[key] = swapKey(state[key]);
         }
+        // Attack debuffs are staged by participant key until the defense and
+        // damage animation settle.  A guest command runs with player/ai
+        // temporarily swapped, so these references must be projected too;
+        // otherwise the deferred burn/bleed/poison is restored to the
+        // attacker's character instead of the original target.
+        if (state.pendingBuffRestore &&
+            (state.pendingBuffRestore.target === 'player' || state.pendingBuffRestore.target === 'ai')) {
+            state.pendingBuffRestore.target = swapKey(state.pendingBuffRestore.target);
+        }
+        if (state.attackDebuffSnapshot &&
+            (state.attackDebuffSnapshot.owner === 'player' || state.attackDebuffSnapshot.owner === 'ai')) {
+            state.attackDebuffSnapshot.owner = swapKey(state.attackDebuffSnapshot.owner);
+        }
         if (state.pendingAttack && Array.isArray(state.pendingAttack.aoeTargets)) {
             state.pendingAttack.aoeTargets = state.pendingAttack.aoeTargets.map(swapKey);
+        }
+        if (state.pendingAttack &&
+            (state.pendingAttack.hypothermiaTarget === 'player' || state.pendingAttack.hypothermiaTarget === 'ai')) {
+            state.pendingAttack.hypothermiaTarget = swapKey(state.pendingAttack.hypothermiaTarget);
+        }
+        if (state.serenityHalfTarget === 'player' || state.serenityHalfTarget === 'ai') {
+            state.serenityHalfTarget = swapKey(state.serenityHalfTarget);
         }
         if (state.pendingTrophyDisarm && (state.pendingTrophyDisarm.targetKey === 'player' || state.pendingTrophyDisarm.targetKey === 'ai')) {
             state.pendingTrophyDisarm.targetKey = swapKey(state.pendingTrophyDisarm.targetKey);
@@ -126,6 +146,10 @@
                 return 0;
             };
             e.startAITurn = function () {
+                this.s.hasPlayedThisTurn = false;
+                this.s.hasPlayedBlackDefend = false;
+                this.s.mayDiscardAfterSkill = false;
+                this.s.forcedDiscard = false;
                 this.fillHands(true);
                 this.turnStart('ai');
                 this.s.phase = 'PLAYER_PLAY';

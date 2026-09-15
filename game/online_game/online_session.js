@@ -47,7 +47,7 @@
             try { outcome = this.match.dispatch('host', method, params || {}, { requestId }); }
             catch (error) { return Promise.resolve(resultWithState({ ok: false, error: error.message || String(error) }, this.getState())); }
             if (outcome && outcome.state) this.state = clone(outcome.state);
-            if (outcome && outcome.ok) this._broadcast(outcome, requestId, 'host');
+            if (outcome && outcome.ok) this._broadcast(outcome, null, 'host');
             const result = resultWithState(outcome, this.state);
             if (this.onStateChange) this.onStateChange(result);
             return Promise.resolve(result);
@@ -133,6 +133,7 @@
 
         dispatch(method, params = {}) {
             if (!this.peer || typeof this.peer.send !== 'function') return Promise.resolve(resultWithState({ ok: false, error: 'P2P 尚未连接' }, this.getState()));
+            if (this._pending.size) return Promise.resolve(resultWithState({ ok: false, error: '正在同步上一次操作，请稍候' }, this.getState()));
             const requestId = ++this._requestId;
             return new Promise(resolve => {
                 const timer = setTimeout(() => {
