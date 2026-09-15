@@ -239,6 +239,13 @@ class DialogManager {
         const box = document.createElement('div'); box.className = 'dialog-box compact-choice-box';
         box.innerHTML = '<h3>净化 · 选择移除一层 Buff</h3>';
         const list = document.createElement('div'); list.className = 'choice-list';
+        let closed = false;
+        const finish = async payload => {
+            if (closed) return;
+            closed = true;
+            overlay.remove();
+            await onChoose(payload);
+        };
         const addGroup = (snap, who, prefix) => {
             if (!snap) return;
             const rows = statusRegistry
@@ -272,7 +279,7 @@ class DialogManager {
                 btn.className = 'choice-row';
                 const iconPath = statusRegistry ? statusIcon(icon) : statusIconPath(icon);
                 btn.innerHTML = `<img src="${iconPath}" alt=""><span>${prefix}${label}</span>`;
-                btn.addEventListener('click', async () => { overlay.remove(); await onChoose({ who, kind }); });
+                btn.addEventListener('click', async () => { await finish({ who, kind }); });
                 list.appendChild(btn);
             }
         };
@@ -281,7 +288,7 @@ class DialogManager {
         const doneBtn = document.createElement('button');
         doneBtn.className = 'choice-row choice-done-btn';
         doneBtn.innerHTML = `<span>完成（已净化${extra.used || 0}/${extra.total || 1}次，提前结束）</span>`;
-        doneBtn.addEventListener('click', async () => { overlay.remove(); await onChoose({ done: true }); });
+        doneBtn.addEventListener('click', async () => { await finish({ done: true }); });
         list.appendChild(doneBtn);
         box.appendChild(list); overlay.appendChild(box); document.body.appendChild(overlay);
     }

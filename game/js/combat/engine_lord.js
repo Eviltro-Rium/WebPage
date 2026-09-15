@@ -156,7 +156,7 @@
     if(m==='chooseGuard')return this.chooseGuard(p.stacks);
     if(m==='chooseFly')return this.chooseFly();
     if(m==='chooseFlyContinue')return this.chooseFlyContinue(p);
-    if(m==='choosePurify'){this.clean(this.s.player,false,p.kind);this.s.pendingDialog=null;this.emit('desc','净化移除一层'+({burn:'灼烧',freeze:'冷冻',bleed:'流血',poison:'中毒',blind:'致盲',bomb:'定时炸弹',hypothermia:'失温',guard:'守护',fly:'飞翔',crit:'暴击',lush:'茂盛',parasite:'寄生',diving:'潜水',bloodthirst:'嗜血',bind:'捆缚'}[p.kind]||'buff'));return this.state()}
+    if(m==='choosePurify')return this.choosePurify(p)
     if(m==='selectCard')return this.select(p.index);
     if(m==='clearEvents'){let through=Number(p.throughId);if(Number.isFinite(through))this.acknowledgeEvents(through);else this.events=[];return{ok:true,remaining:this.events.length}}
     if(m==='restart'){clearTimeout(this.timer);this.pendingSettlement=null;this.s=null;this.h={player:[],ai:[]};this.events=[];return{ok:true}}

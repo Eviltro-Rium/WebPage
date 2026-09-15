@@ -27,7 +27,16 @@
             // as non-interactive even though the host had already started.
             this._matchReadyPayload = null; this._matchReadyAcked = false;
             this._matchReadyAttempts = 0; this._matchReadyRetryTimer = null;
+            this._ensureAmbientParticles();
             this.showLanding();
+        }
+
+        _ensureAmbientParticles() {
+            if (document.getElementById('particles-canvas')) return;
+            const prototype = global.GameUI && global.GameUI.prototype;
+            if (prototype && typeof prototype._initParticles === 'function') {
+                prototype._initParticles.call({});
+            }
         }
 
         chars() {

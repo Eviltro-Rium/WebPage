@@ -17,33 +17,11 @@ html, body { min-height: 100%; margin: 0; }
 body {
     min-height: 100vh;
     color: var(--ink);
-    /* game.css defines --bg-gradient for the main game page. Reuse it here
-       instead of loading a second scene image for the online lobby. */
-    background: var(--bg-gradient, linear-gradient(145deg, #081c2c, #0b2940 55%, #123524));
-    background-attachment: fixed;
+    /* game.css is loaded immediately before this file.  Leave its body
+       background untouched so the online lobby and the game home screen use
+       exactly the same gradient and fixed positioning. */
     overflow-x: hidden;
 }
-body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(160deg, rgba(5, 12, 25, .54), rgba(9, 33, 57, .35));
-}
-.online-backdrop { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
-.online-backdrop i {
-    position: absolute;
-    display: block;
-    width: 16vmin; height: 16vmin;
-    border: 1px solid rgba(186, 230, 253, .11);
-    border-radius: 47% 53% 55% 45%;
-    filter: blur(.2px);
-    animation: drift 18s ease-in-out infinite;
-}
-.online-backdrop i:nth-child(1) { left: 8%; top: 16%; }
-.online-backdrop i:nth-child(2) { right: 10%; top: 62%; width: 23vmin; height: 23vmin; animation-delay: -6s; }
-.online-backdrop i:nth-child(3) { left: 55%; bottom: -7%; width: 30vmin; height: 30vmin; animation-delay: -12s; }
-@keyframes drift { 0%, 100% { transform: translate3d(0,0,0) rotate(0); } 50% { transform: translate3d(1.5vw,-2vh,0) rotate(18deg); } }
 
 .online-app { position: relative; z-index: 1; width: min(1120px, calc(100% - 28px)); margin: 0 auto; padding: 28px 0 46px; }
 .online-topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; }

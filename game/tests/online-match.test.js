@@ -127,6 +127,25 @@ test('online protocol keeps guest packets private and rejects stale or duplicate
   assert.equal(Card.number('RED', 1).value, 1);
 });
 
+test('purify completion closes the dialog without removing a status', () => {
+  const match = new context.OnlineMatchHost('Ryan', 'Otto', 'host');
+  match.engine.s.pendingDialog = 'purify';
+  match.engine.s.player.burn = 1;
+
+  let outcome = match.dispatch('host', 'choosePurify', { done: true });
+  assert.equal(outcome.ok, true);
+  assert.equal(match.engine.s.pendingDialog, null);
+  assert.equal(match.engine.s.player.burn, 1);
+
+  // Older UI code sent { kind: { done: true } }; keep that payload harmless
+  // while allowing the current { done: true } form as well.
+  match.engine.s.pendingDialog = 'purify';
+  outcome = match.dispatch('host', 'choosePurify', { kind: { done: true } });
+  assert.equal(outcome.ok, true);
+  assert.equal(match.engine.s.pendingDialog, null);
+  assert.equal(match.engine.s.player.burn, 1);
+});
+
 test('online match blocks commands until the initial snapshot is acknowledged', () => {
   const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host');
   match.setStarted(false);

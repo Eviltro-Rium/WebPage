@@ -130,8 +130,10 @@
             }
             if (canShowDecisionDialog && s.pendingDialog === 'purify') {
                 this.dialogs.showPurifyChoice(s.player, picked => {
+                    if (picked && picked.done) return this._apiAction('choosePurify', { done: true });
                     const kind = picked && picked.kind ? picked.kind : picked;
-                    this._apiAction('choosePurify', { kind });
+                    if (typeof kind !== 'string') return Promise.resolve();
+                    return this._apiAction('choosePurify', { kind });
                 });
             } else if (canShowDecisionDialog && s.pendingDialog === 'superPurify') {
                 const targets = [{ key: 'player', label: '自己', ch: s.player }];

@@ -158,7 +158,7 @@
     }
     const canShowDecisionDialog=s.onlineCanAct!==false;
     if(this.dialogs&&typeof this.dialogs.syncCombatDialog==='function')this.dialogs.syncCombatDialog(s.pendingDialog,canShowDecisionDialog,s.phase);
-    if(canShowDecisionDialog&&s.pendingDialog==='purify')this.dialogs.showPurifyChoice(s.player,picked=>{const kind=picked&&picked.kind?picked.kind:picked;this._apiAction('choosePurify',{kind})});
+    if(canShowDecisionDialog&&s.pendingDialog==='purify')this.dialogs.showPurifyChoice(s.player,picked=>{if(picked&&picked.done)return this._apiAction('choosePurify',{done:true});const kind=picked&&picked.kind?picked.kind:picked;if(typeof kind!=='string')return Promise.resolve();return this._apiAction('choosePurify',{kind})});
     else if(canShowDecisionDialog&&s.pendingDialog==='superPurify'){const targets=[{key:'player',label:'自己',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+' (对手)',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+' (对手)',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseSuperPurifyTarget',{target}))}
     else if(canShowDecisionDialog&&s.pendingDialog==='mozeSeven'){const targets=[{key:'player',label:'自己（清除负面）',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+'（清除正面）',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+'（清除正面）',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseMozeSeven',{choice:{target}}),'Moze 7牌 · 选择目标')}
     else if(canShowDecisionDialog&&s.pendingDialog==='guard')this.dialogs.showGuardChoice(s.player,s.pendingGuardDamage,choice=>{
