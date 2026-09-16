@@ -49,6 +49,19 @@
         const drawn = pull('Chan 4牌系统随机抽取玩家手牌');
         if (!drawn) return { d: 2, skip: true, unblock: false };
 
+        // Adventure keeps player and NPC piles isolated.  If a Chan card is
+        // ever used by an NPC in this mode, do not exchange cards across the
+        // two piles; discard the stolen player card and take the documented
+        // two-damage skip-defense branch instead.
+        if (eng.s && (eng.s.isAdventure || eng.isAdventureBattle)) {
+          eng.discardWithEvent(drawn, 'player', {
+            from: 'reveal', faceUp: true,
+            desc: `Chan 4牌弃掉${eng.cardText(drawn)}`
+          });
+          eng.emit('desc', `Chan AI弃掉${eng.cardText(drawn)}，造成2点伤害并跳过防御`);
+          return { d: 2, skip: true, unblock: false };
+        }
+
         let swap = null;
         let swapScore = Infinity;
         for (const card of helpers.selfHand) {

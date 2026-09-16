@@ -177,6 +177,42 @@ test('black cards pause for a color choice before resolving in adventure combat'
   assert.equal(resolved.events.filter(event => event.type === 'playerPlay').length, 1, 'confirmed black card emits one play animation');
 });
 
+test('Chan 4 in adventure discards the selected NPC card without swapping piles', () => {
+  const engine = new AdventureBattleEngine();
+  const playerAttack = number(4, 'RED');
+  const npcCard = number(6, 'BLUE');
+  engine.startAdventure({
+    player: 'Chan',
+    opponent: 'CastleWolf',
+    playerPile: {
+      deck: [number(2, 'GREEN')],
+      hand: [playerAttack],
+      discard: [],
+      handLimit: 5
+    },
+    discardTop: number(3, 'RED'),
+    discardTopOwner: 'player'
+  });
+
+  // Isolate the skill transition from the startup refill/passive draw.
+  engine.h.player.splice(0, engine.h.player.length, playerAttack);
+  engine.h.ai.splice(0, engine.h.ai.length, npcCard);
+  engine.piles.ai.discard.splice(0, engine.piles.ai.discard.length);
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.busy = false;
+  engine.s.selectedCard = 0;
+
+  const pending = engine.dispatch('doPlay');
+  assert.equal(pending.phase, 'OPPONENT_CARD_CHOICE');
+  engine.dispatch('chooseAICard', { index: 0 });
+  engine.dispatch('doOpponentCardConfirm');
+
+  assert.equal(engine.h.ai.length, 0);
+  assert.equal(engine.h.player.some(card => card.value === npcCard.value), false);
+  assert.equal(engine.piles.ai.discard.some(card => card.value === npcCard.value), true);
+  assert.equal(engine.piles.player.discard.some(card => card.value === npcCard.value), false);
+});
+
 test('battle startup preserves the player pile and gives the NPC its own two-card hand', () => {
   const engine = start();
   assert.deepEqual(Array.from(engine.h.player, card => card.value), [1, 3]);

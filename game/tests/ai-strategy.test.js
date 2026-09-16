@@ -186,6 +186,8 @@ test('adventure opponent-hand skills let the player choose the visible target ca
   const resolved = engine.dispatch('doOpponentCardConfirm');
   assert.equal(engine.h.ai.length, 1);
   assert.equal(engine.h.ai[0].value, 1);
+  assert.equal(engine.h.player.some(card => card.value === 6), false);
+  assert.equal(engine.discardBottom.some(card => card.value === 6), true, 'Adventure Chan 4 must discard the selected NPC card instead of swapping it');
   assert.notEqual(resolved.phase, 'OPPONENT_CARD_CHOICE');
 });
 
