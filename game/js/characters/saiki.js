@@ -4,7 +4,7 @@
     name: 'Saiki',
     hp: 80,
     type: '猎手',
-    passive: '进攻时打出有效黄色牌会施加1层流血',
+    passive: '进攻时打出有效黄色牌会在防御结算后施加1层流血',
     init() { return {}; },
     turnStart(eng, ch) {},
     effect(eng, v, c, a, t, owner, helpers) {
@@ -17,15 +17,13 @@
         heal(a, 1);
       } else if (v === 3) {
         d = 2;
+        bleed(2);
       } else if (v === 4) {
         d = 5;
         unblock = !!t.bleed;
       } else if (v === 5) {
-        if (a.hp <= 20) {
-          heal(a, 4);
-          skip = true;
-        } else if (a.hp <= 50) {
-          d = 4;
+        if (a.hp <= 40) {
+          heal(a, 5);
           skip = true;
         } else {
           d = 4;
@@ -56,10 +54,10 @@
         remaining = Math.max(0, d - b);
         desc = `Saiki 1牌：防御至多3点`;
       } else if (v === 2) {
-        counter(opponent, 2);
+        counter(opponent, 3);
         bleed(opponent, 1);
         remaining = d;
-        desc = 'Saiki 2牌：2点伤害+1层流血';
+        desc = 'Saiki 2牌：反击3点伤害+1层流血';
       } else if (v === 0) {
         let shared = Math.ceil(d / 2);
         counter(opponent, shared);

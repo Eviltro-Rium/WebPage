@@ -17,24 +17,28 @@
         guard(eng.effective(c) === 'GREEN' ? 2 : 1);
       } else if (v === 3) {
         d = 1;
+        unblock = true;
         heal(a, 1);
         guard(1);
       } else if (v === 4) {
         skip = true;
       } else if (v === 5) {
         d = 4;
-        guard(1);
+        // The hand-judgement path is resolved by the engine, but keep the
+        // fallback effect aligned with the documented recovery branch.
+        guard(2);
       } else if (v === 6) {
-        d = 2 + a.guard;
+        d = 3 + a.guard;
         unblock = !a.guard;
       } else if (v === 7) {
-        let q = a.burn + a.bleed + (a.frozen ? 1 : 0);
+        const q = (a.burn || 0) + (a.bleed || 0) + (a.poison || 0) +
+          (a.frozen ? 1 : 0) + (a.bomb || 0) + (a.blind || 0) +
+          (a.iceSeal || 0) + (a.hypothermia || 0) + (a.bindMark ? 1 : 0);
         clearDebuffs(a);
         d = 3 + q;
-        unblock = true;
       } else if (v === 0) {
         guard(3);
-        d = 5;
+        d = 6;
         draw(owner, 1, true);
       }
       return { d, skip, unblock };

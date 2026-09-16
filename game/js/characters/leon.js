@@ -11,10 +11,10 @@
     init() { return {}; },
     turnStart(eng, ch) {},
     effect(eng, v, c, a, t, owner, helpers) {
-      const { burn, takeReveal, draw } = helpers;
+      const { burn, takeReveal, draw, hurt } = helpers;
       let d = 0, skip = false, unblock = false;
       if (v === 1) {
-        burn(2);
+        burn(3);
         skip = true;
       } else if (v === 2) {
         d = 4;
@@ -43,14 +43,29 @@
         // this effect pure avoids a second random/removal path.
       } else if (v === 0) {
         d = 7;
-        burn(1);
+        burn(2);
         unblock = true;
-        let oh = eng.h[owner === 'player' ? 'ai' : 'player'];
+        const handKey = owner === 'player'
+          ? (typeof eng._who === 'function' ? eng._who(t) : 'ai')
+          : 'player';
+        let oh = eng.h[handKey];
         if (oh) {
           let dc = Math.min(2, oh.length);
-          for (let i = 0; i < dc; i++) oh.splice(Math.floor(random() * oh.length), 1);
+          for (let i = 0; i < dc; i++) {
+            if (!oh.length) break;
+            const index = Math.floor(random() * oh.length);
+            const dropped = oh.splice(index, 1)[0];
+            if (dropped && typeof eng.discardWithEvent === 'function') {
+              eng.discardWithEvent(dropped, handKey, {
+                handIndex: index,
+                from: 'hand',
+                faceUp: true,
+                desc: `Leon 0牌随机弃掉${eng.cardText(dropped)}`
+              });
+            }
+          }
         }
-        hurt(a, 2);
+        if (typeof hurt === 'function') hurt(a, 2);
       }
       return { d, skip, unblock };
     },
@@ -77,7 +92,23 @@
       } else if (v === 0) {
         const opponentKey = typeof eng._who === 'function' ? eng._who(opponent) : (owner === 'player' ? 'ai' : 'player');
         let opponentHand = eng.h[opponentKey];
-        if (opponentHand) opponentHand.splice(0, opponentHand.length);
+        if (opponentHand && opponentHand.length) {
+          // “弃掉所有牌” must return every card to the correct owner pile;
+          // removing the array entries directly would lose cards and break
+          // the shared conservation invariant.
+          const discarded = opponentHand.splice(0, opponentHand.length);
+          if (typeof eng.discardManyWithEvent === 'function') {
+            eng.discardManyWithEvent(discarded, opponentKey, {
+              from: 'hand',
+              faceUp: true,
+              desc: 'Leon 0牌：攻击方弃掉所有手牌'
+            });
+          } else if (typeof eng.discardWithEvent === 'function') {
+            discarded.forEach(card => eng.discardWithEvent(card, opponentKey, {
+              from: 'hand', faceUp: true, desc: 'Leon 0牌：攻击方弃掉' + eng.cardText(card)
+            }));
+          }
+        }
         hurt(opponent, d);
         hurt(defender, d);
         remaining = 0;

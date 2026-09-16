@@ -14,7 +14,7 @@
     // no longer need to duplicate a growing chain of character/value checks.
     const HAND_SKILLS = Object.freeze({
         Chan: Object.freeze([4, 7]),
-        Saiki: Object.freeze([3, 5]),
+        Saiki: Object.freeze([5]),
         Blaze: Object.freeze([4]),
         Moze: Object.freeze([5]),
         Leon: Object.freeze([7])

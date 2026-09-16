@@ -128,6 +128,7 @@ test('opponent-hand policy keeps skill recognition and mode routing centralized'
   assert.ok(policy);
   assert.equal(policy.isSkill('Chan', 4), true);
   assert.equal(policy.isSkill('Saiki', 5), true);
+  assert.equal(policy.isSkill('Saiki', 3), false);
   assert.equal(policy.isSkill('Otto', 4), false);
   const adventure = { s: { isAdventure: true, is1v2: false } };
   const classic = { s: { isAdventure: false, is1v2: false } };
@@ -140,7 +141,7 @@ test('opponent-hand skills draw a target card automatically', () => {
   const runtime = context.FurryGame.CombatRuntime;
   runtime.setRandomSource(() => 0.999999);
   try {
-    for (const [name, value] of [['Chan', 4], ['Chan', 7], ['Saiki', 3], ['Saiki', 5], ['Blaze', 4], ['Moze', 5], ['Leon', 7]]) {
+    for (const [name, value] of [['Chan', 4], ['Chan', 7], ['Saiki', 5], ['Blaze', 4], ['Moze', 5], ['Leon', 7]]) {
         const engine = new Engine();
         engine.start(name, 'Ryan');
         engine.s.discardTop = number(3);
@@ -508,8 +509,136 @@ test('Blaze defense 2 follows the documented burn and half-block rule', () => {
     }
   );
 
-  assert.equal(engine.s.player.burn, 3);
+  assert.equal(engine.s.player.burn, 2);
   assert.equal(result.remaining, 4);
+});
+
+test('Leon, Saiki, and Blaze attack branches follow the updated character docs', () => {
+  const leon = new Engine();
+  leon.start('Leon', 'Ryan');
+  let result = leon.effect('Leon', 1, number(1), leon.s.player, leon.s.ai);
+  assert.equal(result.skip, true);
+  assert.equal(leon.s.ai.burn, 3);
+
+  const saiki = new Engine();
+  saiki.start('Saiki', 'Ryan');
+  result = saiki.effect('Saiki', 3, number(3), saiki.s.player, saiki.s.ai);
+  assert.equal(result.d, 2);
+  assert.equal(saiki.s.ai.bleed, 2);
+  saiki.s.player.hp = 40;
+  result = saiki.effect('Saiki', 5, number(5), saiki.s.player, saiki.s.ai);
+  assert.equal(result.skip, true);
+  assert.equal(saiki.s.player.hp, 45);
+  saiki.s.player.hp = 41;
+  result = saiki.effect('Saiki', 5, number(5), saiki.s.player, saiki.s.ai);
+  assert.equal(result.d, 4);
+
+  const blaze = new Engine();
+  blaze.start('Blaze', 'Ryan');
+  result = blaze.effect('Blaze', 5, number(5), blaze.s.player, blaze.s.ai);
+  assert.equal(blaze.s.player.burn, 1);
+  assert.equal(result.d, 4); // base 2 + one burn + the non-stacking passive
+
+  const challenge = new Engine();
+  challenge.start1v2('Blaze', 'Ryan', 'Ryan');
+  result = challenge.effect('Blaze', 0, number(0), challenge.s.player, challenge.s.ai);
+  assert.equal(result.aoeDamage, 5);
+  assert.equal(challenge.s.ai.burn, 2);
+  assert.equal(challenge.s.ai2.burn, 2);
+
+  // The primary target can die before the AOE pass runs; the surviving target
+  // must still receive the same all-opponents damage.
+  challenge.s.ai.hp = 0;
+  challenge.s.ai.alive = false;
+  challenge.s.ai2.hp = 10;
+  challenge.s.ai2.alive = true;
+  challenge.performAttack({
+    type: 'aoe',
+    attacker: 'player',
+    target: 'ai',
+    aoeTargets: ['ai', 'ai2'],
+    aoeDamage: 5,
+    skipTarget: true
+  });
+  assert.equal(challenge.s.ai2.hp, 5, 'AOE should continue when the primary target is already defeated');
+});
+
+test('Leon discard branches return removed cards to the opponent discard pile', () => {
+  const engine = new Engine();
+  engine.start('Leon', 'Ryan');
+  engine.s.discardTop = number(0);
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.selectedCard = 0;
+  engine.h.player = [number(0)];
+  engine.h.ai = [number(1), number(2), number(3)];
+  engine.deck = [];
+  engine.discardBottom = [];
+  context.FurryGame.CombatRuntime.setRandomSource(() => 0);
+  try {
+    engine.play();
+    assert.equal(engine.h.ai.length, 1);
+    assert.equal(engine.discardBottom.length, 3); // opening top + two discarded hand cards
+    assert.deepEqual(engine.discardBottom.slice(-2).map(card => card.value), [1, 2]);
+  } finally {
+    context.FurryGame.CombatRuntime.resetRandomSource();
+  }
+
+  const seven = new Engine();
+  seven.start('Leon', 'Ryan');
+  seven.s.discardTop = number(0);
+  seven.s.phase = 'PLAYER_PLAY';
+  seven.s.selectedCard = 0;
+  seven.h.player = [number(7)];
+  seven.h.ai = [number(4)];
+  seven.deck = [];
+  seven.discardBottom = [];
+  context.FurryGame.CombatRuntime.setRandomSource(() => 0);
+  try {
+    seven.play();
+    assert.equal(seven.h.ai.length, 0);
+    assert.equal(seven.discardBottom.at(-1).value, 4);
+  } finally {
+    context.FurryGame.CombatRuntime.resetRandomSource();
+  }
+
+  const emptyTarget = new Engine();
+  emptyTarget.start('Leon', 'Ryan');
+  emptyTarget.s.discardTop = number(0);
+  emptyTarget.s.phase = 'PLAYER_PLAY';
+  emptyTarget.s.selectedCard = 0;
+  emptyTarget.h.player = [number(7)];
+  emptyTarget.h.ai = [];
+  emptyTarget.deck = [];
+  emptyTarget.discardBottom = [];
+  emptyTarget.play();
+  assert.equal(emptyTarget.s.ai.burn, 2, 'Leon 7 should still apply burn when the target hand is empty');
+
+  const defense = new Engine();
+  defense.start('Ryan', 'Leon');
+  defense.h.player = [number(1), number(2)];
+  defense.deck = [];
+  defense.discardBottom = [];
+  const leon = CharacterRegistry.get('Leon');
+  leon.defend(
+    defense,
+    'Leon',
+    0,
+    4,
+    number(0),
+    defense.s.ai,
+    defense.s.player,
+    'ai',
+    'RED',
+    {
+      hurt: (target, amount, kind) => defense.hurt(target, amount, kind),
+      heal: (target, amount, kind) => defense.heal(target, amount, kind),
+      draw: (owner, amount, animated) => defense.draw(owner, amount, animated),
+      burn: (target, amount) => defense.burn(target, amount),
+      counter: (target, amount) => defense.counterAttack(defense.s.ai, target, amount)
+    }
+  );
+  assert.equal(defense.h.player.length, 0, 'Leon defense 0 should discard every attacker card');
+  assert.equal(defense.discardBottom.length, 2, 'discarded cards must remain in the shared discard pile');
 });
 
 test('Saiki defense 3 always returns the revealed judge card to hand', () => {

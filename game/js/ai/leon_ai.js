@@ -55,7 +55,7 @@
       }
 
       if (v === 0) {
-        helpers.burnTarget(1);
+        helpers.burnTarget(2);
         const count = Math.min(2, helpers.targetHand.length);
         for (let i = 0; i < count; i += 1) {
           const dropped = helpers.targetHand.splice(Math.floor(random() * helpers.targetHand.length), 1)[0];

@@ -1,5 +1,7 @@
 # Furry Trial 在线对决（小规模 MVP）
 
+完整的页面、战斗会话和传输分层见 [游戏架构总览](../docs/ARCHITECTURE.md)。本 README 只保留在线模式的部署与运行说明。
+
 这个目录是静态网页的联机入口。牌面、角色技能、Buff、牌库和事件仍由
 game/js/combat/ 的单机代码提供，online_match.js 只负责把本地
 Engine.dispatch() 适配成“房主权威 + 客户端指令”的模式。

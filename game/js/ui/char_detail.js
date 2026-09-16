@@ -1,9 +1,9 @@
 (function () {
   const CHARS = [
     { name: 'Ryan', hp: 70, type: '战士', passive: '进攻回合开始前恢复1点生命', avatar: 'avatars/Ryan.jpg', color: '#14eb5f' },
-    { name: 'Leon', hp: 90, type: '火法', passive: '免疫灼烧伤害', avatar: 'avatars/Leon.png', color: '#ee1111' },
+    { name: 'Leon', hp: 90, type: '骑士', passive: '免疫灼烧伤害', avatar: 'avatars/Leon.png', color: '#ee1111' },
     { name: 'Chan', hp: 80, type: '谋士', passive: '进攻回合开始前抽1张牌', avatar: 'avatars/Chan.png', color: '#1399f2' },
-    { name: 'Saiki', hp: 80, type: '猎手', passive: '有效黄色牌施加1层流血', avatar: 'avatars/Saiki.png', color: '#9b59b6' },
+    { name: 'Saiki', hp: 80, type: '猎手', passive: '有效黄色牌在防御结算后施加1层流血', avatar: 'avatars/Saiki.png', color: '#9b59b6' },
     { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼烧时1至7牌攻击伤害+1', avatar: 'avatars/Blaze.png', color: '#e67e22' },
     { name: 'Serenity', hp: 80, type: '暗影', passive: '免疫冷冻；低于30生命嗜血，正常态恢复+1', avatar: 'avatars/Serenity.jpg', color: '#1abc9c' },
     { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害', avatar: 'avatars/Moze.jpg', color: '#7f8c8d' },

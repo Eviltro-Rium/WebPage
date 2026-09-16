@@ -196,7 +196,7 @@
     let r=this._swapAIContext(key,()=>this.aiSpecialEffect(this.name(ch),c.value,c))||this.effect(this.name(ch),c.value,c,ch,this.s.player);
     this._deferAttackBuffs('player',_buffBefore);
     if(r.immediateBuffs)this._restoreAttackBuffs();
-    this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain)};
+    this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage};
     {let freezeBlock=this._freezeBlocksDefend(this.s.player,this.s.atkCard);
     if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){this.s.phase='PLAYER_DEFEND';this.s.busy=false;this.s.unblockDefend=false;return}
      if(r.d&&(r.unblock||freezeBlock)&&!(r.isDrain||r.drain)){if(this._enterPlayerDefend(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}
@@ -250,7 +250,7 @@
     if(who==='Otto'&&c.value===3)return this.startOttoThree(c);
     if(who==='Otto'&&c.value===4)return this.startOttoFour(c);
     if(who==='Otto'&&c.value===5)return this.startNumberJudge('Otto',c);
-     if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===5&&this.s.player.hp<=50)){
+     if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===5&&this.s.player.hp<=40)){
       let p={name:who,value:c.value,owner:'player',attackCard:cp(c)};
       return this.resolveOpponentHandSkill(p)
     }
@@ -258,13 +258,13 @@
     this._deferAttackBuffs(target,_buffBefore);
     if(r.immediateBuffs)this._restoreAttackBuffs();
 
-    return this.gateAdventureAttackMod(c,r.d,r.skip,r.unblock,0,{isDrain:!!(r.isDrain||r.drain)})
+     return this.gateAdventureAttackMod(c,r.d,r.skip,r.unblock,0,{isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage})
   };
 
   Engine.prototype.leonZero1v2=function(card){
     this._restoreAttackBuffs();
     let targets=['ai','ai2'].filter(key=>this.s[key]&&this.s[key].alive);
-    for(const key of targets)this.burn(this.s[key],1);
+     for(const key of targets)this.burn(this.s[key],2);
     for(const key of targets)this.hurt(this.s[key],7);
     this.hurt(this.s.player,targets.length*2);
     // Leon 0 discards up to two cards from all living opponents.  The card
@@ -288,7 +288,7 @@
         this.emit('reveal','Leon 0牌随机弃掉对手手牌',dropped,{who:entry.key,from:'hand'});
       }
     }
-    this.emit('desc','Leon 0牌：对所有对手+1层灼烧、随机弃掉对手至多2张手牌、7点不可防御伤害；自身受到'+(targets.length*2)+'点伤害',card);
+     this.emit('desc','Leon 0牌：对所有对手+2层灼烧、随机弃掉对手至多2张手牌、7点不可防御伤害；自身受到'+(targets.length*2)+'点伤害',card);
     this.s.pendingAttack=null;this.s.defenseSkipped=true;this.s.phase='AI_DEFEND';this.s.busy=true;
     this.later(()=>{this.afterAttack();this.check()},1700);return this.check()
   };

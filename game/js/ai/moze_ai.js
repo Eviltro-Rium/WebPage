@@ -6,7 +6,7 @@
     attackScore(eng, v, c, x) {
       if (v === 0) return x.guard <= 2 ? 88 : 72;
       if (v === 6) {
-        const damage = 2 + x.guard;
+        const damage = 3 + x.guard;
         return damage >= x.opponent.hp ? 96 : x.guard ? 68 + x.guard * 3 : 70;
       }
       if (v === 7) return x.debuffCount >= 2 ? 86 : x.debuffCount ? 70 : 48;
@@ -73,23 +73,33 @@
         eng.emit('reveal', 'Moze 5牌系统随机抽取玩家手牌', drawn, { who: 'player', from: 'hand' });
         helpers.selfHand.push(drawn);
 
-        const hit = drawn.isBlack || drawn.isWhite || eng.effective(drawn) === 'GREEN';
+        // Only coloured number cards count as the offensive branch.  White
+        // utility/trophy cards are item cards and must follow the recovery
+        // branch, just like the player-side resolver.
+        const hit = !drawn.isItemCard &&
+          (drawn.isBlack || drawn.isWhite || eng.effective(drawn) === 'GREEN');
         if (hit) {
           eng.emit('desc', `Moze 5牌判定${eng.cardText(drawn)}：造成4点伤害`);
           return { d: 4, skip: false, unblock: false };
         }
 
         helpers.healSelf(2);
-        helpers.gainGuard(1);
-        eng.emit('desc', `Moze 5牌判定${eng.cardText(drawn)}：恢复2点并获得1层守护`);
+        helpers.gainGuard(2);
+        eng.emit('desc', `Moze 5牌判定${eng.cardText(drawn)}：恢复2点并获得2层守护`);
         return { d: 0, skip: true, unblock: false };
       }
 
       if (v === 7) {
-        const bonus = (a.burn || 0) + (a.bleed || 0) + (a.frozen ? 1 : 0);
+        // Moze 7 converts every currently active negative status into damage.
+        // Keep this list in sync with StatusRegistry/StatusService so newly
+        // introduced debuffs (blind, bomb, ice seal, hypothermia, binding,
+        // etc.) are not silently omitted from the AI branch.
+        const bonus = (a.burn || 0) + (a.bleed || 0) + (a.poison || 0) +
+          (a.frozen ? 1 : 0) + (a.bomb || 0) + (a.blind || 0) +
+          (a.iceSeal || 0) + (a.hypothermia || 0) + (a.bindMark ? 1 : 0);
         helpers.clearSelf();
         eng.emit('desc', `Moze AI清除${bonus}层debuff，造成${3 + bonus}点伤害`);
-        return { d: 3 + bonus, skip: false, unblock: true };
+        return { d: 3 + bonus, skip: false, unblock: false };
       }
 
       return null;

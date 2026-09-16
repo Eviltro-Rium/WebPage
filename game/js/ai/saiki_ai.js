@@ -7,7 +7,7 @@
       if (v === 0) return x.oppBleed >= 2 ? 92 : x.oppBleed ? 76 : 58;
       if (v === 4) return x.oppBleed ? 88 : 54;
       if (v === 7) return 72 + Math.min(18, (x.oppBleed || 0) * 6);
-      if (v === 5) return x.self.hp <= 20 ? 82 : x.self.hp <= 50 ? 72 : x.oppHand ? 66 : 54;
+      if (v === 5) return x.self.hp <= 40 ? 82 : x.oppHand ? 66 : 54;
       if (v === 6) {
         const judges = x.hand.filter(card => card !== c && card.isNumberCard);
         if (!judges.length) return -100;
@@ -15,7 +15,7 @@
           (eng.effective(card) === 'YELLOW' && x.oppBleed < 2 ? 4 : 0)));
         return best >= x.opponent.hp ? 96 : 58 + best;
       }
-      if (v === 3) return x.oppHand ? 60 : 44;
+      if (v === 3) return x.oppBleed < 3 ? 68 : 48;
       if (v === 2) return x.missingHp ? 52 : 44;
       if (v === 1) return 48;
       return null;
@@ -53,23 +53,11 @@
         return card;
       };
 
-      if (v === 3) {
-        const drawn = pull('Saiki 3牌系统随机抽取玩家手牌');
-        if (drawn) {
-          const keep = eng.aiKeepScore(drawn) >= 40 || helpers.selfHand.length <= 2;
-          if (keep) helpers.selfHand.push(drawn);
-          else eng.discardWithEvent(drawn, 'player', { from: 'reveal', faceUp: true, desc: `Saiki 3牌弃掉${eng.cardText(drawn)}` });
-          eng.emit('desc', `Saiki AI${keep ? '保留' : '弃掉'}${eng.cardText(drawn)}`);
-        }
-        return { d: 2, skip: false, unblock: false };
-      }
-
       if (v === 5) {
-        if (a.hp <= 20) {
-          helpers.healSelf(4);
+        if (a.hp <= 40) {
+          helpers.healSelf(5);
           return { d: 0, skip: true, unblock: false };
         }
-        if (a.hp <= 50) return { d: 4, skip: true, unblock: false };
         const drawn = pull('Saiki 5牌系统随机抽取玩家手牌');
         if (drawn) helpers.selfHand.push(drawn);
         return { d: 4, skip: false, unblock: false };

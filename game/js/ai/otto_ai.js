@@ -19,7 +19,8 @@
         let candidates = x.hand.filter(card => card !== c && card.isNumberCard);
         if (!candidates.length) return -100;
         let max = Math.max(...candidates.map(card => card.value));
-        return max >= x.opponent.hp ? 90 : 55 + max * 3;
+        const damage = Math.ceil(max * 1.5);
+        return damage >= x.opponent.hp ? 90 : 55 + damage * 3;
       }
       if (v === 4) return 58;
       if (v === 3) return 52;
@@ -54,7 +55,14 @@
       if (v === 3) {
         let r = eng.reveal('Otto 3牌判定');
         if (!r) return { d: 0, skip: true, unblock: false };
-        let dmg = r.isItemCard ? 4 : r.value;
+        // Zero and item judgements are returned to Otto's hand and skip
+        // defense; only numeric cards deal damage and enter the discard pile.
+        if (r.isItemCard || r.value === 0) {
+          helpers.selfHand.push(r);
+          eng.emit('desc', `Otto 3牌：${eng.cardText(r)}加入手牌，跳过防御`);
+          return { d: 0, skip: true, unblock: false };
+        }
+        let dmg = r.value;
         if (dmg > 4) {
           eng.hurt(a, 2);
           if (a.crit < 3) a.crit++;
@@ -116,15 +124,16 @@
         eng.s.revealCards = [helpers.copy(best)];
         eng.emit('reveal', `Otto 5牌判定：${eng.cardText(best)}`, best, { who: owner, from: 'hand' });
         eng.discardWithEvent(best, owner, { from: 'reveal', faceUp: true, desc: `Otto 5牌将${eng.cardText(best)}置于弃牌库底` });
+        const amount = Math.ceil(best.value * 1.5);
         if (best.isWhite) {
-          eng.heal(a, best.value);
+          eng.heal(a, amount);
           if (a.crit < 3) a.crit++;
           eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
-          eng.emit('desc', `Otto 5牌：白牌恢复${best.value}点+1层暴击`);
+          eng.emit('desc', `Otto 5牌：白牌恢复${amount}点+1层暴击`);
           return { d: 0, skip: true, unblock: false };
         }
-        eng.emit('desc', `Otto 5牌：造成${best.value}点伤害`);
-        return { d: best.value, skip: false, unblock: false };
+        eng.emit('desc', `Otto 5牌：造成${amount}点伤害`);
+        return { d: amount, skip: false, unblock: false };
       }
 
       if (v === 6) {

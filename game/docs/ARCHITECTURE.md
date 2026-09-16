@@ -1,15 +1,72 @@
-# Combat architecture
+# Furry Trial 游戏架构
 
-战斗核心通过 `window.FurryGame` 暴露三个稳定协议。协议文件不依赖打包器，普通网页、冒险网页和 `file://` 运行方式都可以直接加载。
+> 文档版本：2026-09-16
+> 适用范围：单机 1v1、单机 1v2、领主模式、冒险模式、在线对决。
+> 运行方式：静态网页、原生浏览器脚本，无构建器也可以通过 `file://` 加载。
 
-## Card
+这份文档描述**当前代码真正采用的边界**，并把仍在迁移中的部分单独列出。项目已经统一了牌、状态、事件、牌堆和战斗会话的公共协议，但 `Engine` 和 `AdventureBattleEngine` 仍是通过原型扩展逐步拆分的“大模块”，不能把它们误认为已经完全模块化。
 
-由 `js/combat/protocol.js` 中的 `Card.number()`、`Card.item()` 创建。所有牌至少包含：
+## 1. 总体分层
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ 页面入口                                                     │
+│ game/index.html · adventure/adventure.html · online_game/...  │
+└──────────────────────────────┬───────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────┐
+│ UI 层                                                        │
+│ GameUI = ui_core + render/* + events + controls + feedback    │
+│ AdventureUI + adventure_ui_views                            │
+│ OnlineUI（大厅/房间/传输状态）                               │
+└──────────────────────────────┬───────────────────────────────┘
+                               │ CombatSession
+┌──────────────────────────────▼───────────────────────────────┐
+│ 会话与适配层                                                  │
+│ LocalCombatSession → Bridge                                  │
+│ AdventureBattleController → AdventureBattleEngine             │
+│ OnlineHostSession / OnlineGuestSession → OnlineMatchHost      │
+└──────────────────────────────┬───────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────┐
+│ 战斗域                                                         │
+│ Engine + 回合/攻击/AI/快照/1v2/领主扩展                        │
+│ CardEffects · StatusService · DeckPort · TurnMachine           │
+│ EngineModes · OpponentHandPolicy · CombatInvariants            │
+└──────────────────────────────┬───────────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────────┐
+│ 冒险内容 / 在线基础设施                                        │
+│ AdventureEngine、地图、房间、奖励、商店、存档                  │
+│ Cloudflare Worker Durable Object、WebRTC DataChannel、Relay     │
+└──────────────────────────────────────────────────────────────┘
+```
+
+核心原则：UI 不直接改战斗状态；在线层不重新实现卡牌规则；冒险地图层不创建第二套战斗引擎；模式差异通过适配器和牌堆边界表达。
+
+## 2. 三个页面入口
+
+| 页面 | 入口对象 | 主要职责 | 战斗会话 |
+| --- | --- | --- | --- |
+| `game/index.html` | `GameUI` | 角色选择、规则页、经典战斗 | `LocalCombatSession` → `Bridge` → `Engine` |
+| `game/adventure/adventure.html` | `AdventureUI` | 地图、房间、奖励、商店、铁匠铺 | `AdventureBattleController` → `AdventureBattleEngine`，再注入共享 `GameUI` |
+| `game/online_game/index.html` | `OnlineUI` | 创建/加入房间、准备、选角、连接状态 | `OnlineHostSession` / `OnlineGuestSession` → 共享 `GameUI` |
+
+页面使用原生 `<script>` 顺序加载。 `game/script_manifest.json` 是脚本清单，`game/scripts/verify-load-order.js` 会验证三张页面的路径、顺序、缺失文件和旧的单体 `ui.js`。
+
+## 3. 公共协议（唯一数据词汇）
+
+所有公共协议挂在 `window.FurryGame` 下；全局类名仅为兼容旧调用保留。
+
+### 3.1 `Card`
+
+由 `js/combat/protocol.js` 的 `Card.number()`、`Card.item()` 创建，旧存档通过 `Card.normalize()` 归一化。最小结构如下：
 
 ```js
 {
+  uid: 'c…',
   color: 'RED | YELLOW | BLUE | GREEN | BLACK | WHITE',
-  value: 0,                 // 数字牌为 0~7，道具牌为 -1
+  value: 0,                 // 数字牌 0~7，道具牌 -1
   isNumberCard: true,
   isItemCard: false,
   isBlack: false,
@@ -17,183 +74,290 @@
 }
 ```
 
-道具效果使用现有兼容字段（`potion`、`purify`、`trophyWhite` 等）。新增代码应优先使用 `Card.kind(card)`、`Card.normalize(card)`，不要重新定义一套牌对象。
+`chosenColor` 是黑/白牌当前回合的临时颜色，`npcCard`/`borrowedMonster` 是渲染身份字段，`borrowedFrom`/`borrowedMonsterName` 用于变色龙颜料等临时借牌。它们不能改变牌的物理归属。
 
-## CardEffects 注册表
+牌的效果识别统一走 `CardEffects.resolve(card)`；新代码不要继续扩散 `if (card.potion)`、`if (card.trophyWhite)` 等分支。当前核心中仍有一部分历史兼容判断，见“迁移任务”。
 
-`js/combat/card_effects.js` 暴露 `CardEffects.resolve(card)`。它把历史兼容字段
-归一化为稳定的 `id`/`kind`，统一识别数字牌、普通道具、紫/绿魔法和战利白卡；
-`CardEffects.apply(engine, card, context)` 负责调用引擎的治疗、抽牌、净化、换牌及
-战利白卡效果。战斗流程只需通过 `CardEffects.isItem()`、`kind()` 或 `apply()`，不应再
-为每个新道具增加一组分散的 `if (card.xxx)` 分支。新增卡牌时先在注册表登记匹配规则，
-再为复杂效果提供引擎方法或战利白卡 handler。
+### 3.2 `CombatState`
 
-## 对手手牌策略
+`CombatState.create()` 负责初始化通用状态，`CombatState.project(source, options)` 负责生成 UI/网络快照。 `project()` 是纯序列化函数：不能调用会改变上下文的合法性计算，也不能写回引擎。
 
-`js/combat/opponent_hand_policy.js` 是所有“抽取/弃掉对手手牌”技能的唯一策略入口。
-它先根据 `attackTarget` 规范化目标，再按模式决定交互方式：冒险模式（含测试房）
-将明牌手牌交给玩家选择并确认，经典 1v1/1v2 与在线模式使用 `CombatRuntime` 随机抽取。
-卡牌移除和后续技能结算仍由 `Engine.resolveOpponentHandCard()` 统一完成；新增角色不应
-直接在角色文件中调用 `Math.random()` 或自行打开选择弹窗。
+常用字段：
 
-## CombatState
+- 回合：`phase`、`turn`、`busy`、`activeAttacker`、`modeId`。
+- 参与者：`player`、`ai`、可选 `ai2`。
+- 当前牌：`discardTop`、`atkCard`、`defCard` 及 owner 字段。
+- 决策：`selectedCard`、`selectedCards`、`selectedAICard`、`pendingDialog`、`needColorChoice`。
+- 事件/投影：`events`、`eventLogVersion`、`legalHand`、牌库计数和私有手牌。
 
-由 `CombatState.create()` 创建，使用 `CombatState.project(engine)` 输出给 UI/桥接层。引擎仍保留 `engine.s` 作为兼容入口，但状态初始化和序列化不再由引擎手写。
+引擎内部仍使用 `engine.s` 作为兼容入口；UI 和在线投影只应读取 `state()` 结果，不能依赖内部数组引用。
 
-通用字段包括：
+### 3.3 `CombatEvent`
 
-- 回合：`phase`、`turn`、`busy`、`activeAttacker`
-- 参与者：`player`、`ai`、可选 `ai2`
-- 当前牌：`discardTop`、`atkCard`、`defCard` 及对应 owner
-- 交互：`selectedCard`、`selectedCards`、`pendingDialog`
-- 事件和牌库投影：`events`、`eventLogVersion`、`deck`、`discard`
-
-模式专用字段（例如冒险牌堆计数、领主目标索引）可以继续作为扩展字段挂在状态对象上，不应复制另一套战斗状态结构。
-
-## CombatEvent
-
-由 `engine.emit()` 统一生成 JSON 事件：
+由 `engine.emit()` 生成 JSON 事件，事件文本只用于展示，业务逻辑必须使用结构化字段：
 
 ```js
 {
   id: 42,
   type: 'hit',
-  desc: '受到4点伤害',
   target: 'player | ai | ai2',
   amount: 4,
-  kind: 'normal'
+  kind: 'normal',
+  desc: '受到4点伤害'
 }
 ```
 
-事件消费者应根据 `type` 和结构化字段处理逻辑；`desc` 只用于展示，不可再作为业务判断条件。
+事件类型和伤害类型集中在 `js/combat/events.js`。不得再用 `evt.desc.includes('[伤害]')` 判断事件类别；伤害、流血、中毒、吸血、炸弹必须使用 `type`、`target`、`kind`、`amount`。
 
-## 模式适配器
+### 3.4 `CombatSession`
 
-`js/combat/modes.js` 暴露 `EngineModes.adapters`。每个适配器都实现相同的
-`createState()`、`createPiles()`、`participants`、`handLimit()` 和目标规范化接口。
-`EngineModes.current()` / `forEngine()` 同时接受状态快照或引擎实例，并为快照写入
-稳定的 `modeId`，避免从多个布尔字段猜测模式：
+`js/combat/session.js` 约定 UI 使用的会话接口：
 
-- `1v1`：两个参与者，共享标准牌库。
-- `1v2`：三个参与者，共享标准牌库，第二个 NPC 使用 `ai2`。
-- `lord`：领主拓扑，复用 1v2 参与者但使用独立的回合目标策略。
-- `adventure`：三个参与者，可由冒险牌库注入玩家/NPC 牌堆，资源彼此隔离。
-
-引擎只负责通用规则；开始战斗、状态默认值、牌堆资源和目标拓扑通过适配器
-获取。新增模式时应新增适配器并实现这些接口，避免在 `engine.js` 中增加整段
-`is1v2/isAdventure` 初始化分支。
-
-## 冒险战斗边界
-
-冒险地图引擎和战斗引擎的职责已经分开：
-
-- `adventure/js/battle/battle_engine.js` 是冒险战斗的唯一规则入口，继承通用
-  `Engine`，负责状态装配、牌堆连接和通用战斗生命周期。
-- `adventure/js/battle/adventure_battle_items.js` 是冒险道具、配饰和 Buff
-  转移扩展。它只向 `AdventureBattleEngine.prototype` 注入冒险专属效果，不再把
-  道具分支和牌堆生命周期混在同一个类文件中。
-- `adventure/js/battle/adventure_battle_controller.js` 只负责浏览器生命周期：
-  挂载/卸载战斗 UI、保存恢复当前标签页快照、调用 `finishAdventureBattle()`，
-  不实现出牌或防御规则。
-- `adventure/js/engine/combat_result.js` 只负责把战斗结果写回地图引擎，处理房间
-  清理、胜利回血、奖励阶段和失败状态。
-
-地图引擎只保存一个轻量的 `s.combat` 遭遇描述（敌人、房间类型和 1v2 标志），
-不再创建旧的 `AdventurePile` 战斗副本。这样玩家牌库、NPC 牌库和当前战斗状态
-不会被两条链路同时修改。新增战斗功能应修改 `AdventureBattleEngine`，不要在地图
-引擎中重新实现一套 `playerPlayCard`/`npcDefendTurn`。
-
-## 冒险主界面与战斗会话
-
-冒险页面采用“状态/动作”和“页面组合”两层：`adventure/js/ui/adventure_ui.js`
-负责存档、地图动作、商店/奖励页构建方法以及状态刷新；
-`adventure/js/ui/adventure_ui_views.js` 只负责依据阶段选择要挂载的页面、组合侧栏和
-日志。这样新增房间页面时只改视图路由，不需要把地图动作和战斗页面重新复制一份。
-
-浏览器生命周期统一由 `adventure/js/battle/adventure_battle_controller.js` 管理，
-战斗暂停、刷新恢复、清理和主动退出统一经过
-`adventure/js/battle/adventure_battle_session.js`。战斗引擎和地图存档不直接访问
-`sessionStorage`；测试战斗也不会写入会话。主动从菜单退出时先清理会话和地图存档，
-正常结算则由控制器把结果交回地图引擎。
-
-## 在线战斗 UI 适配
-
-`online_game/online_ui.js` 只负责在线大厅、房间生命周期和 P2P 消息路由。
-创建对局后，房主使用 `OnlineHostSession`，加入者使用 `OnlineGuestSession`；
-两者都实现 `CombatSession` 的 `getState()`、`dispatch()` 和事件确认接口。
-`GameUI.mountBattle(session, state, gameScreen)` 将会话注入单机 1v1 UI，之后
-所有选牌、双击出牌、颜色选择、技能/净化弹窗、卡牌飞行动画、飘字和状态渲染
-都走 `js/ui/` 的同一套实现，在线代码不再复制战斗 DOM。
-
-房主仍持有唯一的 `Engine` 和共享牌库；`OnlineMatchHost.project(viewer)` 按
-`host`/`guest` 生成视角快照，只暴露自己的手牌和对手手牌数量。动作结果统一
-为包含状态字段、`events` 和 `winner` 的快照，避免 UI 为本地和远程分别判断
-返回结构。在线退出或结算返回大厅由会话回调处理，不调用本地 `Bridge`。
-
-## 状态注册表
-
-`js/combat/status_registry.js` 暴露 `FurryGame.StatusRegistry`，而
-`js/combat/status_service.js` 暴露唯一写入入口 `FurryGame.StatusService`。每个状态只在注册表
-定义一次：
-
-```js
-{
-  id: 'hypothermia', property: 'hypothermia', label: '失温',
-  icon: 'buff_icons/hypothermia.png', polarity: 'debuff',
-  stack: true, max: 2, cleanse: 'reset', trigger: 'onThreshold'
-}
+```text
+getState() → state
+dispatch(method, params) → { ok, state, events, error }
+subscribe/onStateChange(listener)
+acknowledgeEvents(throughId)
+close()
 ```
 
-注册表提供只读元数据和查询；状态服务提供 `ensure()`、`set()`、`add()`、`remove()`、
-`clear()`、`clearGroup()`、`snapshot()` 和 `restore()`。战斗净化、超级净化、冒险净化、
-Buff 图标和 Buff 转移 UI 都应从这两个接口读取，不能再各自维护状态数组或直接写入
-状态字段。新增状态时至少补齐 `property`、`polarity`、`icon`、`cleanse` 和 `trigger`，
-再在实际触发逻辑中调用 `StatusService`；不要只在 UI 增加一个图标。
+本地、冒险、在线会话都返回同一结果形状，因此 `GameUI` 不需要知道状态来自本地引擎还是远端投影。
 
-## 统一检查
+## 4. 战斗域模块
 
-从仓库根目录运行 `node game/scripts/check.js` 可执行稳定检查：HTML/UI 模块图、
-全部游戏脚本语法，以及协议、事件矩阵、适配器、状态注册表和 UI 测试。提交前需要完整回归时
-再运行 `node game/scripts/check.js --all`；该模式会额外执行所有冒险测试。
+| 模块 | 当前职责 | 依赖规则 |
+| --- | --- | --- |
+| `protocol.js` | Card、CombatEvent 原子协议 | 不依赖引擎/UI |
+| `state.js` | 状态默认值、纯投影、校验 | 不执行动作 |
+| `events.js` | 事件/目标/伤害类型常量 | 不读 DOM |
+| `runtime.js` | 可注入随机数、统一定时器、等待/取消 | 新随机和延时必须从此进入 |
+| `dice.js` | 12 面骰等骰子对象 | 调用 `CombatRuntime` |
+| `status_registry.js` | Buff/Debuff 元数据、图标、层数、净化、触发时机 | 只读定义 |
+| `status_service.js` | 状态唯一写入入口、clamp、清除、快照 | 新状态修改必须经此服务 |
+| `status.js` | HP、伤害、流血结算、吸血等兼容门面 | 内部委托 `StatusService` |
+| `card_effects.js` | 牌效果注册表和通用应用入口 | 新牌先注册，再接引擎 handler |
+| `deck.js` / `piles.js` | 标准牌库、抽牌、弃牌、洗牌 | 不决定角色技能 |
+| `deck_port.js` | 共享牌库的引擎边界 | 冒险模式由自身双牌堆覆盖 |
+| `damage.js` | 伤害门面、炸弹倒计时 | 不决定目标拓扑 |
+| `modes.js` | 1v1/1v2/lord/adventure 的参与者、目标和不变量视图 | 模式差异集中在这里 |
+| `opponent_hand_policy.js` | 抽取/弃掉对手手牌的交互策略 | 冒险可选牌，经典/在线自动随机 |
+| `invariants.js` | 牌堆隔离、共享关系、顶牌归属、牌数守恒 | 只观察，不修复状态 |
 
-## CombatRuntime 与牌堆不变量
+### 4.1 状态注册表
 
-`js/combat/runtime.js` 是浏览器和测试共用的运行时边界：
+`StatusRegistry` 是状态的唯一元数据入口。当前状态包括灼烧、流血、中毒、冷冻、致盲、定时炸弹、冰封、失温、捆缚、守护、飞翔、暴击、茂盛、寄生、潜水、嗜血和四种混沌。
 
-- `CombatRuntime.random()`、`randomInt()` 是唯一的随机数入口，测试可用
-  `setRandomSource(fn)` 注入固定序列，结束后调用 `resetRandomSource()`。
-- `schedule(owner, fn, delay, channel)`、`wait()`、`cancel()` 统一一次性定时器。
-  同一个 owner/channel 的旧计时器会先取消，避免抽牌、飘字和卡牌动画互相竞争。
+每个定义至少包含：`id`、`property`、`label`、`icon`、`polarity`、`stack`、`max`、`cleanse`、`trigger`。净化、超级净化、冒险道具、状态 UI 都必须从 `StatusRegistry/StatusService` 读取，不能再维护第二份状态清单。
 
-`js/combat/invariants.js` 暴露 `CombatInvariants.check(engine, reason)`。引擎在初始化、
-出牌、抽牌、弃牌、弃牌库顶变更、洗牌和冒险房间结束后调用它，检查：
+### 4.2 卡牌效果注册表
 
-- 玩家与 NPC 牌堆引用隔离；冒险 1v2 两个 NPC 共享同一牌库/弃牌库；
-- 牌的按类型数量相对初始化快照不增加或丢失；
-- 当前弃牌库顶仍属于记录的 owner；
-- 冒险战斗结束时 NPC 手牌已全部回收。
+`CardEffects.resolve(card)` 将历史布尔字段转换成 `id/kind/family`；`CardEffects.apply(engine, card, context)` 负责通用药水、紫/绿魔法、抽牌、净化、换牌、洗牌和战利白卡入口。复杂效果由引擎提供稳定方法，注册表只负责路由，不持有回合状态。
 
-检查失败默认只返回带 reason 的报告，不向生产控制台刷屏；调试时可传入 `{ warn: true }`
-记录警告，测试可传入 `{ throw: true }` 让它直接抛错。
-这些检查只观察状态，不改变牌堆内容。
+## 5. 引擎与模式适配器
 
-## Engine 模块边界
+### 5.1 当前引擎拆分状态
 
-`engine.js` 保留兼容的核心状态和事件入口，职责通过原型模块继续拆分：
+`js/combat/engine.js` 仍是约 109 KB 的兼容核心，保留状态初始化、通用合法性、事件、牌效果兼容分支和经典 1v1 主流程。以下文件通过 `Engine.prototype` 扩展补充职责：
 
-- `engine_turns.js`：普通 1v1 的回合、阶段、弃牌和结束回合状态机。
-- `engine_attack.js`：攻击/防御结算的稳定门面（`resolveAttack()`、
-  `resolveDefense()`），供模式适配器调用。
-- `engine_ai.js`：AI 角色策略上下文和出牌辅助，具体技能仍由 `AIRegistry` 提供。
-- `engine_snapshot.js`：可序列化的 `combatSnapshot()`/`restoreCombatSnapshot()`，
-  用于刷新恢复和存档，不把 UI 临时字段写入地图存档。
-- `engine_1v2.js`：挑战/双雄的牌堆、AI 回合和目标切换实现。
-- `engine_1v2_adapter.js`：1v2 的状态投影、事件确认和 dispatch 路由覆盖。
+| 文件 | 作用 |
+| --- | --- |
+| `engine_turns.js` | 回合开始/结束、弃牌阶段、手牌补齐 |
+| `engine_attack.js` | 稳定的攻击/防御门面 |
+| `engine_ai.js` | AI 上下文和角色策略入口；具体策略在 `js/ai/*` |
+| `engine_snapshot.js` | 战斗快照 capture/restore |
+| `engine_1v2.js` | 1v2 参与者、AI 轮换、死亡和共享牌库流程 |
+| `engine_1v2_adapter.js` | 对 1v2 的 state/check/ack/dispatch 路由覆盖 |
+| `engine_lord.js` | 领主目标轮换、双敌人结算 |
+| `turn_machine.js` | 共享的延迟结算和事件确认连续体 |
 
-`engine.js` 不再包含 `start1v2`、`aiTurn1v2` 或 `defend1v2` 的实现，只保留通用
-Engine 和稳定兼容入口。1v2、领主和冒险模式继续在适配器中覆盖目标选择、牌堆边界
-和特殊阶段；新模式应优先组合这些模块，而不是把模式分支重新塞回 `engine.js`。
+这是一种“渐进式拆分”，不是 ES module。新增逻辑应放在对应模块；只有跨模式的通用规则才进入 `engine.js`。后续要把核心进一步拆成纯函数服务，见“迁移任务”。
 
-## 牌库边界
+### 5.2 模式适配器
 
-`CombatDeck` 负责标准牌库创建、初始弃牌库顶和共享牌库回退操作；`EnginePiles`/`DeckPort` 负责兼容旧引擎和模式适配。冒险模式可以覆盖同名牌库方法，但玩家与 NPC 的资源必须通过各自 owner 访问。
+`EngineModes.adapters` 为每种战斗模式提供参与者、牌堆拓扑、手牌上限、目标规范化和不变量视图：
+
+| `modeId` | 参与者 | 牌堆关系 | 特殊规则 |
+| --- | --- | --- | --- |
+| `1v1` | `player + ai` | 一份共享标准牌库 | 经典本地对战 |
+| `1v2` | `player + ai + ai2` | 三方共用标准牌库 | 两个 AI 轮流攻击 |
+| `lord` | `player + ai + ai2` | 三方共用标准牌库 | 玩家目标轮换，领主结算 |
+| `adventure` | `player + ai` 或 `player + ai + ai2` | 玩家牌库独立；NPC 牌库独立；冒险 1v2 的两个 NPC 共享 NPC 牌库 | 玩家状态跨房间保持，NPC 结束时回收重洗 |
+
+适配器解决的是**拓扑和资源差异**，不复制一套战斗规则。目标必须使用 `EngineModes.targetFor/resolveAttackTarget`，不能根据界面上的“对手1/对手2”字符串猜测。
+
+### 5.3 一次出牌的通用路径
+
+```text
+用户选择/双击
+  → GameUI._apiAction()
+  → CombatSession.dispatch()
+  → Engine.dispatch()（模式适配器先规范化 owner/target）
+  → CardEffects / 角色技能 / StatusService / DeckPort
+  → engine.emit() 生成事件
+  → state() / CombatState.project() 生成快照
+  → UI 事件播放器按版本播放
+  → acknowledgeEvents() 释放延迟结算和下一阶段
+```
+
+动画不是权威状态；事件播放期间可以锁定必要决策，但不能再次修改牌堆或生命值。
+
+## 6. 冒险模式边界
+
+冒险模式不是第二个“单机战斗分支”，而是地图运行时包围一个短生命周期战斗会话：
+
+| 文件 | 职责 |
+| --- | --- |
+| `adventure/js/engine/adventure_engine.js` | 地图位置、房间、货币、库存、奖励、商店、铁匠铺和跨房间玩家状态 |
+| `adventure/js/battle/battle_engine.js` | `AdventureBattleEngine`，唯一的冒险战斗规则和双牌堆实现 |
+| `adventure/js/battle/adventure_battle_items.js` | 冒险配饰、道具和战斗 Buff 扩展 |
+| `adventure/js/engine/combat_result.js` | 把战斗结果写回地图、房间清理和结算阶段 |
+| `adventure/js/battle/adventure_battle_controller.js` | 挂载/卸载共享 `GameUI`、开始/结束、刷新恢复和结算交接 |
+| `adventure/js/battle/adventure_battle_session.js` | `sessionStorage` 战斗快照边界；引擎不直接访问 storage |
+| `adventure/js/ui/adventure_ui.js` | 地图 UI 状态和动作 |
+| `adventure/js/ui/adventure_ui_views.js` | 按阶段组合地图、商店、奖励和侧栏页面 |
+
+`AdventureBattleEngine` 的牌堆规则：
+
+1. 玩家 `deck/hand/discard` 与 NPC 资源完全隔离。
+2. 挑战房两个 NPC 共享同一个 NPC `deck/discard` 数组，但手牌各自独立。
+3. 弃牌库顶是某个 owner 弃牌库中的实际最后一张；不能在计数时再虚构一张。
+4. NPC 牌库少于三张时，先把 NPC 弃牌库（保留当前顶牌）洗回 NPC 牌库。
+5. 房间结束时 NPC 手牌全部回收到 NPC 牌库并重洗；玩家牌库、手牌和弃牌库返回地图后继续保持。
+
+地图存档（`AdventureSave`，localStorage）和战斗快照（`AdventureBattleSession`，sessionStorage）是两种不同生命周期：主动退出清除二者，安全结算点只保存地图状态，测试战斗不写入正式冒险存档。
+
+## 7. UI 结构与约束
+
+### 7.1 共享 `GameUI`
+
+`ui_core.js` 定义 `GameUI`、常量、卡牌/动画基础工具；其余功能按职责拆分：
+
+- `render/home_screen.js`：模式和角色选择页。
+- `render/combat_screen.js`：战斗 DOM 骨架和标题/参与者区域。
+- `render/zone_render.js`：进攻、防御、判定、弃牌库顶区域。
+- `render/hand_render.js`：手牌、合法高亮、悬停说明、双击出牌。
+- `render/status_render.js`：状态图标和触发闪烁。
+- `render/adventure_bar.js`：冒险货币、道具、配饰和牌堆信息。
+- `particles.js`：背景粒子和性能受控的动画层。
+- `renderer.js`：卡牌飞行、弃牌/抽牌/交换牌动画、区域说明展开收回。
+- `events.js`：`CombatEvent` 播放和事件去重。
+- `feedback.js`：飘字、受伤闪烁、命中反馈。
+- `controls.js`：按钮、对话框动作和在线结算按钮。
+- `mode_1v2.js` / `mode_lord.js`：多目标 UI 组合，不承载战斗规则。
+
+`GameUI.mountBattle(session, state, gameScreen)` 是单机、冒险、在线共用的装配入口。在线 UI 通过 `_onlineResultSink` 把本地/远端结果送入同一个版本队列；在线页面不应再创建一套卡牌渲染器。
+
+卡牌能否出牌由快照中的 `legalHand` 决定。不可出的牌应不可选中，但悬停仍可显示技能说明；选中、动画和状态反馈只能影响 DOM/CSS，不能直接修改 `engine.s`。
+
+### 7.2 冒险 UI 与战斗 UI 的关系
+
+冒险 UI 负责地图页面，进入房间后暂时隐藏 `adventure-container`，显示共享 `game-container`。战斗结束由 Controller 先收口战斗快照，再交给 `AdventureEngine.applyBattleResult()` 和结算页面；不要在地图 UI 中再次调用 `playerPlayCard`、`npcDefendTurn` 等战斗方法。
+
+## 8. 在线对决架构
+
+```text
+浏览器 A OnlineUI ─ OnlineHostSession ─┐
+                                       ├─ OnlineMatchHost（房主唯一权威 Engine）
+浏览器 B OnlineUI ─ OnlineGuestSession ┘
+          │
+          ├─ WebRTC DataChannel（可靠、有序，优先）
+          └─ WebSocket → Cloudflare Worker → Durable Object（未直连时中继）
+```
+
+### 8.1 房间和传输
+
+- `signaling/worker.js` 为每个房间码建立 Durable Object，服务端生成 `peerId`，最多两名成员。
+- Worker 校验 Origin（可选白名单）、握手超时、消息 UTF-8 大小和基础频率，并把大厅消息按连接身份重写。
+- `p2p_adapter.js` 优先使用 WebRTC；DataChannel 未打开、关闭或背压时使用同一信令 WebSocket 中继。当前按小规模上线要求不配置 TURN。
+- 浏览器刷新通过 localStorage 的房间记录和短期重连令牌保留房间名额；Worker 为非主动断开保留约 15 秒窗口。
+
+### 8.2 权威状态和私有投影
+
+- `OnlineMatchHost` 持有唯一真实 `Engine`、双方手牌、牌库、`matchId`、`stateVersion` 和 request cache。
+- `OnlineHostSession` 给房主发送 host 投影，给客机发送 guest 投影；客机不能提交生命值、牌堆或伤害结果。
+- 客机动作带 `protocolVersion`、`matchId`、`requestId`、`expectedStateVersion`，房主验证行动者、阶段、待决策和参数后才调用引擎。
+- `projectEvents()` 按 viewer 交换 `player/ai` 相关 owner/target 字段；事件和快照只进入一个 `_battleAnimation` 版本队列，重复事件不重复播放。
+- 选牌/悬停属于本地 UI；真正出牌、选色、净化、排序和目标选择才提交命令。Chan 排序、Saiki 6 判定等私有选择只发送给拥有决策权的一方。
+
+### 8.3 当前在线边界
+
+这是“房主权威”的熟人/测试对战架构，不是可信竞技裁判：房主浏览器掌握完整规则和随机数，不能防止房主篡改本地代码。Worker 可以在大厅阶段把剩余成员提升为房主；正在进行的对局仍依赖原房主快照，不能把活跃战斗安全地迁移到新房主，除非后续实现可验证的快照交接。
+
+当前还需要持续验证：跨通道切换时的消息序号、真实双浏览器刷新/断线、旧页面规则版本协商、完整结算/再战流程和中国境内网络可达性。
+
+## 9. 统一不变量与随机/定时器
+
+### 9.1 牌堆不变量
+
+`CombatInvariants.check(engine, reason)` 通过当前模式适配器获取物理牌堆视图，在初始化、抽牌、出牌、弃牌、洗牌、弃牌库顶变更和房间结束后检查：
+
+- 玩家/NPC 牌堆隔离。
+- 冒险 1v2 的两个 NPC 共享同一牌库和弃牌库。
+- 牌按 canonical 字段不凭空增加或丢失。
+- 弃牌库顶 owner 合法且确实属于对应弃牌堆。
+- 战斗结束 NPC 手牌已回收。
+
+检查器只报告问题，不尝试自动修牌；测试可传 `{ throw: true }`，调试可传 `{ warn: true }`。
+
+### 9.2 随机和定时器
+
+新代码使用 `CombatRuntime.random()`、`randomInt()`、`schedule()`、`wait()` 和 `cancel()`。角色策略、冒险抽奖、12 面骰和动画延时不能直接新增 `Math.random()`/`setTimeout()`。统一入口允许测试注入固定随机源，并按 owner/channel 取消竞争中的动画或计时器。
+
+## 10. 扩展新角色、状态或卡牌
+
+1. **协议**：使用 `Card.number/item`，不要手写另一种牌对象。
+2. **卡牌效果**：在 `CardEffects` 注册匹配规则和稳定 `id/kind`；复杂效果暴露一个引擎门面。
+3. **状态**：先在 `StatusRegistry` 定义元数据和图标，再通过 `StatusService` 修改；同步净化、状态 UI 和测试。
+4. **角色**：在 `characters/*` 登记角色基础数据，在 `ai/*` 登记独立 AI 策略；冒险怪物通过 `AdventureRegistry/AdventureMonsterBridge` 注入。
+5. **目标**：使用 `EngineModes`/ `attackTarget` 的 owner key，不从描述文本或 DOM 顺序推断目标。
+6. **UI**：只添加技能描述、渲染和交互，不把业务结算写进 UI。
+7. **测试**：至少覆盖 `player/ai/ai2 × normal/bleed/poison/bomb`，并增加牌堆归属、私有投影、重复命令和动画事件回归。
+8. **发布**：新增脚本加入 `script_manifest.json`，运行 `verify-load-order.js` 和统一检查后再更新 HTML cache query。
+
+## 11. 检查和测试入口
+
+从仓库根目录运行：
+
+```bash
+node game/scripts/check.js
+```
+
+默认检查：
+
+- 三张入口页的脚本图和 UI 拆分顺序。
+- 全部游戏 JavaScript 语法。
+- 协议、事件、AI、卡牌、状态、回合机、适配器、不变量和在线测试。
+
+完整回归（包含所有历史冒险测试）：
+
+```bash
+node game/scripts/check.js --all
+```
+
+重点测试文件：
+
+| 测试 | 覆盖内容 |
+| --- | --- |
+| `combat-protocol.test.js` | Card/State/Event 协议和纯投影 |
+| `combat-events.test.js`、`ui-feedback.test.js` | 结构化伤害事件、飘字和命中特效 |
+| `turn-machine.test.js`、`fly-guard.test.js` | 延迟结算、飞翔失败后守护 |
+| `card-effects.test.js`、`status-registry.test.js` | 注册表和唯一状态入口 |
+| `engine-modules.test.js`、`runtime-invariants.test.js` | 模块边界、随机/定时器、牌堆不变量 |
+| `adventure-battle.test.js`、`adventure-save.test.js`、`adventure-reward.test.js` | 冒险战斗、存档和结算 |
+| `online-match.test.js`、`signaling-room.test.js` | 私有投影、幂等、刷新、重连、Worker 房间 |
+
+自动化通过只代表代码路径通过；在线发布前仍需两台独立浏览器、跨 Wi-Fi/手机网络和信令中继实测。
+
+## 12. 后续重构任务
+
+按风险排序，后续建议如下：
+
+1. **继续拆 `engine.js`**：把牌合法性、状态迁移、攻击结算、AI 决策、存档和兼容层改为纯服务，最后让 Engine 只做依赖注入和调度。
+2. **拆 `AdventureBattleEngine`**：抽出 `adventure_piles`、`adventure_attack`、`adventure_snapshot`、`adventure_effects`，保留一个很薄的模式适配器。
+3. **完成 `CardEffects` 迁移**：消除核心中剩余的卡牌布尔字段分支，保证所有新卡只需注册一次。
+4. **完成状态写入收口**：移除直接写 `entity.burn/guard/...` 的历史兼容代码，保留读取别名但统一由 `StatusService` 写入。
+5. **统一协议校验**：为在线消息增加规则版本/build ID、跨通道序号和明确的 schema 校验，再考虑增量快照。
+6. **在线房主迁移**：定义可验证的战斗快照交接和旧连接代次，避免只在大厅层提升 role。
+7. **收敛原型混入**：UI 和引擎模块过渡完成后改用显式构造器/服务对象，减少脚本加载顺序对隐式全局的依赖。
+
+这些任务都应以先补回归测试、再移动逻辑、最后删除兼容分支为顺序，避免再次出现“单机、冒险、在线各执行一遍”的分叉链路。
