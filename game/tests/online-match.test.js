@@ -634,6 +634,26 @@ test('online hand swaps keep the received white card as a player card', () => {
   assert.equal(match.engine.h.player[0].npcCard, undefined);
 });
 
+test('online opponent-hand extraction keeps human white-card identity and source index', () => {
+  const match = new context.OnlineMatchHost('Chan', 'Ryan', 'host');
+  const Card = context.FurryGame.Card;
+  const attackCard = Card.number('RED', 7);
+  const humanWhite = Card.number('WHITE', 4, true);
+  match.engine.s.pendingOpponentSkill = { name: 'Chan', value: 7, owner: 'player', attackCard };
+  match.engine.s.selectedAICard = 0;
+  match.engine.h.ai = [humanWhite];
+  match.engine.resolveOpponentHandCard();
+  const reveal = match.engine.events.find(event => event.type === 'reveal');
+  assert.ok(reveal);
+  assert.equal(reveal.card.npcCard, undefined);
+  assert.equal(reveal.handIndex, 0);
+  assert.equal(reveal.fromOwner, 'ai');
+  const guestReveal = match.eventsForViewer([reveal], 'guest', 'host')[0];
+  assert.equal(guestReveal.who, 'player');
+  assert.equal(guestReveal.fromOwner, 'player');
+  assert.equal(guestReveal.handIndex, 0);
+});
+
 test('online transport falls back to signaling relay before WebRTC opens', () => {
   context.WebSocket = { OPEN: 1 };
   const peer = new context.OnlinePeer({ roomCode: 'ABCD', role: 'host', peerId: 'host-1' });

@@ -826,7 +826,12 @@
       return this.gateAdventureAttackMod(card,d,skip,unblock,0,{isDrain:!!skip})
     }
     resolveRandomOpponentCard(){return this.resolveOpponentHandCard()}
-    resolveOpponentHandCard(){let p=this.s.pendingOpponentSkill,targetKey=this.opponentHandTarget(p||{}),target=this.s[targetKey],hand=this.h[targetKey]||[],i=this.s.selectedAICard;if(!p||i<0||!hand[i])throw Error('缺少待处理的对手手牌');let chosen=hand.splice(i,1)[0];chosen.npcCard=true;this.s.selectedAICard=-1;this.s.revealCards=[cp(chosen)];this.emit('reveal',`${p.name} ${p.value}牌抽取对手手牌判定`,chosen,{who:targetKey,from:'hand'});let d=0,skip=false,unblock=false,keep=false;
+    resolveOpponentHandCard(){let p=this.s.pendingOpponentSkill,targetKey=this.opponentHandTarget(p||{}),target=this.s[targetKey],hand=this.h[targetKey]||[],i=this.s.selectedAICard;if(!p||i<0||!hand[i])throw Error('缺少待处理的对手手牌');let chosen=hand.splice(i,1)[0];
+      // Only Adventure NPC cards carry the monster-white marker. In online
+      // PvP the opponent hand belongs to another human, so retaining this
+      // flag makes a transferred white card render with the NPC badge.
+      if(this.s.isAdventure) chosen.npcCard=true; else delete chosen.npcCard;
+      this.s.selectedAICard=-1;this.s.revealCards=[cp(chosen)];this.emit('reveal',`${p.name} ${p.value}牌抽取对手手牌判定`,chosen,{who:targetKey,fromOwner:targetKey,from:'hand',handIndex:i});let d=0,skip=false,unblock=false,keep=false;
       if(p.name==='Chan'&&p.value===4){if(this.s.isAdventure){this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Chan 4牌弃掉${this.cardText(chosen)}`});this.emit('desc',`Chan 4牌：弃掉${this.cardText(chosen)}，造成2点伤害并跳过防御`);return this.gateAdventureAttackMod(chosen,2,true,false)}this.s.pendingOpponentSkill=null;this.s.chanFourSwapMode=true;this.s.chanFourSwapDrawn=cp(chosen);this.s.phase='PLAYER_SEVEN_CHOICE';this.s.selectedCard=-1;this.emit('desc','Chan 4牌：选择自己一张手牌交换，或弃掉抽到的牌并造成2点伤害');return this.state()}
       if(p.name==='Chan'&&p.value===7){if(this.s.isAdventure){this.discardWithEvent(chosen,'player',{from:'reveal',faceUp:true,desc:`Chan 7牌弃掉${this.cardText(chosen)}`});this.emit('desc',`Chan 7牌：弃掉${this.cardText(chosen)}，造成6点伤害`);return this.finishOpponentAttack(p,6,false,false)}this.s.chanSevenKeepMode=true;this.s.chanSevenChosenCard=cp(chosen);this.s.phase='PLAYER_SEVEN_CHOICE';this.s.busy=false;this.emit('desc','Chan 7牌：选择将抽到的牌加入手牌或弃掉');return this.state()}
       if(p.name==='Saiki'&&p.value===5){if(this.s.isAdventure)this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Saiki 5牌弃掉${this.cardText(chosen)}`});else this.h.player.push(chosen);this.emit('desc',`Saiki 5牌：弃掉${this.cardText(chosen)}，造成4点伤害${this.s.isAdventure?'（冒险模式）':''}`);return this.finishOpponentAttack(p,4,false,false)}

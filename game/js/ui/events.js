@@ -244,7 +244,7 @@ async _playEvents(events, fast = false) {
                 }
             }
             const revealCards = (evt.cards && evt.cards.length) ? evt.cards : [evt.card];
-            await this._playRevealAnimation(revealCards, evt.who, evt.from);
+            await this._playRevealAnimation(revealCards, evt.fromOwner || evt.who, evt.from, evt.handIndex);
             this._showZoneDesc('reveal-desc', evt.desc || '判定');
             if (evt.who === 'player' || evt.from === 'deck') this._renderPlayerHand();
             await wait(1200);

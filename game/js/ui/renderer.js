@@ -340,7 +340,7 @@ async _playPlayerDefendAnimation(card) {
     this._settleZoneCard(defZone, card, 'player');
 },
 
-async _playRevealAnimation(cardOrCards, fromOwner, fromSource) {
+async _playRevealAnimation(cardOrCards, fromOwner, fromSource, handIndex = -1) {
     const toEl = document.getElementById('reveal-cards');
     if (!toEl) return;
     const cards = Array.isArray(cardOrCards)
@@ -352,17 +352,21 @@ async _playRevealAnimation(cardOrCards, fromOwner, fromSource) {
     let ownerEl = document.getElementById('deck-area');
     let fromEl = ownerEl;
     if (fromHand) {
+        const sourceOwner = fromOwner;
         ownerEl = document.getElementById(
-            fromOwner === 'player' ? 'player-hand'
-                : fromOwner === 'ai2' ? 'ai2-hand'
-                    : fromOwner === 'ai' ? 'ai-hand'
+            sourceOwner === 'player' ? 'player-hand'
+                : sourceOwner === 'ai2' ? 'ai2-hand'
+                    : sourceOwner === 'ai' ? 'ai-hand'
                         : 'deck-area'
         );
         if (!ownerEl) return;
-        const selectedIndex = fromOwner === 'player' && this._prevState ? this._prevState.selectedCard : -1;
+        const eventIndex = Number.isInteger(Number(handIndex)) ? Number(handIndex) : -1;
+        const selectedIndex = eventIndex >= 0
+            ? eventIndex
+            : (sourceOwner === 'player' && this._prevState ? this._prevState.selectedCard : -1);
         fromEl = selectedIndex >= 0 && ownerEl.children[selectedIndex]
             ? ownerEl.children[selectedIndex]
-            : ownerEl;
+            : ownerEl.lastElementChild || ownerEl;
         if (fromEl !== ownerEl) fromEl.style.visibility = 'hidden';
     }
     if (!fromEl) fromEl = document.body;
@@ -381,6 +385,10 @@ async _playRevealAnimation(cardOrCards, fromOwner, fromSource) {
 
     for (let i = 0; i < cards.length; i++) {
         const card = cards[i];
+        // Keep the face visible when the source is the local player's hand;
+        // opponent hands stay face-down until the card reaches the reveal
+        // zone. The explicit hand index keeps the flight anchored to the
+        // card that was actually removed instead of the whole hand stack.
         const flying = fromHand && fromOwner === 'player'
             ? renderCard(card, cw, ch, false)
             : renderCardBack(cw, ch);
