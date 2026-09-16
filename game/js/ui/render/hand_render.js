@@ -32,6 +32,7 @@
                 s.needColorChoice,
                 s.unblockDefend,
                 s.legalHand || null,
+                this._animatingPlayerCardKey || '',
                 hideTrailing,
                 (s.playerHand || []).map(cardVisualKey),
                 (s.chanFiveCards || []).map(cardVisualKey)
@@ -84,6 +85,13 @@
                     && Array.isArray(s.legalHand) && s.legalHand[i] === false;
                 const [cw, ch] = currentCardSize();
                 const cv = renderCard(card, cw, ch, sel);
+                if (this._animatingPlayerCardKey && cardMatchKey(card) === this._animatingPlayerCardKey) {
+                    // The authoritative hand may be repainted while the
+                    // flight clone is still moving. Suppress its source face
+                    // to avoid a duplicate/ghost card in the hand.
+                    cv.style.visibility = 'hidden';
+                    cv.setAttribute('aria-hidden', 'true');
+                }
                 if (!canInteract) cv.classList.add('disabled');
                 else if (isUnplayable) {
                     cv.classList.add('card-unplayable');
@@ -92,6 +100,7 @@
                 if (hideTrailing && i >= s.playerHand.length - hideTrailing) cv.classList.add('card-draw-pending');
                 cv.dataset.index = i;
                 cv.dataset.cardId = cardId(card);
+                cv.dataset.cardMatch = cardMatchKey(card);
                 // An illegal card is inert: it cannot be selected by either click
                 // path, and does not steal hover focus from a playable card.
                 if (!isUnplayable) {
@@ -124,6 +133,41 @@
                                 node.classList.toggle('selected', nodeIndex === this.state.selectedCard);
                             });
                             if (typeof this._renderControls === 'function') this._renderControls();
+                            return;
+                        }
+                        if (this.state && this.state.isOnline
+                            && (phase === 'PLAYER_FIVE_CHOICE' || phase === 'SAIKI_SIX_JUDGE')) {
+                            // Skill follow-up selections are private to the
+                            // active player, but still need host confirmation.
+                            // Paint the selection immediately, then reconcile
+                            // it with the authoritative response.
+                            this.state.selectedCard = idx;
+                            this.state.selectedCards = [];
+                            cv.parentElement.querySelectorAll('.card-canvas').forEach((node, nodeIndex) => {
+                                node.classList.toggle('selected', nodeIndex === idx);
+                            });
+                            if (typeof this._renderControls === 'function') this._renderControls();
+                            const selection = (async () => {
+                                this._isSelectingCard = true;
+                                try {
+                                    const result = await this._sessionDispatch('selectCard', { index: idx });
+                                    if (result && !result.error) {
+                                        this.state = result;
+                                        this.updateDisplay();
+                                    } else if (result && result.error) {
+                                        // A stale online snapshot can reject a
+                                        // selection. Replace the optimistic
+                                        // local state with the server snapshot
+                                        // so the confirm button cannot submit
+                                        // an invalid index repeatedly.
+                                        this.state = result.state || result;
+                                        this.showError(result.error);
+                                        this.updateDisplay();
+                                    }
+                                } finally { this._isSelectingCard = false; }
+                            })();
+                            this._lastPlayerHandClick.promise = selection;
+                            await selection;
                             return;
                         }
                         const selection = (async () => {

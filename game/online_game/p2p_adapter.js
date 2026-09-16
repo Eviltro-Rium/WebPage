@@ -32,13 +32,17 @@
     }
 
     class OnlinePeer {
-        constructor({ signalUrl, roomCode, role, nickname, avatar, peerId } = {}) {
+        constructor({ signalUrl, roomCode, role, nickname, avatar, peerId, reconnectToken } = {}) {
             this.signalUrl = signalUrl;
             this.roomCode = String(roomCode || '').toUpperCase();
             this.role = role === 'guest' ? 'guest' : 'host';
             this.nickname = String(nickname || 'Player').trim().slice(0, 18) || 'Player';
             this.avatar = String(avatar || '').slice(0, 16);
             this.peerId = peerId || makeId();
+            // The signaling Worker returns this opaque token on the first
+            // hello. It is persisted by OnlineUI and allows a page refresh to
+            // replace the old socket without creating a second room member.
+            this.reconnectToken = String(reconnectToken || '').slice(0, 128);
             this.ws = null;
             this.pc = null;
             this.channel = null;
@@ -87,7 +91,9 @@
             catch (error) { this.emit('error', error); return; }
             this.ws = socket;
             socket.addEventListener('open', () => {
-                this._sendSignal({ type: 'hello', role: this.role, nickname: this.nickname, avatar: this.avatar, peerId: this.peerId });
+                const hello = { type: 'hello', role: this.role, nickname: this.nickname, avatar: this.avatar, peerId: this.peerId };
+                if (this.reconnectToken) hello.reconnectToken = this.reconnectToken;
+                this._sendSignal(hello);
                 this.heartbeat = setInterval(() => this._sendSignal({ type: 'ping' }), 20000);
                 this.emit('signalOpen');
             });
@@ -130,6 +136,7 @@
                 // identity. Keep its id for relay self-echo filtering.
                 const previousPeerId = this.peerId;
                 if (message.peerId) this.peerId = String(message.peerId).slice(0, 80);
+                if (message.reconnectToken) this.reconnectToken = String(message.reconnectToken).slice(0, 128);
                 this._flushSignalQueue();
                 this.emit('hello', Object.assign({}, message, { previousPeerId }));
                 if (Array.isArray(message.players)) this.emit('roster', message.players);
@@ -415,12 +422,18 @@
             });
         }
 
-        close() {
+        close(options = {}) {
+            const notify = options.notify !== false;
             this.closed = true;
             if (this.channel) this._expectedChannelCloses.add(this.channel);
             try { if (this.channel) this.channel.close(); } catch (_) {}
             try { if (this.pc) this.pc.close(); } catch (_) {}
-            try { if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ type: 'leave' })); } catch (_) {}
+            // A normal close leaves the room explicitly.  Reconnects (for
+            // example the retry button) close only the local transport so the
+            // server can atomically replace it using the reconnect token.
+            if (notify) {
+                try { if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ type: 'leave' })); } catch (_) {}
+            }
             try { if (this.ws) this.ws.close(); } catch (_) {}
             if (this.heartbeat) clearInterval(this.heartbeat);
             this.heartbeat = null;

@@ -34,6 +34,47 @@ vm.runInContext(fs.readFileSync(path.join(root, 'online_game/online_session.js')
 vm.runInContext(fs.readFileSync(path.join(root, 'online_game/p2p_adapter.js'), 'utf8'), context, { filename: 'p2p_adapter.js' });
 vm.runInContext(fs.readFileSync(path.join(root, 'online_game/online_ui.js'), 'utf8'), context, { filename: 'online_ui.js' });
 
+test('online room session persists refresh credentials and clears on intentional exit', () => {
+  const values = new Map();
+  context.localStorage = {
+    getItem(key) { return values.has(key) ? values.get(key) : null; },
+    setItem(key, value) { values.set(key, String(value)); },
+    removeItem(key) { values.delete(key); }
+  };
+  const ui = Object.create(context.OnlineUI.prototype);
+  ui._sessionPersistenceDisabled = false;
+  ui.role = 'host'; ui.roomCode = 'qNub'; ui.nickname = 'Rium';
+  ui.avatar = '🐺'; ui.character = 'Leon'; ui.ready = true; ui.reconnectToken = 'token-1';
+  ui._persistRoomSession();
+  const saved = JSON.parse(values.get('furry-online-room-session-v2'));
+  assert.deepEqual(saved, {
+    roomCode: 'QNUB', role: 'host', nickname: 'Rium', avatar: '🐺',
+    character: 'Leon', ready: true, reconnectToken: 'token-1', battle: null
+  });
+  assert.deepEqual(ui._readRoomSession(), saved);
+  ui._clearRoomSession();
+  assert.equal(values.has('furry-online-room-session-v2'), false);
+  ui._persistRoomSession();
+  assert.equal(values.has('furry-online-room-session-v2'), false,
+    'beforeunload/late callbacks must not recreate an intentionally cleared session');
+});
+
+test('online host match snapshots restore the authoritative battle state', () => {
+  const first = new context.OnlineMatchHost('Leon', 'Ryan', 'host', 4, {
+    hostNickname: 'Host', guestNickname: 'Guest'
+  });
+  first.setStarted(true);
+  const snapshot = first.captureSnapshot();
+  assert.equal(snapshot.version, 1);
+  assert.equal(snapshot.engine.version, 1);
+  const restored = new context.OnlineMatchHost('Leon', 'Ryan');
+  restored.restoreSnapshot(snapshot);
+  assert.equal(restored.matchId, first.matchId);
+  assert.equal(restored.stateVersion, first.stateVersion);
+  assert.deepEqual(restored.project('host').playerHand, first.project('host').playerHand);
+  assert.equal(restored.project('guest').onlineNickname, 'Guest');
+});
+
 test('online host adapter preserves private hands and swaps guest commands', () => {
   const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host', null, {
     hostNickname: 'Rium',
@@ -278,6 +319,18 @@ test('online Saiki judgment projection marks number cards selectable for both vi
   assert.deepEqual(state.legalHand, [true]);
   state = match.project('guest');
   assert.deepEqual(state.legalHand, [true, false]);
+});
+
+test('online Saiki judgment selection rejects non-number cards at the protocol boundary', () => {
+  const Card = context.FurryGame.Card;
+  const match = new context.OnlineMatchHost('Saiki', 'Ryan', 'host');
+  match.engine.h.player = [Card.number('RED', 2), Card.item('WHITE', 'purify')];
+  match.engine.s.phase = 'SAIKI_SIX_JUDGE';
+  match.engine.s.pendingNumberJudge = { type: 'Saiki', attackCard: Card.number('RED', 6) };
+  assert.deepEqual(match.engine._computeLegalHand(), [true, false]);
+  const invalid = match.dispatch('host', 'selectCard', { index: 1 });
+  assert.equal(invalid.ok, false);
+  assert.match(invalid.error, /数字牌/);
 });
 
 test('promoted online guest keeps the room transport and becomes host', () => {

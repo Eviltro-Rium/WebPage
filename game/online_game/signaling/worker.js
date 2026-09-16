@@ -33,6 +33,11 @@ export class Room {
   constructor(state) {
     this.state = state;
     this.clients = new Map();
+    // A browser refresh closes the old WebSocket before the new document can
+    // send its reconnect token. Keep the authenticated room slot for a short
+    // grace period so that close/hello ordering cannot turn a refresh into a
+    // room exit. Explicit `leave` still removes the slot immediately.
+    this.reconnectGraceMs = 15000;
   }
 
   async fetch(request) {
@@ -63,23 +68,57 @@ export class Room {
         if (clientId) return;
         clearTimeout(helloTimer);
         helloTimer = null;
-        if (this.clients.size >= 2) { close(1008, 'room-full'); return; }
-        // Never trust a client supplied peerId. A reconnect or a malicious
-        // client must not be able to overwrite an existing Map entry.
-        clientId = crypto.randomUUID();
         const role = message.role === 'guest' ? 'guest' : 'host';
-        if (role === 'guest' && ![...this.clients.values()].some(item => item.meta.role === 'host')) {
-          close(1008, 'room-not-found'); return;
+        const reconnectToken = String(message.reconnectToken || '').trim().slice(0, 128);
+        // A refresh opens a new WebSocket before the browser has finished
+        // delivering the old socket's close event.  A server-issued token
+        // lets that same browser replace its old connection atomically
+        // instead of being rejected as "room-full"/"host-exists".
+        const existing = reconnectToken
+          ? [...this.clients.entries()].find(([, item]) => item.meta.reconnectToken === reconnectToken)
+          : null;
+        if (existing) {
+          const [existingId, entry] = existing;
+          clientId = existingId;
+          metadata = entry.meta;
+          const oldSocket = entry.socket;
+          if (entry.disconnectTimer) clearTimeout(entry.disconnectTimer);
+          entry.disconnectTimer = null;
+          entry.disconnectedAt = 0;
+          entry.intentionalLeave = false;
+          entry.socket = server;
+          metadata.nickname = String(message.nickname || metadata.nickname || 'Player').slice(0, 18);
+          metadata.avatar = message.avatar == null ? metadata.avatar : String(message.avatar).slice(0, 16);
+          // Keep the authoritative role and lobby selection while the new
+          // page restores its local copy; the first lobbyUpdate then writes
+          // the latest character/ready values back to the room.
+          try { if (oldSocket && oldSocket !== server) oldSocket.close(1000, 'replaced'); } catch (_) {}
+        } else {
+          if (this.clients.size >= 2) { close(1008, 'room-full'); return; }
+          // Never trust a client supplied peerId. Identity is generated here;
+          // the reconnect token below is the only way to replace that entry.
+          clientId = crypto.randomUUID();
+          if (role === 'guest' && ![...this.clients.values()].some(item => item.meta.role === 'host')) {
+            close(1008, 'room-not-found'); return;
+          }
+          if (role === 'host' && [...this.clients.values()].some(item => item.meta.role === 'host')) {
+            close(1008, 'host-exists'); return;
+          }
+          metadata = {
+            peerId: clientId,
+            role,
+            nickname: String(message.nickname || 'Player').slice(0, 18),
+            avatar: String(message.avatar || '').slice(0, 16),
+            ready: false,
+            character: null,
+            reconnectToken: crypto.randomUUID()
+          };
+          this.clients.set(clientId, { socket: server, meta: metadata });
         }
-        if (role === 'host' && [...this.clients.values()].some(item => item.meta.role === 'host')) {
-          close(1008, 'host-exists'); return;
-        }
-        metadata = { peerId: clientId, role, nickname: String(message.nickname || 'Player').slice(0, 18), avatar: String(message.avatar || '').slice(0, 16), ready: false, character: null };
-        this.clients.set(clientId, { socket: server, meta: metadata });
-        const players = [...this.clients.values()].map(item => item.meta);
-        this.send(server, { type: 'helloAck', peerId: clientId, players });
+        const players = [...this.clients.values()].map(item => this.publicMeta(item.meta));
+        this.send(server, { type: 'helloAck', peerId: clientId, reconnectToken: metadata.reconnectToken, players });
         this.broadcast({ type: 'roster', players });
-        if (players.length > 1) this.broadcast({ type: 'peerJoined', player: metadata }, clientId);
+        if (players.length > 1) this.broadcast({ type: 'peerJoined', player: this.publicMeta(metadata) }, clientId);
         return;
       }
 
@@ -110,7 +149,12 @@ export class Room {
         return;
       }
       if (message.type === 'ping') { this.send(server, { type: 'pong', at: Date.now() }); return; }
-      if (message.type === 'leave') { close(1000, 'leave'); return; }
+      if (message.type === 'leave') {
+        const entry = this.clients.get(clientId);
+        if (entry) entry.intentionalLeave = true;
+        close(1000, 'leave');
+        return;
+      }
     });
 
     let removed = false;
@@ -120,16 +164,26 @@ export class Room {
       if (helloTimer) clearTimeout(helloTimer);
       helloTimer = null;
       if (!clientId) return;
-      if (!this.clients.delete(clientId)) return;
-      if (metadata.role === 'host') {
-        const successor = this.clients.values().next().value;
-        if (successor) {
-          successor.meta.role = 'host';
-          successor.meta.ready = false;
-        }
+      // A refresh/reconnect can replace this connection before its close
+      // callback runs. In that case the room entry belongs to the new socket
+      // and must not be deleted by the old callback.
+      const current = this.clients.get(clientId);
+      if (!current || current.socket !== server) return;
+      // Do not immediately delete an unannounced browser disconnect. The
+      // refreshed page may still be racing this callback with its hello.
+      if (!current.intentionalLeave) {
+        current.socket = null;
+        current.disconnectedAt = Date.now();
+        current.disconnectTimer = setTimeout(() => {
+          const latest = this.clients.get(clientId);
+          if (!latest || latest.socket || latest.disconnectedAt !== current.disconnectedAt) return;
+          this.clients.delete(clientId);
+          this._notifyDeparture(metadata);
+        }, this.reconnectGraceMs);
+        return;
       }
-      this.broadcast({ type: 'peerLeft', player: metadata });
-      this.broadcast({ type: 'roster', players: [...this.clients.values()].map(item => item.meta) });
+      this.clients.delete(clientId);
+      this._notifyDeparture(metadata);
     };
     server.addEventListener('close', onClose);
     server.addEventListener('error', onClose);
@@ -138,6 +192,34 @@ export class Room {
 
   send(socket, payload) { try { socket.send(JSON.stringify(payload)); } catch (_) {} }
 
+  publicMeta(meta) {
+    if (!meta) return null;
+    return {
+      peerId: meta.peerId,
+      role: meta.role,
+      nickname: meta.nickname,
+      avatar: meta.avatar,
+      ready: !!meta.ready,
+      character: meta.character || null
+    };
+  }
+
+  _notifyDeparture(metadata) {
+    if (metadata.role === 'host') {
+      // Promote the remaining entry even if its socket is also in the short
+      // reconnect grace window.  When that player refreshes later, its token
+      // then restores an authoritative host role instead of becoming a
+      // stranded guest with no host in the room.
+      const successor = [...this.clients.values()][0];
+      if (successor) {
+        successor.meta.role = 'host';
+        successor.meta.ready = false;
+      }
+    }
+    this.broadcast({ type: 'peerLeft', player: this.publicMeta(metadata) });
+    this.broadcast({ type: 'roster', players: [...this.clients.values()].map(item => this.publicMeta(item.meta)) });
+  }
+
   broadcast(payload, except = null) {
     // Callers identify peers by their stable client id, while the map stores
     // the actual WebSocket. Resolve ids here so SDP/ICE is never echoed back
@@ -145,6 +227,6 @@ export class Room {
     const exceptSocket = typeof except === 'string'
       ? (this.clients.get(except) || {}).socket
       : except;
-    for (const { socket } of this.clients.values()) if (socket !== exceptSocket) this.send(socket, payload);
+    for (const { socket } of this.clients.values()) if (socket && socket !== exceptSocket) this.send(socket, payload);
   }
 }

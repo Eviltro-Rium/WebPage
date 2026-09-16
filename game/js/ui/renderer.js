@@ -294,13 +294,26 @@ async _playPlayerCardAnimation(card) {
     const playerHand = document.getElementById('player-hand');
     const atkZone = document.getElementById('atk-cards');
     if (!playerHand || !atkZone) { await wait(500); return; }
+    const animationKey = cardMatchKey(card);
+    this._animatingPlayerCardKey = animationKey;
+    // Match by stable card identity first. Online snapshots can reorder a
+    // hand between the click and the event batch, making the old selected
+    // index point at a different card (or at no card at all).
+    let source = this._findHandCardElement(playerHand, card);
     const selectedIndex = this._prevState ? this._prevState.selectedCard : -1;
-    const source = selectedIndex >= 0 && playerHand.children[selectedIndex]
+    source = source || (selectedIndex >= 0 && playerHand.children[selectedIndex]
         ? playerHand.children[selectedIndex]
-        : playerHand;
+        : playerHand);
     if (source !== playerHand) source.style.visibility = 'hidden';
     try { await this.anim.flyCard(card, source, atkZone, animDuration(this, 430), 66); }
-    finally { if (source !== playerHand) source.remove(); }
+    finally {
+        if (source !== playerHand) source.remove();
+        if (this._animatingPlayerCardKey === animationKey) {
+            this._animatingPlayerCardKey = '';
+            playerHand.dataset.handRenderKey = '';
+            this._renderPlayerHand({ hideTrailing: 0 });
+        }
+    }
     this._settleZoneCard(atkZone, card, 'player');
 },
 
@@ -308,13 +321,22 @@ async _playPlayerDefendAnimation(card) {
     const playerHand = document.getElementById('player-hand');
     const defZone = document.getElementById('def-cards');
     if (!playerHand || !defZone) { await wait(400); return; }
+    const animationKey = cardMatchKey(card);
+    this._animatingPlayerCardKey = animationKey;
     const selectedIndex = this._prevState ? this._prevState.selectedCard : -1;
-    const source = selectedIndex >= 0 && playerHand.children[selectedIndex]
+    const source = this._findHandCardElement(playerHand, card) || (selectedIndex >= 0 && playerHand.children[selectedIndex]
         ? playerHand.children[selectedIndex]
-        : playerHand;
+        : playerHand);
     if (source !== playerHand) source.style.visibility = 'hidden';
     try { await this.anim.flyCard(card, source, defZone, animDuration(this, 420), 48); }
-    finally { if (source !== playerHand) source.remove(); }
+    finally {
+        if (source !== playerHand) source.remove();
+        if (this._animatingPlayerCardKey === animationKey) {
+            this._animatingPlayerCardKey = '';
+            playerHand.dataset.handRenderKey = '';
+            this._renderPlayerHand({ hideTrailing: 0 });
+        }
+    }
     this._settleZoneCard(defZone, card, 'player');
 },
 

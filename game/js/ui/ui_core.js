@@ -474,6 +474,7 @@ class GameUI {
         this._isConsumingEvents = false;
         this._lastAnimatedAIDefenseKey = null;
         this._animatedPlayerDraws = 0;
+        this._animatingPlayerCardKey = '';
         this._npcHandFocusIndex = -1;
         this._selectedCombatItem = null;
         this._floatingTextLanes = { player: [], ai: [], ai2: [] };
@@ -510,6 +511,7 @@ class GameUI {
         window._gameUI = this;
         this.state = state || null;
         this._prevState = null;
+        this._animatingPlayerCardKey = '';
         this.gameScreen = gameScreen || document.getElementById('game-screen');
         if (!this.gameScreen) throw new Error('战斗界面容器不存在');
         this._buildGameScreen();

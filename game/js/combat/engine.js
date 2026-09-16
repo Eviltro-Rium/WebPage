@@ -35,7 +35,20 @@
       this.silentDraws(function(){this.turnStart('player')});this.emitDrawDiff(_hands);return this.state()
     }
     state(){return CombatState.project(this,{legalHand:this._computeLegalHand()})}
-    _computeLegalHand(){if(!this.s||!this.s.discardTop)return null;const p=this.s.phase;if(p!=='PLAYER_PLAY'&&p!=='PLAYER_DEFEND')return null;if(p==='PLAYER_DEFEND'&&this.s.unblockDefend)return null;const def=p==='PLAYER_DEFEND';return this.h.player.map(c=>this.legal(c,def))}
+    _computeLegalHand(){
+      if(!this.s)return null;
+      const p=this.s.phase;
+      // Follow-up skill phases also select from the hand. Keep their mask in
+      // the shared engine protocol so every adapter can render the same
+      // actionable cards without waiting for a second snapshot.
+      if(p==='SAIKI_SIX_JUDGE'||p==='PLAYER_FIVE_CHOICE')
+        return (this.h.player||[]).map(c=>!!(c&&c.isNumberCard));
+      if(!this.s.discardTop)return null;
+      if(p!=='PLAYER_PLAY'&&p!=='PLAYER_DEFEND')return null;
+      if(p==='PLAYER_DEFEND'&&this.s.unblockDefend)return null;
+      const def=p==='PLAYER_DEFEND';
+      return this.h.player.map(c=>this.legal(c,def));
+    }
     _deckPort(){const adapter=this._adapter();if(adapter&&!adapter.sharedDeck)return null;return window.FurryGame&&window.FurryGame.DeckPort&&window.FurryGame.DeckPort.shared}
     _turnMachine(){return window.FurryGame&&window.FurryGame.TurnMachine}
     _mode(){return window.FurryGame&&window.FurryGame.EngineModes}
@@ -449,7 +462,23 @@
     chooseSuperPurifyTarget(target){this.s.pendingDialog=null;let ch=this.s[target];if(!ch||!ch.alive)throw Error('目标已出局');this.clean(ch,true);let label=target==='player'?'玩家':(this.s.is1v2&&target==='ai2'?'AI2':'AI');this.emit('desc','超级净化：清除'+label+'所有buff与debuff');return this.state()}
     turnStart(w){let x=this.s[w];if(!x||!x.alive)return;if((x.poison||0)>0){let dmg=x.poison,who=w==='player'?'player':(w==='ai2'?'ai2':'ai');this.emit('poisonSettle',`-${dmg}[中毒]`,null,{who,amount:dmg});x.hp=Math.max(0,x.hp-dmg);x.alive=x.hp>0;if(this.name(x)==='Serenity')x.bloodthirst=x.hp<30}if((x.parasite||0)>0){let opp=null;if(w==='player'){opp=(this.s.ai&&this.s.ai.alive)?this.s.ai:((this.s.ai2&&this.s.ai2.alive)?this.s.ai2:null)}else opp=this.s.player;if(opp&&opp.alive)this.drainAttack(x,opp,1,{allowAvoidance:false})}let n=this.name(x),m=CharacterRegistry.get(n);if(m)m.turnStart(this,x,w)}
     legal(c,def=false){let t=this.s.discardTop,tc=t.chosenColor||t.color,cc=c.chosenColor||c.color;if(c.trophyWhite&&c.trophyEffect==='disarm'&&def)return false;if(c.isItemCard)return true;if(def&&c.value>3)return false;return c.isWhite||tc===cc||t.value===c.value}
-    select(i){if(!this.h.player[i])throw Error('无效卡牌');if(this.s.phase==='PLAYER_DISCARD'){let a=this.s.selectedCards||[],p=a.indexOf(i);if(this.s.mayDiscardAfterSkill)a=p>=0?[]:[i];else if(p>=0)a.splice(p,1);else a.push(i);this.s.selectedCards=a;this.s.selectedCard=a.length?a[0]:-1}else this.s.selectedCard=this.s.selectedCard===i?-1:i;return this.state()}
+    select(i){
+      const card=this.h.player[i];
+      if(!card)throw Error('无效卡牌');
+      if(this.s.phase==='SAIKI_SIX_JUDGE'||this.s.phase==='PLAYER_FIVE_CHOICE'){
+        if(!card.isNumberCard)throw Error('该阶段只能选择数字牌');
+        this.s.selectedCard=this.s.selectedCard===i?-1:i;
+        return this.state();
+      }
+      if(this.s.phase==='PLAYER_DISCARD'){
+        let a=this.s.selectedCards||[],p=a.indexOf(i);
+        if(this.s.mayDiscardAfterSkill)a=p>=0?[]:[i];
+        else if(p>=0)a.splice(p,1);
+        else a.push(i);
+        this.s.selectedCards=a;this.s.selectedCard=a.length?a[0]:-1;
+      }else this.s.selectedCard=this.s.selectedCard===i?-1:i;
+      return this.state();
+    }
     itemKind(c){if(c.trophyWhite)return'trophyWhite';if(c.swapHand)return'swap';if(c.drawThree)return'drawThree';if(c.drawTwo)return'drawTwo';if(c.potion)return'potion';if(c.greenMagic||c.magicColor==='green')return'greenMagic';if(c.magic||c.magicColor==='purple')return'magic';if(c.superPurify)return'superPurify';if(c.purify)return'purify';if(c.shuffleToDeck)return'shuffle';return'wild'}
     _isAdventureBoss(x){if(!this.s.isAdventure||!window.AdventureRegistry)return false;return!!window.AdventureRegistry.getBoss(this.name(x))}
     itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}let label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='fly'?'获得1层飞翔':effect==='lush'?'获得1层茂盛':effect==='poison'?'施加1层中毒':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部buff与debuff，然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}

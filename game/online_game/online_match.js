@@ -99,6 +99,8 @@
         constructor(hostCharacter, guestCharacter, firstActor = 'host', firstRoll = null, playerInfo = {}) {
             if (typeof global.Engine !== 'function') throw new Error('战斗引擎尚未加载');
             this.engine = new global.Engine();
+            this.hostCharacter = String(hostCharacter || '');
+            this.guestCharacter = String(guestCharacter || '');
             this.hostEntity = null;
             this.guestEntity = null;
             this.context = 'host';
@@ -246,6 +248,47 @@
             return this.project('host');
         }
 
+        captureSnapshot() {
+            if (!this.engine || typeof this.engine.combatSnapshot !== 'function') return null;
+            return {
+                version: 1,
+                matchId: this.matchId,
+                stateVersion: this.stateVersion,
+                started: this.started !== false,
+                hostCharacter: this.hostCharacter,
+                guestCharacter: this.guestCharacter,
+                hostNickname: this.hostNickname,
+                guestNickname: this.guestNickname,
+                hostAvatar: this.hostAvatar,
+                guestAvatar: this.guestAvatar,
+                engine: this.engine.combatSnapshot()
+            };
+        }
+
+        restoreSnapshot(snapshot) {
+            if (!snapshot || snapshot.version !== 1 || !snapshot.engine
+                || typeof this.engine.restoreCombatSnapshot !== 'function') {
+                throw new Error('无效的联机战斗快照');
+            }
+            this.engine.restoreCombatSnapshot(snapshot.engine);
+            // EngineSnapshot replaces `s` and `h`, so cached entity references
+            // must be rebound before the next projection or guest dispatch.
+            this.hostEntity = this.engine.s.player;
+            this.guestEntity = this.engine.s.ai;
+            this.matchId = String(snapshot.matchId || this.matchId);
+            this.stateVersion = Math.max(0, Number(snapshot.stateVersion) || 0);
+            this.started = snapshot.started !== false;
+            if (snapshot.hostCharacter) this.hostCharacter = String(snapshot.hostCharacter);
+            if (snapshot.guestCharacter) this.guestCharacter = String(snapshot.guestCharacter);
+            if (snapshot.hostNickname) this.hostNickname = String(snapshot.hostNickname);
+            if (snapshot.guestNickname) this.guestNickname = String(snapshot.guestNickname);
+            if (snapshot.hostAvatar != null) this.hostAvatar = String(snapshot.hostAvatar);
+            if (snapshot.guestAvatar != null) this.guestAvatar = String(snapshot.guestAvatar);
+            this._requestCache.clear();
+            this.context = 'host';
+            return this.project('host');
+        }
+
         _cacheKey(actor, requestId) {
             if (requestId === null || requestId === undefined || requestId === '') return null;
             return String(actor) + ':' + String(requestId);
@@ -326,7 +369,7 @@
             if (method === 'doEnterDiscard' && s.phase !== 'PLAYER_PLAY') return '当前不能进入弃牌阶段';
             if (['doCancelDiscard', 'doConfirmDiscard'].includes(method) && s.phase !== 'PLAYER_DISCARD') return '当前不是弃牌阶段';
             if (['doFiveHeal', 'doFiveDamage'].includes(method) && (s.phase !== 'PLAYER_FIVE_CHOICE' || selected < 0 || selected >= hand.length)) return '当前不能处理 Ryan 5牌';
-            if (method === 'doSaikiSixConfirm' && (s.phase !== 'SAIKI_SIX_JUDGE' || selected < 0 || selected >= hand.length)) return '当前不能处理判定牌';
+            if (method === 'doSaikiSixConfirm' && (s.phase !== 'SAIKI_SIX_JUDGE' || selected < 0 || selected >= hand.length || !hand[selected] || !hand[selected].isNumberCard)) return '当前不能处理判定牌';
             if (method === 'resolveAttackModChoice') {
                 if (s.phase !== 'ATTACK_MOD_CHOICE') return '当前没有攻击修正选择';
                 const bonus = Number(params.bonus || 0);

@@ -2,6 +2,7 @@
  * vocabulary as GameUI so the online adapter never duplicates card rules. */
 (function (global) {
     const PLAYER_EMOJIS = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐺', '🦄'];
+    const ROOM_SESSION_KEY = 'furry-online-room-session-v2';
     const normalizeAvatar = avatar => PLAYER_EMOJIS.includes(avatar) ? avatar : PLAYER_EMOJIS[0];
     const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
     const safeText = value => String(value == null ? '' : value).replace(/[<>]/g, '');
@@ -20,6 +21,7 @@
             this.nickname = ''; this.signalUrl = ''; this.players = []; this.character = null; this.avatar = null;
             this.ready = false; this.match = null; this.state = null;
             this.error = ''; this.pendingSync = null; this.connectionState = '未连接'; this.roomStatus = '';
+            this.reconnectToken = '';
             this.battleSession = null; this.battleUI = null; this._battleAnimation = Promise.resolve();
             this._battleGeneration = 0; this._battleQueuedVersion = 0; this._battleDisplayVersion = 0;
             this._battleSeenEvents = new Set();
@@ -30,8 +32,94 @@
             // as non-interactive even though the host had already started.
             this._matchReadyPayload = null; this._matchReadyAcked = false;
             this._matchReadyAttempts = 0; this._matchReadyRetryTimer = null;
+            // A normal refresh must keep the room lease alive.  Intentional
+            // exits set this flag so the beforeunload handler cannot write a
+            // stale session back after it has been cleared.
+            this._sessionPersistenceDisabled = false;
+            this._restoringRoom = false;
+            this._pendingBattleRestore = null;
+            this._battleResumeRequested = false;
             this._ensureAmbientParticles();
             this.showLanding();
+            this._restoreRoomSession();
+        }
+
+        _readRoomSession() {
+            try {
+                const raw = localStorage.getItem(ROOM_SESSION_KEY);
+                if (!raw) return null;
+                const saved = JSON.parse(raw);
+                if (!saved || !/^[A-Z0-9]{4}$/.test(String(saved.roomCode || '').toUpperCase())) return null;
+                if (!['host', 'guest'].includes(saved.role) || !String(saved.nickname || '').trim()) return null;
+                return saved;
+            } catch (_) { return null; }
+        }
+
+        _persistRoomSession() {
+            if (this._sessionPersistenceDisabled || !this.role || !this.roomCode || !this.nickname) return;
+            try {
+                localStorage.setItem(ROOM_SESSION_KEY, JSON.stringify({
+                    roomCode: String(this.roomCode).toUpperCase(),
+                    role: this.role,
+                    nickname: String(this.nickname).slice(0, 18),
+                    avatar: normalizeAvatar(this.avatar),
+                    character: this.character || null,
+                    ready: !!this.ready,
+                    reconnectToken: this.reconnectToken || '',
+                    battle: this._captureBattleSession()
+                }));
+            } catch (_) {}
+        }
+
+        _captureBattleSession() {
+            if (!this.match) return null;
+            if (this.role === 'host' && !this.match.remote
+                && typeof this.match.captureSnapshot === 'function') {
+                try { return this.match.captureSnapshot(); } catch (_) { return null; }
+            }
+            // A guest does not own the engine snapshot, but retaining the
+            // match id is enough to request the authoritative projection from
+            // the host after a page refresh.
+            if (this.role === 'guest' && this.match.remote && this.state && this.state.matchId) {
+                return { version: 1, matchId: this.state.matchId, guestCharacter: this.character };
+            }
+            return null;
+        }
+
+        _clearRoomSession() {
+            this._sessionPersistenceDisabled = true;
+            try { localStorage.removeItem(ROOM_SESSION_KEY); } catch (_) {}
+        }
+
+        _isReloadNavigation() {
+            try {
+                const entry = global.performance && typeof global.performance.getEntriesByType === 'function'
+                    ? global.performance.getEntriesByType('navigation')[0] : null;
+                if (entry && entry.type) return entry.type === 'reload';
+                return !!(global.performance && global.performance.navigation && global.performance.navigation.type === 1);
+            } catch (_) { return false; }
+        }
+
+        _restoreRoomSession() {
+            // Only a browser reload should silently restore the room. A normal
+            // visit to the online page should still show the landing screen;
+            // intentional "离开房间" removes this record below.
+            if (!this._isReloadNavigation()) return;
+            const saved = this._readRoomSession();
+            if (!saved) return;
+            this.setLandingStatus('正在恢复在线房间 ' + saved.roomCode + '…', 'warning');
+            const restore = () => this.connect(saved.role, {
+                roomCode: saved.roomCode,
+                nickname: saved.nickname,
+                avatar: saved.avatar,
+                character: saved.character,
+                ready: saved.ready,
+                reconnectToken: saved.reconnectToken,
+                battle: saved.battle,
+                autoRestore: true
+            });
+            if (typeof global.queueMicrotask === 'function') global.queueMicrotask(restore);
+            else setTimeout(restore, 0);
         }
 
         _ensureAmbientParticles() {
@@ -54,7 +142,7 @@
         showLanding() {
             const currentAvatar = normalizeAvatar(this.avatar);
             const emojiButtons = PLAYER_EMOJIS.map(em => '<button class="online-emoji' + (currentAvatar === em ? ' selected' : '') + '" data-emoji="' + em + '" type="button" aria-label="选择头像 ' + em + '">' + em + '</button>').join('');
-            this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial</div><div class="online-brand-sub">在线对决 · WebRTC P2P</div></div></div><a class="online-link" href="../index.html">← 返回游戏主页</a></div>' +
+            this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial</div><div class="online-brand-sub">在线对决 · WebRTC P2P</div></div></div><a class="online-link" id="online-home-link" href="../index.html">← 返回游戏主页</a></div>' +
                 '<section class="online-panel online-landing"><div class="online-intro"><h1>与你的朋友<br><span>面对面出牌</span></h1><p>建立一个小型房间，优先使用浏览器原生 WebRTC 直接传输战斗指令；直连尚未建立时自动通过信令连接同步。房主运行单机同一套战斗引擎，双方只交换必要的同步状态。</p><div class="online-notice"><div><b>01</b><span>不需要安装客户端，分享 4 位房间码即可加入。</span></div><div><b>02</b><span>当前版本不配置 TURN，适合小规模测试。</span></div><div><b>03</b><span>请使用 HTTPS 域名；本地调试可用 Wrangler Dev。</span></div></div></div>' +
                 '<form class="online-form" id="online-connect-form"><h2>进入在线房间</h2><label class="online-label">房间码（加入时填写）<input class="online-input" id="online-room-code" maxlength="4" placeholder="ABCD" autocapitalize="characters"></label><div class="online-identity-row"><label class="online-label">昵称<input class="online-input" id="online-nickname" maxlength="18" placeholder="例如：Rium" autocomplete="nickname"></label><div class="online-avatar-field"><button class="online-avatar-toggle" id="online-avatar-toggle" type="button" aria-expanded="false"><span>头像</span><strong id="online-avatar-current">' + currentAvatar + '</strong><small>展开</small></button><div class="online-avatar-card" id="online-avatar-card" hidden><div class="online-emojis">' + emojiButtons + '</div></div></div></div><div class="online-form-row"><button class="online-btn primary" id="online-create" type="button">创建房间</button><button class="online-btn" id="online-join" type="button">加入房间</button></div><div class="online-status" id="online-landing-status"></div></form></section>';
             const name = this.root.querySelector('#online-nickname');
@@ -81,6 +169,11 @@
             }));
             this.root.querySelector('#online-create').addEventListener('click', () => this.connect('host'));
             this.root.querySelector('#online-join').addEventListener('click', () => this.connect('guest'));
+            const homeLink = this.root.querySelector('#online-home-link');
+            if (homeLink) homeLink.addEventListener('click', () => {
+                this._clearRoomSession();
+                if (this.peer) this.peer.close();
+            });
             this.root.querySelector('#online-room-code').addEventListener('input', event => { event.target.value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); });
             const location = global.location || {};
             const secure = location.protocol === 'https:' || location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
@@ -124,20 +217,51 @@
                 localStorage.setItem('furry-online-avatar', this.avatar);
                 localStorage.removeItem('furry-online-signal');
             } catch (_) {}
-            if (this.peer) this.peer.close();
+            // Reconnecting from the retry button must not send a `leave`
+            // packet: the token is intended to replace this socket in place.
+            if (this.peer) this.peer.close({ notify: false });
             this.role = role; this.roomCode = code; this.nickname = nickname.trim().slice(0, 18);
-            this.signalUrl = signalUrl; this.players = []; this.character = null; this.ready = false; this.error = ''; this.match = null; this.state = null;
+            this.signalUrl = signalUrl; this.players = [];
+            this.character = reconnect.character || null;
+            this.ready = !!(reconnect.ready && this.character);
+            this.reconnectToken = String(reconnect.reconnectToken || '').slice(0, 128);
+            this._sessionPersistenceDisabled = false;
+            this._restoringRoom = !!reconnect.autoRestore;
+            this._pendingBattleRestore = reconnect.battle || null;
+            this._battleResumeRequested = false;
+            this.error = ''; this.match = null; this.state = null;
+            this._persistRoomSession();
             // Create the peer before rendering the room.  The previous order
             // called a removed showRoom() method and also tried to register the
             // local player before this.peer existed, so clicking "创建房间"
             // stopped here without opening a WebSocket.
-            this.peer = new global.OnlinePeer({ signalUrl, roomCode: code, role, nickname: this.nickname, avatar: this.avatar });
+            this.peer = new global.OnlinePeer({ signalUrl, roomCode: code, role, nickname: this.nickname, avatar: this.avatar, reconnectToken: this.reconnectToken });
             this._ensureOwnPlayer(); this.renderRoom(); this.setRoomStatus('正在连接信令服务…');
             this.peer.on('hello', message => {
+                this._restoringRoom = false;
+                if (message && message.reconnectToken) {
+                    this.reconnectToken = String(message.reconnectToken).slice(0, 128);
+                    if (this.peer) this.peer.reconnectToken = this.reconnectToken;
+                }
+                // The Worker is authoritative for role after host migration;
+                // use the hello roster immediately so a restored host does
+                // not briefly render as a guest or send a stale role update.
+                const authoritative = message && Array.isArray(message.players)
+                    ? message.players.find(player => player && player.peerId === message.peerId) : null;
+                if (authoritative && (authoritative.role === 'host' || authoritative.role === 'guest')) {
+                    this.role = authoritative.role;
+                    if (this.peer) this.peer.role = this.role;
+                    if (authoritative.character != null) this.character = authoritative.character || null;
+                    this.ready = !!(authoritative.ready && this.character);
+                }
                 this._reconcileOwnPeerId(message && message.previousPeerId, message && message.peerId);
-                this._upsertPlayer({ peerId: message.peerId || this.peer.peerId, role, nickname: this.nickname, character: this.character, ready: this.ready, avatar: this.avatar });
+                this._upsertPlayer({ peerId: message.peerId || this.peer.peerId, role: this.role, nickname: this.nickname, character: this.character, ready: this.ready, avatar: this.avatar });
                 this._dedupePlayers();
-                this.setRoomStatus(role === 'host' ? '房间已创建，等待朋友加入' : '已加入房间，等待房主开始'); this.renderRoom();
+                this._persistRoomSession();
+                // Publish restored character/ready state immediately instead
+                // of waiting for the WebRTC channel to open.
+                this._sendLobbyUpdate();
+                this.setRoomStatus(this.role === 'host' ? '房间已创建，等待朋友加入' : '已加入房间，等待房主开始'); this.renderRoom();
             });
             this.peer.on('roster', players => {
                 this._handleRoster(players);
@@ -214,6 +338,12 @@
                     'message-too-large': '信令消息过大，连接已拒绝'
                 };
                 const detail = messages[reason] || (code ? `信令连接已关闭（${code}${reason ? ' · ' + reason : ''}）` : '信令连接已关闭');
+                // A stale saved session must not cause an endless restore
+                // loop after the room was actually destroyed or filled.
+                if (this._restoringRoom && ['room-not-found', 'room-full', 'host-exists'].includes(reason)) {
+                    this._restoringRoom = false;
+                    this._clearRoomSession();
+                }
                 this.setRoomStatus(detail, 'error');
             });
             this.peer.connect();
@@ -248,7 +378,77 @@
                 this._resetToLobby(false);
                 this.setRoomStatus('原房主已离开，你已成为新房主，房间码保持不变');
             }
-            this._ensureOwnPlayer(); this.renderRoom();
+            this._ensureOwnPlayer();
+            this._persistRoomSession();
+            this._restoreBattleIfPossible();
+            this.renderRoom();
+        }
+
+        _sendBattleResume() {
+            if (this.role !== 'host' || !this.match || !this.peer) return false;
+            const guestState = this.match.project('guest');
+            return this.peer.send({
+                kind: 'matchResume',
+                protocolVersion: this.match.protocolVersion,
+                matchId: this.match.matchId,
+                stateVersion: this.match.stateVersion,
+                guestState,
+                events: []
+            });
+        }
+
+        _restoreBattleIfPossible() {
+            const pending = this._pendingBattleRestore;
+            if (!pending || this.match || !this.peer) return;
+            const opponent = this.opponentPlayer;
+            if (!opponent || !opponent.character) return;
+            if (this.role === 'host') {
+                if (!pending.engine || pending.hostCharacter !== this.character
+                    || pending.guestCharacter !== opponent.character
+                    || typeof global.OnlineMatchHost !== 'function') {
+                    this._pendingBattleRestore = null;
+                    return;
+                }
+                try {
+                    const match = new global.OnlineMatchHost(
+                        pending.hostCharacter, pending.guestCharacter,
+                        'host', null, {
+                            hostNickname: pending.hostNickname || this.nickname,
+                            guestNickname: pending.guestNickname || opponent.nickname,
+                            hostAvatar: pending.hostAvatar || this.avatar,
+                            guestAvatar: pending.guestAvatar || opponent.avatar
+                    });
+                    match.restoreSnapshot(pending);
+                    // A refresh can happen between matchStart and its ACK;
+                    // the restored host must still be able to serve the
+                    // current snapshot rather than remaining behind the
+                    // pre-match synchronization barrier.
+                    match.setStarted(true);
+                    this.match = match;
+                    this.state = match.project('host');
+                    this.battleSession = new global.OnlineHostSession({
+                        peer: this.peer,
+                        match,
+                        state: this.state,
+                        onStateChange: result => {
+                            if (result && result.state) this.state = clone(result.state);
+                            this._persistRoomSession();
+                        }
+                    });
+                    this._pendingBattleRestore = null;
+                    this._mountSharedBattle(this.battleSession, this.state, []);
+                    this._sendBattleResume();
+                    this._persistRoomSession();
+                } catch (error) {
+                    this._pendingBattleRestore = null;
+                    this.error = '恢复对战失败：' + (error && error.message ? error.message : String(error));
+                }
+                return;
+            }
+            if (this.role === 'guest' && !this._battleResumeRequested) {
+                this._battleResumeRequested = true;
+                this.peer.send({ kind: 'matchResumeRequest', matchId: pending.matchId || null });
+            }
         }
         _reconcileOwnPeerId(previousId, currentId) {
             if (!previousId || !currentId || previousId === currentId) return;
@@ -312,12 +512,23 @@
             const opponent = this.opponentPlayer;
             const cards = this.chars().map(ch => '<button class="online-char' + (this.character === ch.name ? ' selected' : '') + '" data-char="' + safeText(ch.name) + '" type="button"><strong>' + safeText(ch.name) + '</strong><small>' + safeText(ch.type || '角色') + ' · HP ' + (Number(ch.hp) || 0) + '</small></button>').join('');
             const playerMarkup = (player, revealCharacter) => player ? '<div class="online-player"><div class="online-player-avatar">' + safeText(player.avatar || (player.nickname || '?').slice(0, 1).toUpperCase()) + '</div><div class="online-player-meta"><strong>' + safeText(player.nickname || 'Player') + (player.role === 'host' ? ' · 房主' : '') + '</strong><small>' + (player.character ? (revealCharacter ? safeText(player.character) : '已选择角色') : '尚未选择角色') + '</small></div><span class="online-ready' + (player.ready ? ' yes' : '') + '">' + (player.ready ? '已准备' : '未准备') + '</span></div>' : '<div class="online-help">等待另一位玩家加入…</div>';
-            this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线房间</div><div class="online-brand-sub">' + safeText(this.connectionState || '连接中') + '</div></div></div><a class="online-link" href="../index.html">退出房间</a></div><section class="online-panel online-room"><div class="online-room-head"><div><div class="online-brand-sub">房间码</div><div class="online-room-code"><strong>' + safeText(this.roomCode) + '</strong><button class="online-copy-code" id="online-copy-code" type="button">复制</button></div></div><div class="online-status" id="online-room-status">' + safeText(this.roomStatus || '等待连接') + '</div></div><div class="online-room-grid"><div class="online-roster"><h3>玩家</h3>' + playerMarkup(own, true) + playerMarkup(opponent, false) + '<div class="online-help">房主负责运行战斗引擎；双方的手牌只发送给自己。</div></div><div class="online-select"><h3>选择你的角色</h3><div class="online-chars">' + cards + '</div><div class="online-room-actions"><button class="online-btn ghost" id="online-leave" type="button">离开房间</button><button class="online-btn ghost" id="online-retry" type="button">重试连接</button><button class="online-btn good" id="online-ready" type="button" ' + (this.character ? '' : 'disabled') + '>' + (this.ready ? '取消准备' : '准备') + '</button>' + (this.role === 'host' ? '<button class="online-btn primary" id="online-start-match" type="button">开始对战</button>' : '') + '</div><div class="online-status error" id="online-room-error">' + safeText(this.error) + '</div></div></div></section>';
+            this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线房间</div><div class="online-brand-sub">' + safeText(this.connectionState || '连接中') + '</div></div></div><a class="online-link" id="online-home-link" href="../index.html">退出房间</a></div><section class="online-panel online-room"><div class="online-room-head"><div><div class="online-brand-sub">房间码</div><div class="online-room-code"><strong>' + safeText(this.roomCode) + '</strong><button class="online-copy-code" id="online-copy-code" type="button">复制</button></div></div><div class="online-status" id="online-room-status">' + safeText(this.roomStatus || '等待连接') + '</div></div><div class="online-room-grid"><div class="online-roster"><h3>玩家</h3>' + playerMarkup(own, true) + playerMarkup(opponent, false) + '<div class="online-help">房主负责运行战斗引擎；双方的手牌只发送给自己。</div></div><div class="online-select"><h3>选择你的角色</h3><div class="online-chars">' + cards + '</div><div class="online-room-actions"><button class="online-btn ghost" id="online-leave" type="button">离开房间</button><button class="online-btn ghost" id="online-retry" type="button">重试连接</button><button class="online-btn good" id="online-ready" type="button" ' + (this.character ? '' : 'disabled') + '>' + (this.ready ? '取消准备' : '准备') + '</button>' + (this.role === 'host' ? '<button class="online-btn primary" id="online-start-match" type="button">开始对战</button>' : '') + '</div><div class="online-status error" id="online-room-error">' + safeText(this.error) + '</div></div></div></section>';
             this.root.querySelectorAll('[data-char]').forEach(button => button.addEventListener('click', () => { this.character = button.dataset.char; this.ready = false; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); }));
             this.root.querySelector('#online-ready').addEventListener('click', () => { if (!this.character) return; this.ready = !this.ready; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); });
-            this.root.querySelector('#online-leave').addEventListener('click', () => { if (this.peer) this.peer.close(); this.peer = null; this.showLanding(); });
+            this.root.querySelector('#online-leave').addEventListener('click', () => {
+                this._clearRoomSession();
+                if (this.peer) this.peer.close();
+                this.peer = null; this.role = null; this.roomCode = ''; this.character = null; this.ready = false; this.reconnectToken = '';
+                this.showLanding();
+            });
+            const homeLink = this.root.querySelector('#online-home-link');
+            if (homeLink) homeLink.addEventListener('click', () => {
+                this._clearRoomSession();
+                if (this.peer) this.peer.close();
+            });
             this.root.querySelector('#online-retry').addEventListener('click', () => this.connect(this.role, {
-                nickname: this.nickname, avatar: this.avatar, roomCode: this.roomCode, signalUrl: this.signalUrl
+                nickname: this.nickname, avatar: this.avatar, roomCode: this.roomCode, signalUrl: this.signalUrl,
+                character: this.character, ready: this.ready, reconnectToken: this.reconnectToken
             }));
             const start = this.root.querySelector('#online-start-match'); if (start) start.addEventListener('click', () => this.startMatch());
             const copyButton = this.root.querySelector('#online-copy-code'); if (copyButton) copyButton.addEventListener('click', async () => { try { await navigator.clipboard.writeText(this.roomCode); copyButton.textContent = '已复制'; setTimeout(() => { copyButton.textContent = '复制'; }, 1200); } catch (_) { copyButton.textContent = this.roomCode; } });
@@ -325,6 +536,7 @@
         _sendLobbyUpdate() {
             if (!this.peer) return;
             this._ensureOwnPlayer();
+            this._persistRoomSession();
             const player = { peerId: this.peer.peerId, role: this.role, nickname: this.nickname, character: this.character, ready: this.ready, avatar: this.avatar };
             this.peer.sendRoom({ type: 'lobbyUpdate', ...player });
         }
@@ -377,6 +589,7 @@
                 };
                 this._matchStartAcked = false;
                 this._matchStartAttempts = 0;
+                this._persistRoomSession();
                 this._sendMatchStart();
             } catch (error) { this.error = error && error.message ? error.message : String(error); this.match = null; this.state = null; this.renderRoom(); }
         }
@@ -390,6 +603,52 @@
                 const opponent = this.opponentPlayer;
                 if (!opponent || !message.player || message.player.peerId !== opponent.peerId) return;
                 this._upsertPlayer(message.player); this.renderRoom(); return;
+            }
+            if (message.kind === 'matchResumeRequest') {
+                if (this.role !== 'host') return;
+                if (!this.match && this._pendingBattleRestore) this._restoreBattleIfPossible();
+                if (this.match && (!message.matchId || message.matchId === this.match.matchId)) {
+                    this._sendBattleResume();
+                } else if (!this._pendingBattleRestore && this.peer) {
+                    this.peer.send({ kind: 'lobbyReset' });
+                }
+                return;
+            }
+            if (message.kind === 'matchResume') {
+                if (this.role !== 'guest' || !message.guestState) return;
+                if (this.match && this.match.remote && this.battleSession
+                    && this.battleSession._matchId === message.matchId) {
+                    this.battleSession.receiveState({
+                        kind: 'state', protocolVersion: message.protocolVersion,
+                        matchId: message.matchId, stateVersion: message.stateVersion,
+                        guestState: message.guestState, events: message.events || []
+                    });
+                    this._pendingBattleRestore = null;
+                    this._battleResumeRequested = false;
+                    return;
+                }
+                const pending = this._pendingBattleRestore;
+                if (pending && pending.matchId && pending.matchId !== message.matchId) return;
+                try {
+                    const guestState = clone(message.guestState);
+                    this.match = { remote: true };
+                    this.state = guestState;
+                    this.battleSession = new global.OnlineGuestSession({
+                        peer: this.peer,
+                        state: guestState,
+                        onUnsolicitedState: result => this._queueSharedBattleResult(result)
+                    });
+                    this._mountSharedBattle(this.battleSession, guestState, message.events || []);
+                    this._pendingBattleRestore = null;
+                    this._battleResumeRequested = false;
+                } catch (error) {
+                    this.match = null;
+                    this.battleSession = null;
+                    this.state = null;
+                    this.error = '恢复对战失败：' + (error && error.message ? error.message : String(error));
+                    this.renderRoom();
+                }
+                return;
             }
             if (message.kind === 'matchStartAck') {
                 if (this.role !== 'host') return;
@@ -556,6 +815,7 @@
             if (playerDraws) this.battleUI._renderPlayerHand({ hideTrailing: playerDraws });
             if (opponentDraws) this.battleUI._renderAIHand({ hideTrailing: opponentDraws });
             if (events && events.length) this._queueSharedBattleResult({ ok: true, state: clone(state), events }, true);
+            this._persistRoomSession();
         }
 
         _queueSharedBattleResult(result, fast = false) {
@@ -594,6 +854,7 @@
                 if (Number.isFinite(version)) this._battleDisplayVersion = Math.max(this._battleDisplayVersion, version);
                 this.battleUI.updateDisplay();
                 this.state = clone(this.battleUI.state);
+                this._persistRoomSession();
             };
             this._battleAnimation = (this._battleAnimation || Promise.resolve()).then(run, run);
             return this._battleAnimation;
@@ -617,7 +878,14 @@
         }
 
         exitToHome() {
+            this._clearRoomSession();
             if (this.peer) this.peer.close();
+            this.peer = null;
+            this.role = null;
+            this.roomCode = '';
+            this.character = null;
+            this.ready = false;
+            this.reconnectToken = '';
             this._destroySharedBattle();
             this.match = null;
             this.state = null;
@@ -698,6 +966,8 @@
             this._matchReadyAcked = false;
             this._matchReadyAttempts = 0;
             this._destroySharedBattle();
+            this._pendingBattleRestore = null;
+            this._battleResumeRequested = false;
             this.match = null; this.state = null; this.error = ''; this.ready = false;
             this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom();
             if (notify && this.peer) this.peer.send({ kind: 'lobbyReset' });
@@ -712,6 +982,13 @@
         const root = document.getElementById('online-app');
         if (!root) return;
         global.onlineUI = new OnlineUI(root);
-        global.addEventListener('beforeunload', () => { if (global.onlineUI && global.onlineUI.peer) global.onlineUI.peer.close(); });
+        global.addEventListener('beforeunload', () => {
+            const ui = global.onlineUI;
+            if (!ui || !ui.peer) return;
+            // Do not send the signaling `leave` packet on refresh.  The old
+            // socket will close naturally and the next page instance will
+            // present the saved token, allowing the Worker to replace it.
+            ui._persistRoomSession();
+        });
     });
 })(window);
