@@ -888,3 +888,124 @@
 .crystal-ball-sort-card { cursor: grab; transition: transform .16s ease, filter .16s ease; }
 .crystal-ball-sort-card.dragging { opacity: .45; transform: translateY(-6px) scale(.97); }
 .crystal-ball-sort-card.drag-target { filter: drop-shadow(0 0 8px #c4b5fd); transform: translateY(-6px); }
+
+/* ===== 地图移动端布局 =====
+   地图页在桌面端使用“地图 + 侧栏”的双列布局。窄屏时如果继续保留
+   280px 侧栏，地图会被压缩到只剩一小列；这里改为单列并固定地图
+   的可视尺寸，让房间节点、资源和操作按钮都能在手机上正常点击。 */
+@media (max-width: 760px) {
+  #adventure-container {
+    width: 100%;
+    min-width: 0;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+
+  .adventure-wrap {
+    width: 100%;
+    max-width: 620px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    gap: 10px;
+    padding: max(12px, env(safe-area-inset-top, 12px)) 12px 20px;
+  }
+
+  .adventure-header {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 10px 12px;
+  }
+  .adv-title {
+    min-width: 0;
+    flex: 1 1 160px;
+    font-size: 16px;
+    line-height: 1.35;
+  }
+  .adv-phase {
+    flex: 0 0 auto;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .adv-phase-tag { padding: 2px 8px; }
+
+  .adv-map-panel {
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+  }
+  .adventure-board {
+    width: min(100%, 520px);
+    margin-inline: auto;
+    padding: 10px;
+    padding-top: 16px;
+    gap: 5px;
+    border-radius: 10px;
+  }
+  .adv-cell {
+    min-width: 0;
+    border-radius: 7px;
+    font-size: 13px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .adv-room-icon { width: 58%; height: 58%; }
+  .adv-cell.has-door-cost .adv-room-icon { width: 48%; height: 48%; }
+  .adv-cell-loot-icon { top: 2px; left: 2px; width: 15px; height: 15px; }
+  .adv-door-cost-icon { width: 11px; height: 11px; }
+  .adv-door-hint { margin-top: 3px; font-size: 10px; }
+
+  .adv-tips-banner {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 3px 8px;
+    min-height: 0;
+    padding: 8px 10px;
+  }
+  .adv-tips-label { font-size: 11px; }
+  .adv-tips-text { flex: 1 1 180px; font-size: 11px; line-height: 1.45; }
+
+  .adventure-sidebar,
+  .adventure-log {
+    width: 100%;
+    min-width: 0;
+  }
+  .adventure-sidebar { gap: 10px; }
+  .adv-card { padding: 12px; }
+  .adv-char-name { font-size: 15px; margin-bottom: 7px; }
+  .adv-hp-bar { height: 17px; margin-bottom: 7px; }
+  .adv-currency, .adv-inventory { font-size: 12px; }
+  .adv-deck-info { font-size: 11px; line-height: 1.45; }
+  .adv-hand-zone { gap: 4px; min-height: 62px; }
+  .adv-hand-zone .card-canvas { max-width: 58px; height: auto; }
+
+  .adv-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .adv-actions .adv-btn { min-width: 0; padding: 9px 8px; font-size: 13px; }
+
+  .adventure-log { max-height: 140px; padding: 10px 12px; }
+  .adv-log-list { font-size: 11px; }
+
+  /* Other map-page panels share the same single-column shell. Keep their
+     cards readable on narrow screens as well, without changing desktop UI. */
+  .adv-shop-slots,
+  .adv-blacksmith-page .adv-shop-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .adv-shop-slot { min-height: 124px; padding: 9px 7px; }
+  .adv-shop-page, .adv-reward-page { padding: 16px 12px; }
+  .adv-settle-box { min-width: 0; width: 100%; }
+}
+
+@media (max-width: 390px) {
+  .adventure-wrap { padding-inline: 8px; }
+  .adventure-board { padding-inline: 7px; gap: 4px; }
+  .adv-cell { font-size: 11px; }
+  .adv-room-icon { width: 55%; height: 55%; }
+  .adv-cell.has-door-cost .adv-room-icon { width: 45%; height: 45%; }
+  .adv-actions { grid-template-columns: 1fr; }
+  .adv-shop-slots,
+  .adv-blacksmith-page .adv-shop-slots { grid-template-columns: 1fr; }
+}
