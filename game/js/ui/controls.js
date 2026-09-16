@@ -21,7 +21,6 @@ _renderControls() {
     const selectedCard = hasCard && s.playerHand ? s.playerHand[s.selectedCard] : null;
     const hasNumberCard = !!(selectedCard && selectedCard.isNumberCard);
     const hasDiscardCards = (s.selectedCards || []).length > 0;
-    const hasAICard = s.selectedAICard >= 0;
 
     if (phase === 'PLAYER_PLAY' && canAct) {
         if (s.needColorChoice) {
@@ -65,6 +64,12 @@ _renderControls() {
         html += `<span class="ctrl-hint">${s.forcedDiscard ? `手牌超限：需弃至 ${s.handLimit || 5} 张` : s.mayDiscardAfterSkill ? 'Ryan 3牌：可选择1张牌弃掉，也可取消' : '可同时选择多张牌弃掉'}</span>`;
         html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!hasDiscardCards ? 'disabled' : ''}>确认弃牌 (${(s.selectedCards || []).length})</button>`;
         if (!s.forcedDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
+    } else if (phase === 'OPPONENT_CARD_CHOICE' && canAct && s.isAdventure) {
+        const targetKey = s.opponentHandTarget || (s.is1v2 ? (s.attackTarget || 'ai') : 'ai');
+        const target = s[targetKey];
+        const chosen = Number.isInteger(Number(s.selectedAICard)) && Number(s.selectedAICard) >= 0;
+        html += `<span class="ctrl-hint">${s.pendingOpponentSkill ? `${s.pendingOpponentSkill.name} ${s.pendingOpponentSkill.value}牌：` : ''}请选择${target && target.name || '对手'}的一张手牌</span>`;
+        html += `<button class="ctrl-btn btn-play" id="btn-opponent-confirm" ${chosen ? '' : 'disabled'}>确认选择</button>`;
     } else if (phase === 'ATTACK_MOD_CHOICE' && canAct) {
         const dmg = s.pendingAttack && s.pendingAttack.damage != null ? s.pendingAttack.damage : 0;
         const hasSelection = this._attackModSelectedItem != null;
@@ -83,18 +88,8 @@ _renderControls() {
         html += `<span class="ctrl-hint">请选择一张数字牌：恢复牌面生命，或造成1.5倍伤害</span>`;
         html += `<button class="ctrl-btn btn-play" id="btn-five-heal" ${!hasNumberCard ? 'disabled' : ''}>恢复${hasNumberCard ? ` ${selectedCard.value}` : ''}</button>`;
         html += `<button class="ctrl-btn btn-play" id="btn-five-damage" ${!hasNumberCard ? 'disabled' : ''}>进攻${hasNumberCard ? ` ${Math.ceil(selectedCard.value * 1.5)}` : ''}</button>`;
-    } else if (phase === 'OPPONENT_CARD_CHOICE' && canAct) {
-        const skill = s.pendingOpponentSkill;
-        html += `<span class="ctrl-hint">${skill ? `${skill.name} ${skill.value}牌：` : ''}点击一张对手手牌</span>`;
-        html += `<button class="ctrl-btn btn-play" id="btn-opponent-confirm" ${!hasAICard ? 'disabled' : ''}>确认选择</button>`;
     } else if (phase === 'PLAYER_SEVEN_CHOICE' && canAct) {
-        if (s.ottoFourPhase === 'selectOwn') {
-            html += `<span class="ctrl-hint">4牌: 请选择自己的一张手牌</span>`;
-            html += `<button class="ctrl-btn btn-play" id="btn-otto-four-confirm" ${!hasCard ? 'disabled' : ''}>确认出牌</button>`;
-        } else if (s.ottoFourOpponentCard) {
-            html += `<span class="ctrl-hint">4牌: 请选择自己的一张手牌同时翻开</span>`;
-            html += `<button class="ctrl-btn btn-play" id="btn-otto-four-confirm" ${!hasCard ? 'disabled' : ''}>确认翻开</button>`;
-        } else if (s.chanFourSwapMode && s.chanFourSwapDrawn) {
+        if (s.chanFourSwapMode && s.chanFourSwapDrawn) {
             html += `<span class="ctrl-hint">4牌: ${cardLabel(s.chanFourSwapDrawn)}，选手牌交换或弃掉</span>`;
             html += `<button class="ctrl-btn btn-play" id="btn-four-swap" ${!hasCard ? 'disabled' : ''}>确认交换</button>`;
             html += `<button class="ctrl-btn btn-discard" id="btn-four-discard">弃掉+2伤害</button>`;
@@ -102,18 +97,12 @@ _renderControls() {
             html += `<span class="ctrl-hint">7牌抽取: ${cardLabel(s.chanSevenChosenCard)}</span>`;
             html += `<button class="ctrl-btn btn-play" id="btn-seven-keep">加入手牌</button>`;
             html += `<button class="ctrl-btn btn-discard" id="btn-seven-discard">弃掉</button>`;
-        } else {
-            html += `<span class="ctrl-hint">点击AI手牌选择一张</span>`;
-            html += `<button class="ctrl-btn btn-play" id="btn-seven-confirm" ${!hasAICard ? 'disabled' : ''}>确认选择</button>`;
         }
     } else if (phase === 'SAIKI_THREE_CHOICE' && canAct) {
         if (s.saikiThreeDrawn) {
             html += `<span class="ctrl-hint">3牌抽取: ${cardLabel(s.saikiThreeDrawn)}</span>`;
             html += `<button class="ctrl-btn btn-play" id="btn-saiki-three-keep">加入手牌</button>`;
             html += `<button class="ctrl-btn btn-discard" id="btn-saiki-three-discard">弃掉</button>`;
-        } else {
-            html += `<span class="ctrl-hint">点击AI手牌选择一张</span>`;
-            html += `<button class="ctrl-btn btn-play" id="btn-opponent-confirm" ${!hasAICard ? 'disabled' : ''}>确认选择</button>`;
         }
     } else if (phase === 'SAIKI_SIX_JUDGE' && canAct) {
         const judgeType = s.pendingNumberJudge && s.pendingNumberJudge.type;
@@ -159,11 +148,9 @@ async _bindControls() {
     bind('btn-demon-pact', async () => { await this._apiAction('useDemonPact'); });
     bind('btn-confirm-discard', async () => { await this._apiAction('doConfirmDiscard'); });
     bind('btn-cancel-discard', async () => { await this._apiAction('doCancelDiscard'); });
+    bind('btn-opponent-confirm', async () => { await this._apiAction('doOpponentCardConfirm'); });
     bind('btn-five-heal', async () => { await this._apiAction('doFiveHeal'); });
     bind('btn-five-damage', async () => { await this._apiAction('doFiveDamage'); });
-    bind('btn-seven-confirm', async () => { await this._apiAction('doSevenConfirm'); });
-    bind('btn-otto-four-confirm', async () => { await this._apiAction('doOttoFourConfirm'); });
-    bind('btn-opponent-confirm', async () => { await this._apiAction('doOpponentCardConfirm'); });
     bind('btn-seven-keep', async () => { await this._apiAction('doChanSevenKeep'); });
     bind('btn-seven-discard', async () => { await this._apiAction('doChanSevenDiscard'); });
     bind('btn-saiki-three-keep', async () => { await this._apiAction('doSaikiThreeKeep'); });
@@ -514,19 +501,20 @@ async _apiAction(method, params) {
 _isDecisionAction(method) {
     return new Set([
         'doDefend', 'doSkipDefend', 'doConfirmDiscard', 'doCancelDiscard',
-        'doFiveHeal', 'doFiveDamage', 'doSevenConfirm', 'doOpponentCardConfirm',
+        'doFiveHeal', 'doFiveDamage',
         'doChanSevenKeep', 'doChanSevenDiscard', 'doSaikiThreeKeep',
         'doSaikiThreeDiscard', 'doChanFourDiscard', 'doChanFourSwap',
         'doSaikiSixConfirm', 'resolveAttackModChoice', 'resolveCritChoice', 'chooseTarget', 'chooseColor', 'choosePurify',
-        'chooseSuperPurifyTarget', 'chooseGuard', 'chanFiveReorder', 'choosePurifyCrystal', 'chooseMozeSeven'
+        'chooseSuperPurifyTarget', 'chooseGuard', 'chanFiveReorder', 'choosePurifyCrystal', 'chooseMozeSeven',
+        'chooseAICard', 'doOpponentCardConfirm'
     ]).has(method);
 },
 
 _isInteractiveDecisionPhase(phase) {
     return new Set([
-        'PLAYER_FIVE_CHOICE', 'OPPONENT_CARD_CHOICE', 'PLAYER_SEVEN_CHOICE',
+        'PLAYER_FIVE_CHOICE', 'PLAYER_SEVEN_CHOICE',
         'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'ATTACK_MOD_CHOICE', 'CRIT_CHOICE', 'PLAYER_DISCARD',
-        'CHAN_FIVE_REORDER', 'GUARD_CHOICE', 'TARGET_CHOICE', 'PURIFY_CRYSTAL_CHOICE'
+        'CHAN_FIVE_REORDER', 'GUARD_CHOICE', 'TARGET_CHOICE', 'PURIFY_CRYSTAL_CHOICE', 'OPPONENT_CARD_CHOICE'
     ]).has(phase);
 },
 
@@ -553,13 +541,13 @@ _showActionPending(method) {
         doPlay: '正在出牌', doDefend: '正在结算防御', doSkipDefend: '正在跳过防御',
         doConfirmDiscard: '正在确认弃牌', doCancelDiscard: '正在返回出牌阶段',
         doFiveHeal: '正在确认恢复', doFiveDamage: '正在确认进攻',
-        doOpponentCardConfirm: '正在展示所选卡牌', doSevenConfirm: '正在展示所选卡牌',
         doChanSevenKeep: '正在加入手牌', doChanSevenDiscard: '正在弃掉卡牌',
         doSaikiThreeKeep: '正在加入手牌', doSaikiThreeDiscard: '正在弃掉卡牌',
         doChanFourSwap: '正在交换卡牌', doChanFourDiscard: '正在弃牌并结算伤害',
         doSaikiSixConfirm: '正在结算数字判定', resolveAttackModChoice: '正在应用攻击修正', resolveCritChoice: '正在结算暴击选择', chooseTarget: '正在确认目标',
         chooseColor: '正在指定颜色', choosePurify: '正在执行净化', chooseSuperPurifyTarget: '正在执行超级净化', chooseMozeSeven: '正在结算 Moze 7牌',
         chooseGuard: '正在结算守护', chanFiveReorder: '正在确认牌库顺序',
+        chooseAICard: '正在选择对手手牌', doOpponentCardConfirm: '正在处理对手手牌',
         doEndTurn: '正在结束回合', doEnterDiscard: '正在进入弃牌阶段'
     };
     const label = labels[method] || '正在处理';

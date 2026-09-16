@@ -54,7 +54,7 @@
       };
 
       if (v === 3) {
-        const drawn = pull('Saiki 3牌抽取玩家手牌');
+        const drawn = pull('Saiki 3牌系统随机抽取玩家手牌');
         if (drawn) {
           const keep = eng.aiKeepScore(drawn) >= 40 || helpers.selfHand.length <= 2;
           if (keep) helpers.selfHand.push(drawn);
@@ -70,7 +70,7 @@
           return { d: 0, skip: true, unblock: false };
         }
         if (a.hp <= 50) return { d: 4, skip: true, unblock: false };
-        const drawn = pull('Saiki 5牌抽取玩家手牌');
+        const drawn = pull('Saiki 5牌系统随机抽取玩家手牌');
         if (drawn) helpers.selfHand.push(drawn);
         return { d: 4, skip: false, unblock: false };
       }

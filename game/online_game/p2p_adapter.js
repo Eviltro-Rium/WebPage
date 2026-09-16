@@ -54,6 +54,13 @@
             this.listeners = Object.create(null);
             this.closed = false;
             this._offerStarted = false;
+            // Closing the old WebRTC pair after a host migration is an
+            // expected lifecycle transition.  Suppress the browser's
+            // asynchronous close/connection-state callbacks for that pair so
+            // the UI does not report a misleading "数据通道错误" while the
+            // promoted host remains connected to the room WebSocket.
+            this._expectedChannelCloses = new WeakSet();
+            this._suppressPeerDisconnect = false;
             this.heartbeat = null;
             this.metrics = { sent: 0, received: 0, relayed: 0, queued: 0, dropped: 0, bytesSent: 0, bytesReceived: 0 };
         }
@@ -147,9 +154,14 @@
                 this.pendingIce = [];
                 this._offerStarted = false;
                 this.transportMode = 'pending';
+                if (channel) this._expectedChannelCloses.add(channel);
+                this._suppressPeerDisconnect = !!pc;
+                // Notify the lobby before closing the stale data channel. A
+                // promoted guest can then render the room immediately while
+                // the old channel's asynchronous callbacks are discarded.
+                this.emit('peerLeft', message.player || message);
                 try { if (channel) channel.close(); } catch (_) {}
                 try { if (pc) pc.close(); } catch (_) {}
-                this.emit('peerLeft', message.player || message);
                 return;
             }
             if (message.type === 'signal') { this._onRemoteSignal(message.signal, message.from); return; }
@@ -185,6 +197,7 @@
             }
             const pc = new RTCPeerConnection(STUN_CONFIG);
             this.pc = pc;
+            this._suppressPeerDisconnect = false;
             pc.addEventListener('icecandidate', event => {
                 if (this.pc !== pc) return;
                 if (event.candidate) {
@@ -202,7 +215,13 @@
             pc.addEventListener('connectionstatechange', () => {
                 if (this.pc !== pc) return;
                 this.emit('connectionState', pc.connectionState);
-                if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) this.emit('peerDisconnected', pc.connectionState);
+                if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+                    if (this._suppressPeerDisconnect) {
+                        this._suppressPeerDisconnect = false;
+                        return;
+                    }
+                    this.emit('peerDisconnected', pc.connectionState);
+                }
             });
             pc.addEventListener('datachannel', event => this._attachChannel(event.channel));
             return pc;
@@ -224,10 +243,19 @@
             });
             channel.addEventListener('bufferedamountlow', () => this._flushDataQueue());
             channel.addEventListener('close', () => {
+                // Check the channel instance rather than a shared flag. A
+                // replacement channel can open before the old one dispatches
+                // its asynchronous close event.
+                if (this._expectedChannelCloses.has(channel)) return;
                 this.emit('channelClose');
                 if (this.dataQueue.length && this.ws && this.ws.readyState === WebSocket.OPEN) this._flushDataQueue();
             });
-            channel.addEventListener('error', error => this.emit('error', new Error('数据通道错误')));
+            channel.addEventListener('error', error => {
+                // Browsers may report an error immediately before the close
+                // event during the expected host-migration teardown.
+                if (this._expectedChannelCloses.has(channel)) return;
+                this.emit('error', new Error('数据通道错误'));
+            });
             channel.addEventListener('message', event => {
                 let payload;
                 try { payload = JSON.parse(event.data); } catch (_) { return; }
@@ -389,6 +417,7 @@
 
         close() {
             this.closed = true;
+            if (this.channel) this._expectedChannelCloses.add(this.channel);
             try { if (this.channel) this.channel.close(); } catch (_) {}
             try { if (this.pc) this.pc.close(); } catch (_) {}
             try { if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ type: 'leave' })); } catch (_) {}

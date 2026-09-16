@@ -1616,6 +1616,13 @@ body {
     transform: translateY(-4px) scale(1.08);
     box-shadow: 0 0 0 2px rgba(255,255,255,0.6), 0 4px 12px rgba(0,0,0,0.2);
 }
+.selectable-ai-card.opponent-card-selected {
+    transform: translateY(-5px) scale(1.06);
+    outline: 3px solid rgba(192,132,252,0.98);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px rgba(17,24,39,0.84), 0 0 16px rgba(192,132,252,0.95);
+    z-index: 3;
+}
 
 .revealed-card {
     animation: revealPop 0.4s ease-out;

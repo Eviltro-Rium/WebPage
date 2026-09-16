@@ -250,10 +250,9 @@
     if(who==='Otto'&&c.value===3)return this.startOttoThree(c);
     if(who==='Otto'&&c.value===4)return this.startOttoFour(c);
     if(who==='Otto'&&c.value===5)return this.startNumberJudge('Otto',c);
-    if(this.opponentChoiceSkill(who,c.value)){
-      let p={name:who,value:c.value,attackCard:cp(c)};this.s.pendingOpponentSkill=p;this.s.selectedAICard=-1;
-      if(!this.h[target].length)return this.opponentEmpty(p);
-      this.s.phase='OPPONENT_CARD_CHOICE';this.s.busy=false;this.emit('desc',who+' '+c.value+'牌：请选择'+targetChar.name+'的一张手牌并确认',c);return this.state()
+     if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===5&&this.s.player.hp<=50)){
+      let p={name:who,value:c.value,owner:'player',attackCard:cp(c)};
+      return this.resolveOpponentHandSkill(p)
     }
     let r=this.effect(who,c.value,c,this.s.player,targetChar);
     this._deferAttackBuffs(target,_buffBefore);
@@ -268,41 +267,28 @@
     for(const key of targets)this.burn(this.s[key],1);
     for(const key of targets)this.hurt(this.s[key],7);
     this.hurt(this.s.player,targets.length*2);
-    let combined=[];
-    for(const key of targets)for(let i=0;i<this.h[key].length;i++)combined.push({key,index:i});
-    if(combined.length===0){
-      this.s.pendingAttack=null;this.s.defenseSkipped=true;this.s.phase='AI_DEFEND';this.s.busy=true;
-      this.emit('desc','Leon 0牌：对所有对手+1层灼烧、7点不可防御伤害；自身受到'+(targets.length*2)+'点伤害',card);
-      this.later(()=>{this.afterAttack();this.check()},1700);return this.check()
+    // Leon 0 discards up to two cards from all living opponents.  The card
+    // owner remains the source pile, while the specific cards are selected
+    // by the shared runtime RNG so the skill never opens an opponent-hand
+    // choice dialog.
+    const runtime=Combat.CombatRuntime;
+    const randomIndex=list=>runtime&&typeof runtime.randomInt==='function'
+      ? runtime.randomInt(list.length)
+      : Math.floor((runtime&&typeof runtime.random==='function'?runtime.random():Math.random())*list.length);
+    const total=targets.reduce((sum,key)=>sum+(this.h[key]||[]).length,0);
+    const discardCount=Math.min(2,total);
+    for(let n=0;n<discardCount;n++){
+      const candidates=[];
+      for(const key of targets)for(let i=0;i<this.h[key].length;i++)candidates.push({key,index:i});
+      if(!candidates.length)break;
+      const entry=candidates[randomIndex(candidates)];
+      const dropped=this.h[entry.key].splice(entry.index,1)[0];
+      if(dropped){
+        this.discardWithEvent(dropped,entry.key,{handIndex:entry.index,desc:'Leon 0牌随机弃掉'+this.cardText(dropped)});
+        this.emit('reveal','Leon 0牌随机弃掉对手手牌',dropped,{who:entry.key,from:'hand'});
+      }
     }
-    this.s.pendingLeonZeroDiscard={remaining:2};
-    this.s.phase='OPPONENT_CARD_CHOICE';
-    this.s.selectedAICard=-1;
-    this.s.busy=false;
-    this.emit('desc','Leon 0牌：选择对手手牌弃掉（还需选2张）',card);
-    return this.check()
-  };
-
-  Engine.prototype._finishLeonZeroDiscard=function(){
-    let p=this.s.pendingLeonZeroDiscard;
-    if(!p)return;
-    let idx=this.s.selectedAICard;
-    if(idx<0)return;
-    let combined=[];
-    for(const key of ['ai','ai2'])if(this.s[key]&&this.s[key].alive)for(let i=0;i<this.h[key].length;i++)combined.push({key,index:i});
-    if(idx>=combined.length)return;
-    let entry=combined[idx];
-    let card=this.h[entry.key].splice(entry.index,1)[0];
-    if(card)this.discardWithEvent(card,entry.key,{handIndex:entry.index,desc:'Leon 0牌弃掉'+this.cardText(card)});
-    p.remaining--;
-    this.s.selectedAICard=-1;
-    if(p.remaining>0&&(this.h.ai.length||(this.s.ai2&&this.s.ai2.alive&&this.h.ai2.length))){
-      this.s.phase='OPPONENT_CARD_CHOICE';
-      this.s.busy=false;
-      this.emit('desc','Leon 0牌：选择对手手牌弃掉（还需选'+p.remaining+'张）');
-      return this.check()
-    }
-    delete this.s.pendingLeonZeroDiscard;
+    this.emit('desc','Leon 0牌：对所有对手+1层灼烧、随机弃掉对手至多2张手牌、7点不可防御伤害；自身受到'+(targets.length*2)+'点伤害',card);
     this.s.pendingAttack=null;this.s.defenseSkipped=true;this.s.phase='AI_DEFEND';this.s.busy=true;
     this.later(()=>{this.afterAttack();this.check()},1700);return this.check()
   };

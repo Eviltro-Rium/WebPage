@@ -70,7 +70,7 @@
         if (!helpers.targetHand.length) return { d: 0, skip: true, unblock: false };
         const drawn = helpers.targetHand.splice(Math.floor(random() * helpers.targetHand.length), 1)[0];
         eng.s.revealCards = [helpers.copy(drawn)];
-        eng.emit('reveal', 'Moze 5牌抽取玩家手牌', drawn, { who: 'player', from: 'hand' });
+        eng.emit('reveal', 'Moze 5牌系统随机抽取玩家手牌', drawn, { who: 'player', from: 'hand' });
         helpers.selfHand.push(drawn);
 
         const hit = drawn.isBlack || drawn.isWhite || eng.effective(drawn) === 'GREEN';

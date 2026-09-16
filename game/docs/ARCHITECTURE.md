@@ -28,6 +28,14 @@
 为每个新道具增加一组分散的 `if (card.xxx)` 分支。新增卡牌时先在注册表登记匹配规则，
 再为复杂效果提供引擎方法或战利白卡 handler。
 
+## 对手手牌策略
+
+`js/combat/opponent_hand_policy.js` 是所有“抽取/弃掉对手手牌”技能的唯一策略入口。
+它先根据 `attackTarget` 规范化目标，再按模式决定交互方式：冒险模式（含测试房）
+将明牌手牌交给玩家选择并确认，经典 1v1/1v2 与在线模式使用 `CombatRuntime` 随机抽取。
+卡牌移除和后续技能结算仍由 `Engine.resolveOpponentHandCard()` 统一完成；新增角色不应
+直接在角色文件中调用 `Math.random()` 或自行打开选择弹窗。
+
 ## CombatState
 
 由 `CombatState.create()` 创建，使用 `CombatState.project(engine)` 输出给 UI/桥接层。引擎仍保留 `engine.s` 作为兼容入口，但状态初始化和序列化不再由引擎手写。

@@ -140,20 +140,17 @@
                 this.setRoomStatus(role === 'host' ? '房间已创建，等待朋友加入' : '已加入房间，等待房主开始'); this.renderRoom();
             });
             this.peer.on('roster', players => {
-                const own = (players || []).find(player => player.peerId === this.peer.peerId);
-                const promoted = own && own.role === 'host' && this.role !== 'host';
-                if (own) this.role = own.role;
-                this.players = [];
-                for (const player of players || []) this._upsertPlayer(player);
-                if (promoted) {
-                    this.ready = false;
-                    this._resetToLobby(false);
-                    this.setRoomStatus('原房主已离开，你已成为新房主，房间码保持不变');
-                }
-                this._ensureOwnPlayer(); this.renderRoom();
+                this._handleRoster(players);
             });
             this.peer.on('peerJoined', player => { this._upsertPlayer(player); this.setRoomStatus('对手已连接，选择角色并准备'); this.renderRoom(); });
-            this.peer.on('peerLeft', player => { if (player && player.peerId) this.players = this.players.filter(item => item.peerId !== player.peerId); this.setRoomStatus('对手已离开房间'); this.renderRoom(); });
+            this.peer.on('peerLeft', player => {
+                if (player && player.peerId) this.players = this.players.filter(item => item.peerId !== player.peerId);
+                // The signaling socket is still alive while the old WebRTC
+                // pair is being torn down. Reflect that fallback instead of
+                // briefly showing a fatal data-channel error.
+                if (this.peer && this.peer.ws) this.connectionState = '信令中继已连接';
+                this.setRoomStatus('对手已离开房间'); this.renderRoom();
+            });
             this.peer.on('connectionState', value => {
                 this.connectionState = this.peer && this.peer.transportMode === 'relay'
                     ? '信令中继已连接'
@@ -168,6 +165,16 @@
                 this.renderRoom();
             });
             this.peer.on('peerDisconnected', reason => {
+                // A WebRTC peer can disappear while the signaling socket is
+                // still healthy (normal host migration or a transient NAT
+                // restart). Keep the room/session alive and let OnlinePeer
+                // relay packets until a replacement data channel opens.
+                if (this.peer && this.peer.ws) {
+                    this.connectionState = '信令中继已连接';
+                    this.setRoomStatus('P2P 暂时断开，已切换信令中继', 'warning');
+                    this.renderRoom();
+                    return;
+                }
                 const detail = reason ? `对手连接中断（${reason}），正在尝试信令中继` : '对手连接中断，正在尝试信令中继';
                 this.connectionState = '对手连接中断';
                 this.setRoomStatus(detail, 'error');
@@ -215,6 +222,33 @@
             if (!this.peer) return;
             this._upsertPlayer({ peerId: this.peer.peerId, role: this.role, nickname: this.nickname, character: this.character, ready: this.ready, avatar: this.avatar });
             this._dedupePlayers();
+        }
+
+        _handleRoster(players) {
+            const roster = Array.isArray(players) ? players : [];
+            const own = this.peer && roster.find(player => player && player.peerId === this.peer.peerId);
+            const wasHost = this.role === 'host';
+            const promoted = !!(own && own.role === 'host' && !wasHost);
+            if (own) {
+                this.role = own.role === 'host' ? 'host' : 'guest';
+                // OnlinePeer also reconciles its role, but keep the UI and
+                // transport explicitly aligned.  Without this assignment a
+                // promoted guest could keep sending a guest lobby update and
+                // a later retry would be rejected as room-not-found.
+                if (this.peer) this.peer.role = this.role;
+            }
+            this.players = [];
+            for (const player of roster) this._upsertPlayer(player);
+            if (promoted) {
+                // Host migration is a lobby transition, not a disconnect.
+                // Keep the existing WebSocket open so the same room code can
+                // accept a replacement guest; only the battle/session state
+                // is reset.
+                this.ready = false;
+                this._resetToLobby(false);
+                this.setRoomStatus('原房主已离开，你已成为新房主，房间码保持不变');
+            }
+            this._ensureOwnPlayer(); this.renderRoom();
         }
         _reconcileOwnPeerId(previousId, currentId) {
             if (!previousId || !currentId || previousId === currentId) return;

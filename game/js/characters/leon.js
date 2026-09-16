@@ -1,4 +1,6 @@
 (function() {
+  // Leon 0 still has a separate batch-discard rule; keep its random source
+  // local until that multi-target effect is moved into the batch policy.
   const random = () => window.FurryGame && window.FurryGame.CombatRuntime ? window.FurryGame.CombatRuntime.random() : Math.random();
   const C = CharacterRegistry;
   C.register({
@@ -36,12 +38,9 @@
       } else if (v === 7) {
         d = 6;
         burn(2);
-        let oh = eng.h[owner === 'player' ? 'ai' : 'player'];
-        if (oh && oh.length) {
-          let dropped = oh.splice(Math.floor(random() * oh.length), 1)[0];
-          eng.s.revealCards = [JSON.parse(JSON.stringify(dropped))];
-          eng.emit('reveal', 'Leon 7牌弃掉目标手牌', dropped, { who: owner === 'player' ? 'ai' : 'player', from: 'hand' });
-        }
+        // Hand inspection is resolved by Engine.resolveOpponentHandSkill(),
+        // which applies the mode policy (Adventure choice vs RNG).  Keeping
+        // this effect pure avoids a second random/removal path.
       } else if (v === 0) {
         d = 7;
         burn(1);

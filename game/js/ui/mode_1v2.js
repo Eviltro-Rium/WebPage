@@ -187,24 +187,14 @@
     const hideTrailing=this._hideTrailingCount(options, hideWho||'ai');
     const s=this.state;if(!s)return;
     const revealFace=!!(s.revealAIHand||s.isAdventure);
-    const canSelect=s.onlineCanAct!==false&&(s.phase==='OPPONENT_CARD_CHOICE'||(s.phase==='PLAYER_SEVEN_CHOICE'&&!s.chanFourSwapMode&&!s.chanSevenKeepMode)||(s.phase==='SAIKI_THREE_CHOICE'&&!s.saikiThreeDrawn));
-    const leonZeroDiscard=!!s.pendingLeonZeroDiscard;
-    const selectedTarget=s.attackTarget||(s.ai.alive?'ai':'ai2');
-    let leonZeroOffset=0;
+    const selectedTarget=s.opponentHandTarget||(s.attackTarget||'ai');
+    const canSelectOpponent=!!(s.isAdventure&&s.onlineCanAct!==false&&s.phase==='OPPONENT_CARD_CHOICE'&&revealFace);
     const attachSkillHover=(card,opponent,ownerCard)=>{
-      if(!revealFace||!ownerCard||!(s.phase==='PLAYER_PLAY'||s.phase==='PLAYER_DEFEND'))return;
+      if(!revealFace||!ownerCard||!(s.phase==='PLAYER_PLAY'||s.phase==='PLAYER_DEFEND'||s.phase==='OPPONENT_CARD_CHOICE'))return;
       const charName=this._combatDisplayName(opponent&&opponent.name);
       const adventureOpts={stage:s.adventureStage||s.stage||1,playerHandSize:(s.playerHand&&s.playerHand.length)||0,incomingDamage:s.pendingDefenseDamage||0};
       card.addEventListener('mouseenter',()=>this._showTooltip(ownerCard,card,true,{charName,adventureOpts}));
       card.addEventListener('mouseleave',()=>this._hideTooltip());
-    };
-    const decorateSelectable=(card,index,key)=>{
-      if(!canSelect)return;
-      if(!leonZeroDiscard&&selectedTarget!==key)return;
-      let combinedIndex=leonZeroDiscard?(key==='ai'?index:leonZeroOffset+index):index;
-      card.style.cursor='pointer';card.classList.add('selectable-ai-card');card.dataset.aiIndex=combinedIndex;
-      if(combinedIndex===s.selectedAICard)card.style.border='3px solid #ffdc3c';
-      card.addEventListener('click',async()=>{await this._apiAction('chooseAICard',{index:Number(card.dataset.aiIndex)})})
     };
     let aiEl=document.getElementById('ai-hand');
     if(aiEl){
@@ -219,15 +209,21 @@
           let cv;
           if(handCards&&handCards[i]){
             cv=renderCard(handCards[i],40,58,false,{ isNpc: !!s.isAdventure });
+            if(canSelectOpponent&&selectedTarget==='ai'){
+              cv.style.cursor='pointer';cv.classList.add('selectable-ai-card');
+              if(i===Number(s.selectedAICard))cv.classList.add('opponent-card-selected');
+              cv.addEventListener('click',async()=>{
+                if(this._isHandlingAction||this._isConsumingEvents)return;
+                await this._apiAction('chooseAICard',{index:i});
+              });
+            }
             attachSkillHover(cv,s.ai,handCards[i]);
           }else{
             cv=renderCardBack(40,58);
           }
           if(hideTrailing&&(!hideWho||hideWho==='ai')&&i>=size-hideTrailing)cv.classList.add('card-draw-pending');
-          decorateSelectable(cv,i,'ai');
           aiEl.appendChild(cv);
         }
-        if(leonZeroDiscard)leonZeroOffset=s.aiHandSize||0;
       }else{
         aiEl.innerHTML='<div style="color:#ef4444;font-size:0.8rem;padding:8px">'+s.ai.name+' 已出局</div>';
       }
@@ -244,6 +240,14 @@
           let cv;
           if(handCards&&handCards[i]){
             cv=renderCard(handCards[i],40,58,false,{ isNpc: !!s.isAdventure });
+            if(canSelectOpponent&&selectedTarget==='ai2'){
+              cv.style.cursor='pointer';cv.classList.add('selectable-ai-card');
+              if(i===Number(s.selectedAICard))cv.classList.add('opponent-card-selected');
+              cv.addEventListener('click',async()=>{
+                if(this._isHandlingAction||this._isConsumingEvents)return;
+                await this._apiAction('chooseAICard',{index:i});
+              });
+            }
             attachSkillHover(cv,s.ai2,handCards[i]);
           }
           else{
@@ -251,7 +255,6 @@
             cv.style.filter='hue-rotate(240deg)';
           }
           if(hideTrailing&&(!hideWho||hideWho==='ai2')&&i>=size-hideTrailing)cv.classList.add('card-draw-pending');
-          decorateSelectable(cv,i,'ai2');
           ai2El.appendChild(cv);
         }
       }else{

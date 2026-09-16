@@ -46,7 +46,7 @@
       };
 
       if (v === 4) {
-        const drawn = pull('Chan 4牌抽取玩家手牌');
+        const drawn = pull('Chan 4牌系统随机抽取玩家手牌');
         if (!drawn) return { d: 2, skip: true, unblock: false };
 
         let swap = null;
@@ -71,7 +71,7 @@
       }
 
       if (v === 7) {
-        const drawn = pull('Chan 7牌抽取玩家手牌');
+        const drawn = pull('Chan 7牌系统随机抽取玩家手牌');
         if (drawn) {
           const keep = eng.aiKeepScore(drawn) >= 42 || helpers.selfHand.length <= 2;
           if (keep) helpers.selfHand.push(drawn);

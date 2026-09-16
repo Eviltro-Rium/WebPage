@@ -47,7 +47,7 @@
           const index = Math.floor(random() * helpers.targetHand.length);
           const dropped = helpers.targetHand.splice(index, 1)[0];
           eng.s.revealCards = [helpers.copy(dropped)];
-          eng.emit('reveal', 'Leon 7牌弃掉目标手牌', dropped, { who: 'player', from: 'hand' });
+          eng.emit('reveal', 'Leon 7牌系统随机弃掉目标手牌', dropped, { who: 'player', from: 'hand' });
           eng.discardWithEvent(dropped, 'player', { from: 'reveal', faceUp: true, desc: `Leon 7牌弃掉${eng.cardText(dropped)}` });
           eng.emit('desc', `Leon AI弃掉${eng.cardText(dropped)}`);
         }
@@ -59,7 +59,7 @@
         const count = Math.min(2, helpers.targetHand.length);
         for (let i = 0; i < count; i += 1) {
           const dropped = helpers.targetHand.splice(Math.floor(random() * helpers.targetHand.length), 1)[0];
-          eng.discardWithEvent(dropped, 'player', { faceUp: true, desc: `Leon 0牌弃掉${eng.cardText(dropped)}` });
+          eng.discardWithEvent(dropped, 'player', { faceUp: true, desc: `Leon 0牌随机弃掉${eng.cardText(dropped)}` });
         }
         eng.hurt(a, 2);
         return { d: 7, skip: false, unblock: true };

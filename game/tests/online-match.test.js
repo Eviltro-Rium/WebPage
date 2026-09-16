@@ -188,6 +188,48 @@ test('online atomic card commands select and play in one request', () => {
   assert.ok(['PLAYER_DEFEND', 'PLAYER_PLAY', 'GAME_OVER'].includes(outcome.state.phase));
 });
 
+test('online Saiki 6 keeps the judgment selection actionable', () => {
+  const Card = context.FurryGame.Card;
+  const match = new context.OnlineMatchHost('Saiki', 'Ryan', 'host');
+  match.engine.h.player = [Card.number('RED', 6), Card.number('BLUE', 2)];
+  match.engine.h.ai = [Card.number('GREEN', 1)];
+  match.engine.s.discardTop = Card.number('RED', 1);
+  let outcome = match.dispatch('host', 'selectCard', { index: 0 });
+  assert.equal(outcome.ok, true);
+  outcome = match.dispatch('host', 'doPlay');
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.state.phase, 'SAIKI_SIX_JUDGE');
+  outcome = match.dispatch('host', 'selectCard', { index: 0 });
+  assert.equal(outcome.ok, true);
+  outcome = match.dispatch('host', 'doSaikiSixConfirm');
+  assert.equal(outcome.ok, true);
+  assert.notEqual(outcome.state.phase, 'SAIKI_SIX_JUDGE');
+});
+
+test('online guest Saiki 6 accepts the judgment card and confirm action', () => {
+  const Card = context.FurryGame.Card;
+  const match = new context.OnlineMatchHost('Ryan', 'Saiki', 'guest');
+  match.engine.h.player = [Card.number('GREEN', 1)];
+  match.engine.h.ai = [Card.number('RED', 6), Card.number('BLUE', 2)];
+  match.engine.s.discardTop = Card.number('RED', 1);
+
+  let outcome = match.dispatch('guest', 'selectCard', { index: 0 });
+  assert.equal(outcome.ok, true);
+  outcome = match.dispatch('guest', 'doPlay');
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.state.phase, 'SAIKI_SIX_JUDGE');
+  assert.equal(outcome.state.onlineActor, 'guest');
+  assert.equal(outcome.state.onlineCanAct, true);
+  assert.equal(outcome.state.legalHand[0], true);
+
+  outcome = match.dispatch('guest', 'selectCard', { index: 0 });
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.state.selectedCard, 0);
+  outcome = match.dispatch('guest', 'doSaikiSixConfirm');
+  assert.equal(outcome.ok, true);
+  assert.notEqual(outcome.state.phase, 'SAIKI_SIX_JUDGE');
+});
+
 test('online discard button enters discard phase from the opening play phase', () => {
   const match = new context.OnlineMatchHost('Leon', 'Ryan', 'guest');
   const outcome = match.dispatch('guest', 'doEnterDiscard', {}, {
@@ -223,6 +265,79 @@ test('online lobby reconciles the temporary peer id with the Worker identity', (
   ui._dedupePlayers();
   assert.deepEqual(ui.players.map(player => player.peerId), ['server-peer']);
   assert.equal(ui.players[0].nickname, 'Rium');
+});
+
+test('online Saiki judgment projection marks number cards selectable for both viewers', () => {
+  const Card = context.FurryGame.Card;
+  const match = new context.OnlineMatchHost('Ryan', 'Saiki', 'guest');
+  match.engine.h.player = [Card.number('GREEN', 1)];
+  match.engine.h.ai = [Card.number('RED', 6), Card.item('WHITE', 'purify')];
+  match.engine.s.phase = 'SAIKI_SIX_JUDGE';
+  match.engine.s.onlineActor = 'guest';
+  let state = match.project('host');
+  assert.deepEqual(state.legalHand, [true]);
+  state = match.project('guest');
+  assert.deepEqual(state.legalHand, [true, false]);
+});
+
+test('promoted online guest keeps the room transport and becomes host', () => {
+  const sent = [];
+  const ui = Object.create(context.OnlineUI.prototype);
+  ui.role = 'guest';
+  ui.roomCode = 'Q1W2';
+  ui.nickname = 'Rium';
+  ui.avatar = '🐶';
+  ui.character = 'Ryan';
+  ui.ready = true;
+  ui.players = [{ peerId: 'guest-peer', role: 'guest', nickname: 'Rium', character: 'Ryan', ready: true },
+    { peerId: 'host-peer', role: 'host', nickname: 'Fox', character: 'Leon', ready: true }];
+  ui.peer = { peerId: 'guest-peer', role: 'guest', sendRoom(payload) { sent.push(payload); } };
+  let resetCalled = 0;
+  ui._resetToLobby = () => { resetCalled += 1; ui.ready = false; ui._sendLobbyUpdate(); };
+  ui.setRoomStatus = () => {};
+  ui.renderRoom = () => {};
+  ui._handleRoster([
+    { peerId: 'guest-peer', role: 'host', nickname: 'Rium', character: 'Ryan', ready: false },
+  ]);
+  assert.equal(ui.role, 'host');
+  assert.equal(ui.peer.role, 'host');
+  assert.equal(resetCalled, 1);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].role, 'host');
+  assert.equal(sent[0].peerId, 'guest-peer');
+});
+
+test('host migration does not report expected data-channel closure as an error', () => {
+  context.WebSocket = { OPEN: 1 };
+  const peer = new context.OnlinePeer({ roomCode: 'ABCD', role: 'guest' });
+  const listeners = Object.create(null);
+  const channel = {
+    readyState: 'open',
+    addEventListener(type, fn) { (listeners[type] || (listeners[type] = [])).push(fn); },
+    close() { for (const fn of listeners.close || []) fn(); }
+  };
+  peer.channel = channel;
+  peer.pc = { close() {} };
+  let channelClosed = 0;
+  let channelErrors = 0;
+  peer.on('channelClose', () => { channelClosed += 1; });
+  peer.on('error', () => { channelErrors += 1; });
+  peer._onSignal({ type: 'peerLeft', player: { peerId: 'old-host', role: 'host' } });
+  assert.equal(channelClosed, 0);
+  for (const fn of listeners.error || []) fn(new Error('expected close'));
+  assert.equal(channelErrors, 0);
+  assert.equal(peer.transportMode, 'pending');
+
+  // A later replacement channel must restore ordinary close reporting.
+  const replacementListeners = Object.create(null);
+  const replacement = {
+    readyState: 'open',
+    addEventListener(type, fn) { (replacementListeners[type] || (replacementListeners[type] = [])).push(fn); },
+    close() { for (const fn of replacementListeners.close || []) fn(); }
+  };
+  peer._attachChannel(replacement);
+  replacement.close();
+  assert.equal(channelClosed, 1);
 });
 
 test('online transitions apply the guest turn-start status exactly once', () => {

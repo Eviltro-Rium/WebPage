@@ -41,6 +41,7 @@ context.window = context;
 for (const file of [
   ...characterFiles,
   path.join(gameRoot, 'js', 'combat', 'protocol.js'),
+  path.join(gameRoot, 'js', 'combat', 'runtime.js'),
   path.join(gameRoot, 'js', 'combat', 'events.js'),
   path.join(gameRoot, 'js', 'combat', 'state.js'),
   path.join(gameRoot, 'js', 'combat', 'deck.js'),
@@ -51,7 +52,9 @@ for (const file of [
   path.join(gameRoot, 'js', 'combat', 'deck_port.js'),
   path.join(gameRoot, 'js', 'combat', 'turn_machine.js'),
   path.join(gameRoot, 'js', 'combat', 'card_effects.js'),
+  path.join(gameRoot, 'js', 'combat', 'opponent_hand_policy.js'),
   path.join(gameRoot, 'js', 'combat', 'engine.js'),
+  path.join(gameRoot, 'js', 'combat', 'engine_1v2.js'),
   path.join(gameRoot, 'js', 'combat', 'engine_turns.js'),
   path.join(gameRoot, 'js', 'combat', 'engine_ai.js'),
   ...aiFiles
@@ -117,6 +120,168 @@ test('all eight characters have complete independent AI strategies', () => {
     for (const method of ['attackScore', 'defendScore', 'keepScore', 'skip', 'specialEffect']) {
       assert.equal(typeof role[method], 'function', `${role.name}.${method}`);
     }
+  }
+});
+
+test('opponent-hand policy keeps skill recognition and mode routing centralized', () => {
+  const policy = context.FurryGame.OpponentHandPolicy;
+  assert.ok(policy);
+  assert.equal(policy.isSkill('Chan', 4), true);
+  assert.equal(policy.isSkill('Saiki', 5), true);
+  assert.equal(policy.isSkill('Otto', 4), false);
+  const adventure = { s: { isAdventure: true, is1v2: false } };
+  const classic = { s: { isAdventure: false, is1v2: false } };
+  assert.equal(policy.strategy(adventure, { owner: 'player' }), 'player');
+  assert.equal(policy.strategy(adventure, { owner: 'ai' }), 'random');
+  assert.equal(policy.strategy(classic, { owner: 'player' }), 'random');
+});
+
+test('opponent-hand skills draw a target card automatically', () => {
+  const runtime = context.FurryGame.CombatRuntime;
+  runtime.setRandomSource(() => 0.999999);
+  try {
+    for (const [name, value] of [['Chan', 4], ['Chan', 7], ['Saiki', 3], ['Saiki', 5], ['Blaze', 4], ['Moze', 5], ['Leon', 7]]) {
+        const engine = new Engine();
+        engine.start(name, 'Ryan');
+        engine.s.discardTop = number(3);
+        engine.s.phase = 'PLAYER_PLAY';
+        engine.s.selectedCard = 0;
+        engine.h.player = [number(value)];
+        engine.h.ai = [number(1), number(6), number(2)];
+        engine.deck = [];
+        engine.discardBottom = [];
+
+        const state = engine.play();
+        assert.notEqual(state.phase, 'OPPONENT_CARD_CHOICE', `${name} still exposes a hand choice phase`);
+        assert.equal(engine.h.ai.length, 2, `${name} did not remove one target card`);
+        assert.ok(engine.events.some(event => event.type === 'reveal' && /抽取对手手牌/.test(event.desc)), `${name} did not emit a reveal`);
+    }
+  } finally {
+    runtime.resetRandomSource();
+  }
+});
+
+test('adventure opponent-hand skills let the player choose the visible target card', () => {
+  const engine = new Engine();
+  engine.start('Chan', 'Ryan');
+  engine.s.isAdventure = true;
+  engine.s.revealAIHand = true;
+  engine.s.discardTop = number(3, 'RED');
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.selectedCard = 0;
+  engine.h.player = [number(4, 'RED')];
+  engine.h.ai = [number(1, 'BLUE'), number(6, 'GREEN')];
+  engine.deck = [];
+  engine.discardBottom = [];
+
+  const pending = engine.dispatch('doPlay');
+  assert.equal(pending.phase, 'OPPONENT_CARD_CHOICE');
+  assert.equal(pending.opponentHandTarget, 'ai');
+  assert.equal(pending.selectedAICard, -1);
+  assert.deepEqual(Array.from(pending.aiHand, card => card.value), [1, 6]);
+
+  const selected = engine.dispatch('chooseAICard', { index: 1 });
+  assert.equal(selected.selectedAICard, 1);
+  const resolved = engine.dispatch('doOpponentCardConfirm');
+  assert.equal(engine.h.ai.length, 1);
+  assert.equal(engine.h.ai[0].value, 1);
+  assert.notEqual(resolved.phase, 'OPPONENT_CARD_CHOICE');
+});
+
+test('adventure 1v2 chooses a card only from the current attack target', () => {
+  const engine = new Engine();
+  engine.start1v2('Chan', 'Ryan', 'Ryan');
+  engine.s.isAdventure = true;
+  engine.s.revealAIHand = true;
+  engine.s.discardTop = number(3, 'RED');
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.attackTarget = 'ai2';
+  engine.s.selectedCard = 0;
+  engine.h.player = [number(4, 'RED')];
+  engine.h.ai = [number(1, 'BLUE')];
+  engine.h.ai2 = [number(6, 'GREEN'), number(2, 'YELLOW')];
+  engine.deck = [];
+  engine.discardBottom = [];
+
+  const pending = engine.dispatch('doPlay');
+  assert.equal(pending.phase, 'OPPONENT_CARD_CHOICE');
+  assert.equal(pending.opponentHandTarget, 'ai2');
+  engine.dispatch('chooseAICard', { index: 0 });
+  engine.dispatch('doOpponentCardConfirm');
+  assert.equal(engine.h.ai.length, 1, 'non-target NPC hand must remain untouched');
+  assert.equal(engine.h.ai2.length, 1, 'selected target card should be removed');
+  assert.equal(engine.h.ai2[0].value, 2);
+});
+
+test('1v2 opponent-hand skills use the selected target and runtime RNG', () => {
+  const engine = new Engine();
+  engine.start1v2('Chan', 'Ryan', 'Ryan');
+  engine.s.discardTop = number(3, 'RED');
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.attackTarget = 'ai2';
+  engine.s.selectedCard = 0;
+  engine.h.player = [number(4, 'RED')];
+  engine.h.ai = [number(1, 'BLUE'), number(2, 'GREEN')];
+  engine.h.ai2 = [number(6, 'YELLOW'), number(5, 'RED')];
+  engine.deck = [];
+  engine.discardBottom = [];
+
+  context.FurryGame.CombatRuntime.setRandomSource(() => 0);
+  try {
+    const state = engine.play1v2();
+    assert.notEqual(state.phase, 'OPPONENT_CARD_CHOICE');
+    assert.equal(engine.h.ai.length, 2, 'non-target NPC hand should be untouched');
+    assert.equal(engine.h.ai2.length, 1, 'one random card should come from the selected target');
+    assert.ok(engine.events.some(event => event.type === 'reveal' && event.who === 'ai2'));
+  } finally {
+    context.FurryGame.CombatRuntime.resetRandomSource();
+  }
+});
+
+test('Leon 7 in 1v2 discards from the selected target hand', () => {
+  const engine = new Engine();
+  engine.start1v2('Leon', 'Ryan', 'Ryan');
+  engine.s.discardTop = number(3, 'RED');
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.attackTarget = 'ai2';
+  engine.s.selectedCard = 0;
+  engine.h.player = [number(7, 'RED')];
+  engine.h.ai = [number(1, 'BLUE'), number(2, 'GREEN')];
+  engine.h.ai2 = [number(6, 'YELLOW'), number(5, 'RED')];
+  engine.deck = [];
+  engine.discardBottom = [];
+
+  context.FurryGame.CombatRuntime.setRandomSource(() => 0);
+  try {
+    engine.play1v2();
+    assert.equal(engine.h.ai.length, 2, 'non-target NPC hand should be untouched');
+    assert.equal(engine.h.ai2.length, 1, 'Leon 7 should discard from the selected target');
+  } finally {
+    context.FurryGame.CombatRuntime.resetRandomSource();
+  }
+});
+
+test('Leon 0 in 1v2 randomly discards from the shared opponent hands', () => {
+  const engine = new Engine();
+  engine.start1v2('Leon', 'Ryan', 'Ryan');
+  engine.s.discardTop = number(0, 'RED');
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.attackTarget = 'ai';
+  engine.s.selectedCard = 0;
+  engine.h.player = [number(0, 'RED')];
+  engine.h.ai = [number(1, 'BLUE'), number(2, 'GREEN')];
+  engine.h.ai2 = [number(6, 'YELLOW')];
+  engine.deck = [];
+  engine.discardBottom = [];
+
+  context.FurryGame.CombatRuntime.setRandomSource(() => 0);
+  try {
+    const state = engine.play1v2();
+    assert.notEqual(state.phase, 'OPPONENT_CARD_CHOICE');
+    assert.equal(engine.h.ai.length + engine.h.ai2.length, 1);
+    assert.equal(state.pendingLeonZeroDiscard, undefined);
+  } finally {
+    context.FurryGame.CombatRuntime.resetRandomSource();
   }
 });
 

@@ -1,5 +1,4 @@
 (function() {
-  const random = () => window.FurryGame && window.FurryGame.CombatRuntime ? window.FurryGame.CombatRuntime.random() : Math.random();
   const C = CharacterRegistry;
   C.register({
     name: 'Saiki',
@@ -30,18 +29,9 @@
           skip = true;
         } else {
           d = 4;
-          let targetKey = eng._who(t);
-          let oh = eng.h[targetKey];
-          if (oh.length) {
-            let drawn = oh.splice(Math.floor(random() * oh.length), 1)[0];
-            eng.s.revealCards = [JSON.parse(JSON.stringify(drawn))];
-            eng.emit('reveal', 'Saiki 5牌抽取对手手牌', drawn, { who: targetKey, from: 'hand' });
-            if (eng.s.isAdventure) {
-              eng.discardWithEvent(drawn, targetKey, { from: 'reveal', faceUp: true, desc: `Saiki 5牌弃掉${eng.cardText(drawn)}` });
-            } else {
-              eng.h[owner].push(drawn);
-            }
-          }
+          // Hand inspection is resolved by Engine.resolveOpponentHandSkill(),
+          // which applies the mode policy (Adventure choice vs RNG).  The
+          // character effect remains a pure damage fallback for direct calls.
         }
       } else if (v === 7) {
         d = 3 + (t.bleed || 0);

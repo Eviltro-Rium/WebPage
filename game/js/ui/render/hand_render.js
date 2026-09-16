@@ -15,9 +15,11 @@
             const canInteract = s.onlineCanAct !== false && ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
                 'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD'].includes(s.phase);
             const isDefend = s.phase === 'PLAYER_DEFEND';
-            // legalHand is only a play/defend legality mask.  Do not apply a
-            // stale mask while selecting cards for discard or a skill choice.
+            // legalHand covers normal play/defense and the explicit numeric
+            // skill-choice phases.  Discard selection deliberately ignores
+            // it because every hand card is a valid discard candidate.
             const isPlayPhase = s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND';
+            const isNumericChoice = s.phase === 'PLAYER_FIVE_CHOICE' || s.phase === 'SAIKI_SIX_JUDGE';
             // NPC hand focus is a separate, local hover/peek affordance.  If a
             // player card is selected, never leave a stale NPC focus marker in
             // place — otherwise the opponent hand looks selected as well.
@@ -78,7 +80,8 @@
             for (let i = 0; i < s.playerHand.length; i++) {
                 const card = s.playerHand[i];
                 const sel = i === s.selectedCard || ((s.selectedCards || []).includes(i));
-                const isUnplayable = isPlayPhase && Array.isArray(s.legalHand) && s.legalHand[i] === false;
+                const isUnplayable = (isPlayPhase || isNumericChoice)
+                    && Array.isArray(s.legalHand) && s.legalHand[i] === false;
                 const [cw, ch] = currentCardSize();
                 const cv = renderCard(card, cw, ch, sel);
                 if (!canInteract) cv.classList.add('disabled');
@@ -237,10 +240,12 @@
             const s = this.state;
             const container = document.getElementById('ai-hand');
             container.innerHTML = '';
-            const canSelect = s.onlineCanAct !== false && (s.phase === 'OPPONENT_CARD_CHOICE' || (s.phase === 'PLAYER_SEVEN_CHOICE' && !s.chanFourSwapMode && !s.chanSevenKeepMode) || (s.phase === 'SAIKI_THREE_CHOICE' && !s.saikiThreeDrawn));
             const hideTrailing = this._hideTrailingCount(options, 'ai');
             const revealMode = !!s.aiHand && Array.isArray(s.aiHand);
             const handSize = Math.max(Number(s.aiHandSize) || 0, revealMode ? s.aiHand.length : 0);
+            const canSelectOpponent = !!(s.isAdventure && s.onlineCanAct !== false && revealMode
+                && s.phase === 'OPPONENT_CARD_CHOICE'
+                && (!s.opponentHandTarget || s.opponentHandTarget === 'ai'));
             const canPeekSkill = !!(s.isAdventure && revealMode && (s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND'));
             if (!canPeekSkill) this._npcHandFocusIndex = -1;
             else if (this._npcHandFocusIndex >= handSize) this._npcHandFocusIndex = -1;
@@ -260,11 +265,18 @@
                 }
                 cv.dataset.aiIndex = i;
                 if (hideTrailing && i >= handSize - hideTrailing) cv.classList.add('card-draw-pending');
-                if (canSelect) {
-                    cv.style.cursor = 'pointer'; cv.classList.add('selectable-ai-card');
-                    if (i === s.selectedAICard) cv.style.border = '3px solid #ffdc3c';
+                if (canSelectOpponent) {
+                    cv.style.cursor = 'pointer';
+                    cv.classList.add('selectable-ai-card');
+                    if (i === Number(s.selectedAICard)) {
+                        cv.classList.add('opponent-card-selected');
+                        cv.style.border = '3px solid #c084fc';
+                    }
                     cv.addEventListener('click', async () => {
-                        await this._apiAction('chooseAICard', { index: parseInt(cv.dataset.aiIndex, 10) });
+                        if (this._isHandlingAction || this._isConsumingEvents) return;
+                        const idx = parseInt(cv.dataset.aiIndex, 10);
+                        if (!Number.isInteger(idx)) return;
+                        await this._apiAction('chooseAICard', { index: idx });
                     });
                 } else if (canPeekSkill) {
                     cv.style.cursor = 'pointer';
@@ -281,7 +293,7 @@
                         this.updateDisplay();
                     });
                 }
-                if (revealMode && card && (s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND')) {
+                if (revealMode && card && (canPeekSkill || canSelectOpponent)) {
                     const charName = this._combatDisplayName(s.ai && s.ai.name);
                     const adventureOpts = {
                         stage: s.adventureStage || s.stage || 1,

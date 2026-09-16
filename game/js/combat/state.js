@@ -11,7 +11,10 @@
         'SELECT_MODE', 'PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_DISCARD',
         'PLAYER_FIVE_CHOICE', 'PLAYER_SEVEN_CHOICE', 'SAIKI_SIX_JUDGE',
         'SAIKI_THREE_CHOICE', 'ATTACK_MOD_CHOICE', 'CRIT_CHOICE',
-        'CHAN_FIVE_REORDER', 'OPPONENT_CARD_CHOICE', 'GUARD_CHOICE',
+        'CHAN_FIVE_REORDER',
+        // Used by Adventure when a player chooses a visible opponent card.
+        // Classic and online modes resolve the same skills through the RNG.
+        'OPPONENT_CARD_CHOICE', 'GUARD_CHOICE',
         'AI_TURN', 'AI_DEFEND', 'AI2_TURN', 'GAME_OVER'
     ]);
 
@@ -22,6 +25,8 @@
         selectedCard: -1,
         selectedCards: [],
         selectedAICard: -1,
+        opponentHandTarget: null,
+        pendingOpponentSkill: null,
         handLimit: 5,
         forcedDiscard: false,
         hasPlayedThisTurn: false,

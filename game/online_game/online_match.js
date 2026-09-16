@@ -18,10 +18,9 @@
         'chooseColor', 'choosePurify', 'choosePurifyCrystal',
         'chooseSuperPurifyTarget', 'chooseMozeSeven', 'chooseGuard',
         'chooseFly', 'chooseFlyContinue', 'chooseTrophyDisarm',
-        'chooseAICard', 'doOpponentCardConfirm', 'doSevenConfirm',
         'doChanSevenKeep', 'doChanSevenDiscard', 'doSaikiThreeKeep',
         'doSaikiThreeDiscard', 'doChanFourSwap', 'doChanFourDiscard',
-        'doOttoFourConfirm', 'chanFiveReorder'
+        'chanFiveReorder'
     ]);
     const makeMatchId = () => {
         if (global.crypto && typeof global.crypto.randomUUID === 'function') return global.crypto.randomUUID();
@@ -294,9 +293,7 @@
             // against the requested actor; `_dispatchGuest()` performs the
             // actual temporary swap afterwards.
             const hand = this.engine.h && (actor === 'guest' ? this.engine.h.ai : this.engine.h.player) || [];
-            const aiHand = this.engine.h && (actor === 'guest' ? this.engine.h.player : this.engine.h.ai) || [];
             const selected = Number(s.selectedCard);
-            const selectedAI = Number(s.selectedAICard);
             if (method === 'selectCard') {
                 if (!index(params.index) || Number(params.index) >= hand.length) return '无效的手牌索引';
                 if (!['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_DISCARD', 'PLAYER_FIVE_CHOICE',
@@ -362,9 +359,7 @@
                 const disarmHand = this.engine.h[params.target] || [];
                 if (!Number.isInteger(Number(params.index)) || Number(params.index) < 0 || Number(params.index) >= disarmHand.length) return '无效的缴械手牌';
             }
-            if (['chooseAICard', 'doOpponentCardConfirm', 'doSevenConfirm'].includes(method) && s.phase !== 'OPPONENT_CARD_CHOICE') return '当前不能选择对手手牌';
-            if (method === 'chooseAICard' && (!index(params.index) || Number(params.index) >= aiHand.length)) return '无效的对手手牌索引';
-            if (['doChanSevenKeep', 'doChanSevenDiscard', 'doChanFourSwap', 'doChanFourDiscard', 'doOttoFourConfirm'].includes(method)
+            if (['doChanSevenKeep', 'doChanSevenDiscard', 'doChanFourSwap', 'doChanFourDiscard'].includes(method)
                 && s.phase !== 'PLAYER_SEVEN_CHOICE') return '当前不是角色选择阶段';
             if (['doSaikiThreeKeep', 'doSaikiThreeDiscard'].includes(method) && s.phase !== 'SAIKI_THREE_CHOICE') return '当前不是 Saiki 选择阶段';
             if (method === 'chanFiveReorder' && (s.phase !== 'CHAN_FIVE_REORDER' || !Array.isArray(s.chanFiveCards))) return '当前没有 Chan 5牌排序';
@@ -516,6 +511,17 @@
             state.playerHand = clone(e.h.player || []);
             state.aiHandSize = (e.h.ai || []).length;
             state.aiHand = null;
+            // Skill-choice phases use the hand renderer's legality mask as a
+            // selection affordance, but Engine.legal() intentionally only
+            // answers normal play/defense legality.  Returning a null/false
+            // mask here made Saiki 6's judgment cards look disabled online
+            // even though the command validator accepted them.  Expose the
+            // actual skill predicate for both projections so the same cards
+            // are highlighted and selectable on host and guest clients.
+            const selectionPhase = e.s.phase;
+            if (selectionPhase === 'SAIKI_SIX_JUDGE' || selectionPhase === 'PLAYER_FIVE_CHOICE') {
+                state.legalHand = (e.h.player || []).map(card => !!(card && card.isNumberCard));
+            }
             if (viewer === 'guest') {
                 const player = state.player;
                 state.player = state.ai;
@@ -536,6 +542,9 @@
                 // hoverable but cannot be selected.
                 const defending = e.s.phase === 'PLAYER_DEFEND';
                 state.legalHand = (e.h.ai || []).map(card => e.legal(card, defending));
+                if (selectionPhase === 'SAIKI_SIX_JUDGE' || selectionPhase === 'PLAYER_FIVE_CHOICE') {
+                    state.legalHand = (e.h.ai || []).map(card => !!(card && card.isNumberCard));
+                }
             }
             state.onlineCanAct = state.onlineActor === viewer;
             if (!this.started) state.onlineCanAct = false;
