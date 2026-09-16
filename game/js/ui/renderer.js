@@ -217,7 +217,7 @@ _paintRevealedHand(container, hand) {
     }
     container.innerHTML = '';
     list.forEach((c, i) => {
-        const cv = renderCard(c, 40, 58, false, { isNpc: true });
+        const cv = renderCard(c, 40, 58, false, { isNpc: !!(this.state && this.state.isAdventure) });
         if (c) {
             cv.dataset.cardId = cardId(c);
             cv.dataset.cardMatch = cardMatchKey(c);
@@ -282,7 +282,7 @@ async _playAIDefendAnimation(card, who = 'ai') {
 
 _settleZoneCard(zone, card, owner = 'player') {
     zone.innerHTML = '';
-    const settled = renderCard(card, 60, 86, false, { isNpc: !!(owner && owner !== 'player') });
+    const settled = renderCard(card, 60, 86, false, { isNpc: !!(this.state && this.state.isAdventure && owner && owner !== 'player') });
     settled.classList.add('zone-card', 'zone-card-land');
     zone.appendChild(settled);
     zone.dataset.cardKey = JSON.stringify(card);

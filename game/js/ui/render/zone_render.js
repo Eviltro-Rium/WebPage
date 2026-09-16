@@ -44,7 +44,7 @@
             if (atkContainer.dataset.cardKey !== atkKey && visibleAtkCard) {
                 atkContainer.innerHTML = '';
                 const [zw, zh] = currentZoneCardSize();
-                const cv = renderCard(visibleAtkCard, zw, zh, false, { isNpc: !!(s.atkOwner && s.atkOwner !== 'player') });
+                const cv = renderCard(visibleAtkCard, zw, zh, false, { isNpc: !!(s.isAdventure && s.atkOwner && s.atkOwner !== 'player') });
                 cv.classList.add('zone-card');
                 atkContainer.appendChild(cv);
                 atkContainer.dataset.cardKey = atkKey;
@@ -58,7 +58,7 @@
             if (defContainer.dataset.cardKey !== defKey && visibleDefCard) {
                 defContainer.innerHTML = '';
                 const [zw, zh] = currentZoneCardSize();
-                const cv = renderCard(visibleDefCard, zw, zh, false, { isNpc: !!(s.defOwner && s.defOwner !== 'player') });
+                const cv = renderCard(visibleDefCard, zw, zh, false, { isNpc: !!(s.isAdventure && s.defOwner && s.defOwner !== 'player') });
                 cv.classList.add('zone-card');
                 defContainer.appendChild(cv);
                 defContainer.dataset.cardKey = defKey;

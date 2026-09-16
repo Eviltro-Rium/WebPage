@@ -170,7 +170,7 @@ class DialogManager {
                 btn.className = 'card-choice';
                 btn.type = 'button';
                 if (typeof renderCard === 'function') {
-                    const cv = renderCard(card, 54, 78, false, { isNpc: true });
+                    const cv = renderCard(card, 54, 78, false);
                     btn.appendChild(cv);
                 }
                 else btn.innerHTML = `<span>${card.value || '?'}</span>`;

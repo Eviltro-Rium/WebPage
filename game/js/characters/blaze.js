@@ -34,7 +34,6 @@
       const { hurt, heal, burn } = helpers;
       let remaining = d;
       let desc = '';
-      let b = 0;
       if (v === 1) {
         let bh = defender.burn;
         heal(defender, 2 + bh);
@@ -44,28 +43,27 @@
         desc = `Blaze 1牌：恢复${2 + bh}点+双方灼烧1`;
       }
       if (v === 2) {
-        burn(opponent, 4);
-        b = Math.ceil(d / 2);
-        let tb = defender.burn + opponent.burn + (eng.s.ai2 ? eng.s.ai2.burn : 0);
-        heal(defender, tb);
+        // 文档：对进攻玩家施加3层灼烧，格挡½（向上取整）
+        burn(opponent, 3);
+        let b = Math.ceil(d / 2);
         remaining = Math.max(0, d - b);
-        desc = `Blaze 2牌：进攻方+4灼烧+格挡${b}点+恢复${tb}点`;
+        desc = `Blaze 2牌：进攻方+3灼烧+格挡${b}点`;
       }
       if (v === 3) {
+        // 文档：反击场上所有角色【灼伤】层数🗡️，然后对进攻玩家施加2层【灼伤】（先施加灼伤再结算伤害）
         burn(opponent, 2);
         let fb = defender.burn + opponent.burn + (eng.s.ai2 ? eng.s.ai2.burn : 0);
-        if (defender.burn) fb++;
         hurt(opponent, fb);
         remaining = d;
-        desc = `Blaze 3牌：攻击方+2灼烧，反击场上灼烧${fb}点${defender.burn ? '(含被动+1)' : ''}`;
+        desc = `Blaze 3牌：反击场上总灼烧${fb}点+攻击方+2灼烧`;
       }
       if (v === 0) {
+        // 文档：对进攻玩家施加4层灼烧，恢复场上所有灼烧数+3❤️（先施加灼伤再结算回血）
         burn(opponent, 4);
-        b = Math.ceil(d / 2);
         let tb = defender.burn + opponent.burn + (eng.s.ai2 ? eng.s.ai2.burn : 0);
         heal(defender, tb + 3);
-        remaining = Math.max(0, d - b);
-        desc = `Blaze 0牌：进攻方+4灼烧+格挡${b}点+恢复${tb + 3}点`;
+        remaining = d;
+        desc = `Blaze 0牌：进攻方+4灼烧+恢复${tb + 3}点`;
       }
       return { remaining, desc };
     }

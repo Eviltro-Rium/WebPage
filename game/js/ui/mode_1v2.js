@@ -218,7 +218,7 @@
         for(let i=0;i<size;i++){
           let cv;
           if(handCards&&handCards[i]){
-            cv=renderCard(handCards[i],40,58,false,{ isNpc: true });
+            cv=renderCard(handCards[i],40,58,false,{ isNpc: !!s.isAdventure });
             attachSkillHover(cv,s.ai,handCards[i]);
           }else{
             cv=renderCardBack(40,58);
@@ -243,7 +243,7 @@
         for(let i=0;i<size;i++){
           let cv;
           if(handCards&&handCards[i]){
-            cv=renderCard(handCards[i],40,58,false,{ isNpc: true });
+            cv=renderCard(handCards[i],40,58,false,{ isNpc: !!s.isAdventure });
             attachSkillHover(cv,s.ai2,handCards[i]);
           }
           else{

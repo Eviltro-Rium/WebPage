@@ -230,7 +230,7 @@
                 // That flag is reserved for the player's active card and its
                 // global `.selected` style made a stale NPC peek look like a
                 // second player selection.  Use a dedicated class instead.
-                const cv = revealMode ? renderCard(card, 40, 58, false, { isNpc: true }) : renderCardBack(40, 58);
+                const cv = revealMode ? renderCard(card, 40, 58, false, { isNpc: !!s.isAdventure }) : renderCardBack(40, 58);
                 if (focused) cv.classList.add('npc-card-focused');
                 if (revealMode && card) {
                     cv.dataset.cardId = cardId(card);

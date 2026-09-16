@@ -39,6 +39,7 @@
         pendingNumberJudge: null,
         mayDiscardAfterSkill: false,
         serenityHalfTarget: null,
+        pendingSaikiBleed: null,
         forceEndAITurn: false,
         activeAttacker: 'player',
         modeId: null,

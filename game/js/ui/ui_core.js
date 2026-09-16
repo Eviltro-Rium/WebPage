@@ -37,7 +37,7 @@ window.gameAssetUrl = gameAssetUrl;
 
 const TAG_COLORS = {
     '[生命]': '#86efac', '[伤害]': '#fda4af', '[灼烧]': '#fdba74',
-    '[冷冻]': '#93c5fd', '[流血]': '#fb7185', '[吸血]': '#86efac',
+    '[冷冻]': '#93c5fd', '[流血]': '#fb7185', '[吸血]': '#86efac', '[牌]': '#c4b5fd',
     '[战斗]': '#fcd34d', '[交换]': '#c4b5fd', '[洗入]': '#c4b5fd',
     '[净化]': '#ddd6fe', '[解冻]': '#bae6fd',
     '[红]': '#fda4af', '[黄]': '#fde047', '[蓝]': '#93c5fd',
@@ -196,7 +196,7 @@ class AnimLayer {
             const toRect = toEl.getBoundingClientRect();
             const flyEl = document.createElement('div');
             flyEl.className = 'fly-card';
-            const cv = renderCard(card, CARD_W, CARD_H, false, { isNpc: !!(owner && owner !== 'player') });
+            const cv = renderCard(card, CARD_W, CARD_H, false, { isNpc: !!(this.state && this.state.isAdventure && owner && owner !== 'player') });
             cv.style.pointerEvents = 'none';
             flyEl.appendChild(cv);
             document.body.appendChild(flyEl);
@@ -472,7 +472,6 @@ class GameUI {
         this._isPollingAI = false;
         this._isHandlingAction = false;
         this._isConsumingEvents = false;
-        this._consumedEventIds = new Set();
         this._lastAnimatedAIDefenseKey = null;
         this._animatedPlayerDraws = 0;
         this._npcHandFocusIndex = -1;
@@ -511,7 +510,6 @@ class GameUI {
         window._gameUI = this;
         this.state = state || null;
         this._prevState = null;
-        this._consumedEventIds = new Set();
         this.gameScreen = gameScreen || document.getElementById('game-screen');
         if (!this.gameScreen) throw new Error('战斗界面容器不存在');
         this._buildGameScreen();

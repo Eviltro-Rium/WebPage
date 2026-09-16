@@ -56,6 +56,7 @@
       const pa1 = engine.s.pendingAttack || {};
       engine.performAttack({type:'aoe',target,aoeTargets:pa1.aoeTargets,aoeDamage:pa1.aoeDamage,skipTarget:true,hypothermiaTarget:pa1.hypothermiaTarget,hypothermiaAmount:pa1.hypothermiaAmount});
       engine.resolveSerenityHalf();
+      if (typeof engine.applyPendingSaikiBleed === 'function') engine.applyPendingSaikiBleed();
       engine.afterAttack();
       if (forceEnd && !engine._allEnemiesDead()) engine.startAITurn();
       engine.check();
@@ -80,6 +81,7 @@
       const pa2 = engine.s.pendingAttack || {};
       engine.performAttack({type:'aoe',target:'player',aoeTargets:pa2.aoeTargets,aoeDamage:pa2.aoeDamage,skipTarget:true,hypothermiaTarget:pa2.hypothermiaTarget,hypothermiaAmount:pa2.hypothermiaAmount});
       engine.resolveSerenityHalf();
+      if (typeof engine.applyPendingSaikiBleed === 'function') engine.applyPendingSaikiBleed();
       engine._grantChaosIfKnight('ai');
       if (forceEnd) engine.endAi();
       else engine.continueAIAttack();

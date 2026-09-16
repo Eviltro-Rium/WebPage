@@ -22,7 +22,7 @@
       handLimit:10,forcedDiscard:false,hasPlayedThisTurn:false,hasPlayedBlackDefend:false,
       defenseSkipped:false,unblockDefend:false,attackModBonus:0,aiTurnStarted:false,aiHasPlayed:false,pendingAIBridge:null,
       pendingAIContinue:null,pendingDefenseDamage:0,pendingFiveChoice:false,fiveChoiceCard:null,
-      pendingNumberJudge:null,mayDiscardAfterSkill:false,serenityHalfTarget:null,
+      pendingNumberJudge:null,mayDiscardAfterSkill:false,serenityHalfTarget:null,pendingSaikiBleed:null,
       forceEndAITurn:false,activeAttacker:'player',is1v2:true,needColorChoice:false,
       pendingDialog:null,discardTop:top,
       player:this.character(p),ai:this.character(a1,true),ai2:Object.assign(this.character(a2,true),{name:'AI2 '+a2}),

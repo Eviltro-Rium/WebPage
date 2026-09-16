@@ -77,16 +77,7 @@
         if (bt) b = Math.min(d, b + 2);
         remaining = Math.max(0, d - b);
         desc = `Serenity 3牌：格挡${b}点`;
-      } else if (v === 0) {
-        remaining = 0;
-        let yellow = inheritedColor === 'YELLOW';
-        if (yellow) {
-          eng.s.serenityHalfTarget = owner === 'player' ? 'ai' : 'player';
-          desc = 'Serenity 0牌判定黄牌：防御伤害，攻防结束后进攻方生命减半';
-        } else {
-          cancelAttackDebuffs(owner, false);
-          desc = 'Serenity 0牌判定非黄牌：免疫所有伤害和debuff';
-        }
+        // v===0 由 engine.js#defenseJudge 翻牌判定完成，这里不再处理。
       }
       return { remaining, desc };
     }
