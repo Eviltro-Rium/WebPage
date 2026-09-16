@@ -75,6 +75,81 @@ test('online host match snapshots restore the authoritative battle state', () =>
   assert.equal(restored.project('guest').onlineNickname, 'Guest');
 });
 
+test('refresh preserves pending battle across reconnect writes and late opponent metadata', () => {
+  const values = new Map();
+  context.localStorage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) };
+  const original = new context.OnlineMatchHost('Saiki', 'Ryan');
+  original.setStarted(true);
+  const ui = Object.create(context.OnlineUI.prototype);
+  Object.assign(ui, {
+    role: 'host', roomCode: 'ABCD', nickname: 'Host', character: 'Saiki',
+    players: [{ peerId: 'host', role: 'host', character: 'Saiki' }, { peerId: 'guest', role: 'guest', character: null }],
+    peer: { peerId: 'host', send: () => true },
+    _pendingBattleRestore: original.captureSnapshot(),
+    renderRoom() {}, _mountSharedBattle() { this.mounted = true; }
+  });
+  ui._persistRoomSession();
+  assert.equal(ui._readRoomSession().battle.matchId, original.matchId);
+  ui._restoreBattleIfPossible();
+  assert.equal(ui.match, undefined, 'wait for opponent metadata without dropping the save');
+  ui._handleRoomMessage({ type: 'lobbyUpdate', peerId: 'guest', character: 'Ryan' }, 'guest');
+  assert.equal(ui.match.matchId, original.matchId);
+  assert.equal(ui.mounted, true);
+  assert.deepEqual(ui.match.project('host').playerHand, original.project('host').playerHand);
+});
+
+test('guest resume can retry a failed send when opponent metadata arrives again', () => {
+  const ui = Object.create(context.OnlineUI.prototype);
+  let attempts = 0;
+  Object.assign(ui, {
+    role: 'guest', players: [{ peerId: 'host', character: 'Ryan' }],
+    peer: { peerId: 'guest', send: () => ++attempts > 1 },
+    _pendingBattleRestore: { matchId: 'saved-match' }, renderRoom() {}
+  });
+  ui._restoreBattleIfPossible();
+  assert.equal(ui._battleResumeRequested, false);
+  ui._handleRoomMessage({ type: 'lobbyUpdate', peerId: 'host', character: 'Ryan' }, 'host');
+  assert.equal(attempts, 2);
+  assert.equal(ui._battleResumeRequested, true);
+  ui._clearBattleResumeRetry();
+});
+
+test('rendered online Saiki judgment card click selects and confirms for either viewer', async () => {
+  for (const actor of ['host', 'guest']) {
+    const match = new context.OnlineMatchHost('Saiki', 'Saiki', actor);
+    match.setStarted(true);
+    match.engine.s.onlineActor = actor;
+    match.engine.s.phase = 'SAIKI_SIX_JUDGE';
+    match.engine.s.pendingNumberJudge = { type: 'Saiki' };
+    match.engine.h[actor === 'host' ? 'player' : 'ai'] = [context.FurryGame.Card.number('RED', 2)];
+    const container = { dataset: {}, children: [], appendChild(node) { node.parentElement = this; this.children.push(node); }, querySelectorAll() { return this.children; } };
+    const uiContext = vm.createContext({
+      console, Date, GameUI: function () {},
+      document: { getElementById: () => container },
+      cardVisualKey: cardIdentity, cardId: cardIdentity, cardMatchKey: cardIdentity,
+      currentCardSize: () => [70, 100],
+      renderCard: () => ({ dataset: {}, style: {}, handlers: {}, classList: { add() {}, contains: () => false, toggle() {} },
+        setAttribute() {}, addEventListener(name, handler) { this.handlers[name] = handler; } })
+    });
+    uiContext.window = uiContext;
+    vm.runInContext(fs.readFileSync(path.join(root, 'js/ui/render/hand_render.js'), 'utf8'), uiContext);
+    const ui = new uiContext.GameUI();
+    Object.assign(ui, { state: match.project(actor), _hideTrailingCount: () => 0, _renderControls() {}, updateDisplay() {},
+      _sessionDispatch: async (method, params) => {
+        const result = match.dispatch(actor, method, params);
+        assert.equal(result.ok, true, result.error);
+        return match.project(actor);
+      }
+    });
+    ui._renderPlayerHand();
+    await container.children[0].handlers.click({ preventDefault() {} });
+    assert.equal(ui.state.selectedCard, 0);
+    const result = match.dispatch(actor, 'doSaikiSixConfirm');
+    assert.equal(result.ok, true, result.error);
+    assert.notEqual(match.project(actor).phase, 'SAIKI_SIX_JUDGE');
+  }
+});
+
 test('online host adapter preserves private hands and swaps guest commands', () => {
   const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host', null, {
     hostNickname: 'Rium',

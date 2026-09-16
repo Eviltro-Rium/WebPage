@@ -72,7 +72,7 @@
         }
 
         _captureBattleSession() {
-            if (!this.match) return null;
+            if (!this.match) return this._pendingBattleRestore || null;
             if (this.role === 'host' && !this.match.remote
                 && typeof this.match.captureSnapshot === 'function') {
                 try { return this.match.captureSnapshot(); } catch (_) { return null; }
@@ -87,6 +87,7 @@
         }
 
         _clearRoomSession() {
+            this._clearBattleResumeRetry();
             this._sessionPersistenceDisabled = true;
             try { localStorage.removeItem(ROOM_SESSION_KEY); } catch (_) {}
         }
@@ -219,6 +220,7 @@
             } catch (_) {}
             // Reconnecting from the retry button must not send a `leave`
             // packet: the token is intended to replace this socket in place.
+            this._clearBattleResumeRetry();
             if (this.peer) this.peer.close({ notify: false });
             this.role = role; this.roomCode = code; this.nickname = nickname.trim().slice(0, 18);
             this.signalUrl = signalUrl; this.players = [];
@@ -317,6 +319,8 @@
                 this.setRoomStatus(relayed ? '已使用信令中继，可以开始对战' : '直连已建立，可以开始对战');
                 this._sendLobbyUpdate();
                 this._flushPendingSync();
+                this._battleResumeRequested = false;
+                this._restoreBattleIfPossible();
                 this.renderRoom();
             });
             this.peer.on('roomMessage', (payload, from) => this._handleRoomMessage(payload, from));
@@ -446,9 +450,19 @@
                 return;
             }
             if (this.role === 'guest' && !this._battleResumeRequested) {
-                this._battleResumeRequested = true;
-                this.peer.send({ kind: 'matchResumeRequest', matchId: pending.matchId || null });
+                this._battleResumeRequested = !!this.peer.send({ kind: 'matchResumeRequest', matchId: pending.matchId || null });
+                this._clearBattleResumeRetry();
+                this._battleResumeRetryTimer = setTimeout(() => {
+                    this._battleResumeRetryTimer = null;
+                    if (!this._pendingBattleRestore || this.match) return;
+                    this._battleResumeRequested = false;
+                    this._restoreBattleIfPossible();
+                }, 1500);
             }
+        }
+        _clearBattleResumeRetry() {
+            if (this._battleResumeRetryTimer) clearTimeout(this._battleResumeRetryTimer);
+            this._battleResumeRetryTimer = null;
         }
         _reconcileOwnPeerId(previousId, currentId) {
             if (!previousId || !currentId || previousId === currentId) return;
@@ -528,7 +542,8 @@
             });
             this.root.querySelector('#online-retry').addEventListener('click', () => this.connect(this.role, {
                 nickname: this.nickname, avatar: this.avatar, roomCode: this.roomCode, signalUrl: this.signalUrl,
-                character: this.character, ready: this.ready, reconnectToken: this.reconnectToken
+                character: this.character, ready: this.ready, reconnectToken: this.reconnectToken,
+                battle: this._captureBattleSession()
             }));
             const start = this.root.querySelector('#online-start-match'); if (start) start.addEventListener('click', () => this.startMatch());
             const copyButton = this.root.querySelector('#online-copy-code'); if (copyButton) copyButton.addEventListener('click', async () => { try { await navigator.clipboard.writeText(this.roomCode); copyButton.textContent = '已复制'; setTimeout(() => { copyButton.textContent = '复制'; }, 1200); } catch (_) { copyButton.textContent = this.roomCode; } });
@@ -545,7 +560,9 @@
             // The Worker stamps the sender. Ignore a client payload that tries
             // to update another player's lobby record.
             if (from && payload.peerId && payload.peerId !== from) return;
-            this._upsertPlayer(payload); this.renderRoom();
+            this._upsertPlayer(payload);
+            this._restoreBattleIfPossible();
+            this.renderRoom();
         }
         startMatch() {
             if (this.role !== 'host' || !this.peer) return;
@@ -602,7 +619,9 @@
                 // the Worker-stamped roomMessage path.
                 const opponent = this.opponentPlayer;
                 if (!opponent || !message.player || message.player.peerId !== opponent.peerId) return;
-                this._upsertPlayer(message.player); this.renderRoom(); return;
+                this._upsertPlayer(message.player);
+                this._restoreBattleIfPossible();
+                this.renderRoom(); return;
             }
             if (message.kind === 'matchResumeRequest') {
                 if (this.role !== 'host') return;
@@ -625,6 +644,7 @@
                     });
                     this._pendingBattleRestore = null;
                     this._battleResumeRequested = false;
+                    this._clearBattleResumeRetry();
                     return;
                 }
                 const pending = this._pendingBattleRestore;
@@ -641,6 +661,7 @@
                     this._mountSharedBattle(this.battleSession, guestState, message.events || []);
                     this._pendingBattleRestore = null;
                     this._battleResumeRequested = false;
+                    this._clearBattleResumeRetry();
                 } catch (error) {
                     this.match = null;
                     this.battleSession = null;
@@ -955,6 +976,7 @@
             }, 350);
         }
         _resetToLobby(notify) {
+            this._clearBattleResumeRetry();
             if (this._matchStartRetryTimer) clearTimeout(this._matchStartRetryTimer);
             if (this._matchReadyRetryTimer) clearTimeout(this._matchReadyRetryTimer);
             this._matchStartRetryTimer = null;

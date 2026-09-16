@@ -108,6 +108,7 @@
                         if (this._isHandlingAction || this._isConsumingEvents) return;
                         if (cv.classList.contains('disabled')) return;
                         if (this.state && (this.state.needColorChoice || this.state.onlineCanAct === false)) return;
+                        const phase = this.state && this.state.phase;
                         const idx = parseInt(cv.dataset.index, 10);
                         if (!Number.isInteger(idx)) return;
                         this._npcHandFocusIndex = -1;
