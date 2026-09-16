@@ -253,7 +253,8 @@ attackSelfHurt(card) {
 
 ### 方法签名
 
-反击已由 `defendCounter` 方法承担，bridge 内自动调用 `hurt(opponent, counter)`：
+反击已由 `defendCounter` 方法承担，bridge 内将返回值交给统一的
+`eng.counterAttack(defender, opponent, counter)` 接口：
 
 ```javascript
 defendCounter(card, incoming, defender, opponent, eng) {
@@ -288,9 +289,9 @@ defendCounter(card, incoming, defender, opponent) {
 ### 结算流程
 
 1. bridge 在 `defend()` 中调用 `defendCounter(card, incoming, defender, opponent, eng)` 得到反击数字 `n`
-2. 调用 `hurt(opponent, n)` 直接对进攻方造成 `n🗡️`
+2. 调用 `eng.counterAttack(defender, opponent, n)` 对进攻方造成 `n🗡️`
 3. 描述追加：`'反击' + n + '🗡️'`
-4. 反击**不**经过玩家防御系统；可被守护/飞翔减免
+4. 反击**不**产生新的防御出牌阶段，但会经过统一的【飞翔】/【守护】减免；实际伤害由引擎结算并生成一次反馈事件
 
 ---
 

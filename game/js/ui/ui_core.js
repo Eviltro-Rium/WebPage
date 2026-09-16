@@ -163,7 +163,7 @@ function parseSegments(text, defaultColor) {
 }
 
 function cardId(card) {
-    return `${card.color}_${card.value}_${card.isBlack}_${card.isWhite}_${card.potion}_${card.magic}_${card.greenMagic}_${card.magicColor || ''}_${card.purify}_${card.superPurify}_${card.swapHand}_${card.shuffleToDeck}_${card.drawThree}_${!!card.trophyWhite}_${card.trophyName || ''}`;
+    return `${card.uid || ''}_${card.color}_${card.value}_${card.isBlack}_${card.isWhite}_${card.potion}_${card.magic}_${card.greenMagic}_${card.magicColor || ''}_${card.purify}_${card.superPurify}_${card.swapHand}_${card.shuffleToDeck}_${card.drawTwo}_${card.drawThree}_${!!card.trophyWhite}_${card.trophyName || ''}`;
 }
 
 // Rendering cache key: unlike cardId/cardMatchKey, chosenColor is included
@@ -175,7 +175,7 @@ function cardVisualKey(card) {
 /** 匹配用手牌身份（忽略 chosenColor，避免 AI 出牌染色后找不到源牌） */
 function cardMatchKey(card) {
     if (!card) return '';
-    return `${card.color}_${card.value}_${!!card.isBlack}_${!!card.isWhite}_${!!card.potion}_${!!card.magic}_${!!card.greenMagic}_${card.magicColor || ''}_${!!card.purify}_${!!card.superPurify}_${!!card.swapHand}_${!!card.shuffleToDeck}_${!!card.drawThree}_${!!card.trophyWhite}_${card.trophyName || ''}`;
+    return `${card.uid || ''}_${card.color}_${card.value}_${!!card.isBlack}_${!!card.isWhite}_${!!card.potion}_${!!card.magic}_${!!card.greenMagic}_${card.magicColor || ''}_${!!card.purify}_${!!card.superPurify}_${!!card.swapHand}_${!!card.shuffleToDeck}_${!!card.drawTwo}_${!!card.drawThree}_${!!card.trophyWhite}_${card.trophyName || ''}`;
 }
 
 function animEaseInOut(t) {

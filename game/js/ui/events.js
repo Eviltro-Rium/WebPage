@@ -126,15 +126,20 @@ _animationOrder(events) {
 async _playEvents(events, fast = false) {
     const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
     const wait = ms => runtime
-        ? runtime.wait(fast ? Math.max(60, Math.round(ms * 0.22)) : ms)
-        : new Promise(resolve => setTimeout(resolve, fast ? Math.max(60, Math.round(ms * 0.22)) : ms));
+        ? runtime.wait((fast || this._onlineAnimationFast) ? Math.max(60, Math.round(ms * 0.22)) : ms)
+        : new Promise(resolve => setTimeout(resolve, (fast || this._onlineAnimationFast) ? Math.max(60, Math.round(ms * 0.22)) : ms));
     const orderedEvents = this._animationOrder(events);
+    const previousOnlineFast = this._onlineAnimationFast;
+    // Online batches that already contain many authoritative events are in a
+    // catch-up path. Keep the important order, but shorten decorative flight
+    // and pause timings so animation backlog cannot grow without bound.
+    this._onlineAnimationFast = !!(this.state && this.state.isOnline && (fast || orderedEvents.length >= 6));
     if (orderedEvents.some(evt => this._isDefenseJudgmentEvent(evt))) {
         // Clear a judgment card that may have been painted from the final
         // state snapshot before the defense animation begins.
         this._resetRevealBeforeDefenseJudgment();
     }
-    for (const evt of orderedEvents) {
+    try { for (const evt of orderedEvents) {
         try {
           if (evt.type === 'aiPlay') {
             // Some older/bridge states omitted the card payload even though
@@ -406,6 +411,8 @@ async _playEvents(events, fast = false) {
             console.error('[Animation] skipped event', evt && evt.id, error);
             this.showError('动画已跳过，游戏继续');
         }
+    } } finally {
+        this._onlineAnimationFast = previousOnlineFast;
     }
 }
     });

@@ -59,19 +59,20 @@
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;
+      const counter = helpers.counter || ((target, amount) => hurt(target, amount));
       let remaining = d, desc = '';
       if (v === 1) {
         let b = Math.min(3, d);
         remaining = Math.max(0, d - b);
         desc = `Saiki 1牌：防御至多3点`;
       } else if (v === 2) {
-        hurt(opponent, 2);
+        counter(opponent, 2);
         bleed(opponent, 1);
         remaining = d;
         desc = 'Saiki 2牌：2点伤害+1层流血';
       } else if (v === 0) {
         let shared = Math.ceil(d / 2);
-        hurt(opponent, shared);
+        counter(opponent, shared);
         hurt(defender, shared);
         remaining = 0;
         cancelAttackDebuffs(owner, true);

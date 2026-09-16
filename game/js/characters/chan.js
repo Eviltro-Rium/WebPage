@@ -8,7 +8,7 @@
     init() { return {}; },
     turnStart(eng, ch, w) { eng.draw(w, 1, true); },
     effect(eng, v, c, a, t, owner, helpers) {
-      const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs } = helpers;
+      const { burn, bleed, guard, takeReveal, heal, draw, hurt, clearDebuffs } = helpers;
       let d = 0, skip = false, unblock = false;
       if (v === 1) {
         d = 1;
@@ -49,23 +49,24 @@
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;
+      const counter = helpers.counter || ((target, amount) => hurt(target, amount));
       let remaining = d, desc = '';
       if (v === 1) {
         let b = Math.ceil(d / 2);
         remaining = Math.max(0, d - b);
         desc = `Chan 1牌：格挡${b}点`;
       } else if (v === 2) {
-        hurt(opponent, 2);
+        counter(opponent, 2);
         eng.freeze(opponent);
         remaining = d;
         desc = 'Chan 2牌：反击2点+施加冷冻';
       } else if (v === 0) {
         let cd = Math.ceil(d / 2);
-        hurt(opponent, cd);
+        counter(opponent, cd);
         remaining = 0;
         if (owner === 'player') {
           eng.s.forceEndAITurn = true;
-        } else if (owner === 'ai') {
+        } else if (owner === 'ai' || owner === 'ai2') {
           eng.s.forceEndPlayerTurn = true;
         }
         desc = `Chan 0牌：防御所有伤害并反击${cd}点，进攻方回合结束`;

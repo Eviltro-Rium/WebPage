@@ -5,6 +5,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '..');
+const cardIdentity = card => `${card.uid || ''}_${card.color}_${card.value}_${!!card.isBlack}_${!!card.isWhite}_${!!card.potion}_${!!card.magic}_${!!card.greenMagic}_${card.magicColor || ''}_${!!card.purify}_${!!card.superPurify}_${!!card.swapHand}_${!!card.shuffleToDeck}_${!!card.drawTwo}_${!!card.drawThree}_${!!card.trophyWhite}_${card.trophyName || ''}`;
 const context = vm.createContext({ console, Math, JSON, Date, setTimeout, clearTimeout, addEventListener() {} });
 context.window = context;
 const files = [
@@ -170,6 +171,21 @@ test('online guest opening projection keeps the attacking guest interactive', ()
   assert.equal(guest.onlineActor, 'guest');
   assert.equal(guest.onlineCanAct, true);
   assert.equal(guest.legalHand.length, guest.playerHand.length);
+});
+
+test('online atomic card commands select and play in one request', () => {
+  const Card = context.FurryGame.Card;
+  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'guest');
+  const card = Card.number('RED', 2);
+  match.engine.h.ai = [card];
+  match.engine.h.player = [Card.number('BLUE', 1)];
+  match.engine.s.discardTop = Card.number('RED', 1);
+  const outcome = match.dispatch('guest', 'playCard', { cardId: cardIdentity(card), index: 0 }, {
+    requestId: 'atomic-play', matchId: match.matchId, expectedStateVersion: match.stateVersion
+  });
+  assert.equal(outcome.ok, true);
+  assert.equal(match.engine.h.ai.some(item => item === card), false);
+  assert.ok(['PLAYER_DEFEND', 'PLAYER_PLAY', 'GAME_OVER'].includes(outcome.state.phase));
 });
 
 test('online discard button enters discard phase from the opening play phase', () => {

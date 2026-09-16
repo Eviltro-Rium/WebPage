@@ -57,6 +57,7 @@
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn } = helpers;
+      const counter = helpers.counter || ((target, amount) => hurt(target, amount));
       let remaining = d, desc = '';
       if (v === 1) {
         burn(opponent, 1);
@@ -65,7 +66,7 @@
         desc = 'Leon 1牌：施加1层灼烧+恢复2点生命';
       } else if (v === 2) {
         let cd = Math.ceil(d / 2);
-        hurt(opponent, cd);
+        counter(opponent, cd);
         draw(owner, 1, true);
         remaining = d;
         desc = `Leon 2牌：反击${cd}点+抽1张牌`;
@@ -75,7 +76,8 @@
         remaining = Math.max(0, d - b);
         desc = `Leon 3牌：格挡${b}点+抽1张牌`;
       } else if (v === 0) {
-        let opponentHand = eng.h[owner === 'player' ? 'ai' : 'player'];
+        const opponentKey = typeof eng._who === 'function' ? eng._who(opponent) : (owner === 'player' ? 'ai' : 'player');
+        let opponentHand = eng.h[opponentKey];
         if (opponentHand) opponentHand.splice(0, opponentHand.length);
         hurt(opponent, d);
         hurt(defender, d);

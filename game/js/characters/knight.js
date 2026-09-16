@@ -75,10 +75,11 @@
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;
+      const counter = helpers.counter || ((target, amount) => hurt(target, amount));
       let remaining = d, desc = '';
       if (v === 1) {
         heal(defender, 2);
-        if (defender.chaos_yellow) hurt(opponent, 2);
+        if (defender.chaos_yellow) counter(opponent, 2);
         desc = 'Knight 1牌：恢复2点' + (defender.chaos_yellow ? '，混沌黄反击2点' : '');
       } else if (v === 2) {
         let b = Math.ceil(d / 2);
@@ -95,11 +96,19 @@
         let drain = chaosCount * 2;
         if (chaosCount >= 4) {
           remaining = 0;
-          if (typeof eng.performAttack === 'function') eng.performAttack({type:'drain',attacker:owner,target:owner==='player'?'ai':'player',damage:drain,allowAvoidance:false,direct:true});
+          if (typeof eng.drainAttack === 'function') eng.drainAttack(defender, opponent, drain, { forceDrainAvoidance: true });
+          else if (typeof eng.performAttack === 'function') {
+            const targetKey = typeof eng._who === 'function' ? eng._who(opponent) : (owner === 'player' ? 'ai' : 'player');
+            eng.performAttack({type:'drain',attacker:owner,target:targetKey,damage:drain,allowAvoidance:true,direct:true});
+          }
           else { hurt(opponent, drain, 'drain'); heal(defender, drain, 'drain'); }
           desc = `Knight 0牌：4种混沌，免疫所有伤害+吸取${drain}点`;
         } else {
-          if (typeof eng.performAttack === 'function') eng.performAttack({type:'drain',attacker:owner,target:owner==='player'?'ai':'player',damage:drain,allowAvoidance:false,direct:true});
+          if (typeof eng.drainAttack === 'function') eng.drainAttack(defender, opponent, drain, { forceDrainAvoidance: true });
+          else if (typeof eng.performAttack === 'function') {
+            const targetKey = typeof eng._who === 'function' ? eng._who(opponent) : (owner === 'player' ? 'ai' : 'player');
+            eng.performAttack({type:'drain',attacker:owner,target:targetKey,damage:drain,allowAvoidance:true,direct:true});
+          }
           else { hurt(opponent, drain, 'drain'); heal(defender, drain, 'drain'); }
           desc = `Knight 0牌：${chaosCount}种混沌，吸取${drain}点+补齐4种混沌`;
         }

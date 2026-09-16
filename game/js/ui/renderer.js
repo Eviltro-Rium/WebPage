@@ -8,6 +8,8 @@
     const wait = ms => global.FurryGame && global.FurryGame.CombatRuntime
         ? global.FurryGame.CombatRuntime.wait(ms)
         : new Promise(resolve => setTimeout(resolve, ms));
+    const animDuration = (ui, ms) => ui && ui.state && ui.state.isOnline && ui._onlineAnimationFast
+        ? Math.max(100, Math.round(ms * 0.55)) : ms;
     Object.assign(GameUI.prototype, {
 _showZoneDesc(id, desc) {
     const el = document.getElementById(id);
@@ -248,9 +250,9 @@ async _playAICardAnimation(card, who = 'ai') {
     if (sourceCard) sourceCard.style.visibility = 'hidden';
     try {
         if (revealFace && card) {
-            await this.anim.flyCard(card, sourceCard || aiHand, atkZone, 440, 54, who);
+            await this.anim.flyCard(card, sourceCard || aiHand, atkZone, animDuration(this, 440), 54, who);
         } else {
-            await this.anim.flyCardBack(sourceCard || aiHand, atkZone, 440, 54);
+            await this.anim.flyCardBack(sourceCard || aiHand, atkZone, animDuration(this, 440), 54);
         }
     }
     finally { if (sourceCard) sourceCard.remove(); }
@@ -271,9 +273,9 @@ async _playAIDefendAnimation(card, who = 'ai') {
     if (sourceCard) sourceCard.style.visibility = 'hidden';
     try {
         if (revealFace && card) {
-            await this.anim.flyCard(card, sourceCard || aiHand, defZone, 440, 42, who);
+            await this.anim.flyCard(card, sourceCard || aiHand, defZone, animDuration(this, 440), 42, who);
         } else {
-            await this.anim.flyCardBack(sourceCard || aiHand, defZone, 440, 42);
+            await this.anim.flyCardBack(sourceCard || aiHand, defZone, animDuration(this, 440), 42);
         }
     }
     finally { if (sourceCard) sourceCard.remove(); }
@@ -297,7 +299,7 @@ async _playPlayerCardAnimation(card) {
         ? playerHand.children[selectedIndex]
         : playerHand;
     if (source !== playerHand) source.style.visibility = 'hidden';
-    try { await this.anim.flyCard(card, source, atkZone, 430, 66); }
+    try { await this.anim.flyCard(card, source, atkZone, animDuration(this, 430), 66); }
     finally { if (source !== playerHand) source.remove(); }
     this._settleZoneCard(atkZone, card, 'player');
 },
@@ -311,7 +313,7 @@ async _playPlayerDefendAnimation(card) {
         ? playerHand.children[selectedIndex]
         : playerHand;
     if (source !== playerHand) source.style.visibility = 'hidden';
-    try { await this.anim.flyCard(card, source, defZone, 420, 48); }
+    try { await this.anim.flyCard(card, source, defZone, animDuration(this, 420), 48); }
     finally { if (source !== playerHand) source.remove(); }
     this._settleZoneCard(defZone, card, 'player');
 },

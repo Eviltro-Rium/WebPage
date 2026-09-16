@@ -47,19 +47,20 @@
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, burn, bleed, addGuard } = helpers;
+      const counter = helpers.counter || ((target, amount) => hurt(target, amount));
       let remaining = d, desc = '';
       if (v === 1) {
         let b = Math.ceil(d / 2);
         remaining = Math.max(0, d - b);
         desc = `Otto 1牌：格挡${b}点`;
         if ((defender.crit || 0) >= 2) {
-          hurt(opponent, b);
+          counter(opponent, b);
           defender.crit -= 2;
           desc += `，消耗2层暴击返还${b}点伤害`;
           eng.emit('buff', `-2[暴击]`, null, { who: owner, kind: 'crit', stacks: defender.crit });
         }
       } else if (v === 2) {
-        hurt(opponent, 2);
+        counter(opponent, 2);
         addGuard(defender, 1);
         remaining = d;
         desc = 'Otto 2牌：反击2点+获得1层守护';
@@ -70,7 +71,7 @@
         desc = 'Otto 3牌：恢复2点+施加2层流血';
       } else if (v === 0) {
         addGuard(defender, 5);
-        hurt(opponent, d);
+        counter(opponent, d);
         remaining = d;
         desc = `Otto 0牌：获得5层守护+反击${d}点+承受${d}点伤害`;
       }

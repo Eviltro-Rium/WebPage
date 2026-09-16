@@ -458,19 +458,44 @@ async _apiAction(method, params) {
     const quickDecision = this._isDecisionAction(method);
     this._showActionPending(method);
     try {
+        // In an online match selection is local UI state.  Collapse the old
+        // selectCard -> doPlay/doDefend round trip into one authoritative
+        // command while retaining the legacy methods for offline modes and
+        // older peers.
+        let dispatchMethod = method;
+        let dispatchParams = params || {};
+        if (this.state && this.state.isOnline && this.state.onlineCanAct !== false
+            && (method === 'doPlay' || method === 'doDefend')) {
+            const index = Number(this.state.selectedCard);
+            const card = Array.isArray(this.state.playerHand) && Number.isInteger(index)
+                ? this.state.playerHand[index] : null;
+            if (card && typeof cardId === 'function') {
+                dispatchMethod = method === 'doPlay' ? 'playCard' : 'defendCard';
+                dispatchParams = Object.assign({}, dispatchParams, { cardId: cardId(card), index });
+            }
+        }
         this._prevState = this.state;
         const result = typeof this._sessionDispatch === 'function'
-            ? await this._sessionDispatch(method, params)
-            : await Bridge.call(method, params);
+            ? await this._sessionDispatch(dispatchMethod, dispatchParams)
+            : await Bridge.call(dispatchMethod, dispatchParams);
         if (result && !result.error) {
             this.state = result;
             const hasEvents = result.events && result.events.length > 0;
             const entersDecision = this._isInteractiveDecisionPhase(result.phase);
             this._showAcceptedControls(hasEvents);
-            if (hasEvents) {
-                await this._consumeEvents(result.events, { fastFirstBatch: quickDecision || entersDecision });
+            if (typeof this._onlineResultSink === 'function' && this.state.isOnline) {
+                // OnlineUI is the sole owner of authoritative snapshot
+                // application and event playback. This prevents a local
+                // action and a remote push from racing two independent
+                // _consumeEvents() calls.
+                const presented = await this._onlineResultSink(result, quickDecision || entersDecision);
+                if (presented) this.state = presented;
+            } else {
+                if (hasEvents) {
+                    await this._consumeEvents(result.events, { fastFirstBatch: quickDecision || entersDecision });
+                }
+                this.updateDisplay();
             }
-            this.updateDisplay();
             shouldPollAI = this.state.phase === 'AI_TURN' || this.state.phase === 'AI_DEFEND' || this.state.phase === 'AI2_TURN' || !!(this.state.events && this.state.events.length);
         } else if (result && result.error) {
             this.showError(result.error);

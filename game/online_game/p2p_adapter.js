@@ -43,6 +43,8 @@
             this.pc = null;
             this.channel = null;
             this.queue = [];
+            this.dataQueue = [];
+            this._dataFlushTimer = null;
             this.pendingIce = [];
             // Prefer the WebRTC data channel. If a match starts before that
             // channel opens, lock this room to the existing signaling socket
@@ -53,6 +55,7 @@
             this.closed = false;
             this._offerStarted = false;
             this.heartbeat = null;
+            this.metrics = { sent: 0, received: 0, relayed: 0, queued: 0, dropped: 0, bytesSent: 0, bytesReceived: 0 };
         }
 
         on(type, fn) {
@@ -154,10 +157,17 @@
                 const payload = message.payload;
                 if (payload && payload.__onlineTransport === 1) {
                     if (message.from === this.peerId) return;
-                    if (this.transportMode !== 'relay') {
+                    // A relay packet can still be in flight when the direct
+                    // channel becomes ready. Do not downgrade the local
+                    // transport because of that late packet.
+                    if ((!this.channel || this.channel.readyState !== 'open') && this.transportMode !== 'relay') {
                         this.transportMode = 'relay';
                         this.emit('transportMode', 'relay');
                     }
+                    this.metrics.relayed += 1;
+                    const encoded = JSON.stringify(payload.data) || '';
+                    this.metrics.received += 1;
+                    this.metrics.bytesReceived += encoded.length;
                     this.emit('message', payload.data);
                     return;
                 }
@@ -202,17 +212,27 @@
             if (this.channel && this.channel !== channel) try { this.channel.close(); } catch (_) {}
             this.channel = channel;
             channel.addEventListener('open', () => {
-                if (this.transportMode === 'pending') {
+                // Upgrade relay sessions as soon as the reliable ordered
+                // channel opens. Late relay packets are accepted above but
+                // no longer force future sends back through the Worker.
+                if (this.transportMode !== 'p2p') {
                     this.transportMode = 'p2p';
                     this.emit('transportMode', 'p2p');
                 }
+                this._flushDataQueue();
                 this.emit('channelOpen');
             });
-            channel.addEventListener('close', () => this.emit('channelClose'));
+            channel.addEventListener('bufferedamountlow', () => this._flushDataQueue());
+            channel.addEventListener('close', () => {
+                this.emit('channelClose');
+                if (this.dataQueue.length && this.ws && this.ws.readyState === WebSocket.OPEN) this._flushDataQueue();
+            });
             channel.addEventListener('error', error => this.emit('error', new Error('数据通道错误')));
             channel.addEventListener('message', event => {
                 let payload;
                 try { payload = JSON.parse(event.data); } catch (_) { return; }
+                this.metrics.received += 1;
+                this.metrics.bytesReceived += String(event.data || '').length;
                 this.emit('message', payload);
             });
         }
@@ -276,10 +296,25 @@
                 }
                 const encoded = JSON.stringify(payload);
                 if (Number(this.channel.bufferedAmount) > 262144) {
-                    this.emit('error', new Error('数据通道发送缓冲区已满'));
-                    return false;
+                    // Prefer the existing Worker relay while the direct
+                    // channel drains. This is a transient backpressure case,
+                    // not a fatal disconnect, so an action is not lost.
+                    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                        const relayed = this._sendSignal({ type: 'roomMessage', payload: { __onlineTransport: 1, data: payload } });
+                        if (relayed) { this.metrics.relayed += 1; this.metrics.sent += 1; this.metrics.bytesSent += encoded.length; }
+                        return relayed;
+                    }
+                    if (this.dataQueue.length >= 64) {
+                        this.metrics.dropped += 1;
+                        this.emit('error', new Error('数据通道发送队列已满'));
+                        return false;
+                    }
+                    this.dataQueue.push(payload);
+                    this.metrics.queued += 1;
+                    this._scheduleDataFlush();
+                    return true;
                 }
-                try { this.channel.send(encoded); return true; }
+                try { this.channel.send(encoded); this.metrics.sent += 1; this.metrics.bytesSent += encoded.length; return true; }
                 catch (error) { this.emit('error', error); }
             }
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -287,15 +322,70 @@
                     this.transportMode = 'relay';
                     this.emit('transportMode', 'relay');
                 }
-                return this._sendSignal({
+                const relayed = this._sendSignal({
                     type: 'roomMessage',
                     payload: { __onlineTransport: 1, data: payload }
                 });
+                if (relayed) { this.metrics.relayed += 1; this.metrics.sent += 1; this.metrics.bytesSent += JSON.stringify(payload).length; }
+                return relayed;
             }
             return false;
         }
 
+        _scheduleDataFlush() {
+            if (this._dataFlushTimer) return;
+            this._dataFlushTimer = setTimeout(() => {
+                this._dataFlushTimer = null;
+                this._flushDataQueue();
+            }, 120);
+        }
+
+        _flushDataQueue() {
+            if (!this.dataQueue.length) return;
+            if (!this.channel || this.channel.readyState !== 'open') {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    const pending = this.dataQueue.splice(0);
+                    for (const payload of pending) this.send(payload);
+                    return;
+                }
+                this._scheduleDataFlush();
+                return;
+            }
+            const buffered = Number.isFinite(Number(this.channel.bufferedAmount)) ? Number(this.channel.bufferedAmount) : 0;
+            if (buffered > 131072) {
+                this._scheduleDataFlush();
+                return;
+            }
+            while (this.dataQueue.length) {
+                const currentBuffered = Number.isFinite(Number(this.channel.bufferedAmount)) ? Number(this.channel.bufferedAmount) : 0;
+                if (currentBuffered > 131072) break;
+                const payload = this.dataQueue.shift();
+                const encoded = JSON.stringify(payload);
+                try {
+                    this.channel.send(encoded);
+                    this.metrics.sent += 1;
+                    this.metrics.bytesSent += encoded.length;
+                } catch (_) {
+                    this.dataQueue.unshift(payload);
+                    break;
+                }
+            }
+            if (this.dataQueue.length) this._scheduleDataFlush();
+        }
+
         sendRoom(payload) { this._sendSignal({ type: 'roomMessage', payload }); }
+
+        getDiagnostics() {
+            const socketOpen = typeof WebSocket !== 'undefined' && this.ws && this.ws.readyState === WebSocket.OPEN;
+            return Object.assign({}, this.metrics, {
+                transportMode: this.transportMode,
+                signalConnected: !!socketOpen,
+                channelConnected: !!(this.channel && this.channel.readyState === 'open'),
+                queued: this.dataQueue.length,
+                bufferedAmount: this.channel && Number.isFinite(Number(this.channel.bufferedAmount))
+                    ? Number(this.channel.bufferedAmount) : 0
+            });
+        }
 
         close() {
             this.closed = true;
@@ -306,6 +396,9 @@
             if (this.heartbeat) clearInterval(this.heartbeat);
             this.heartbeat = null;
             this.pendingIce = [];
+            this.dataQueue = [];
+            if (this._dataFlushTimer) clearTimeout(this._dataFlushTimer);
+            this._dataFlushTimer = null;
             this.transportMode = 'pending';
             this.channel = this.pc = this.ws = null;
         }

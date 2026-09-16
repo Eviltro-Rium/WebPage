@@ -51,13 +51,14 @@
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;
+      const counter = helpers.counter || ((target, amount) => hurt(target, amount));
       let remaining = d, desc = '';
       if (v === 1) {
         let b = Math.ceil(d / 2);
         remaining = Math.max(0, d - b);
         desc = `Ryan 1牌：格挡${b}点`;
       } else if (v === 2) {
-        hurt(opponent, 2);
+        counter(opponent, 2);
         heal(defender, 2);
         remaining = d;
         desc = 'Ryan 2牌：反击2点并恢复2点生命';

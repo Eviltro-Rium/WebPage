@@ -59,7 +59,7 @@ for (const file of [
   vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
 }
 
-const { AIRegistry, Engine } = context;
+const { AIRegistry, CharacterRegistry, Engine } = context;
 
 function number(value, color = 'RED', white = false) {
   return {
@@ -315,4 +315,118 @@ test('Moze can use value 6 without guard and Saiki 7 is always playable for drai
   const two = number(2);
   saiki.h.ai = [seven, two];
   assert.equal(saiki.chooseAIPlay(saiki.s.discardTop), seven);
+});
+
+test('Blaze defense 2 follows the documented burn and half-block rule', () => {
+  const engine = setup('Blaze');
+  engine.s.atkOwner = 'player';
+  const mod = CharacterRegistry.get('Blaze');
+  const defenseCard = number(2);
+
+  // Blaze 2 is a normal defense skill, not a reveal-based special branch.
+  assert.equal(engine.defenseJudge('ai', defenseCard, 9), null);
+  const result = mod.defend(
+    engine,
+    'Blaze',
+    2,
+    9,
+    defenseCard,
+    engine.s.ai,
+    engine.s.player,
+    'ai',
+    'RED',
+    {
+      hurt: (target, amount, kind) => engine.hurt(target, amount, kind),
+      heal: (target, amount, kind) => engine.heal(target, amount, kind),
+      burn: (target, amount) => engine.burn(target, amount),
+      counter: (target, amount) => engine.counterAttack(engine.s.ai, target, amount)
+    }
+  );
+
+  assert.equal(engine.s.player.burn, 3);
+  assert.equal(result.remaining, 4);
+});
+
+test('Saiki defense 3 always returns the revealed judge card to hand', () => {
+  const engine = setup('Saiki');
+  engine.deck = [number(2, 'YELLOW')];
+  const beforeDiscard = engine.discardBottom.length;
+
+  const result = engine.defenseJudge('ai', number(3), 7);
+
+  assert.equal(result.remaining, 0);
+  assert.equal(engine.h.ai.length, 1);
+  assert.equal(engine.h.ai[0].value, 2);
+  assert.equal(engine.discardBottom.length, beforeDiscard);
+});
+
+test('Serenity defense 2 drains attacker HP and heals only actual life taken', () => {
+  const engine = setup('Serenity');
+  engine.s.ai.hp = 20;
+  engine.s.player.hp = 50;
+  engine.s.player.bleed = 2;
+  const mod = CharacterRegistry.get('Serenity');
+
+  const result = mod.defend(
+    engine,
+    'Serenity',
+    2,
+    5,
+    number(2),
+    engine.s.ai,
+    engine.s.player,
+    'ai',
+    'RED',
+    {
+      hurt: (target, amount, kind) => engine.hurt(target, amount, kind),
+      heal: (target, amount, kind) => engine.heal(target, amount, kind),
+      bleed: (target, amount) => engine.bleed(target, amount)
+    }
+  );
+
+  assert.equal(result.remaining, 5);
+  assert.equal(engine.s.player.bleed, 3);
+  assert.equal(engine.s.player.hp, 44);
+  assert.equal(engine.s.ai.hp, 26);
+});
+
+test('Knight defense 0 drains the active ai2 target in 1v2', () => {
+  const engine = setup('Ryan');
+  engine.s.modeId = '1v2';
+  engine.s.is1v2 = true;
+  engine.s.player = engine.character('Knight');
+  engine.s.ai2 = engine.character('Moze', true);
+  engine.s.ai2.name = 'AI2 Moze';
+  const knight = engine.s.player;
+  const ai1Before = engine.s.ai.hp;
+  engine.s.ai2.hp = 20;
+  knight.chaos_red = true;
+  knight.chaos_yellow = true;
+  knight.chaos_blue = true;
+  knight.chaos_green = true;
+
+  const mod = CharacterRegistry.get('Knight');
+  const result = mod.defend(
+    engine,
+    'Knight',
+    0,
+    8,
+    number(0),
+    knight,
+    engine.s.ai2,
+    'player',
+    'RED',
+    {
+      hurt: (target, amount, kind) => engine.hurt(target, amount, kind),
+      heal: (target, amount, kind) => engine.heal(target, amount, kind),
+      draw: () => {},
+      burn: (target, amount) => engine.burn(target, amount),
+      bleed: (target, amount) => engine.bleed(target, amount),
+      counter: (target, amount) => engine.counterAttack(knight, target, amount)
+    }
+  );
+
+  assert.equal(result.remaining, 0);
+  assert.equal(engine.s.ai2.hp, 12);
+  assert.equal(engine.s.ai.hp, ai1Before);
 });

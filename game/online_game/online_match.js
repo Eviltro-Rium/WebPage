@@ -11,7 +11,7 @@
     const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
     const PROTOCOL_VERSION = 2;
     const COMMANDS = new Set([
-        'selectCard', 'doPlay', 'doDefend', 'doSkipDefend', 'doEndTurn',
+        'selectCard', 'playCard', 'defendCard', 'doPlay', 'doDefend', 'doSkipDefend', 'doEndTurn',
         'doEnterDiscard', 'doCancelDiscard', 'doConfirmDiscard',
         'doFiveHeal', 'doFiveDamage', 'doSaikiSixConfirm',
         'resolveAttackModChoice', 'resolveCritChoice', 'chooseTarget',
@@ -30,6 +30,15 @@
 
     function swapKey(value) {
         return value === 'player' ? 'ai' : value === 'ai' ? 'player' : value;
+    }
+
+    // Card ids are deliberately derived from the canonical card fields so
+    // snapshots created by older clients can still be addressed.  The index
+    // sent by the client is only a fast-path hint; the id is checked first so
+    // a reordered hand cannot make an atomic action target another card.
+    function cardIdentity(card) {
+        if (!card) return '';
+        return `${card.uid || ''}_${card.color}_${card.value}_${!!card.isBlack}_${!!card.isWhite}_${!!card.potion}_${!!card.magic}_${!!card.greenMagic}_${card.magicColor || ''}_${!!card.purify}_${!!card.superPurify}_${!!card.swapHand}_${!!card.shuffleToDeck}_${!!card.drawTwo}_${!!card.drawThree}_${!!card.trophyWhite}_${card.trophyName || ''}`;
     }
 
     // Engine events are emitted from the local `player`/`ai` orientation. A
@@ -295,6 +304,21 @@
             }
             if (method === 'doPlay' && (s.phase !== 'PLAYER_PLAY' || selected < 0 || selected >= hand.length)) return '请先选择可出的牌';
             if (method === 'doDefend' && (s.phase !== 'PLAYER_DEFEND' || selected < 0 || selected >= hand.length)) return '请先选择防御牌';
+            if (method === 'playCard' || method === 'defendCard') {
+                const expectedPhase = method === 'playCard' ? 'PLAYER_PLAY' : 'PLAYER_DEFEND';
+                if (s.phase !== expectedPhase) return method === 'playCard' ? '当前不是进攻阶段' : '当前不是防御阶段';
+                if (!params || typeof params.cardId !== 'string' || !params.cardId) return '缺少出牌身份';
+                const hinted = Number(params.index);
+                const hintedCard = Number.isInteger(hinted) && hinted >= 0 && hinted < hand.length ? hand[hinted] : null;
+                const indexById = hand.findIndex(card => cardIdentity(card) === params.cardId);
+                if (indexById < 0) return '这张牌已不在手牌中，请重新选择';
+                if (hintedCard && cardIdentity(hintedCard) !== params.cardId) return '手牌已变化，请重新选择';
+                const indexToCheck = hintedCard ? hinted : indexById;
+                const card = hand[indexToCheck];
+                if (!card || typeof this.engine.legal !== 'function' || !this.engine.legal(card, method === 'defendCard')) {
+                    return method === 'playCard' ? '这张牌当前不能出' : '这张牌当前不能防御';
+                }
+            }
             if (method === 'doSkipDefend' && s.phase !== 'PLAYER_DEFEND') return '当前不是防御阶段';
             if (method === 'doEndTurn' && s.phase !== 'PLAYER_PLAY') return '当前不能结束回合';
             // The discard button is shown during PLAYER_PLAY and is the
@@ -387,6 +411,9 @@
             let result;
             let events = [];
             try {
+                if ((method === 'doPlay' || method === 'doDefend') && params && params.__atomic) {
+                    e.s.selectedCard = Number(params.index);
+                }
                 result = method === 'chooseMozeSeven' && typeof e.resolveMozeSevenChoice === 'function'
                     ? e.resolveMozeSevenChoice((params && params.choice) || params || {})
                     : e.dispatch(method, params || {});
@@ -405,6 +432,18 @@
             }
         }
 
+        _normalizeAtomicCommand(actor, method, params = {}) {
+            if (method !== 'playCard' && method !== 'defendCard') return { method, params };
+            const hand = this.engine.h && (actor === 'guest' ? this.engine.h.ai : this.engine.h.player) || [];
+            const hinted = Number(params.index);
+            const hintedCard = Number.isInteger(hinted) && hinted >= 0 && hinted < hand.length ? hand[hinted] : null;
+            const index = hintedCard && cardIdentity(hintedCard) === params.cardId
+                ? hinted
+                : hand.findIndex(card => cardIdentity(card) === params.cardId);
+            if (index < 0) throw new Error('这张牌已不在手牌中，请重新选择');
+            return { method: method === 'playCard' ? 'doPlay' : 'doDefend', params: { index, __atomic: true } };
+        }
+
         dispatch(actor, method, params = {}, meta = {}) {
             const requestId = meta && typeof meta === 'object' ? meta.requestId : meta;
             const cached = this._cachedRequest(actor, requestId);
@@ -418,13 +457,17 @@
             let raw;
             let events = [];
             try {
-                if (actor === 'guest') raw = this._dispatchGuest(method, params);
+                const command = this._normalizeAtomicCommand(actor, method, params || {});
+                if (actor === 'guest') raw = this._dispatchGuest(command.method, command.params);
                 else {
                     this.context = 'host';
                     this.engine.s.onlineActor = 'host';
-                    raw = method === 'chooseMozeSeven' && typeof this.engine.resolveMozeSevenChoice === 'function'
-                        ? this.engine.resolveMozeSevenChoice((params && params.choice) || params || {})
-                        : this.engine.dispatch(method, params || {});
+                    if ((command.method === 'doPlay' || command.method === 'doDefend') && command.params && command.params.__atomic) {
+                        this.engine.s.selectedCard = Number(command.params.index);
+                    }
+                    raw = command.method === 'chooseMozeSeven' && typeof this.engine.resolveMozeSevenChoice === 'function'
+                        ? this.engine.resolveMozeSevenChoice((command.params && command.params.choice) || command.params || {})
+                        : this.engine.dispatch(command.method, command.params || {});
                 }
             } catch (error) {
                 return { ok: false, error: error && error.message ? error.message : String(error), state: this.project(actor) };

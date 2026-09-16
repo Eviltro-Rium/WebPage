@@ -98,7 +98,10 @@ export class Room {
             nickname: metadata.nickname, avatar: metadata.avatar, character: metadata.character, ready: metadata.ready
           }});
         } else {
-          this.broadcast({ type: 'roomMessage', from: clientId, payload: incoming });
+          // Game packets are point-to-point. Do not send the relay envelope
+          // back to its sender; it only wastes bandwidth and makes the
+          // browser perform self-echo filtering on every snapshot.
+          this.broadcast({ type: 'roomMessage', from: clientId, payload: incoming }, clientId);
         }
         return;
       }

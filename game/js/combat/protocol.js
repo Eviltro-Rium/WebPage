@@ -32,10 +32,13 @@
     });
 
     const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
+    let nextCardUid = 0;
+    const newCardUid = () => 'c' + (++nextCardUid).toString(36);
 
     const number = (color, value, white = false, extras = null) => {
         const normalizedColor = String(color || '').toUpperCase();
         const card = {
+            uid: newCardUid(),
             value: Number(value) || 0,
             color: normalizedColor,
             drawTwo: false,
@@ -68,6 +71,7 @@
         const normalizedColor = String(color || '').toUpperCase();
         const key = String(effect || 'item');
         const card = {
+            uid: newCardUid(),
             value: -1,
             color: normalizedColor,
             drawTwo: key === 'drawTwo',

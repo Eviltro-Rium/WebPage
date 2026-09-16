@@ -5,6 +5,7 @@
     const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
     const PROTOCOL_VERSION = 2;
     const REQUEST_TIMEOUT = 12000;
+    const REQUEST_RETRY_DELAY = 1800;
     const resultWithState = (outcome, state) => {
         const snapshot = clone(state || (outcome && outcome.state) || null) || {};
         return Object.assign({}, snapshot, outcome || {}, { state: snapshot });
@@ -19,6 +20,8 @@
             this.state = clone(state || (match && match.project('host')));
             this.onStateChange = typeof onStateChange === 'function' ? onStateChange : null;
             this._requestId = 0;
+            this._pendingBroadcast = null;
+            this._broadcastRetryTimer = null;
         }
 
         getState() { return clone(this.state); }
@@ -28,7 +31,7 @@
             const events = this.match && typeof this.match.eventsForViewer === 'function'
                 ? this.match.eventsForViewer(outcome.events || [], 'guest', source)
                 : clone(outcome.events || []);
-            this.peer.send({
+            const packet = {
                 kind: 'state',
                 protocolVersion: this.match.protocolVersion || PROTOCOL_VERSION,
                 matchId: this.match.matchId,
@@ -37,7 +40,31 @@
                 guestState: this.match.project('guest'),
                 events,
                 winner: outcome.winner || null
-            });
+            };
+            if (this.peer.send(packet) !== false) {
+                this._pendingBroadcast = null;
+                if (this._broadcastRetryTimer) clearTimeout(this._broadcastRetryTimer);
+                this._broadcastRetryTimer = null;
+            } else {
+                // Keep only the newest authoritative snapshot. A retry is
+                // safe because requestId/stateVersion make duplicate packets
+                // idempotent on the guest.
+                this._pendingBroadcast = packet;
+                if (!this._broadcastRetryTimer) {
+                    this._broadcastRetryTimer = setTimeout(() => {
+                        this._broadcastRetryTimer = null;
+                        const pending = this._pendingBroadcast;
+                        this._pendingBroadcast = null;
+                        if (pending && this.peer && this.peer.send(pending) === false) {
+                            this._pendingBroadcast = pending;
+                            this._broadcastRetryTimer = setTimeout(() => {
+                                this._broadcastRetryTimer = null;
+                                this._broadcast(outcome, requestId, source);
+                            }, 350);
+                        }
+                    }, 120);
+                }
+            }
         }
 
         dispatch(method, params = {}) {
@@ -114,6 +141,12 @@
         }
 
         acknowledgeEvents() { return Promise.resolve({ ok: true }); }
+
+        close() {
+            if (this._broadcastRetryTimer) clearTimeout(this._broadcastRetryTimer);
+            this._broadcastRetryTimer = null;
+            this._pendingBroadcast = null;
+        }
     }
 
     class OnlineGuestSession extends Base {
@@ -127,6 +160,7 @@
             this._protocolVersion = Number(this.state && this.state.protocolVersion) || PROTOCOL_VERSION;
             this._matchId = this.state && this.state.matchId || null;
             this._stateVersion = Number(this.state && this.state.stateVersion) || 0;
+            this.metrics = { sent: 0, retried: 0, completed: 0, failed: 0, rttMs: [], lastRttMs: 0 };
         }
 
         getState() { return clone(this.state); }
@@ -136,20 +170,39 @@
             if (this._pending.size) return Promise.resolve(resultWithState({ ok: false, error: '正在同步上一次操作，请稍候' }, this.getState()));
             const requestId = ++this._requestId;
             return new Promise(resolve => {
+                const payload = { kind: 'command', protocolVersion: this._protocolVersion,
+                    matchId: this._matchId, expectedStateVersion: this._stateVersion,
+                    requestId, method, params: params || {} };
+                const startedAt = typeof performance !== 'undefined' && performance.now
+                    ? performance.now() : Date.now();
+                const retry = () => {
+                    const pending = this._pending.get(requestId);
+                    if (!pending) return;
+                    pending.attempts += 1;
+                    this.metrics.retried += 1;
+                    try {
+                        if (!this.peer.send(payload)) return;
+                    } catch (_) { return; }
+                    pending.retryTimer = setTimeout(retry, REQUEST_RETRY_DELAY);
+                };
                 const timer = setTimeout(() => {
                     const pending = this._pending.get(requestId);
                     if (!pending) return;
                     this._pending.delete(requestId);
+                    if (pending.retryTimer) clearTimeout(pending.retryTimer);
+                    this.metrics.failed += 1;
                     pending.resolve(resultWithState({ ok: false, error: '主机响应超时，请检查连接后重试' }, this.getState()));
                 }, REQUEST_TIMEOUT);
-                this._pending.set(requestId, { resolve, timer });
-                if (!this.peer.send({ kind: 'command', protocolVersion: this._protocolVersion,
-                    matchId: this._matchId, expectedStateVersion: this._stateVersion,
-                    requestId, method, params: params || {} })) {
+                this._pending.set(requestId, { resolve, timer, retryTimer: null, attempts: 0, startedAt });
+                this.metrics.sent += 1;
+                if (!this.peer.send(payload)) {
                     clearTimeout(timer);
                     this._pending.delete(requestId);
+                    this.metrics.failed += 1;
                     resolve(resultWithState({ ok: false, error: 'P2P 尚未连接' }, this.getState()));
+                    return;
                 }
+                this._pending.get(requestId).retryTimer = setTimeout(retry, REQUEST_RETRY_DELAY);
             });
         }
 
@@ -159,6 +212,14 @@
             if (pending) {
                 this._pending.delete(id);
                 clearTimeout(pending.timer);
+                if (pending.retryTimer) clearTimeout(pending.retryTimer);
+                const now = typeof performance !== 'undefined' && performance.now
+                    ? performance.now() : Date.now();
+                const elapsed = Math.max(0, now - pending.startedAt);
+                this.metrics.completed += 1;
+                this.metrics.lastRttMs = elapsed;
+                this.metrics.rttMs.push(elapsed);
+                if (this.metrics.rttMs.length > 64) this.metrics.rttMs.shift();
                 pending.resolve(result);
                 return true;
             }
@@ -201,9 +262,20 @@
 
         acknowledgeEvents() { return Promise.resolve({ ok: true }); }
 
+        getDiagnostics() {
+            const values = this.metrics.rttMs.slice().sort((a, b) => a - b);
+            const percentile = p => values.length ? values[Math.min(values.length - 1, Math.floor(values.length * p))] : 0;
+            return { pending: this._pending.size, stateVersion: this._stateVersion,
+                sent: this.metrics.sent, retried: this.metrics.retried,
+                completed: this.metrics.completed, failed: this.metrics.failed,
+                lastRttMs: Math.round(this.metrics.lastRttMs),
+                rttP50Ms: Math.round(percentile(0.5)), rttP95Ms: Math.round(percentile(0.95)) };
+        }
+
         close() {
             for (const pending of this._pending.values()) {
                 clearTimeout(pending.timer);
+                if (pending.retryTimer) clearTimeout(pending.retryTimer);
                 pending.resolve({ ok: false, error: '联机连接已关闭', state: this.getState() });
             }
             this._pending.clear();

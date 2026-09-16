@@ -48,7 +48,17 @@
                 const card = state.playerHand[index];
                 if (!card || (state.legalHand && state.legalHand[index] === false)) return;
                 this._npcHandFocusIndex = -1;
-                if (state.selectedCard !== index) {
+                if (state.isOnline) {
+                    // Selection is private to this browser.  Do not spend a
+                    // network round trip just to highlight a card; the
+                    // subsequent _apiAction submits an atomic playCard or
+                    // defendCard command with the card identity.
+                    if (state.selectedCard !== index) {
+                        state.selectedCard = index;
+                        state.selectedCards = [];
+                        if (typeof this._renderControls === 'function') this._renderControls();
+                    }
+                } else if (state.selectedCard !== index) {
                     const selected = typeof this._sessionDispatch === 'function'
                         ? await this._sessionDispatch('selectCard', { index })
                         : await Bridge.call('selectCard', { index });
@@ -101,6 +111,18 @@
                         }
                         if (this._isSelectingCard) return;
                         this._lastPlayerHandClick = { index: idx, time: now, promise: null };
+                        if (this.state && this.state.isOnline && (phase === 'PLAYER_PLAY' || phase === 'PLAYER_DEFEND')) {
+                            // Keep the hand DOM in place so a quick second
+                            // click still reaches the same node and is
+                            // recognised as a double-click.
+                            this.state.selectedCard = this.state.selectedCard === idx ? -1 : idx;
+                            this.state.selectedCards = [];
+                            cv.parentElement.querySelectorAll('.card-canvas').forEach((node, nodeIndex) => {
+                                node.classList.toggle('selected', nodeIndex === this.state.selectedCard);
+                            });
+                            if (typeof this._renderControls === 'function') this._renderControls();
+                            return;
+                        }
                         const selection = (async () => {
                             this._isSelectingCard = true;
                             try {

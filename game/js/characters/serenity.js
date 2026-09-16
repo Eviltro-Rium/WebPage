@@ -47,9 +47,10 @@
         heal(a, 1 + bonus);
         own.splice(0, own.length);
         if (bt) {
-          let opp = eng.h[target], count = opp.length;
+          const targetKey = typeof eng._who === 'function' ? eng._who(t) : (owner === 'player' ? 'ai' : 'player');
+          let opp = eng.h[targetKey] || [], count = opp.length;
           opp.splice(0, opp.length);
-          draw(target, Math.max(0, count - 1), true);
+          draw(targetKey, Math.max(0, count - 1), true);
         }
         draw(owner, 4, true);
         skip = true;
@@ -67,8 +68,17 @@
         desc = bt ? `Serenity 1牌：防御3点+恢复${b}点(嗜血)` : 'Serenity 1牌：防御至多3点';
       } else if (v === 2) {
         bleed(opponent, 1);
-        let drain = opponent.bleed * 2;
-        heal(defender, drain, 'drain');
+        let drain = (opponent.bleed || 0) * 2;
+        // Life steal must remove HP from the attacker and heal the defender
+        // by the amount actually taken (after fly/guard mitigation).
+        if (typeof eng.drainAttack === 'function') {
+          eng.drainAttack(defender, opponent, drain, { forceDrainAvoidance: true });
+        } else {
+          const before = opponent.hp;
+          hurt(opponent, drain, 'drain');
+          const taken = Math.max(0, before - opponent.hp);
+          if (taken > 0) heal(defender, taken, 'drain');
+        }
         remaining = d;
         desc = `Serenity 2牌：1层流血+吸取${drain}点生命`;
       } else if (v === 3) {

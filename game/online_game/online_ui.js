@@ -21,6 +21,8 @@
             this.ready = false; this.match = null; this.state = null;
             this.error = ''; this.pendingSync = null; this.connectionState = '未连接'; this.roomStatus = '';
             this.battleSession = null; this.battleUI = null; this._battleAnimation = Promise.resolve();
+            this._battleGeneration = 0; this._battleQueuedVersion = 0; this._battleDisplayVersion = 0;
+            this._battleSeenEvents = new Set();
             this._matchStartPayload = null; this._matchStartAcked = false; this._matchStartAttempts = 0; this._matchStartRetryTimer = null;
             // The initial snapshot is sent in two phases: matchStart mounts
             // the guest session, then matchReady enables the first actor.  A
@@ -479,12 +481,23 @@
         }
         _mountSharedBattle(session, state, events = []) {
             if (!session || !state || !global.GameUI) throw new Error('共享战斗 UI 尚未加载');
+            this._battleGeneration += 1;
+            this._battleQueuedVersion = 0;
+            this._battleDisplayVersion = 0;
+            this._battleSeenEvents = new Set();
             this.battleSession = session;
             this.state = clone(state);
             const ownNickname = (state.onlineNickname || this.nickname || '玩家');
             this.root.innerHTML = '<div class="online-topbar online-battle-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线对决</div><div class="online-brand-sub">房间 ' + safeText(this.roomCode) + ' · ' + safeText(this.connectionState || 'P2P') + '</div></div></div><div class="online-battle-player">玩家：' + safeText(ownNickname) + '</div><button class="online-link" id="online-battle-lobby" type="button">返回准备大厅</button></div><section class="online-shared-game" id="online-shared-game"><div id="game-container"><div id="select-screen"></div><div id="game-screen"></div></div></section>';
             const screen = this.root.querySelector('#game-screen');
             this.battleUI = new global.GameUI({ session, root: document });
+            // Both local actions and remote snapshots use the same presenter
+            // queue. GameUI remains responsible for controls/rendering, while
+            // OnlineUI owns version ordering and event de-duplication.
+            this.battleUI._onlineResultSink = async (result, fast) => {
+                await this._queueSharedBattleResult(result, fast);
+                return this.battleUI && this.battleUI.state;
+            };
             if (!document.getElementById('particles-canvas') && typeof this.battleUI._initParticles === 'function') {
                 this.battleUI._initParticles();
             }
@@ -513,18 +526,38 @@
 
         _queueSharedBattleResult(result, fast = false) {
             if (!this.battleUI || !result) return Promise.resolve();
+            if (!Number.isFinite(this._battleQueuedVersion)) this._battleQueuedVersion = 0;
+            if (!Number.isFinite(this._battleDisplayVersion)) this._battleDisplayVersion = 0;
+            if (!(this._battleSeenEvents instanceof Set)) this._battleSeenEvents = new Set();
+            const incomingVersion = Number(result.stateVersion != null
+                ? result.stateVersion : result.state && result.state.stateVersion);
+            if (Number.isFinite(incomingVersion) && incomingVersion < this._battleQueuedVersion) return this._battleAnimation;
+            if (Number.isFinite(incomingVersion)) this._battleQueuedVersion = Math.max(this._battleQueuedVersion, incomingVersion);
+            const generation = this._battleGeneration;
             const run = async () => {
+                if (generation !== this._battleGeneration) return;
                 if (result.error) {
                     this.battleUI.showError(result.error);
                     return;
                 }
                 const next = clone(result.state || (this.battleSession && this.battleSession.getState && this.battleSession.getState()));
                 if (!next) return;
+                const version = Number(next.stateVersion);
+                if (Number.isFinite(version) && version < this._battleDisplayVersion) return;
                 this.state = next;
                 this.battleUI._prevState = this.battleUI.state;
                 this.battleUI.state = next;
-                const batch = Array.isArray(result.events) ? result.events : [];
+                const batch = (Array.isArray(result.events) ? result.events : []).filter(event => {
+                    if (!event || event.id == null) return true;
+                    const key = `${next.matchId || ''}:${event.id}:${event.type || ''}`;
+                    if (this._battleSeenEvents.has(key)) return false;
+                    this._battleSeenEvents.add(key);
+                    if (this._battleSeenEvents.size > 512) this._battleSeenEvents.delete(this._battleSeenEvents.values().next().value);
+                    return true;
+                });
                 if (batch.length) await this.battleUI._consumeEvents(batch, { fastFirstBatch: fast });
+                if (generation !== this._battleGeneration) return;
+                if (Number.isFinite(version)) this._battleDisplayVersion = Math.max(this._battleDisplayVersion, version);
                 this.battleUI.updateDisplay();
                 this.state = clone(this.battleUI.state);
             };
@@ -537,6 +570,10 @@
             this.battleSession = null;
             this.battleUI = null;
             this._battleAnimation = Promise.resolve();
+            this._battleGeneration += 1;
+            this._battleQueuedVersion = 0;
+            this._battleDisplayVersion = 0;
+            this._battleSeenEvents = new Set();
         }
 
         exitBattle() {

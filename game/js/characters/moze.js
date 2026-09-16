@@ -41,6 +41,7 @@
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;
+      const counter = helpers.counter || ((target, amount) => hurt(target, amount));
       let remaining = d, desc = '';
       if (v === 1) {
         let b = Math.ceil(d / 2);
@@ -49,7 +50,7 @@
         desc = `Moze 1牌：防御${b}点+1层守护`;
       } else if (v === 2) {
         let cd = 1 + Math.ceil(defender.guard / 2);
-        hurt(opponent, cd);
+        counter(opponent, cd);
         remaining = d;
         desc = `Moze 2牌：反击${cd}点`;
       } else if (v === 3) {
@@ -61,7 +62,7 @@
         let b = Math.ceil(d / 2);
         eng.addGuard(defender, 2);
         let cd = defender.guard * 2;
-        hurt(opponent, cd);
+        counter(opponent, cd);
         remaining = Math.max(0, d - b);
         desc = `Moze 0牌：防御${b}点+2层守护+反击${cd}点`;
       }

@@ -22,7 +22,9 @@
       if (v === 7) {
         a.burn = Math.min(5, a.burn + 2);
         burn(2);
-        let fieldBurn = eng.s.is1v2 ? eng.s.player.burn + eng.s.ai.burn + eng.s.ai2.burn : a.burn + t.burn;
+        let fieldBurn = [eng.s.player, eng.s.ai, eng.s.ai2]
+          .filter((entity, index, all) => entity && all.indexOf(entity) === index)
+          .reduce((sum, entity) => sum + (entity.burn || 0), 0);
         d = Math.ceil(1.5 * fieldBurn);
         hadBurn = true;
       }
@@ -32,6 +34,7 @@
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, burn } = helpers;
+      const counter = helpers.counter || ((target, amount) => hurt(target, amount));
       let remaining = d;
       let desc = '';
       if (v === 1) {
@@ -52,15 +55,19 @@
       if (v === 3) {
         // 文档：反击场上所有角色【灼伤】层数🗡️，然后对进攻玩家施加2层【灼伤】（先施加灼伤再结算伤害）
         burn(opponent, 2);
-        let fb = defender.burn + opponent.burn + (eng.s.ai2 ? eng.s.ai2.burn : 0);
-        hurt(opponent, fb);
+        let fb = [eng.s.player, eng.s.ai, eng.s.ai2]
+          .filter((entity, index, all) => entity && all.indexOf(entity) === index)
+          .reduce((sum, entity) => sum + (entity.burn || 0), 0);
+        counter(opponent, fb);
         remaining = d;
         desc = `Blaze 3牌：反击场上总灼烧${fb}点+攻击方+2灼烧`;
       }
       if (v === 0) {
         // 文档：对进攻玩家施加4层灼烧，恢复场上所有灼烧数+3❤️（先施加灼伤再结算回血）
         burn(opponent, 4);
-        let tb = defender.burn + opponent.burn + (eng.s.ai2 ? eng.s.ai2.burn : 0);
+        let tb = [eng.s.player, eng.s.ai, eng.s.ai2]
+          .filter((entity, index, all) => entity && all.indexOf(entity) === index)
+          .reduce((sum, entity) => sum + (entity.burn || 0), 0);
         heal(defender, tb + 3);
         remaining = d;
         desc = `Blaze 0牌：进攻方+4灼烧+恢复${tb + 3}点`;
