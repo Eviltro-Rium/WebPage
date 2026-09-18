@@ -659,7 +659,6 @@
       if(who==='Saiki'&&c.value===6)return this.startNumberJudge('Saiki',c);
       if(who==='Moze'&&c.value===4)return this.startNumberJudge('Moze',c);
       if(who==='Chan'&&c.value===5)return this.startChanFive();
-      if(who==='Otto'&&c.value===3)return this.startOttoThree(c);
       if(who==='Otto'&&c.value===4)return this.startOttoFour(c);
       if(who==='Otto'&&c.value===5)return this.startNumberJudge('Otto',c);
       if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===5&&this.s.player.hp<=40)){let p={name:who,value:c.value,owner:'player',attackCard:cp(c)};return this.resolveOpponentHandSkill(p)}
@@ -800,22 +799,6 @@
     }
     startChanFive(){this.hurt(this.s.player,2);let cards=[];for(let i=0;i<5&&this.deck.length;i++)cards.push(this.deck.pop());this.s.chanFiveCards=cp(cards);this.s.phase='CHAN_FIVE_REORDER';this.s.busy=false;this.emit('desc',`Chan 5牌：消耗2点生命，查看牌库顶${cards.length}张并排序`);if(!cards.length){this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this.afterAttack();this.check()},1200)}return this.check()}
     finishChanFive(order){let cards=this.s.chanFiveCards;if(!cards||!cards.length)throw Error('当前没有需要排序的牌');let ids=String(order||'').split(',').map(Number);if(ids.length!==cards.length||new Set(ids).size!==cards.length||ids.some(i=>i<0||i>=cards.length))ids=cards.map((_,i)=>i);let arranged=ids.map(i=>cards[i]);for(let i=arranged.length-1;i>=0;i--)this.deck.push(arranged[i]);this.s.chanFiveCards=null;this.draw('player',2,true);this.emit('desc','Chan 5牌：排序完成，抽取新的牌库顶2张牌并跳过防御');this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this.afterAttack();this.check()},1700);return this.check()}
-    startOttoThree(card){
-      const r=this.reveal('Otto 3牌判定','player');
-      if(!r){this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this.afterAttack();this.check()},1200);return this.check()}
-      // A zero or item judgement is kept in the player's hand and skips the
-      // defense phase; only numeric cards are sent to the discard-bottom pile.
-      if(r.isItemCard||r.value===0){
-        this.h.player.push(r);
-        this.emit('desc',`Otto 3牌：${this.cardText(r)}加入手牌，跳过防御`,r);
-        return this.gateAdventureAttackMod(card,0,true,false);
-      }
-      const dmg=r.value;
-      if(dmg>4){this.hurt(this.s.player,2);if(this.s.player.crit<3)this.s.player.crit++;this.emit('buff','+1[暴击]',null,{who:'player',kind:'crit',stacks:this.s.player.crit});this.emit('desc',`Otto 3牌：${this.cardText(r)}造成${dmg}点伤害，自伤2点+1层暴击`)}
-      else{this.emit('desc',`Otto 3牌：${this.cardText(r)}造成${dmg}点伤害`)}
-      this.discardWithEvent(r,'player',{from:'reveal',faceUp:true,desc:`Otto 3牌将${this.cardText(r)}置于弃牌库底`});
-      return this.gateAdventureAttackMod(card,dmg,false,false)
-    }
     startOttoFour(card){
       let targetKey=this.s.is1v2?(this.s.attackTarget||'ai'):'ai';
       this.refillDeckIfNeeded();let c1=this.deck.length?this.deck.pop():null;

@@ -11,13 +11,13 @@
       const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs } = helpers;
       let d = 0, skip = false, unblock = false, immediateBuffs = false;
       if (v === 1) {
-        d = 4;
+        d = 2;
+        bleed(2);
       } else if (v === 2) {
         d = 3;
         heal(a, 1);
       } else if (v === 3) {
-        d = 2;
-        bleed(2);
+        d = 4;
       } else if (v === 4) {
         d = 5;
         unblock = !!t.bleed;

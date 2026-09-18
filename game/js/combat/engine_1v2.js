@@ -247,7 +247,6 @@
     if(who==='Saiki'&&c.value===6)return this.startNumberJudge('Saiki',c);
     if(who==='Moze'&&c.value===4)return this.startNumberJudge('Moze',c);
     if(who==='Chan'&&c.value===5)return this.startChanFive();
-    if(who==='Otto'&&c.value===3)return this.startOttoThree(c);
     if(who==='Otto'&&c.value===4)return this.startOttoFour(c);
     if(who==='Otto'&&c.value===5)return this.startNumberJudge('Otto',c);
      if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===5&&this.s.player.hp<=40)){

@@ -11,15 +11,15 @@
       const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs } = helpers;
       let d = 0, skip = false, unblock = false;
       if (v === 1) {
-        d = 4;
-      } else if (v === 2) {
-        d = 3;
-        heal(a, 1);
-      } else if (v === 3) {
         heal(a, 1);
         draw(owner, 1, true);
         skip = true;
         if (owner === 'player') eng.s.mayDiscardAfterSkill = true;
+      } else if (v === 2) {
+        d = 3;
+        heal(a, 1);
+      } else if (v === 3) {
+        d = 4;
       } else if (v === 4) {
         let r = takeReveal('Ryan 4牌判定');
         if (r && (r.isBlack || r.isWhite || eng.effective(r) === 'GREEN')) {

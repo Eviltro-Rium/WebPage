@@ -746,8 +746,8 @@
       : mobile
         ? 2200
         : 2600;
-    var bootFromPos = new THREE.Vector3(0, 2.15, 5.2);
-    var bootFromLook = new THREE.Vector3(0, 1.35, -0.8);
+    var bootFromPos = new THREE.Vector3(0, 2.3, 2.8);
+    var bootFromLook = new THREE.Vector3(0, 1.2, -0.4);
     var bootLook = new THREE.Vector3();
     var homePos = new THREE.Vector3(HOME_POS.x, HOME_POS.y, HOME_POS.z);
     var homeLook = new THREE.Vector3(HOME_LOOK.x, HOME_LOOK.y, HOME_LOOK.z);
@@ -781,7 +781,7 @@
     var camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 220);
     if (bootMode) {
       camera.position.copy(bootFromPos);
-      camera.fov = 32;
+      camera.fov = 24;
       camera.lookAt(bootFromLook);
     } else {
       camera.position.copy(homePos);
@@ -1343,7 +1343,7 @@
           var bootProgress = readyForReveal
             ? rawBootProgress
             : Math.min(rawBootProgress, 0.92);
-          var bootEase = 1 - Math.pow(1 - bootProgress, 3);
+          var bootEase = bootProgress * bootProgress * (3 - 2 * bootProgress);
           var galleryProgress = isHomePage
             ? THREE.MathUtils.clamp(Number(window.__riumGalleryProgress) || 0, 0, 1)
             : windowLoaded
@@ -1380,7 +1380,7 @@
           camera.position.lerpVectors(bootFromPos, homePos, bootEase);
           bootLook.lerpVectors(bootFromLook, homeLook, bootEase);
           camera.lookAt(bootLook);
-          camera.fov = THREE.MathUtils.lerp(32, 48, bootEase);
+          camera.fov = THREE.MathUtils.lerp(24, 48, bootEase);
           camera.updateProjectionMatrix();
           updateHomeLoading(loadingProgress, loadingLabel, loadingStage);
 

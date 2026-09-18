@@ -15,10 +15,10 @@
         eng.freeze(t);
         skip = true;
       } else if (v === 2) {
-        d = 4;
-      } else if (v === 3) {
         d = 2;
         draw(owner, 1, true);
+      } else if (v === 3) {
+        d = 4;
       } else if (v === 4) {
         d = 2;
         skip = true;

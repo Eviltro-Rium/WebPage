@@ -500,12 +500,12 @@ test('online guest defense settles against the real attacker', () => {
 test('online guest defense keeps attack debuffs on the original target', () => {
   const Card = context.FurryGame.Card;
   const cases = [
-    // Leon 3 applies burn to the defender.
-    { character: 'Leon', card: Card.number('RED', 3), expected: 'burn' },
+    // Leon 2 applies burn to the defender.
+    { character: 'Leon', card: Card.number('RED', 2), expected: 'burn' },
     // Chan 0 applies freeze to the defender while still allowing defense.
     { character: 'Chan', card: Card.number('RED', 0), expected: 'frozen' },
-    // Saiki's yellow-card passive applies bleed to the defender.
-    { character: 'Saiki', card: Card.number('YELLOW', 1), expected: 'bleed' }
+    // Saiki's yellow 1 applies 2 bleed from the attack skill plus 1 from the passive.
+    { character: 'Saiki', card: Card.number('YELLOW', 1), expected: 'bleed', expectedCount: 3 }
   ];
 
   for (const scenario of cases) {
@@ -526,7 +526,8 @@ test('online guest defense keeps attack debuffs on the original target', () => {
     assert.equal(outcome.ok, true, `${scenario.character} defense should resolve`);
     assert.equal(match.engine.s.player[scenario.expected] || false, false,
       `${scenario.character} must not apply ${scenario.expected} to the attacker`);
-    assert.equal(match.engine.s.ai[scenario.expected] || false, scenario.expected === 'frozen' ? true : 1,
+    const want = scenario.expectedCount !== undefined ? scenario.expectedCount : (scenario.expected === 'frozen' ? true : 1);
+    assert.equal(match.engine.s.ai[scenario.expected] || false, want,
       `${scenario.character} must apply ${scenario.expected} to the defender`);
   }
 });
@@ -549,9 +550,9 @@ test('online guest attack keeps its debuff on the host target', () => {
 
   outcome = match.dispatch('host', 'doSkipDefend');
   assert.equal(outcome.ok, true);
-  // Saiki's yellow-card passive belongs to the host's character (the target
+  // Saiki's yellow 1 belongs to the host's character (the target
   // in the guest's temporary orientation), never to the guest attacker.
-  assert.equal(match.engine.s.player.bleed, 1);
+  assert.equal(match.engine.s.player.bleed, 3);
   assert.equal(match.engine.s.ai.bleed, 0);
 });
 

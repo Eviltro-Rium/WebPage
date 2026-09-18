@@ -12,13 +12,13 @@
       let d = 0, skip = false, unblock = false;
       let bt = a.hp < 30;
       if (v === 1) {
-        d = 3;
-        skip = bt;
+        d = 2;
+        heal(a, 2);
       } else if (v === 2) {
         d = bt ? 5 : 3;
       } else if (v === 3) {
-        d = 2;
-        heal(a, 2);
+        d = 3;
+        skip = bt;
       } else if (v === 4) {
         d = 5;
         if (bt) bleed(1);

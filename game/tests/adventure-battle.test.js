@@ -129,7 +129,7 @@ test('Leon attack 1 applies burn after skip-defense attack resolves', () => {
   assert.equal(engine.s.ai.burn, 0);
   assert.ok(deferred, 'skip-defense attack should schedule settlement');
   deferred();
-  assert.equal(engine.s.ai.burn, 2);
+  assert.equal(engine.s.ai.burn, 3);
 });
 
 test('GhostFire applies three burn stacks in adventure combat', () => {

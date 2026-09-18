@@ -15,9 +15,9 @@
         return hasExtraNumber && x.guard < 5 ? 76 - x.guard * 5 : -100;
       }
       if (v === 2) return x.guard < 3 ? (eng.effective(c) === 'GREEN' ? 74 : 62) : 48;
-      if (v === 3) return x.guard < 3 || x.missingHp ? 66 : 46;
+      if (v === 1) return x.guard < 3 || x.missingHp ? 66 : 46;
       if (v === 5) return x.oppHand ? 64 : 42;
-      if (v === 1) return 48;
+      if (v === 3) return 48;
       return null;
     },
 

@@ -10,8 +10,8 @@
       if (v === 0) return x.opponent.hp <= 7 ? 98 : x.hpPct <= 20 ? 28 : 68;
       if (v === 1) return x.oppBurn >= 4 ? -100 : 66 - x.oppBurn * 5;
       if (v === 6) return 58;
-      if (v === 3) return x.oppBurn ? 50 : 60;
-      if (v === 2) return 48;
+      if (v === 2) return x.oppBurn ? 50 : 60;
+      if (v === 3) return 48;
       return null;
     },
 

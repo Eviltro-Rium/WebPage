@@ -10,8 +10,8 @@
       if (v === 6) return x.chaos_green ? 73 : (x.guard <= 2 ? 64 : 49);
       if (v === 1) return 43 + chaos * 9;
       if (v === 4) return x.chaos_blue ? 65 : 56;
-      if (v === 3) return x.chaos_green && x.chaos_yellow ? 68 : 47;
-      if (v === 2) return 48;
+      if (v === 2) return x.chaos_green && x.chaos_yellow ? 68 : 47;
+      if (v === 3) return 48;
       return null;
     },
 

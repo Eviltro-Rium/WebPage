@@ -25,7 +25,7 @@
       if (v === 4) return 58;
       if (v === 3) return 52;
       if (v === 2) return 48;
-      if (v === 1) return 44;
+      if (v === 1) return 62;
       return null;
     },
 

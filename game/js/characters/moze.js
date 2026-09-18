@@ -11,15 +11,15 @@
       const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs } = helpers;
       let d = 0, skip = false, unblock = false;
       if (v === 1) {
-        d = 3;
-      } else if (v === 2) {
-        d = 2;
-        guard(eng.effective(c) === 'GREEN' ? 2 : 1);
-      } else if (v === 3) {
         d = 1;
         unblock = true;
         heal(a, 1);
         guard(1);
+      } else if (v === 2) {
+        d = 2;
+        guard(eng.effective(c) === 'GREEN' ? 2 : 1);
+      } else if (v === 3) {
+        d = 3;
       } else if (v === 4) {
         skip = true;
       } else if (v === 5) {

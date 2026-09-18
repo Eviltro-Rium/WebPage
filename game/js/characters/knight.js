@@ -24,10 +24,10 @@
         if (cb) eng.freeze(t);
         if (cy) bleed(1);
       } else if (v === 2) {
-        d = 4;
-      } else if (v === 3) {
         d = 3;
         if (cg && cy) heal(a, 3);
+      } else if (v === 3) {
+        d = 4;
       } else if (v === 4) {
         let r = takeReveal('Knight 4牌判定');
         if (r) {

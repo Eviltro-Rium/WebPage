@@ -15,9 +15,9 @@
           (eng.effective(card) === 'YELLOW' && x.oppBleed < 2 ? 4 : 0)));
         return best >= x.opponent.hp ? 96 : 58 + best;
       }
-      if (v === 3) return x.oppBleed < 3 ? 68 : 48;
+      if (v === 1) return x.oppBleed < 3 ? 68 : 48;
       if (v === 2) return x.missingHp ? 52 : 44;
-      if (v === 1) return 48;
+      if (v === 3) return 48;
       return null;
     },
 

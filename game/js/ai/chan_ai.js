@@ -10,8 +10,8 @@
       if (v === 5) return x.self.hp <= 2 ? -100 : x.handSize <= 3 ? 76 : 58;
       if (v === 6) return 64;
       if (v === 7) return x.oppHand ? 70 : 58;
-      if (v === 3) return x.handSize <= 3 ? 62 : 46;
-      if (v === 2) return 50;
+      if (v === 2) return x.handSize <= 3 ? 62 : 46;
+      if (v === 3) return 50;
       return null;
     },
 

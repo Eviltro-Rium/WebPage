@@ -524,7 +524,7 @@ test('Leon, Saiki, and Blaze attack branches follow the updated character docs',
 
   const saiki = new Engine();
   saiki.start('Saiki', 'Ryan');
-  result = saiki.effect('Saiki', 3, number(3), saiki.s.player, saiki.s.ai);
+  result = saiki.effect('Saiki', 1, number(1), saiki.s.player, saiki.s.ai);
   assert.equal(result.d, 2);
   assert.equal(saiki.s.ai.bleed, 2);
   saiki.s.player.hp = 40;

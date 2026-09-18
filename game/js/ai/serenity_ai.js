@@ -13,9 +13,9 @@
       if (v === 6) return bloodthirst ? 82 : 62;
       if (v === 4) return bloodthirst ? 77 : 58;
       if (v === 2) return bloodthirst ? 71 : 50;
-      if (v === 3) return 50 + Math.min(12, x.missingHp);
+      if (v === 1) return 50 + Math.min(12, x.missingHp);
       if (v === 5) return x.missingHp >= 4 ? 56 : 46;
-      if (v === 1) return bloodthirst ? 68 : 44;
+      if (v === 3) return bloodthirst ? 68 : 44;
       return null;
     },
 

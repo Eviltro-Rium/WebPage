@@ -9,10 +9,10 @@
       if (v === 7) return fieldBurn >= 5 ? 92 : fieldBurn >= 3 ? 78 : 58;
       if (v === 5) return x.burn >= 3 ? 90 : x.burn >= 1 ? 72 : 54;
       if (v === 6) return x.burn ? 56 + x.burn * 7 + Math.min(8, x.missingHp) : -100;
-      if (v === 2) return x.oppGuard ? 78 : x.burn ? 62 : 68;
+      if (v === 1) return x.oppGuard ? 78 : x.burn ? 62 : 68;
       if (v === 4) return x.oppHand ? 62 : 48;
-      if (v === 3) return fieldBurn < 6 ? 66 : 50;
-      if (v === 1) return 52 + (x.burn ? 6 : 0);
+      if (v === 2) return fieldBurn < 6 ? 66 : 50;
+      if (v === 3) return 52 + (x.burn ? 6 : 0);
       return null;
     },
 

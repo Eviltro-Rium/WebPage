@@ -13,9 +13,9 @@
       let skip = false;
       let unblock = false;
       let hadBurn = a.burn > 0;
-      if (v === 1) d = 4;
-      if (v === 2) { d = 2; unblock = true; if (burnSelf) burnSelf(2); }
-      if (v === 3) { d = 3; if (burnSelf) burnSelf(1); burn(1); }
+      if (v === 1) { d = 2; unblock = true; if (burnSelf) burnSelf(2); }
+      if (v === 2) { d = 3; if (burnSelf) burnSelf(1); burn(1); }
+      if (v === 3) d = 4;
       if (v === 4) { d = 0; skip = true; }
       if (v === 5) {
         if (burnSelf) burnSelf(1);

@@ -17,10 +17,10 @@
         burn(3);
         skip = true;
       } else if (v === 2) {
-        d = 4;
-      } else if (v === 3) {
         d = 3;
         burn(1);
+      } else if (v === 3) {
+        d = 4;
       } else if (v === 4) {
         d = 5;
         skip = !!t.burn;

@@ -11,12 +11,15 @@
       const { burn, bleed, guard, heal, draw, clearDebuffs, hurt } = helpers;
       let d = 0, skip = false, unblock = false;
       if (v === 1) {
-        d = 4;
+        d = 2;
+        unblock = true;
+        if (a.crit < 3) a.crit++;
+        eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
       } else if (v === 2) {
         d = 3;
         guard(1);
       } else if (v === 3) {
-        return null;
+        d = 4;
       } else if (v === 4) {
         return null;
       } else if (v === 5) {

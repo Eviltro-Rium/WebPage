@@ -20,10 +20,10 @@
         if (damage >= x.opponent.hp) return 96;
         return x.missingHp >= max ? 70 : 55 + damage;
       }
-      if (v === 3) return x.missingHp >= 2 ? 58 : x.handSize <= 3 ? 52 : 32;
+      if (v === 1) return x.missingHp >= 2 ? 58 : x.handSize <= 3 ? 52 : 32;
       if (v === 2) return x.missingHp ? 54 : 43;
       if (v === 4) return 48;
-      if (v === 1) return 46;
+      if (v === 3) return 46;
       return null;
     },
 
