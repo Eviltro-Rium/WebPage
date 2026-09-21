@@ -208,6 +208,7 @@ close()
 | 文件 | 职责 |
 | --- | --- |
 | `adventure/js/engine/adventure_engine.js` | 地图位置、房间、货币、库存、奖励、商店、铁匠铺和跨房间玩家状态 |
+| `adventure/js/engine/loot.js` | 按场景和怪物集中管理 D12 战利白卡掉落规则；不参与商店或普通奖励池 |
 | `adventure/js/battle/battle_engine.js` | `AdventureBattleEngine`，唯一的冒险战斗规则和双牌堆实现 |
 | `adventure/js/battle/adventure_battle_items.js` | 冒险配饰、道具和战斗 Buff 扩展 |
 | `adventure/js/engine/combat_result.js` | 把战斗结果写回地图、房间清理和结算阶段 |

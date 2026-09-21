@@ -27,6 +27,7 @@ const sources = expand(['characters', 'ai', 'combat', 'adventure_content']).conc
   'adventure/js/map/map.js',
   'adventure/js/deck/adventure_deck.js',
   'adventure/js/engine/adventure_engine.js',
+  'adventure/js/engine/loot.js',
   'adventure/js/engine/shop.js',
   'adventure/js/engine/rewards.js',
   'adventure/js/engine/inventory.js',
@@ -1357,4 +1358,24 @@ test('Chan passive and refill emit a single player draw when a new attack turn s
   assert.equal(draws.length, 1);
   assert.equal(engine.h.player.length, before + draws[0].count);
   assert.ok(draws[0].count >= 1);
+});
+test('castle monster loot uses a d12 rule and enters the transient player hand', () => {
+  const engine = start();
+  context.FurryGame.CombatRuntime.setRandomSource(() => 0);
+  try {
+    engine.s.ai.alive = false;
+    engine.s.ai.name = 'CastleGhost';
+    const before = engine.h.player.length;
+    const loot = engine._resolveAdventureTrophyDrop('ai');
+    assert.equal(loot.roll, 1);
+    assert.equal(loot.drops.length, 1);
+    assert.equal(loot.drops[0], 'FlyTrophy');
+    assert.equal(engine.h.player.length, before + 1);
+    assert.equal(engine.h.player[engine.h.player.length - 1].trophyName, 'FlyTrophy');
+    assert.equal(engine.s.trophyDrops.length, 1);
+    assert.equal(engine.s.trophyDrops[0], 'FlyTrophy');
+    assert.equal(engine._resolveAdventureTrophyDrop('ai'), null);
+  } finally {
+    context.FurryGame.CombatRuntime.resetRandomSource();
+  }
 });

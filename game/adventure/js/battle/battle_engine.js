@@ -54,6 +54,7 @@
       this.tableTopOwner = data.tableTopOwner || this.s.discardTopOwner || null;
       this.s.discardTopOwner = this.tableTopOwner;
       this._ensureStatuses();
+      this._initTrophyLootState();
       // Migrate old battle snapshots where the table top lived outside the
       // discard pile. New snapshots already include it as the last discard.
       const oldTop = this.s.discardTop;
@@ -104,6 +105,69 @@
       ['player', 'ai', 'ai2'].forEach(key => {
         if (this.s[key]) status.ensure(this.s[key]);
       });
+    }
+
+    _initTrophyLootState() {
+      if (!this.s) return;
+      if (!Array.isArray(this.s.trophyDrops)) this.s.trophyDrops = [];
+      if (!this.s.trophyDropHandled || typeof this.s.trophyDropHandled !== 'object') {
+        this.s.trophyDropHandled = {};
+      }
+    }
+
+    _resolveAdventureTrophyDrop(defeatedKey) {
+      if (!this.s || !this.s.isAdventure || !this.s.player || !this.s.player.alive) return null;
+      this._initTrophyLootState();
+      if (!defeatedKey || this.s.trophyDropHandled[defeatedKey]) return null;
+      this.s.trophyDropHandled[defeatedKey] = true;
+      const defeated = this.s[defeatedKey];
+      const monsterName = defeated && defeated.name;
+      const loot = window.AdventureLoot && typeof window.AdventureLoot.rollMonsterDrop === 'function'
+        ? window.AdventureLoot.rollMonsterDrop(this.s.adventureScene || 'castle', monsterName)
+        : null;
+      if (!loot || loot.roll == null) return loot;
+      const drops = Array.isArray(loot.drops) ? loot.drops.slice() : [];
+      if (drops.length && this.piles && this.piles.player && window.AdventureDeck) {
+        for (const itemName of drops) {
+          this.piles.player.hand.push(window.AdventureDeck.trophyWhite(itemName));
+          this.s.trophyDrops.push(itemName);
+        }
+      }
+      const label = monsterName || defeatedKey;
+      if (drops.length) {
+        const names = drops.map(name => {
+          const def = window.AdventureRegistry && window.AdventureRegistry.getItem(name);
+          return def ? def.displayName : name;
+        });
+        this.emit('desc', label + '被击败，D12=' + loot.roll + '，获得' + names.join('、'));
+      } else {
+        this.emit('desc', label + '被击败，D12=' + loot.roll + '，没有掉落战利白卡');
+      }
+      this.emit('trophyDrop', '战利白卡掉落结算', {
+        monsterName: label,
+        roll: loot.roll,
+        drops: drops.slice()
+      });
+      if (drops.length) {
+        // 战利白卡是规则允许的新实体，更新不变量基线后继续检查
+        // 牌库隔离和重复牌，避免把合法掉落误报为凭空增加。
+        this._invariantBaseline = null;
+        this._checkInvariants('trophyDrop');
+      }
+      return loot;
+    }
+
+    check() {
+      const result = super.check();
+      // Resolve drops in the same call that applies the final hit. This keeps
+      // the reward in the player's hand before the map settlement screen.
+      if (this.s && this.s.isAdventure && this.s.player && this.s.player.alive) {
+        const defeated = this.s.is1v2 ? ['ai', 'ai2'] : ['ai'];
+        defeated.forEach(key => {
+          if (this.s[key] && !this.s[key].alive) this._resolveAdventureTrophyDrop(key);
+        });
+      }
+      return this.state();
     }
 
     startAdventure(config = {}) {
@@ -189,6 +253,7 @@
       this.s.defCard = null;
       this.s.defOwner = null;
       this.s.revealCards = [];
+      this._initTrophyLootState();
 
       let top = clone(config.discardTop);
       let topOwner = config.discardTopOwner || null;
@@ -202,6 +267,7 @@
       }
       this.s.discardTop = top;
       this.tableTopOwner = topOwner;
+      this._initTrophyLootState();
       this.s.discardTopOwner = topOwner;
 
       // NPC resources are recreated for every room and never borrow cards from
@@ -336,6 +402,7 @@
       }
 
       this.tableTopOwner = topOwner;
+      this._initTrophyLootState();
 
 
       this.draw('ai', this.piles.ai.handLimit, false);
@@ -402,6 +469,7 @@
           this.emit('desc', (this.s[defeatedKey].name || '怪物') + '出局，手牌已放入怪物弃牌库');
         }
       }
+      this._resolveAdventureTrophyDrop(defeatedKey);
       return super._on1v2OpponentEliminated(defeatedKey);
     }
 
@@ -721,6 +789,17 @@
     }
 
     finishAdventureBattle() {
+      // 1v1 没有中途出局回调，胜利结算时补做一次唯一掉落判定；1v2
+      // 的出局回调已即时处理，下面的兜底只会命中未处理的怪物。
+      if (this.s && this.s.isAdventure && this.s.player && this.s.player.alive) {
+        if (this.s.is1v2) {
+          for (const key of ['ai', 'ai2']) {
+            if (this.s[key] && !this.s[key].alive) this._resolveAdventureTrophyDrop(key);
+          }
+        } else if (this.s.ai && !this.s.ai.alive) {
+          this._resolveAdventureTrophyDrop('ai');
+        }
+      }
       clearTimeout(this.timer);
       this._settleTableTop();
 
@@ -767,7 +846,8 @@
         }),
         discardTop: null,
         discardTopOwner: null,
-        npcResetCount: this.piles.ai.deck.length
+        npcResetCount: this.piles.ai.deck.length,
+        trophyDrops: Array.isArray(this.s.trophyDrops) ? this.s.trophyDrops.slice() : []
       };
     }
 
@@ -1170,6 +1250,7 @@
       this.s.atkCard = this.s.defCard = null;
       this.s.atkOwner = this.s.defOwner = null;
       this.s.revealCards = [];
+      this._initTrophyLootState();
       this.s.hasPlayedThisTurn = false;
       this.s.aiTurnStarted = false;
       this.s.aiHasPlayed = false;

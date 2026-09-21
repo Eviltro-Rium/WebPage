@@ -432,11 +432,11 @@
       return results;
     },
     _rollItemDrop() {
+      // 普通奖励/掉落池只包含一次性道具；战利白卡由 AdventureLoot
+      // 在击败怪物时单独结算，避免混入商店和房间奖励。
       const consumables = window.AdventureRegistry.itemsByKind('consumable');
-      const trophyWhites = window.AdventureRegistry.itemsByKind('trophyWhite');
-      const dropable = consumables.concat(trophyWhites);
-      if (!dropable.length) return null;
-      return dropable[Math.floor(random() * dropable.length)].name;
+      if (!consumables.length) return null;
+      return consumables[Math.floor(random() * consumables.length)].name;
     },
     _rollCombatDrop() {
       const bonus = this.getAccessoryStatBonuses();

@@ -226,7 +226,7 @@
     _isShopConsumableName(itemName) {
       if (!itemName || typeof itemName !== 'string') return false;
       const def = window.AdventureRegistry.getItem(itemName);
-      return !!(def && (def.kind === 'consumable' || def.kind === 'trophyWhite'));
+      return !!(def && def.kind === 'consumable');
     },
     _isShopAccessoryName(itemName) {
       if (!itemName || typeof itemName !== 'string') return false;
@@ -246,14 +246,6 @@
         if (typeof slot === 'string' && this._isShopAccessoryName(slot)) return slot;
         return this._rollAccessoryDrop();
       }
-      if (this._isShopTrophySlot(index)) {
-        if (!slot) return null;
-        if (typeof slot === 'string') {
-          const def = window.AdventureRegistry.getItem(slot);
-          if (def && def.kind === 'trophyWhite') return slot;
-        }
-        return this._rollTrophyWhiteSlot();
-      }
       if (!slot) return null;
       if (typeof slot === 'string') {
         const def = window.AdventureRegistry.getItem(slot);
@@ -262,10 +254,11 @@
       return this._rollConsumableDrop();
     },
     _initShopSlots(room) {
+      // 商店固定为：3 道具 + 2 兽元 + 1 配饰。战利白卡只从怪物掉落或铁匠铺获得。
       room.shopSlots = [
         this._rollConsumableDrop(),
         this._rollConsumableDrop(),
-        this._rollTrophyWhiteSlot(),
+        this._rollConsumableDrop(),
         this._rollBeastShopOffer(),
         this._rollBeastShopOffer(),
         this._rollAccessoryDrop()
@@ -286,7 +279,6 @@
     },
     _isShopBeastSlot(index) { return index === 3 || index === 4; },
     _isShopAccessorySlot(index) { return index === 5; },
-    _isShopTrophySlot(index) { return index === 2; },
     _isShopItemSlot(index) { return index >= 0 && index <= 2; },
     _rollConsumableDrop() {
       const consumables = window.AdventureRegistry.itemsByKind('consumable');
@@ -416,9 +408,8 @@
         this.emit('buy', '购买成功', { itemName, kind: 'accessory', price, slot: index, gold: this.s.currency.gold });
         return { ok: true };
       }
-      if (def.kind !== 'consumable' && def.kind !== 'trophyWhite') {
-        if (this._isShopTrophySlot(index)) room.shopSlots[index] = this._rollTrophyWhiteSlot();
-        else if (this._isShopItemSlot(index)) room.shopSlots[index] = this._rollConsumableDrop();
+      if (def.kind !== 'consumable') {
+        if (this._isShopItemSlot(index)) room.shopSlots[index] = this._rollConsumableDrop();
         else if (this._isShopAccessorySlot(index)) room.shopSlots[index] = this._rollAccessoryDrop();
         this.emit('buyFail', '不可购买', { itemName, reason: 'invalid' });
         return { ok: false, message: '不可购买' };
@@ -456,7 +447,7 @@
       }
       const itemName = this._isShopAccessorySlot(index)
         ? this._rollAccessoryDrop()
-        : (this._isShopTrophySlot(index) ? this._rollTrophyWhiteSlot() : this._rollConsumableDrop());
+        : this._rollConsumableDrop();
       room.shopSlots[index] = itemName;
       this.s.shopSelectedSlot = index;
       const def = itemName ? window.AdventureRegistry.getItem(itemName) : null;

@@ -840,13 +840,7 @@
                     refreshable: true
                   };
                 }
-                if (this._isShopTrophySlot(index)) {
-                  if (def.kind !== 'trophyWhite') return null;
-                } else if (this._isShopItemSlot(index)) {
-                  if (def.kind !== 'consumable') return null;
-                } else {
-                  return null;
-                }
+                if (!this._isShopItemSlot(index) || def.kind !== 'consumable') return null;
                 return {
                   kind: def.kind,
                   name,

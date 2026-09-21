@@ -475,6 +475,29 @@
       }
       this.s.discardTop = new window.AdventureDeck.DiscardTop(savedTop);
       this.s.discardTopOwner = savedTop ? (result.discardTopOwner || 'player') : null;
+      // Battle loot cards are inserted into the transient battle hand first.  On
+      // persistence, reconcile the physical trophy cards with the collection
+      // list so a refresh or repeated settlement cannot duplicate a drop.
+      if (this.s.playerPile) {
+        if (!Array.isArray(this.s.trophyWhiteCards)) this.s.trophyWhiteCards = [];
+        const physical = Object.create(null);
+        for (const list of [this.s.playerPile.deck, this.s.playerPile.hand, this.s.playerPile.discard]) {
+          for (const card of (list || [])) {
+            if (!card || !card.trophyWhite || !card.trophyName) continue;
+            physical[card.trophyName] = (physical[card.trophyName] || 0) + 1;
+          }
+        }
+        const known = Object.create(null);
+        for (const name of this.s.trophyWhiteCards) known[name] = (known[name] || 0) + 1;
+        for (const name of Object.keys(physical)) {
+          const def = window.AdventureRegistry && window.AdventureRegistry.getItem(name);
+          if (!def || def.kind !== 'trophyWhite') continue;
+          while ((known[name] || 0) < physical[name]) {
+            this.s.trophyWhiteCards.push(name);
+            known[name] = (known[name] || 0) + 1;
+          }
+        }
+      }
       // Older battle results could contain the physical table-top card twice.
       // Reuse the adventure-engine migration guard before exposing the map.
       if (typeof this._normalizePlayerPileCount === 'function') this._normalizePlayerPileCount();
@@ -482,7 +505,8 @@
         deck: this.s.playerPile ? this.s.playerPile.deck.length : 0,
         hand: this.s.playerPile ? this.s.playerPile.hand.length : 0,
         discard: this.s.playerPile ? this.s.playerPile.discard.length : 0,
-        npcResetCount: result.npcResetCount || 0
+        npcResetCount: result.npcResetCount || 0,
+        trophyDrops: Array.isArray(result.trophyDrops) ? result.trophyDrops.slice() : []
       });
       return true;
     },

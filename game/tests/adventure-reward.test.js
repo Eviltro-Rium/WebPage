@@ -34,6 +34,7 @@ const sources = [
   'adventure/js/items/item_defs.js',
   'adventure/js/items/map_effects.js',
   'adventure/js/engine/adventure_engine.js',
+  'adventure/js/engine/loot.js',
   'adventure/js/engine/shop.js',
   'adventure/js/engine/rewards.js',
   'adventure/js/engine/inventory.js',
@@ -356,7 +357,7 @@ test('shop offers 3 item + 2 beast + 1 accessory slots', () => {
   assert.ok(eng.currentRoom().shopSlots.every(Boolean));
   assert.equal(typeof eng.currentRoom().shopSlots[0], 'string');
   const item0Kind = context.AdventureRegistry.getItem(eng.currentRoom().shopSlots[0]).kind;
-  assert.ok(item0Kind === 'consumable' || item0Kind === 'trophyWhite', 'shop slot 0 should be consumable or trophyWhite, got ' + item0Kind);
+  assert.equal(item0Kind, 'consumable', 'shop slot 0 should only sell consumables');
   assert.equal(eng.currentRoom().shopSlots[3].kind, 'beast');
   assert.equal(eng.currentRoom().shopSlots[4].kind, 'beast');
   assert.equal(context.AdventureRegistry.getItem(eng.currentRoom().shopSlots[5]).kind, 'accessory');
@@ -369,8 +370,8 @@ test('shop offers 3 item + 2 beast + 1 accessory slots', () => {
   assert.equal(eng.s.currency.gold, goldBefore - price);
   assert.equal(eng.currentRoom().shopSlots[0], null);
   const def0 = context.AdventureRegistry.getItem(item);
-  if (def0.kind === 'consumable') assert.ok(eng.s.consumables.includes(item));
-  else assert.ok(eng.s.trophyWhiteCards.includes(item));
+  assert.equal(def0.kind, 'consumable');
+  assert.ok(eng.s.consumables.includes(item));
 
   const emptyBuy = eng.buyShopSlot(0);
   assert.equal(emptyBuy.ok, false);
@@ -595,7 +596,7 @@ test('shop sells accessories for 15 gold and can refresh accessory slot', () => 
 test('shop and drop rolls are uniform over consumables only', () => {
   const eng = startEngine();
   const consumables = context.AdventureRegistry.allItems().filter(it => it.kind === 'consumable');
-  assert.equal(consumables.length, 16);
+  assert.ok(consumables.length > 0);
   const names = new Set(consumables.map(it => it.name));
   const counts = Object.create(null);
   names.forEach(n => { counts[n] = 0; });

@@ -53,6 +53,7 @@ const SOURCES = [
   'adventure/js/deck/npc_strategy.js',
   'adventure/js/save/adventure_save.js',
   'adventure/js/engine/adventure_engine.js',
+  'adventure/js/engine/loot.js',
   'adventure/js/engine/shop.js',
   'adventure/js/engine/rewards.js',
   'adventure/js/engine/inventory.js',

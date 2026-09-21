@@ -53,6 +53,7 @@ const adventureExpected = expand(['characters', 'ai', 'combat']).concat([
   'adventure/js/deck/adventure_deck.js',
   'adventure/js/deck/npc_strategy.js',
   'adventure/js/engine/adventure_engine.js',
+  'adventure/js/engine/loot.js',
   'adventure/js/engine/shop.js',
   'adventure/js/engine/rewards.js',
   'adventure/js/engine/inventory.js',
