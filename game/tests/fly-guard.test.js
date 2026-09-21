@@ -78,7 +78,7 @@ test('failed fly keeps the defense open so guard can be chosen', () => {
   assert.equal(engine.pendingSettlement.damage, 2);
 });
 
-test('super purify clears every current combat and adventure status', () => {
+test('super purify clears purgeable statuses but preserves marks', () => {
   const entity = {
     burn: 2, bleed: 2, poison: 2, frozen: true, bomb: 4, blind: 1, iceSeal: 1,
     hypothermia: 2, guard: 3, fly: 2, lush: 2, crit: 2, parasite: 1,
@@ -91,7 +91,9 @@ test('super purify clears every current combat and adventure status', () => {
   for (const key of ['burn', 'bleed', 'poison', 'bomb', 'blind', 'iceSeal', 'hypothermia', 'guard', 'fly', 'lush', 'crit', 'parasite']) {
     assert.equal(entity[key], 0, key + ' should be cleared');
   }
-  for (const key of ['frozen', 'diving', 'bloodthirst', 'bindMark', 'chaos_red', 'chaos_yellow', 'chaos_blue', 'chaos_green']) {
+  for (const key of ['frozen', 'diving', 'chaos_red', 'chaos_yellow', 'chaos_blue', 'chaos_green']) {
     assert.equal(entity[key], false, key + ' should be cleared');
   }
+  assert.equal(entity.bloodthirst, true, 'bloodthirst mark should be preserved');
+  assert.equal(entity.bindMark, true, 'bind mark should be preserved');
 });

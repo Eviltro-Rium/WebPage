@@ -1120,12 +1120,12 @@
     _hasPurifyableBuff(ch) {
       if (!ch) return false;
       const registry = window.FurryGame && window.FurryGame.StatusRegistry;
-      if (registry) return registry.list(ch).length > 0;
+      if (registry) return registry.list(ch, def => def.cleanse !== 'never').length > 0;
       return (ch.burn > 0) || (ch.bleed > 0) || ((ch.poison || 0) > 0) || ((ch.blind || 0) > 0) ||
              ((ch.bomb || 0) > 0) || !!ch.frozen || ((ch.iceSeal || 0) > 0) ||
              ((ch.hypothermia || 0) > 0) || (ch.guard > 0) || ((ch.fly || 0) > 0) ||
              ((ch.crit || 0) > 0) || ((ch.lush || 0) > 0) || ((ch.parasite || 0) > 0) ||
-             !!ch.diving || !!ch.bloodthirst || !!ch.bindMark || !!ch.chaos_red ||
+             !!ch.diving || !!ch.chaos_red ||
              !!ch.chaos_yellow || !!ch.chaos_blue || !!ch.chaos_green;
     }
 

@@ -25,8 +25,7 @@
             entity.hp = Math.max(0, entity.hp - damage);
             entity.alive = entity.hp > 0;
             if (engine.name(entity) === 'Serenity') {
-                if (service) setStatus(entity, 'bloodthirst', entity.hp < 30);
-                else entity.bloodthirst = entity.hp < 30;
+                if (entity.hp < 30) { if (service) setStatus(entity, 'bloodthirst', true); else entity.bloodthirst = true; }
             }
             if (damage <= 0 || opts.silent) return;
 
@@ -68,13 +67,12 @@
             entity.hp = Math.min(entity.maxHp, entity.hp + amount);
             const actual = entity.hp - before;
             if (engine.name(entity) === 'Serenity') {
-                if (service) setStatus(entity, 'bloodthirst', entity.hp < 30);
-                else entity.bloodthirst = entity.hp < 30;
+                if (before < 30 || entity.hp < 30) { if (service) setStatus(entity, 'bloodthirst', true); else entity.bloodthirst = true; }
             }
             const target = targetKey(engine, entity);
             const label = kind === 'drain' ? '吸血' : kind === 'passive' ? '被动' : '生命';
             engine.emit(eventTypes.HEAL || 'heal', `+${actual}[${label}]`, null, { who: target, target, amount: actual, kind });
-            if (kind !== 'drain' && engine.name(entity) === 'Serenity' && entity.hp >= 30) {
+            if (kind !== 'drain' && engine.name(entity) === 'Serenity' && !entity.bloodthirst && entity.hp >= 30) {
                 entity.hp = Math.min(entity.maxHp, entity.hp + 1);
                 engine.emit(eventTypes.HEAL || 'heal', '+1[被动]', null, { who: target, target, amount: 1, kind: 'passive' });
             }
@@ -147,7 +145,7 @@
             }
             entity.burn = 0; entity.bleed = 0; entity.poison = 0;
             entity.frozen = false; entity.bomb = 0; entity.blind = 0; entity.iceSeal = 0;
-            entity.hypothermia = 0; entity.bindMark = false;
+            entity.hypothermia = 0;
         },
         clearPositiveBuffs(entity) {
             if (!entity) return;
@@ -157,7 +155,7 @@
             }
             entity.guard = 0; entity.fly = 0; entity.crit = 0; entity.lush = 0;
             entity.parasite = 0;
-            entity.diving = false; entity.bloodthirst = false;
+            entity.diving = false;
             entity.chaos_red = false; entity.chaos_yellow = false;
             entity.chaos_blue = false; entity.chaos_green = false;
         },
@@ -174,7 +172,7 @@
                 entity.burn = 0; entity.bleed = 0; entity.poison = 0; entity.frozen = false;
                 entity.bomb = 0; entity.blind = 0; entity.iceSeal = 0; entity.hypothermia = 0;
                 entity.guard = 0; entity.fly = 0; entity.lush = 0; entity.crit = 0; entity.parasite = 0;
-                entity.diving = false; entity.bloodthirst = false; entity.bindMark = false;
+                entity.diving = false;
                 entity.chaos_red = false; entity.chaos_yellow = false;
                 entity.chaos_blue = false; entity.chaos_green = false;
                 return;
@@ -188,8 +186,8 @@
             else if (kind === 'iceSeal') entity.iceSeal = 0;
             else if (kind === 'hypothermia' && entity.hypothermia) entity.hypothermia = 0;
             else if (kind === 'diving') entity.diving = false;
-            else if (kind === 'bloodthirst') entity.bloodthirst = false;
-            else if (kind === 'bind') entity.bindMark = false;
+            else if (kind === 'bloodthirst') { /* permanent mark */ }
+            else if (kind === 'bind') { /* expires through its gameplay rule */ }
             else if (kind === 'guard' && entity.guard) entity.guard--;
             else if (kind === 'fly' && entity.fly) entity.fly--;
             else if (kind === 'lush' && entity.lush) entity.lush--;

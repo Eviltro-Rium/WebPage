@@ -83,7 +83,8 @@
   function clearAll(entity) {
     if (!entity) return [];
     return registry.all.filter(definition => registry.has(entity, definition.id))
-      .map(definition => { clear(entity, definition.id, 'all'); return definition.id; });
+      .filter(definition => clear(entity, definition.id, 'all'))
+      .map(definition => definition.id);
   }
 
   function snapshot(entity) {

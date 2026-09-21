@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 const context = vm.createContext({ console, Math, JSON, setTimeout: () => 1, clearTimeout: () => {} });
 context.window = context;
 
-for (const relative of ['js/combat/events.js', 'js/combat/status_registry.js', 'js/combat/status_service.js', 'js/combat/status.js']) {
+for (const relative of ['js/combat/events.js', 'js/combat/status_registry.js', 'js/combat/status_service.js', 'js/combat/status.js', 'js/characters/registry.js', 'js/characters/serenity.js']) {
   const file = path.join(root, relative);
   vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
 }
@@ -40,20 +40,41 @@ test('status registry describes and clears every current status', () => {
   assert.equal(entity.burn, 1);
   registry.clearGroup(entity, 'debuff', 'all');
   registry.clearGroup(entity, 'buff', 'all');
-  assert.equal(registry.list(entity).length, 0);
+  assert.equal(registry.list(entity).length, 2);
+  assert.equal(entity.bindMark, true);
+  assert.equal(entity.bloodthirst, true);
+  assert.equal(registry.clear(entity, 'bind'), false);
+  assert.equal(registry.clear(entity, 'bloodthirst'), false);
 });
 
 test('EngineStatus delegates cleanup to the registry', () => {
   const entity = { burn: 1, bindMark: true, diving: true, chaos_blue: true, guard: 2 };
   context.FurryGame.EngineStatus.clearDebuffs(entity);
   assert.equal(entity.burn, 0);
-  assert.equal(entity.bindMark, false);
+  assert.equal(entity.bindMark, true);
   context.FurryGame.EngineStatus.clearPositiveBuffs(entity);
   assert.equal(entity.diving, false);
   assert.equal(entity.chaos_blue, false);
   assert.equal(entity.guard, 0);
 });
 
+test('Serenity bloodthirst is a persistent non-cleanseable mark', () => {
+  const serenity = context.CharacterRegistry.get('Serenity');
+  const entity = { name: 'Serenity', hp: 29, maxHp: 75, alive: true, bloodthirst: false };
+  const engine = { name: () => 'Serenity', s: { player: entity }, emit() {} };
+  context.FurryGame.EngineStatus.hurt(engine, entity, 1);
+  assert.equal(entity.bloodthirst, true);
+  context.FurryGame.EngineStatus.heal(engine, entity, 50);
+  assert.equal(entity.hp, 75);
+  assert.equal(entity.bloodthirst, true);
+  context.FurryGame.EngineStatus.clean(entity, true);
+  assert.equal(entity.bloodthirst, true);
+  assert.equal(context.FurryGame.StatusRegistry.clear(entity, 'bloodthirst'), false);
+  assert.equal(serenity.passive.includes('印记'), true);
+  const crossing = { name: 'Serenity', hp: 29, maxHp: 75, alive: true, bloodthirst: false };
+  context.FurryGame.EngineStatus.heal(engine, crossing, 50);
+  assert.equal(crossing.bloodthirst, true);
+});
 test('StatusService is the single clamped mutation boundary', () => {
   const service = context.FurryGame.StatusService;
   const entity = {};

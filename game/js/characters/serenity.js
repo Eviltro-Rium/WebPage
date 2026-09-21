@@ -2,15 +2,16 @@
   const C = CharacterRegistry;
   C.register({
     name: 'Serenity',
-    hp: 80,
+    hp: 75,
     type: '暗影',
-    passive: '免疫冷冻；低于30生命进入嗜血，正常态恢复额外+1',
+    passive: '免疫冷冻；生命低于30时获得嗜血印记，印记永久保留且不可净化；未获得印记时恢复额外+1',
     init() { return {}; },
-    turnStart(eng, ch) { ch.bloodthirst = ch.hp < 30; },
+    turnStart(eng, ch) { if (ch.hp < 30) ch.bloodthirst = true; },
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs, hurt } = helpers;
       let d = 0, skip = false, unblock = false;
-      let bt = a.hp < 30;
+      let bt = !!a.bloodthirst || a.hp < 30;
+      if (a.hp < 30) a.bloodthirst = true;
       if (v === 1) {
         d = 2;
         heal(a, 2);
@@ -62,7 +63,8 @@
       let remaining = d, desc = '';
       if (v === 1) {
         let b = Math.min(3, d);
-        let bt = defender.hp < 30;
+        let bt = !!defender.bloodthirst || defender.hp < 30;
+        if (defender.hp < 30) defender.bloodthirst = true;
         if (bt) heal(defender, b);
         remaining = Math.max(0, d - b);
         desc = bt ? `Serenity 1牌：防御3点+恢复${b}点(嗜血)` : 'Serenity 1牌：防御至多3点';
@@ -83,7 +85,8 @@
         desc = `Serenity 2牌：1层流血+吸取${drain}点生命`;
       } else if (v === 3) {
         let b = Math.ceil(d / 2);
-        let bt = defender.hp < 30;
+        let bt = !!defender.bloodthirst || defender.hp < 30;
+        if (defender.hp < 30) defender.bloodthirst = true;
         if (bt) b = Math.min(d, b + 2);
         remaining = Math.max(0, d - b);
         desc = `Serenity 3牌：格挡${b}点`;

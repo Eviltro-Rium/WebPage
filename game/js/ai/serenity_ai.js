@@ -3,7 +3,7 @@
     name: 'Serenity',
 
     attackScore(eng, v, c, x) {
-      const bloodthirst = x.hpPct < 30;
+      const bloodthirst = !!(x.self && x.self.bloodthirst) || x.hpPct < 30;
       if (v === 0) {
         const healValue = Math.min(10, 1 + x.handSize * 3);
         const resetValue = bloodthirst ? x.oppHand * 4 : 0;
@@ -20,7 +20,7 @@
     },
 
     defendScore(eng, v, c, top, x) {
-      const bloodthirst = x.hpPct < 30;
+      const bloodthirst = !!(x.self && x.self.bloodthirst) || x.hpPct < 30;
       if (v === 0) return x.lethal ? 108 : 86;
       if (v === 3) return (bloodthirst ? 69 : 55) + (x.lethal ? 18 : 0);
       if (v === 1) return (bloodthirst ? 66 : 54) + (x.lethal ? 14 : 0);
@@ -30,7 +30,7 @@
 
     keepScore(eng, c, x) {
       if (!c.isNumberCard) return null;
-      const bloodthirst = x.hpPct < 30;
+      const bloodthirst = !!(x.self && x.self.bloodthirst) || x.hpPct < 30;
       if (c.value === 0) return 94;
       if (c.value === 7 || c.value === 6) return bloodthirst ? 82 : 70;
       if (c.value === 3) return 66;
@@ -43,7 +43,8 @@
     },
 
     specialEffect(eng, n, v, c, a, t, owner, helpers) {
-      const bloodthirst = a.hp < 30;
+      const bloodthirst = !!a.bloodthirst || a.hp < 30;
+      if (a.hp < 30) a.bloodthirst = true;
 
       // The generic skill targets every other combatant in 1v2. An AI
       // Serenity must only pay its own HP cost and attack the player once.

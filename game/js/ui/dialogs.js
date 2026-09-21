@@ -191,10 +191,10 @@ class DialogManager {
         const opp = extra.opponent || null;
         const oppSnap = opp ? snapshotStatuses(opp) : null;
         const hasAny = snap => statusRegistry
-            ? statusRegistry.list(snap).length > 0
+            ? statusRegistry.list(snap, def => def.cleanse !== 'never').length > 0
             : snap && (snap.burn > 0 || snap.bleed > 0 || snap.poison > 0 || snap.blind > 0 || snap.bomb > 0 || snap.frozen || snap.iceSeal > 0 ||
                 snap.guard > 0 || snap.fly > 0 || snap.crit > 0 || snap.lush > 0 || snap.parasite > 0 ||
-                snap.diving || snap.hypothermia > 0 || snap.bloodthirst || snap.bind);
+                snap.diving || snap.hypothermia > 0);
         const applyLocal = (snap, kind) => {
             if (statusRegistry && statusRegistry.clear(snap, kind)) return;
             if (kind === 'burn') snap.burn = Math.max(0, snap.burn - 1);
@@ -211,8 +211,6 @@ class DialogManager {
             else if (kind === 'parasite') snap.parasite = Math.max(0, snap.parasite - 1);
             else if (kind === 'diving') snap.diving = false;
             else if (kind === 'hypothermia') snap.hypothermia = 0;
-            else if (kind === 'bloodthirst') snap.bloodthirst = false;
-            else if (kind === 'bind') snap.bind = false;
         };
         const choices = [];
         const step = () => {
@@ -250,7 +248,7 @@ class DialogManager {
         const addGroup = (snap, who, prefix) => {
             if (!snap) return;
             const rows = statusRegistry
-                ? statusRegistry.list(snap).map(def => [
+                ? statusRegistry.list(snap, def => def.cleanse !== 'never').map(def => [
                     def.id,
                     `${def.label}${def.stack && statusRegistry.amount(snap, def.id) > 1 ? ` ×${statusRegistry.amount(snap, def.id)}` : ''}`,
                     def
@@ -271,8 +269,6 @@ class DialogManager {
                     if (snap.parasite > 0) legacy.push(['parasite', `寄生 ×${snap.parasite}`, 'parasite']);
                     if (snap.diving) legacy.push(['diving', '潜水', 'diving']);
                     if (snap.hypothermia > 0) legacy.push(['hypothermia', `失温 ×${snap.hypothermia}`, 'hypothermia']);
-                    if (snap.bloodthirst) legacy.push(['bloodthirst', '嗜血', 'blood_thirsty']);
-                    if (snap.bind) legacy.push(['bind', '捆缚', 'binding']);
                     return legacy;
                 })();
             for (const [kind, label, icon] of rows) {

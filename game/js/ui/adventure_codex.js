@@ -36,10 +36,10 @@
     { key: 'chaos_green', name: '混沌·绿', type: '正面状态', icon: 'icons/buff_icons/chaos_green.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出绿色数字牌并完成防御后获得，进攻回合开始前清除。' },
     { key: 'diving', name: '潜水', type: '正面状态', icon: 'icons/buff_icons/diving.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有潜水的角色免疫蓝色攻击（含被指定为蓝色的白牌）造成的伤害和buff施加。对手依旧可以对自己施加正面增益。冰封、诅咒等仍能命中。' },
     { key: 'hypothermia', name: '失温', type: '负面状态', icon: 'icons/buff_icons/hypothermia.webp', desc: '堆叠上限：2\n维持效果：衰减\n冻洋蓝鲸出4/5/6时，在防守方完成防御并结算伤害后，对防守方施加1层失温。当失温达到2层时，立即强制弃1张牌（玩家自选，NPC按最低优先级弃牌），随后失温削减1层。' },
-    { key: 'bind', name: '捆缚', type: '负面状态', icon: 'icons/items_icons/binding.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n使用捆缚道具后，目标在本回合结束后跳过自己的进攻阶段，由当前回合角色再发动一次进攻。' },
+    { key: 'bind', name: '捆缚', type: '印记', icon: 'icons/items_icons/binding.webp', desc: '堆叠上限：1\n维持效果：规则结束\n捆缚印记不能被净化或超级净化清除；目标在本回合结束后跳过自己的进攻阶段，由当前回合角色再发动一次进攻，额外进攻完成后按规则移除。' },
     { key: 'hypnosis', name: '催眠', type: '负面状态', icon: 'icons/buff_icons/sleepy_1.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有催眠的角色在自己的进攻阶段结束、切换到对手进攻阶段时立即转化为【沉睡】。已处于【沉睡】时免疫新的【催眠】。' },
     { key: 'sleep', name: '沉睡', type: '负面状态', icon: 'icons/buff_icons/sleepy_2.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n拥有沉睡的角色在自己的进攻回合开始时立刻苏醒，恢复10点生命（不超过生命上限）。同时被进攻时会跳过防御阶段，所有伤害直接结算。' },
-    { key: 'bloodthirst', name: '嗜血', type: '正面状态', icon: 'icons/ui_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：持续\nSerenity专属状态。当生命低于30时进入嗜血，恢复时额外+1（仅在生命回到≥30的回复过程中触发一次）；Serenity技能的评估权重会因嗜血大幅上调。' }
+    { key: 'bloodthirst', name: '嗜血', type: '印记', icon: 'icons/ui_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：永久\nSerenity专属嗜血印记。生命低于30时获得；获得后即使恢复到30以上也不会移除，且不能被净化或超级净化清除。未获得印记时，正常恢复额外+1生命；嗜血后技能按嗜血规则结算。' }
   ];
 
   // 主角图鉴：仅展示玩家可选择的角色（排除冒险 NPC、领主专属和测试用角色）。
@@ -49,7 +49,7 @@
     { name: 'Chan', hp: 80, type: '谋士', passive: '进攻回合开始前抽1张牌', avatar: 'avatars/Chan.webp', color: '#1399f2' },
     { name: 'Saiki', hp: 80, type: '猎手', passive: '有效黄色牌在防御结算后施加1层流血', avatar: 'avatars/Saiki.webp', color: '#9b59b6' },
     { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼烧时1至7牌攻击伤害+1', avatar: 'avatars/Blaze.webp', color: '#e67e22' },
-    { name: 'Serenity', hp: 80, type: '暗影', passive: '免疫冷冻；低于30生命嗜血，正常态恢复+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
+    { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；低于30生命获得嗜血印记，印记永久且不可净化；未获得印记时恢复+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
     { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
     { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
     { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层【暴击】使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
@@ -459,14 +459,14 @@
     html += '</div>';
     // 特殊机制（非Buff）单独一行
     html += '<div class="special-marks-section">';
-    html += '<div class="special-marks-title">特殊机制（非Buff）</div>';
+    html += '<div class="special-marks-title">印记（不可净化）</div>';
     html += '<div class="codex-all-list">';
     const specialMarks = BUFF_DATA.filter(b => b.key === 'bloodthirst' || b.key === 'bind');
     for (const buff of specialMarks) {
       const icon = resolveIcon(buff.icon);
       const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${buff.name}">` : `<div class="char-detail-avatar codex-no-icon">${buff.name[0]}</div>`;
       html += `<div class="codex-all-item">`;
-      html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${buff.name}</span><span class="codex-all-item-meta" style="color:#94a3b8">特殊机制</span></div></div>`;
+      html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${buff.name}</span><span class="codex-all-item-meta" style="color:#94a3b8">${buff.type} · 不可净化</span></div></div>`;
       const descLines = String(buff.desc || '').split('\n').filter(Boolean);
       html += `<div class="codex-all-item-desc">${descLines.map(line => formatCodexRichText(line)).join('<br>')}</div>`;
       html += '</div>';

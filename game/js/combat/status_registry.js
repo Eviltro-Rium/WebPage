@@ -15,7 +15,7 @@
     { id: 'bomb',        property: 'bomb',        label: '定时炸弹', icon: 'buff_icons/time_bomb.webp', polarity: 'debuff', stack: true, max: 5, cleanse: 'reset', trigger: 'onPlay' },
     { id: 'iceSeal',     property: 'iceSeal',     label: '冰封', icon: 'buff_icons/ice_seal.webp',    polarity: 'debuff', stack: false, max: 1, cleanse: 'reset',     trigger: 'onDraw' },
     { id: 'hypothermia', property: 'hypothermia', label: '失温', icon: 'buff_icons/hypothermia.webp', polarity: 'debuff', stack: true, max: 2, cleanse: 'reset', trigger: 'onThreshold' },
-    { id: 'bind',        property: 'bindMark',   label: '捆缚', icon: 'items_icons/binding.webp',     polarity: 'debuff', stack: false, max: 1, cleanse: 'reset', trigger: 'turnStart' },
+    { id: 'bind',        property: 'bindMark',   label: '捆缚', icon: 'items_icons/binding.webp',     polarity: 'debuff', mark: true, stack: false, max: 1, cleanse: 'never', trigger: 'turnStart' },
     { id: 'hypnosis',    property: 'hypnosis',    label: '催眠', icon: 'buff_icons/sleepy_1.webp',   polarity: 'debuff', stack: false, max: 1, cleanse: 'reset', trigger: 'persistent' },
     { id: 'sleep',       property: 'sleep',       label: '沉睡', icon: 'buff_icons/sleepy_2.webp',   polarity: 'debuff', stack: false, max: 1, cleanse: 'reset', trigger: 'turnStart' },
 
@@ -25,7 +25,7 @@
     { id: 'lush',        property: 'lush',        label: '茂盛', icon: 'buff_icons/lush.webp',         polarity: 'buff',   stack: true, max: 2, cleanse: 'decrement', trigger: 'attackStart', transferable: true },
     { id: 'parasite',    property: 'parasite',    label: '寄生', icon: 'buff_icons/parasite.webp',     polarity: 'buff',   stack: true, max: 1, cleanse: 'decrement', trigger: 'attackStart', transferable: true },
     { id: 'diving',      property: 'diving',      label: '潜水', icon: 'buff_icons/diving.webp',       polarity: 'buff',   stack: false, max: 1, cleanse: 'reset', trigger: 'onBlueAttack' },
-    { id: 'bloodthirst', property: 'bloodthirst', label: '嗜血', icon: 'ui_icons/blood_thirsty.webp',   polarity: 'buff',   stack: false, max: 1, cleanse: 'reset', trigger: 'hpThreshold' },
+    { id: 'bloodthirst', property: 'bloodthirst', label: '嗜血', icon: 'ui_icons/blood_thirsty.webp',   polarity: 'buff', mark: true, stack: false, max: 1, cleanse: 'never', trigger: 'hpThreshold' },
     { id: 'chaos_red',   property: 'chaos_red',   label: '混沌·红', icon: 'buff_icons/chaos_red.webp',    polarity: 'buff', stack: false, max: 1, cleanse: 'reset', trigger: 'onColorPlay' },
     { id: 'chaos_yellow',property: 'chaos_yellow',label: '混沌·黄', icon: 'buff_icons/chaos_yellow.webp', polarity: 'buff', stack: false, max: 1, cleanse: 'reset', trigger: 'onColorPlay' },
     { id: 'chaos_blue',  property: 'chaos_blue',  label: '混沌·蓝', icon: 'buff_icons/chaos_blue.webp',   polarity: 'buff', stack: false, max: 1, cleanse: 'reset', trigger: 'onColorPlay' },
@@ -52,6 +52,9 @@
   function clear(entity, id, mode) {
     const def = get(id);
     if (!def || !entity || !has(entity, id)) return false;
+    // Marks are permanent until their own gameplay rule expires; purification
+    // and group cleanses must never remove them.
+    if (def.cleanse === 'never') return false;
     const reset = mode === 'all' || mode === 'reset' || def.cleanse === 'reset';
     if (reset || !def.stack) entity[def.property] = def.stack ? 0 : false;
     else entity[def.property] = Math.max(0, amount(entity, id) - 1);

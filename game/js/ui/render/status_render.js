@@ -106,7 +106,7 @@
                     stacks: statusRegistry.amount(ch, def.id),
                     path: gameAssetUrl(`icons/${def.icon}`),
                     hideCount: !def.stack,
-                    label: def.label
+                    label: def.mark ? `${def.label}（印记，不可净化）` : def.label
                 }, uiOverrides[def.id] || {}))
                 : [
                     { key: 'burn', stacks: ch.burn, icon: 'burn', label: '灼烧', colorClass: 'burn-buff' },

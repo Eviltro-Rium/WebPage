@@ -133,7 +133,7 @@
     },
     isDebuffed(target) {
       if (statusRegistry) return statusRegistry.list(target, def => def.polarity === 'debuff').length > 0;
-      return (target.burn || 0) > 0 || (target.bleed || 0) > 0 || (target.poison || 0) > 0 || (target.blind || 0) > 0 || (target.iceSeal || 0) > 0 || !!target.frozen;
+      return (target.burn || 0) > 0 || (target.bleed || 0) > 0 || (target.poison || 0) > 0 || (target.blind || 0) > 0 || (target.iceSeal || 0) > 0 || !!target.frozen || !!target.bindMark;
     },
     playerBuffs() {
       const p = this.s.player;
@@ -304,7 +304,7 @@
     _listPurifyKinds(ch) {
       const kinds = [];
       if (!ch) return kinds;
-      if (statusRegistry) return statusRegistry.list(ch).map(def => def.id);
+      if (statusRegistry) return statusRegistry.list(ch, def => def.cleanse !== 'never').map(def => def.id);
       if ((ch.burn || 0) > 0) kinds.push('burn');
       if ((ch.bleed || 0) > 0) kinds.push('bleed');
       if ((ch.poison || 0) > 0) kinds.push('poison');
@@ -319,8 +319,6 @@
       if ((ch.parasite || 0) > 0) kinds.push('parasite');
       if (ch.diving) kinds.push('diving');
       if ((ch.hypothermia || 0) > 0) kinds.push('hypothermia');
-      if (ch.bloodthirst) kinds.push('bloodthirst');
-      if (ch.bindMark) kinds.push('bind');
       return kinds;
     },
     _hasPurifyableDebuff(player, opponent) {
@@ -328,6 +326,7 @@
       return this._listPurifyKinds(opponent).length > 0;
     },
     _applyPurifyKind(player, kind) {
+      if (statusRegistry && statusRegistry.get(kind) && statusRegistry.get(kind).cleanse === 'never') return false;
       if (statusRegistry && statusRegistry.clear(player, kind)) return true;
       if (kind === 'burn' && (player.burn || 0) > 0) {
         player.burn = Math.max(0, player.burn - 1);
@@ -383,14 +382,6 @@
       }
       if (kind === 'hypothermia' && (player.hypothermia || 0) > 0) {
         player.hypothermia = 0;
-        return true;
-      }
-      if (kind === 'bloodthirst' && player.bloodthirst) {
-        player.bloodthirst = false;
-        return true;
-      }
-      if (kind === 'bind' && player.bindMark) {
-        player.bindMark = false;
         return true;
       }
       return false;
