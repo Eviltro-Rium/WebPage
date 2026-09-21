@@ -25,13 +25,13 @@
   const BUFF_ICON_DIR = '../icons/buff_icons/';
   const ROOM_STYLE = {
     empty:  { label: '',   cls: 'room-empty',  glyph: '', icon: null },
-    start:  { label: '起点', cls: 'room-start',  glyph: '', icon: ROOM_ICON_DIR + 'starting_room.png' },
-    normal: { label: '普通', cls: 'room-normal', glyph: '', icon: ROOM_ICON_DIR + 'common_room.png' },
-    boss:   { label: 'Boss', cls: 'room-boss',   glyph: '', icon: ROOM_ICON_DIR + 'boss_room.png' },
-    item:   { label: '奖励', cls: 'room-item',   glyph: '', icon: ROOM_ICON_DIR + 'bonus_room.png' },
-    shop:   { label: '商店', cls: 'room-shop',   glyph: '', icon: ROOM_ICON_DIR + 'shopping_room.png' },
-    blacksmith: { label: '铁匠铺', cls: 'room-blacksmith', glyph: '', icon: ROOM_ICON_DIR + 'smith_room.png' },
-    challenge: { label: '挑战', cls: 'room-challenge', glyph: '', icon: ROOM_ICON_DIR + 'challenge_room.png' }
+    start:  { label: '起点', cls: 'room-start',  glyph: '', icon: ROOM_ICON_DIR + 'starting_room.webp' },
+    normal: { label: '普通', cls: 'room-normal', glyph: '', icon: ROOM_ICON_DIR + 'common_room.webp' },
+    boss:   { label: 'Boss', cls: 'room-boss',   glyph: '', icon: ROOM_ICON_DIR + 'boss_room.webp' },
+    item:   { label: '奖励', cls: 'room-item',   glyph: '', icon: ROOM_ICON_DIR + 'bonus_room.webp' },
+    shop:   { label: '商店', cls: 'room-shop',   glyph: '', icon: ROOM_ICON_DIR + 'shopping_room.webp' },
+    blacksmith: { label: '铁匠铺', cls: 'room-blacksmith', glyph: '', icon: ROOM_ICON_DIR + 'smith_room.webp' },
+    challenge: { label: '挑战', cls: 'room-challenge', glyph: '', icon: ROOM_ICON_DIR + 'challenge_room.webp' }
   };
 
   class AdventureUI {
@@ -223,7 +223,7 @@
       const name = map[scene] || 'Castle';
       if (this._currentBg === name) return;
       this._currentBg = name;
-      bg.style.background = `url('../backgrounds/${name}.png') center/cover no-repeat`;
+      bg.style.background = `url('../backgrounds/${name}.webp') center/cover no-repeat`;
     }
 
     _buildHeader(snap) {
@@ -492,7 +492,7 @@
       const b = snap.player.buffs;
       if (!b) return '';
       const items = [];
-      const icon = (kind, label) => '<img class="adv-buff-icon" src="' + BUFF_ICON_DIR + kind + '.png" alt="' + label + '">';
+      const icon = (kind, label) => '<img class="adv-buff-icon" src="' + BUFF_ICON_DIR + kind + '.webp" alt="' + label + '">';
       if (b.burn > 0)      items.push('<span class="adv-buff adv-buff-burn" title="灼烧">' + icon('burn', '灼烧') + '×' + b.burn + '</span>');
       if (b.bleed > 0)     items.push('<span class="adv-buff adv-buff-bleed" title="流血">' + icon('bleed', '流血') + '×' + b.bleed + '</span>');
       if (b.poison > 0)    items.push('<span class="adv-buff adv-buff-poison" title="中毒">' + icon('poison', '中毒') + '×' + b.poison + '</span>');

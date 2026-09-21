@@ -37,14 +37,14 @@
   };
 
   const BEAST_ICON = {
-    ben: '../icons/adventure_ui_icons/origin_beast_core.png',
-    cao: '../icons/adventure_ui_icons/grass_beast_core.png',
-    shui: '../icons/adventure_ui_icons/water_beast_core.png',
-    huo: '../icons/adventure_ui_icons/fire_beast_core.png',
-    wuneng: '../icons/adventure_ui_icons/versatile_beast_core.png'
+    ben: '../icons/adventure_ui_icons/origin_beast_core.webp',
+    cao: '../icons/adventure_ui_icons/grass_beast_core.webp',
+    shui: '../icons/adventure_ui_icons/water_beast_core.webp',
+    huo: '../icons/adventure_ui_icons/fire_beast_core.webp',
+    wuneng: '../icons/adventure_ui_icons/versatile_beast_core.webp'
   };
 
-  const GOLD_ICON = '../icons/adventure_ui_icons/coin.png';
+  const GOLD_ICON = '../icons/adventure_ui_icons/coin.webp';
 
   const BEAST_COLOR = {
     ben: 'green',

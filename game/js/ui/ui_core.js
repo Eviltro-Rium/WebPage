@@ -64,22 +64,22 @@ const TAG_COLORS = {
 };
 
 const ICON_PATHS = {
-    black: gameAssetUrl('icons/card_icons/color_palette.png'),
-    potion: gameAssetUrl('icons/card_icons/potion.png'),
-    magic: gameAssetUrl('icons/card_icons/purple_magic.png'),
-    green_magic: gameAssetUrl('icons/card_icons/green_magic.png'),
-    draw_three: gameAssetUrl('icons/card_icons/draw_cards.png'),
-    purify: gameAssetUrl('icons/card_icons/purify.png'),
-    super_purify: gameAssetUrl('icons/card_icons/super_purify.png'),
-    swap: gameAssetUrl('icons/card_icons/swap_cards.png'),
-    shuffle: gameAssetUrl('icons/card_icons/shuffle.png'),
-    burn: gameAssetUrl('icons/buff_icons/burn.png'),
-    freeze: gameAssetUrl('icons/buff_icons/freeze.png'),
-    bleed: gameAssetUrl('icons/buff_icons/bleed.png'),
-    guard: gameAssetUrl('icons/buff_icons/guard.png')
+    black: gameAssetUrl('icons/card_icons/color_palette.webp'),
+    potion: gameAssetUrl('icons/card_icons/potion.webp'),
+    magic: gameAssetUrl('icons/card_icons/purple_magic.webp'),
+    green_magic: gameAssetUrl('icons/card_icons/green_magic.webp'),
+    draw_three: gameAssetUrl('icons/card_icons/draw_cards.webp'),
+    purify: gameAssetUrl('icons/card_icons/purify.webp'),
+    super_purify: gameAssetUrl('icons/card_icons/super_purify.webp'),
+    swap: gameAssetUrl('icons/card_icons/swap_cards.webp'),
+    shuffle: gameAssetUrl('icons/card_icons/shuffle.webp'),
+    burn: gameAssetUrl('icons/buff_icons/burn.webp'),
+    freeze: gameAssetUrl('icons/buff_icons/freeze.webp'),
+    bleed: gameAssetUrl('icons/buff_icons/bleed.webp'),
+    guard: gameAssetUrl('icons/buff_icons/guard.webp')
 };
-ICON_PATHS.blind = gameAssetUrl('icons/buff_icons/blind.png');
-ICON_PATHS.iceSeal = gameAssetUrl('icons/buff_icons/ice_seal.png');
+ICON_PATHS.blind = gameAssetUrl('icons/buff_icons/blind.webp');
+ICON_PATHS.iceSeal = gameAssetUrl('icons/buff_icons/ice_seal.webp');
 
 const PHASE_NAMES = {
     PLAYER_PLAY: '出牌阶段', PLAYER_DISCARD: '弃牌阶段',

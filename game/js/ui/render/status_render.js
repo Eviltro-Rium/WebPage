@@ -46,18 +46,12 @@
                 if (advDef && advDef.icon) {
                     el.src = gameAssetUrl(advDef.icon.replace(/^\.\.\//, ''));
                     el.onerror = () => {
-                        el.src = gameAssetUrl(`avatars/${charName}.png`);
-                        el.onerror = () => {
-                            el.src = gameAssetUrl(`avatars/${charName}.jpg`);
-                            el.onerror = () => { el.src = gameAssetUrl(`avatars/${charName}.jpeg`); el.onerror = null; };
-                        };
+                        el.src = gameAssetUrl(`avatars/${charName}.webp`);
+                        el.onerror = null;
                     };
                 } else {
-                    el.src = gameAssetUrl(`avatars/${charName}.png`);
-                    el.onerror = () => {
-                        el.src = gameAssetUrl(`avatars/${charName}.jpg`);
-                        el.onerror = () => { el.src = gameAssetUrl(`avatars/${charName}.jpeg`); el.onerror = null; };
-                    };
+                    el.src = gameAssetUrl(`avatars/${charName}.webp`);
+                    el.onerror = null;
                 }
             }
         },
@@ -124,7 +118,7 @@
                 if (b.stacks > 0) {
                     currentKeys.push(b.key);
                     currentStacks[b.key] = b.stacks;
-                    const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.png`);
+                    const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.webp`);
                     const title = b.label || b.key;
                     const animCls = !prevSet.has(b.key) ? ' icon-appear' : '';
                     const specialClass = b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.key === 'bind' ? 'bind-mark' : b.key === 'bomb' ? 'bomb-mark' : b.colorClass || '';

@@ -18,42 +18,42 @@
   // 所有会在战斗界面显示的状态集中维护，避免规则页和图鉴出现两套说明。
   // desc 三行：堆叠上限：n / 维持效果：衰减|持续|瞬爆 / 效果说明
   const BUFF_DATA = [
-    { key: 'burn', name: '灼烧', type: '负面状态', icon: 'icons/buff_icons/burn.png', desc: '堆叠上限：5\n维持效果：衰减\n拥有灼烧的角色在自己的进攻回合结束时受到等同于层数的伤害，随后减少1层。' },
-    { key: 'bleed', name: '流血', type: '负面状态', icon: 'icons/buff_icons/bleed.png', desc: '堆叠上限：3\n维持效果：衰减\n防御方用0~3点数字牌防御时，额外承受等同于[流血]层数的伤害，随后减少1层流血。' },
-    { key: 'poison', name: '中毒', type: '负面状态', icon: 'icons/buff_icons/poison.png', desc: '堆叠上限：3\n维持效果：持续\n拥有中毒的角色在自己的进攻回合开始前受到等同于层数的伤害；层数不会自然减少，可被净化。' },
-    { key: 'freeze', name: '冷冻', type: '负面状态', icon: 'icons/buff_icons/freeze.png', desc: '堆叠上限：1\n维持效果：持续\n无法防御蓝色攻击。受到蓝色攻击时只能跳过防御并承受全部伤害。' },
-    { key: 'blind', name: '致盲', type: '负面状态', icon: 'icons/buff_icons/blind.png', desc: '堆叠上限：1\n维持效果：持续\n持续期间不能在战斗中使用一次性道具，只能等待被净化。' },
-    { key: 'iceSeal', name: '冰封', type: '负面状态', icon: 'icons/buff_icons/ice_seal.png', desc: '堆叠上限：1\n维持效果：衰减\n有冰封的角色在下一次补牌时少补1张牌，随后移除1层冰封；可被净化。' },
-    { key: 'bomb', name: '定时炸弹', type: '负面状态', icon: 'icons/buff_icons/time_bomb.png', desc: '堆叠上限：1\n维持效果：瞬爆\n初始倒计时为5。被施加者每打出1张牌倒计时减少1，归零时爆炸并受到5点伤害；可被净化。' },
-    { key: 'guard', name: '守护', type: '正面状态', icon: 'icons/buff_icons/guard.png', desc: '堆叠上限：5\n维持效果：持续\n受到普通伤害时可消耗守护层数等额减免伤害；不能减免流血等特殊伤害。' },
-    { key: 'fly', name: '飞翔', type: '正面状态', icon: 'icons/buff_icons/fly.png', desc: '堆叠上限：2\n维持效果：持续\n受到伤害时可消耗1层投掷12面骰，1~6成功躲避、7~12失败；失败后可继续尝试。不能躲避攻击附带的状态。' },
-    { key: 'lush', name: '茂盛', type: '正面状态', icon: 'icons/buff_icons/lush.png', desc: '堆叠上限：2\n维持效果：持续\n每有1层，在自己进攻开始前恢复1点生命；可被净化移除。' },
-    { key: 'parasite', name: '寄生', type: '正面状态', icon: 'icons/buff_icons/parasite.png', desc: '堆叠上限：1\n维持效果：持续\n在自己进攻开始前，吸取对手1点生命（不可用守护/飞翔/道具减免）；可被净化移除。' },
-    { key: 'crit', name: '暴击', type: '正面状态', icon: 'icons/buff_icons/crit.png', desc: '堆叠上限：3\n维持效果：持续\n进攻时若伤害超过4点（防御前，不含流血；含攻击修正后），可在攻击修正/破防选择之后消耗1层，使该攻击变为不可防御；若攻击本身已不可防御则不能再使用。可被净化移除。' },
-    { key: 'chaos_red', name: '混沌·红', type: '正面状态', icon: 'icons/buff_icons/chaos_red.png', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出红色数字牌并完成防御后获得，进攻回合开始前清除。' },
-    { key: 'chaos_yellow', name: '混沌·黄', type: '正面状态', icon: 'icons/buff_icons/chaos_yellow.png', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出黄色数字牌并完成防御后获得，进攻回合开始前清除。' },
-    { key: 'chaos_blue', name: '混沌·蓝', type: '正面状态', icon: 'icons/buff_icons/chaos_blue.png', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出蓝色数字牌并完成防御后获得，进攻回合开始前清除。' },
-    { key: 'chaos_green', name: '混沌·绿', type: '正面状态', icon: 'icons/buff_icons/chaos_green.png', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出绿色数字牌并完成防御后获得，进攻回合开始前清除。' },
-    { key: 'diving', name: '潜水', type: '正面状态', icon: 'icons/buff_icons/diving.png', desc: '堆叠上限：1\n维持效果：持续\n拥有潜水的角色免疫蓝色攻击（含被指定为蓝色的白牌）造成的伤害和buff施加。对手依旧可以对自己施加正面增益。冰封、诅咒等仍能命中。' },
-    { key: 'hypothermia', name: '失温', type: '负面状态', icon: 'icons/buff_icons/hypothermia.png', desc: '堆叠上限：2\n维持效果：衰减\n冻洋蓝鲸出4/5/6时，在防守方完成防御并结算伤害后，对防守方施加1层失温。当失温达到2层时，立即强制弃1张牌（玩家自选，NPC按最低优先级弃牌），随后失温削减1层。' },
-    { key: 'bind', name: '捆缚', type: '负面状态', icon: 'icons/items_icons/binding.png', desc: '堆叠上限：1\n维持效果：瞬爆\n使用捆缚道具后，目标在本回合结束后跳过自己的进攻阶段，由当前回合角色再发动一次进攻。' },
-    { key: 'hypnosis', name: '催眠', type: '负面状态', icon: 'icons/buff_icons/sleepy_1.png', desc: '堆叠上限：1\n维持效果：持续\n拥有催眠的角色在自己的进攻阶段结束、切换到对手进攻阶段时立即转化为【沉睡】。已处于【沉睡】时免疫新的【催眠】。' },
-    { key: 'sleep', name: '沉睡', type: '负面状态', icon: 'icons/buff_icons/sleepy_2.png', desc: '堆叠上限：1\n维持效果：瞬爆\n拥有沉睡的角色在自己的进攻回合开始时立刻苏醒，恢复10点生命（不超过生命上限）。同时被进攻时会跳过防御阶段，所有伤害直接结算。' },
-    { key: 'bloodthirst', name: '嗜血', type: '正面状态', icon: 'icons/ui_icons/blood_thirsty.png', desc: '堆叠上限：1\n维持效果：持续\nSerenity专属状态。当生命低于30时进入嗜血，恢复时额外+1（仅在生命回到≥30的回复过程中触发一次）；Serenity技能的评估权重会因嗜血大幅上调。' }
+    { key: 'burn', name: '灼烧', type: '负面状态', icon: 'icons/buff_icons/burn.webp', desc: '堆叠上限：5\n维持效果：衰减\n拥有灼烧的角色在自己的进攻回合结束时受到等同于层数的伤害，随后减少1层。' },
+    { key: 'bleed', name: '流血', type: '负面状态', icon: 'icons/buff_icons/bleed.webp', desc: '堆叠上限：3\n维持效果：衰减\n防御方用0~3点数字牌防御时，额外承受等同于[流血]层数的伤害，随后减少1层流血。' },
+    { key: 'poison', name: '中毒', type: '负面状态', icon: 'icons/buff_icons/poison.webp', desc: '堆叠上限：3\n维持效果：持续\n拥有中毒的角色在自己的进攻回合开始前受到等同于层数的伤害；层数不会自然减少，可被净化。' },
+    { key: 'freeze', name: '冷冻', type: '负面状态', icon: 'icons/buff_icons/freeze.webp', desc: '堆叠上限：1\n维持效果：持续\n无法防御蓝色攻击。受到蓝色攻击时只能跳过防御并承受全部伤害。' },
+    { key: 'blind', name: '致盲', type: '负面状态', icon: 'icons/buff_icons/blind.webp', desc: '堆叠上限：1\n维持效果：持续\n持续期间不能在战斗中使用一次性道具，只能等待被净化。' },
+    { key: 'iceSeal', name: '冰封', type: '负面状态', icon: 'icons/buff_icons/ice_seal.webp', desc: '堆叠上限：1\n维持效果：衰减\n有冰封的角色在下一次补牌时少补1张牌，随后移除1层冰封；可被净化。' },
+    { key: 'bomb', name: '定时炸弹', type: '负面状态', icon: 'icons/buff_icons/time_bomb.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n初始倒计时为5。被施加者每打出1张牌倒计时减少1，归零时爆炸并受到5点伤害；可被净化。' },
+    { key: 'guard', name: '守护', type: '正面状态', icon: 'icons/buff_icons/guard.webp', desc: '堆叠上限：5\n维持效果：持续\n受到普通伤害时可消耗守护层数等额减免伤害；不能减免流血等特殊伤害。' },
+    { key: 'fly', name: '飞翔', type: '正面状态', icon: 'icons/buff_icons/fly.webp', desc: '堆叠上限：2\n维持效果：持续\n受到伤害时可消耗1层投掷12面骰，1~6成功躲避、7~12失败；失败后可继续尝试。不能躲避攻击附带的状态。' },
+    { key: 'lush', name: '茂盛', type: '正面状态', icon: 'icons/buff_icons/lush.webp', desc: '堆叠上限：2\n维持效果：持续\n每有1层，在自己进攻开始前恢复1点生命；可被净化移除。' },
+    { key: 'parasite', name: '寄生', type: '正面状态', icon: 'icons/buff_icons/parasite.webp', desc: '堆叠上限：1\n维持效果：持续\n在自己进攻开始前，吸取对手1点生命（不可用守护/飞翔/道具减免）；可被净化移除。' },
+    { key: 'crit', name: '暴击', type: '正面状态', icon: 'icons/buff_icons/crit.webp', desc: '堆叠上限：3\n维持效果：持续\n进攻时若伤害超过4点（防御前，不含流血；含攻击修正后），可在攻击修正/破防选择之后消耗1层，使该攻击变为不可防御；若攻击本身已不可防御则不能再使用。可被净化移除。' },
+    { key: 'chaos_red', name: '混沌·红', type: '正面状态', icon: 'icons/buff_icons/chaos_red.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出红色数字牌并完成防御后获得，进攻回合开始前清除。' },
+    { key: 'chaos_yellow', name: '混沌·黄', type: '正面状态', icon: 'icons/buff_icons/chaos_yellow.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出黄色数字牌并完成防御后获得，进攻回合开始前清除。' },
+    { key: 'chaos_blue', name: '混沌·蓝', type: '正面状态', icon: 'icons/buff_icons/chaos_blue.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出蓝色数字牌并完成防御后获得，进攻回合开始前清除。' },
+    { key: 'chaos_green', name: '混沌·绿', type: '正面状态', icon: 'icons/buff_icons/chaos_green.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出绿色数字牌并完成防御后获得，进攻回合开始前清除。' },
+    { key: 'diving', name: '潜水', type: '正面状态', icon: 'icons/buff_icons/diving.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有潜水的角色免疫蓝色攻击（含被指定为蓝色的白牌）造成的伤害和buff施加。对手依旧可以对自己施加正面增益。冰封、诅咒等仍能命中。' },
+    { key: 'hypothermia', name: '失温', type: '负面状态', icon: 'icons/buff_icons/hypothermia.webp', desc: '堆叠上限：2\n维持效果：衰减\n冻洋蓝鲸出4/5/6时，在防守方完成防御并结算伤害后，对防守方施加1层失温。当失温达到2层时，立即强制弃1张牌（玩家自选，NPC按最低优先级弃牌），随后失温削减1层。' },
+    { key: 'bind', name: '捆缚', type: '负面状态', icon: 'icons/items_icons/binding.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n使用捆缚道具后，目标在本回合结束后跳过自己的进攻阶段，由当前回合角色再发动一次进攻。' },
+    { key: 'hypnosis', name: '催眠', type: '负面状态', icon: 'icons/buff_icons/sleepy_1.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有催眠的角色在自己的进攻阶段结束、切换到对手进攻阶段时立即转化为【沉睡】。已处于【沉睡】时免疫新的【催眠】。' },
+    { key: 'sleep', name: '沉睡', type: '负面状态', icon: 'icons/buff_icons/sleepy_2.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n拥有沉睡的角色在自己的进攻回合开始时立刻苏醒，恢复10点生命（不超过生命上限）。同时被进攻时会跳过防御阶段，所有伤害直接结算。' },
+    { key: 'bloodthirst', name: '嗜血', type: '正面状态', icon: 'icons/ui_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：持续\nSerenity专属状态。当生命低于30时进入嗜血，恢复时额外+1（仅在生命回到≥30的回复过程中触发一次）；Serenity技能的评估权重会因嗜血大幅上调。' }
   ];
 
   // 主角图鉴：仅展示玩家可选择的角色（排除冒险 NPC、领主专属和测试用角色）。
   const PLAYER_CHARS = [
-    { name: 'Ryan', hp: 70, type: '战士', passive: '进攻回合开始前恢复1点生命', avatar: 'avatars/Ryan.jpg', color: '#14eb5f' },
-    { name: 'Leon', hp: 90, type: '骑士', passive: '免疫灼烧伤害', avatar: 'avatars/Leon.png', color: '#ee1111' },
-    { name: 'Chan', hp: 80, type: '谋士', passive: '进攻回合开始前抽1张牌', avatar: 'avatars/Chan.png', color: '#1399f2' },
-    { name: 'Saiki', hp: 80, type: '猎手', passive: '有效黄色牌在防御结算后施加1层流血', avatar: 'avatars/Saiki.png', color: '#9b59b6' },
-    { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼烧时1至7牌攻击伤害+1', avatar: 'avatars/Blaze.png', color: '#e67e22' },
-    { name: 'Serenity', hp: 80, type: '暗影', passive: '免疫冷冻；低于30生命嗜血，正常态恢复+1', avatar: 'avatars/Serenity.jpg', color: '#1abc9c' },
-    { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害', avatar: 'avatars/Moze.jpg', color: '#7f8c8d' },
-    { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌', avatar: 'avatars/Knight.png', color: '#8e44ad' },
-    { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层【暴击】使攻击不可防御', avatar: 'avatars/Otto.png', color: '#d35400' },
-    { name: 'Vixraps', hp: 85, type: '灼热', passive: '打出黑牌后弃1张牌恢复3点生命', avatar: 'avatars/Vixraps.jpeg', color: '#c0392b' }
+    { name: 'Ryan', hp: 70, type: '战士', passive: '进攻回合开始前恢复1点生命', avatar: 'avatars/Ryan.webp', color: '#14eb5f' },
+    { name: 'Leon', hp: 90, type: '骑士', passive: '免疫灼烧伤害', avatar: 'avatars/Leon.webp', color: '#ee1111' },
+    { name: 'Chan', hp: 80, type: '谋士', passive: '进攻回合开始前抽1张牌', avatar: 'avatars/Chan.webp', color: '#1399f2' },
+    { name: 'Saiki', hp: 80, type: '猎手', passive: '有效黄色牌在防御结算后施加1层流血', avatar: 'avatars/Saiki.webp', color: '#9b59b6' },
+    { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼烧时1至7牌攻击伤害+1', avatar: 'avatars/Blaze.webp', color: '#e67e22' },
+    { name: 'Serenity', hp: 80, type: '暗影', passive: '免疫冷冻；低于30生命嗜血，正常态恢复+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
+    { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
+    { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
+    { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层【暴击】使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
+    { name: 'Vixraps', hp: 85, type: '灼热', passive: '打出黑牌后弃1张牌恢复3点生命', avatar: 'avatars/Vixraps.webp', color: '#c0392b' }
   ];
 
   const PLAYER_SKILL_GRID = [
@@ -176,7 +176,7 @@
     html += '<div class="char-detail-grid">';
     for (const ch of PLAYER_CHARS) {
       html += `<div class="char-detail-card" data-name="${ch.name}">
-        <img class="char-detail-avatar" src="${ch.avatar}" onerror="this.src=this.src.replace('.png','.jpg')" alt="${ch.name}">
+        <img class="char-detail-avatar" src="${ch.avatar}" alt="${ch.name}">
         <div class="char-detail-name" style="color:${ch.color}">${ch.name}</div>
         <div class="char-detail-type">${ch.type}</div>
       </div>`;
@@ -196,7 +196,7 @@
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; 主角列表</button><h1 class="rules-title">主角图鉴</h1></div>';
 
     html += `<div class="char-detail-hero">
-      <img class="char-detail-hero-avatar" src="${ch.avatar}" onerror="this.src=this.src.replace('.png','.jpg')" alt="${ch.name}">
+      <img class="char-detail-hero-avatar" src="${ch.avatar}" alt="${ch.name}">
       <div class="char-detail-hero-info">
         <div class="char-detail-hero-name" style="color:${ch.color}">${ch.name}</div>
         <div class="char-detail-hero-type">${ch.type} · HP ${ch.hp}</div>

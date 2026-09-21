@@ -37,7 +37,7 @@
     hp: 24,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/castle_ghost.png',
+    icon: '../icons/npc_icons/castle_ghost.webp',
 
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
@@ -88,7 +88,7 @@
     hp: 18,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/castle_firefly.png',
+    icon: '../icons/npc_icons/castle_firefly.webp',
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
@@ -138,7 +138,7 @@
     hp: 20,
     attack: 4,
     defense: 1,
-    icon: '../icons/npc_icons/castle_wolf.png',
+    icon: '../icons/npc_icons/castle_wolf.webp',
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
@@ -172,7 +172,7 @@
     hp: 18,
     attack: 3,
     defense: 0,
-    icon: '../icons/npc_icons/castle_fox.png',
+    icon: '../icons/npc_icons/castle_fox.webp',
 
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
@@ -223,7 +223,7 @@
     hp: 25,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/castle_bear.png',
+    icon: '../icons/npc_icons/castle_bear.webp',
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
@@ -283,7 +283,7 @@
     hp: 20,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/castle_tiger.png',
+    icon: '../icons/npc_icons/castle_tiger.webp',
     firstStrike: true,
 
     attackDamage(card) {
@@ -338,7 +338,7 @@
     defense: 2,
     handLimit: 3,
     whiteZeros: 2,
-    icon: '../icons/npc_icons/castle_chameleon.png',
+    icon: '../icons/npc_icons/castle_chameleon.webp',
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
@@ -418,7 +418,7 @@
     hp: 35,
     attack: 4,
     defense: 2,
-    icon: '../icons/npc_icons/castle_eagle.png',
+    icon: '../icons/npc_icons/castle_eagle.webp',
     handLimit: 3,
     whiteZeros: 2,
 
@@ -482,7 +482,7 @@
      hp: 27,
      attack: 4,
      defense: 1,
-     icon: '../icons/npc_icons/castle_goblin.png',
+     icon: '../icons/npc_icons/castle_goblin.webp',
 
      attackDamage(card) {
        if (!card || !card.isNumberCard) return 0;
@@ -532,7 +532,7 @@
     hp: 20,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/castle_crow.png',
+    icon: '../icons/npc_icons/castle_crow.webp',
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
@@ -587,7 +587,7 @@
     hp: 15,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/castle_bat.png',
+    icon: '../icons/npc_icons/castle_bat.webp',
 
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
@@ -666,7 +666,7 @@
     defense: 2,
     handLimit: 3,
     whiteZeros: 2,
-    icon: '../icons/npc_icons/gargoyle.png',
+    icon: '../icons/npc_icons/gargoyle.webp',
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;

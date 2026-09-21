@@ -27,7 +27,7 @@
     hp: 20,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/frozen_ocean_lynx.png',
+    icon: '../icons/npc_icons/frozen_ocean_lynx.webp',
     attackDamage(card) {
       const v = card.value;
       if (v >= 1 && v <= 3) return 3;
@@ -77,7 +77,7 @@
     hp: 25,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/frozen_ocean_whale.png',
+    icon: '../icons/npc_icons/frozen_ocean_whale.webp',
     attackDamage(card) {
       const v = card.value;
       if (v >= 1 && v <= 3) return 2;
@@ -128,7 +128,7 @@
     hp: 20,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/frozen_ocean_shark.png',
+    icon: '../icons/npc_icons/frozen_ocean_shark.webp',
     attackDamage(card, ctx) {
       const v = card.value;
       const bleed = ctx.playerBleed || 0;
@@ -181,7 +181,7 @@
     hp: 20,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/frozen_ocean_seal.png',
+    icon: '../icons/npc_icons/frozen_ocean_seal.webp',
     // 进攻1/2/3：从牌堆抽一张牌展示，造成对应数字伤害，随后放入弃牌堆；魔法牌加入手牌
     attackRevealDraw(card) {
       const v = card.value;
@@ -228,7 +228,7 @@
     hp: 25,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/polar_bear.png',
+    icon: '../icons/npc_icons/polar_bear.webp',
     // 进攻1/2/3：造成对手 buff 总层数点伤害
     attackDamage(card, ctx) {
       const v = card.value;

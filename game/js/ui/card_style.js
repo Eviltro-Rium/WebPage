@@ -52,27 +52,27 @@
   }
 
   const ICON_PATHS = {
-    black: cardAssetUrl('icons/card_icons/color_palette.png'),
-    potion: cardAssetUrl('icons/card_icons/potion.png'),
-    magic: cardAssetUrl('icons/card_icons/purple_magic.png'),
-    green_magic: cardAssetUrl('icons/card_icons/green_magic.png'),
-    draw_three: cardAssetUrl('icons/card_icons/draw_cards.png'),
-    purify: cardAssetUrl('icons/card_icons/purify.png'),
-    super_purify: cardAssetUrl('icons/card_icons/super_purify.png'),
-    swap: cardAssetUrl('icons/card_icons/swap_cards.png'),
-    shuffle: cardAssetUrl('icons/card_icons/shuffle.png'),
-    trophyWhite: cardAssetUrl('icons/buff_icons/burn.png'),
-    trophy_BurnTrophy: cardAssetUrl('icons/buff_icons/burn.png'),
-    trophy_PiercingTrophy: cardAssetUrl('icons/buff_icons/bleed.png'),
-    trophy_FreezeTrophy: cardAssetUrl('icons/buff_icons/freeze.png'),
-    trophy_TimeBombTrophy: cardAssetUrl('icons/buff_icons/time_bomb.png'),
-    trophy_RussianRouletteTrophy: cardAssetUrl('icons/card_icons/Russian_roulette.png'),
-    trophy_FlyTrophy: cardAssetUrl('icons/buff_icons/fly.png'),
-    trophy_LushTrophy: cardAssetUrl('icons/buff_icons/lush.png'),
-    trophy_PoisonTrophy: cardAssetUrl('icons/buff_icons/poison.png'),
-    trophy_GuardTrophy: cardAssetUrl('icons/buff_icons/guard.png'),
-    trophy_DisarmTrophy: cardAssetUrl('icons/card_icons/disarm.png'),
-    trophy_ZeroTrophy: cardAssetUrl('icons/card_icons/zero.png')
+    black: cardAssetUrl('icons/card_icons/color_palette.webp'),
+    potion: cardAssetUrl('icons/card_icons/potion.webp'),
+    magic: cardAssetUrl('icons/card_icons/purple_magic.webp'),
+    green_magic: cardAssetUrl('icons/card_icons/green_magic.webp'),
+    draw_three: cardAssetUrl('icons/card_icons/draw_cards.webp'),
+    purify: cardAssetUrl('icons/card_icons/purify.webp'),
+    super_purify: cardAssetUrl('icons/card_icons/super_purify.webp'),
+    swap: cardAssetUrl('icons/card_icons/swap_cards.webp'),
+    shuffle: cardAssetUrl('icons/card_icons/shuffle.webp'),
+    trophyWhite: cardAssetUrl('icons/buff_icons/burn.webp'),
+    trophy_BurnTrophy: cardAssetUrl('icons/buff_icons/burn.webp'),
+    trophy_PiercingTrophy: cardAssetUrl('icons/buff_icons/bleed.webp'),
+    trophy_FreezeTrophy: cardAssetUrl('icons/buff_icons/freeze.webp'),
+    trophy_TimeBombTrophy: cardAssetUrl('icons/buff_icons/time_bomb.webp'),
+    trophy_RussianRouletteTrophy: cardAssetUrl('icons/card_icons/Russian_roulette.webp'),
+    trophy_FlyTrophy: cardAssetUrl('icons/buff_icons/fly.webp'),
+    trophy_LushTrophy: cardAssetUrl('icons/buff_icons/lush.webp'),
+    trophy_PoisonTrophy: cardAssetUrl('icons/buff_icons/poison.webp'),
+    trophy_GuardTrophy: cardAssetUrl('icons/buff_icons/guard.webp'),
+    trophy_DisarmTrophy: cardAssetUrl('icons/card_icons/disarm.webp'),
+    trophy_ZeroTrophy: cardAssetUrl('icons/card_icons/zero.webp')
   };
 
   const iconCache = {};

@@ -146,7 +146,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 
 - **价格**：6 金币
 - **场景**：仅对战
-- **图标**：`icons/items_icons/laser_beam.png`
+- **图标**：`icons/items_icons/laser_beam.webp`
 - **效果**：在进攻或防御出牌阶段使用，对所有仍存活的对手各造成 **5** 点普通伤害；1v1 命中 1 名对手，1v2 同时命中 2 名对手
 - **限制**：只能在玩家可选择进攻牌或防御牌的阶段使用，不占用出牌区搭桥牌
 

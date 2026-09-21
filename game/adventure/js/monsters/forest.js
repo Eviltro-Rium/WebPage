@@ -32,7 +32,7 @@
     hp: 18,
     attack: 4,
     defense: 1,
-    icon: '../icons/npc_icons/forest_monkey.png',
+    icon: '../icons/npc_icons/forest_monkey.webp',
     attackDamage(card, ctx) {
       const v = card.value;
       if (v >= 1 && v <= 3) return 4;
@@ -63,7 +63,7 @@
     hp: 20,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/forest_deer.png',
+    icon: '../icons/npc_icons/forest_deer.webp',
     firstStrike: true,
     attackDamage(card, ctx) {
       const v = card.value;
@@ -100,7 +100,7 @@
     hp: 18,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/forest_leech.png',
+    icon: '../icons/npc_icons/forest_leech.webp',
     attackDamage(card) {
       const v = card.value;
       if (v >= 1 && v <= 3) return 3;
@@ -154,7 +154,7 @@
     hp: 20,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/forest_crocodile.png',
+    icon: '../icons/npc_icons/forest_crocodile.webp',
     attackDamage(card, ctx) {
       const v = card.value;
       if (v >= 1 && v <= 3) {
@@ -192,7 +192,7 @@
     hp: 18,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/forest_dendrobatid_frog.png',
+    icon: '../icons/npc_icons/forest_dendrobatid_frog.webp',
     attackDamage(card, ctx) {
       const v = card.value;
       if (v >= 1 && v <= 3) return 2;
@@ -223,7 +223,7 @@
     hp: 18,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/forest_ladybug.png',
+    icon: '../icons/npc_icons/forest_ladybug.webp',
     initialLush: 1,
     attackDamage(card, ctx) {
       const v = card.value;
@@ -267,7 +267,7 @@
     hp: 20,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/forest_capybara.png',
+    icon: '../icons/npc_icons/forest_capybara.webp',
     handLimit: 3,
     attackDamage(card) {
       const v = card.value;
@@ -297,7 +297,7 @@
     hp: 15,
     attack: 0,
     defense: 3,
-    icon: '../icons/npc_icons/forest_rafflesia.png',
+    icon: '../icons/npc_icons/forest_rafflesia.webp',
     handLimit: 3,
     noAttack: true,
     canDefendHigh: true,
@@ -356,7 +356,7 @@
     hp: 25,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/forest_piranha.png',
+    icon: '../icons/npc_icons/forest_piranha.webp',
     attackDamage(card, ctx) {
       const v = card.value;
       if (v >= 1 && v <= 3) return ((ctx && ctx.playerBleed) || 0) * 2;
@@ -391,7 +391,7 @@
     hp: 45,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/forest_panda.png',
+    icon: '../icons/npc_icons/forest_panda.webp',
     handLimit: 3,
     whiteZeros: 2,
     attackDamage(card, ctx) {
@@ -449,7 +449,7 @@
     hp: 35,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/forest_python.png',
+    icon: '../icons/npc_icons/forest_python.webp',
     handLimit: 3,
     whiteZeros: 2,
     attackDamage(card, ctx) {
@@ -498,7 +498,7 @@
     hp: 50,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/dryad.png',
+    icon: '../icons/npc_icons/dryad.webp',
     handLimit: 3,
     whiteZeros: 2,
     attackDamage(card) {

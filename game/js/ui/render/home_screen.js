@@ -19,7 +19,7 @@
             });
             const charColors = { Ryan: '#e74c3c', Leon: '#3498db', Chan: '#2ecc71',
                 Saiki: '#9b59b6', Blaze: '#e67e22', Serenity: '#1abc9c', Moze: '#7f8c8d', Knight: '#8e44ad', Vixraps: '#c0392b' };
-            const charAvatar = { Ryan: 'avatars/Ryan.jpg', Leon: 'avatars/Leon.png', Chan: 'avatars/Chan.png', Saiki: 'avatars/Saiki.png', Blaze: 'avatars/Blaze.png', Serenity: 'avatars/Serenity.jpg', Moze: 'avatars/Moze.jpg', Knight: 'avatars/Knight.png', Otto: 'avatars/Otto.png', Vixraps: 'avatars/Vixraps.jpeg' };
+            const charAvatar = { Ryan: 'avatars/Ryan.webp', Leon: 'avatars/Leon.webp', Chan: 'avatars/Chan.webp', Saiki: 'avatars/Saiki.webp', Blaze: 'avatars/Blaze.webp', Serenity: 'avatars/Serenity.webp', Moze: 'avatars/Moze.webp', Knight: 'avatars/Knight.webp', Otto: 'avatars/Otto.webp', Vixraps: 'avatars/Vixraps.webp' };
 
             let html = `<div class="home-shell${this._modeChosen ? ' home-shell-select' : ''}">`;
             html += `<header class="home-hero"><div class="game-title">Furry Trial</div>`;

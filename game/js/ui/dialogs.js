@@ -1,6 +1,6 @@
 const statusIconPath = name => {
     const folder = name === 'blood_thirsty' ? 'ui_icons' : name === 'binding' ? 'items_icons' : 'buff_icons';
-    return window.gameAssetUrl ? window.gameAssetUrl(`icons/${folder}/${name}.png`) : `icons/${folder}/${name}.png`;
+    return window.gameAssetUrl ? window.gameAssetUrl(`icons/${folder}/${name}.webp`) : `icons/${folder}/${name}.webp`;
 };
 const statusRegistry = window.FurryGame && (window.FurryGame.StatusService || window.FurryGame.StatusRegistry);
 const statusIcon = def => {
@@ -409,8 +409,8 @@ class DialogManager {
             btn.addEventListener('click',async()=>{overlay.remove();await onChoose(payload)});
             list.appendChild(btn);
         };
-        const flyIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/fly.png') : 'icons/buff_icons/fly.png';
-        const guardIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/guard.png') : 'icons/buff_icons/guard.png';
+        const flyIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/fly.webp') : 'icons/buff_icons/fly.webp';
+        const guardIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/guard.webp') : 'icons/buff_icons/guard.webp';
         if (fly > 0) {
             addBtn(`<img src="${flyIcon}" alt=""><span>使用 1 层飞翔躲避（1-6成功，剩余 ${fly - 1}）</span>`, { action: 'fly' });
         }
@@ -437,8 +437,8 @@ class DialogManager {
             btn.addEventListener('click',async()=>{overlay.remove();await onChoose(payload)});
             list.appendChild(btn);
         };
-        const flyIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/fly.png') : 'icons/buff_icons/fly.png';
-        const guardIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/guard.png') : 'icons/buff_icons/guard.png';
+        const flyIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/fly.webp') : 'icons/buff_icons/fly.webp';
+        const guardIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/guard.webp') : 'icons/buff_icons/guard.webp';
         if ((ch.fly || 0) > 0) addBtn(`继续使用 1 层飞翔躲避（剩余 ${ch.fly - 1}）`, { action: 'fly' }, flyIcon);
         const guard = Math.min(ch.guard || 0, Math.max(0, damage));
         for (let i = 1; i <= guard; i++) {
