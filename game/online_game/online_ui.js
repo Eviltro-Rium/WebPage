@@ -40,7 +40,9 @@
             this._pendingBattleRestore = null;
             this._battleResumeRequested = false;
             this._ensureAmbientParticles();
-            const saved = this._isReloadNavigation() ? this._readRoomSession() : null;
+            // Some mobile browsers report a refresh as `navigate` after a process restore. A saved battle is unambiguously a recovery session; intentional exits remove this key.
+            const persisted = this._readRoomSession();
+            const saved = persisted && (persisted.battle || this._isReloadNavigation()) ? persisted : null;
             if (saved && saved.battle) this.showBattleRestoring(saved.roomCode);
             else this.showLanding();
             this._restoreRoomSession(saved);
@@ -112,10 +114,9 @@
         }
 
         _restoreRoomSession(savedSession = null) {
-            // Only a browser reload silently restores a saved room.
-            if (!this._isReloadNavigation()) return;
+            // A saved battle is a recovery session even when mobile browsers report navigation as `navigate`.
             const saved = savedSession || this._readRoomSession();
-            if (!saved) return;
+            if (!saved || (!this._isReloadNavigation() && !saved.battle)) return;
             this.setLandingStatus('正在恢复在线房间 ' + saved.roomCode + '…', 'warning');
             const restore = () => this.connect(saved.role, {
                 roomCode: saved.roomCode,
@@ -515,8 +516,7 @@
             const isOwn = this.peer && id === this.peer.peerId;
             let existing = this.players.find(item => item.peerId === id);
             if (!existing) {
-                let hash = 0; for (const char of String(id)) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-                existing = { peerId: id, role: incoming.role === 'host' ? 'host' : 'guest', nickname: 'Player', character: null, ready: false, avatar: PLAYER_EMOJIS[hash % PLAYER_EMOJIS.length] };
+                existing = { peerId: id, role: incoming.role === 'host' ? 'host' : 'guest', nickname: 'Player', character: null, ready: false, avatar: '' };
                 this.players.push(existing);
             }
             if (incoming.role) existing.role = incoming.role === 'host' ? 'host' : 'guest';
@@ -536,7 +536,7 @@
             // Prevent duplicate restore panels when renderRoom() is called
             // multiple times before the battle is actually mounted.
             if (this.root.querySelector && this.root.querySelector('#online-resume-panel')) return;
-            this.root.innerHTML = '<section class="online-panel online-room" id="online-resume-panel"><h2>正在恢复在线对决</h2><p>房间 ' + safeText(code || '') + ' · 正在连接并同步战斗状态…</p><div class="online-status" id="online-room-status"></div><button class="online-btn ghost" id="online-resume-leave" type="button">退出房间</button></section>';
+            this.root.innerHTML = '<section class="online-panel online-resume" id="online-resume-panel"><div class="online-resume-orb" aria-hidden="true"><span>↻</span></div><div class="online-resume-copy"><div class="online-brand-sub">FURRY TRIAL · ONLINE</div><h2>正在恢复对局</h2><p>房间 <strong>' + safeText(code || '') + '</strong></p><div class="online-resume-progress"><i></i><i></i><i></i></div><div class="online-status" id="online-room-status">正在连接并同步战斗状态…</div></div><button class="online-btn ghost" id="online-resume-leave" type="button">退出房间</button></section>';
             const leave = this.root.querySelector('#online-resume-leave');
             if (leave) leave.addEventListener('click', () => {
                 this._clearRoomSession();
@@ -604,7 +604,8 @@
                 this.match = new global.OnlineMatchHost(host.character, guest.character, firstActor, firstRoll, {
                     hostNickname: host.nickname,
                     guestNickname: guest.nickname,
-                    hostAvatar: host.avatar,
+                    // Prefer the local selection for the host entry; a stale roster packet must not replace it with a generated fallback.
+                    hostAvatar: host.peerId === this.peer.peerId ? this.avatar : host.avatar,
                     guestAvatar: guest.avatar
                 });
                 // Pause both projections until the guest has mounted the same
@@ -831,7 +832,7 @@
             this.battleSession = session;
             this.state = clone(state);
             const ownNickname = (state.onlineNickname || this.nickname || '玩家');
-            this.root.innerHTML = '<div class="online-topbar online-battle-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线对决</div><div class="online-brand-sub">房间 ' + safeText(this.roomCode) + ' · ' + safeText(this.connectionState || 'P2P') + '</div></div></div><div class="online-battle-player">玩家：' + safeText(ownNickname) + '</div><button class="online-link" id="online-battle-lobby" type="button">返回准备大厅</button></div><section class="online-shared-game" id="online-shared-game"><div id="game-container"><div id="select-screen"></div><div id="game-screen"></div></div></section>';
+            this.root.innerHTML = '<div class="online-topbar online-battle-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线对决</div><div class="online-brand-sub">房间 ' + safeText(this.roomCode) + ' · ' + safeText(this.connectionState || 'P2P') + '</div></div></div><div class="online-battle-player">玩家：' + safeText(ownNickname) + '</div></div><section class="online-shared-game" id="online-shared-game"><div id="game-container"><div id="select-screen"></div><div id="game-screen"></div></div></section>';
             const screen = this.root.querySelector('#game-screen');
             this.battleUI = new global.GameUI({ session, root: document });
             // Both local actions and remote snapshots use the same presenter
@@ -851,8 +852,6 @@
             this.battleUI.onGameOverClose = action => action === 'home'
                 ? this.exitToHome()
                 : this.exitBattle();
-            const leave = this.root.querySelector('#online-battle-lobby');
-            if (leave) leave.addEventListener('click', () => this.exitBattle());
 
             // The authoritative snapshot already contains the final hand. Hide
             // cards that are represented by opening draw events until their
@@ -1040,6 +1039,10 @@
             // socket will close naturally and the next page instance will
             // present the saved token, allowing the Worker to replace it.
             ui._persistRoomSession();
+        });
+        global.addEventListener('pagehide', () => {
+            const ui = global.onlineUI;
+            if (ui && ui.peer) ui._persistRoomSession();
         });
     });
 })(window);

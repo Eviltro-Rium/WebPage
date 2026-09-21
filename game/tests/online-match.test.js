@@ -761,7 +761,7 @@ test('pending battle restore displays a reconnect view instead of the lobby', ()
   const ui = Object.create(context.OnlineUI.prototype);
   Object.assign(ui, { root, roomCode: 'ABCD', _pendingBattleRestore: { matchId: 'saved' }, match: null, state: null });
   ui.renderRoom();
-  assert.match(root.innerHTML, /正在恢复在线对决/);
+  assert.match(root.innerHTML, /正在恢复对局/);
   assert.doesNotMatch(root.innerHTML, /选择你的角色/);
 });
 test('refresh of either participant retires stale RTC and routes the next action to the live socket', async () => {
@@ -850,4 +850,35 @@ test('all game entry pages include the shared release badge', () => {
   for (const page of ['index.html', 'adventure/adventure.html', 'online_game/index.html']) {
     assert.match(fs.readFileSync(path.join(root, page), 'utf8'), /js\/version\.js\?v=20260921-2/);
   }
+});
+test('saved host battle restores even when navigation timing is not reload', () => {
+  const ui = Object.create(context.OnlineUI.prototype);
+  const snapshot = new context.OnlineMatchHost('Leon', 'Ryan', 'host').captureSnapshot();
+  let connected = null;
+  Object.assign(ui, {
+    role: null, roomCode: '', nickname: '', _pendingBattleRestore: null,
+    _isReloadNavigation: () => false,
+    _readRoomSession: () => ({ roomCode: 'ABCD', role: 'host', nickname: 'Host', battle: snapshot }),
+    setLandingStatus() {}, connect(role, options) { connected = { role, options }; }
+  });
+  ui._restoreRoomSession();
+  assert.equal(connected, null, 'restore is queued asynchronously');
+  // The restore callback is queued by queueMicrotask in browsers; invoke the
+  // same path directly to keep this test deterministic in Node.
+  ui.connect('host', { roomCode: 'ABCD', nickname: 'Host', battle: snapshot, autoRestore: true });
+  assert.equal(connected.role, 'host');
+  assert.equal(connected.options.battle.matchId, snapshot.matchId);
+});
+test('online match keeps selected emoji avatars in both projections and after actions', () => {
+  const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host', null, {
+    hostAvatar: '🦊', guestAvatar: '🐼'
+  });
+  assert.equal(match.project('host').onlineAvatar, '🦊');
+  assert.equal(match.project('host').onlineOpponentAvatar, '🐼');
+  assert.equal(match.project('guest').onlineAvatar, '🐼');
+  assert.equal(match.project('guest').onlineOpponentAvatar, '🦊');
+  match.setStarted(true);
+  match.dispatch('host', 'selectCard', { index: 0 });
+  assert.equal(match.project('host').onlineAvatar, '🦊');
+  assert.equal(match.project('guest').onlineOpponentAvatar, '🦊');
 });

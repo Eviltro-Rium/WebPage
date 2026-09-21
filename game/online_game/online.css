@@ -69,6 +69,20 @@ body {
 .online-status.warning { color: #f5c451; }
 
 .online-room { display: grid; gap: 15px; }
+.online-resume { min-height: 300px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 22px; padding: clamp(24px, 6vw, 58px); overflow: hidden; position: relative; }
+.online-resume::before { content: ""; position: absolute; width: 280px; height: 280px; right: -105px; top: -120px; border-radius: 50%; background: radial-gradient(circle, rgba(167,139,250,.2), transparent 68%); pointer-events: none; }
+.online-resume-orb { width: 76px; height: 76px; display: grid; place-items: center; border-radius: 24px; border: 1px solid rgba(196,181,253,.45); background: linear-gradient(145deg, rgba(124,58,237,.32), rgba(37,99,235,.2)); box-shadow: 0 0 0 8px rgba(167,139,250,.06), 0 16px 36px rgba(0,0,0,.25); color: #ddd6fe; font-size: 2.2rem; animation: online-resume-spin 2.1s linear infinite; }
+.online-resume-copy { position: relative; z-index: 1; }
+.online-resume-copy h2 { margin: 5px 0 8px; font-size: clamp(1.35rem, 3vw, 1.8rem); letter-spacing: -.03em; }
+.online-resume-copy p { margin: 0; color: var(--muted); font-size: .82rem; }
+.online-resume-copy p strong { color: #ddd6fe; letter-spacing: .14em; }
+.online-resume-progress { display: flex; gap: 6px; margin: 20px 0 9px; }
+.online-resume-progress i { display: block; width: 42px; height: 4px; border-radius: 99px; background: rgba(196,181,253,.25); overflow: hidden; position: relative; }
+.online-resume-progress i::after { content: ""; position: absolute; inset: 0; background: #a78bfa; transform: translateX(-100%); animation: online-resume-progress 1.8s ease-in-out infinite; }
+.online-resume-progress i:nth-child(2)::after { animation-delay: .25s; }
+.online-resume-progress i:nth-child(3)::after { animation-delay: .5s; }
+@keyframes online-resume-spin { to { transform: rotate(360deg); } }
+@keyframes online-resume-progress { 0%, 100% { transform: translateX(-100%); } 45%, 65% { transform: translateX(0); } }
 .online-room-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 18px 20px 0; }
 .online-room-code { display: flex; align-items: center; gap: 10px; }
 .online-room-code strong { font-size: 1.4rem; letter-spacing: .15em; color: #ddd6fe; }
@@ -141,4 +155,7 @@ body {
     .online-app { width: min(100% - 16px, 620px); padding-top: 13px; }
     .online-landing, .online-room-grid { grid-template-columns: 1fr; }
     .online-intro h1 { font-size: 2.5rem; }
+    .online-resume { grid-template-columns: auto 1fr; gap: 15px; padding: 25px 20px; }
+    .online-resume-orb { width: 56px; height: 56px; border-radius: 18px; font-size: 1.7rem; }
+    .online-resume > .online-btn { grid-column: 1 / -1; width: 100%; }
 }
