@@ -373,6 +373,10 @@
 
         _handleRoster(players) {
             const roster = Array.isArray(players) ? players : [];
+            // Keep local identity while reconnect metadata catches up.
+            const savedCharacter = this.character;
+            const savedReady = this.ready;
+            const savedAvatar = this.avatar;
             const own = this.peer && roster.find(player => player && player.peerId === this.peer.peerId);
             const wasHost = this.role === 'host';
             const promoted = !!(own && own.role === 'host' && !wasHost);
@@ -386,6 +390,13 @@
             }
             this.players = [];
             for (const player of roster) this._upsertPlayer(player);
+            if (own && !this.character && savedCharacter) {
+                this.character = savedCharacter;
+                this.ready = savedReady && !!savedCharacter;
+                this.avatar = normalizeAvatar(savedAvatar);
+                const local = this.players.find(player => player.peerId === this.peer.peerId);
+                if (local) { local.character = savedCharacter; local.ready = this.ready; local.avatar = this.avatar; }
+            }
             if (promoted) {
                 // Host migration is a lobby transition, not a disconnect.
                 // Keep the existing WebSocket open so the same room code can
@@ -418,17 +429,26 @@
             const pending = this._pendingBattleRestore;
             if (!pending || this.match || !this.peer) return;
             const opponent = this.opponentPlayer;
-            if (!opponent || !opponent.character) return;
+            if (!opponent) return;
             if (this.role === 'host') {
-                if (!pending.engine || pending.hostCharacter !== this.character
-                    || pending.guestCharacter !== opponent.character
-                    || typeof global.OnlineMatchHost !== 'function') {
+                // The snapshot is authoritative for a refresh. Roster metadata
+                // may arrive one packet later, so wait instead of discarding it.
+                if (!pending.engine || typeof global.OnlineMatchHost !== 'function') {
                     this._pendingBattleRestore = null;
                     return;
                 }
+                const hostCharacter = pending.hostCharacter || this.character;
+                const guestCharacter = pending.guestCharacter || opponent.character;
+                if (!hostCharacter || !guestCharacter) return;
+                if (this.character && pending.hostCharacter && this.character !== pending.hostCharacter) return;
+                if (opponent.character && pending.guestCharacter && opponent.character !== pending.guestCharacter) return;
+                this.character = hostCharacter;
+                this.ready = true;
+                opponent.character = guestCharacter;
+                opponent.ready = true;
                 try {
                     const match = new global.OnlineMatchHost(
-                        pending.hostCharacter, pending.guestCharacter,
+                        hostCharacter, guestCharacter,
                         'host', null, {
                             hostNickname: pending.hostNickname || this.nickname,
                             guestNickname: pending.guestNickname || opponent.nickname,

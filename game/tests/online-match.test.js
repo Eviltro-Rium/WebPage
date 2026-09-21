@@ -91,7 +91,7 @@ test('refresh preserves pending battle across reconnect writes and late opponent
   ui._persistRoomSession();
   assert.equal(ui._readRoomSession().battle.matchId, original.matchId);
   ui._restoreBattleIfPossible();
-  assert.equal(ui.match, undefined, 'wait for opponent metadata without dropping the save');
+  assert.equal(ui.match.matchId, original.matchId, 'snapshot restores from saved characters before roster metadata arrives');
   ui._handleRoomMessage({ type: 'lobbyUpdate', peerId: 'guest', character: 'Ryan' }, 'guest');
   assert.equal(ui.match.matchId, original.matchId);
   assert.equal(ui.mounted, true);
