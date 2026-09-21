@@ -15,7 +15,9 @@
     { id: 'bomb',        property: 'bomb',        label: '定时炸弹', icon: 'buff_icons/time_bomb.png', polarity: 'debuff', stack: true, max: 5, cleanse: 'reset', trigger: 'onPlay' },
     { id: 'iceSeal',     property: 'iceSeal',     label: '冰封', icon: 'buff_icons/ice_seal.png',    polarity: 'debuff', stack: false, max: 1, cleanse: 'reset',     trigger: 'onDraw' },
     { id: 'hypothermia', property: 'hypothermia', label: '失温', icon: 'buff_icons/hypothermia.png', polarity: 'debuff', stack: true, max: 2, cleanse: 'reset', trigger: 'onThreshold' },
-    { id: 'bind',        property: 'bindMark',   label: '捆缚', icon: 'items_icons/binding.png',     polarity: 'debuff', stack: false, max: 1, cleanse: 'reset',     trigger: 'turnStart' },
+    { id: 'bind',        property: 'bindMark',   label: '捆缚', icon: 'items_icons/binding.png',     polarity: 'debuff', stack: false, max: 1, cleanse: 'reset', trigger: 'turnStart' },
+    { id: 'hypnosis',    property: 'hypnosis',    label: '催眠', icon: 'buff_icons/sleepy_1.png',   polarity: 'debuff', stack: false, max: 1, cleanse: 'reset', trigger: 'persistent' },
+    { id: 'sleep',       property: 'sleep',       label: '沉睡', icon: 'buff_icons/sleepy_2.png',   polarity: 'debuff', stack: false, max: 1, cleanse: 'reset', trigger: 'turnStart' },
 
     { id: 'guard',       property: 'guard',       label: '守护', icon: 'buff_icons/guard.png',        polarity: 'buff',   stack: true, max: 5, cleanse: 'decrement', trigger: 'onDamage', transferable: true },
     { id: 'fly',         property: 'fly',         label: '飞翔', icon: 'buff_icons/fly.png',          polarity: 'buff',   stack: true, max: 2, cleanse: 'decrement', trigger: 'onDamage', transferable: true },

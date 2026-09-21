@@ -365,7 +365,7 @@ body {
 /* ---- 资料库按钮 ---- */
 .home-secondary-row {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
 }
 .home-secondary-btn {
@@ -390,7 +390,6 @@ body {
 }
 .home-secondary-btn:nth-child(1) { animation-delay: 0.3s; }
 .home-secondary-btn:nth-child(2) { animation-delay: 0.36s; }
-.home-secondary-btn:nth-child(3) { animation-delay: 0.42s; }
 @keyframes homeSecondaryIn {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
@@ -1187,6 +1186,26 @@ body {
     border-color: rgba(74, 222, 128, 0.95);
     background: linear-gradient(135deg, rgba(20, 83, 45, 0.88), rgba(74, 222, 128, 0.5));
     box-shadow: 0 0 10px rgba(74, 222, 128, 0.45);
+}
+.buff-icon-wrap.hypnosis-buff {
+    border-color: rgba(244, 114, 182, 0.95);
+    background: linear-gradient(135deg, rgba(131, 24, 67, 0.88), rgba(244, 114, 182, 0.5));
+    box-shadow: 0 0 10px rgba(244, 114, 182, 0.45);
+}
+.buff-icon-wrap.sleep-buff {
+    border-color: rgba(244, 114, 182, 0.95);
+    background: linear-gradient(135deg, rgba(131, 24, 67, 0.88), rgba(244, 114, 182, 0.5));
+    box-shadow: 0 0 10px rgba(244, 114, 182, 0.45);
+}
+.buff-icon-wrap.parasite-buff {
+    border-color: rgba(192, 132, 252, 0.95);
+    background: linear-gradient(135deg, rgba(76, 29, 149, 0.88), rgba(192, 132, 252, 0.5));
+    box-shadow: 0 0 10px rgba(192, 132, 252, 0.45);
+}
+.buff-icon-wrap.crit-buff {
+    border-color: rgba(250, 204, 21, 0.95);
+    background: linear-gradient(135deg, rgba(113, 77, 0, 0.88), rgba(250, 204, 21, 0.5));
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.45);
 }
 @keyframes chaosPulse {
     0%, 100% { filter: brightness(0.95); transform: scale(1); }
@@ -2008,6 +2027,17 @@ body {
     max-width: 720px;
     margin: 0 auto;
     color: var(--text-main);
+}
+
+.special-marks-section {
+    margin-top: 24px;
+}
+.special-marks-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #94a3b8;
+    margin-bottom: 10px;
+    padding-left: 2px;
 }
 
 .char-detail-grid {

@@ -29,7 +29,7 @@ function expand(keys) {
 }
 
 const indexExpected = expand(['characters', 'ai', 'combat']).concat([
-  'js/ui/skills.js', 'js/ui/dialogs.js', 'js/ui/rules.js', 'js/ui/char_detail.js'
+  'js/ui/skills.js', 'js/ui/dialogs.js', 'js/ui/rules.js'
 ], manifest.index_extra_content, [
   'js/ui/adventure_codex.js', 'js/ui/card_style.js', 'js/ui/ui_core.js',
   'js/ui/render/particles.js', 'js/ui/render/home_screen.js', 'js/ui/render/combat_screen.js',

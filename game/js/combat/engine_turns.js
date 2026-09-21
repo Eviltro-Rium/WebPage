@@ -49,16 +49,7 @@
         this.emit('desc', `手牌超过${this.s.handLimit}张，请弃至不超过${this.s.handLimit}张`);
         return this.state();
       }
-      if (this.s.player.burn) {
-        const dmg = this.s.player.burn;
-        const status = global.FurryGame && global.FurryGame.StatusService;
-        if (status) status.remove(this.s.player, 'burn', 1); else this.s.player.burn--;
-        if (this.name(this.s.player) !== 'Leon') {
-          this.emit('burnSettle', `-${dmg}[灼烧]，-1[灼烧层数]`, null, { who: 'player', amount: dmg });
-          this.s.player.hp = Math.max(0, this.s.player.hp - dmg);
-          this.s.player.alive = this.s.player.hp > 0;
-        }
-      }
+      this.settleBurn(this.s.player);
       return this.startAITurn();
     },
 
@@ -108,16 +99,7 @@
 
     endAi() {
       this.trimAI();
-      if (this.s.ai.burn) {
-        const dmg = this.s.ai.burn;
-        const status = global.FurryGame && global.FurryGame.StatusService;
-        if (status) status.remove(this.s.ai, 'burn', 1); else this.s.ai.burn--;
-        if (this.name(this.s.ai) !== 'Leon') {
-          this.emit('burnSettle', `-${dmg}[灼烧]，-1[灼烧层数]`, null, { who: 'ai', amount: dmg });
-          this.s.ai.hp = Math.max(0, this.s.ai.hp - dmg);
-          this.s.ai.alive = this.s.ai.hp > 0;
-        }
-      }
+      this.settleBurn(this.s.ai);
       this.s.turn++;
       this.s.phase = 'PLAYER_PLAY';
       this.s.busy = false;

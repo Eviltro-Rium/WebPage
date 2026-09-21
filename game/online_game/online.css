@@ -84,7 +84,8 @@ body {
 .online-ready { margin-left: auto; color: #fcd34d; font-size: .68rem; }
 .online-ready.yes { color: var(--good); }
 .online-chars { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
-.online-char { position: relative; min-height: 72px; border: 1px solid rgba(165,207,255,.18); border-radius: 10px; padding: 9px; text-align: left; color: var(--ink); cursor: pointer; background: rgba(255,255,255,.045); font: inherit; transition: .18s ease; }
+.online-char { position: relative; min-height: 118px; border: 1px solid rgba(165,207,255,.18); border-radius: 10px; padding: 9px; text-align: left; color: var(--ink); cursor: pointer; background: rgba(255,255,255,.045); font: inherit; transition: .18s ease; }
+.online-char-avatar { display: block; width: 44px; height: 44px; border-radius: 9px; object-fit: cover; margin-bottom: 7px; background: rgba(255,255,255,.08); border: 1px solid rgba(165,207,255,.22); }
 .online-char:hover { transform: translateY(-2px); border-color: rgba(196,181,253,.52); }
 .online-char.selected { border-color: #c4b5fd; background: rgba(124,58,237,.23); box-shadow: 0 0 0 2px rgba(167,139,250,.16); }
 .online-char strong { display: block; font-size: .78rem; }

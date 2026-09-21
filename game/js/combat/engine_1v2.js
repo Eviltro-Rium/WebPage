@@ -22,7 +22,7 @@
       handLimit:10,forcedDiscard:false,hasPlayedThisTurn:false,hasPlayedBlackDefend:false,
       defenseSkipped:false,unblockDefend:false,attackModBonus:0,aiTurnStarted:false,aiHasPlayed:false,pendingAIBridge:null,
       pendingAIContinue:null,pendingDefenseDamage:0,pendingFiveChoice:false,fiveChoiceCard:null,
-      pendingNumberJudge:null,mayDiscardAfterSkill:false,serenityHalfTarget:null,pendingSaikiBleed:null,
+      pendingNumberJudge:null,mayDiscardAfterSkill:false,serenityHalfTarget:null,pendingSaikiBleed:null,pendingVixrapsBurnSettle:null,
       forceEndAITurn:false,activeAttacker:'player',is1v2:true,needColorChoice:false,
       pendingDialog:null,discardTop:top,
       player:this.character(p),ai:this.character(a1,true),ai2:Object.assign(this.character(a2,true),{name:'AI2 '+a2}),
@@ -101,7 +101,7 @@
     let key=this._curAI();
     this.trimAI1v2();
     let ch=this.s[key];
-    if(ch.burn){let dmg=ch.burn;let S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.remove(ch,'burn',1);else ch.burn--;if(this.name(ch)!=='Leon'){let w=this._who(ch);this.emit('burnSettle',`-${dmg}[灼烧]，-1[灼烧层数]`,null,{who:w,amount:dmg});ch.hp=Math.max(0,ch.hp-dmg);ch.alive=ch.hp>0}}
+    this.settleBurn(ch);
     this.check();if(this.s.phase==='GAME_OVER')return;
     if(this._advanceAI()){
       this.later(()=>this.aiTurn1v2());return this.check()
@@ -198,7 +198,7 @@
     if(r.immediateBuffs)this._restoreAttackBuffs();
     this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage};
     {let freezeBlock=this._freezeBlocksDefend(this.s.player,this.s.atkCard);
-    if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){this.s.phase='PLAYER_DEFEND';this.s.busy=false;this.s.unblockDefend=false;return}
+    if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){this._promoteHypnosis(this.s.player,'player');if(this.s.player.sleep)return this.defend1v2(true);this.s.phase='PLAYER_DEFEND';this.s.busy=false;this.s.unblockDefend=false;return}
      if(r.d&&(r.unblock||freezeBlock)&&!(r.isDrain||r.drain)){if(this._enterPlayerDefend(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}
     if(!r.d)this.emit('desc',ch.name+' 本次技能分支未造成伤害，跳过防御',c);
      if(r.d&&!r.isDrain&&!r.drain&&this.playerNeedsAvoidChoice()){this.askGuard(r.d);return}
@@ -300,8 +300,10 @@
     // challenge room after the previous opponent was eliminated.
     this.s.attackTarget=key;
     let ch=this.s[key],hand=this.h[key];
+    this._promoteHypnosis(ch,key);
+    const asleep=!!ch.sleep;
     let frozen=this._freezeBlocksDefend(ch,atk),
-        chosen=frozen?null:this._chooseAIDefend1v2(key,this.s.discardTop,d),
+        chosen=(frozen||asleep)?null:this._chooseAIDefend1v2(key,this.s.discardTop,d),
         i=chosen?hand.indexOf(chosen):-1;
     if(i>=0){
       let top=this.s.discardTop,c=hand.splice(i,1)[0];
@@ -315,6 +317,7 @@
         this.emit('itemEffect',this.itemEffectDesc(c,key),c,{effect:kind,who:key});
         this.useItem1v2(c,ch,this.s.player,key);
         this.s.pendingAIBridge={mode:'defense',afterEventId:this.ver,attackCard:cp(atk),damage:d,owner:key};
+        this._promoteHypnosis(ch,key);
         return this.check()
       }
       let n=this.name(ch),v=c.value;
@@ -326,9 +329,10 @@
       if(!judged)this.emit('desc',desc);
       this.deferSettlement('PLAYER_ATTACK',remaining,c.isNumberCard&&c.value<=3?ch.bleed:0)
     }else{
-      this.emit('desc',frozen?ch.name+'处于冷冻状态，无法防御蓝色攻击':ch.name+'根据防御策略选择跳过');
+      this.emit('desc',frozen?ch.name+'处于冷冻状态，无法防御蓝色攻击':(asleep?ch.name+'处于[沉睡]，无法防御':ch.name+'根据防御策略选择跳过'));
       this.deferSettlement('PLAYER_ATTACK',d,0)
     }
+    this._promoteHypnosis(ch,key);
     return this.check()
   };
 
@@ -351,12 +355,15 @@
   };
 
   Engine.prototype.defend1v2=function(skip=false){
+    this._promoteHypnosis(this.s.player,'player');
+    if(this.s.player.sleep)skip=true;
     let d=this.s.pendingAttack.damage;
     let target=this._curAI();
     let targetChar=this.s[target];
     let triggeredDefense=!skip;
-    if(skip){this.s.hasPlayedBlackDefend=false;this.emit('desc','玩家选择跳过防御，'+d+'点伤害待结算')}
+    if(skip){this.s.hasPlayedBlackDefend=false;this.emit('desc',this.s.player.sleep?'你处于[沉睡]，无法打出防御牌':'玩家选择跳过防御，'+d+'点伤害待结算')}
     else{
+      this._promoteHypnosis(this.s[target],target);
       let i=this.s.selectedCard,c=this.h.player[i];
       if(!c)throw Error('请选择防御牌');
       if(!this.legal(c,true))throw Error('该牌不能用于防御');

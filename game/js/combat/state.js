@@ -45,6 +45,7 @@
         mayDiscardAfterSkill: false,
         serenityHalfTarget: null,
         pendingSaikiBleed: null,
+        pendingVixrapsBurnSettle: null,
         forceEndAITurn: false,
         activeAttacker: 'player',
         modeId: null,

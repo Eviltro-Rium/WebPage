@@ -33,7 +33,7 @@
 
   Engine.prototype._startAISequence1v2=function(){
     this.fillHands1v2(true);
-    if(this.s.player.burn){let dmg=this.s.player.burn;let status=window.FurryGame&&window.FurryGame.StatusService;if(status)status.remove(this.s.player,'burn',1);else this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',amount:dmg});this.hurt(this.s.player,dmg)}}
+    this.settleBurn(this.s.player);
     this.check();if(this.s.phase==='GAME_OVER')return this.state();
     this.s.currentAITarget=this.s.ai.alive?0:1;let key=this._curAI();
     this.s.phase=key==='ai2'?'AI2_TURN':'AI_TURN';this.s.busy=true;this.s.activeAttacker=key;

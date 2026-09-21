@@ -9,7 +9,8 @@
     "js/characters/serenity.js",
     "js/characters/moze.js",
     "js/characters/knight.js",
-    "js/characters/otto.js"
+    "js/characters/otto.js",
+    "js/characters/vixraps.js"
   ],
   "ai": [
     "js/ai/registry.js",
@@ -21,7 +22,8 @@
     "js/ai/saiki_ai.js",
     "js/ai/moze_ai.js",
     "js/ai/chan_ai.js",
-    "js/ai/otto_ai.js"
+    "js/ai/otto_ai.js",
+    "js/ai/vixraps_ai.js"
   ],
   "combat": [
     "js/combat/protocol.js",
@@ -56,7 +58,6 @@
     "js/ui/skills.js",
     "js/ui/dialogs.js",
     "js/ui/rules.js",
-    "js/ui/char_detail.js",
     "js/ui/card_style.js",
     "js/ui/adventure_codex.js",
     "js/ui/ui_core.js",

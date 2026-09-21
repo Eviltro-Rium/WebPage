@@ -45,10 +45,19 @@
                 const advDef = monsterDef || bossDef;
                 if (advDef && advDef.icon) {
                     el.src = gameAssetUrl(advDef.icon.replace(/^\.\.\//, ''));
-                    el.onerror = () => { el.src = gameAssetUrl(`avatars/${charName}.png`); el.onerror = () => { el.src = gameAssetUrl(`avatars/${charName}.jpg`); el.onerror = null; }; };
+                    el.onerror = () => {
+                        el.src = gameAssetUrl(`avatars/${charName}.png`);
+                        el.onerror = () => {
+                            el.src = gameAssetUrl(`avatars/${charName}.jpg`);
+                            el.onerror = () => { el.src = gameAssetUrl(`avatars/${charName}.jpeg`); el.onerror = null; };
+                        };
+                    };
                 } else {
                     el.src = gameAssetUrl(`avatars/${charName}.png`);
-                    el.onerror = () => { el.src = gameAssetUrl(`avatars/${charName}.jpg`); el.onerror = null; };
+                    el.onerror = () => {
+                        el.src = gameAssetUrl(`avatars/${charName}.jpg`);
+                        el.onerror = () => { el.src = gameAssetUrl(`avatars/${charName}.jpeg`); el.onerror = null; };
+                    };
                 }
             }
         },
@@ -87,9 +96,11 @@
                 burn: { colorClass: 'burn-buff' }, freeze: { colorClass: 'freeze-buff' },
                 bleed: { colorClass: 'bleed-buff' }, poison: { colorClass: 'poison-buff' },
                 blind: { colorClass: 'blind-buff' }, iceSeal: { colorClass: 'ice-seal-buff' },
+                hypnosis: { colorClass: 'hypnosis-buff' }, sleep: { colorClass: 'sleep-buff' },
                 bomb: { colorClass: 'bomb-mark' }, hypothermia: { colorClass: 'hypothermia-buff' },
                 guard: { colorClass: 'guard-buff' }, fly: { colorClass: 'fly-buff' },
                 lush: { colorClass: 'lush-buff' }, parasite: { colorClass: 'parasite-buff' },
+                crit: { colorClass: 'crit-buff' },
                 diving: { colorClass: 'diving-buff' }, bloodthirst: { colorClass: 'bloodthirst-buff' },
                 bind: { colorClass: 'bind-mark' }, chaos_red: { colorClass: 'chaos-red-buff' },
                 chaos_yellow: { colorClass: 'chaos-yellow-buff' }, chaos_blue: { colorClass: 'chaos-blue-buff' },

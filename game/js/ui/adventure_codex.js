@@ -1,5 +1,5 @@
 /**
- * 冒险图鉴 —— 仿照 char_detail.js 的结构，展示怪物/Boss/道具/饰品/Buff图鉴。
+ * 图鉴 —— 展示主角（玩家角色）/怪物/Boss/道具/饰品/Buff图鉴。
  */
 (function () {
   // 怪物/Boss NPC 牌堆：白1~3×5、白4~6×3（无白7）；Boss 另加白0。
@@ -15,7 +15,7 @@
     { atkKey: 5, defKey: -1, label: '6' }
   ];
 
-  // 所有会在战斗界面显示的状态集中维护，避免规则页和冒险图鉴出现两套说明。
+  // 所有会在战斗界面显示的状态集中维护，避免规则页和图鉴出现两套说明。
   // desc 三行：堆叠上限：n / 维持效果：衰减|持续|瞬爆 / 效果说明
   const BUFF_DATA = [
     { key: 'burn', name: '灼烧', type: '负面状态', icon: 'icons/buff_icons/burn.png', desc: '堆叠上限：5\n维持效果：衰减\n拥有灼烧的角色在自己的进攻回合结束时受到等同于层数的伤害，随后减少1层。' },
@@ -35,7 +35,36 @@
     { key: 'chaos_blue', name: '混沌·蓝', type: '正面状态', icon: 'icons/buff_icons/chaos_blue.png', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出蓝色数字牌并完成防御后获得，进攻回合开始前清除。' },
     { key: 'chaos_green', name: '混沌·绿', type: '正面状态', icon: 'icons/buff_icons/chaos_green.png', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出绿色数字牌并完成防御后获得，进攻回合开始前清除。' },
     { key: 'diving', name: '潜水', type: '正面状态', icon: 'icons/buff_icons/diving.png', desc: '堆叠上限：1\n维持效果：持续\n拥有潜水的角色免疫蓝色攻击（含被指定为蓝色的白牌）造成的伤害和buff施加。对手依旧可以对自己施加正面增益。冰封、诅咒等仍能命中。' },
-    { key: 'hypothermia', name: '失温', type: '负面状态', icon: 'icons/buff_icons/hypothermia.png', desc: '堆叠上限：2\n维持效果：衰减\n冻洋蓝鲸出4/5/6时，在防守方完成防御并结算伤害后，对防守方施加1层失温。当失温达到2层时，立即强制弃1张牌（玩家自选，NPC按最低优先级弃牌），随后失温削减1层。' }
+    { key: 'hypothermia', name: '失温', type: '负面状态', icon: 'icons/buff_icons/hypothermia.png', desc: '堆叠上限：2\n维持效果：衰减\n冻洋蓝鲸出4/5/6时，在防守方完成防御并结算伤害后，对防守方施加1层失温。当失温达到2层时，立即强制弃1张牌（玩家自选，NPC按最低优先级弃牌），随后失温削减1层。' },
+    { key: 'bind', name: '捆缚', type: '负面状态', icon: 'icons/items_icons/binding.png', desc: '堆叠上限：1\n维持效果：瞬爆\n使用捆缚道具后，目标在本回合结束后跳过自己的进攻阶段，由当前回合角色再发动一次进攻。' },
+    { key: 'hypnosis', name: '催眠', type: '负面状态', icon: 'icons/buff_icons/sleepy_1.png', desc: '堆叠上限：1\n维持效果：持续\n拥有催眠的角色在完整经过自己的一次进攻回合后，于下一次被进攻时自动转化为【沉睡】。已处于【沉睡】时免疫新的【催眠】。' },
+    { key: 'sleep', name: '沉睡', type: '负面状态', icon: 'icons/buff_icons/sleepy_2.png', desc: '堆叠上限：1\n维持效果：瞬爆\n拥有沉睡的角色在自己的进攻回合开始时立刻苏醒，恢复15点生命（不超过生命上限）。同时被进攻时会跳过防御阶段，所有伤害直接结算。' },
+    { key: 'bloodthirst', name: '嗜血', type: '正面状态', icon: 'icons/ui_icons/blood_thirsty.png', desc: '堆叠上限：1\n维持效果：持续\nSerenity专属状态。当生命低于30时进入嗜血，恢复时额外+1（仅在生命回到≥30的回复过程中触发一次）；Serenity技能的评估权重会因嗜血大幅上调。' }
+  ];
+
+  // 主角图鉴：仅展示玩家可选择的角色（排除冒险 NPC、领主专属和测试用角色）。
+  const PLAYER_CHARS = [
+    { name: 'Ryan', hp: 70, type: '战士', passive: '进攻回合开始前恢复1点生命', avatar: 'avatars/Ryan.jpg', color: '#14eb5f' },
+    { name: 'Leon', hp: 90, type: '骑士', passive: '免疫灼烧伤害', avatar: 'avatars/Leon.png', color: '#ee1111' },
+    { name: 'Chan', hp: 80, type: '谋士', passive: '进攻回合开始前抽1张牌', avatar: 'avatars/Chan.png', color: '#1399f2' },
+    { name: 'Saiki', hp: 80, type: '猎手', passive: '有效黄色牌在防御结算后施加1层流血', avatar: 'avatars/Saiki.png', color: '#9b59b6' },
+    { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼烧时1至7牌攻击伤害+1', avatar: 'avatars/Blaze.png', color: '#e67e22' },
+    { name: 'Serenity', hp: 80, type: '暗影', passive: '免疫冷冻；低于30生命嗜血，正常态恢复+1', avatar: 'avatars/Serenity.jpg', color: '#1abc9c' },
+    { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害', avatar: 'avatars/Moze.jpg', color: '#7f8c8d' },
+    { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌', avatar: 'avatars/Knight.png', color: '#8e44ad' },
+    { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层【暴击】使攻击不可防御', avatar: 'avatars/Otto.png', color: '#d35400' },
+    { name: 'Vixraps', hp: 85, type: '灼热', passive: '打出黑牌后弃1张牌恢复3点生命', avatar: 'avatars/Vixraps.jpeg', color: '#c0392b' }
+  ];
+
+  const PLAYER_SKILL_GRID = [
+    { atkKey: 0, defKey: 0, label: '1' },
+    { atkKey: 1, defKey: 1, label: '2' },
+    { atkKey: 2, defKey: 2, label: '3' },
+    { atkKey: 7, defKey: 3, label: '0' },
+    { atkKey: 3, defKey: -1, label: '4' },
+    { atkKey: 4, defKey: -1, label: '5' },
+    { atkKey: 5, defKey: -1, label: '6' },
+    { atkKey: 6, defKey: -1, label: '7' }
   ];
 
   function stripPrefix(s) {
@@ -128,14 +157,67 @@
 
   function buildCategoryPage() {
     let html = '<div class="char-detail-page">';
-    html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back">&larr; 返回</button><h1 class="rules-title">冒险图鉴</h1></div>';
+    html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back">&larr; 返回</button><h1 class="rules-title">图鉴</h1></div>';
     html += '<div class="codex-category-grid">';
+    html += '<div class="codex-category-card" data-cat="player"><div class="codex-category-icon">🎭</div><div class="codex-category-name">主角图鉴</div></div>';
     html += '<div class="codex-category-card" data-cat="monster"><div class="codex-category-icon">👹</div><div class="codex-category-name">怪物图鉴</div></div>';
     html += '<div class="codex-category-card" data-cat="boss"><div class="codex-category-icon">👑</div><div class="codex-category-name">Boss图鉴</div></div>';
     html += '<div class="codex-category-card" data-cat="consumable"><div class="codex-category-icon">🧪</div><div class="codex-category-name">道具图鉴</div></div>';
     html += '<div class="codex-category-card" data-cat="accessory"><div class="codex-category-icon">💍</div><div class="codex-category-name">饰品图鉴</div></div>';
     html += '<div class="codex-category-card" data-cat="trophyWhite"><div class="codex-category-icon">🃏</div><div class="codex-category-name">战利白卡</div></div>';
     html += '<div class="codex-category-card" data-cat="buff"><div class="codex-category-icon">✨</div><div class="codex-category-name">Buff图鉴</div></div>';
+    html += '</div></div>';
+    return html;
+  }
+
+  function buildPlayerCharList() {
+    let html = '<div class="char-detail-page">';
+    html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">主角图鉴</h1></div>';
+    html += '<div class="char-detail-grid">';
+    for (const ch of PLAYER_CHARS) {
+      html += `<div class="char-detail-card" data-name="${ch.name}">
+        <img class="char-detail-avatar" src="${ch.avatar}" onerror="this.src=this.src.replace('.png','.jpg')" alt="${ch.name}">
+        <div class="char-detail-name" style="color:${ch.color}">${ch.name}</div>
+        <div class="char-detail-type">${ch.type}</div>
+      </div>`;
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function buildPlayerCharDetail(name) {
+    const ch = PLAYER_CHARS.find(c => c.name === name);
+    if (!ch) return '';
+    const skillData = window.SKILL_DATA || (typeof SKILL_DATA !== 'undefined' ? SKILL_DATA : null);
+    const atk = (skillData && skillData.attack && skillData.attack[name]) || [];
+    const def = (skillData && skillData.defend && skillData.defend[name]) || [];
+
+    let html = '<div class="char-detail-page">';
+    html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; 主角列表</button><h1 class="rules-title">主角图鉴</h1></div>';
+
+    html += `<div class="char-detail-hero">
+      <img class="char-detail-hero-avatar" src="${ch.avatar}" onerror="this.src=this.src.replace('.png','.jpg')" alt="${ch.name}">
+      <div class="char-detail-hero-info">
+        <div class="char-detail-hero-name" style="color:${ch.color}">${ch.name}</div>
+        <div class="char-detail-hero-type">${ch.type} · HP ${ch.hp}</div>
+        <div class="char-detail-hero-passive">被动：${ch.passive}</div>
+      </div>
+    </div>`;
+
+    html += '<div class="skill-grid">';
+    for (const row of PLAYER_SKILL_GRID) {
+      const atkDesc = atk[row.atkKey] ? colorize(stripPrefix(atk[row.atkKey])) : '—';
+      const defDesc = row.defKey >= 0 && def[row.defKey] ? colorize(stripPrefix(def[row.defKey])) : (row.defKey >= 0 ? '无防御效果' : '');
+      html += `<div class="skill-row">`;
+      html += `<div class="skill-cell skill-atk">${atkDesc}</div>`;
+      html += `<div class="skill-num">${row.label}</div>`;
+      if (row.defKey >= 0) {
+        html += `<div class="skill-cell skill-def">${defDesc}</div>`;
+      } else {
+        html += `<div class="skill-cell skill-def skill-no-def"></div>`;
+      }
+      html += '</div>';
+    }
     html += '</div></div>';
     return html;
   }
@@ -395,11 +477,24 @@
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">Buff图鉴</h1></div>';
     html += '<div class="char-detail-grid">';
     for (const buff of BUFF_DATA) {
+      // 嗜血(bloodthirst)和捆缚(bind)是特殊标记，不显示在主buff列表
+      if (buff.key === 'bloodthirst' || buff.key === 'bind') continue;
       const icon = resolveIcon(buff.icon);
       const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${buff.name}">` : `<div class="char-detail-avatar codex-no-icon">${buff.name[0]}</div>`;
       html += `<div class="char-detail-card" data-buff="${buff.key}">${iconHtml}<div class="char-detail-name">${buff.name}</div><div class="char-detail-type">${buff.type}</div></div>`;
     }
-    html += '</div></div>';
+    html += '</div>';
+    // 特殊机制（非Buff）单独一行
+    html += '<div class="special-marks-section">';
+    html += '<div class="special-marks-title">特殊机制（非Buff）</div>';
+    html += '<div class="char-detail-grid">';
+    const specialMarks = BUFF_DATA.filter(b => b.key === 'bloodthirst' || b.key === 'bind');
+    for (const buff of specialMarks) {
+      const icon = resolveIcon(buff.icon);
+      const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${buff.name}">` : `<div class="char-detail-avatar codex-no-icon">${buff.name[0]}</div>`;
+      html += `<div class="char-detail-card" data-buff="${buff.key}">${iconHtml}<div class="char-detail-name">${buff.name}</div><div class="char-detail-type">特殊机制</div></div>`;
+    }
+    html += '</div></div></div>';
     return html;
   }
 
@@ -469,7 +564,8 @@
     container.querySelectorAll('.codex-category-card').forEach(el => {
       el.addEventListener('click', () => {
         const cat = el.dataset.cat;
-        if (cat === 'monster') showMonsterList(container);
+        if (cat === 'player') showPlayerCharList(container);
+        else if (cat === 'monster') showMonsterList(container);
         else if (cat === 'boss') showBossList(container);
         else if (cat === 'consumable') showItemList(container, 'consumable');
         else if (cat === 'accessory') showItemList(container, 'accessory');
@@ -477,6 +573,19 @@
         else if (cat === 'buff') showBuffList(container);
       });
     });
+  }
+
+  function showPlayerCharList(container) {
+    container.innerHTML = buildPlayerCharList();
+    document.getElementById('codex-back-cat').addEventListener('click', () => showCategoryPage(container));
+    container.querySelectorAll('.char-detail-card').forEach(el => {
+      el.addEventListener('click', () => showPlayerCharDetail(container, el.dataset.name));
+    });
+  }
+
+  function showPlayerCharDetail(container, name) {
+    container.innerHTML = buildPlayerCharDetail(name);
+    document.getElementById('codex-back-list').addEventListener('click', () => showPlayerCharList(container));
   }
 
   function showMonsterList(container) {

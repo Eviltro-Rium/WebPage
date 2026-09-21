@@ -13,7 +13,7 @@
       handLimit:7,forcedDiscard:false,hasPlayedThisTurn:false,hasPlayedBlackDefend:false,
       defenseSkipped:false,aiTurnStarted:false,aiHasPlayed:false,pendingAIBridge:null,
       pendingAIContinue:null,pendingDefenseDamage:0,pendingFiveChoice:false,fiveChoiceCard:null,
-      pendingNumberJudge:null,mayDiscardAfterSkill:false,serenityHalfTarget:null,pendingSaikiBleed:null,
+      pendingNumberJudge:null,mayDiscardAfterSkill:false,serenityHalfTarget:null,pendingSaikiBleed:null,pendingVixrapsBurnSettle:null,
       forceEndAITurn:false,activeAttacker:'player',is1v2:true,isLord:true,needColorChoice:false,
       pendingDialog:null,discardTop:top,
       player:this.character(p),ai:this.character(a1,true),ai2:Object.assign(this.character(a2,true),{name:'AI2 '+a2}),
@@ -166,7 +166,7 @@
   E.prototype._lordStartNextAI=function(){
     if(!this.s.ai.alive&&(!this.s.ai2||!this.s.ai2.alive)){this.check();return this.state()}
     this.fillHands1v2(true);
-    if(this.s.player.burn){let dmg=this.s.player.burn;let status=window.FurryGame&&window.FurryGame.StatusService;if(status)status.remove(this.s.player,'burn',1);else this.s.player.burn--;if(this.name(this.s.player)!=='Leon'){this.emit('burnSettle','-'+dmg+'[灼烧]',null,{who:'player',amount:dmg});this.hurt(this.s.player,dmg)}}
+    this.settleBurn(this.s.player);
     this.check();if(this.s.phase==='GAME_OVER')return this.state();
 
     let idx=this.s.lordPlayerTargetIdx||0;
@@ -191,7 +191,7 @@
 
     let key=this._curAI();
     let ch=this.s[key];
-    if(ch.burn){let dmg=ch.burn;let status=window.FurryGame&&window.FurryGame.StatusService;if(status)status.remove(ch,'burn',1);else ch.burn--;if(this.name(ch)!=='Leon'){let w=this._who(ch);this.emit('burnSettle','-'+dmg+'[灼烧]，-1[灼烧层数]',null,{who:w,amount:dmg});ch.hp=Math.max(0,ch.hp-dmg);ch.alive=ch.hp>0}}
+    this.settleBurn(ch);
     this.check();if(this.s.phase==='GAME_OVER')return;
 
     this._handleEliminated1v2();

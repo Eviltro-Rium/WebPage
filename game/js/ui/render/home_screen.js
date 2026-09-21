@@ -18,8 +18,8 @@
                     (window.AdventureRegistry.getMonster(name) || window.AdventureRegistry.getBoss(name)));
             });
             const charColors = { Ryan: '#e74c3c', Leon: '#3498db', Chan: '#2ecc71',
-                Saiki: '#9b59b6', Blaze: '#e67e22', Serenity: '#1abc9c', Moze: '#7f8c8d', Knight: '#8e44ad' };
-            const charAvatar = { Ryan: 'avatars/Ryan.jpg', Leon: 'avatars/Leon.png', Chan: 'avatars/Chan.png', Saiki: 'avatars/Saiki.png', Blaze: 'avatars/Blaze.png', Serenity: 'avatars/Serenity.jpg', Moze: 'avatars/Moze.jpg', Knight: 'avatars/Knight.png', Otto: 'avatars/Otto.png' };
+                Saiki: '#9b59b6', Blaze: '#e67e22', Serenity: '#1abc9c', Moze: '#7f8c8d', Knight: '#8e44ad', Vixraps: '#c0392b' };
+            const charAvatar = { Ryan: 'avatars/Ryan.jpg', Leon: 'avatars/Leon.png', Chan: 'avatars/Chan.png', Saiki: 'avatars/Saiki.png', Blaze: 'avatars/Blaze.png', Serenity: 'avatars/Serenity.jpg', Moze: 'avatars/Moze.jpg', Knight: 'avatars/Knight.png', Otto: 'avatars/Otto.png', Vixraps: 'avatars/Vixraps.jpeg' };
 
             let html = `<div class="home-shell${this._modeChosen ? ' home-shell-select' : ''}">`;
             html += `<header class="home-hero"><div class="game-title">Furry Trial</div>`;
@@ -38,8 +38,7 @@
                 html += `<div class="home-section-label">资料库</div>`;
                 html += `<div class="home-secondary-row">`;
                 html += `<button class="home-secondary-btn rules-entry-btn" id="rules-entry-btn" type="button"><span class="home-secondary-icon" aria-hidden="true">📖</span><span>规则介绍</span></button>`;
-                html += `<button class="home-secondary-btn char-entry-btn" id="char-entry-btn" type="button"><span class="home-secondary-icon" aria-hidden="true">🎭</span><span>角色详情</span></button>`;
-                html += `<button class="home-secondary-btn codex-entry-btn" id="codex-entry-btn" type="button"><span class="home-secondary-icon" aria-hidden="true">🗺</span><span>冒险图鉴</span></button>`;
+                html += `<button class="home-secondary-btn codex-entry-btn" id="codex-entry-btn" type="button"><span class="home-secondary-icon" aria-hidden="true">📚</span><span>图鉴</span></button>`;
                 html += `</div></div></div>`;
                 this.selectScreen.innerHTML = html;
                 const m1 = document.getElementById('mode-1v1');
@@ -55,10 +54,6 @@
                 const rulesBtn0 = document.getElementById('rules-entry-btn');
                 if (rulesBtn0) rulesBtn0.addEventListener('click', () => {
                     if (window.RulesPage) { window.RulesPage.build(); this.selectScreen.classList.remove('active'); document.getElementById('rules-screen').classList.add('active'); }
-                });
-                const charBtn0 = document.getElementById('char-entry-btn');
-                if (charBtn0) charBtn0.addEventListener('click', () => {
-                    if (window.CharDetailPage) { window.CharDetailPage.show(document.getElementById('char-detail-screen')); this.selectScreen.classList.remove('active'); }
                 });
                 const codexBtn0 = document.getElementById('codex-entry-btn');
                 if (codexBtn0) codexBtn0.addEventListener('click', () => {
