@@ -373,47 +373,29 @@
     if (!items.length) {
       html += '<div class="codex-empty">暂无数据</div>';
     } else {
-      html += '<div class="char-detail-grid">';
+      html += '<div class="codex-all-list">';
       for (const it of items) {
         const icon = resolveIcon(it.icon);
         const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-avatar codex-no-icon">${it.displayName[0]}</div>`;
-        html += `<div class="char-detail-card" data-name="${it.name}">${iconHtml}<div class="char-detail-name">${it.displayName}</div><div class="char-detail-type">${it.price || 0}金币</div></div>`;
+        const kindLabel = it.kind === 'consumable' ? '一次性道具' : '配饰';
+        const useSceneLabel = it.useScene === 'both' ? '（地图/战斗均可使用）' : it.useScene === 'combat' ? '（战斗中使用）' : it.useScene === 'map' ? '（地图使用）' : '';
+        html += `<div class="codex-all-item">`;
+        html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${it.displayName}</span><span class="codex-all-item-meta">${kindLabel} · ${it.kind === 'accessory' ? 15 : (it.price || 0)}金币${useSceneLabel}</span></div></div>`;
+        const descText = window.descToEmoji ? window.descToEmoji(it.description || '') : (it.description || '无描述');
+        html += `<div class="codex-all-item-desc">${descText}</div>`;
+        if (it.statBonus) {
+          html += '<div class="codex-stat-bonus">';
+          html += '<div class="codex-stat-list">';
+          for (const [k, v] of Object.entries(it.statBonus)) {
+            const label = k === 'maxHp' ? '生命上限' : k === 'dropRateBonus' ? '掉落概率' : k;
+            html += `<span class="codex-stat-chip">${label}+${v}</span>`;
+          }
+          html += '</div></div>';
+        }
+        html += '</div>';
       }
       html += '</div>';
     }
-    html += '</div>';
-    return html;
-  }
-
-  function buildItemDetail(name) {
-    const it = window.AdventureRegistry ? window.AdventureRegistry.getItem(name) : null;
-    if (!it) return '';
-    const icon = resolveIcon(it.icon);
-    const iconHtml = icon ? `<img class="char-detail-hero-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-hero-avatar codex-no-icon">${it.displayName[0]}</div>`;
-    const kindLabel = it.kind === 'consumable' ? '一次性道具' : '配饰';
-    const useSceneLabel = it.useScene === 'both' ? '地图/战斗均可使用' : it.useScene === 'combat' ? '战斗中使用' : it.useScene === 'map' ? '地图使用' : '';
-
-    let html = '<div class="char-detail-page">';
-    html += `<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; ${kindLabel}列表</button><h1 class="rules-title">${it.kind === 'consumable' ? '道具图鉴' : '饰品图鉴'}</h1></div>`;
-    html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
-    html += `<div class="char-detail-hero-name">${it.displayName}</div>`;
-    html += `<div class="char-detail-hero-type">${kindLabel} · ${it.kind === 'accessory' ? 15 : (it.price || 0)}金币</div>`;
-    html += `<div class="char-detail-hero-passive">${window.descToEmoji ? window.descToEmoji(it.description || '') : (it.description || '')}</div>`;
-    if (useSceneLabel) html += `<div class="char-detail-hero-passive">${useSceneLabel}</div>`;
-    html += `</div></div>`;
-
-    if (it.statBonus) {
-      html += '<div class="codex-stat-bonus">';
-      html += '<div class="codex-stat-title">属性加成</div>';
-      html += '<div class="codex-stat-list">';
-      for (const [k, v] of Object.entries(it.statBonus)) {
-        const label = k === 'maxHp' ? '生命上限' : k === 'dropRateBonus' ? '掉落概率' : k;
-        html += `<div class="codex-stat-row"><span class="codex-stat-key">${label}</span><span class="codex-stat-val">+${v}</span></div>`;
-      }
-      html += '</div></div>';
-    }
-
-
     html += '</div>';
     return html;
   }
@@ -426,47 +408,34 @@
     if (!items.length) {
       html += '<div class="codex-empty">暂无数据</div>';
     } else {
-      html += '<div class="char-detail-grid">';
+      html += '<div class="codex-all-list">';
+      const effectMap = { burn: '灼烧', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', lush: '茂盛', poison: '中毒' };
       for (const it of items) {
         const icon = resolveIcon(it.icon);
         const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-avatar codex-no-icon">${it.displayName[0]}</div>`;
         const shortName = (it.displayName || it.name || '').replace(/战利白卡/g, '').trim();
-        html += `<div class="char-detail-card" data-name="${it.name}">${iconHtml}<div class="char-detail-name">${shortName}</div><div class="char-detail-type">${it.price || 0}金币</div></div>`;
+        html += `<div class="codex-all-item">`;
+        html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${it.displayName}</span><span class="codex-all-item-meta">战利白卡 · ${it.price || 0}金币</span></div></div>`;
+        const descText = window.descToEmoji ? window.descToEmoji(it.description || '') : (it.description || '无描述');
+        html += `<div class="codex-all-item-desc">${descText}</div>`;
+        if (it.beastTradeCost && it.beastTradeCost.length) {
+          html += '<div class="codex-stat-bonus"><div class="codex-stat-list">';
+          const beastNames = { huo: '火兽元', shui: '水兽元', cao: '草兽元', ben: '本兽元', wuneng: '万能兽元' };
+          const beastColors = { huo: '#ff5555', shui: '#55aaff', cao: '#55cc55', ben: '#ffcc44', wuneng: '#cc88ff' };
+          const costMap = {};
+          for (const t of it.beastTradeCost) costMap[t] = (costMap[t] || 0) + 1;
+          const parts = [];
+          for (const [k, v] of Object.entries(costMap)) {
+            const name = beastNames[k] || k;
+            const color = beastColors[k] || '#ccc';
+            parts.push(`${v}<span style="color:${color}">[${name}]</span>`);
+          }
+          html += `<span class="codex-stat-chip">兑换消耗：${parts.join(' ')}</span>`;
+          html += '</div></div>';
+        }
+        html += '</div>';
       }
       html += '</div>';
-    }
-    html += '</div>';
-    return html;
-  }
-
-  function buildTrophyDetail(name) {
-    const it = window.AdventureRegistry ? window.AdventureRegistry.getItem(name) : null;
-    if (!it) return '';
-    const icon = resolveIcon(it.icon);
-    const iconHtml = icon ? `<img class="char-detail-hero-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-hero-avatar codex-no-icon">${it.displayName[0]}</div>`;
-    const effectLabel = { burn: '灼伤', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械' }[it.trophyEffect] || it.trophyEffect || '';
-
-    let html = '<div class="char-detail-page">';
-    html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; 战利白卡</button><h1 class="rules-title">战利白卡</h1></div>';
-    html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
-    html += `<div class="char-detail-hero-name">${it.displayName}</div>`;
-    html += `<div class="char-detail-hero-type">战利白卡 · ${it.price || 0}金币</div>`;
-    html += `<div class="char-detail-hero-passive">${window.descToEmoji ? window.descToEmoji(it.description || '') : (it.description || '')}</div>`;
-    html += `</div></div>`;
-    if (it.beastTradeCost && it.beastTradeCost.length) {
-      html += '<div class="codex-stat-bonus"><div class="codex-stat-title">兑换消耗</div><div class="codex-stat-list">';
-      const beastNames = { huo: '火兽元', shui: '水兽元', cao: '草兽元', ben: '本兽元', wuneng: '万能兽元' };
-      const beastColors = { huo: '#ff5555', shui: '#55aaff', cao: '#55cc55', ben: '#ffcc44', wuneng: '#cc88ff' };
-      const costMap = {};
-      for (const t of it.beastTradeCost) costMap[t] = (costMap[t] || 0) + 1;
-      const parts = [];
-      for (const [k, v] of Object.entries(costMap)) {
-        const name = beastNames[k] || k;
-        const color = beastColors[k] || '#ccc';
-        parts.push(`${v}<span style="color:${color}">[${name}]</span>`);
-      }
-      html += `<div class="codex-stat-row"><span class="codex-stat-key">${parts.join(' ')}</span></div>`;
-      html += '</div></div>';
     }
     html += '</div>';
     return html;
@@ -475,41 +444,33 @@
   function buildBuffList() {
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">Buff图鉴</h1></div>';
-    html += '<div class="char-detail-grid">';
+    html += '<div class="codex-all-list">';
     for (const buff of BUFF_DATA) {
-      // 嗜血(bloodthirst)和捆缚(bind)是特殊标记，不显示在主buff列表
       if (buff.key === 'bloodthirst' || buff.key === 'bind') continue;
       const icon = resolveIcon(buff.icon);
       const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${buff.name}">` : `<div class="char-detail-avatar codex-no-icon">${buff.name[0]}</div>`;
-      html += `<div class="char-detail-card" data-buff="${buff.key}">${iconHtml}<div class="char-detail-name">${buff.name}</div><div class="char-detail-type">${buff.type}</div></div>`;
+      const typeColor = buff.type === '正面状态' ? '#4ade80' : buff.type === '负面状态' ? '#f87171' : '#94a3b8';
+      html += `<div class="codex-all-item">`;
+      html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${buff.name}</span><span class="codex-all-item-meta" style="color:${typeColor}">${buff.type}</span></div></div>`;
+      const descLines = String(buff.desc || '').split('\n').filter(Boolean);
+      html += `<div class="codex-all-item-desc">${descLines.map(line => formatCodexRichText(line)).join('<br>')}</div>`;
+      html += '</div>';
     }
     html += '</div>';
     // 特殊机制（非Buff）单独一行
     html += '<div class="special-marks-section">';
     html += '<div class="special-marks-title">特殊机制（非Buff）</div>';
-    html += '<div class="char-detail-grid">';
+    html += '<div class="codex-all-list">';
     const specialMarks = BUFF_DATA.filter(b => b.key === 'bloodthirst' || b.key === 'bind');
     for (const buff of specialMarks) {
       const icon = resolveIcon(buff.icon);
       const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${buff.name}">` : `<div class="char-detail-avatar codex-no-icon">${buff.name[0]}</div>`;
-      html += `<div class="char-detail-card" data-buff="${buff.key}">${iconHtml}<div class="char-detail-name">${buff.name}</div><div class="char-detail-type">特殊机制</div></div>`;
+      html += `<div class="codex-all-item">`;
+      html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${buff.name}</span><span class="codex-all-item-meta" style="color:#94a3b8">特殊机制</span></div></div>`;
+      const descLines = String(buff.desc || '').split('\n').filter(Boolean);
+      html += `<div class="codex-all-item-desc">${descLines.map(line => formatCodexRichText(line)).join('<br>')}</div>`;
+      html += '</div>';
     }
-    html += '</div></div></div>';
-    return html;
-  }
-
-  function buildBuffDetail(key) {
-    const buff = BUFF_DATA.find(item => item.key === key);
-    if (!buff) return '';
-    const icon = resolveIcon(buff.icon);
-    const iconHtml = icon ? `<img class="char-detail-hero-avatar" src="${icon}" onerror="this.style.display='none'" alt="${buff.name}">` : `<div class="char-detail-hero-avatar codex-no-icon">${buff.name[0]}</div>`;
-    let html = '<div class="char-detail-page">';
-    html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; Buff列表</button><h1 class="rules-title">Buff图鉴</h1></div>';
-    html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
-    html += `<div class="char-detail-hero-name">${buff.name}</div>`;
-    html += `<div class="char-detail-hero-type">${buff.type}</div>`;
-    const descLines = String(buff.desc || '').split('\n').filter(Boolean);
-    html += `<div class="char-detail-hero-passive">${descLines.map(line => formatCodexRichText(line)).join('<br>')}</div>`;
     html += '</div></div></div>';
     return html;
   }
@@ -617,40 +578,16 @@
   function showItemList(container, kind) {
     container.innerHTML = buildItemList(kind);
     document.getElementById('codex-back-cat').addEventListener('click', () => showCategoryPage(container));
-    container.querySelectorAll('.char-detail-card').forEach(el => {
-      el.addEventListener('click', () => showItemDetail(container, el.dataset.name, kind));
-    });
-  }
-
-  function showItemDetail(container, name, kind) {
-    container.innerHTML = buildItemDetail(name);
-    document.getElementById('codex-back-list').addEventListener('click', () => showItemList(container, kind));
   }
 
   function showTrophyList(container) {
     container.innerHTML = buildTrophyList();
     document.getElementById('codex-back-cat').addEventListener('click', () => showCategoryPage(container));
-    container.querySelectorAll('.char-detail-card').forEach(el => {
-      el.addEventListener('click', () => showTrophyDetail(container, el.dataset.name));
-    });
-  }
-
-  function showTrophyDetail(container, name) {
-    container.innerHTML = buildTrophyDetail(name);
-    document.getElementById('codex-back-list').addEventListener('click', () => showTrophyList(container));
   }
 
   function showBuffList(container) {
     container.innerHTML = buildBuffList();
     document.getElementById('codex-back-cat').addEventListener('click', () => showCategoryPage(container));
-    container.querySelectorAll('.char-detail-card').forEach(el => {
-      el.addEventListener('click', () => showBuffDetail(container, el.dataset.buff));
-    });
-  }
-
-  function showBuffDetail(container, key) {
-    container.innerHTML = buildBuffDetail(key);
-    document.getElementById('codex-back-list').addEventListener('click', () => showBuffList(container));
   }
 
   window.AdventureCodex = { show: showCategoryPage };

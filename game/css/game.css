@@ -2195,6 +2195,61 @@ body {
     border-color: rgba(168,85,247,0.5);
     box-shadow: 0 6px 20px rgba(168,85,247,0.15);
 }
+
+.codex-all-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.codex-all-item {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+
+.codex-all-item-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.codex-all-item-header .char-detail-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.25);
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+.codex-all-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.codex-all-item-name {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #e2e8f0;
+}
+
+.codex-all-item-meta {
+    font-size: 0.78rem;
+    color: #94a3b8;
+}
+
+.codex-all-item-desc {
+    font-size: 0.82rem;
+    color: #cbd5e1;
+    line-height: 1.65;
+    padding-left: 68px;
+}
 .codex-category-icon {
     font-size: 2.5rem;
     margin-bottom: 10px;
