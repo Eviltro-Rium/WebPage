@@ -221,7 +221,9 @@
           }else{
             cv=renderCardBack(40,58);
           }
-          if(hideTrailing&&(!hideWho||hideWho==='ai')&&i>=size-hideTrailing)cv.classList.add('card-draw-pending');
+          // hideTrailing: skip rendering new (just-drawn) cards entirely so they
+          // are added only after the fly-in animation lands.
+          if(hideTrailing&&(!hideWho||hideWho==='ai')&&i>=size-hideTrailing)continue;
           aiEl.appendChild(cv);
         }
       }else{
@@ -234,12 +236,12 @@
     if(ai2El&&s.ai2){
       ai2El.innerHTML='';
       if(s.ai2.alive){
-        const handCards=revealFace&&Array.isArray(s.ai2Hand)?s.ai2Hand:null;
-        const size=Math.max(Number(s.ai2HandSize)||0, handCards ? handCards.length : 0);
-        for(let i=0;i<size;i++){
+        const handCards2=revealFace&&Array.isArray(s.ai2Hand)?s.ai2Hand:null;
+        const size2=Math.max(Number(s.ai2HandSize)||0, handCards2 ? handCards2.length : 0);
+        for(let i=0;i<size2;i++){
           let cv;
-          if(handCards&&handCards[i]){
-            cv=renderCard(handCards[i],40,58,false,{ isNpc: !!s.isAdventure });
+          if(handCards2&&handCards2[i]){
+            cv=renderCard(handCards2[i],40,58,false,{ isNpc: !!s.isAdventure });
             if(canSelectOpponent&&selectedTarget==='ai2'){
               cv.style.cursor='pointer';cv.classList.add('selectable-ai-card');
               if(i===Number(s.selectedAICard))cv.classList.add('opponent-card-selected');
@@ -248,13 +250,12 @@
                 await this._apiAction('chooseAICard',{index:i});
               });
             }
-            attachSkillHover(cv,s.ai2,handCards[i]);
-          }
-          else{
+            attachSkillHover(cv,s.ai2,handCards2[i]);
+          }else{
             cv=renderCardBack(40,58);
             cv.style.filter='hue-rotate(240deg)';
           }
-          if(hideTrailing&&(!hideWho||hideWho==='ai2')&&i>=size-hideTrailing)cv.classList.add('card-draw-pending');
+          if(hideTrailing&&(!hideWho||hideWho==='ai2')&&i>=size2-hideTrailing)continue;
           ai2El.appendChild(cv);
         }
       }else{

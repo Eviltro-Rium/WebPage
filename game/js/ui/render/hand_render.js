@@ -79,6 +79,11 @@
                 }
             };
             for (let i = 0; i < s.playerHand.length; i++) {
+                // hideTrailing: skip rendering new (just-drawn) cards entirely.
+                // The cards are added back to the DOM only after the fly-in
+                // animation lands, so they never "pop in" before the backs
+                // arrive at the hand.
+                if (hideTrailing && i >= s.playerHand.length - hideTrailing) continue;
                 const card = s.playerHand[i];
                 const sel = i === s.selectedCard || ((s.selectedCards || []).includes(i));
                 const isUnplayable = (isPlayPhase || isNumericChoice)
@@ -97,7 +102,6 @@
                     cv.classList.add('card-unplayable');
                     cv.setAttribute('aria-disabled', 'true');
                 } else if (Array.isArray(s.legalHand) && s.legalHand[i]) cv.classList.add('card-playable');
-                if (hideTrailing && i >= s.playerHand.length - hideTrailing) cv.classList.add('card-draw-pending');
                 cv.dataset.index = i;
                 cv.dataset.cardId = cardId(card);
                 cv.dataset.cardMatch = cardMatchKey(card);
@@ -296,6 +300,8 @@
             else if (this._npcHandFocusIndex >= handSize) this._npcHandFocusIndex = -1;
 
             for (let i = 0; i < handSize; i++) {
+                // hideTrailing: skip rendering new (just-drawn) cards entirely.
+                if (hideTrailing && i >= handSize - hideTrailing) continue;
                 const card = revealMode ? s.aiHand[i] : null;
                 const focused = canPeekSkill && i === this._npcHandFocusIndex;
                 // Do not pass NPC focus through the shared `selected` flag.
@@ -309,7 +315,6 @@
                     cv.dataset.cardMatch = cardMatchKey(card);
                 }
                 cv.dataset.aiIndex = i;
-                if (hideTrailing && i >= handSize - hideTrailing) cv.classList.add('card-draw-pending');
                 if (canSelectOpponent) {
                     cv.style.cursor = 'pointer';
                     cv.classList.add('selectable-ai-card');

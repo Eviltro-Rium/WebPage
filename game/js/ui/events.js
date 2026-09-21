@@ -164,11 +164,18 @@ async _playEvents(events, fast = false) {
             this._showZoneDesc('reveal-desc', evt.desc || '道具效果立即结算');
             if (evt.effect === 'swap') {
                 await this._playHandSwapAnimation(evt);
+                // Keep hand dimmed (hand-swap-active) until after re-render, to prevent
+                // a brief flash of the old cards before the new hand is painted.
+                const playerHand = document.getElementById('player-hand');
+                const aiHand = document.getElementById(evt.target === 'ai2' || evt.who === 'ai2' ? 'ai2-hand' : 'ai-hand');
                 this._renderPlayerHand();
                 if (this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2();
                 else this._renderAIHand();
-                const playerHand = document.getElementById('player-hand');
-                const aiHand = document.getElementById(evt.target === 'ai2' || evt.who === 'ai2' ? 'ai2-hand' : 'ai-hand');
+                if (playerHand) playerHand.classList.add('hand-swap-active');
+                if (aiHand) aiHand.classList.add('hand-swap-active');
+                await wait(80); // ensure the re-rendered DOM is painted
+                if (playerHand) playerHand.classList.remove('hand-swap-active');
+                if (aiHand) aiHand.classList.remove('hand-swap-active');
                 if (playerHand) playerHand.classList.add('hand-swap-arrive');
                 if (aiHand) aiHand.classList.add('hand-swap-arrive');
                 await wait(460);
