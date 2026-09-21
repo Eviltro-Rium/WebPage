@@ -74,7 +74,15 @@
         }
 
         _captureBattleSession() {
-            if (!this.match) return this._pendingBattleRestore || null;
+            if (!this.match) {
+                // Guest can be in the lobby when a refresh happens.
+                // Always save the matchId so a later matchResume message can be
+                // correlated, even if the match engine hasn't been created yet.
+                if (this.role === 'guest' && this.state && this.state.matchId) {
+                    return { version: 1, matchId: this.state.matchId, guestCharacter: this.character };
+                }
+                return this._pendingBattleRestore || null;
+            }
             if (this.role === 'host' && !this.match.remote
                 && typeof this.match.captureSnapshot === 'function') {
                 try { return this.match.captureSnapshot(); } catch (_) { return null; }
@@ -82,7 +90,7 @@
             // A guest does not own the engine snapshot, but retaining the
             // match id is enough to request the authoritative projection from
             // the host after a page refresh.
-            if (this.role === 'guest' && this.match.remote && this.state && this.state.matchId) {
+            if (this.state && this.state.matchId) {
                 return { version: 1, matchId: this.state.matchId, guestCharacter: this.character };
             }
             return null;
@@ -320,6 +328,10 @@
                 this._sendLobbyUpdate();
                 this._flushPendingSync();
                 this._battleResumeRequested = false;
+                // Show restore UI if we're waiting for battle state to sync
+                if (this._pendingBattleRestore && !this.match) {
+                    this.showBattleRestoring(this.roomCode);
+                }
                 this._restoreBattleIfPossible();
                 this.renderRoom();
             });
@@ -521,8 +533,10 @@
             if (el) { el.textContent = this.roomStatus; el.className = 'online-status' + (kind ? ' ' + kind : ''); }
         }
         showBattleRestoring(code) {
+            // Prevent duplicate restore panels when renderRoom() is called
+            // multiple times before the battle is actually mounted.
             if (this.root.querySelector && this.root.querySelector('#online-resume-panel')) return;
-            this.root.innerHTML = '<section class="online-panel online-room" id="online-resume-panel"><h2>正在恢复在线对决</h2><p>房间 ' + safeText(code || '') + ' · 正在连接房主并同步战斗状态…</p><div class="online-status" id="online-room-status"></div><button class="online-btn ghost" id="online-resume-leave" type="button">退出房间</button></section>';
+            this.root.innerHTML = '<section class="online-panel online-room" id="online-resume-panel"><h2>正在恢复在线对决</h2><p>房间 ' + safeText(code || '') + ' · 正在连接并同步战斗状态…</p><div class="online-status" id="online-room-status"></div><button class="online-btn ghost" id="online-resume-leave" type="button">退出房间</button></section>';
             const leave = this.root.querySelector('#online-resume-leave');
             if (leave) leave.addEventListener('click', () => {
                 this._clearRoomSession();
@@ -679,7 +693,9 @@
                     this.match = null;
                     this.battleSession = null;
                     this.state = null;
+                    this._pendingBattleRestore = null;
                     this.error = '恢复对战失败：' + (error && error.message ? error.message : String(error));
+                    this.setRoomStatus(this.error, 'error');
                     this.renderRoom();
                 }
                 return;
