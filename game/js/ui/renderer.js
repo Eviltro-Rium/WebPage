@@ -311,7 +311,8 @@ async _playPlayerCardAnimation(card) {
         if (this._animatingPlayerCardKey === animationKey) {
             this._animatingPlayerCardKey = '';
             playerHand.dataset.handRenderKey = '';
-            this._renderPlayerHand({ hideTrailing: 0 });
+            const drawMask = this._drawAnimationRemaining && this._drawAnimationRemaining.player || 0;
+            this._renderPlayerHand({ hideTrailing: drawMask });
         }
     }
     this._settleZoneCard(atkZone, card, 'player');
@@ -334,7 +335,8 @@ async _playPlayerDefendAnimation(card) {
         if (this._animatingPlayerCardKey === animationKey) {
             this._animatingPlayerCardKey = '';
             playerHand.dataset.handRenderKey = '';
-            this._renderPlayerHand({ hideTrailing: 0 });
+            const drawMask = this._drawAnimationRemaining && this._drawAnimationRemaining.player || 0;
+            this._renderPlayerHand({ hideTrailing: drawMask });
         }
     }
     this._settleZoneCard(defZone, card, 'player');

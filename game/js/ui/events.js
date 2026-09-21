@@ -33,13 +33,40 @@ async _ackEvents(events) {
 },
 
 
+_prepareHandAnimation(events) {
+    const list = Array.isArray(events) ? events : [];
+    const counts = { player: 0, ai: 0, ai2: 0 };
+    for (const evt of list) {
+        if (!evt || evt.type !== 'draw') continue;
+        const owner = evt.who === 'ai2' ? 'ai2' : evt.who === 'ai' ? 'ai' : evt.who === 'player' ? 'player' : null;
+        if (owner) counts[owner] += Math.max(0, Number(evt.count) || 1);
+    }
+    // A state packet can be painted by a remote/session adapter just before
+    // its event queue starts. Mask the new trailing cards once more so the
+    // flight remains the first visible representation of a draw.
+    if (counts.player) this._renderPlayerHand({ hideTrailing: counts.player });
+    if (counts.ai2 && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: counts.ai2, who: 'ai2' });
+    if (counts.ai && this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: counts.ai, who: 'ai' });
+    else if (counts.ai) this._renderAIHand({ hideTrailing: counts.ai });
+
+    const swap = list.find(evt => evt && evt.type === 'itemEffect' && evt.effect === 'swap');
+    if (swap) {
+        const playerHand = document.getElementById('player-hand');
+        const opponentKey = swap.who === 'ai2' || swap.target === 'ai2' ? 'ai2' : 'ai';
+        const opponentHand = document.getElementById(`${opponentKey}-hand`);
+        if (playerHand) playerHand.classList.add('hand-swap-active');
+        if (opponentHand) opponentHand.classList.add('hand-swap-active');
+    }
+},
 async _consumeEvents(events, options = {}) {
     // State-diff animations are only a legacy fallback for bridge snapshots
     // that contain no playable events. Once an event batch is played, the
     // event handlers are the single source of floating feedback; the next
     // render must not replay the same transition from prev/current state.
-    if (events && events.length) this._skipStateDiffAnimations = true;
+    const hasEvents = !!(events && events.length);
+    if (hasEvents) this._skipStateDiffAnimations = true;
     const wasConsumingEvents = this._isConsumingEvents;
+    if (hasEvents && typeof this._beginHandAnimation === 'function') this._beginHandAnimation();
     this._isConsumingEvents = true;
         let pending = [...(events || [])];
         const consumedIds = new Set();
@@ -58,6 +85,7 @@ async _consumeEvents(events, options = {}) {
                 break;
             }
             try {
+                this._prepareHandAnimation(batch);
                 await this._playEvents(batch, !!options.fastFirstBatch && batches === 1);
             } catch (error) {
                 console.error('[Events] batch animation failed', error);
@@ -79,7 +107,9 @@ async _consumeEvents(events, options = {}) {
             this.showError('事件过多，已切换为安全模式继续游戏');
         }
     } finally {
+        this._drawAnimationRemaining = null;
         this._isConsumingEvents = wasConsumingEvents;
+        if (hasEvents && typeof this._endHandAnimation === 'function') this._endHandAnimation();
     }
 },
 
@@ -129,6 +159,13 @@ async _playEvents(events, fast = false) {
         ? runtime.wait((fast || this._onlineAnimationFast) ? Math.max(60, Math.round(ms * 0.22)) : ms)
         : new Promise(resolve => setTimeout(resolve, (fast || this._onlineAnimationFast) ? Math.max(60, Math.round(ms * 0.22)) : ms));
     const orderedEvents = this._animationOrder(events);
+    const drawRemaining = { player: 0, ai: 0, ai2: 0 };
+    this._drawAnimationRemaining = drawRemaining;
+    for (const event of orderedEvents) {
+        if (!event || event.type !== 'draw') continue;
+        const owner = event.who === 'ai2' ? 'ai2' : event.who === 'ai' ? 'ai' : event.who === 'player' ? 'player' : null;
+        if (owner) drawRemaining[owner] += Math.max(0, Number(event.count) || 1);
+    }
     const previousOnlineFast = this._onlineAnimationFast;
     // Online batches that already contain many authoritative events are in a
     // catch-up path. Keep the important order, but shorten decorative flight
@@ -202,7 +239,9 @@ async _playEvents(events, fast = false) {
             this._showCardSkillDesc('def-desc', evt.card, who, true);
             await wait(800);
         } else if (evt.type === 'draw') {
-            const count = evt.count || 1;
+            const count = Math.max(0, Number(evt.count) || 1);
+            const drawOwner = evt.who === 'ai2' ? 'ai2' : evt.who === 'ai' ? 'ai' : evt.who === 'player' ? 'player' : 'ai';
+            const maskCount = Math.max(count, drawRemaining[drawOwner] || 0);
             const drawTarget = evt.who === 'player' ? 'player-hand' : evt.who === 'ai2' ? 'ai2-hand' : 'ai-hand';
             const target = document.getElementById(drawTarget);
             this._showZoneDesc('reveal-desc', evt.desc || '抽牌');
@@ -210,25 +249,26 @@ async _playEvents(events, fast = false) {
             // so they do not pop into the hand while backs are still flying.
             if (evt.who === 'player') {
                 this._animatedPlayerDraws += count;
-                this._renderPlayerHand({ hideTrailing: count });
+                this._renderPlayerHand({ hideTrailing: maskCount });
             } else if (evt.who === 'ai2' && this._renderAIHand1v2) {
-                this._renderAIHand1v2({ hideTrailing: count, who: 'ai2' });
+                this._renderAIHand1v2({ hideTrailing: maskCount, who: 'ai2' });
             } else if (this.state && this.state.is1v2 && this._renderAIHand1v2) {
-                this._renderAIHand1v2({ hideTrailing: count, who: 'ai' });
+                this._renderAIHand1v2({ hideTrailing: maskCount, who: 'ai' });
             } else {
-                this._renderAIHand({ hideTrailing: count });
+                this._renderAIHand({ hideTrailing: maskCount });
             }
             if (typeof this.state.deck === 'number') this._drawDeckIcon(this.state.deck);
             try {
                 if (target) await this.anim.drawCards(count, evt.who === 'player', target);
             } finally {
-                // Draw events only hide the trailing cards during flight. The
-                // engine hand is authoritative, so never leave that mask on
-                // when an animation is interrupted by polling or a DOM change.
-                if (evt.who === 'player') this._renderPlayerHand({ hideTrailing: 0 });
-                else if (evt.who === 'ai2' && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: 0, who: 'ai2' });
-                else if (this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: 0, who: 'ai' });
-                else this._renderAIHand({ hideTrailing: 0 });
+                // Keep later draw events masked until their own flight starts;
+                // only the final draw in this batch reveals the full hand.
+                drawRemaining[drawOwner] = Math.max(0, (drawRemaining[drawOwner] || maskCount) - count);
+                const remainingMask = drawRemaining[drawOwner];
+                if (evt.who === 'player') this._renderPlayerHand({ hideTrailing: remainingMask });
+                else if (evt.who === 'ai2' && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: remainingMask, who: 'ai2' });
+                else if (this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: remainingMask, who: 'ai' });
+                else this._renderAIHand({ hideTrailing: remainingMask });
             }
             await wait(120);
         } else if (evt.type === 'reveal' && (evt.card || (evt.cards && evt.cards.length))) {

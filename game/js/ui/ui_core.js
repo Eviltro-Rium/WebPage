@@ -481,12 +481,35 @@ class GameUI {
         this._isConsumingEvents = false;
         this._lastAnimatedAIDefenseKey = null;
         this._animatedPlayerDraws = 0;
+        this._drawAnimationRemaining = null;
         this._animatingPlayerCardKey = '';
+        // While an authoritative snapshot is being animated, hand rendering
+        // is locked. Otherwise a draw/swap snapshot can paint the final cards
+        // before the flight starts, then repaint them again at the end.
+        this._handAnimationDepth = 0;
+        this._handRenderQueued = false;
         this._npcHandFocusIndex = -1;
         this._selectedCombatItem = null;
         this._floatingTextLanes = { player: [], ai: [], ai2: [] };
         this.anim = new AnimLayer();
         this.dialogs = new DialogManager((method, params) => this._apiAction(method, params));
+    }
+
+    _beginHandAnimation() {
+        this._handAnimationDepth = Math.max(0, Number(this._handAnimationDepth) || 0) + 1;
+    }
+
+    _endHandAnimation() {
+        this._handAnimationDepth = Math.max(0, (Number(this._handAnimationDepth) || 0) - 1);
+        if (this._handAnimationDepth === 0) this._handRenderQueued = false;
+    }
+
+    _handRenderingLocked() {
+        if ((Number(this._handAnimationDepth) || 0) > 0) {
+            this._handRenderQueued = true;
+            return true;
+        }
+        return false;
     }
 
     setSession(session) {
@@ -519,6 +542,8 @@ class GameUI {
         this.state = state || null;
         this._prevState = null;
         this._animatingPlayerCardKey = '';
+        this._handAnimationDepth = 0;
+        this._handRenderQueued = false;
         this.gameScreen = gameScreen || document.getElementById('game-screen');
         if (!this.gameScreen) throw new Error('战斗界面容器不存在');
         this._buildGameScreen();

@@ -25,6 +25,7 @@
     if(!this.s.player.alive||(!this.s.ai.alive&&!this.s.ai2.alive)){this.check();return}
     let key=this._curAI();
     if(!this.s[key].alive)return this.endAi1v2();
+     if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();
     this.s.phase=key==='ai2'?'AI2_TURN':'AI_TURN';this.s.busy=true;this.s.activeAttacker=key;
     this.s.pendingAttack=null;this.s.pendingDefenseDamage=0;this.s.attackDebuffSnapshot=null;
     this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];
@@ -116,7 +117,10 @@
       // 冻洋蓝鲸：玩家攻击结算AOE伤害和失温（跳过主目标）
       const pa1=this.s.pendingAttack||{};
       this.performAttack({type:'aoe',target,aoeTargets:pa1.aoeTargets,aoeDamage:pa1.aoeDamage,skipTarget:true,hypothermiaTarget:pa1.hypothermiaTarget,hypothermiaAmount:pa1.hypothermiaAmount});
-      this.resolveSerenityHalf();this.afterAttack();
+      this.resolveSerenityHalf();
+       if(typeof this.applyPendingSaikiBleed==='function')this.applyPendingSaikiBleed();
+       if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();
+       this.afterAttack();
       if(forceEnd)this.startAITurn();
       this.check();return
     }
@@ -130,7 +134,9 @@
     const pa2=this.s.pendingAttack||{};
     this.performAttack({type:'aoe',target:'player',aoeTargets:pa2.aoeTargets,aoeDamage:pa2.aoeDamage,skipTarget:true,hypothermiaTarget:pa2.hypothermiaTarget,hypothermiaAmount:pa2.hypothermiaAmount});
     this.resolveSerenityHalf();
-    this._grantChaosIfKnight('ai');
+    if(typeof this.applyPendingSaikiBleed==='function')this.applyPendingSaikiBleed();
+     if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();
+     this._grantChaosIfKnight('ai');
     if(forceEnd)this.endAi1v2();else this.continueAIAttack()
   };
 

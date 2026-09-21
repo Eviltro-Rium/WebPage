@@ -18,6 +18,8 @@
       }
       if (v === 2) {
         d = 3;
+        // The player uses the ordinary Purify dialog; NPCs keep the automatic branch.
+        if (eng && eng.s && a === eng.s.player) return { d, skip, unblock, pendingPurify: true };
         if (typeof eng.clean === 'function') eng.clean(a, false);
       }
       if (v === 3) {
@@ -37,9 +39,10 @@
         }
       }
       if (v === 6) {
-        // 在 effect() 阶段只记录延后请求。真正结算对手灼烧（伤害+减层）
+        // 先施加1层灼伤，再在攻防结算后触发一次灼伤结算。
         // 与回血延后到 ack 流程之后，避免被 _deferAttackBuffs 把灼伤减层
         // 当成 buff 变化回滚。
+        burn(1);
         const layer = t.burn || 0;
         if (layer > 0 && eng && eng.s) {
           eng.s.pendingVixrapsBurnSettle = { owner, attacker: a, target: t, layer };

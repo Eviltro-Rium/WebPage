@@ -46,6 +46,7 @@
         serenityHalfTarget: null,
         pendingSaikiBleed: null,
         pendingVixrapsBurnSettle: null,
+        pendingVixrapsPurify: null,
         forceEndAITurn: false,
         activeAttacker: 'player',
         modeId: null,

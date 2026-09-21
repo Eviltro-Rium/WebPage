@@ -80,6 +80,7 @@ const stableTests = [
   'card-style.test.js',
   'ui-feedback.test.js',
   'fly-guard.test.js',
+  'hypnosis-sleep.test.js',
   'status-registry.test.js',
   'card-effects.test.js',
   'engine-modules.test.js',

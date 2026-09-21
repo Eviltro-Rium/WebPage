@@ -62,11 +62,22 @@
   function clear(entity, id, mode = null) {
     const definition = def(id);
     if (!definition || !entity) return false;
-    return registry.clear(entity, id, mode || definition.cleanse);
+    const result = registry.clear(entity, id, mode || definition.cleanse);
+    // hypnosisArmed is an internal phase marker, not a registered status.
+    // Clearing hypnosis/sleep must clear it as well or a later application
+    // would incorrectly promote immediately on the next defense.
+    if ((id === 'hypnosis' || id === 'sleep') && !registry.has(entity, 'hypnosis')) {
+      entity.hypnosisArmed = false;
+    }
+    return result;
   }
 
   function clearGroup(entity, polarity, mode = 'all') {
-    return registry.clearGroup(entity, polarity, mode);
+    const removed = registry.clearGroup(entity, polarity, mode);
+    if (polarity === 'debuff' && !registry.has(entity, 'hypnosis')) {
+      entity.hypnosisArmed = false;
+    }
+    return removed;
   }
 
   function clearAll(entity) {

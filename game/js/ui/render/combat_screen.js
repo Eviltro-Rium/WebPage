@@ -114,8 +114,13 @@
             this._skipStateDiffAnimations = false;
             if (prev) this._detectAndPlayAnimations(prev, s, { skipEventBacked: skipStateDiffAnimations });
 
-            this._renderPlayerHand();
-            this._renderAIHand();
+            // Event playback owns the hand DOM until its flight finishes.
+            // A remote/local snapshot may arrive in the meantime; do not paint
+            // the final hand early or the drawn card will flash twice.
+            if (!this._handRenderingLocked()) {
+                this._renderPlayerHand();
+                this._renderAIHand();
+            }
             this._renderDiscardTop();
             this._renderZones();
             this._renderReveal();

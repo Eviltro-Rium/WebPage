@@ -85,7 +85,10 @@
       // 冻洋蓝鲸：玩家攻击结算AOE伤害和失温（跳过主目标）
       const pa1=this.s.pendingAttack||{};
       this.performAttack({type:'aoe',target:targetKey,aoeTargets:pa1.aoeTargets,aoeDamage:pa1.aoeDamage,skipTarget:true,hypothermiaTarget:pa1.hypothermiaTarget,hypothermiaAmount:pa1.hypothermiaAmount});
-      this.resolveSerenityHalf();this.afterAttack();
+      this.resolveSerenityHalf();
+       if(typeof this.applyPendingSaikiBleed==='function')this.applyPendingSaikiBleed();
+       if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();
+       this.afterAttack();
       if(forceEnd)this._lordStartNextAI();
       this.check();return
     }
@@ -98,7 +101,9 @@
     // 冻洋蓝鲸：防御结束后结算AOE伤害和失温（跳过主目标玩家）
     const pa2=this.s.pendingAttack||{};
     this.performAttack({type:'aoe',target:'player',aoeTargets:pa2.aoeTargets,aoeDamage:pa2.aoeDamage,skipTarget:true,hypothermiaTarget:pa2.hypothermiaTarget,hypothermiaAmount:pa2.hypothermiaAmount});
-    this.resolveSerenityHalf();this._grantChaosIfKnight('ai');
+    this.resolveSerenityHalf();if(typeof this.applyPendingSaikiBleed==='function')this.applyPendingSaikiBleed();
+     if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();
+     this._grantChaosIfKnight('ai');
     if(forceEnd)this.endAi1v2();else this.continueAIAttack()
   };
 

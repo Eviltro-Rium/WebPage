@@ -198,7 +198,7 @@
     if(r.immediateBuffs)this._restoreAttackBuffs();
     this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage};
     {let freezeBlock=this._freezeBlocksDefend(this.s.player,this.s.atkCard);
-    if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){this._promoteHypnosis(this.s.player,'player');if(this.s.player.sleep)return this.defend1v2(true);this.s.phase='PLAYER_DEFEND';this.s.busy=false;this.s.unblockDefend=false;return}
+    if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){if(this.s.player.sleep)return this.defend1v2(true);this.s.phase='PLAYER_DEFEND';this.s.busy=false;this.s.unblockDefend=false;return}
      if(r.d&&(r.unblock||freezeBlock)&&!(r.isDrain||r.drain)){if(this._enterPlayerDefend(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}
     if(!r.d)this.emit('desc',ch.name+' 本次技能分支未造成伤害，跳过防御',c);
      if(r.d&&!r.isDrain&&!r.drain&&this.playerNeedsAvoidChoice()){this.askGuard(r.d);return}
@@ -257,6 +257,11 @@
     this._deferAttackBuffs(target,_buffBefore);
     if(r.immediateBuffs)this._restoreAttackBuffs();
 
+     if(r.pendingPurify&&this._hasPurifyableBuff(this.s.player)){
+       this.s.pendingVixrapsPurify={card:cp(c),damage:r.d,skip:!!r.skip,unblock:!!r.unblock,opts:{isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage}};
+       this.s.pendingDialog='purify';this.s.busy=false;
+       return this.check();
+     }
      return this.gateAdventureAttackMod(c,r.d,r.skip,r.unblock,0,{isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage})
   };
 
@@ -300,7 +305,7 @@
     // challenge room after the previous opponent was eliminated.
     this.s.attackTarget=key;
     let ch=this.s[key],hand=this.h[key];
-    this._promoteHypnosis(ch,key);
+    
     const asleep=!!ch.sleep;
     let frozen=this._freezeBlocksDefend(ch,atk),
         chosen=(frozen||asleep)?null:this._chooseAIDefend1v2(key,this.s.discardTop,d),
@@ -317,7 +322,7 @@
         this.emit('itemEffect',this.itemEffectDesc(c,key),c,{effect:kind,who:key});
         this.useItem1v2(c,ch,this.s.player,key);
         this.s.pendingAIBridge={mode:'defense',afterEventId:this.ver,attackCard:cp(atk),damage:d,owner:key};
-        this._promoteHypnosis(ch,key);
+        
         return this.check()
       }
       let n=this.name(ch),v=c.value;
@@ -332,7 +337,7 @@
       this.emit('desc',frozen?ch.name+'处于冷冻状态，无法防御蓝色攻击':(asleep?ch.name+'处于[沉睡]，无法防御':ch.name+'根据防御策略选择跳过'));
       this.deferSettlement('PLAYER_ATTACK',d,0)
     }
-    this._promoteHypnosis(ch,key);
+    
     return this.check()
   };
 
@@ -355,7 +360,7 @@
   };
 
   Engine.prototype.defend1v2=function(skip=false){
-    this._promoteHypnosis(this.s.player,'player');
+    
     if(this.s.player.sleep)skip=true;
     let d=this.s.pendingAttack.damage;
     let target=this._curAI();
@@ -363,7 +368,7 @@
     let triggeredDefense=!skip;
     if(skip){this.s.hasPlayedBlackDefend=false;this.emit('desc',this.s.player.sleep?'你处于[沉睡]，无法打出防御牌':'玩家选择跳过防御，'+d+'点伤害待结算')}
     else{
-      this._promoteHypnosis(this.s[target],target);
+      
       let i=this.s.selectedCard,c=this.h.player[i];
       if(!c)throw Error('请选择防御牌');
       if(!this.legal(c,true))throw Error('该牌不能用于防御');

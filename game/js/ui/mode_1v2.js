@@ -141,8 +141,11 @@
         if(!skipStateDiffAnimations&&ai2ChaosReset)this.playFloatingText('[混沌重制]','#c084fc','ai2')
       }
     }
-    this._renderPlayerHand();
-    this._renderAIHand1v2();
+    // Keep both hands stable while draw/swap event flights are playing.
+    if(!this._handRenderingLocked()){
+      this._renderPlayerHand();
+      this._renderAIHand1v2();
+    }
     this._renderDiscardTop();
     this._renderZones();
     this._renderReveal();

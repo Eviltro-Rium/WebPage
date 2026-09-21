@@ -125,6 +125,10 @@
         engine.check();
         return;
       }
+      // Zero-damage branches (including Vixraps 6) have no damage event.
+      if (typeof engine.applyPendingVixrapsBurnSettle === 'function') {
+        engine.applyPendingVixrapsBurnSettle();
+      }
       engine.s.phase = 'AI_TURN';
       engine.s.busy = true;
       engine.s.pendingAttack = null;
