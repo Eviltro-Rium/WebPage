@@ -186,9 +186,9 @@
                     pending.attempts += 1;
                     this.metrics.retried += 1;
                     try {
-                        if (!this.peer.send(payload)) return;
-                    } catch (_) { return; }
-                    pending.retryTimer = setTimeout(retry, REQUEST_RETRY_DELAY);
+                        this.peer.send(payload);
+                    } catch (_) { /* Retry through temporary reconnect gaps. */ }
+                    if (this._pending.has(requestId)) pending.retryTimer = setTimeout(retry, REQUEST_RETRY_DELAY);
                 };
                 const timer = setTimeout(() => {
                     const pending = this._pending.get(requestId);
@@ -207,7 +207,8 @@
                     resolve(resultWithState({ ok: false, error: 'P2P 尚未连接' }, this.getState()));
                     return;
                 }
-                this._pending.get(requestId).retryTimer = setTimeout(retry, REQUEST_RETRY_DELAY);
+                const pending = this._pending.get(requestId);
+                if (pending) pending.retryTimer = setTimeout(retry, REQUEST_RETRY_DELAY);
             });
         }
 

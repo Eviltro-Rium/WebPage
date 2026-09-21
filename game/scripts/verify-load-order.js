@@ -36,7 +36,7 @@ const indexExpected = expand(['characters', 'ai', 'combat']).concat([
   'js/ui/render/status_render.js', 'js/ui/render/hand_render.js', 'js/ui/render/adventure_bar.js',
   'js/ui/render/zone_render.js',
   'js/ui/feedback.js', 'js/ui/renderer.js', 'js/ui/events.js', 'js/ui/controls.js',
-  'js/ui/mode_1v2.js', 'js/ui/mode_lord.js'
+  'js/ui/mode_1v2.js', 'js/ui/mode_lord.js', 'js/version.js'
 ]);
 
 const adventureExpected = expand(['characters', 'ai', 'combat']).concat([
@@ -64,7 +64,7 @@ const adventureExpected = expand(['characters', 'ai', 'combat']).concat([
   'adventure/js/battle/adventure_battle_session.js',
   'adventure/js/battle/adventure_battle_controller.js',
   'adventure/js/ui/adventure_ui.js',
-  'adventure/js/ui/adventure_ui_views.js'
+  'adventure/js/ui/adventure_ui_views.js', 'js/version.js'
 ]);
 
 function diff(label, actual, expected) {

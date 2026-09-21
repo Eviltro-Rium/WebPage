@@ -764,3 +764,90 @@ test('pending battle restore displays a reconnect view instead of the lobby', ()
   assert.match(root.innerHTML, /正在恢复在线对决/);
   assert.doesNotMatch(root.innerHTML, /选择你的角色/);
 });
+test('refresh of either participant retires stale RTC and routes the next action to the live socket', async () => {
+  const previousRTC = context.RTCPeerConnection;
+  function channel() {
+    const listeners = {};
+    return {
+      readyState: 'open', bufferedAmount: 0, sent: [],
+      addEventListener(type, fn) { listeners[type] = fn; },
+      emit(type, data) { if (listeners[type]) listeners[type](data); },
+      send(data) { this.sent.push(JSON.parse(data)); },
+      close() { this.readyState = 'closed'; }
+    };
+  }
+  class RTC {
+    constructor() { this.listeners = {}; }
+    addEventListener(type, fn) { this.listeners[type] = fn; }
+    createDataChannel() { this.channel = channel(); this.channel.readyState = 'connecting'; return this.channel; }
+    async createOffer() { return { type: 'offer', sdp: 'new-offer' }; }
+    async setLocalDescription(value) { this.localDescription = value; }
+    close() { this.closed = true; }
+  }
+  context.RTCPeerConnection = RTC;
+  context.WebSocket = { OPEN: 1 };
+  try {
+    for (const role of ['host', 'guest']) {
+      const peer = new context.OnlinePeer({ role });
+      const oldChannel = channel();
+      const oldPC = new RTC();
+      const wire = [], errors = [], messages = [];
+      peer.ws = { readyState: 1, send(data) { wire.push(JSON.parse(data)); } };
+      peer.pc = oldPC;
+      peer._offerStarted = true;
+      peer._attachChannel(oldChannel);
+      peer.transportMode = 'p2p';
+      peer.on('error', error => errors.push(error));
+      peer.on('message', data => messages.push(data));
+      // Resume must already use the fresh socket inside the join callback.
+      peer.on('peerJoined', () => peer.send({ kind: 'matchResumeRequest' }));
+      peer._onSignal({ type: 'peerJoined', player: { peerId: 'same-id-after-refresh' } });
+      await Promise.resolve(); await Promise.resolve();
+      assert.equal(oldPC.closed, true);
+      assert.equal(oldChannel.sent.length, 0);
+      assert.equal(wire[0].payload.data.kind, 'matchResumeRequest');
+      assert.equal(peer.send({ kind: 'command', method: 'playCard' }), true);
+      assert.equal(wire.at(-1).payload.data.method, 'playCard');
+      oldChannel.emit('open');
+      oldChannel.emit('error', new Error('stale'));
+      oldChannel.emit('close');
+      oldChannel.emit('message', { data: JSON.stringify({ kind: 'state', stale: true }) });
+      assert.equal(errors.length, 0);
+      assert.equal(messages.length, 0);
+      if (role === 'host') {
+        assert.notEqual(peer.pc, oldPC);
+        const fresh = peer.channel;
+        fresh.readyState = 'open'; fresh.emit('open');
+        peer.send({ kind: 'command', method: 'doEnd' });
+        assert.equal(fresh.sent.at(-1).method, 'doEnd');
+      } else {
+        assert.equal(peer.pc, null, 'guest waits for the new host offer');
+      }
+    }
+  } finally { context.RTCPeerConnection = previousRTC; }
+});
+
+test('an offer completing after connection replacement is discarded', async () => {
+  const peer = new context.OnlinePeer({ role: 'host' });
+  let resolveOffer;
+  let descriptions = 0;
+  const pc = {
+    createDataChannel() { return { addEventListener() {}, close() {} }; },
+    createOffer() { return new Promise(resolve => { resolveOffer = resolve; }); },
+    async setLocalDescription() { descriptions++; },
+    close() {}
+  };
+  peer.pc = pc;
+  const starting = peer._startOffer();
+  peer._resetConnection();
+  resolveOffer({ type: 'offer', sdp: 'obsolete' });
+  await starting;
+  assert.equal(descriptions, 0);
+  assert.equal(peer.queue.length, 0);
+});
+
+test('all game entry pages include the shared release badge', () => {
+  for (const page of ['index.html', 'adventure/adventure.html', 'online_game/index.html']) {
+    assert.match(fs.readFileSync(path.join(root, page), 'utf8'), /js\/version\.js\?v=20260921-2/);
+  }
+});

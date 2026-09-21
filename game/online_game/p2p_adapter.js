@@ -151,6 +151,8 @@
                 return;
             }
             if (message.type === 'peerJoined') {
+                // Room identity survives refresh; the old RTC connection does not.
+                this._resetConnection();
                 this.emit('peerJoined', message.player || message);
                 if (this.role === 'host') this._startOffer();
                 return;
@@ -196,6 +198,18 @@
             if (message.type === 'error') { this.emit('error', new Error(message.message || '房间服务错误')); }
         }
 
+        _resetConnection() {
+            const channel = this.channel, pc = this.pc;
+            this.channel = this.pc = null;
+            this.pendingIce = [];
+            this._offerStarted = false;
+            this.transportMode = 'relay';
+            if (channel) this._expectedChannelCloses.add(channel);
+            try { if (channel) channel.close(); } catch (_) {}
+            try { if (pc) pc.close(); } catch (_) {}
+            this._flushDataQueue();
+        }
+
         _ensureConnection() {
             if (this.pc) return this.pc;
             if (typeof RTCPeerConnection !== 'function') {
@@ -230,14 +244,20 @@
                     this.emit('peerDisconnected', pc.connectionState);
                 }
             });
-            pc.addEventListener('datachannel', event => this._attachChannel(event.channel));
+            pc.addEventListener('datachannel', event => {
+                if (this.pc === pc && !this.closed) this._attachChannel(event.channel);
+            });
             return pc;
         }
 
         _attachChannel(channel) {
-            if (this.channel && this.channel !== channel) try { this.channel.close(); } catch (_) {}
+            if (this.channel && this.channel !== channel) {
+                this._expectedChannelCloses.add(this.channel);
+                try { this.channel.close(); } catch (_) {}
+            }
             this.channel = channel;
             channel.addEventListener('open', () => {
+                if (this.channel !== channel || this.closed) return;
                 // Upgrade relay sessions as soon as the reliable ordered
                 // channel opens. Late relay packets are accepted above but
                 // no longer force future sends back through the Worker.
@@ -253,17 +273,18 @@
                 // Check the channel instance rather than a shared flag. A
                 // replacement channel can open before the old one dispatches
                 // its asynchronous close event.
-                if (this._expectedChannelCloses.has(channel)) return;
+                if (this.channel !== channel || this.closed || this._expectedChannelCloses.has(channel)) return;
                 this.emit('channelClose');
                 if (this.dataQueue.length && this.ws && this.ws.readyState === WebSocket.OPEN) this._flushDataQueue();
             });
             channel.addEventListener('error', error => {
                 // Browsers may report an error immediately before the close
                 // event during the expected host-migration teardown.
-                if (this._expectedChannelCloses.has(channel)) return;
+                if (this.channel !== channel || this.closed || this._expectedChannelCloses.has(channel)) return;
                 this.emit('error', new Error('数据通道错误'));
             });
             channel.addEventListener('message', event => {
+                if (this.channel !== channel || this.closed) return;
                 let payload;
                 try { payload = JSON.parse(event.data); } catch (_) { return; }
                 this.metrics.received += 1;
@@ -280,9 +301,12 @@
             try {
                 this._attachChannel(pc.createDataChannel('game', { ordered: true }));
                 const offer = await pc.createOffer();
+                if (this.pc !== pc || this.closed) return;
                 await pc.setLocalDescription(offer);
+                if (this.pc !== pc || this.closed) return;
                 this._sendSignal({ type: 'signal', signal: { type: 'offer', description: this._description(pc.localDescription || offer) } });
             } catch (error) {
+                if (this.pc !== pc || this.closed) return;
                 this._offerStarted = false;
                 this.emit('error', error);
             }
@@ -295,12 +319,16 @@
             try {
                 if (signal.type === 'offer' && this.role === 'guest') {
                     await pc.setRemoteDescription(this._description(signal.description || signal));
+                    if (this.pc !== pc || this.closed) return;
                     await this._flushIce(pc);
                     const answer = await pc.createAnswer();
+                    if (this.pc !== pc || this.closed) return;
                     await pc.setLocalDescription(answer);
+                    if (this.pc !== pc || this.closed) return;
                     this._sendSignal({ type: 'signal', signal: { type: 'answer', description: this._description(pc.localDescription || answer) } });
                 } else if (signal.type === 'answer' && this.role === 'host') {
                     await pc.setRemoteDescription(this._description(signal.description || signal));
+                    if (this.pc !== pc || this.closed) return;
                     await this._flushIce(pc);
                 } else if (signal.type === 'ice' && signal.candidate) {
                     // ICE can arrive before the SDP message.  Adding it then
@@ -309,7 +337,7 @@
                     if (!pc.remoteDescription) this.pendingIce.push(signal.candidate);
                     else await pc.addIceCandidate(signal.candidate);
                 }
-            } catch (error) { this.emit('error', error); }
+            } catch (error) { if (this.pc === pc && !this.closed) this.emit('error', error); }
         }
 
         _description(value) {
