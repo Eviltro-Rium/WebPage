@@ -598,13 +598,14 @@ test('online sessions expose the shared GameUI result shape', async () => {
   assert.equal(selected.phase, selected.state.phase);
   assert.ok(sent.some(message => message.kind === 'state'));
 
+  let guestRequestId;
   const guestSession = new context.OnlineGuestSession({
-    peer: { send() { return true; } },
+    peer: { send(message) { guestRequestId = message.requestId; return true; } },
     state: match.project('guest')
   });
   const pending = guestSession.dispatch('selectCard', { index: 0 });
   const received = guestSession.receiveState({
-    requestId: 1,
+    requestId: guestRequestId,
     protocolVersion: 2, matchId: match.matchId, stateVersion: match.stateVersion,
     guestState: match.project('guest'),
     events: []
@@ -695,4 +696,71 @@ test('online transport still prefers an open WebRTC data channel', () => {
   assert.equal(peer.transportMode, 'p2p');
   assert.deepEqual(direct, [{ kind: 'command', method: 'doPlay' }]);
   assert.equal(relayed.length, 0);
+});
+
+test('Knight 6 grants its guard in one settlement for either online actor', () => {
+  for (const actor of ['host', 'guest']) {
+    for (const green of [false, true]) {
+      const match = new context.OnlineMatchHost('Knight', 'Knight', actor);
+      match.setStarted(true);
+      const owner = actor === 'host' ? 'player' : 'ai';
+      const card = context.FurryGame.Card.number('RED', 6);
+      match.engine.h[owner] = [card];
+      match.engine.s[owner].chaos_green = green;
+      match.engine.s.discardTop = context.FurryGame.Card.number('RED', 1);
+      match.engine.s.phase = 'PLAYER_PLAY';
+      match.engine.s.onlineActor = actor;
+      const played = match.dispatch(actor, 'playCard', { cardId: cardIdentity(card), index: 0 });
+      assert.equal(played.ok, true, played.error);
+      assert.equal(match.project(actor).player.guard, green ? 4 : 2);
+      assert.equal(played.events.filter(event => event.kind === 'guard').length, 1);
+    }
+  }
+});
+
+test('refreshed guest uses a new command id and can play from restored battle state', async () => {
+  const values = new Map();
+  context.sessionStorage = {
+    getItem: key => values.get(key) || null,
+    setItem: (key, value) => values.set(key, String(value))
+  };
+  const match = new context.OnlineMatchHost('Leon', 'Knight', 'guest');
+  match.setStarted(true);
+  const card = context.FurryGame.Card.number('RED', 6);
+  match.engine.h.ai = [card];
+  match.engine.s.discardTop = context.FurryGame.Card.number('RED', 1);
+  match.engine.s.onlineActor = 'guest';
+  match.engine.s.phase = 'PLAYER_PLAY';
+  const packets = [];
+  const peer = { send(packet) { packets.push(packet); return true; } };
+  const first = new context.OnlineGuestSession({ peer, state: match.project('guest') });
+  const previous = first.dispatch('doEnterDiscard');
+  const oldId = packets.at(-1).requestId;
+  first.close();
+  await previous;
+  const restoredMatch = new context.OnlineMatchHost('Leon', 'Knight');
+  restoredMatch.restoreSnapshot(match.captureSnapshot());
+  restoredMatch.setStarted(true);
+  const second = new context.OnlineGuestSession({ peer, state: restoredMatch.project('guest') });
+  const current = second.dispatch('playCard', { cardId: cardIdentity(card), index: 0 });
+  const packet = packets.at(-1);
+  assert.ok(packet.requestId > oldId, 'refresh must never reuse the host cache key');
+  const played = restoredMatch.dispatch('guest', packet.method, packet.params, {
+    requestId: packet.requestId, matchId: packet.matchId,
+    expectedStateVersion: packet.expectedStateVersion
+  });
+  assert.equal(played.ok, true, played.error);
+  assert.equal(restoredMatch.project('guest').player.guard, 2);
+  second.close();
+  await current;
+  delete context.sessionStorage;
+});
+
+test('pending battle restore displays a reconnect view instead of the lobby', () => {
+  const root = { innerHTML: '', querySelector() { return null; } };
+  const ui = Object.create(context.OnlineUI.prototype);
+  Object.assign(ui, { root, roomCode: 'ABCD', _pendingBattleRestore: { matchId: 'saved' }, match: null, state: null });
+  ui.renderRoom();
+  assert.match(root.innerHTML, /正在恢复在线对决/);
+  assert.doesNotMatch(root.innerHTML, /选择你的角色/);
 });

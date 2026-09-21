@@ -154,7 +154,11 @@
             super();
             this.peer = peer || null;
             this.state = clone(state || null);
-            this._requestId = 0;
+            // A refreshed guest must not reuse request ids still cached by the host.
+            this._requestStorageKey = 'furry-online-guest-request-id';
+            let previousId = 0;
+            try { previousId = Number(global.sessionStorage && global.sessionStorage.getItem(this._requestStorageKey)) || 0; } catch (_) {}
+            this._requestId = Math.max(previousId, Date.now() * 1000);
             this._pending = new Map();
             this._onUnsolicitedState = typeof onUnsolicitedState === 'function' ? onUnsolicitedState : null;
             this._protocolVersion = Number(this.state && this.state.protocolVersion) || PROTOCOL_VERSION;
@@ -169,6 +173,7 @@
             if (!this.peer || typeof this.peer.send !== 'function') return Promise.resolve(resultWithState({ ok: false, error: 'P2P 尚未连接' }, this.getState()));
             if (this._pending.size) return Promise.resolve(resultWithState({ ok: false, error: '正在同步上一次操作，请稍候' }, this.getState()));
             const requestId = ++this._requestId;
+            try { if (global.sessionStorage) global.sessionStorage.setItem(this._requestStorageKey, String(requestId)); } catch (_) {}
             return new Promise(resolve => {
                 const payload = { kind: 'command', protocolVersion: this._protocolVersion,
                     matchId: this._matchId, expectedStateVersion: this._stateVersion,

@@ -40,8 +40,10 @@
             this._pendingBattleRestore = null;
             this._battleResumeRequested = false;
             this._ensureAmbientParticles();
-            this.showLanding();
-            this._restoreRoomSession();
+            const saved = this._isReloadNavigation() ? this._readRoomSession() : null;
+            if (saved && saved.battle) this.showBattleRestoring(saved.roomCode);
+            else this.showLanding();
+            this._restoreRoomSession(saved);
         }
 
         _readRoomSession() {
@@ -101,12 +103,10 @@
             } catch (_) { return false; }
         }
 
-        _restoreRoomSession() {
-            // Only a browser reload should silently restore the room. A normal
-            // visit to the online page should still show the landing screen;
-            // intentional "离开房间" removes this record below.
+        _restoreRoomSession(savedSession = null) {
+            // Only a browser reload silently restores a saved room.
             if (!this._isReloadNavigation()) return;
-            const saved = this._readRoomSession();
+            const saved = savedSession || this._readRoomSession();
             if (!saved) return;
             this.setLandingStatus('正在恢复在线房间 ' + saved.roomCode + '…', 'warning');
             const restore = () => this.connect(saved.role, {
@@ -520,8 +520,21 @@
             this.roomStatus = text || ''; const el = this.root.querySelector('#online-room-status');
             if (el) { el.textContent = this.roomStatus; el.className = 'online-status' + (kind ? ' ' + kind : ''); }
         }
+        showBattleRestoring(code) {
+            if (this.root.querySelector && this.root.querySelector('#online-resume-panel')) return;
+            this.root.innerHTML = '<section class="online-panel online-room" id="online-resume-panel"><h2>正在恢复在线对决</h2><p>房间 ' + safeText(code || '') + ' · 正在连接房主并同步战斗状态…</p><div class="online-status" id="online-room-status"></div><button class="online-btn ghost" id="online-resume-leave" type="button">退出房间</button></section>';
+            const leave = this.root.querySelector('#online-resume-leave');
+            if (leave) leave.addEventListener('click', () => {
+                this._clearRoomSession();
+                if (this.peer) this.peer.close();
+                this.peer = null; this.role = null; this.roomCode = ''; this.character = null; this.ready = false; this.reconnectToken = '';
+                this._pendingBattleRestore = null;
+                this.showLanding();
+            });
+        }
         renderRoom() {
             if (this.match || this.state) return;
+            if (this._pendingBattleRestore) { this.showBattleRestoring(this.roomCode); return; }
             const own = this.ownPlayer || { nickname: this.nickname, role: this.role, character: this.character, ready: this.ready };
             const opponent = this.opponentPlayer;
             const cards = this.chars().map(ch => '<button class="online-char' + (this.character === ch.name ? ' selected' : '') + '" data-char="' + safeText(ch.name) + '" type="button"><img class="online-char-avatar" src="../avatars/' + safeText(ch.name) + '.png" onerror="this.onerror=null;this.src=this.src.replace(/\\.(png|jpg)$/,\'.jpeg\')" alt="' + safeText(ch.name) + '"><strong>' + safeText(ch.name) + '</strong><small>' + safeText(ch.type || '角色') + ' · HP ' + (Number(ch.hp) || 0) + '</small></button>').join('');
