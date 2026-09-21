@@ -334,9 +334,9 @@
       const icon = iconForCard(card);
       const isBwItem = card.isBlack || card.isWhite;
       const iconSize = isBwItem
-        ? Math.min(w * 0.44, ovalRY * 1.12)
+        ? Math.min(w * 0.5, ovalRY * 1.26)
         : Math.min(w * 0.34, ovalRY * 0.95);
-      const iconY = centerY - iconSize * (isBwItem ? 0.56 : 0.64);
+      const iconY = centerY - iconSize * (isBwItem ? 0.5 : 0.64);
 
       if (icon && icon.complete && icon.naturalWidth) {
         g.save();
@@ -350,11 +350,11 @@
         g.fillText(meta.fallback, centerX, centerY - ovalRY * 0.12);
       }
 
-      if (!compact) {
+      if (!compact && !isBwItem) {
         g.font = `600 ${Math.max(6, w * 0.09)}px "Inter", "Segoe UI", sans-serif`;
         g.textAlign = 'center'; g.textBaseline = 'bottom';
         g.fillStyle = isBlack ? 'rgba(248,250,252,0.78)' : 'rgba(42,47,55,0.76)';
-        const labelY = centerY + ovalRY * (isBwItem ? 0.82 : 0.72);
+        const labelY = centerY + ovalRY * 0.72;
         g.fillText(card.trophyWhite ? (TROPHY_LABELS[card.trophyName] || 'TROPHY WHITE') : meta.label, centerX, labelY);
       }
 
