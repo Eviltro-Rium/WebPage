@@ -290,3 +290,65 @@ test('1v1 normal attack path promotes player hypnosis to sleep', () => {
   assert.ok(eng.s.player.sleep === true, 'player hypnosis promotes to sleep on normal attack');
   assert.ok(!eng.s.player.hypnosis, 'hypnosis consumed');
 });
+
+test('Vixraps passive forces exactly one discard before the next bridge', () => {
+  const eng = new Engine();
+  eng.start('Vixraps', 'Saiki');
+  const black = context.FurryGame.Card.item('BLACK', 'drawTwo');
+  const keep = number(2, 'RED');
+  eng.h.player = [black, keep];
+  eng.s.player.hp = 50;
+  eng.s.selectedCard = 0;
+  eng.s.discardTop = number(1, 'RED');
+
+  eng.play();
+  let state = eng.dispatch('chooseColor', { color: 'RED' });
+  assert.equal(state.phase, 'PLAYER_DISCARD');
+  assert.ok(state.pendingVixrapsPassive);
+  assert.equal(eng.s.player.hp, 50);
+  assert.throws(() => eng.confirmDiscard(), /请选择要弃掉的牌/);
+  eng.s.selectedCards = [0];
+  state = eng.confirmDiscard();
+  assert.equal(state.phase, 'PLAYER_PLAY');
+  assert.equal(state.pendingVixrapsPassive, null);
+  assert.equal(eng.s.player.hp, 53);
+  assert.equal(eng.h.player.length, 2, 'drawTwo resolves before the passive discard');
+});
+
+test('Vixraps passive heals immediately when a black card leaves no hand', () => {
+  const eng = new Engine();
+  eng.start('Vixraps', 'Saiki');
+  const black = context.FurryGame.Card.item('BLACK', 'black');
+  eng.h.player = [black];
+  eng.s.player.hp = 50;
+  eng.s.selectedCard = 0;
+  eng.s.discardTop = number(1, 'RED');
+  eng.play();
+  const state = eng.dispatch('chooseColor', { color: 'RED' });
+  assert.equal(state.phase, 'PLAYER_PLAY');
+  assert.equal(state.pendingVixrapsPassive, null);
+  assert.equal(eng.s.player.hp, 53);
+});
+
+test('Vixraps passive waits for a black purify dialog before forcing discard', () => {
+  const eng = new Engine();
+  eng.start('Vixraps', 'Saiki');
+  const blackPurify = context.FurryGame.Card.item('BLACK', 'purify');
+  const follow = number(2, 'RED');
+  eng.h.player = [blackPurify, follow];
+  eng.s.player.burn = 1;
+  eng.s.player.hp = 50;
+  eng.s.selectedCard = 0;
+  eng.s.discardTop = number(1, 'RED');
+  eng.play();
+  let state = eng.dispatch('chooseColor', { color: 'RED' });
+  assert.equal(state.pendingDialog, 'purify');
+  assert.ok(state.pendingVixrapsPassive);
+  state = eng.choosePurify({ done: true });
+  assert.equal(state.phase, 'PLAYER_DISCARD');
+  assert.ok(state.pendingVixrapsPassive);
+  eng.s.selectedCards = [0];
+  state = eng.confirmDiscard();
+  assert.equal(state.phase, 'PLAYER_PLAY');
+  assert.equal(eng.s.player.hp, 53);
+});

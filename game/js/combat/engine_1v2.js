@@ -189,6 +189,7 @@
       let kind=this.itemKind(c);
       this.emit('itemEffect',this.itemEffectDesc(c,key),c,{effect:kind,who:key});
       this.useItem1v2(c,ch,this.s.player,key);
+      if(c.isBlack&&this.name(ch)==='Vixraps')this._beginVixrapsPassive(key,c,key==='ai2'?'AI2_TURN':'AI_TURN');
       this.s.pendingAIBridge={mode:'attack',afterEventId:this.ver,effect:kind,owner:key};
       return this.check()
     }
@@ -236,8 +237,10 @@
       let kind=this.itemKind(c);
       this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:kind,who:'player',target});
       if(window.CardEffects.isTrophyWhite(c))this.useTrophyWhite(c,targetChar,'player');else this.useItem1v2(c,this.s.player,targetChar,'player');
-      if(!this.s.pendingDialog)this._tickBomb('player');
-      if(!this.s.pendingDialog && this.s.phase==='PLAYER_PLAY'){this.s.busy=false;this.s.attackTarget=null;}
+      const vixrapsPassive=c.isBlack&&this.name(this.s.player)==='Vixraps'
+        ? this._beginVixrapsPassive('player',c,'PLAYER_PLAY') : false;
+      if(!this.s.pendingDialog&&!vixrapsPassive)this._tickBomb('player');
+      if(!this.s.pendingDialog && !vixrapsPassive && this.s.phase==='PLAYER_PLAY'){this.s.busy=false;this.s.attackTarget=null;}
       return this.check()
     }
      this._deferAttackBuffs(target,_buffBefore);
@@ -321,6 +324,7 @@
         let kind=this.itemKind(c);
         this.emit('itemEffect',this.itemEffectDesc(c,key),c,{effect:kind,who:key});
         this.useItem1v2(c,ch,this.s.player,key);
+        if(c.isBlack&&this.name(ch)==='Vixraps')this._beginVixrapsPassive(key,c,key==='ai2'?'AI2_TURN':'AI_TURN');
         this.s.pendingAIBridge={mode:'defense',afterEventId:this.ver,attackCard:cp(atk),damage:d,owner:key};
         
         return this.check()
@@ -398,8 +402,10 @@
         this.emit('defend',bridgeLabel+'牌指定'+this.colorName(c.chosenColor||c.color)+'并搭桥，请继续选择防御牌',c);
         this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player',target});
         if(window.CardEffects.isTrophyWhite(c))this.useTrophyWhite(c,targetChar,'player');else this.useItem1v2(c,this.s.player,targetChar,'player');
-        if(!this.s.pendingDialog)this._tickBomb('player');
-        this.s.phase='PLAYER_DEFEND';this.s.busy=false;
+        const vixrapsPassive=c.isBlack&&this.name(this.s.player)==='Vixraps'
+          ? this._beginVixrapsPassive('player',c,'PLAYER_DEFEND') : false;
+        if(!this.s.pendingDialog&&!vixrapsPassive)this._tickBomb('player');
+        if(!vixrapsPassive){this.s.phase='PLAYER_DEFEND';this.s.busy=false;}
         return this.check()
       }
       this.emit('defend','玩家打出防御牌',c);

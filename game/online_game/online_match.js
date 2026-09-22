@@ -93,6 +93,9 @@
         if (state.pendingTrophyDisarm && (state.pendingTrophyDisarm.targetKey === 'player' || state.pendingTrophyDisarm.targetKey === 'ai')) {
             state.pendingTrophyDisarm.targetKey = swapKey(state.pendingTrophyDisarm.targetKey);
         }
+        if (state.pendingVixrapsPassive && (state.pendingVixrapsPassive.owner === 'player' || state.pendingVixrapsPassive.owner === 'ai')) {
+            state.pendingVixrapsPassive.owner = swapKey(state.pendingVixrapsPassive.owner);
+        }
     }
 
     class OnlineMatchHost {

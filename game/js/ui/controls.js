@@ -61,9 +61,16 @@ _renderControls() {
             }
         }
     } else if (phase === 'PLAYER_DISCARD' && canAct) {
-        html += `<span class="ctrl-hint">${s.forcedDiscard ? `手牌超限：需弃至 ${s.handLimit || 5} 张` : s.mayDiscardAfterSkill ? 'Ryan 3牌：可选择1张牌弃掉，也可取消' : '可同时选择多张牌弃掉'}</span>`;
+        const discardHint = s.pendingVixrapsPassive
+            ? 'Vixraps被动：必须弃掉1张牌，然后恢复3点生命'
+            : s.forcedDiscard
+                ? `手牌超限：需弃至 ${s.handLimit || 5} 张`
+                : s.mayDiscardAfterSkill
+                    ? 'Ryan 3牌：可选择1张牌弃掉，也可取消'
+                    : '可同时选择多张牌弃掉';
+        html += `<span class="ctrl-hint">${discardHint}</span>`;
         html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!hasDiscardCards ? 'disabled' : ''}>确认弃牌 (${(s.selectedCards || []).length})</button>`;
-        if (!s.forcedDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
+        if (!s.forcedDiscard && !s.pendingVixrapsPassive) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
     } else if (phase === 'OPPONENT_CARD_CHOICE' && canAct && s.isAdventure) {
         const targetKey = s.opponentHandTarget || (s.is1v2 ? (s.attackTarget || 'ai') : 'ai');
         const target = s[targetKey];

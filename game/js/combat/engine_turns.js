@@ -64,16 +64,22 @@
 
     confirmDiscard() {
       const selected = this.s.selectedCards || [];
+      const vixrapsPassive = this.s.pendingVixrapsPassive;
       if (!selected.length) throw Error('请选择要弃掉的牌');
+      if (vixrapsPassive && selected.length !== 1) throw Error('Vixraps被动只能弃掉1张牌');
       selected.sort((a, b) => b - a);
       for (const i of selected) {
-        if (this.h.player[i]) {
-          const card = this.h.player.splice(i, 1)[0];
-          this.discardWithEvent(card, 'player', { handIndex: i, desc: `玩家弃掉${this.cardText(card)}` });
-        }
+        if (!this.h.player[i]) continue;
+        const card = this.h.player.splice(i, 1)[0];
+        this.discardWithEvent(card, 'player', { handIndex: i, desc: `玩家弃掉${this.cardText(card)}` });
+        if (vixrapsPassive) vixrapsPassive.discarded = true;
       }
       this.s.selectedCard = -1;
       this.s.selectedCards = [];
+      if (vixrapsPassive) {
+        this._finishVixrapsPassive();
+        return this.check();
+      }
       if (this.s.mayDiscardAfterSkill) {
         this.s.mayDiscardAfterSkill = false;
         this.s.phase = 'PLAYER_PLAY';
@@ -89,6 +95,7 @@
     },
 
     cancelDiscard() {
+      if (this.s.pendingVixrapsPassive) throw Error('Vixraps被动必须弃掉1张牌，不能取消');
       if (this.s.forcedDiscard) throw Error(`手牌超过${this.s.handLimit}张，不能取消弃牌`);
       this.s.mayDiscardAfterSkill = false;
       this.s.phase = 'PLAYER_PLAY';

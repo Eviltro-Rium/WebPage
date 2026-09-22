@@ -47,6 +47,7 @@
         pendingSaikiBleed: null,
         pendingVixrapsBurnSettle: null,
         pendingVixrapsPurify: null,
+        pendingVixrapsPassive: null,
         forceEndAITurn: false,
         activeAttacker: 'player',
         modeId: null,

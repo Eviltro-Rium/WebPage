@@ -515,7 +515,7 @@
     resolveSerenityHalf(){let key=this.s.serenityHalfTarget;if(!key)return;let x=this.s[key],before=x.hp;x.hp=Math.ceil(x.hp/2);x.alive=x.hp>0;this.s.serenityHalfTarget=null;this.emit('desc',`Serenity 0牌：攻防结束，${key==='player'?'玩家':'AI'}生命减半（-${before-x.hp}）`)}
     chooseGuard(stacks){let incoming=this.s.pendingGuardDamage||0,use=Math.max(0,Math.min(stacks||0,this.s.player.guard,incoming)),remaining=Math.max(0,incoming-use),bleed=this.s.pendingGuardBleed||0,defCard=this.s.defCard,bleedActive=defCard&&defCard.isNumberCard&&defCard.value<=3?bleed:0;let S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.remove(this.s.player,'guard',use);else this.s.player.guard-=use;this.s.pendingDialog=null;this.s.pendingGuardDamage=0;this.s.pendingGuardBleed=0;this.s.phase='AI_TURN';this.emit('desc',`消耗${use}层[守护]，减免${use}点[伤害]，剩余${remaining}点待结算`);this.deferSettlement('AI_ATTACK',remaining,bleedActive);return this.check()}
     clean(x,all=false,kind=null){const S=this._status();if(S&&S.clean){S.clean(x,all,kind);return}if(all){x.burn=0;x.bleed=0;x.poison=0;x.frozen=false;x.bomb=0;x.blind=0;x.iceSeal=0;x.hypothermia=0;x.hypnosis=false;x.hypnosisArmed=false;x.sleep=false;x.guard=0;x.fly=0;x.lush=0;x.crit=0;x.parasite=0;x.diving=false;x.chaos_red=false;x.chaos_yellow=false;x.chaos_blue=false;x.chaos_green=false}else if(kind==='burn'&&x.burn)x.burn--;else if(kind==='bleed'&&x.bleed)x.bleed--;else if(kind==='poison'&&x.poison)x.poison--;else if(kind==='freeze')x.frozen=false;else if(kind==='bomb')x.bomb=0;else if(kind==='blind')x.blind=0;else if(kind==='iceSeal')x.iceSeal=0;else if(kind==='hypothermia'&&x.hypothermia)x.hypothermia=0;else if(kind==='bind'){}else if(kind==='guard'&&x.guard)x.guard--;else if(kind==='fly'&&x.fly)x.fly--;else if(kind==='lush'&&x.lush)x.lush--;else if(kind==='crit'&&x.crit)x.crit--;else if(kind==='parasite'&&x.parasite)x.parasite--;else if(kind==='diving')x.diving=false;else if(kind==='bloodthirst'){}else if(x.burn)x.burn--;else if(x.bleed)x.bleed--;else if(x.poison)x.poison--;else if(x.bomb)x.bomb=0;else x.frozen=false}
-    chooseSuperPurifyTarget(target){this.s.pendingDialog=null;let ch=this.s[target];if(!ch||!ch.alive)throw Error('目标已出局');this.clean(ch,true);let label=target==='player'?'玩家':(this.s.is1v2&&target==='ai2'?'AI2':'AI');this.emit('desc','超级净化：清除'+label+'所有可净化状态（印记保留）');return this.state()}
+    chooseSuperPurifyTarget(target){this.s.pendingDialog=null;let ch=this.s[target];if(!ch||!ch.alive)throw Error('目标已出局');this.clean(ch,true);let label=target==='player'?'玩家':(this.s.is1v2&&target==='ai2'?'AI2':'AI');this.emit('desc','超级净化：清除'+label+'所有可净化状态（印记保留）');this._resumeVixrapsPassiveAfterDialog();return this.state()}
     turnStart(w){let x=this.s[w];if(!x||!x.alive)return;
       if(x.sleep){const S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.set(x,'sleep',false);else x.sleep=false;x.hypnosisArmed=false;this.emit('buff','-[沉睡]',null,{who:w,kind:'sleep',stacks:0});this.heal(x,10)}
       const participants=this._adapter()&&this._adapter().participants||['player','ai','ai2'];
@@ -649,6 +649,75 @@
       this._tickBomb('player');
       return this.check();
     }
+    _beginVixrapsPassive(owner, card, continuationPhase) {
+      if (!this.s || !card || !card.isBlack) return false;
+      const ownerKey = owner === 'ai2' ? 'ai2' : owner === 'ai' ? 'ai' : 'player';
+      const entity = this.s[ownerKey];
+      if (!entity || this.name(entity) !== 'Vixraps') return false;
+      this.s.pendingVixrapsPassive = {
+        owner: ownerKey,
+        phase: continuationPhase || (ownerKey === 'player' ? this.s.phase : 'AI_TURN'),
+        card: cp(card),
+        discarded: false
+      };
+      // Black purify/super-purify cards may open a dialog.  The passive must
+      // happen after that effect resolves, immediately before the next bridge.
+      if (this.s.pendingDialog) return false;
+      return this._resolveVixrapsPassive();
+    }
+
+    _resolveVixrapsPassive() {
+      const pending = this.s && this.s.pendingVixrapsPassive;
+      if (!pending || (this.s.pendingDialog && pending.owner === 'player')) return false;
+      const ownerKey = pending.owner === 'ai2' ? 'ai2' : pending.owner === 'ai' ? 'ai' : 'player';
+      const entity = this.s[ownerKey];
+      const hand = this.h[ownerKey] || [];
+      if (!entity || this.name(entity) !== 'Vixraps') {
+        this.s.pendingVixrapsPassive = null;
+        return false;
+      }
+      if (ownerKey === 'player' && hand.length) {
+        this.s.phase = 'PLAYER_DISCARD';
+        this.s.busy = false;
+        this.s.forcedDiscard = false;
+        this.s.selectedCard = -1;
+        this.s.selectedCards = [];
+        this.emit('desc', 'Vixraps被动：请弃掉1张牌，然后恢复3点生命');
+        return true;
+      }
+      if (ownerKey !== 'player' && hand.length) {
+        let index = this.chooseAIDiscard(hand);
+        if (!Number.isInteger(index) || index < 0 || index >= hand.length) index = hand.length - 1;
+        const discarded = hand.splice(index, 1)[0];
+        if (discarded) {
+          pending.discarded = true;
+          this.discardWithEvent(discarded, ownerKey, {
+            handIndex: index,
+            desc: entity.name + '被动弃掉' + this.cardText(discarded)
+          });
+        }
+      }
+      this._finishVixrapsPassive();
+      return false;
+    }
+
+    _finishVixrapsPassive() {
+      const pending = this.s && this.s.pendingVixrapsPassive;
+      if (!pending) return false;
+      const ownerKey = pending.owner === 'ai2' ? 'ai2' : pending.owner === 'ai' ? 'ai' : 'player';
+      const entity = this.s[ownerKey];
+      if (entity) this.heal(entity, 3, 'passive');
+      this.emit('desc', (entity && entity.name || 'Vixraps') + '被动：' + (pending.discarded ? '弃掉1张牌，' : '') + '恢复3点生命');
+      this.s.pendingVixrapsPassive = null;
+      if (ownerKey === 'player') {
+        this.s.forcedDiscard = false;
+        this.s.selectedCard = -1;
+        this.s.selectedCards = [];
+        this.s.phase = pending.phase || 'PLAYER_PLAY';
+        this.s.busy = false;
+      }
+      return true;
+    }
     useItem(c,owner,target,w){if(c.potion)this.heal(owner,this.s.isAdventure&&w!=='player'?3:5);if(c.greenMagic||c.magicColor==='green'){this.heal(owner,w!=='player'&&this._isAdventureBoss(owner)?5:3);this.clearDebuffs(owner)}else if(c.magic||c.magicColor==='purple'){this.heal(owner,w!=='player'&&this._isAdventureBoss(owner)?5:3);this.clearPositiveBuffs(target);}if(c.drawThree)this.draw(w,3,true);if(c.drawTwo)this.draw(w,2,true);if(c.purify&&w==='player'&&this._hasPurifyableBuff(owner)){this.s.pendingDialog='purify'}else if(c.purify)this.clean(owner);if(c.superPurify&&w==='player'){this.s.pendingDialog='superPurify'}else if(c.superPurify){let ownerDeb=owner.burn+owner.bleed+(owner.poison||0)+(owner.frozen?1:0)+(owner.blind||0)+(owner.bomb||0)+(owner.lush||0),targetGuard=target?target.guard:0;if(targetGuard>=2&&ownerDeb<2)this.clean(target,true);else this.clean(owner,true);}if(c.swapHand){[this.h.player,this.h.ai]=[this.h.ai,this.h.player];if(this.s.isAdventure)this.h.player.forEach(card=>{if(card)card.npcCard=true;});}      if(c.shuffleToDeck){this._shuffleDiscardIntoDeck();this.emit('desc','弃牌库已洗回牌堆')}}
     effect(n,v,c,a,t){
       let d=0,skip=false,unblock=false,owner=a===this.s.player?'player':(this.s.is1v2&&a===this.s.ai2?'ai2':'ai'),target=owner==='player'?this._who(t):'player';
@@ -716,7 +785,14 @@
       this.rememberAttackDebuffs('ai');
       let _buffBefore={bleed:this.s.ai.bleed||0,burn:this.s.ai.burn||0,poison:this.s.ai.poison||0,blind:this.s.ai.blind||0,iceSeal:this.s.ai.iceSeal||0,frozen:!!this.s.ai.frozen};
       this.applySaikiPassive(this.s.player,this.s.ai,c);
-      if(c.isItemCard){this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player'});if(c.trophyWhite)this.useTrophyWhite(c,this.s.ai,'player');else this.useItem(c,this.s.player,this.s.ai,'player');if(!this.s.pendingDialog)this._tickBomb('player');return this.check()}
+      if(c.isItemCard){
+        this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player'});
+        if(c.trophyWhite)this.useTrophyWhite(c,this.s.ai,'player');else this.useItem(c,this.s.player,this.s.ai,'player');
+        const vixrapsPassive=c.isBlack&&this.name(this.s.player)==='Vixraps'
+          ? this._beginVixrapsPassive('player',c,'PLAYER_PLAY') : false;
+        if(!this.s.pendingDialog&&!vixrapsPassive)this._tickBomb('player');
+        return this.check()
+      }
       this._deferAttackBuffs('ai',_buffBefore);
       if(who==='Moze'&&c.value===7){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc','Moze 7牌：请选择自己或一名对手作为清除目标',c);return this.state()}
       if(who==='Ryan'&&c.value===5)return this.startRyanFive(c);
@@ -942,7 +1018,9 @@
           if(c.isWhite)this.emit('colorChoice',`白色道具牌自动指定${this.colorName(c.chosenColor)}`,c);
           this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player'});
           if(c.trophyWhite)this.useTrophyWhite(c,this.s.ai,'player');else this.useItem(c,this.s.player,this.s.ai,'player');
-          if(!this.s.pendingDialog)this._tickBomb('player');
+          const vixrapsPassive=c.isBlack&&this.name(this.s.player)==='Vixraps'
+            ? this._beginVixrapsPassive('player',c,'PLAYER_DEFEND') : false;
+          if(!this.s.pendingDialog&&!vixrapsPassive)this._tickBomb('player');
           return this.check()
         }
         this.s.hasPlayedBlackDefend=false;
@@ -966,10 +1044,29 @@
     startAITurn(){this.fillHands(true);this.s.phase='AI_TURN';this.s.busy=true;this.s.activeAttacker='ai';this.s.forceEndAITurn=false;this.s.pendingAIContinue=null;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.selectedCards=[];this.later(()=>this.aiTurn());return this.check()}
     endTurn(){if(this.s.phase!=='PLAYER_PLAY')throw Error('当前不能结束回合');if(this.h.player.length>this.s.handLimit){this.s.forcedDiscard=true;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc',`手牌超过${this.s.handLimit}张，请弃至不超过${this.s.handLimit}张`);return this.state()}this.settleBurn(this.s.player);return this.startAITurn()}
     enterDiscard(){if(this.s.hasPlayedThisTurn)throw Error('本回合已出牌，不能再弃牌');this.s.forcedDiscard=false;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];return this.state()}
-    confirmDiscard(){let selected=this.s.selectedCards||[];if(!selected.length)throw Error('请选择要弃掉的牌');selected.sort((a,b)=>b-a);for(const i of selected)if(this.h.player[i]){let card=this.h.player.splice(i,1)[0];this.discardWithEvent(card,'player',{handIndex:i,desc:`玩家弃掉${this.cardText(card)}`})}this.s.selectedCard=-1;this.s.selectedCards=[];if(this.s.mayDiscardAfterSkill){this.s.mayDiscardAfterSkill=false;this.s.phase='PLAYER_PLAY';this.emit('desc','Ryan 3牌：已完成可选弃牌');return this.state()}if(this.s.forcedDiscard&&this.h.player.length>this.s.handLimit){this.emit('desc',`仍需弃牌，手牌必须不超过${this.s.handLimit}张`);return this.state()}this.s.forcedDiscard=false;return this.startAITurn()}
-    cancelDiscard(){if(this.s.forcedDiscard)throw Error(`手牌超过${this.s.handLimit}张，不能取消弃牌`);this.s.mayDiscardAfterSkill=false;this.s.phase='PLAYER_PLAY';this.s.selectedCard=-1;this.s.selectedCards=[];return this.state()}
+    confirmDiscard(){
+      let selected=this.s.selectedCards||[];
+      const vixrapsPassive=this.s.pendingVixrapsPassive;
+      if(!selected.length)throw Error('请选择要弃掉的牌');
+      if(vixrapsPassive&&selected.length!==1)throw Error('Vixraps被动只能弃掉1张牌');
+      selected.sort((a,b)=>b-a);
+      for(const i of selected)if(this.h.player[i]){
+        let card=this.h.player.splice(i,1)[0];
+        this.discardWithEvent(card,'player',{handIndex:i,desc:`玩家弃掉${this.cardText(card)}`});
+        if(vixrapsPassive)vixrapsPassive.discarded=true;
+      }
+      this.s.selectedCard=-1;this.s.selectedCards=[];
+      if(vixrapsPassive){
+        this._finishVixrapsPassive();
+        return this.check();
+      }
+      if(this.s.mayDiscardAfterSkill){this.s.mayDiscardAfterSkill=false;this.s.phase='PLAYER_PLAY';this.emit('desc','Ryan 3牌：已完成可选弃牌');return this.state()}
+      if(this.s.forcedDiscard&&this.h.player.length>this.s.handLimit){this.emit('desc',`仍需弃牌，手牌必须不超过${this.s.handLimit}张`);return this.state()}
+      this.s.forcedDiscard=false;return this.startAITurn()
+    }
+    cancelDiscard(){if(this.s.pendingVixrapsPassive)throw Error('Vixraps被动必须弃掉1张牌，不能取消');if(this.s.forcedDiscard)throw Error('手牌超限，不能取消弃牌');this.s.mayDiscardAfterSkill=false;this.s.phase='PLAYER_PLAY';this.s.selectedCard=-1;this.s.selectedCards=[];return this.state()}
     aiSpecialEffect(n,v,c){let a=this.s.ai,t=this.s.player,owner=this.s.atkOwner&&this.s.atkOwner!=='player'?this.s.atkOwner:'ai',m=AIRegistry.get(n);if(!m)return null;let silent={silent:true},helpers={burnTarget:q=>this.burn(t,q,silent),burnSelf:q=>this.burn(a,q,silent),bleedTarget:q=>this.bleed(t,q,silent),gainGuard:q=>this.addGuard(a,q),healSelf:(q,k)=>this.heal(a,q,k),drawSelf:(q,an)=>this.draw(owner,q,an),clearSelf:()=>this.clearDebuffs(a),selfHand:this.h[owner],targetHand:this.h.player,owner,target:t,self:a,copy:cp};return m.specialEffect(this,n,v,c,a,t,owner,helpers,this.aiContext())}
-    aiTurn(){if(!this.s.aiTurnStarted){this.turnStart('ai');this.s.aiTurnStarted=true;this.s.aiHasPlayed=false;if(!this.s.ai.alive)return this.check()}let _noAtkMod=this._getAdventureMod(this.name(this.s.ai));if(_noAtkMod&&_noAtkMod.noAttack){this.emit('desc',this.s.ai.name+'无进攻阶段，跳过进攻');if(typeof _noAtkMod.attackSkipEffect==='function')_noAtkMod.attackSkipEffect(this,this.s.ai,this.s.player);return this.later(()=>this.endAi(),700)}let top=this.s.discardTop,chosen=this.chooseAIPlay(top);if(!chosen){if(!this.s.aiHasPlayed&&this.h.ai.length){let dropped=this.h.ai.splice(0,this.h.ai.length);for(let i=dropped.length-1;i>=0;i--)this.discardWithEvent(dropped[i],'ai',{handIndex:i,desc:`AI无牌可出，弃掉${this.cardText(dropped[i])}`});this.emit('desc',`AI无牌可出，弃掉全部${dropped.length}张手牌`)}return this.later(()=>this.endAi(),700)}let i=this.h.ai.indexOf(chosen),c=this.h.ai.splice(i,1)[0];this.setAIWildColor(c,top,false);this.s.aiHasPlayed=true;this.s.atkCard=cp(c);this.s.atkOwner='ai';this.setDiscardTop(c,'ai');this.rememberAttackDebuffs('player');let _buffBefore={bleed:this.s.player.bleed||0,burn:this.s.player.burn||0,poison:this.s.player.poison||0,blind:this.s.player.blind||0,iceSeal:this.s.player.iceSeal||0,frozen:!!this.s.player.frozen};this.applySaikiPassive(this.s.ai,this.s.player,c);this.emit('aiPlay',`AI ${this.name(this.s.ai)} 按角色策略出牌`,c);this.announceAIColor(c);if(c.isItemCard){let kind=this.itemKind(c);this.emit('itemEffect',this.itemEffectDesc(c,'ai'),c,{effect:kind,who:'ai'});this.useItem(c,this.s.ai,this.s.player,'ai');this.s.pendingAIBridge={mode:'attack',afterEventId:this.ver,effect:kind,owner:'ai'};return this.check()}this._deferAttackBuffs('player',_buffBefore);let r=this.aiSpecialEffect(this.name(this.s.ai),c.value,c)||this.effect(this.name(this.s.ai),c.value,c,this.s.ai,this.s.player);this._deferAttackBuffs('player',_buffBefore);if(r.immediateBuffs)this._restoreAttackBuffs();this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage};{let freezeBlock=this._freezeBlocksDefend(this.s.player,this.s.atkCard);if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){if(this.s.player.sleep){this.emit('desc','你处于[沉睡]，无法打出防御牌');this.s.phase='AI_TURN';this.s.busy=true;this.deferSettlement('AI_ATTACK',r.d,0);return this.check()}this.s.phase='PLAYER_DEFEND';this.s.busy=false;this.s.unblockDefend=false;return}if(r.d&&(r.unblock||freezeBlock)){if(this._enterPlayerDefend(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}if(!r.d)this.emit('desc',`AI ${this.name(this.s.ai)} 本次技能分支未造成伤害，跳过防御`,c);if(r.d&&this.playerNeedsAvoidChoice()){this.askGuard(r.d);return}this._restoreAttackBuffs();this.dealAttackHit(this.s.ai,this.s.player,r.d,!!(r.isDrain||r.drain));this.s.phase='AI_TURN';this.s.busy=true;this.s.pendingAIContinue={afterEventId:this.ver};return this.check()}
+    aiTurn(){if(!this.s.aiTurnStarted){this.turnStart('ai');this.s.aiTurnStarted=true;this.s.aiHasPlayed=false;if(!this.s.ai.alive)return this.check()}let _noAtkMod=this._getAdventureMod(this.name(this.s.ai));if(_noAtkMod&&_noAtkMod.noAttack){this.emit('desc',this.s.ai.name+'无进攻阶段，跳过进攻');if(typeof _noAtkMod.attackSkipEffect==='function')_noAtkMod.attackSkipEffect(this,this.s.ai,this.s.player);return this.later(()=>this.endAi(),700)}let top=this.s.discardTop,chosen=this.chooseAIPlay(top);if(!chosen){if(!this.s.aiHasPlayed&&this.h.ai.length){let dropped=this.h.ai.splice(0,this.h.ai.length);for(let i=dropped.length-1;i>=0;i--)this.discardWithEvent(dropped[i],'ai',{handIndex:i,desc:`AI无牌可出，弃掉${this.cardText(dropped[i])}`});this.emit('desc',`AI无牌可出，弃掉全部${dropped.length}张手牌`)}return this.later(()=>this.endAi(),700)}let i=this.h.ai.indexOf(chosen),c=this.h.ai.splice(i,1)[0];this.setAIWildColor(c,top,false);this.s.aiHasPlayed=true;this.s.atkCard=cp(c);this.s.atkOwner='ai';this.setDiscardTop(c,'ai');this.rememberAttackDebuffs('player');let _buffBefore={bleed:this.s.player.bleed||0,burn:this.s.player.burn||0,poison:this.s.player.poison||0,blind:this.s.player.blind||0,iceSeal:this.s.player.iceSeal||0,frozen:!!this.s.player.frozen};this.applySaikiPassive(this.s.ai,this.s.player,c);this.emit('aiPlay',`AI ${this.name(this.s.ai)} 按角色策略出牌`,c);this.announceAIColor(c);if(c.isItemCard){let kind=this.itemKind(c);this.emit('itemEffect',this.itemEffectDesc(c,'ai'),c,{effect:kind,who:'ai'});this.useItem(c,this.s.ai,this.s.player,'ai');if(c.isBlack&&this.name(this.s.ai)==='Vixraps')this._beginVixrapsPassive('ai',c,'AI_TURN');this.s.pendingAIBridge={mode:'attack',afterEventId:this.ver,effect:kind,owner:'ai'};return this.check()}this._deferAttackBuffs('player',_buffBefore);let r=this.aiSpecialEffect(this.name(this.s.ai),c.value,c)||this.effect(this.name(this.s.ai),c.value,c,this.s.ai,this.s.player);this._deferAttackBuffs('player',_buffBefore);if(r.immediateBuffs)this._restoreAttackBuffs();this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage};{let freezeBlock=this._freezeBlocksDefend(this.s.player,this.s.atkCard);if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){if(this.s.player.sleep){this.emit('desc','你处于[沉睡]，无法打出防御牌');this.s.phase='AI_TURN';this.s.busy=true;this.deferSettlement('AI_ATTACK',r.d,0);return this.check()}this.s.phase='PLAYER_DEFEND';this.s.busy=false;this.s.unblockDefend=false;return}if(r.d&&(r.unblock||freezeBlock)){if(this._enterPlayerDefend(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}if(!r.d)this.emit('desc',`AI ${this.name(this.s.ai)} 本次技能分支未造成伤害，跳过防御`,c);if(r.d&&this.playerNeedsAvoidChoice()){this.askGuard(r.d);return}this._restoreAttackBuffs();this.dealAttackHit(this.s.ai,this.s.player,r.d,!!(r.isDrain||r.drain));this.s.phase='AI_TURN';this.s.busy=true;this.s.pendingAIContinue={afterEventId:this.ver};return this.check()}
     endAi(){this.trimAI();this.settleBurn(this.s.ai);this.s.turn++;this.s.phase='PLAYER_PLAY';this.s.busy=false;this.s.activeAttacker='player';this.s.pendingAttack=null;this.s.pendingAIBridge=null;this.s.pendingAIContinue=null;this.s.forceEndAITurn=false;this.s.attackDebuffSnapshot=null;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];this.s.hasPlayedThisTurn=false;this.s.aiTurnStarted=false;this.s.aiHasPlayed=false;let _hands=this.handCounts();this.silentDraws(function(){this.fillHands(false);this.turnStart('player')});this.emitDrawDiff(_hands);this.check()}
     check(){for(const k of ['player','ai']){this.s[k].alive=this.s[k].hp>0}if(!this.s.player.alive||!this.s.ai.alive){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer)}const result=this.state();this._checkInvariants('phase');return result}
     _allEnemiesDead(){
@@ -977,6 +1074,12 @@
       const adapter=this._adapter();
       const enemies=adapter&&adapter.enemyKeys?adapter.enemyKeys(this.s):['ai'];
       return enemies.every(key=>!this.s[key]||!this.s[key].alive)
+    }
+    _resumeVixrapsPassiveAfterDialog() {
+      if (this.s && this.s.pendingVixrapsPassive && !this.s.pendingDialog) {
+        return this._resolveVixrapsPassive();
+      }
+      return false;
     }
     choosePurify(params={}){
       const choice=params&&typeof params==='object'?params:{kind:params};
@@ -986,6 +1089,7 @@
         this.s.pendingDialog=null;this.s.pendingVixrapsPurify=null;
         this.emit('desc','净化：提前结束，未移除更多状态');
         if(pending)return this.gateAdventureAttackMod(pending.card,pending.damage,pending.skip,pending.unblock,0,pending.opts||{});
+        this._resumeVixrapsPassiveAfterDialog();
         return this.state();
       }
       const kind=typeof choice.kind==='string'?choice.kind:null;
@@ -994,6 +1098,7 @@
       this.s.pendingDialog=null;this.s.pendingVixrapsPurify=null;
       this.emit('desc','净化移除一层'+({burn:'灼烧',freeze:'冷冻',bleed:'流血',poison:'中毒',blind:'致盲',bomb:'炸弹',guard:'守护',fly:'飞翔',crit:'暴击',lush:'茂盛',parasite:'寄生',hypothermia:'失温',diving:'潜水',bloodthirst:'嗜血',bind:'捆缚'}[kind]||'buff'));
       if(pending)return this.gateAdventureAttackMod(pending.card,pending.damage,pending.skip,pending.unblock,0,pending.opts||{});
+      this._resumeVixrapsPassiveAfterDialog();
       return this.state();
     }
     later(f,ms=550){clearTimeout(this.timer);this.timer=setTimeout(()=>{try{f()}catch(e){console.error(e)}},ms)}
@@ -1058,7 +1163,7 @@
   Engine.prototype.aiDefend=function(atk,d){
     
     const asleep=!!this.s.ai.sleep;
-    let frozen=this._freezeBlocksDefend(this.s.ai,atk),chosen=(frozen||asleep)?null:this.chooseAIDefend(this.s.discardTop,d),i=chosen?this.h.ai.indexOf(chosen):-1;if(i>=0){let top=this.s.discardTop,c=this.h.ai.splice(i,1)[0];if(c.isBlack)c.chosenColor=this.h.ai.find(q=>!q.isBlack&&!q.isWhite&&q.value<=3)?.color||this.chooseAIColor();else this.setAIWildColor(c,top,false);this.s.defCard=cp(c);this.s.defOwner='ai';this.setDiscardTop(c);if(c.isItemCard){this.emit('aiDefend','AI打出搭桥牌并立即结算道具效果',c);this.announceAIColor(c);let kind=this.itemKind(c);this.emit('itemEffect',this.itemEffectDesc(c,'ai'),c,{effect:kind,who:'ai'});this.useItem(c,this.s.ai,this.s.player,'ai');this.s.pendingAIBridge={mode:'defense',afterEventId:this.ver,attackCard:cp(atk),damage:d,owner:'ai'};return this.check()}let n=this.name(this.s.ai),v=c.value;this.emit('aiDefend',`AI打出${n} ${v}牌，触发防御技能`,c);this.announceAIColor(c);let judged=this.defenseJudge('ai',c,d),b=0,remaining,desc='';
+    let frozen=this._freezeBlocksDefend(this.s.ai,atk),chosen=(frozen||asleep)?null:this.chooseAIDefend(this.s.discardTop,d),i=chosen?this.h.ai.indexOf(chosen):-1;if(i>=0){let top=this.s.discardTop,c=this.h.ai.splice(i,1)[0];if(c.isBlack)c.chosenColor=this.h.ai.find(q=>!q.isBlack&&!q.isWhite&&q.value<=3)?.color||this.chooseAIColor();else this.setAIWildColor(c,top,false);this.s.defCard=cp(c);this.s.defOwner='ai';this.setDiscardTop(c);if(c.isItemCard){this.emit('aiDefend','AI打出搭桥牌并立即结算道具效果',c);this.announceAIColor(c);let kind=this.itemKind(c);this.emit('itemEffect',this.itemEffectDesc(c,'ai'),c,{effect:kind,who:'ai'});this.useItem(c,this.s.ai,this.s.player,'ai');if(c.isBlack&&this.name(this.s.ai)==='Vixraps')this._beginVixrapsPassive('ai',c,'AI_DEFEND');this.s.pendingAIBridge={mode:'defense',afterEventId:this.ver,attackCard:cp(atk),damage:d,owner:'ai'};return this.check()}let n=this.name(this.s.ai),v=c.value;this.emit('aiDefend',`AI打出${n} ${v}牌，触发防御技能`,c);this.announceAIColor(c);let judged=this.defenseJudge('ai',c,d),b=0,remaining,desc='';
       if(judged){remaining=Math.max(0,judged.remaining);desc='AI完成防御判定'}
       else{let m=CharacterRegistry.get(n);if(m){let r=m.defend(this,n,v,d,c,this.s.ai,this.s.player,'ai',this.effective(atk),{hurt:(x,n,b)=>this.hurt(x,n,b),heal:(x,n,k)=>this.heal(x,n,k),draw:(w,n,an)=>this.draw(w,n,an),burn:(x,n)=>this.burn(x,n),bleed:(x,n)=>this.bleed(x,n),poison:(x,n)=>this.poison(x,n),counter:(x,n)=>this.counterAttack(this.s.ai,x,n),cancelAttackDebuffs:(o,r)=>this.cancelAttackDebuffs(o,r),clearDebuffs:x=>this.clearDebuffs(x),addGuard:(x,n)=>this.addGuard(x,n)});if(r){remaining=r.remaining;desc=r.desc}}if(desc===''){b=c.isNumberCard?(c.value===1?Math.ceil(d/2):c.value===3?Math.floor(d/2):0):0;remaining=Math.max(0,d-b);desc=this.s.ai.name+'抵消'+b+'点伤害，剩余'+remaining+'点待结算'}}
       if(!judged)this.emit('desc',desc);
