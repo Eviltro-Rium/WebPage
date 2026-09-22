@@ -113,6 +113,13 @@
       if (!this.s.trophyDropHandled || typeof this.s.trophyDropHandled !== 'object') {
         this.s.trophyDropHandled = {};
       }
+      // Challenge rooms have exactly one player-hand refill opportunity: after
+      // the first opponent is defeated. Older snapshots do not contain these
+      // flags, so initialize them lazily without changing their other state.
+      if (this.s.isAdventure && this.s.is1v2) {
+        if (typeof this.s.challengeRefillAvailable !== 'boolean') this.s.challengeRefillAvailable = false;
+        if (typeof this.s.challengeRefillUsed !== 'boolean') this.s.challengeRefillUsed = false;
+      }
     }
 
     _resolveAdventureTrophyDrop(defeatedKey) {
@@ -134,6 +141,14 @@
         }
       }
       const label = monsterName || defeatedKey;
+      // Reuse the shared dice event contract so the normal combat UI plays the
+      // same D12 animation used by Fly and Russian Roulette.
+      const dropOutcome = drops.length ? 'success' : 'fail';
+      this.s.diceRoll = { sides: 12, value: loot.roll, desc: label + '\u6218\u5229\u767d\u5361\u6389\u843d\u5224\u5b9a' };
+      this.emit('diceRoll', label + '\u6218\u5229\u767d\u5361\u6389\u843d\u5224\u5b9a\uff1a' + loot.roll, null, {
+        kind: 'd12', sides: 12, value: loot.roll, who: 'player', outcome: dropOutcome,
+        purpose: 'trophyDrop', monsterName: label
+      });
       if (drops.length) {
         const names = drops.map(name => {
           const def = window.AdventureRegistry && window.AdventureRegistry.getItem(name);
@@ -470,7 +485,17 @@
         }
       }
       this._resolveAdventureTrophyDrop(defeatedKey);
-      return super._on1v2OpponentEliminated(defeatedKey);
+      const result = super._on1v2OpponentEliminated(defeatedKey);
+      // Do not replenish the player's hand for ordinary/Boss victories. In a
+      // challenge room the surviving opponent keeps the battle going, and the
+      // player gets one explicit refill window after the first defeat only.
+      if (this.s && this.s.isAdventure && this.s.is1v2 &&
+          !this.s.challengeRefillAvailable &&
+          ((this.s.ai && this.s.ai.alive) || (this.s.ai2 && this.s.ai2.alive))) {
+        this.s.challengeRefillAvailable = true;
+        this.emit('desc', '\u6311\u6218\u623f\uff1a\u7b2c\u4e00\u540d\u654c\u4eba\u5df2\u51fb\u8d25\uff0c\u4e0b\u4e00\u6b21\u8fdb\u653b\u9636\u6bb5\u5f00\u59cb\u65f6\u8865\u724c\u4e00\u6b21');
+      }
+      return result;
     }
 
     _syncNpcSharedPile() {
@@ -665,8 +690,15 @@
         // their limits, so the low-deck rule is deterministic and visible.
         this._syncNpcSharedPile();
         this._refillPile('ai');
-        if (includePlayer) {
+        const canRefillPlayer = includePlayer &&
+          (!this.s.is1v2 || (this.s.challengeRefillAvailable && !this.s.challengeRefillUsed));
+        if (canRefillPlayer) {
           this.draw('player', this._drawNeedWithIceSeal('player', Math.max(0, this.piles.player.handLimit - this.h.player.length)), true);
+          if (this.s.is1v2) {
+            this.s.challengeRefillUsed = true;
+            this.s.challengeRefillAvailable = false;
+            this.emit('desc', '\u6311\u6218\u623f\uff1a\u7b2c\u4e00\u540d\u654c\u4eba\u51fa\u5c40\uff0c\u73a9\u5bb6\u8865\u724c\u4e00\u6b21');
+          }
         }
         for (const key of ['ai', 'ai2']) {
           if (!this.s[key] || !this.s[key].alive) continue;

@@ -300,7 +300,7 @@ async _playEvents(events, fast = false) {
             const desc = evt.desc || ('12面骰：' + value);
             this._showZoneDesc('reveal-desc', '12面骰投掷中…');
             if (typeof this._playD12Animation === 'function') {
-                await this._playD12Animation(value, { desc, who: evt.who });
+                await this._playD12Animation(value, { desc, who: evt.who, outcome: evt.outcome });
             } else {
                 await wait(450);
             }

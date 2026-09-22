@@ -57,7 +57,24 @@ body.page-projects,
 body.page-materials,
 body.page-guestbook,
 body.page-launchpad {
-  background: #2880d8;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.22) 0%, transparent 34%),
+    radial-gradient(circle at 82% 88%, rgba(44, 160, 102, 0.28) 0%, transparent 38%),
+    linear-gradient(145deg, #2880d8 0%, #37b9df 44%, #4abd7b 100%);
+}
+
+/* If WebGL/CDN loading fails, keep the same scene palette visible instead of
+   falling back to a flat color. The 3D canvas remains above this layer when
+   available. */
+body.page-home.hill-background-fallback,
+body.page-projects.hill-background-fallback,
+body.page-materials.hill-background-fallback,
+body.page-guestbook.hill-background-fallback,
+body.page-launchpad.hill-background-fallback {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 240, 180, 0.42) 0%, transparent 30%),
+    radial-gradient(circle at 78% 84%, rgba(39, 142, 93, 0.34) 0%, transparent 42%),
+    linear-gradient(145deg, #2880d8 0%, #40bedd 42%, #55be78 100%);
 }
 
 #hill-bg-canvas {
@@ -1640,7 +1657,10 @@ html[data-theme="dark"] body.page-launchpad {
   --glass-border: rgba(188, 219, 245, 0.28);
   --glass-highlight: rgba(225, 242, 255, 0.22);
   --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
-  background: #07111f;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(71, 133, 190, 0.18), transparent 34%),
+    radial-gradient(circle at 82% 88%, rgba(30, 104, 75, 0.2), transparent 40%),
+    linear-gradient(145deg, #07111f 0%, #0b1a2d 48%, #10263a 100%);
 }
 
 html[data-theme="dark"] .site-header {

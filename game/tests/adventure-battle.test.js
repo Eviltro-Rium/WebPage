@@ -1359,6 +1359,40 @@ test('Chan passive and refill emit a single player draw when a new attack turn s
   assert.equal(engine.h.player.length, before + draws[0].count);
   assert.ok(draws[0].count >= 1);
 });
+test('adventure challenge refills the player exactly once after the first enemy defeat', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure1v2({
+    player: 'Leon', opponent1: 'CastleWolf', opponent2: 'CastleBear', stage: 1,
+    playerPile: {
+      deck: [number(2), number(3), number(4), number(5), number(6)],
+      hand: [number(1)], discard: [], handLimit: 5
+    }
+  });
+  const before = engine.h.player.length;
+  engine.s.ai.alive = false;
+  engine.s.ai2.alive = true;
+  engine._on1v2OpponentEliminated('ai');
+  assert.equal(engine.s.challengeRefillAvailable, true);
+  engine.fillHands1v2(true);
+  assert.equal(engine.s.challengeRefillUsed, true);
+  assert.ok(engine.h.player.length > before);
+  const after = engine.h.player.length;
+  engine.h.player.pop();
+  engine.fillHands1v2(true);
+  assert.equal(engine.h.player.length, after - 1);
+});
+
+test('adventure ordinary victory keeps the player hand without an automatic refill', () => {
+  const engine = start({
+    deck: [number(4), number(5), number(6)],
+    hand: [number(1)],
+    discard: []
+  });
+  engine.s.ai.alive = false;
+  const result = engine.finishAdventureBattle();
+  assert.equal(result.playerPile.hand.length, 1);
+});
+
 test('castle monster loot uses a d12 rule and enters the transient player hand', () => {
   const engine = start();
   context.FurryGame.CombatRuntime.setRandomSource(() => 0);
@@ -1374,6 +1408,9 @@ test('castle monster loot uses a d12 rule and enters the transient player hand',
     assert.equal(engine.h.player[engine.h.player.length - 1].trophyName, 'FlyTrophy');
     assert.equal(engine.s.trophyDrops.length, 1);
     assert.equal(engine.s.trophyDrops[0], 'FlyTrophy');
+    const dice = engine.events.find(event => event.type === 'diceRoll' && event.purpose === 'trophyDrop');
+    assert.equal(dice && dice.value, 1);
+    assert.equal(dice && dice.outcome, 'success');
     assert.equal(engine._resolveAdventureTrophyDrop('ai'), null);
   } finally {
     context.FurryGame.CombatRuntime.resetRandomSource();

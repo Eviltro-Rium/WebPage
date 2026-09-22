@@ -356,7 +356,13 @@ int D = first_perfect();</code></pre>
         var doc = document.documentElement;
         var loader = document.getElementById("home-loading");
         if (!doc.classList.contains("home-is-booting")) return;
-        if (window.__hillBackgroundActive) return;
+        // Mobile Safari/WebViews can create the WebGL renderer successfully
+        // but never finish a gallery/image callback. Do not leave the whole
+        // page (including the theme switcher) hidden in that case; the CSS
+        // gradient remains as a safe background fallback.
+        if (!window.__hillBackgroundActive) {
+          document.body.classList.add("hill-background-fallback");
+        }
         doc.classList.remove("home-is-booting");
         if (loader) {
           loader.classList.add("is-done");
