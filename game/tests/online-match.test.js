@@ -471,12 +471,12 @@ test('host migration does not report expected data-channel closure as an error',
 test('online transitions apply the guest turn-start status exactly once', () => {
   const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host');
   match.engine.s.ai.hp = 50;
-  match.engine.s.ai.poison = 3;
+  match.engine.s.ai.poison = 2;
   match.dispatch('host', 'selectCard', { index: 0 });
   const outcome = match.dispatch('host', 'doEndTurn');
   assert.equal(outcome.ok, true);
-  // Ryan's turn-start passive heals 1 after poison resolves: 50 - 3 + 1.
-  assert.equal(match.engine.s.ai.hp, 48);
+  // Ryan's turn-start passive heals 1 after poison resolves: 50 - 2 + 1.
+  assert.equal(match.engine.s.ai.hp, 49);
   assert.equal(outcome.state.onlineActor, 'guest');
 });
 

@@ -81,6 +81,7 @@ test('StatusService is the single clamped mutation boundary', () => {
   service.ensure(entity);
   service.add(entity, 'burn', 99);
   service.add(entity, 'guard', 99);
+  service.add(entity, 'poison', 99);
   service.add(entity, 'freeze', 1);
   assert.equal(entity.burn, 5);
   assert.equal(entity.guard, 5);

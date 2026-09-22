@@ -9,7 +9,7 @@
   const definitions = [
     { id: 'burn',        property: 'burn',        label: '灼烧', icon: 'buff_icons/burn.webp',         polarity: 'debuff', stack: true,  max: 5, cleanse: 'decrement', trigger: 'turnEnd' },
     { id: 'bleed',       property: 'bleed',       label: '流血', icon: 'buff_icons/bleed.webp',        polarity: 'debuff', stack: true,  max: 3, cleanse: 'decrement', trigger: 'turnEnd' },
-    { id: 'poison',      property: 'poison',      label: '中毒', icon: 'buff_icons/poison.webp',       polarity: 'debuff', stack: true,  max: 3, cleanse: 'decrement', trigger: 'turnEnd' },
+    { id: 'poison',      property: 'poison',      label: '中毒', icon: 'buff_icons/poison.webp',       polarity: 'debuff', stack: true,  max: 2, cleanse: 'decrement', trigger: 'turnEnd' },
     { id: 'freeze',      property: 'frozen',      label: '冷冻', icon: 'buff_icons/freeze.webp',       polarity: 'debuff', stack: false, max: 1, cleanse: 'reset',     trigger: 'turnEnd' },
     { id: 'blind',       property: 'blind',       label: '致盲', icon: 'buff_icons/blind.webp',        polarity: 'debuff', stack: false, max: 1, cleanse: 'reset',     trigger: 'persistent' },
     { id: 'bomb',        property: 'bomb',        label: '定时炸弹', icon: 'buff_icons/time_bomb.webp', polarity: 'debuff', stack: true, max: 5, cleanse: 'reset', trigger: 'onPlay' },

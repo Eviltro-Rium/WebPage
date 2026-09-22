@@ -229,7 +229,7 @@
         if (typeof mod.attackTransferDebuff === 'function' && mod.attackTransferDebuff(c)) {
           if ((a.burn || 0) > 0) { if (burn) burn(a.burn); else t.burn = Math.min(5, (t.burn || 0) + a.burn); a.burn = 0; }
           if ((a.bleed || 0) > 0) { if (bleed) bleed(a.bleed); else t.bleed = Math.min(3, (t.bleed || 0) + a.bleed); a.bleed = 0; }
-          if ((a.poison || 0) > 0) { if (poison) poison(a.poison); else t.poison = Math.min(3, (t.poison || 0) + a.poison); a.poison = 0; }
+          if ((a.poison || 0) > 0) { if (poison) poison(a.poison); else t.poison = Math.min(2, (t.poison || 0) + a.poison); a.poison = 0; }
           if (a.frozen) { t.frozen = true; a.frozen = false; }
           eng.emit('desc', a.name + '将自身所有debuff转移给' + t.name);
         }

@@ -130,13 +130,26 @@
 
         poison(engine, entity, amount, opts) {
             if (amount <= 0) return;
-            if (service) addStatus(entity, 'poison', amount); else entity.poison = Math.min(3, (entity.poison || 0) + amount);
+            if (service) addStatus(entity, 'poison', amount); else entity.poison = Math.min(2, (entity.poison || 0) + amount);
             if (!opts || opts.silent !== true) {
                 const target = targetKey(engine, entity);
                 engine.emit(eventTypes.BUFF || 'buff', `+${amount}[中毒]`, null, { who: target, target, kind: 'poison', stacks: entity.poison });
             }
         },
 
+        parasite(engine, entity, amount, opts) {
+            if (!entity || amount <= 0) return;
+            const before = entity.parasite || 0;
+            if (service) service.add(entity, 'parasite', amount);
+            else entity.parasite = Math.min(1, before + amount);
+            const added = Math.max(0, (entity.parasite || 0) - before);
+            const target = targetKey(engine, entity);
+            if (added > 0 && (!opts || opts.silent !== true)) {
+                engine.emit(eventTypes.BUFF || 'buff', `+${added}[寄生]`, null, {
+                    who: target, target, kind: 'parasite', stacks: entity.parasite || 0
+                });
+            }
+        },
         clearDebuffs(entity) {
             if (!entity) return;
             if (service) {

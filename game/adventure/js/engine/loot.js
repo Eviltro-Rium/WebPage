@@ -24,11 +24,36 @@
     CastleGargoyle: Object.freeze({ threshold: 4, drops: Object.freeze(['ZeroTrophy']) })
   });
 
-  const SCENE_RULES = Object.freeze({ castle: CASTLE_RULES });
+  // Forest rules mirror docs/adventure_guide/forest.md. Most monsters use a
+  // simple threshold (roll <= threshold), while Deer and Rafflesia have two
+  // distinct successful outcomes, represented by ordered outcomes.
+  const FOREST_RULES = Object.freeze({
+    ForestMonkey: Object.freeze({ threshold: 2, drops: Object.freeze(['LushTrophy']) }),
+    ForestDeer: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 1, drops: Object.freeze(['LushTrophy']) }),
+      Object.freeze({ threshold: 2, drops: Object.freeze(['GuardTrophy']) })
+    ]) }),
+    ForestLeech: Object.freeze({ threshold: 2, drops: Object.freeze(['ParasiteTrophy']) }),
+    ForestCrocodile: Object.freeze({ threshold: 2, drops: Object.freeze(['PiercingTrophy']) }),
+    ForestDendrobatidFrog: Object.freeze({ threshold: 2, drops: Object.freeze(['PoisonTrophy']) }),
+    ForestLadybug: Object.freeze({ threshold: 2, drops: Object.freeze(['LushTrophy']) }),
+    ForestCapybara: Object.freeze({ threshold: 2, drops: Object.freeze(['GuardTrophy']) }),
+    ForestRafflesia: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 1, drops: Object.freeze(['LushTrophy']) }),
+      Object.freeze({ threshold: 2, drops: Object.freeze(['PoisonTrophy']) })
+    ]) }),
+    ForestPiranha: Object.freeze({ threshold: 3, drops: Object.freeze(['PiercingTrophy']) }),
+    ForestPanda: Object.freeze({ threshold: 6, drops: Object.freeze(['LushTrophy']) }),
+    ForestPython: Object.freeze({ threshold: 6, drops: Object.freeze(['PoisonTrophy']) }),
+    ForestDryad: Object.freeze({ threshold: 4, drops: Object.freeze(['ZeroTrophy']) })
+  });
+
+  const SCENE_RULES = Object.freeze({ castle: CASTLE_RULES, forest: FOREST_RULES });
 
   function normalizeScene(scene) {
     const value = String(scene || '').trim().toLowerCase();
     if (value === 'castle' || value === '城堡' || value === 'castle_scene') return 'castle';
+    if (value === 'forest' || value === '森林' || value === 'forest_scene') return 'forest';
     return value;
   }
 
@@ -44,12 +69,15 @@
       return Object.freeze({ scene: sceneKey, monsterName, roll: null, threshold: 0, drops: Object.freeze([]) });
     }
     const roll = rollD12(randomFn);
-    const drops = roll <= rule.threshold ? rule.drops.slice() : [];
+    const outcome = Array.isArray(rule.outcomes)
+      ? rule.outcomes.find(item => roll <= item.threshold)
+      : (roll <= rule.threshold ? rule : null);
+    const drops = outcome ? outcome.drops.slice() : [];
     return Object.freeze({
       scene: sceneKey,
       monsterName,
       roll,
-      threshold: rule.threshold,
+      threshold: outcome ? outcome.threshold : (rule.threshold || (Array.isArray(rule.outcomes) ? Math.max(...rule.outcomes.map(item => item.threshold)) : 0)),
       drops: Object.freeze(drops)
     });
   }

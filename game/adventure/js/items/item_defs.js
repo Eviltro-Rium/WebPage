@@ -155,6 +155,18 @@
   });
 
   R.registerItem({
+    name: 'ParasiteTrophy',
+    displayName: '寄生战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：获得1层寄生，打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/parasite.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyParasite',
+    trophyEffect: 'parasite',
+    beastTradeCost: ['ben', 'cao']
+  });
+  R.registerItem({
     name: 'AttackMod1',
     displayName: '攻击修正Ⅰ',
     kind: 'consumable',

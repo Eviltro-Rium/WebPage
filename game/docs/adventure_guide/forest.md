@@ -40,6 +40,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：防御恢复 +1
 
+### 掉落：投出1-2，获得茂盛战利白卡
+
 ---
 
 ## 丛林鹿（ForestDeer）
@@ -59,6 +61,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：格挡 +1
 
+### 掉落：投出1，获得茂盛战利白卡；投出2获得守护战利白卡
+
 ---
 
 ## 丛林水蛭（ForestLeech）
@@ -77,6 +81,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：进攻伤害 / 吸血 +1
 - **Stage 4**：防御恢复 +1
 
+### 掉落：投出1-2，获得寄生战利白卡
+
 ---
 
 ## 丛林鳄（ForestCrocodile）
@@ -94,6 +100,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 2**：生命上限 +5（25）
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：防御额外施加 1 层【流血】
+
+### 掉落：投出1-2，获得流血战利白卡
 
 ---
 
@@ -115,6 +123,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：防御反击 +1
 
+### 掉落：投出1-2，获得中毒战利白卡
+
 ---
 
 ## 丛林瓢虫（ForestLadybug）
@@ -134,6 +144,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 2**：生命上限 +5（23）
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：格挡 +1
+
+### 掉落：投出1-2，获得茂盛战利白卡
 
 ---
 
@@ -155,6 +167,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：将超过 1🗡️ 的伤害降低为 1🗡️
 
+### 掉落：投出1-2，获得守护战利白卡
+
 ---
 
 ## 大王花（ForestRafflesia）
@@ -171,6 +185,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 2**：生命上限 +5（20）
 - **Stage 3**：全体友方恢复 +1
 - **Stage 4**：防御恢复 +1
+
+### 掉落：投出1，获得茂盛战利白卡；投出2，获得中毒战利白卡。
 
 ---
 
@@ -190,6 +206,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 **Stage 强化**：
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：防御反击 +1
+
+### 掉落：投出1-3，获得流血战利白卡
 
 ---
 
@@ -211,6 +229,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 2**：生命上限 +10（55）
 - **Stage 3**：进攻伤害 +1
 - **Stage 4**：格挡 +1
+
+### 掉落：投出1-6，获得茂盛战利白卡
 
 ---
 
@@ -235,6 +255,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：进攻伤害 +1
 - **Stage 4**：防御反击 +1
 
+### 掉落：投出1-6，获得中毒战利白卡
+
 ---
 
 ## 树精（ForestDryad）· Boss（Stage 2/3/4）
@@ -256,6 +278,10 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 **Stage 强化**：
 - **Stage 3**：进攻伤害 +1
 - **Stage 4**：格挡 +1
+
+### 掉落：投出1-4，获得零技能战利白卡
+
+---
 
 Boss 房从本场景 Boss 池 **等可能** 刷新一只（丛林熊猫 / 蟒蛇 / 树精）。
 树精仅在 **Stage 2/3/4** 出现。

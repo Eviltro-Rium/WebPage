@@ -44,7 +44,7 @@
       if (n <= 0) return;
       const prev = target.poison || 0;
       if (statusRegistry && statusRegistry.add) statusRegistry.add(target, 'poison', n);
-      else target.poison = Math.min(3, prev + n);
+      else target.poison = Math.min(2, prev + n);
       this._log((target === this.s.player ? '玩家' : '敌方') + '中毒+' + n + '（当前' + target.poison + '层）');
       this.emit('buff', '+' + n + '[中毒]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'poison', stacks: target.poison });
     },

@@ -1379,3 +1379,30 @@ test('castle monster loot uses a d12 rule and enters the transient player hand',
     context.FurryGame.CombatRuntime.resetRandomSource();
   }
 });
+test('forest monster loot follows the forest guide, including split outcomes', () => {
+  const loot = context.AdventureLoot;
+  let result = loot.rollMonsterDrop('forest', 'ForestMonkey', () => 0);
+  assert.equal(result.drops[0], 'LushTrophy');
+  result = loot.rollMonsterDrop('森林', 'ForestDeer', () => 0);
+  assert.equal(result.drops[0], 'LushTrophy');
+  result = loot.rollMonsterDrop('forest_scene', 'ForestDeer', () => 1 / 12);
+  assert.equal(result.drops[0], 'GuardTrophy');
+  result = loot.rollMonsterDrop('forest', 'ForestLeech', () => 0);
+  assert.equal(result.drops[0], 'ParasiteTrophy');
+  result = loot.rollMonsterDrop('forest', 'ForestRafflesia', () => 0.99);
+  assert.equal(result.drops.length, 0);
+});
+
+test('parasite trophy is a reusable self-buff card with the registered icon and effect', () => {
+  const def = context.AdventureRegistry.getItem('ParasiteTrophy');
+  assert.equal(def.kind, 'trophyWhite');
+  assert.equal(def.trophyEffect, 'parasite');
+  assert.equal(def.price, 5);
+  assert.ok(def.icon.endsWith('buff_icons/parasite.webp'));
+
+  const engine = start({ hand: [context.AdventureDeck.trophyWhite('ParasiteTrophy')] });
+  engine.later = () => {};
+  engine.useTrophyWhite(engine.h.player[0], engine.s.ai, 'player');
+  assert.equal(engine.s.player.parasite, 1);
+  assert.equal(engine.s.ai.parasite || 0, 0);
+});
