@@ -364,6 +364,47 @@
       this.s.activeCombat = null;
     }
 
+    /**
+     * 回溯沙漏：中止当前战斗并重置本房间遭遇（不清空房间、不发奖励）。
+     * 同步战斗中的玩家状态与牌库，手牌补至上限，下次进入重新抽怪。
+     */
+    rewindCurrentRoomCombat(battleResult) {
+      if (!this.s) return false;
+      if (battleResult) this.applyBattleResult(battleResult);
+      this.s.activeCombat = null;
+      this.s.combat = null;
+      this.s.pendingCombatReward = null;
+      this._wisdomNecklacePending = false;
+      const room = this.currentRoom();
+      if (room) {
+        room.monsterName = null;
+        room.bossName = null;
+        room.cleared = false;
+      }
+      if (this.s.playerPile && typeof this.s.playerPile.drawToLimit === 'function') {
+        const drawn = this.s.playerPile.drawToLimit();
+        if (drawn && drawn.length) {
+          this._log('回溯沙漏：手牌补至' + this.s.playerPile.hand.length + '张（+' + drawn.length + '）');
+        }
+      }
+      if (window.AdventureDeck && window.AdventureDeck.DiscardTop) {
+        this.s.discardTop = new window.AdventureDeck.DiscardTop(null);
+      } else if (this.s.discardTop && typeof this.s.discardTop.clear === 'function') {
+        this.s.discardTop.clear();
+      } else {
+        this.s.discardTop = null;
+      }
+      this.s.discardTopOwner = null;
+      this.s.phase = Phase.MAP;
+      this._log('回溯沙漏：退出当前房间，下次进入重新抽取怪物');
+      this.emit('roomRewind', '回溯沙漏：房间遭遇已重置', {
+        r: this.s.pos && this.s.pos.r,
+        c: this.s.pos && this.s.pos.c,
+        roomType: room && room.type
+      });
+      return true;
+    }
+
     enterCurrent() {
       const room = this.currentRoom();
       if (!room) return;

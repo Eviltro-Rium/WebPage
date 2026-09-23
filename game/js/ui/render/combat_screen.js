@@ -107,7 +107,7 @@
                 ? `${s.onlineOpponentAvatar || ''} ${s.onlineOpponentNickname} · ${opponentCharacter}` : opponentCharacter;
             this._updateAvatar('player', s.player.name);
             this._updateAvatar('ai', s.ai.name);
-            const activeAttacker = s.activeAttacker || (['AI_TURN', 'PLAYER_DEFEND', 'GUARD_CHOICE'].includes(s.phase) ? 'ai' : 'player');
+            const activeAttacker = this._stateAttackerKey ? this._stateAttackerKey(s) : (s.activeAttacker || (['AI_TURN', 'PLAYER_DEFEND', 'GUARD_CHOICE'].includes(s.phase) ? 'ai' : 'player'));
             this._updateAttackerIndicator(activeAttacker);
 
             const skipStateDiffAnimations = !!this._skipStateDiffAnimations;
@@ -173,6 +173,14 @@
             } else if (canShowDecisionDialog && s.pendingDialog === 'trophyDisarm') {
                 const pending = s.pendingTrophyDisarm || {};
                 this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s, pending.targetKey), choice => this._apiAction('chooseTrophyDisarm', choice), '缴械 · 选择要弃掉的手牌');
+            } else if (canShowDecisionDialog && s.pendingDialog === 'trophyPurify') {
+                const pending = s.pendingTrophyPurify || {};
+                const oppKey = pending.targetKey || s.attackTarget || 'ai';
+                const opponent = s[oppKey] && s[oppKey].alive ? s[oppKey] : (s.ai && s.ai.alive ? s.ai : null);
+                this.dialogs.collectPurifyChoices(s.player, Math.max(1, Number(pending.count) || 1), choices => {
+                    if (!choices.length) return this._apiAction('chooseTrophyPurify', { done: true });
+                    return this._apiAction('chooseTrophyPurify', { choices });
+                }, { opponent });
             }
 
             if (s.phase === 'ATTACK_MOD_CHOICE') this._ensureAttackModChoicePrompt(s);

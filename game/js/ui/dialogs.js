@@ -35,7 +35,8 @@ class DialogManager {
             mozeSeven: 'super-purify-choice-dialog',
             guard: 'guard-choice-dialog',
             flyRetry: 'fly-retry-choice-dialog',
-            trophyDisarm: 'opponent-card-choice-dialog'
+            trophyDisarm: 'opponent-card-choice-dialog',
+            trophyPurify: 'purify-choice-dialog'
         }[pendingDialog] || (phase === 'CHAN_FIVE_REORDER' ? 'chan-five-dialog' : null);
         const ids = [
             'purify-choice-dialog', 'super-purify-choice-dialog',

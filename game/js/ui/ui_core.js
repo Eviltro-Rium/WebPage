@@ -47,6 +47,7 @@ const TAG_COLORS = {
     '[茂盛]': '#4ade80',
     '[寄生]': '#c084fc',       // 紫色
     '[暴击]': '#facc15',       // 黄色
+    '[荆棘]': '#facc15',
     '[催眠]': '#f472b6',       // 粉色
     '[沉睡]': '#c084fc',       // 紫色
     '[嗜血]': '#fb7185',       // 红色
@@ -86,7 +87,7 @@ const PHASE_NAMES = {
     PLAYER_DEFEND: '防御阶段', ATTACK_MOD_CHOICE: '攻击修正', CRIT_CHOICE: '暴击选择', PLAYER_FIVE_CHOICE: '选择5效果',
     PLAYER_SEVEN_CHOICE: '处理抽取牌', SAIKI_THREE_CHOICE: '处理抽取牌', OPPONENT_CARD_CHOICE: '选择对手手牌',
     SAIKI_SIX_JUDGE: '判定选择', AI_TURN: 'AI回合', AI2_TURN: 'AI2回合',
-    AI_DEFEND: 'AI防御中', CHAN_FIVE_REORDER: '排列牌库顶', GUARD_CHOICE: '选择守护', TARGET_CHOICE: '选择目标', PURIFY_CRYSTAL_CHOICE: '净化水晶', GAME_OVER: '游戏结束'
+    AI_DEFEND: 'AI防御中', CHAN_FIVE_REORDER: '排列牌库顶', GUARD_CHOICE: '选择守护', TARGET_CHOICE: '选择目标', PURIFY_CRYSTAL_CHOICE: '净化水晶', TROPHY_DISARM_CHOICE: '缴械选择', TROPHY_PURIFY_CHOICE: '净化选择', GAME_OVER: '游戏结束'
 };
 
 const iconCache = {};
@@ -152,20 +153,36 @@ window.descToEmoji = descToEmoji;
 
 function parseSegments(text, defaultColor) {
     text = descToEmoji(text);
-    const segs = []; let sb = '';
-    for (let i = 0; i < text.length; i++) {
+    const segs = [];
+    let i = 0;
+    const HP_LOSS = '#ff4444';
+    const HP_GAIN = '#86efac';
+    while (i < text.length) {
+        // Buff / heal floats: keep the numeric HP delta as a dedicated colored segment.
+        const hp = text.slice(i).match(/^([+-]\d+)❤️/);
+        if (hp) {
+            segs.push({ text: hp[0], color: hp[1][0] === '-' ? HP_LOSS : HP_GAIN });
+            i += hp[0].length;
+            continue;
+        }
         if (text[i] === '[') {
             const end = text.indexOf(']', i);
             if (end >= 0) {
                 const tag = text.substring(i, end + 1);
-                if (sb) { segs.push({ text: sb, color: defaultColor }); sb = ''; }
                 segs.push({ text: tag, color: TAG_COLORS[tag] || defaultColor });
-                i = end; continue;
+                i = end + 1;
+                continue;
             }
         }
-        sb += text[i];
+        let j = i + 1;
+        while (j < text.length) {
+            if (text[j] === '[') break;
+            if ((text[j] === '+' || text[j] === '-') && /^\d+❤️/.test(text.slice(j + 1))) break;
+            j++;
+        }
+        segs.push({ text: text.slice(i, j), color: defaultColor });
+        i = j;
     }
-    if (sb) segs.push({ text: sb, color: defaultColor });
     return segs;
 }
 

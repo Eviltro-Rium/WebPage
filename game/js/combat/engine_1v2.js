@@ -181,7 +181,7 @@
     let i=hand.indexOf(chosen),c=hand.splice(i,1)[0];
     if(c.isBlack)c.chosenColor=this._chooseAIColor1v2(key);
     else if(c.isWhite)c.chosenColor=this.effective(top);
-    this.s.aiHasPlayed=true;this.s.atkCard=cp(c);this.s.atkOwner=key;
+    this.s.aiHasPlayed=true;this.s.atkCard=cp(c);this.s.atkOwner=key;this.s.activeAttacker=key;
     this.setDiscardTop(c,key);this.rememberAttackDebuffs('player');let _buffBefore={bleed:this.s.player.bleed||0,burn:this.s.player.burn||0,poison:this.s.player.poison||0,blind:this.s.player.blind||0,iceSeal:this.s.player.iceSeal||0,frozen:!!this.s.player.frozen};this.applySaikiPassive(ch,this.s.player,c);
     this.emit('aiPlay',ch.name+' 按角色策略出牌',c,{who:key});
     if(c.isBlack||c.isWhite)this.emit('colorChoice',ch.name+'指定'+this.colorName(c.chosenColor),c);
@@ -373,7 +373,7 @@
     
     if(this.s.player.sleep)skip=true;
     let d=this.s.pendingAttack.damage;
-    let target=this._curAI();
+    let target=this._incomingNpcKey();
     let targetChar=this.s[target];
     let triggeredDefense=!skip;
     if(skip){this.s.hasPlayedBlackDefend=false;this.emit('desc',this.s.player.sleep?'你处于[沉睡]，无法打出防御牌':'玩家选择跳过防御，'+d+'点伤害待结算')}
@@ -398,7 +398,7 @@
         this.useTrophyWhite(c,targetChar,'player');
         d=Math.max(0,Number(this.s.pendingAttack&&this.s.pendingAttack.damage)||0);
         if(d&&this.playerNeedsAvoidChoice()){this.askGuard(d,this.s.player.bleed);return this.check()}
-        let curAIKey2=this._curAI();
+        let curAIKey2=this._incomingNpcKey();
         this.s.phase=curAIKey2.toUpperCase()+'_TURN';
         this.deferSettlement('AI_ATTACK',d,0);
         return this.check()
@@ -421,7 +421,7 @@
       if(!judged)this.emit('desc',desc)
     }
     if(d&&this.playerNeedsAvoidChoice()){this.askGuard(d,this.s.player.bleed);return this.check()}
-    let curAIKey=this._curAI();
+    let curAIKey=this._incomingNpcKey();
     this.s.phase=curAIKey.toUpperCase()+'_TURN';
     this.deferSettlement('AI_ATTACK',d,triggeredDefense&&this.s.defCard&&this.s.defCard.isNumberCard&&this.s.defCard.value<=3?this.s.player.bleed:0);
     return this.check()

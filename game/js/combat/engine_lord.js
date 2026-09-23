@@ -82,7 +82,7 @@
       this.dealAttackHit(this.s.player,target,dmg,isDrain);
       this.settleBleed(target,p.bleed);
       this._restoreAttackBuffs();
-      // 冻洋蓝鲸：玩家攻击结算AOE伤害和失温（跳过主目标）
+      // 结算延迟失温 / AOE（跳过主目标）
       const pa1=this.s.pendingAttack||{};
       this.performAttack({type:'aoe',target:targetKey,aoeTargets:pa1.aoeTargets,aoeDamage:pa1.aoeDamage,skipTarget:true,hypothermiaTarget:pa1.hypothermiaTarget,hypothermiaAmount:pa1.hypothermiaAmount});
       this.resolveSerenityHalf();
@@ -99,7 +99,7 @@
     let dmg2=p.damage;if(this.divingBlocksDamage(this.s.player,this.s.atkCard)){this.emit('desc','你有[潜水]，免疫蓝色攻击伤害');dmg2=0;}this.dealAttackHit(this.s[bombOwner]||this.s.ai,this.s.player,dmg2,isDrainAi);
     this.settleBleed(this.s.player,p.bleed);
     this._restoreAttackBuffs();
-    // 冻洋蓝鲸：防御结束后结算AOE伤害和失温（跳过主目标玩家）
+    // 结算延迟失温 / AOE（跳过主目标玩家）
     const pa2=this.s.pendingAttack||{};
     this.performAttack({type:'aoe',target:'player',aoeTargets:pa2.aoeTargets,aoeDamage:pa2.aoeDamage,skipTarget:true,hypothermiaTarget:pa2.hypothermiaTarget,hypothermiaAmount:pa2.hypothermiaAmount});
     this.resolveSerenityHalf();if(typeof this.applyPendingSaikiBleed==='function')this.applyPendingSaikiBleed();

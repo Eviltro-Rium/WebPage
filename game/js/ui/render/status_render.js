@@ -12,11 +12,18 @@
         return runtime ? runtime.schedule(owner, fn, ms, channel) : setTimeout(fn, ms);
     };
     Object.assign(GameUI.prototype, {
+        _stateAttackerKey(s, who) {
+            const state = s || {};
+            if (['player', 'ai', 'ai2'].includes(who)) return who;
+            const defending = ['AI_TURN', 'AI2_TURN', 'PLAYER_DEFEND', 'GUARD_CHOICE'].includes(state.phase);
+            if (defending && ['player', 'ai', 'ai2'].includes(state.atkOwner)) return state.atkOwner;
+            if (['player', 'ai', 'ai2'].includes(state.activeAttacker)) return state.activeAttacker;
+            return defending ? 'ai' : 'player';
+        },
         _updateAttackerIndicator(who) {
             const s = this.state || {};
             const is1v2 = !!s.is1v2;
-            const fallback = s.activeAttacker || (['AI_TURN', 'PLAYER_DEFEND', 'GUARD_CHOICE'].includes(s.phase) ? 'ai' : 'player');
-            const attacker = ['player', 'ai', 'ai2'].includes(who) ? who : fallback;
+            const attacker = this._stateAttackerKey(s, who);
             const defender = attacker === 'player'
                 ? (is1v2 ? (s.attackTarget || (s.ai && s.ai.alive ? 'ai' : 'ai2')) : 'ai')
                 : 'player';

@@ -37,7 +37,7 @@
             if (isBleed || isPoison || isDrain || isThorns) {
                 const damageKind = isDrain ? kinds.DRAIN : isBleed ? kinds.BLEED : isPoison ? kinds.POISON : (kinds.THORNS || 'thorns');
                 const text = isDrain ? '吸血' : isBleed ? '流血' : isPoison ? '中毒' : '荆棘';
-                engine.emit(eventTypes.HURT || 'hurt', `-${damage}[${text}]`, null, {
+                engine.emit(eventTypes.HURT || 'hurt', `-${damage}❤️[${text}]`, null, {
                     who: target, target, amount: damage, kind: damageKind,
                     bleed: isBleed, drain: isDrain, poison: isPoison, thorns: isThorns,
                     // Special attacks may keep their own consolidated feedback
@@ -57,7 +57,7 @@
             this.hurt(engine, entity, count, true, { silent: true });
             if (service) removeStatus(entity, 'bleed', 1); else entity.bleed--;
             const target = targetKey(engine, entity);
-            engine.emit(eventTypes.BLEED_SETTLE || 'bleedSettle', `-${count}[流血]，-1[流血层数]`, null, {
+            engine.emit(eventTypes.BLEED_SETTLE || 'bleedSettle', `-${count}❤️[流血]，-1[流血层数]`, null, {
                 who: target, target, amount: count, kind: kinds.BLEED
             });
         },

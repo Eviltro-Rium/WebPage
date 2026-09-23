@@ -114,7 +114,7 @@
         else target.burn--;
         target.hp = Math.max(0, target.hp - dmg);
         this._log(who + '灼烧结算：-' + dmg + '生命，灼烧层数-1');
-        this.emit('buffSettle', '-' + dmg + '[灼烧]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
+        this.emit('buffSettle', '-' + dmg + '❤️[灼烧]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
       }
       if (target.bleed > 0) {
         const dmg = target.bleed;
@@ -122,7 +122,7 @@
         else target.bleed--;
         target.hp = Math.max(0, target.hp - dmg);
         this._log(who + '流血结算：-' + dmg + '生命，流血层数-1');
-        this.emit('bleedSettle', '-' + dmg + '[流血]，-1[流血层数]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
+        this.emit('bleedSettle', '-' + dmg + '❤️[流血]，-1[流血层数]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
       }
       if (target.frozen) {
         if (statusRegistry && statusRegistry.clear) statusRegistry.clear(target, 'freeze', 'all');

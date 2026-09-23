@@ -54,7 +54,7 @@
   const origChooseGuardShared=Engine.prototype.chooseGuard;
   Engine.prototype.chooseGuard=function(stacks){
     let result=origChooseGuardShared.call(this,stacks);
-    if(this.s&&this.s.is1v2){let key=this._curAI();this.s.phase=key==='ai2'?'AI2_TURN':'AI_TURN';return this.check()}
+    if(this.s&&this.s.is1v2){let key=this._incomingNpcKey();this.s.phase=key==='ai2'?'AI2_TURN':'AI_TURN';return this.check()}
     return result
   };
 
@@ -115,7 +115,7 @@
       this.dealAttackHit(this.s.player,targetChar,dmg,isDrain);
       this.settleBleed(targetChar,p.bleed);
       this._restoreAttackBuffs();
-      // 冻洋蓝鲸：玩家攻击结算AOE伤害和失温（跳过主目标）
+      // 结算延迟失温 / AOE（跳过主目标）
       const pa1=this.s.pendingAttack||{};
       this.performAttack({type:'aoe',target,aoeTargets:pa1.aoeTargets,aoeDamage:pa1.aoeDamage,skipTarget:true,hypothermiaTarget:pa1.hypothermiaTarget,hypothermiaAmount:pa1.hypothermiaAmount});
       this.resolveSerenityHalf();
@@ -132,7 +132,7 @@
     this.settleBleed(this.s.player,p.bleed);
     this._tickBomb(bombOwner);
     this._restoreAttackBuffs();
-    // 冻洋蓝鲸：防御结束后结算AOE伤害和失温（跳过主目标玩家）
+    // 结算延迟失温 / AOE（跳过主目标玩家）
     const pa2=this.s.pendingAttack||{};
     this.performAttack({type:'aoe',target:'player',aoeTargets:pa2.aoeTargets,aoeDamage:pa2.aoeDamage,skipTarget:true,hypothermiaTarget:pa2.hypothermiaTarget,hypothermiaAmount:pa2.hypothermiaAmount});
     this.resolveSerenityHalf();

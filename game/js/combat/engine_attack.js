@@ -13,12 +13,13 @@
     },
 
     resolveDefense(defender, amount, options) {
-      const opts = options || {};
-      if (opts.skip || opts.unblock) return Math.max(0, Number(amount) || 0);
+      const remaining = Math.max(0, Number(amount) || 0);
+      if (remaining <= 0) return 0;
+      // skip/unblock only skip playing a defend card; fly and guard still apply.
       if (typeof this.applyDefenderAvoidance === 'function') {
-        return this.applyDefenderAvoidance(defender, Math.max(0, Number(amount) || 0));
+        return this.applyDefenderAvoidance(defender, remaining, { forceSpend: true });
       }
-      return Math.max(0, Number(amount) || 0);
+      return remaining;
     },
 
     resolveAttackAndDefense(attacker, defender, amount, options) {

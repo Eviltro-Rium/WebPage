@@ -388,6 +388,17 @@
   });
 
   R.registerItem({
+    name: 'RewindHourglass',
+    displayName: '回溯沙漏',
+    kind: 'consumable',
+    description: '战斗中使用：立即退出当前房间，手牌补至5张；该房间遭遇重置，下次进入重新抽取怪物',
+    icon: ICON + 'hourglass.webp',
+    useScene: 'combat',
+    price: 8,
+    combatUse: 'rewindHourglass'
+  });
+
+  R.registerItem({
     name: 'NaturalShield',
     displayName: '自然之盾',
     kind: 'consumable',
@@ -424,6 +435,20 @@
     combatUse: 'trophyDisarm',
     trophyEffect: 'disarm',
     beastTradeCost: ['shui', 'ben']
+  });
+
+  R.registerItem({
+    name: 'PurifyWaterTrophy',
+    displayName: '净化之水战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：清除自身至多1个负面状态，或清除对手1个buff（含正面）；打出后抽1张牌，可搭桥',
+    icon: ICON + 'purify_water.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyPurify',
+    trophyEffect: 'purify',
+    purifyCount: 1,
+    beastTradeCost: ['shui', 'shui']
   });
 
   R.registerItem({

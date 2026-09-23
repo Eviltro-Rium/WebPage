@@ -97,3 +97,66 @@ test('super purify clears purgeable statuses but preserves marks', () => {
   assert.equal(entity.bloodthirst, true, 'bloodthirst mark should be preserved');
   assert.equal(entity.bindMark, true, 'bind mark should be preserved');
 });
+
+test('applyDefenderFly does not roll D12 when fly stacks are 0', () => {
+  const engine = new Engine();
+  engine.s = { player: { name: 'P', fly: 0 }, ai: { name: 'A', fly: 0 } };
+  let rolled = 0;
+  engine.rollD12 = () => { rolled += 1; return 3; };
+  engine.emit = () => {};
+  const remaining = engine.applyDefenderFly(engine.s.ai, 4);
+  assert.equal(remaining, 4);
+  assert.equal(rolled, 0);
+});
+
+function combatHarness() {
+  const engine = new Engine();
+  engine.s = {
+    isAdventure: true,
+    player: { name: 'P', hp: 40, maxHp: 40, alive: true, fly: 0, guard: 0 },
+    ai: { name: 'A', hp: 20, maxHp: 20, alive: true, fly: 0, guard: 0 }
+  };
+  engine.emit = () => {};
+  engine.divingBlocksDamage = () => false;
+  engine.rollD12 = () => 12;
+  return engine;
+}
+
+test('unblockable hits still spend NPC guard', () => {
+  const engine = combatHarness();
+  engine.s.ai.guard = 3;
+  engine.performAttack({ type: 'unblockable', attacker: 'player', target: 'ai', damage: 5, direct: true });
+  assert.equal(engine.s.ai.guard, 0);
+  assert.equal(engine.s.ai.hp, 18);
+});
+
+test('counters spend player and NPC guard', () => {
+  const engine = combatHarness();
+  engine.s.player.guard = 2;
+  engine.counterAttack('ai', 'player', 5);
+  assert.equal(engine.s.player.guard, 0);
+  assert.equal(engine.s.player.hp, 37);
+
+  engine.s.ai.guard = 3;
+  engine.s.ai.hp = 20;
+  engine.counterAttack('player', 'ai', 4);
+  assert.equal(engine.s.ai.guard, 0);
+  assert.equal(engine.s.ai.hp, 19);
+});
+
+test('counters let NPC fly dodge', () => {
+  const engine = combatHarness();
+  engine.s.ai.fly = 1;
+  engine.rollD12 = () => 3;
+  engine.counterAttack('player', 'ai', 4);
+  assert.equal(engine.s.ai.fly, 0);
+  assert.equal(engine.s.ai.hp, 20);
+});
+
+test('skip-defense incoming damage still spends NPC fly and guard', () => {
+  const engine = combatHarness();
+  engine.s.ai.guard = 2;
+  engine.applyIncomingDamage(engine.s.player, engine.s.ai, 5);
+  assert.equal(engine.s.ai.guard, 0);
+  assert.equal(engine.s.ai.hp, 17);
+});

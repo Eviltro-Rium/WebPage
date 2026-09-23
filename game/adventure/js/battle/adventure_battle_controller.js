@@ -134,6 +134,61 @@
     if (callback) callback('win', finalState, persistentState, { settled: true });
   }
 
+  function leaveBattleRewind(finalState, persistentState, leaveOptions) {
+    if (gameUI) {
+      if (typeof gameUI._hideTooltip === 'function') gameUI._hideTooltip();
+      if (gameUI.gameScreen) gameUI.gameScreen.classList.remove('active');
+      gameUI._is1v2 = false;
+      if (gameUI._pollInterval) {
+        clearInterval(gameUI._pollInterval);
+        gameUI._pollInterval = null;
+      }
+    } else {
+      const tip = document.getElementById('card-tooltip');
+      if (tip) tip.remove();
+    }
+    document.querySelectorAll('.dialog-overlay').forEach(node => node.remove());
+    const gc = document.getElementById('game-container');
+    if (gc) gc.style.display = 'none';
+    const menuBtn = document.getElementById('menu-btn');
+    if (menuBtn) menuBtn.style.display = '';
+    restoreNormalBattleApi();
+
+    const adventureContainer = document.getElementById('adventure-container');
+    if (adventureContainer && prevDisplay !== null) adventureContainer.style.display = prevDisplay;
+
+    const callback = onComplete;
+    onComplete = null;
+    clearCombatSession();
+    battleEngine = null;
+    completing = false;
+    if (callback) {
+      callback('rewind', finalState, persistentState, Object.assign(
+        { settled: true, rewind: true },
+        leaveOptions && leaveOptions.test ? { test: true } : {}
+      ));
+    }
+  }
+
+  function abortCombatRewind() {
+    if (!battleEngine || completing) return false;
+    completing = true;
+    const finalState = typeof battleEngine.state === 'function' ? battleEngine.state() : null;
+    const persistentState = battleEngine.finishAdventureBattle();
+    const advEng = battleEngine._adventureEngine;
+    if (battleEngine.testMode) {
+      // 测试模式：直接结束测试并回到结果页，不走房间回溯。
+      leaveBattleRewind(finalState, persistentState, { test: true });
+      return true;
+    }
+    if (advEng && typeof advEng.rewindCurrentRoomCombat === 'function') {
+      advEng.rewindCurrentRoomCombat(persistentState);
+      saveAdventureProgress(advEng);
+    }
+    leaveBattleRewind(finalState, persistentState);
+    return true;
+  }
+
   function leaveTestBattle(finalState, persistentState, playerWon) {
     if (gameUI) {
       if (typeof gameUI._hideTooltip === 'function') gameUI._hideTooltip();
@@ -751,6 +806,7 @@
     loadCombatSession,
     clearCombatSession,
     abandonAdventure,
+    abortCombatRewind,
     resumeSettlement
   };
 })();

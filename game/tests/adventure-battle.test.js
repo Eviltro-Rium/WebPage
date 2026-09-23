@@ -1899,6 +1899,28 @@ test('diving trophy grants diving to the player and forges for two water tokens'
   assert.equal(engine.s.ai.diving || false, false);
 });
 
+test('Vixraps heals from lush at attack start in adventure 1v2', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({
+    player: 'Vixraps',
+    opponent1: 'CastleWolf',
+    opponent2: 'CastleBear',
+    stage: 1,
+    playerState: { hp: 70, maxHp: 85 },
+    playerPile: { deck: [], hand: [number(3, 'RED')], discard: [], handLimit: 5 }
+  });
+  engine.s.player.hp = 70;
+  engine.s.player.lush = 2;
+  engine.turnStart('player');
+  assert.equal(engine.s.player.hp, 72);
+
+  engine.s.ai.hp = 15;
+  engine.s.ai.lush = 1;
+  engine.turnStart('ai');
+  assert.equal(engine.s.ai.hp, 16);
+});
+
 test('ice seal and hypothermia trophies apply to the opponent', () => {
   const ice = context.AdventureRegistry.getItem('IceSealTrophy');
   assert.equal(ice.trophyEffect, 'iceSeal');
@@ -1917,6 +1939,50 @@ test('ice seal and hypothermia trophies apply to the opponent', () => {
   assert.equal(engine.s.player.iceSeal || 0, 0);
   engine.useTrophyWhite(engine.h.player[1], engine.s.ai, 'player');
   assert.equal(engine.s.ai.hypothermia, 1);
+});
+
+test('PurifyWaterTrophy clears one chosen buff like PurifyWater1', () => {
+  const def = context.AdventureRegistry.getItem('PurifyWaterTrophy');
+  assert.equal(def.kind, 'trophyWhite');
+  assert.equal(def.trophyEffect, 'purify');
+  assert.equal(def.purifyCount, 1);
+  assert.equal(JSON.stringify(def.beastTradeCost), JSON.stringify(['shui', 'shui']));
+  assert.ok(def.icon.endsWith('purify_water.webp'));
+
+  const card = context.AdventureDeck.trophyWhite('PurifyWaterTrophy');
+  assert.equal(card.trophyEffect, 'purify');
+
+  const engine = start({ hand: [card] }, number(1, 'RED'));
+  engine.later = () => {};
+  engine.s.player.burn = 2;
+  engine.s.ai.guard = 1;
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.busy = false;
+  engine.select(0);
+  engine.play();
+  assert.equal(engine.s.pendingDialog, 'trophyPurify');
+  assert.equal(engine.s.phase, 'TROPHY_PURIFY_CHOICE');
+
+  engine.dispatch('chooseTrophyPurify', { choices: [{ who: 'self', kind: 'burn' }] });
+  assert.equal(engine.s.player.burn, 1);
+  assert.equal(engine.s.ai.guard, 1);
+  assert.equal(engine.s.pendingDialog, null);
+  assert.equal(engine.s.phase, 'PLAYER_PLAY');
+
+  const engine2 = start({
+    hand: [context.AdventureDeck.trophyWhite('PurifyWaterTrophy')]
+  }, number(1, 'RED'));
+  engine2.later = () => {};
+  engine2.s.player.burn = 0;
+  engine2.s.ai.fly = 2;
+  engine2.s.phase = 'PLAYER_PLAY';
+  engine2.s.busy = false;
+  engine2.select(0);
+  engine2.play();
+  assert.equal(engine2.s.pendingDialog, 'trophyPurify');
+  engine2.dispatch('chooseTrophyPurify', { choices: [{ who: 'opp', kind: 'fly' }] });
+  assert.equal(engine2.s.ai.fly, 1);
+  assert.equal(engine2.s.pendingDialog, null);
 });
 
 test('restoreSession writes spent combat items back onto the adventure engine', () => {
@@ -1967,6 +2033,106 @@ test('restoreSession re-aliases NPC hand so draw still fills h.ai', () => {
   assert.equal(restored.h.ai.length, restored.piles.ai.handLimit);
 });
 
+test('RewindHourglass resets room encounter and refills hand to five', () => {
+  const def = context.AdventureRegistry.getItem('RewindHourglass');
+  assert.equal(def.kind, 'consumable');
+  assert.equal(def.price, 8);
+  assert.equal(def.useScene, 'combat');
+  assert.equal(def.combatUse, 'rewindHourglass');
+  assert.ok(def.icon.endsWith('hourglass.webp'));
+
+  const map = context.AdventureMap.fromGrid([[0, 1]]);
+  const adv = new AdventureEngine();
+  adv.start(map, 'Ryan', {
+    gold: 20,
+    stage: 1,
+    scene: 'castle',
+    consumables: ['RewindHourglass']
+  });
+  assert.equal(adv.move(0, 1), true);
+  const room = adv.currentRoom();
+  room.monsterName = 'CastleWolf';
+  adv.markActiveCombat({ enemy: 'CastleWolf', kind: 'monster' });
+  assert.ok(adv.s.activeCombat);
+  assert.equal(room.monsterName, 'CastleWolf');
+
+  adv.s.playerPile.hand = [number(1, 'RED'), number(2, 'BLUE')];
+  adv.s.playerPile.deck = [number(3, 'YELLOW'), number(4, 'GREEN'), number(5, 'RED'), number(6, 'BLUE')];
+  adv.s.playerPile.discard = [];
+  const battleResult = {
+    playerState: Object.assign({}, adv.s.player, { hp: 55 }),
+    playerPile: {
+      deck: adv.s.playerPile.deck.slice(),
+      hand: adv.s.playerPile.hand.slice(),
+      discard: [],
+      handLimit: 5
+    },
+    discardTop: null,
+    discardTopOwner: null
+  };
+  assert.equal(adv.rewindCurrentRoomCombat(battleResult), true);
+  assert.equal(adv.s.activeCombat, null);
+  assert.equal(adv.s.combat, null);
+  assert.equal(room.monsterName, null);
+  assert.equal(room.cleared, false);
+  assert.equal(adv.s.phase, context.AdventurePhase.MAP);
+  assert.equal(adv.s.player.hp, 55);
+  assert.equal(adv.s.playerPile.hand.length, 5);
+
+  let aborted = false;
+  const prev = context.AdventureBattleController.abortCombatRewind;
+  context.AdventureBattleController.abortCombatRewind = () => { aborted = true; return true; };
+  try {
+    const engine = start({ hand: [number(3, 'RED')] }, number(2, 'RED'));
+    engine._adventureEngine = adv;
+    adv.s.consumables = ['RewindHourglass'];
+    adv.snapshot = () => ({
+      consumables: [{ name: 'RewindHourglass', displayName: '回溯沙漏' }]
+    });
+    engine.s.phase = 'PLAYER_PLAY';
+    engine.s.busy = false;
+    engine.useAdventureCombatItem(0);
+    assert.equal(aborted, true);
+    assert.equal(adv.s.consumables.length, 0);
+  } finally {
+    context.AdventureBattleController.abortCombatRewind = prev;
+  }
+
+  adv.enterCurrent();
+  assert.ok(adv.s.combat, 're-enter should start a fresh encounter');
+  assert.ok(room.monsterName, 're-enter should roll a new monster');
+});
+
+test('RewindHourglass in testMode exits test without room rewind', () => {
+  const engine = start({ hand: [number(3, 'RED')] }, number(2, 'RED'));
+  engine.testMode = true;
+  const result = context.AdventureCombatEffects.apply(
+    engine,
+    context.AdventureRegistry.getItem('RewindHourglass'),
+    {}
+  );
+  assert.equal(result.ok, true);
+  assert.equal(result.rewindRoom, true);
+  assert.ok(/测试/.test(result.message));
+
+  let aborted = false;
+  const prev = context.AdventureBattleController.abortCombatRewind;
+  context.AdventureBattleController.abortCombatRewind = () => { aborted = true; return true; };
+  try {
+    engine._adventureEngine = {
+      s: { consumables: ['RewindHourglass'] },
+      snapshot: () => ({ consumables: [{ name: 'RewindHourglass', displayName: '回溯沙漏' }] })
+    };
+    engine.s.phase = 'PLAYER_PLAY';
+    engine.s.busy = false;
+    engine.useAdventureCombatItem(0);
+    assert.equal(aborted, true);
+    assert.equal(engine._adventureEngine.s.consumables.length, 0);
+  } finally {
+    context.AdventureBattleController.abortCombatRewind = prev;
+  }
+});
+
 test('thorns trophy applies one thorns stack to the opponent', () => {
   const def = context.AdventureRegistry.getItem('ThornsTrophy');
   assert.equal(def.kind, 'trophyWhite');
@@ -1978,4 +2144,70 @@ test('thorns trophy applies one thorns stack to the opponent', () => {
   engine.useTrophyWhite(engine.h.player[0], engine.s.ai, 'player');
   assert.equal(engine.s.ai.thorns, 1);
   assert.equal(engine.s.player.thorns || 0, 0);
+});
+
+test('Vixraps defend 3 does not roll D12 when the attacking NPC has no fly', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({
+    player: 'Vixraps',
+    opponent1: 'CastleWolf',
+    opponent2: 'CastleFirefly',
+    stage: 1,
+    playerPile: { deck: [], hand: [number(3, 'RED')], discard: [], handLimit: 5 },
+    discardTop: number(3, 'RED'),
+    discardTopOwner: 'ai2'
+  });
+  engine.s.phase = 'PLAYER_DEFEND';
+  engine.s.pendingAttack = { damage: 4, unblock: false };
+  engine.s.atkOwner = 'ai2';
+  engine.s.activeAttacker = 'ai2';
+  engine.s.currentAITarget = 0;
+  engine.s.selectedCard = 0;
+  engine.s.player.fly = 0;
+  engine.s.player.guard = 0;
+  engine.s.ai.fly = 1;
+  engine.s.ai2.fly = 0;
+  engine.events = [];
+  engine.ver = 0;
+  engine.defend1v2();
+  assert.equal(engine.events.some(event => event.type === 'diceRoll'), false);
+  assert.equal(engine.s.ai.fly, 1, 'non-attacker NPC fly must stay unused');
+  assert.equal(engine.s.ai2.hp < engine.s.ai2.maxHp, true, 'counter should hit the attacking NPC');
+});
+
+test('CastleFirefly attack fly emits a single floating buff', () => {
+  const engine = startVs('CastleFirefly');
+  engine.s.ai.fly = 0;
+  engine.events = [];
+  engine.ver = 0;
+  engine.effect('CastleFirefly', 1, number(1, 'RED'), engine.s.ai, engine.s.player);
+  const flyBuffs = engine.events.filter(event => event.type === 'buff' && /飞翔/.test(event.desc || ''));
+  assert.equal(flyBuffs.length, 1);
+  assert.equal(engine.s.ai.fly, 1);
+});
+
+test('unblockable skip-defense still lets the NPC spend guard', () => {
+  const engine = startVs('CastleWolf');
+  engine.s.ai.guard = 3;
+  engine.s.ai.fly = 0;
+  engine.s.ai.hp = 25;
+  engine.s.atkCard = number(1, 'RED');
+  engine.s.atkOwner = 'player';
+  engine.s.pendingAttack = { damage: 5, unblock: true };
+  engine.s.phase = 'AI_DEFEND';
+  engine._proceedToDefend(5, false, true, engine.s.atkCard, 0);
+  assert.equal(engine.s.ai.guard, 0);
+  assert.equal(engine.s.ai.hp, 23);
+});
+
+test('player unblockable attack still opens fly/guard choice', () => {
+  const engine = startVs('CastleWolf');
+  engine.s.player.guard = 2;
+  engine.s.player.fly = 1;
+  engine.s.pendingAttack = { damage: 3, unblock: true };
+  const handled = engine._enterPlayerDefend(3, { unblock: true });
+  assert.equal(handled, true);
+  assert.equal(engine.s.pendingDialog, 'guard');
+  assert.equal(engine.s.phase, 'GUARD_CHOICE');
 });

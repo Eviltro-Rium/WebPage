@@ -361,25 +361,41 @@ async _playEvents(events, fast = false) {
             await wait(400);
         } else if (evt.type === 'burnSettle') {
             const side = this._eventTarget(evt);
-            this.playFloatingText(evt.desc || '', '#ff8800', side);
+            const amt = Math.max(0, Number(evt.amount) || 0);
+            const text = amt > 0
+                ? `-${amt}❤️[灼烧]，-1[灼烧层数]`
+                : (evt.desc || '');
+            this.playFloatingText(text, '#ff8800', side);
             if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
-            if (evt.amount > 0) { this.shakeScreen(Math.min(evt.amount * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,136,0,0.8)', Math.min(evt.amount * 3, 20)); } }
+            if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,136,0,0.8)', Math.min(amt * 3, 20)); } }
             await wait(500);
         } else if (evt.type === 'bleedSettle') {
             const side = this._eventTarget(evt);
-            this.playFloatingText(evt.desc || '', '#cc2222', side);
+            const amt = Math.max(0, Number(evt.amount) || 0);
+            const text = amt > 0
+                ? `-${amt}❤️[流血]，-1[流血层数]`
+                : (evt.desc || '');
+            this.playFloatingText(text, '#cc2222', side);
             if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
-            if (evt.amount > 0) { this.shakeScreen(Math.min(evt.amount * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(204,34,34,0.8)', Math.min(evt.amount * 3, 20)); } }
+            if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(204,34,34,0.8)', Math.min(amt * 3, 20)); } }
             await wait(500);
         } else if (evt.type === 'poisonSettle') {
             const side = this._eventTarget(evt);
-            this.playFloatingText(evt.desc || '', '#84cc16', side);
+            const amt = Math.max(0, Number(evt.amount) || 0);
+            const text = amt > 0
+                ? `-${amt}❤️[中毒]`
+                : (evt.desc || '');
+            this.playFloatingText(text, '#84cc16', side);
             if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
-            if (evt.amount > 0) { this.shakeScreen(Math.min(evt.amount * 2, 10), 300); }
+            if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); }
             await wait(500);
         } else if (evt.type === 'bombExplode') {
             const side = this._eventTarget(evt);
-            this.playFloatingText(evt.desc || '炸弹爆炸！', '#ff4444', side);
+            const amt = Math.max(0, Number(evt.amount) || 0);
+            const text = amt > 0
+                ? `-${amt}❤️[定时炸弹]`
+                : (evt.desc || '炸弹爆炸！');
+            this.playFloatingText(text, '#ff4444', side);
             if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
             this.shakeScreen(10, 400);
             const hpEl = document.getElementById(side + '-hp-section');
@@ -390,13 +406,27 @@ async _playEvents(events, fast = false) {
             // 普通伤害由 kind=normal 表示；旧事件没有 kind 时按普通伤害兼容。
             // 规则字段决定表现，不再解析 desc 文本。
             const kind = evt.kind || (evt.poison ? DAMAGE_KINDS.POISON : evt.bleed ? DAMAGE_KINDS.BLEED : evt.drain ? DAMAGE_KINDS.DRAIN : evt.thorns ? (DAMAGE_KINDS.THORNS || 'thorns') : DAMAGE_KINDS.NORMAL);
+            const amt = Math.max(0, Number(evt.amount) || 0);
             if (kind === DAMAGE_KINDS.NORMAL) {
-                if (!evt.suppressFloat && Number(evt.amount) > 0) {
-                    this.playFloatingText(evt.floatText || `-${evt.amount}`, '#ff4444', side);
+                if (!evt.suppressFloat && amt > 0) {
+                    this.playFloatingText(evt.floatText || `-${amt}`, '#ff4444', side);
                 }
             } else {
-                const color = kind === DAMAGE_KINDS.POISON ? '#84cc16' : kind === DAMAGE_KINDS.BLEED ? '#cc2222' : kind === (DAMAGE_KINDS.THORNS || 'thorns') ? '#facc15' : '#ff4444';
-                if (!evt.suppressFloat) this.playFloatingText(evt.desc || '', color, side);
+                const tag = kind === DAMAGE_KINDS.POISON ? '中毒'
+                    : kind === DAMAGE_KINDS.BLEED ? '流血'
+                    : kind === (DAMAGE_KINDS.THORNS || 'thorns') ? '荆棘'
+                    : kind === DAMAGE_KINDS.DRAIN ? '吸血'
+                    : null;
+                const color = kind === DAMAGE_KINDS.POISON ? '#84cc16'
+                    : kind === DAMAGE_KINDS.BLEED ? '#cc2222'
+                    : kind === (DAMAGE_KINDS.THORNS || 'thorns') ? '#facc15'
+                    : '#ff4444';
+                if (!evt.suppressFloat) {
+                    const text = (amt > 0 && tag)
+                        ? `-${amt}❤️[${tag}]`
+                        : (evt.desc || '');
+                    this.playFloatingText(text, color, side);
+                }
             }
             if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
             this._playHitFeedback(side, evt.amount);
@@ -405,9 +435,14 @@ async _playEvents(events, fast = false) {
             const kind = evt.kind || 'burn';
             const color = kind === DAMAGE_KINDS.BLEED ? '#cc2222' : kind === DAMAGE_KINDS.POISON ? '#84cc16' : '#ff8800';
             const side = this._eventTarget(evt);
-            this.playFloatingText(evt.desc || '', color, side);
+            const amt = Math.max(0, Number(evt.amount) || 0);
+            const tag = kind === DAMAGE_KINDS.BLEED || kind === 'bleed' ? '流血'
+                : kind === DAMAGE_KINDS.POISON || kind === 'poison' ? '中毒'
+                : '灼烧';
+            const text = amt > 0 ? `-${amt}❤️[${tag}]` : (evt.desc || '');
+            this.playFloatingText(text, color, side);
             if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
-            if (evt.amount > 0) { this.shakeScreen(Math.min(evt.amount * 2, 10), 300); }
+            if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); }
             await wait(500);
         } else if (evt.type === 'buff') {
             const side = this._eventTarget(evt);

@@ -790,6 +790,20 @@
       if (gc) gc.style.display = 'none';
       const gs = document.getElementById('game-screen');
       if (gs) gs.classList.remove('active');
+      if (meta && meta.test) {
+        if (this._test) {
+          this._test.running = false;
+          this._test.result = result === 'rewind' ? 'rewind' : (result === 'win' ? 'win' : 'lose');
+          this._renderTestResult();
+        }
+        return;
+      }
+      if (result === 'rewind' || (meta && meta.rewind)) {
+        // rewindCurrentRoomCombat already applied battle result + room reset.
+        this._forcePersistAdventure();
+        this.render();
+        return;
+      }
       if (result === 'lose' || this.eng.s.phase === window.AdventurePhase.GAME_OVER) {
         window.location.href = '../index.html';
         return;
@@ -973,8 +987,12 @@
     _renderTestResult() {
       if (!this._test) return;
       const won = this._test.result === 'win';
+      const rewind = this._test.result === 'rewind';
       const label = this._test.mode === 'boss' ? 'Boss 测试' : (this._test.mode === '1v2' ? '1v2 挑战测试' : '1v1 普通测试');
-      this.container.innerHTML = '<div class="adv-test-shell adv-test-result"><div class="adv-test-kicker">TEST COMPLETE</div><div class="adv-test-result-mark ' + (won ? 'win' : 'lose') + '">' + (won ? '✓' : '×') + '</div><h2>' + (won ? '测试完成' : '测试结束') + '</h2><p>' + label + (won ? '：已击败所有对手。' : '：本次未能击败对手。') + '</p><p class="adv-test-muted">测试不会发放奖励，也不会改变正式冒险进度。</p><div class="adv-test-actions"><button type="button" class="adv-btn adv-btn-primary" id="adv-test-again">再次测试</button><button type="button" class="adv-btn" id="adv-test-home">返回主页</button></div></div>';
+      const mark = won ? '✓' : (rewind ? '↺' : '×');
+      const title = won ? '测试完成' : (rewind ? '已回溯退出' : '测试结束');
+      const detail = won ? '：已击败所有对手。' : (rewind ? '：使用回溯沙漏退出了战斗。' : '：本次未能击败对手。');
+      this.container.innerHTML = '<div class="adv-test-shell adv-test-result"><div class="adv-test-kicker">TEST COMPLETE</div><div class="adv-test-result-mark ' + (won ? 'win' : 'lose') + '">' + mark + '</div><h2>' + title + '</h2><p>' + label + detail + '</p><p class="adv-test-muted">测试不会发放奖励，也不会改变正式冒险进度。</p><div class="adv-test-actions"><button type="button" class="adv-btn adv-btn-primary" id="adv-test-again">再次测试</button><button type="button" class="adv-btn" id="adv-test-home">返回主页</button></div></div>';
     }
 
     _getDialogs() {

@@ -106,7 +106,7 @@
     this._updateAvatar('player',s.player.name);
     this._updateAvatar('ai',s.ai.name);
     if(s.ai2)this._updateAvatar('ai2',s.ai2.name);
-    let activeAttacker=s.activeAttacker||((s.phase==='AI_TURN'||s.phase==='PLAYER_DEFEND'||s.phase==='GUARD_CHOICE')?'ai':'player');
+    let activeAttacker=this._stateAttackerKey?this._stateAttackerKey(s): (s.activeAttacker||((s.phase==='AI_TURN'||s.phase==='PLAYER_DEFEND'||s.phase==='GUARD_CHOICE')?'ai':'player'));
     this._updateAttackerIndicator(activeAttacker);
     if(s.isLord){
       let hint=document.getElementById('lord-turn-hint');
@@ -178,6 +178,7 @@
       return this._apiAction('chooseFlyContinue',{again:true});
     });
     else if(canShowDecisionDialog&&s.pendingDialog==='trophyDisarm'){const pending=s.pendingTrophyDisarm||{};this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s,pending.targetKey),choice=>this._apiAction('chooseTrophyDisarm',choice),'缴械 · 选择要弃掉的手牌');}
+    else if(canShowDecisionDialog&&s.pendingDialog==='trophyPurify'){const pending=s.pendingTrophyPurify||{};const oppKey=pending.targetKey||s.attackTarget||'ai';const opponent=s[oppKey]&&s[oppKey].alive?s[oppKey]:(s.ai&&s.ai.alive?s.ai:null);this.dialogs.collectPurifyChoices(s.player,Math.max(1,Number(pending.count)||1),choices=>{if(!choices.length)return this._apiAction('chooseTrophyPurify',{done:true});return this._apiAction('chooseTrophyPurify',{choices});},{opponent});}
     if(s.phase==='ATTACK_MOD_CHOICE')this._ensureAttackModChoicePrompt(s);
     else{this._attackModPromptOpen=false;this._attackModActive=false;}
     if(s.phase==='GAME_OVER')this._showGameOver();

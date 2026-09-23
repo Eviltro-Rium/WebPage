@@ -146,6 +146,19 @@
     return { ok: true, message: '闪避成功，本次攻击作废', dodgeResolved: true };
   });
 
+  register('rewindHourglass', (eng) => {
+    if (!eng || !eng.s || !eng.s.isAdventure) {
+      return { ok: false, message: '回溯沙漏只能在冒险战斗中使用' };
+    }
+    if (eng.testMode) {
+      return { ok: true, message: '退出当前测试战斗', rewindRoom: true };
+    }
+    if (!eng._adventureEngine) {
+      return { ok: false, message: '无法回溯：冒险引擎未连接' };
+    }
+    return { ok: true, message: '退出当前房间，手牌补至上限，下次重新遭遇', rewindRoom: true };
+  });
+
   register('naturalShield', (eng, def, ctx) => {
     const player = ctx.player;
     const damage = Math.max(0, Number(eng.s.pendingAttack && eng.s.pendingAttack.damage) || 0);

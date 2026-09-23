@@ -54,6 +54,13 @@
       if (window.AdventureSave && typeof window.AdventureSave.save === 'function') {
         window.AdventureSave.save(advEngine);
       }
+      if (result.rewindRoom) {
+        const controller = window.AdventureBattleController;
+        if (controller && typeof controller.abortCombatRewind === 'function') {
+          controller.abortCombatRewind();
+        }
+        return this.state();
+      }
       if (result.dodgeResolved) {
         this.s.phase = 'AI_TURN';
         this.deferSettlement('AI_ATTACK', 0, 0);

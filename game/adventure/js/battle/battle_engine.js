@@ -1270,7 +1270,7 @@
           // Otto 4 with two item cards). Route them through the shared attack
           // resolver so the attacker heals for the damage actually dealt.
           const isDrain = !!(this.s.pendingAttack && this.s.pendingAttack.isDrain);
-          this.dealAttackHit(this.s.player, this.s[targetKey], d, isDrain);
+          this.applyIncomingDamage(this.s.player, this.s[targetKey], d, { isDrain });
         }
         this.s.phase = 'AI_DEFEND'; this.s.busy = true;
         this.later(() => { this._restoreAttackBuffs(); this.afterAttack(); this.check(); }, 1700);
@@ -1327,7 +1327,7 @@
         const status = window.FurryGame && window.FurryGame.StatusService;
         if (status) status.remove(this.s.ai, 'burn', 1); else this.s.ai.burn--;
         if (this.name(this.s.ai) !== 'Leon') {
-          this.emit('burnSettle', `-${dmg}[灼烧]，-1[灼烧层数]`, null, { who: 'ai', target: 'ai', amount: dmg, kind: 'burn' });
+          this.emit('burnSettle', `-${dmg}❤️[灼烧]，-1[灼烧层数]`, null, { who: 'ai', target: 'ai', amount: dmg, kind: 'burn' });
           this.s.ai.hp = Math.max(0, this.s.ai.hp - dmg);
           this.s.ai.alive = this.s.ai.hp > 0;
         }
@@ -1369,6 +1369,7 @@
         return this.useAdventureCombatItem(params.itemIndex || 0, choice);
       }
       if (method === 'chooseTrophyDisarm') return this.chooseTrophyDisarm(params.target, params.index);
+      if (method === 'chooseTrophyPurify') return this.chooseTrophyPurify(params);
       if (method === 'doEndTurn' && this.s && this.s.is1v2) this._returnBorrowedCardsFromHand();
       if (method === 'setAttackModBonus') { this.s.attackModBonus = params.bonus || 0; return this.state(); }
       if (method === 'choosePurifyCrystal') return this.choosePurifyCrystal(params.choice || params);

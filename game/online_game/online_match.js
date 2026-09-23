@@ -17,7 +17,7 @@
         'resolveAttackModChoice', 'resolveCritChoice', 'chooseTarget',
         'chooseColor', 'choosePurify', 'choosePurifyCrystal',
         'chooseSuperPurifyTarget', 'chooseMozeSeven', 'chooseGuard',
-        'chooseFly', 'chooseFlyContinue', 'chooseTrophyDisarm',
+        'chooseFly', 'chooseFlyContinue', 'chooseTrophyDisarm', 'chooseTrophyPurify',
         'doChanSevenKeep', 'doChanSevenDiscard', 'doSaikiThreeKeep',
         'doSaikiThreeDiscard', 'doChanFourSwap', 'doChanFourDiscard',
         'chanFiveReorder'
@@ -429,6 +429,17 @@
                 if (!s.pendingTrophyDisarm || params.target !== s.pendingTrophyDisarm.targetKey) return '无效的缴械目标';
                 const disarmHand = this.engine.h[params.target] || [];
                 if (!Number.isInteger(Number(params.index)) || Number(params.index) < 0 || Number(params.index) >= disarmHand.length) return '无效的缴械手牌';
+            }
+            if (method === 'chooseTrophyPurify') {
+                if (s.pendingDialog !== 'trophyPurify') return '当前没有净化之水选择';
+                const purifyDoneTrophy = params && (params.done === true || (params.kind && typeof params.kind === 'object' && params.kind.done === true));
+                if (purifyDoneTrophy) return null;
+                const list = Array.isArray(params.choices) ? params.choices : [params];
+                if (!list.length) return '无效的净化选择';
+                for (const raw of list) {
+                    const kind = typeof raw === 'string' ? raw : (raw && raw.kind);
+                    if (!purifyKinds.has(String(kind || ''))) return '无效的净化选择';
+                }
             }
             if (['doChanSevenKeep', 'doChanSevenDiscard', 'doChanFourSwap', 'doChanFourDiscard'].includes(method)
                 && s.phase !== 'PLAYER_SEVEN_CHOICE') return '当前不是角色选择阶段';

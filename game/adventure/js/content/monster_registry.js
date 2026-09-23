@@ -37,11 +37,6 @@
         };
       },
       turnStart(eng, x, w) {
-        if (w !== 'ai' && w !== 'ai2') return;
-        if ((x.lush || 0) > 0) {
-          const amt = Math.min(x.lush, 2);
-          eng.heal(x, amt, 'passive');
-        }
         if (typeof mod.attackTurnStart === 'function') mod.attackTurnStart(eng, x, w);
       },
       effect(eng, v, c, a, t, owner, helpers) {
@@ -115,7 +110,7 @@
             }
           }
         }
-        // 冻洋蓝鲸：4/5/6 失温在防御结束后施加给被攻击目标，记录到 pendingAttack
+        // 4/5/6 延迟失温：防御结束后施加给被攻击目标，记录到 pendingAttack
         if (isFrozenWhale && typeof mod.attackHypothermia === 'function' && eng.s && eng.s.pendingAttack) {
           const hyAmt = mod.attackHypothermia(c);
           if (hyAmt > 0) {
@@ -132,9 +127,11 @@
           const f = mod.attackFly(c);
           if (f > 0) {
             if (fly) fly(f);
-            else a.fly = Math.min(2, (a.fly || 0) + f);
-            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
-            eng.emit('buff', '+' + f + '[飞翔]', null, { who, kind: 'fly', stacks: a.fly });
+            else {
+              a.fly = Math.min(2, (a.fly || 0) + f);
+              const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+              eng.emit('buff', '+' + f + '[飞翔]', null, { who, kind: 'fly', stacks: a.fly });
+            }
           }
         }
         if (typeof mod.attackClearPositive === 'function' && mod.attackClearPositive(c)) {

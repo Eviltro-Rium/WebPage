@@ -12,9 +12,15 @@ const context = vm.createContext({
   Image: class Image {},
   setTimeout: fn => { fn(); return 1; },
   clearTimeout: () => {},
-  performance: { now: () => 0 }
+  performance: { now: () => 0 },
+  document: {
+    getElementById: () => null,
+    createElement: () => ({ style: {}, classList: { add() {}, remove() {} }, appendChild() {}, addEventListener() {} }),
+    body: { appendChild() {} }
+  }
 });
 context.window = context;
+context.document.defaultView = context;
 
 const uiDir = path.resolve(__dirname, '..', 'js', 'ui');
 const uiFiles = ['ui_core.js',
@@ -36,6 +42,8 @@ function feedbackHarness() {
   ui._playHitFeedback = (...args) => hits.push(args);
   ui._updateHpBar = () => {};
   ui._updateBuffs = () => {};
+  ui.shakeScreen = () => {};
+  ui.burstParticles = () => {};
   return { ui, floating, hits };
 }
 
@@ -62,8 +70,26 @@ test('status damage keeps its semantic floating text', async () => {
 
   await ui._playEvents([{ type: 'hurt', desc: '-2[流血]', who: 'enemy', amount: 2, bleed: true }], true);
 
-  assert.deepEqual(floating, [['-2[流血]', '#cc2222', 'ai']]);
+  assert.deepEqual(floating, [['-2❤️[流血]', '#cc2222', 'ai']]);
   assert.deepEqual(hits, [['ai', 2]]);
+});
+
+test('burn settle float uses red HP loss heart marker', async () => {
+  const { ui, floating } = feedbackHarness();
+
+  await ui._playEvents([{ type: 'burnSettle', desc: '-3[灼烧]，-1[灼烧层数]', who: 'player', amount: 3 }], true);
+
+  assert.deepEqual(floating, [['-3❤️[灼烧]，-1[灼烧层数]', '#ff8800', 'player']]);
+});
+
+test('parseSegments colors -n❤️ red while keeping status tag color', () => {
+  const segs = JSON.parse(JSON.stringify(context.parseSegments('-3❤️[灼烧]，-1[灼烧层数]', '#ff8800')));
+  assert.deepEqual(segs, [
+    { text: '-3❤️', color: '#ff4444' },
+    { text: '[灼烧]', color: '#fdba74' },
+    { text: '，-1', color: '#ff8800' },
+    { text: '[灼烧层数]', color: '#fdba74' }
+  ]);
 });
 
 test('second monster target field receives feedback in its own UI lane', async () => {
