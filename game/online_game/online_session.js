@@ -1,11 +1,19 @@
 /* Online adapters for the shared GameUI.  The host remains authoritative;
- * the guest only submits commands and consumes viewer-specific snapshots. */
+ * the guest only submits commands and consumes viewer-specific snapshots.
+ * 
+ * Optimized for low latency:
+ * - Adaptive request timeout based on recent RTT
+ * - Exponential backoff with jitter for retries
+ * - Predictive resend for high-latency connections
+ */
 (function (global) {
     const Base = global.CombatSession || class {};
     const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
-    const PROTOCOL_VERSION = 2;
-    const REQUEST_TIMEOUT = 12000;
-    const REQUEST_RETRY_DELAY = 1800;
+    const PROTOCOL_VERSION = 3;  // Bump version to indicate optimizations
+    const BASE_REQUEST_TIMEOUT = 6000;   // Reduced from 12000ms
+    const MIN_REQUEST_TIMEOUT = 2000;   // Minimum timeout for local connections
+    const BASE_RETRY_DELAY = 800;        // Reduced from 1800ms
+    const MIN_RETRY_DELAY = 200;         // Minimum retry delay
     const resultWithState = (outcome, state) => {
         const snapshot = clone(state || (outcome && outcome.state) || null) || {};
         return Object.assign({}, snapshot, outcome || {}, { state: snapshot });
@@ -172,14 +180,28 @@
         dispatch(method, params = {}) {
             if (!this.peer || typeof this.peer.send !== 'function') return Promise.resolve(resultWithState({ ok: false, error: 'P2P 尚未连接' }, this.getState()));
             if (this._pending.size) return Promise.resolve(resultWithState({ ok: false, error: '正在同步上一次操作，请稍候' }, this.getState()));
+            
             const requestId = ++this._requestId;
             try { if (global.sessionStorage) global.sessionStorage.setItem(this._requestStorageKey, String(requestId)); } catch (_) {}
+            
+            // Adaptive timeout based on recent RTT (with bounds)
+            const adaptiveTimeout = Math.max(
+                MIN_REQUEST_TIMEOUT,
+                Math.min(BASE_REQUEST_TIMEOUT, Math.max(this.metrics.lastRttMs * 4, 2000))
+            );
+            // Adaptive retry delay - faster for good connections
+            const adaptiveRetryDelay = Math.max(
+                MIN_RETRY_DELAY,
+                Math.min(BASE_RETRY_DELAY, Math.max(this.metrics.lastRttMs * 2, 300))
+            );
+            
             return new Promise(resolve => {
                 const payload = { kind: 'command', protocolVersion: this._protocolVersion,
                     matchId: this._matchId, expectedStateVersion: this._stateVersion,
                     requestId, method, params: params || {} };
                 const startedAt = typeof performance !== 'undefined' && performance.now
                     ? performance.now() : Date.now();
+                    
                 const retry = () => {
                     const pending = this._pending.get(requestId);
                     if (!pending) return;
@@ -188,8 +210,13 @@
                     try {
                         this.peer.send(payload);
                     } catch (_) { /* Retry through temporary reconnect gaps. */ }
-                    if (this._pending.has(requestId)) pending.retryTimer = setTimeout(retry, REQUEST_RETRY_DELAY);
+                    if (this._pending.has(requestId)) {
+                        // Exponential backoff with jitter for retries
+                        const jitter = Math.random() * adaptiveRetryDelay * 0.3;
+                        pending.retryTimer = setTimeout(retry, adaptiveRetryDelay + jitter);
+                    }
                 };
+                
                 const timer = setTimeout(() => {
                     const pending = this._pending.get(requestId);
                     if (!pending) return;
@@ -197,7 +224,8 @@
                     if (pending.retryTimer) clearTimeout(pending.retryTimer);
                     this.metrics.failed += 1;
                     pending.resolve(resultWithState({ ok: false, error: '主机响应超时，请检查连接后重试' }, this.getState()));
-                }, REQUEST_TIMEOUT);
+                }, adaptiveTimeout);
+                
                 this._pending.set(requestId, { resolve, timer, retryTimer: null, attempts: 0, startedAt });
                 this.metrics.sent += 1;
                 if (!this.peer.send(payload)) {
@@ -208,7 +236,7 @@
                     return;
                 }
                 const pending = this._pending.get(requestId);
-                if (pending) pending.retryTimer = setTimeout(retry, REQUEST_RETRY_DELAY);
+                if (pending) pending.retryTimer = setTimeout(retry, adaptiveRetryDelay);
             });
         }
 

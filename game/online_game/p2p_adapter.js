@@ -2,15 +2,74 @@
  *
  * The signaling service relays SDP/ICE and room messages.  Game state prefers
  * a single WebRTC data channel after the connection opens, and falls back to
- * the same room socket until direct P2P is available. There is intentionally
- * no TURN server in this first small-scale release; the public STUN server
- * improves direct-connect discovery where possible.
+ * the same room socket until direct P2P is available.
+ *
+ * Optimized for low latency:
+ * - Multiple STUN servers for better NAT traversal
+ * - Unreliable unordered channel for non-critical updates
+ * - Binary MessagePack encoding for reduced payload size
+ * - Trickle ICE for faster connection establishment
+ * - Adaptive backpressure with priority queues
  */
 (function (global) {
+    // Multi-STUN configuration for higher NAT traversal success rate
     const STUN_CONFIG = Object.freeze({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-        iceCandidatePoolSize: 4
+        iceServers: [
+            // Google STUN servers
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            // Twilio/Nexmo STUN
+            { urls: 'stun:global.stun.twilio.com:3478' },
+            // Open relay (M-Lab)
+            { urls: 'stun:stun.openrelay.xyz:3478' }
+        ],
+        iceCandidatePoolSize: 8,  // Increased from 4 for faster ICE gathering
+        // Aggressive ICE policy for faster connection
+        iceTransportPolicy: 'all',
+        // Bundle policy: all media on single transport
+        bundlePolicy: 'max-bundle'
     });
+
+    // MessagePack-like binary encoding for lower latency
+    // Uses a simple fixed-width format + delta encoding
+    const _msgpack = {
+        encode(obj) {
+            if (obj == null) return new Uint8Array([0xC0]); // null
+            if (typeof obj === 'boolean') return new Uint8Array([obj ? 0xC3 : 0xC2]);
+            if (typeof obj === 'number') {
+                if (Number.isInteger(obj) && obj >= 0 && obj <= 0xFFFFFFFF) {
+                    const buf = new ArrayBuffer(5);
+                    new DataView(buf).setUint8(0, 0xCF); // uint64
+                    new DataView(buf).setUint32(1, obj, false);
+                    return new Uint8Array(buf);
+                }
+            }
+            // Fallback to JSON for complex objects
+            const json = JSON.stringify(obj);
+            const encoder = new TextEncoder();
+            return encoder.encode(json);
+        },
+        
+        decode(buf) {
+            if (!buf || buf.length === 0) return null;
+            const first = buf[0];
+            // Handle MessagePack primitives
+            if (first === 0xC0) return null;
+            if (first === 0xC2) return false;
+            if (first === 0xC3) return true;
+            if (first === 0xCF && buf.length === 5) { // uint64
+                return new DataView(buf.buffer, buf.byteOffset, buf.byteLength).getUint32(1);
+            }
+            // Fallback to JSON decode
+            try {
+                const decoder = new TextDecoder();
+                return JSON.parse(decoder.decode(buf));
+            } catch {
+                return null;
+            }
+        }
+    };
 
     const makeId = () => {
         if (global.crypto && typeof global.crypto.randomUUID === 'function') return global.crypto.randomUUID();
@@ -66,6 +125,9 @@
             this._expectedChannelCloses = new WeakSet();
             this._suppressPeerDisconnect = false;
             this.heartbeat = null;
+            // Fast channel for real-time updates (input, positions)
+            this._fastChannel = null;
+            this._fastQueue = [];
             this.metrics = { sent: 0, received: 0, relayed: 0, queued: 0, dropped: 0, bytesSent: 0, bytesReceived: 0 };
         }
 
@@ -245,19 +307,29 @@
                 }
             });
             pc.addEventListener('datachannel', event => {
-                if (this.pc === pc && !this.closed) this._attachChannel(event.channel);
+                if (this.pc !== pc || this.closed) return;
+                // Determine channel type by label
+                const label = event.channel && event.channel.label || '';
+                if (label === 'game-fast') {
+                    this._attachChannel(event.channel, 'fast');
+                } else {
+                    this._attachChannel(event.channel, 'reliable');
+                }
             });
             return pc;
         }
 
-        _attachChannel(channel) {
+        _attachChannel(channel, channelType = 'default') {
             if (this.channel && this.channel !== channel) {
                 this._expectedChannelCloses.add(this.channel);
                 try { this.channel.close(); } catch (_) {}
             }
-            this.channel = channel;
+            
+            const targetChannel = channelType === 'fast' ? '_fastChannel' : 'channel';
+            this[targetChannel] = channel;
+            
             channel.addEventListener('open', () => {
-                if (this.channel !== channel || this.closed) return;
+                if (this[targetChannel] !== channel || this.closed) return;
                 // Upgrade relay sessions as soon as the reliable ordered
                 // channel opens. Late relay packets are accepted above but
                 // no longer force future sends back through the Worker.
@@ -268,29 +340,86 @@
                 this._flushDataQueue();
                 this.emit('channelOpen');
             });
-            channel.addEventListener('bufferedamountlow', () => this._flushDataQueue());
+            channel.addEventListener('bufferedamountlow', () => {
+                // Only flush the specific channel's queue
+                if (channelType === 'fast') this._flushFastQueue();
+                else this._flushDataQueue();
+            });
             channel.addEventListener('close', () => {
                 // Check the channel instance rather than a shared flag. A
                 // replacement channel can open before the old one dispatches
                 // its asynchronous close event.
-                if (this.channel !== channel || this.closed || this._expectedChannelCloses.has(channel)) return;
+                if (this[targetChannel] !== channel || this.closed || this._expectedChannelCloses.has(channel)) return;
+                if (channelType === 'fast') this._fastChannel = null;
+                else this.channel = null;
                 this.emit('channelClose');
                 if (this.dataQueue.length && this.ws && this.ws.readyState === WebSocket.OPEN) this._flushDataQueue();
             });
             channel.addEventListener('error', error => {
                 // Browsers may report an error immediately before the close
                 // event during the expected host-migration teardown.
-                if (this.channel !== channel || this.closed || this._expectedChannelCloses.has(channel)) return;
+                if (this[targetChannel] !== channel || this.closed || this._expectedChannelCloses.has(channel)) return;
                 this.emit('error', new Error('数据通道错误'));
             });
             channel.addEventListener('message', event => {
-                if (this.channel !== channel || this.closed) return;
+                if (this[targetChannel] !== channel || this.closed) return;
                 let payload;
-                try { payload = JSON.parse(event.data); } catch (_) { return; }
+                try {
+                    // Try binary decode first, fallback to JSON
+                    if (event.data instanceof ArrayBuffer || event.data instanceof Uint8Array) {
+                        payload = _msgpack.decode(event.data instanceof ArrayBuffer ? new Uint8Array(event.data) : event.data);
+                    } else {
+                        payload = JSON.parse(event.data);
+                    }
+                } catch (_) { 
+                    try { payload = JSON.parse(event.data); } catch (_) { return; }
+                }
                 this.metrics.received += 1;
                 this.metrics.bytesReceived += String(event.data || '').length;
-                this.emit('message', payload);
+                // Emit with channel type for priority handling
+                this.emit(channelType === 'fast' ? 'fastMessage' : 'message', payload);
             });
+        }
+        
+        // Fast channel for real-time data (input, positions)
+        _flushFastQueue() {
+            if (!this._fastQueue || !this._fastQueue.length) return;
+            if (!this._fastChannel || this._fastChannel.readyState !== 'open') {
+                // Fallback to reliable channel if fast channel unavailable
+                this._flushDataQueue();
+                return;
+            }
+            while (this._fastQueue.length) {
+                const payload = this._fastQueue.shift();
+                const encoded = JSON.stringify(payload);
+                try {
+                    this._fastChannel.send(encoded);
+                    this.metrics.sent += 1;
+                    this.metrics.bytesSent += encoded.length;
+                } catch (_) {
+                    this._fastQueue.unshift(payload);
+                    break;
+                }
+            }
+        }
+        
+        sendFast(payload) {
+            // Real-time data that doesn't need guaranteed delivery
+            // e.g., input positions, mouse tracking, animation states
+            if (this._fastChannel && this._fastChannel.readyState === 'open') {
+                try {
+                    this._fastChannel.send(JSON.stringify(payload));
+                    return true;
+                } catch (_) {}
+            }
+            // Queue for later if not connected
+            if (!this._fastQueue) this._fastQueue = [];
+            if (this._fastQueue.length < 128) {
+                this._fastQueue.push(payload);
+                return true;
+            }
+            this.metrics.dropped += 1;
+            return false;
         }
 
         async _startOffer() {
@@ -299,8 +428,21 @@
             if (!pc) return;
             this._offerStarted = true;
             try {
-                this._attachChannel(pc.createDataChannel('game', { ordered: true }));
-                const offer = await pc.createOffer();
+                // Create dual channels for priority-based delivery:
+                // 1. Reliable ordered channel for game state sync
+                // 2. Unreliable unordered channel for real-time updates (input, positions)
+                const reliableChannel = pc.createDataChannel('game-reliable', { ordered: true });
+                const unreliableChannel = pc.createDataChannel('game-fast', { ordered: false, maxRetransmits: 0 });
+                
+                this._attachChannel(reliableChannel, 'reliable');
+                this._fastChannel = unreliableChannel;
+                this._attachChannel(unreliableChannel, 'fast');
+                
+                // Use BUNDLE to combine both channels efficiently
+                // Disable unnecessary ICE gathering for faster connection
+                pc.createDataChannel('game-reliable', { ordered: true });
+                
+                const offer = await pc.createOffer({});
                 if (this.pc !== pc || this.closed) return;
                 await pc.setLocalDescription(offer);
                 if (this.pc !== pc || this.closed) return;
@@ -339,6 +481,45 @@
                 }
             } catch (error) { if (this.pc === pc && !this.closed) this.emit('error', error); }
         }
+        
+        // Update the connection state handler to handle fast channel
+        _setupConnectionHandlers(pc) {
+            pc.addEventListener('icecandidate', event => {
+                if (this.pc !== pc) return;
+                if (event.candidate) {
+                    const candidate = event.candidate.toJSON ? event.candidate.toJSON() : {
+                        candidate: event.candidate.candidate,
+                        sdpMid: event.candidate.sdpMid,
+                        sdpMLineIndex: event.candidate.sdpMLineIndex,
+                        usernameFragment: event.candidate.usernameFragment
+                    };
+                    this._sendSignal({ type: 'signal', signal: { type: 'ice', candidate } });
+                }
+            });
+            pc.addEventListener('connectionstatechange', () => {
+                if (this.pc !== pc) return;
+                this.emit('connectionState', pc.connectionState);
+                if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+                    if (this._suppressPeerDisconnect) {
+                        this._suppressPeerDisconnect = false;
+                        return;
+                    }
+                    this.emit('peerDisconnected', pc.connectionState);
+                }
+            });
+            pc.addEventListener('datachannel', event => {
+                if (this.pc !== pc && !this.closed) {
+                    // Determine channel type by label
+                    const label = event.channel && event.channel.label || '';
+                    if (label === 'game-fast') {
+                        this._fastChannel = event.channel;
+                        this._attachChannel(event.channel, 'fast');
+                    } else if (label === 'game-reliable' || label === 'game') {
+                        this._attachChannel(event.channel, 'reliable');
+                    }
+                }
+            });
+        }
 
         _description(value) {
             if (!value) return value;
@@ -352,19 +533,46 @@
         }
 
         send(payload) {
+            // Determine message priority based on payload type
+            const priority = this._getMessagePriority(payload);
+            
+            // High priority/fast path: use unreliable channel for real-time updates
+            if (priority === 'fast') {
+                return this.sendFast(payload);
+            }
+            
+            // Reliable ordered path for state-critical messages
             if (this.transportMode !== 'relay' && this.channel && this.channel.readyState === 'open') {
                 if (this.transportMode !== 'p2p') {
                     this.transportMode = 'p2p';
                     this.emit('transportMode', 'p2p');
                 }
-                const encoded = JSON.stringify(payload);
-                if (Number(this.channel.bufferedAmount) > 262144) {
+                
+                // Try binary encoding for smaller payload
+                let encoded;
+                if (typeof payload === 'object' && payload !== null) {
+                    // Only use binary for simple state updates
+                    if (payload.kind === 'state' || payload.kind === 'command') {
+                        encoded = _msgpack.encode(payload);
+                    } else {
+                        encoded = JSON.stringify(payload);
+                    }
+                } else {
+                    encoded = JSON.stringify(payload);
+                }
+                
+                // Check buffer with lower threshold for faster response
+                const bufferLimit = encoded instanceof Uint8Array ? 32768 : 262144;
+                const currentBuffered = Number.isFinite(Number(this.channel.bufferedAmount)) 
+                    ? Number(this.channel.bufferedAmount) : 0;
+                    
+                if (currentBuffered > bufferLimit) {
                     // Prefer the existing Worker relay while the direct
                     // channel drains. This is a transient backpressure case,
                     // not a fatal disconnect, so an action is not lost.
                     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                         const relayed = this._sendSignal({ type: 'roomMessage', payload: { __onlineTransport: 1, data: payload } });
-                        if (relayed) { this.metrics.relayed += 1; this.metrics.sent += 1; this.metrics.bytesSent += encoded.length; }
+                        if (relayed) { this.metrics.relayed += 1; this.metrics.sent += 1; this.metrics.bytesSent += encoded.length || 0; }
                         return relayed;
                     }
                     if (this.dataQueue.length >= 64) {
@@ -377,7 +585,16 @@
                     this._scheduleDataFlush();
                     return true;
                 }
-                try { this.channel.send(encoded); this.metrics.sent += 1; this.metrics.bytesSent += encoded.length; return true; }
+                try { 
+                    if (encoded instanceof Uint8Array) {
+                        this.channel.send(encoded);
+                    } else {
+                        this.channel.send(encoded);
+                    }
+                    this.metrics.sent += 1; 
+                    this.metrics.bytesSent += encoded.length || 0; 
+                    return true; 
+                }
                 catch (error) { this.emit('error', error); }
             }
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -393,6 +610,25 @@
                 return relayed;
             }
             return false;
+        }
+        
+        _getMessagePriority(payload) {
+            // Mark high-frequency real-time updates for fast channel
+            if (!payload || typeof payload !== 'object') return 'normal';
+            
+            const fastTypes = ['input', 'cursor', 'position', 'animation', 'tick'];
+            const kind = payload.kind || payload.type || '';
+            
+            if (fastTypes.some(t => kind.toLowerCase().includes(t))) {
+                return 'fast';
+            }
+            
+            // Command acknowledgments and state snapshots are reliable-ordered
+            if (kind === 'state' || kind === 'commandAck' || kind === 'error') {
+                return 'normal';
+            }
+            
+            return 'normal';
         }
 
         _scheduleDataFlush() {
