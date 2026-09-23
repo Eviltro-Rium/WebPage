@@ -309,7 +309,7 @@
                 const oppKey = s.attackTarget || (s.activeAttacker === 'ai2' ? 'ai2' : 'ai');
                 const opponent = s[oppKey] && s[oppKey].alive ? s[oppKey] : (s.ai && s.ai.alive ? s.ai : null);
                 const hasBuff = ch => ch && ((ch.burn || 0) > 0 || (ch.bleed || 0) > 0 ||
-                    (ch.poison || 0) > 0 || (ch.blind || 0) > 0 || (ch.iceSeal || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.lush || 0) > 0 || (ch.parasite || 0) > 0 || (ch.crit || 0) > 0);
+                    (ch.poison || 0) > 0 || (ch.thorns || 0) > 0 || (ch.blind || 0) > 0 || (ch.iceSeal || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.lush || 0) > 0 || (ch.parasite || 0) > 0 || (ch.crit || 0) > 0);
                 if (!hasBuff(player) && !hasBuff(opponent)) return;
                 this.dialogs.collectPurifyChoices(player, def.purifyCount || 1, choices => {
                     if (!choices.length) return;

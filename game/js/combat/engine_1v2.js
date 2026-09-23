@@ -194,6 +194,7 @@
       return this.check()
     }
     this._deferAttackBuffs('player',_buffBefore);
+    this._applyAttackSkillThorns(ch);
     let r=this._swapAIContext(key,()=>this.aiSpecialEffect(this.name(ch),c.value,c))||this.effect(this.name(ch),c.value,c,ch,this.s.player);
     this._deferAttackBuffs('player',_buffBefore);
     if(r.immediateBuffs)this._restoreAttackBuffs();
@@ -217,6 +218,7 @@
       this.emit('desc',who+' '+c.value+'牌：没有可用的追加数字牌，自动判定为0点',c);
       this.h.player.splice(i,1); this.s.selectedCard=-1; this.s.atkCard=cp(c); this.s.atkOwner='player';
       this.setDiscardTop(c,'player'); this.s.hasPlayedThisTurn=true; this._markBombPlay('player'); this._tickBomb('player');
+      this._applyAttackSkillThorns(this.s.player);
       return this.gateAdventureAttackMod(c,0,true,false);
     }
     if(c.isBlack&&!c.chosenColor)return this._stagePendingBlackCard(i,c,'attack');
@@ -232,7 +234,10 @@
     this.emit('playerPlay','玩家打出进攻牌',c);
     if(c.isBlack)this.emit('colorChoice','黑牌指定'+this.colorName(c.chosenColor),c);
     else if(c.isWhite)this.emit('colorChoice','白色牌自动指定'+this.colorName(c.chosenColor),c);
-    if(c.borrowedMonster && typeof this.playBorrowedMonsterCard==='function') return this.playBorrowedMonsterCard(c);
+    if(c.borrowedMonster && typeof this.playBorrowedMonsterCard==='function') {
+      this._applyAttackSkillThorns(this.s.player);
+      return this.playBorrowedMonsterCard(c);
+    }
     if(window.CardEffects&&window.CardEffects.isItem(c)){
       let kind=this.itemKind(c);
       this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:kind,who:'player',target});
@@ -243,6 +248,7 @@
       if(!this.s.pendingDialog && !vixrapsPassive && this.s.phase==='PLAYER_PLAY'){this.s.busy=false;this.s.attackTarget=null;}
       return this.check()
     }
+     this._applyAttackSkillThorns(this.s.player);
      this._deferAttackBuffs(target,_buffBefore);
      if(who==='Moze'&&c.value===7){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc','Moze 7牌：请选择自己或一名对手作为清除目标',c);return this.state()}
      if(who==='Leon'&&c.value===0)return this.leonZero1v2(c);

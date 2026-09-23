@@ -195,7 +195,10 @@
     const attachSkillHover=(card,opponent,ownerCard)=>{
       if(!revealFace||!ownerCard||!(s.phase==='PLAYER_PLAY'||s.phase==='PLAYER_DEFEND'||s.phase==='OPPONENT_CARD_CHOICE'))return;
       const charName=this._combatDisplayName(opponent&&opponent.name);
-      const adventureOpts={stage:s.adventureStage||s.stage||1,playerHandSize:(s.playerHand&&s.playerHand.length)||0,incomingDamage:s.pendingDefenseDamage||0};
+      const ownerKey=opponent===s.ai2?'ai2':'ai';
+      const adventureOpts=typeof this._adventureSkillDescOpts==='function'
+        ? this._adventureSkillDescOpts(ownerKey)
+        : {stage:s.adventureStage||s.stage||1,playerHandSize:(s.playerHand&&s.playerHand.length)||0,incomingDamage:s.pendingDefenseDamage||0};
       card.addEventListener('mouseenter',()=>this._showTooltip(ownerCard,card,true,{charName,adventureOpts}));
       card.addEventListener('mouseleave',()=>this._hideTooltip());
     };

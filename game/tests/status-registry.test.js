@@ -18,7 +18,7 @@ test('status registry describes and clears every current status', () => {
   const entity = {
     burn: 2, bleed: 2, poison: 1, frozen: true, blind: 1, bomb: 3, iceSeal: 1,
     hypothermia: 2, bindMark: true, guard: 2, fly: 1, crit: 1, lush: 1,
-    parasite: 1, diving: true, bloodthirst: true, hypnosis: true, sleep: true,
+    parasite: 1, diving: true, bloodthirst: true, hypnosis: true, sleep: true, thorns: 1,
     chaos_red: true, chaos_yellow: true, chaos_blue: true, chaos_green: true
   };
 

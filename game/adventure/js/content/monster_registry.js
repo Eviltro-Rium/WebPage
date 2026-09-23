@@ -61,7 +61,7 @@
 
         const attackerKey = a === eng.s.ai2 ? 'ai2' : (a === eng.s.ai ? 'ai' : 'player');
         const buffTotal = (t) =>
-          (t.burn || 0) + (t.bleed || 0) + (t.poison || 0) + (t.blind || 0) + (t.iceSeal || 0) +
+          (t.burn || 0) + (t.bleed || 0) + (t.poison || 0) + (t.thorns || 0) + (t.blind || 0) + (t.iceSeal || 0) +
           (t.guard || 0) + (t.fly || 0) + (t.parasite || 0) + (t.bomb || 0) + (t.hypothermia || 0) +
           (t.crit || 0) + (t.lush || 0) + (t.frozen ? 1 : 0) + (t.diving ? 1 : 0) + (t.bloodthirst ? 1 : 0) +
           (t.chaos_red ? 1 : 0) + (t.chaos_yellow ? 1 : 0) + (t.chaos_blue ? 1 : 0) + (t.chaos_green ? 1 : 0);
@@ -639,6 +639,35 @@
       }
       return '无进攻效果';
     }
+    // ForestDendrobatidFrog: 1-3 fixed poison hit; 4-6 scales with poison stacks.
+    if (mod.name === 'ForestDendrobatidFrog' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成' + (2 + stageBonus) + '点[伤害]，施加1层[中毒]';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成' + (4 + stageBonus) + '+[中毒]层数点[伤害]';
+      }
+      return '无进攻效果';
+    }
+    // ForestPython: conditional draw on 1-3; poison-first scaling on 4-6/0.
+    if (mod.name === 'ForestPython' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成' + (v + stageBonus) + '点[伤害]（玩家[中毒]≥2时额外抽1张）';
+      }
+      if (v >= 4 && v <= 6) {
+        const extra = stageBonus > 0 ? '+' + stageBonus : '';
+        return '施加1层[中毒]，造成3×（玩家[中毒]层数+1）' + extra + '点[伤害]';
+      }
+      if (v === 0) {
+        const extra = stageBonus > 0 ? '+' + stageBonus : '';
+        return '施加1层[中毒]，造成2×（玩家[中毒]层数+1）' + extra + '点[伤害]（不可防御）';
+      }
+      return '无进攻效果';
+    }
     // CastleBat 4/5/6: drain scales with player bleed (castle.md).
     if (mod.name === 'CastleBat' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
@@ -686,7 +715,7 @@
       const dmg1 = mod.attackDamage(card, ctx1) || 0;
       if (dmg !== dmg1) {
         const perBleed = dmg1 - dmg;
-        bleedDmgDesc = (dmg > 0 ? '造成' + dmg + '点伤害+' : '') + '对手每有1层【流血】' + perBleed + '点伤害';
+        bleedDmgDesc = (dmg > 0 ? '造成' + dmg + '点伤害+' : '') + '对手每有1层[流血]' + perBleed + '点伤害';
       }
     } else if (card.isNumberCard) dmg = card.value || 0;
     if (mod.name === 'CastleGhost' && card.isNumberCard && card.value >= 4 && card.value <= 6) {

@@ -192,7 +192,7 @@ class DialogManager {
         const oppSnap = opp ? snapshotStatuses(opp) : null;
         const hasAny = snap => statusRegistry
             ? statusRegistry.list(snap, def => def.cleanse !== 'never').length > 0
-            : snap && (snap.burn > 0 || snap.bleed > 0 || snap.poison > 0 || snap.blind > 0 || snap.bomb > 0 || snap.frozen || snap.iceSeal > 0 ||
+            : snap && (snap.burn > 0 || snap.bleed > 0 || snap.poison > 0 || snap.thorns > 0 || snap.blind > 0 || snap.bomb > 0 || snap.frozen || snap.iceSeal > 0 ||
                 snap.guard > 0 || snap.fly > 0 || snap.crit > 0 || snap.lush > 0 || snap.parasite > 0 ||
                 snap.diving || snap.hypothermia > 0);
         const applyLocal = (snap, kind) => {
@@ -200,6 +200,7 @@ class DialogManager {
             if (kind === 'burn') snap.burn = Math.max(0, snap.burn - 1);
             else if (kind === 'bleed') snap.bleed = Math.max(0, snap.bleed - 1);
             else if (kind === 'poison') snap.poison = Math.max(0, snap.poison - 1);
+            else if (kind === 'thorns') snap.thorns = 0;
             else if (kind === 'blind') snap.blind = 0;
             else if (kind === 'bomb') snap.bomb = 0;
             else if (kind === 'freeze') snap.frozen = false;
@@ -259,6 +260,7 @@ class DialogManager {
                     if (snap.frozen) legacy.push(['freeze', '冷冻', 'freeze']);
                     if (snap.bleed > 0) legacy.push(['bleed', `流血 ×${snap.bleed}`, 'bleed']);
                     if (snap.poison > 0) legacy.push(['poison', `中毒 ×${snap.poison}`, 'poison']);
+                    if (snap.thorns > 0) legacy.push(['thorns', `荆棘 ×${snap.thorns}`, 'thorns']);
                     if (snap.blind > 0) legacy.push(['blind', '致盲', 'blind']);
                     if (snap.iceSeal > 0) legacy.push(['iceSeal', '冰封', 'ice_seal']);
                     if (snap.bomb > 0) legacy.push(['bomb', `炸弹 ×${snap.bomb}`, 'poison']);
@@ -315,6 +317,7 @@ class DialogManager {
             if (t.ch.bleed > 0) buffs.push(`<img src="${buffIcon('bleed')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>流血×${t.ch.bleed}</span>`);
             if (t.ch.blind > 0) buffs.push(`<img src="${buffIcon('blind')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>致盲</span>`);
             if (t.ch.poison > 0) buffs.push(`<img src="${buffIcon('poison')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>中毒×${t.ch.poison}</span>`);
+            if ((t.ch.thorns || 0) > 0) buffs.push(`<img src="${buffIcon('thorns')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>荆棘×${t.ch.thorns}</span>`);
             if (t.ch.frozen) buffs.push(`<img src="${buffIcon('freeze')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>冷冻</span>`);
             if ((t.ch.iceSeal || 0) > 0) buffs.push(`<img src="${buffIcon('ice_seal')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>冰封</span>`);
             if (t.ch.bomb > 0) buffs.push(`<img src="${buffIcon('time_bomb')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>定时炸弹×${t.ch.bomb}</span>`);

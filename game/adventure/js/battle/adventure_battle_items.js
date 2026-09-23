@@ -51,6 +51,9 @@
 
       this.emit('desc', '使用道具[' + def.displayName + ']：' + result.message);
       advEngine.s.consumables.splice(itemIndex, 1);
+      if (window.AdventureSave && typeof window.AdventureSave.save === 'function') {
+        window.AdventureSave.save(advEngine);
+      }
       if (result.dodgeResolved) {
         this.s.phase = 'AI_TURN';
         this.deferSettlement('AI_ATTACK', 0, 0);

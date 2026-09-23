@@ -18,6 +18,7 @@
     { id: 'bind',        property: 'bindMark',   label: '捆缚', icon: 'items_icons/binding.webp',     polarity: 'debuff', mark: true, stack: false, max: 1, cleanse: 'never', trigger: 'turnStart' },
     { id: 'hypnosis',    property: 'hypnosis',    label: '催眠', icon: 'buff_icons/sleepy_1.webp',   polarity: 'debuff', stack: false, max: 1, cleanse: 'reset', trigger: 'persistent' },
     { id: 'sleep',       property: 'sleep',       label: '沉睡', icon: 'buff_icons/sleepy_2.webp',   polarity: 'debuff', stack: false, max: 1, cleanse: 'reset', trigger: 'turnStart' },
+    { id: 'thorns',      property: 'thorns',      label: '荆棘', icon: 'buff_icons/thorns.webp',     polarity: 'debuff', stack: true,  max: 1, cleanse: 'reset', trigger: 'onAttackSkill' },
 
     { id: 'guard',       property: 'guard',       label: '守护', icon: 'buff_icons/guard.webp',        polarity: 'buff',   stack: true, max: 5, cleanse: 'decrement', trigger: 'onDamage', transferable: true },
     { id: 'fly',         property: 'fly',         label: '飞翔', icon: 'buff_icons/fly.webp',          polarity: 'buff',   stack: true, max: 2, cleanse: 'decrement', trigger: 'onDamage', transferable: true },

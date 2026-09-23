@@ -151,7 +151,7 @@
     price: 5,
     combatUse: 'trophyPoison',
     trophyEffect: 'poison',
-    beastTradeCost: ['ben', 'cao']
+    beastTradeCost: ['cao', 'cao']
   });
 
   R.registerItem({
@@ -164,6 +164,18 @@
     price: 5,
     combatUse: 'trophyParasite',
     trophyEffect: 'parasite',
+    beastTradeCost: ['ben', 'cao']
+  });
+  R.registerItem({
+    name: 'ThornsTrophy',
+    displayName: '荆棘战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：对手+1层荆棘，打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/thorns.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyThorns',
+    trophyEffect: 'thorns',
     beastTradeCost: ['ben', 'cao']
   });
   R.registerItem({

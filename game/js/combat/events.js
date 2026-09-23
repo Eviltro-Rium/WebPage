@@ -18,7 +18,7 @@
         HINT: 'hint', DICE_ROLL: 'diceRoll', LORD_DICE: 'lordDice', DUAL_DICE: 'dualDice',
         ACCESSORY_TRIGGER: 'accessoryTrigger'
     });
-    const DamageKinds = Object.freeze({ NORMAL: 'normal', BLEED: 'bleed', POISON: 'poison', DRAIN: 'drain' });
+    const DamageKinds = Object.freeze({ NORMAL: 'normal', BLEED: 'bleed', POISON: 'poison', DRAIN: 'drain', THORNS: 'thorns' });
     const normalizeTarget = (value, fallback = Targets.AI) => {
         if (value === 'enemy' || value === 'NPC' || value === 'npc') return Targets.AI;
         if (value === Targets.PLAYER || value === Targets.AI || value === Targets.AI2) return value;

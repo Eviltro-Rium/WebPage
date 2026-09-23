@@ -1192,6 +1192,11 @@ body {
     background: linear-gradient(135deg, rgba(131, 24, 67, 0.88), rgba(244, 114, 182, 0.5));
     box-shadow: 0 0 10px rgba(244, 114, 182, 0.45);
 }
+.buff-icon-wrap.thorns-buff {
+    border-color: rgba(250, 204, 21, 0.95);
+    background: linear-gradient(135deg, rgba(113, 77, 0, 0.9), rgba(250, 204, 21, 0.55));
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
+}
 .buff-icon-wrap.sleep-buff {
     border-color: rgba(244, 114, 182, 0.95);
     background: linear-gradient(135deg, rgba(131, 24, 67, 0.88), rgba(244, 114, 182, 0.5));

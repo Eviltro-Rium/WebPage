@@ -732,6 +732,7 @@ test('challenge targeted trophy cards apply to the selected NPC2 target', () => 
     ['PiercingTrophy', 'bleed', 1],
     ['FreezeTrophy', 'frozen', true],
     ['PoisonTrophy', 'poison', 1],
+    ['ThornsTrophy', 'thorns', 1],
     ['TimeBombTrophy', 'bomb', 5]
   ];
 
@@ -1359,7 +1360,7 @@ test('Chan passive and refill emit a single player draw when a new attack turn s
   assert.equal(engine.h.player.length, before + draws[0].count);
   assert.ok(draws[0].count >= 1);
 });
-test('adventure challenge refills the player exactly once after the first enemy defeat', () => {
+test('adventure challenge refills the player each round and after the first enemy defeat', () => {
   const engine = new AdventureBattleEngine();
   engine.startAdventure1v2({
     player: 'Leon', opponent1: 'CastleWolf', opponent2: 'CastleBear', stage: 1,
@@ -1368,18 +1369,46 @@ test('adventure challenge refills the player exactly once after the first enemy 
       hand: [number(1)], discard: [], handLimit: 5
     }
   });
-  const before = engine.h.player.length;
+  const opening = engine.h.player.length;
+  engine.fillHands1v2(true);
+  assert.ok(engine.h.player.length > opening, 'challenge rooms still refill at the end of a round');
+  assert.equal(engine.h.player.length, engine.piles.player.handLimit);
+
+  while (engine.h.player.length > 1) engine.piles.player.discard.push(engine.h.player.pop());
   engine.s.ai.alive = false;
   engine.s.ai2.alive = true;
   engine._on1v2OpponentEliminated('ai');
   assert.equal(engine.s.challengeRefillAvailable, true);
   engine.fillHands1v2(true);
-  assert.equal(engine.s.challengeRefillUsed, true);
-  assert.ok(engine.h.player.length > before);
-  const after = engine.h.player.length;
-  engine.h.player.pop();
+  assert.equal(engine.h.player.length, engine.piles.player.handLimit);
+  engine.piles.player.discard.push(engine.h.player.pop());
   engine.fillHands1v2(true);
-  assert.equal(engine.h.player.length, after - 1);
+  assert.equal(engine.h.player.length, engine.piles.player.handLimit);
+});
+
+test('adventure challenge does not refill the player on enter or on victory', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({
+    player: 'Leon', opponent1: 'CastleWolf', opponent2: 'CastleBear', stage: 1,
+    playerPile: {
+      deck: [number(2), number(3), number(4), number(5), number(6)],
+      hand: [number(1)], discard: [], handLimit: 5
+    }
+  });
+  assert.deepEqual(Array.from(engine.h.player, card => card.value), [1], 'entering a challenge room must keep the map hand');
+
+  engine.s.ai.hp = 0;
+  engine.s.ai.alive = false;
+  engine.s.ai2.hp = 0;
+  engine.s.ai2.alive = false;
+  engine.startAITurn();
+  assert.equal(engine.s.phase, 'GAME_OVER');
+  assert.ok(engine.h.player.length < engine.piles.player.handLimit, 'a finishing blow must not refill to the hand limit');
+
+  const handAfterFight = engine.h.player.length;
+  const result = engine.finishAdventureBattle();
+  assert.equal(result.playerPile.hand.length, handAfterFight);
 });
 
 test('adventure ordinary victory keeps the player hand without an automatic refill', () => {
@@ -1442,4 +1471,65 @@ test('parasite trophy is a reusable self-buff card with the registered icon and 
   engine.useTrophyWhite(engine.h.player[0], engine.s.ai, 'player');
   assert.equal(engine.s.player.parasite, 1);
   assert.equal(engine.s.ai.parasite || 0, 0);
+});
+
+test('restoreSession writes spent combat items back onto the adventure engine', () => {
+  const live = start();
+  live.s.adventureConsumables = [{ name: 'Dodge' }];
+  live.s.adventureGold = 4;
+  const snapshot = {
+    s: JSON.parse(JSON.stringify(live.s)),
+    piles: JSON.parse(JSON.stringify(live.piles)),
+    h: JSON.parse(JSON.stringify(live.h)),
+    events: [],
+    ver: live.ver,
+    pendingSettlement: null,
+    tableTopOwner: live.tableTopOwner,
+    testMode: false
+  };
+  const map = new context.AdventureMap([[0, 1], [3, 2]]);
+  const adv = new AdventureEngine();
+  adv.mapName = 'stage_01_castle_1';
+  adv.start(map, 'Ryan', { gold: 4, stage: 1, scene: 'castle', consumables: ['GhostFire', 'Dodge'] });
+  const restored = new AdventureBattleEngine();
+  restored.restoreSession(snapshot, adv);
+  assert.deepEqual(adv.s.consumables, ['Dodge']);
+});
+
+test('restoreSession re-aliases NPC hand so draw still fills h.ai', () => {
+  const live = start();
+  live.h.ai.splice(0, live.h.ai.length);
+  const snapshot = {
+    s: JSON.parse(JSON.stringify(live.s)),
+    piles: JSON.parse(JSON.stringify(live.piles)),
+    h: JSON.parse(JSON.stringify(live.h)),
+    events: [],
+    ver: live.ver,
+    pendingSettlement: null,
+    tableTopOwner: live.tableTopOwner,
+    testMode: false
+  };
+  const restored = new AdventureBattleEngine();
+  restored.restoreSession(snapshot);
+  assert.equal(restored.h.ai, restored.piles.ai.hand);
+  assert.equal(restored.h.player, restored.piles.player.hand);
+  const before = restored.h.ai.length;
+  restored.draw('ai', 1, false);
+  assert.equal(restored.h.ai.length, before + 1);
+  assert.equal(restored.piles.ai.hand.length, restored.h.ai.length);
+  restored.fillHands(true);
+  assert.equal(restored.h.ai.length, restored.piles.ai.handLimit);
+});
+
+test('thorns trophy applies one thorns stack to the opponent', () => {
+  const def = context.AdventureRegistry.getItem('ThornsTrophy');
+  assert.equal(def.kind, 'trophyWhite');
+  assert.equal(def.trophyEffect, 'thorns');
+  assert.ok(def.icon.endsWith('buff_icons/thorns.webp'));
+
+  const engine = start({ hand: [context.AdventureDeck.trophyWhite('ThornsTrophy')] });
+  engine.later = () => {};
+  engine.useTrophyWhite(engine.h.player[0], engine.s.ai, 'player');
+  assert.equal(engine.s.ai.thorns, 1);
+  assert.equal(engine.s.player.thorns || 0, 0);
 });

@@ -59,14 +59,34 @@ _showCardSkillDesc(id, card, owner, isDefend) {
     const s = this.state;
     const participant = owner === 'ai2' ? s.ai2 : owner === 'ai' ? s.ai : s.player;
     if (!participant) return;
-    const charName = card.borrowedMonsterName || participant.name.replace(/^AI\d*\s+/, '');
-    const adventureOpts = s.isAdventure ? {
-        stage: s.adventureStage || s.stage || 1,
-        playerHandSize: (s.playerHand && s.playerHand.length) || 0,
-        incomingDamage: s.pendingDefenseDamage || 0
-    } : null;
+    // Prefer the card's borrowed-monster name, else the acting participant.
+    // Never fall back to the opponent's name when owner is missing — that was
+    // painting player skill text onto NPC attack/defend zones.
+    const charName = card.borrowedMonsterName || this._combatDisplayName(participant.name);
+    const adventureOpts = s.isAdventure ? this._adventureSkillDescOpts(owner) : null;
     const skill = this._resolveHandSkillDesc(charName, card, isDefend, adventureOpts) || (isDefend ? '执行防御效果' : '执行进攻效果');
     this._showZoneDesc(id, skill);
+},
+
+_adventureSkillDescOpts(owner) {
+    const s = this.state;
+    if (!s) return null;
+    const attackerKey = owner === 'ai2' ? 'ai2' : owner === 'ai' ? 'ai' : 'player';
+    const attacker = s[attackerKey] || s.player;
+    const player = s.player || {};
+    const attackerHand = attackerKey === 'player'
+      ? (s.playerHand || [])
+      : (attackerKey === 'ai2' ? (s.ai2Hand || []) : (s.aiHand || []));
+    return {
+        stage: s.adventureStage || s.stage || 1,
+        playerHandSize: (s.playerHand && s.playerHand.length) || 0,
+        attackerHandSize: Array.isArray(attackerHand) ? attackerHand.length : 0,
+        attackerHand: Array.isArray(attackerHand) ? attackerHand : [],
+        playerPoison: Number(player.poison) || 0,
+        playerBleed: Number(player.bleed) || 0,
+        attackerLush: Number(attacker && attacker.lush) || 0,
+        incomingDamage: s.pendingDefenseDamage || (s.pendingAttack && s.pendingAttack.damage) || 0
+    };
 },
 
 _hideZoneDesc(id) {

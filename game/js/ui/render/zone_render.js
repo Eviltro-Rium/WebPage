@@ -48,7 +48,8 @@
                 cv.classList.add('zone-card');
                 atkContainer.appendChild(cv);
                 atkContainer.dataset.cardKey = atkKey;
-                this._showCardSkillDesc('atk-desc', visibleAtkCard, s.atkOwner || 'player', false);
+                const atkOwner = s.atkOwner || s.activeAttacker || 'player';
+                this._showCardSkillDesc('atk-desc', visibleAtkCard, atkOwner, false);
             } else if (atkContainer.dataset.cardKey !== 'empty' && !visibleAtkCard) {
                 atkContainer.innerHTML = '<span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待出牌</span>';
                 atkContainer.dataset.cardKey = 'empty';
@@ -62,7 +63,10 @@
                 cv.classList.add('zone-card');
                 defContainer.appendChild(cv);
                 defContainer.dataset.cardKey = defKey;
-                this._showCardSkillDesc('def-desc', visibleDefCard, s.defOwner || 'player', true);
+                const defOwner = s.defOwner || (s.atkOwner === 'player' || s.activeAttacker === 'player'
+                    ? (s.is1v2 ? (s.attackTarget || 'ai') : 'ai')
+                    : 'player');
+                this._showCardSkillDesc('def-desc', visibleDefCard, defOwner, true);
             } else if (defContainer.dataset.cardKey !== 'empty' && !visibleDefCard) {
                 defContainer.innerHTML = '<span style="color:rgba(255,255,255,0.5);font-size:0.7rem">等待防御</span>';
                 defContainer.dataset.cardKey = 'empty';

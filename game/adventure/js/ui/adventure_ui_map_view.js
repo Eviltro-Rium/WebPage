@@ -35,11 +35,20 @@
         cell.className = 'adv-cell ' + style.cls;
         if (style.icon) {
           let html = '<img class="adv-room-icon" src="' + style.icon + '" alt="' + style.label + '">';
-          if (cellModel.doorLocked && cellModel.doorCost.length) {
+          if (cellModel.doorLocked && cellModel.doorCost && cellModel.doorCost.length) {
             html += '<div class="adv-door-cost" title="开门需要：' + cellModel.doorCost.map(item => item.label).join(' + ') + '">';
             cellModel.doorCost.forEach(item => {
               html += '<img class="adv-door-cost-icon" src="' + item.icon + '" alt="' + item.label + '">';
             });
+            html += '</div>';
+            cell.classList.add('has-door-cost');
+          } else if (cellModel.doorLocked && cellModel.entryGold > 0) {
+            const goldIcon = (global.AdventureCurrency && global.AdventureCurrency.GOLD_ICON) ||
+              '../icons/adventure_ui_icons/coin.webp';
+            html += '<div class="adv-door-cost" title="进入需要：' + cellModel.entryGold + '金币">';
+            for (let i = 0; i < cellModel.entryGold; i++) {
+              html += '<img class="adv-door-cost-icon" src="' + goldIcon + '" alt="金币">';
+            }
             html += '</div>';
             cell.classList.add('has-door-cost');
           } else if (cellModel.doorUnlocked) {
@@ -65,6 +74,31 @@
         board.appendChild(cell);
       }
       return board;
+    }
+    _syncMapCells(board, model) {
+      if (!board || !model) return false;
+      const byKey = new Map();
+      model.cells.forEach(cell => byKey.set(cell.r + ',' + cell.c, cell));
+      const nodes = board.querySelectorAll('.adv-cell[data-r][data-c]');
+      if (!nodes.length || nodes.length !== model.cells.length) return false;
+      nodes.forEach(cell => {
+        const key = cell.dataset.r + ',' + cell.dataset.c;
+        const cellModel = byKey.get(key);
+        if (!cellModel) return;
+        cell.classList.toggle('visited', !!cellModel.visited);
+        cell.classList.toggle('cleared', !!cellModel.cleared);
+        cell.classList.toggle('reward-claimed', !!cellModel.rewardClaimed);
+        cell.classList.toggle('has-loot', !!cellModel.hasLoot);
+        cell.classList.toggle('current', !!cellModel.current);
+        cell.classList.toggle('reachable', !!cellModel.reachable);
+        cell.classList.toggle('has-door-cost', !!(
+          cellModel.doorLocked &&
+          ((cellModel.doorCost && cellModel.doorCost.length) || (cellModel.entryGold > 0))
+        ));
+        cell.classList.toggle('door-unlocked', !!cellModel.doorUnlocked);
+        cell.title = cellModel.title || '';
+      });
+      return true;
     }
   }
 

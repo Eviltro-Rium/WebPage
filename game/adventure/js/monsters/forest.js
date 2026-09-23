@@ -196,7 +196,7 @@
     attackDamage(card, ctx) {
       const v = card.value;
       if (v >= 1 && v <= 3) return 2;
-      if (v >= 4 && v <= 6) return 3 + ((ctx && ctx.playerPoison) || 0);
+      if (v >= 4 && v <= 6) return 4 + ((ctx && ctx.playerPoison) || 0);
       return 0;
     },
     attackPoison(card) {
@@ -456,7 +456,8 @@
       const v = card.value;
       const poison = (ctx && ctx.playerPoison) || 0;
       if (v >= 1 && v <= 3) return v;
-      if (v >= 4 && v <= 6) return 2 * (poison + 1);
+      // 先施加 1 层中毒后再按层数结算，等价于用施加前层数 +1
+      if (v >= 4 && v <= 6) return 3 * (poison + 1);
       if (v === 0) return 2 * (poison + 1);
       return 0;
     },

@@ -28,6 +28,7 @@
     onCombatEnd(result) {
       if (!this.s || !this.s.combat) return;
       const room = this.currentRoom();
+      this.s.activeCombat = null;
 
       if (result === 'win') {
         this._log('战斗胜利');

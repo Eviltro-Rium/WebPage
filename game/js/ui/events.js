@@ -389,13 +389,13 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             // 普通伤害由 kind=normal 表示；旧事件没有 kind 时按普通伤害兼容。
             // 规则字段决定表现，不再解析 desc 文本。
-            const kind = evt.kind || (evt.poison ? DAMAGE_KINDS.POISON : evt.bleed ? DAMAGE_KINDS.BLEED : evt.drain ? DAMAGE_KINDS.DRAIN : DAMAGE_KINDS.NORMAL);
+            const kind = evt.kind || (evt.poison ? DAMAGE_KINDS.POISON : evt.bleed ? DAMAGE_KINDS.BLEED : evt.drain ? DAMAGE_KINDS.DRAIN : evt.thorns ? (DAMAGE_KINDS.THORNS || 'thorns') : DAMAGE_KINDS.NORMAL);
             if (kind === DAMAGE_KINDS.NORMAL) {
                 if (!evt.suppressFloat && Number(evt.amount) > 0) {
                     this.playFloatingText(evt.floatText || `-${evt.amount}`, '#ff4444', side);
                 }
             } else {
-                const color = kind === DAMAGE_KINDS.POISON ? '#84cc16' : kind === DAMAGE_KINDS.BLEED ? '#cc2222' : '#ff4444';
+                const color = kind === DAMAGE_KINDS.POISON ? '#84cc16' : kind === DAMAGE_KINDS.BLEED ? '#cc2222' : kind === (DAMAGE_KINDS.THORNS || 'thorns') ? '#facc15' : '#ff4444';
                 if (!evt.suppressFloat) this.playFloatingText(evt.desc || '', color, side);
             }
             if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
@@ -413,7 +413,7 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const colors = {
                 burn: '#ff8800', bleed: '#cc2222', freeze: '#44aaff', guard: '#00bcd4',
-                poison: '#84cc16', crit: '#fbbf24', fly: '#a5b4fc', lush: '#4ade80',
+                poison: '#84cc16', thorns: '#facc15', crit: '#fbbf24', fly: '#a5b4fc', lush: '#4ade80',
                 parasite: '#86efac', blind: '#c4b5fd', bomb: '#fb923c', iceSeal: '#7dd3fc',
                 chaos_reset: '#c084fc',
                 chaos_red: '#f87171', chaos_yellow: '#fde047', chaos_blue: '#60a5fa', chaos_green: '#4ade80'

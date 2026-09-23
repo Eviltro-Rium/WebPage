@@ -104,6 +104,22 @@
       return page;
     }
     
+    _roomStatusMarkup(snap) {
+      if (!snap || !snap.roomInfo) return '';
+      const ri = snap.roomInfo;
+      let roomStatus = '';
+      if (ri.cleared) roomStatus += '已清除 ';
+      if (ri.stashedLoot) roomStatus += '有待领奖励 ';
+      else if (ri.rewardClaimed) roomStatus += '奖励已领 ';
+      if (ri.beastTokenClaimed) roomStatus += '兽元已领';
+      let html = '';
+      if (roomStatus) html += '<div class="adv-room-status">' + roomStatus + '</div>';
+      if (ri.stashedLoot && snap.phase === window.AdventurePhase.REWARD && !snap.pendingRoomReward) {
+        html += '<div class="adv-stashed-loot">待领：' + this._stashedLootLabel(ri.stashedLoot) + '</div>';
+      }
+      return html;
+    }
+
     _buildSidebar(snap) {
       const side = document.createElement('div');
       side.className = 'adventure-sidebar';
@@ -132,18 +148,7 @@
       }
       html += '</div></div>';
     
-      if (snap.roomInfo) {
-        const ri = snap.roomInfo;
-        let roomStatus = '';
-        if (ri.cleared) roomStatus += '已清除 ';
-        if (ri.stashedLoot) roomStatus += '有待领奖励 ';
-        else if (ri.rewardClaimed) roomStatus += '奖励已领 ';
-        if (ri.beastTokenClaimed) roomStatus += '兽元已领';
-        if (roomStatus) html += '<div class="adv-room-status">' + roomStatus + '</div>';
-        if (ri.stashedLoot && snap.phase === window.AdventurePhase.REWARD && !snap.pendingRoomReward) {
-          html += '<div class="adv-stashed-loot">待领：' + this._stashedLootLabel(ri.stashedLoot) + '</div>';
-        }
-      }
+      html += this._roomStatusMarkup(snap);
     
     
       html += '<div class="adv-actions">' + this._buildActions(snap) + '</div>';
@@ -191,6 +196,7 @@
       if (b.burn > 0)      items.push('<span class="adv-buff adv-buff-burn" title="灼烧">' + icon('burn', '灼烧') + '×' + b.burn + '</span>');
       if (b.bleed > 0)     items.push('<span class="adv-buff adv-buff-bleed" title="流血">' + icon('bleed', '流血') + '×' + b.bleed + '</span>');
       if (b.poison > 0)    items.push('<span class="adv-buff adv-buff-poison" title="中毒">' + icon('poison', '中毒') + '×' + b.poison + '</span>');
+      if (b.thorns > 0)    items.push('<span class="adv-buff adv-buff-thorns" title="荆棘">' + icon('thorns', '荆棘') + '×' + b.thorns + '</span>');
       if (b.frozen)        items.push('<span class="adv-buff adv-buff-frozen" title="冷冻">' + icon('freeze', '冷冻') + '</span>');
       if (b.iceSeal > 0)   items.push('<span class="adv-buff" title="冰封">' + icon('ice_seal', '冰封') + '×' + b.iceSeal + '</span>');
       if (b.guard > 0)     items.push('<span class="adv-buff adv-buff-guard" title="守护">' + icon('guard', '守护') + '×' + b.guard + '</span>');

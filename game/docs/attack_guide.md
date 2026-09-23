@@ -24,7 +24,7 @@ const ctx = {
   playerHandSize:   eng.h.player ? eng.h.player.length : 0,  // 玩家手牌数
   attackerHandSize: eng.h[attackerKey] ? eng.h[attackerKey].length : 0,  // 攻击者手牌数
   attackerHand:     eng.h[attackerKey] || [],                  // 攻击者手牌数组
-  playerBleed:      (target.bleed || 0),   // 目标（防守方）【流血】层数
+  playerBleed:      (target.bleed || 0),   // 目标（防守方）[流血]层数
   playerPoison:     (target.poison || 0),  // 目标（防守方）中毒层数
   attackerLush:     (attacker.lush || 0),   // 攻击者自身茂盛层数
 };
@@ -63,7 +63,7 @@ attackDamage(card, ctx) {
   return 0;
 }
 
-// 【流血】相关：【流血】越多越痛
+// [流血]相关：[流血]越多越痛
 attackDamage(card, ctx) {
   const v = card.value;
   const bleed = ctx.playerBleed || 0;
@@ -186,7 +186,7 @@ attackDrain(card, ctx) {
   return 0;
 }
 
-// 城堡蝠：4/5/6 吸血 2 + 玩家【流血】层数 ❤️
+// 城堡蝠：4/5/6 吸血 2 + 玩家[流血]层数 ❤️
 attackDrain(card, ctx) {
   if (!card || !card.isNumberCard) return 0;
   if (card.value >= 4 && card.value <= 6) {
@@ -243,7 +243,7 @@ attackSelfHurt(card) {
 2. 调用 `eng.hurt(attacker, n)` 对自己造成 `n🗡️`
 3. 发出 `'desc'` 事件：`<角色名>自伤N点`
 4. 自伤**不**经过防御系统，**不**享受守护/飞翔减免
-5. 结算顺序：在主要 buff（守护/飞翔/【流血】/中毒/冷冻/冰封/buff清除/茂盛）之后、`attackDrain`/`attackHeal` 之前执行
+5. 结算顺序：在主要 buff（守护/飞翔/[流血]/中毒/冷冻/冰封/buff清除/茂盛）之后、`attackDrain`/`attackHeal` 之前执行
 
 > 自伤用 `helpers.hurt(自己, 数值)` 或 `eng.hurt(自己, 数值)` 直接扣血，`attackSelfHurt` 方法是怪物框架的统一接口。主角进攻阶段现已统一走 `helpers.hurt()`。
 
@@ -291,7 +291,7 @@ defendCounter(card, incoming, defender, opponent) {
 1. bridge 在 `defend()` 中调用 `defendCounter(card, incoming, defender, opponent, eng)` 得到反击数字 `n`
 2. 调用 `eng.counterAttack(defender, opponent, n)` 对进攻方造成 `n🗡️`
 3. 描述追加：`'反击' + n + '🗡️'`
-4. 反击**不**产生新的防御出牌阶段，但会经过统一的【飞翔】/【守护】减免；实际伤害由引擎结算并生成一次反馈事件
+4. 反击**不**产生新的防御出牌阶段，但会经过统一的[飞翔]/[守护]减免；实际伤害由引擎结算并生成一次反馈事件
 
 ---
 
@@ -300,12 +300,12 @@ defendCounter(card, incoming, defender, opponent) {
 ### 流血（Bleed）
 
 ```javascript
-// 施加【流血】
+// 施加[流血]
 attackBleed(card) {
   const v = card.value;
   return v >= 4 && v <= 6 ? 1 : 0; // 返回施加层数
 }
-// 防御时施加【流血】
+// 防御时施加[流血]
 defendBleed(card) {
   const v = card.value;
   return v >= 1 && v <= 3 ? 1 : 0;
@@ -410,5 +410,5 @@ defendCounter(card, incoming, defender, opponent, eng) {
 | 攻击结算引擎 | `adventure/js/battle/battle_engine.js` → `settleAIAttack()` |
 | 通用战斗引擎 | `game/js/combat/engine.js` → `performAttack()` / `dealAttackHit()` / `hurt()` |
 | 攻击修正（含吸血结算） | `game/js/combat/engine.js` → `gateAdventureAttackMod()` |
-| DoT 结算（【流血】/中毒/灼烧） | `game/js/combat/engine.js` / `adventure/js/battle/battle_engine.js` |
+| DoT 结算（[流血]/中毒/灼烧） | `game/js/combat/engine.js` / `adventure/js/battle/battle_engine.js` |
 | 防御结算 | `adventure/js/content/monster_registry.js` → `defend()` 分支 |

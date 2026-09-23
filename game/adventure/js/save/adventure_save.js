@@ -1,8 +1,8 @@
 /**
  * 冒险模式存档系统
  * 在安全的非战斗阶段将引擎状态序列化到 localStorage；
- * 战斗过程另由 adventure_battle_controller 使用 sessionStorage 保存当前标签页快照。
- * 因此页面刷新时优先恢复精确战斗状态，找不到战斗快照才回到安全快照。
+ * 战斗过程另由 adventure_battle_session 将精确快照写入 localStorage，
+ * 并由本模块的 activeCombat 字段锁住遭遇房间，防止刷新后重刷同一 NPC。
  */
 (function () {
   const KEY = 'furryAdventureSave';
@@ -114,6 +114,7 @@
       itemDiscardReturn: CLONE(s.itemDiscardReturn) || null,
       pendingCombatReward: CLONE(s.pendingCombatReward) || null,
       pendingRoomReward: CLONE(s.pendingRoomReward) || null,
+      activeCombat: CLONE(s.activeCombat) || null,
       shopSelectedSlot: s.shopSelectedSlot == null ? null : s.shopSelectedSlot,
       blacksmithSelectedSlot: s.blacksmithSelectedSlot == null ? null : s.blacksmithSelectedSlot,
       rooms: rooms,

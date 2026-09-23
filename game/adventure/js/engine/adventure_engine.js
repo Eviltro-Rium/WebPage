@@ -120,6 +120,7 @@
         itemDiscardReturn: null,
         pendingCombatReward: null,
         pendingRoomReward: null,
+        activeCombat: null,
         shopSelectedSlot: null,
         blacksmithSelectedSlot: null,
         phase: Phase.MAP,
@@ -197,6 +198,7 @@
         itemDiscardReturn: clone(save.itemDiscardReturn) || null,
         pendingCombatReward: clone(save.pendingCombatReward) || null,
         pendingRoomReward: clone(save.pendingRoomReward) || null,
+        activeCombat: clone(save.activeCombat) || null,
         shopSelectedSlot: save.shopSelectedSlot == null ? null : save.shopSelectedSlot,
         blacksmithSelectedSlot: save.blacksmithSelectedSlot == null ? null : save.blacksmithSelectedSlot,
         phase: save.phase,
@@ -297,7 +299,8 @@
     }
 
     canMoveTo(r, c) {
-      if (!this.s || this.s.phase === Phase.PLAYER_PLAY || this.s.phase === Phase.PLAYER_DEFEND || this.s.phase === Phase.NPC_TURN || this.s.phase === Phase.BEAST_CHOICE || this.s.phase === Phase.BEAST_DISCARD || this.s.phase === Phase.ITEM_DISCARD || this.s.phase === Phase.COMBAT_SETTLE || this.s.phase === Phase.GAME_OVER) return false;
+      if (!this.s || this.s.activeCombat) return false;
+      if (this.s.phase === Phase.PLAYER_PLAY || this.s.phase === Phase.PLAYER_DEFEND || this.s.phase === Phase.NPC_TURN || this.s.phase === Phase.BEAST_CHOICE || this.s.phase === Phase.BEAST_DISCARD || this.s.phase === Phase.ITEM_DISCARD || this.s.phase === Phase.COMBAT_SETTLE || this.s.phase === Phase.GAME_OVER) return false;
       const room = this.s.map.get(r, c);
       if (!room || !room.isEnterable()) return false;
       if (room.visited) return true;
@@ -313,9 +316,52 @@
       if (!this.canMoveTo(r, c)) return false;
       this.s.pos = { r, c };
       const room = this.s.map.get(r, c);
+      if (room) room.visited = true;
       this._log('移动到 (' + (r + 1) + ',' + (c + 1) + ') ' + room.label() + '房间');
       this.emit('move', '移动', { r, c, roomType: room.type });
       return true;
+    }
+
+    /**
+     * Lock the current room encounter into the adventure save so a page
+     * refresh cannot walk away from an unfinished fight and rematch the NPC.
+     */
+    markActiveCombat(meta = {}) {
+      if (!this.s || !this.s.pos) return null;
+      const room = this.currentRoom();
+      if (room) room.visited = true;
+      const enemy = meta.enemy || (this.s.combat && (typeof this.s.combat.enemy === 'string'
+        ? this.s.combat.enemy
+        : this.s.combat.enemy && this.s.combat.enemy.name)) || null;
+      const enemy2 = meta.enemy2 || (this.s.combat && (typeof this.s.combat.enemy2 === 'string'
+        ? this.s.combat.enemy2
+        : this.s.combat.enemy2 && this.s.combat.enemy2.name)) || null;
+      if (room) {
+        if (enemy && (room.type === window.RoomType.NORMAL || room.type === window.RoomType.CHALLENGE)) {
+          room.monsterName = enemy;
+        }
+        if (enemy && room.type === window.RoomType.BOSS) room.bossName = enemy;
+      }
+      this.s.activeCombat = {
+        enemy: enemy || null,
+        enemy2: enemy2 || null,
+        kind: meta.kind || (this.s.combat && this.s.combat.kind) || null,
+        is1v2: !!(meta.is1v2 || enemy2 || (this.s.combat && this.s.combat.is1v2)),
+        pos: { r: this.s.pos.r, c: this.s.pos.c },
+        mapName: this.mapName || null
+      };
+      // Keep the serialized adventure save on MAP so isSafePhase still accepts
+      // the checkpoint; activeCombat is what blocks farming after refresh.
+      if (this.s.phase === Phase.PLAYER_PLAY || this.s.phase === Phase.PLAYER_DEFEND ||
+          this.s.phase === Phase.NPC_TURN || this.s.phase === Phase.ROOM_ENTER) {
+        this.s.phase = Phase.MAP;
+      }
+      return this.s.activeCombat;
+    }
+
+    clearActiveCombat() {
+      if (!this.s) return;
+      this.s.activeCombat = null;
     }
 
     enterCurrent() {
@@ -537,8 +583,11 @@
         }
         return;
       }
-      const monster1 = window.Monster.fromRegistry(this._pickMonsterName(room));
-      const monster2 = window.Monster.fromRegistry(this._pickMonsterName(room));
+      const lock = this.s.activeCombat;
+      const name1 = (lock && lock.enemy) || this._pickMonsterName(room);
+      const name2 = (lock && lock.enemy2) || this._pickMonsterName(room);
+      const monster1 = window.Monster.fromRegistry(name1);
+      const monster2 = window.Monster.fromRegistry(name2);
       if (!monster1 || !monster2) {
         this._log('挑战房未配置怪物，直接通过');
         room.cleared = true;
@@ -546,6 +595,7 @@
         this.emit('roomCleared', '房间已清空', { roomType: room.type });
         return;
       }
+      if (room) room.monsterName = name1;
       monster1.init(this);
       monster2.init(this);
       this._initializeDiscardTop();

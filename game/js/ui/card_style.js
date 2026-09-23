@@ -36,6 +36,7 @@
     LushTrophy: 'LUSH TROPHY',
     PoisonTrophy: 'POISON TROPHY',
     ParasiteTrophy: 'PARASITE TROPHY',
+    ThornsTrophy: 'THORNS TROPHY',
     TimeBombTrophy: 'TIME BOMB',
     GuardTrophy: 'GUARD TROPHY',
     DisarmTrophy: 'DISARM TROPHY',
@@ -72,6 +73,7 @@
     trophy_LushTrophy: cardAssetUrl('icons/buff_icons/lush.webp'),
     trophy_PoisonTrophy: cardAssetUrl('icons/buff_icons/poison.webp'),
     trophy_ParasiteTrophy: cardAssetUrl('icons/buff_icons/parasite.webp'),
+    trophy_ThornsTrophy: cardAssetUrl('icons/buff_icons/thorns.webp'),
     trophy_GuardTrophy: cardAssetUrl('icons/buff_icons/guard.webp'),
     trophy_DisarmTrophy: cardAssetUrl('icons/card_icons/disarm.webp'),
     trophy_ZeroTrophy: cardAssetUrl('icons/card_icons/zero.webp')

@@ -91,6 +91,7 @@
                 bleed: { colorClass: 'bleed-buff' }, poison: { colorClass: 'poison-buff' },
                 blind: { colorClass: 'blind-buff' }, iceSeal: { colorClass: 'ice-seal-buff' },
                 hypnosis: { colorClass: 'hypnosis-buff' }, sleep: { colorClass: 'sleep-buff' },
+                thorns: { colorClass: 'thorns-buff' },
                 bomb: { colorClass: 'bomb-mark' }, hypothermia: { colorClass: 'hypothermia-buff' },
                 guard: { colorClass: 'guard-buff' }, fly: { colorClass: 'fly-buff' },
                 lush: { colorClass: 'lush-buff' }, parasite: { colorClass: 'parasite-buff' },

@@ -33,12 +33,13 @@
             const isBleed = kind === 'bleed' || kind === true;
             const isPoison = kind === 'poison';
             const isDrain = kind === 'drain';
-            if (isBleed || isPoison || isDrain) {
-                const damageKind = isDrain ? kinds.DRAIN : isBleed ? kinds.BLEED : kinds.POISON;
-                const text = isDrain ? '吸血' : isBleed ? '流血' : '中毒';
+            const isThorns = kind === 'thorns';
+            if (isBleed || isPoison || isDrain || isThorns) {
+                const damageKind = isDrain ? kinds.DRAIN : isBleed ? kinds.BLEED : isPoison ? kinds.POISON : (kinds.THORNS || 'thorns');
+                const text = isDrain ? '吸血' : isBleed ? '流血' : isPoison ? '中毒' : '荆棘';
                 engine.emit(eventTypes.HURT || 'hurt', `-${damage}[${text}]`, null, {
                     who: target, target, amount: damage, kind: damageKind,
-                    bleed: isBleed, drain: isDrain, poison: isPoison,
+                    bleed: isBleed, drain: isDrain, poison: isPoison, thorns: isThorns,
                     // Special attacks may keep their own consolidated feedback
                     // (for example, life steal shows one heal float only).
                     suppressFloat: !!(opts && opts.suppressFloat)
@@ -71,7 +72,7 @@
             }
             const target = targetKey(engine, entity);
             const desc = kind === 'wake'
-                ? `[苏醒]+${actual}♥`
+                ? `[苏醒]+${actual}❤️`
                 : `+${actual}[${kind === 'drain' ? '吸血' : kind === 'passive' ? '被动' : '生命'}]`;
             engine.emit(eventTypes.HEAL || 'heal', desc, null, { who: target, target, amount: actual, kind });
             if (kind !== 'drain' && kind !== 'wake' && engine.name(entity) === 'Serenity' && !entity.bloodthirst && entity.hp >= 30) {
@@ -139,6 +140,27 @@
             }
         },
 
+        thorns(engine, entity, amount, opts) {
+            if (!entity || amount <= 0) return;
+            const before = entity.thorns || 0;
+            if (service) addStatus(entity, 'thorns', amount);
+            else entity.thorns = Math.min(1, before + amount);
+            const added = Math.max(0, (entity.thorns || 0) - before);
+            if (added > 0 && (!opts || opts.silent !== true)) {
+                const target = targetKey(engine, entity);
+                engine.emit(eventTypes.BUFF || 'buff', `+${added}[荆棘]`, null, {
+                    who: target, target, kind: 'thorns', stacks: entity.thorns || 0
+                });
+            }
+        },
+        applyAttackSkillThorns(engine, entity) {
+            if (!entity || !entity.alive || !(entity.thorns > 0)) return false;
+            engine.hurt(entity, 1, 'thorns');
+            const who = targetKey(engine, entity);
+            const label = who === 'player' ? '玩家' : (entity.name || 'AI');
+            engine.emit(eventTypes.DESC || 'desc', label + '因[荆棘]受到1点独立伤害');
+            return true;
+        },
         parasite(engine, entity, amount, opts) {
             if (!entity || amount <= 0) return;
             const before = entity.parasite || 0;
@@ -160,7 +182,7 @@
             }
             entity.burn = 0; entity.bleed = 0; entity.poison = 0;
             entity.frozen = false; entity.bomb = 0; entity.blind = 0; entity.iceSeal = 0;
-            entity.hypothermia = 0;
+            entity.hypothermia = 0; entity.thorns = 0;
         },
         clearPositiveBuffs(entity) {
             if (!entity) return;
@@ -186,6 +208,7 @@
             if (all) {
                 entity.burn = 0; entity.bleed = 0; entity.poison = 0; entity.frozen = false;
                 entity.bomb = 0; entity.blind = 0; entity.iceSeal = 0; entity.hypothermia = 0;
+                entity.thorns = 0;
                 entity.guard = 0; entity.fly = 0; entity.lush = 0; entity.crit = 0; entity.parasite = 0;
                 entity.diving = false;
                 entity.chaos_red = false; entity.chaos_yellow = false;
@@ -195,6 +218,7 @@
             if (kind === 'burn' && entity.burn) entity.burn--;
             else if (kind === 'bleed' && entity.bleed) entity.bleed--;
             else if (kind === 'poison' && entity.poison) entity.poison--;
+            else if (kind === 'thorns') entity.thorns = 0;
             else if (kind === 'freeze') entity.frozen = false;
             else if (kind === 'bomb') entity.bomb = 0;
             else if (kind === 'blind') entity.blind = 0;

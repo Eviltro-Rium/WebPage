@@ -37,8 +37,9 @@
     { key: 'diving', name: '潜水', type: '正面状态', icon: 'icons/buff_icons/diving.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有潜水的角色免疫蓝色攻击（含被指定为蓝色的白牌）造成的伤害和buff施加。对手依旧可以对自己施加正面增益。冰封、诅咒等仍能命中。' },
     { key: 'hypothermia', name: '失温', type: '负面状态', icon: 'icons/buff_icons/hypothermia.webp', desc: '堆叠上限：2\n维持效果：衰减\n冻洋蓝鲸出4/5/6时，在防守方完成防御并结算伤害后，对防守方施加1层失温。当失温达到2层时，立即强制弃1张牌（玩家自选，NPC按最低优先级弃牌），随后失温削减1层。' },
     { key: 'bind', name: '捆缚', type: '印记', icon: 'icons/items_icons/binding.webp', desc: '堆叠上限：1\n维持效果：规则结束\n捆缚印记不能被净化或超级净化清除；目标在本回合结束后跳过自己的进攻阶段，由当前回合角色再发动一次进攻，额外进攻完成后按规则移除。' },
-    { key: 'hypnosis', name: '催眠', type: '负面状态', icon: 'icons/buff_icons/sleepy_1.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有催眠的角色在自己的进攻阶段结束、切换到对手进攻阶段时立即转化为【沉睡】。已处于【沉睡】时免疫新的【催眠】。' },
+    { key: 'hypnosis', name: '催眠', type: '负面状态', icon: 'icons/buff_icons/sleepy_1.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有催眠的角色在自己的进攻阶段结束、切换到对手进攻阶段时立即转化为[沉睡]。已处于[沉睡]时免疫新的[催眠]。' },
     { key: 'sleep', name: '沉睡', type: '负面状态', icon: 'icons/buff_icons/sleepy_2.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n拥有沉睡的角色在自己的进攻回合开始时立刻苏醒，恢复10点生命（不超过生命上限）。同时被进攻时会跳过防御阶段，所有伤害直接结算。' },
+    { key: 'thorns', name: '荆棘', type: '负面状态', icon: 'icons/buff_icons/thorns.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有荆棘的角色在进攻阶段每释放一次技能，立即受到1点独立伤害（不可用守护/飞翔减免）；可被净化。' },
     { key: 'bloodthirst', name: '嗜血', type: '印记', icon: 'icons/ui_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：永久\nSerenity专属嗜血印记。生命低于30时获得；获得后即使恢复到30以上也不会移除，且不能被净化或超级净化清除。未获得印记时，正常恢复额外+1生命；嗜血后技能按嗜血规则结算。' }
   ];
 
@@ -52,7 +53,7 @@
     { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；低于30生命获得嗜血印记，印记永久且不可净化；未获得印记时恢复+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
     { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
     { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
-    { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层【暴击】使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
+    { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层[暴击]使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
     { name: 'Vixraps', hp: 85, type: '灼热', passive: '打出黑牌后弃1张牌恢复3点生命', avatar: 'avatars/Vixraps.webp', color: '#c0392b' }
   ];
 
@@ -242,9 +243,9 @@
     for (const n of fromMd) {
       if (buffKeyFromEncyclopediaTitle(n.title)) continue;
       const lines = (n.lines || []).slice();
-      // Drop lines that are only a buff encyclopedia blurb: "【茂盛】：正面 buff…"
+      // Drop lines that are only a buff encyclopedia blurb: "[茂盛]：正面 buff…"
       const kept = lines.filter(line => {
-        const m = String(line).match(/^【([^】]+)】[：:]/);
+        const m = String(line).match(/^\[([^\]]+)\][：:]/);
         if (m && BUFF_BY_NAME[m[1]]) return false;
         return true;
       });
@@ -409,13 +410,13 @@
       html += '<div class="codex-empty">暂无数据</div>';
     } else {
       html += '<div class="codex-all-list">';
-      const effectMap = { burn: '灼烧', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', lush: '茂盛', poison: '中毒', parasite: '寄生' };
+      const effectMap = { burn: '灼烧', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', lush: '茂盛', poison: '中毒', parasite: '寄生', thorns: '荆棘' };
       for (const it of items) {
         const icon = resolveIcon(it.icon);
         const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-avatar codex-no-icon">${it.displayName[0]}</div>`;
         const shortName = (it.displayName || it.name || '').replace(/战利白卡/g, '').trim();
         html += `<div class="codex-all-item">`;
-        html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${it.displayName}</span><span class="codex-all-item-meta">战利白卡 · ${it.price || 0}金币</span></div></div>`;
+        html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${it.displayName}</span><span class="codex-all-item-meta">战利白卡</span></div></div>`;
         const descText = window.descToEmoji ? window.descToEmoji(it.description || '') : (it.description || '无描述');
         html += `<div class="codex-all-item-desc">${descText}</div>`;
         if (it.beastTradeCost && it.beastTradeCost.length) {

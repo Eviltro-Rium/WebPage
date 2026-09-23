@@ -53,7 +53,7 @@
   const TROPHY_TAGS = Object.freeze({
     BurnTrophy: "灼伤", PiercingTrophy: "流血", FreezeTrophy: "冰冻",
     RussianRouletteTrophy: "俄罗斯赌盘", FlyTrophy: "飞翔", LushTrophy: "茂盛",
-    PoisonTrophy: "中毒", ParasiteTrophy: "寄生", GuardTrophy: "守护",
+    PoisonTrophy: "中毒", ParasiteTrophy: "寄生", ThornsTrophy: "荆棘", GuardTrophy: "守护",
     DisarmTrophy: "缴械", ZeroTrophy: "0技能", TimeBombTrophy: "定时炸弹"
   });
 
@@ -72,7 +72,7 @@
         for (const item of drops) counts.set(item, (counts.get(item) || 0) + 1);
         const range = first === last ? String(first) : first + "-" + last;
         const cards = [...counts.entries()].map(([item, count]) =>
-          "【" + (TROPHY_TAGS[item] || item) + "】战利白卡" + (count > 1 ? "×" + count : "")
+          "[" + (TROPHY_TAGS[item] || item) + "]战利白卡" + (count > 1 ? "×" + count : "")
         );
         parts.push(range + cards.join("、"));
       }

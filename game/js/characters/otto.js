@@ -4,7 +4,7 @@
     name: 'Otto',
     hp: 100,
     type: '战士',
-    passive: '进攻时伤害>4可选择消耗1层【暴击】使攻击不可防御',
+    passive: '进攻时伤害>4可选择消耗1层[暴击]使攻击不可防御',
     init() { return { crit: 0 }; },
     turnStart(eng, ch) {},
     effect(eng, v, c, a, t, owner, helpers) {

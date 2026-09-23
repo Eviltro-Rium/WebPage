@@ -11,7 +11,7 @@
   const schedule = (fn, ms) => runtime ? runtime.schedule(null, fn, ms) : setTimeout(fn, ms);
   const GAME_TIPS = [
     '房间清理完后不会自动补牌，也不会清除身上的 Buff。',
-    '挑战房击败第一个敌人后补牌一次，其他房间战斗结束不自动补牌。',
+    '挑战房击败第一个敌人后补牌一次，其他房间战斗结束不会自动补牌。',
     '有些怪物会清除道具，请及时使用手上的道具。',
     '怪物手牌全是白卡，优先使用魔法牌，其次按点数从大到小出牌。',
     '战利品白卡是一种特殊白卡，打出后可以再抽一张牌。',
@@ -103,28 +103,16 @@
             const resumedSettlement = window.AdventureBattleController.resumeSettlement(this.eng, () => this.render());
             if (resumedSettlement) return true;
           }
-          // 战斗中的快照保存在 sessionStorage（只在同一标签页刷新时有效），
-          // 冒险存档则保留地图、房间和战斗前的玩家状态。先恢复后者，再重建
-          // 当前房间的桥接战斗，最后由战斗引擎注回精确的回合/牌堆状态。
-          const sessionMatches = window.AdventureBattleSession && typeof window.AdventureBattleSession.matches === 'function'
-            ? window.AdventureBattleSession.matches(combatSession, characterName, this.eng.mapName)
-            : !!(combatSession && combatSession.characterName === characterName &&
-              (!combatSession.mapName || combatSession.mapName === this.eng.mapName));
-          const canResumeCombat = sessionMatches && combatSession.battle && save.phase === window.AdventurePhase.MAP;
-          if (canResumeCombat && this.eng.s.phase === window.AdventurePhase.MAP && this.eng.currentRoom()) {
-            const room = this.eng.currentRoom();
-            if (room.type === window.RoomType.NORMAL && combatSession.enemy) room.monsterName = combatSession.enemy;
-            if (room.type === window.RoomType.BOSS && combatSession.enemy) room.bossName = combatSession.enemy;
-            if (room.type === window.RoomType.CHALLENGE && combatSession.enemy) room.monsterName = combatSession.enemy;
-            const entered = this.eng.enterCurrent();
-            const combatPhases = [window.AdventurePhase.PLAYER_PLAY, window.AdventurePhase.PLAYER_DEFEND, window.AdventurePhase.NPC_TURN];
-            if (combatPhases.includes(this.eng.s.phase) && entered !== false) {
-              const resumed = await this._startBridgeCombat(combatSession);
-              if (resumed) return true;
-            }
-          }
+          // Mid-fight snapshots live in localStorage. Restore map first, then
+          // re-enter the locked room and inject the exact battle state.
+          const resumedCombat = await this._resumeLockedCombat(combatSession, characterName);
+          if (resumedCombat) return true;
           if (combatSession && window.AdventureBattleController && typeof window.AdventureBattleController.clearCombatSession === 'function') {
-            window.AdventureBattleController.clearCombatSession();
+            // Only drop a session that clearly belongs to another run.
+            const sessionMatches = window.AdventureBattleSession && typeof window.AdventureBattleSession.matches === 'function'
+              ? window.AdventureBattleSession.matches(combatSession, characterName, this.eng.mapName)
+              : !!(combatSession && combatSession.characterName === characterName);
+            if (!sessionMatches) window.AdventureBattleController.clearCombatSession();
           }
           if (window.cardIconsReady) window.cardIconsReady.then(() => this.render());
           return true;
@@ -140,6 +128,49 @@
       }
       await this.start(typeof defaultMapFn === 'function' ? defaultMapFn() : defaultMapFn, characterName);
       return false;
+    }
+
+    /**
+     * After a refresh, put the player back into the unfinished fight.
+     * Prefer the precise battle snapshot; if only the adventure lock remains,
+     * restart that same locked encounter so the room cannot be farmed.
+     */
+    async _resumeLockedCombat(combatSession, characterName) {
+      const sessionMatches = !!(combatSession && combatSession.battle && (
+        window.AdventureBattleSession && typeof window.AdventureBattleSession.matches === 'function'
+          ? window.AdventureBattleSession.matches(combatSession, characterName, this.eng.mapName)
+          : combatSession.characterName === characterName
+      ));
+      const lock = (this.eng.s && this.eng.s.activeCombat) || null;
+      if (!sessionMatches && !lock) return false;
+      if (this.eng.s.phase !== window.AdventurePhase.MAP &&
+          this.eng.s.phase !== window.AdventurePhase.PLAYER_PLAY &&
+          this.eng.s.phase !== window.AdventurePhase.PLAYER_DEFEND &&
+          this.eng.s.phase !== window.AdventurePhase.NPC_TURN) {
+        return false;
+      }
+
+      const pos = (sessionMatches && combatSession.pos) || (lock && lock.pos) || null;
+      if (pos && Number.isFinite(pos.r) && Number.isFinite(pos.c)) {
+        this.eng.s.pos = { r: pos.r, c: pos.c };
+      }
+      const room = this.eng.currentRoom();
+      if (!room) return false;
+
+      const enemy = (sessionMatches && combatSession.enemy) || (lock && lock.enemy) || null;
+      if (enemy) {
+        if (room.type === window.RoomType.NORMAL || room.type === window.RoomType.CHALLENGE) room.monsterName = enemy;
+        if (room.type === window.RoomType.BOSS) room.bossName = enemy;
+      }
+
+      // Re-enter without drawing a fresh discard top when we already have a
+      // mid-fight snapshot — restoreSession owns piles/table top.
+      const entered = this.eng.enterCurrent();
+      const combatPhases = [window.AdventurePhase.PLAYER_PLAY, window.AdventurePhase.PLAYER_DEFEND, window.AdventurePhase.NPC_TURN];
+      if (!combatPhases.includes(this.eng.s.phase) || entered === false) return false;
+
+      const resumed = await this._startBridgeCombat(sessionMatches ? combatSession : null);
+      return !!resumed;
     }
 
     async restoreFromSave(save) {
@@ -173,17 +204,24 @@
           const reachable = this.eng.canMoveTo(r, c);
           const hasLoot = !!room.stashedLoot;
           const isItemRoom = room.type === T.ITEM;
-          const doorLocked = isItemRoom && !room.doorUnlocked && doorCost.length > 0;
-          const doorUnlocked = isItemRoom && !!room.doorUnlocked;
+          const isBlacksmith = room.type === T.BLACKSMITH;
+          const entryGold = isBlacksmith && typeof this.eng._blacksmithEntryGold === 'function'
+            ? this.eng._blacksmithEntryGold()
+            : 0;
+          const doorLocked = (isItemRoom && !room.doorUnlocked && doorCost.length > 0) ||
+            (isBlacksmith && !room.doorUnlocked && entryGold > 0);
+          const doorUnlocked = (isItemRoom || isBlacksmith) && !!room.doorUnlocked;
           const title = '(' + (r + 1) + ',' + (c + 1) + ') ' + room.label() + '房间' +
             (hasLoot ? '（有待领奖励）' : '') +
-            (doorLocked ? '（开门：' + doorCost.map(item => item.label).join('+') + '）' : doorUnlocked ? '（已开门）' : '') +
+            (isItemRoom && doorLocked ? '（开门：' + doorCost.map(item => item.label).join('+') + '）' : '') +
+            (isBlacksmith && doorLocked ? '（进入：' + entryGold + '金币）' : '') +
+            (doorUnlocked ? '（已开门）' : '') +
             (reachable ? '（单击移动，双击进入）' : '');
           cells.push({
             r, c, type: room.type, visited: !!room.visited, cleared: !!room.cleared,
             rewardClaimed: !!room.rewardClaimed, hasLoot, lootIcon: hasLoot ? this._stashedLootIconSrc(room.stashedLoot) : null,
             current: !!pos && pos.r === r && pos.c === c, reachable: !!reachable,
-            doorCost, doorLocked, doorUnlocked, title
+            doorCost, doorLocked, doorUnlocked, entryGold, title
           });
         }
       }
@@ -198,18 +236,7 @@
 
       this._updateBackground(snap.scene);
 
-      if (window.AdventureSave && !this._test) {
-        if (snap.phase === window.AdventurePhase.GAME_OVER) {
-          window.AdventureSave.clear();
-          this._lastSaveKey = null;
-        } else if (window.AdventureSave.isSafePhase(snap.phase) && this.eng.mapName) {
-          const k = snap.phase + '|' + (snap.pos ? snap.pos.r + ',' + snap.pos.c : '') + '|' + snap.player.hp + '|' + snap.currency.gold + '|' + (snap.playerPile ? snap.playerPile.deckCount + ',' + snap.playerPile.discardCount : '');
-          if (k !== this._lastSaveKey) {
-            this._lastSaveKey = k;
-            window.AdventureSave.save(this.eng);
-          }
-        }
-      }
+      this._persistAdventure(snap);
 
       const viewModel = Object.assign({}, snap, {
         mapViewModel: this._createMapViewModel(),
@@ -265,10 +292,60 @@
       list.scrollTop = list.scrollHeight;
     }
 
+    _persistAdventure(snap) {
+      if (!snap || !window.AdventureSave || this._test) return;
+      if (snap.phase === window.AdventurePhase.GAME_OVER) {
+        window.AdventureSave.clear();
+        this._lastSaveKey = null;
+        return;
+      }
+      if (window.AdventureSave.isSafePhase(snap.phase) && this.eng.mapName) {
+        const names = arr => (arr || []).map(item => typeof item === 'string' ? item : (item && item.name) || '').join(',');
+        const combatKey = this.eng.s && this.eng.s.activeCombat
+          ? (this.eng.s.activeCombat.enemy || '') + '|' + (this.eng.s.activeCombat.enemy2 || '')
+          : '';
+        const invKey = names(snap.consumables) + '|' + names(snap.accessories) + '|' + names(snap.trophyWhiteCards);
+        const k = snap.phase + '|' + (snap.pos ? snap.pos.r + ',' + snap.pos.c : '') + '|' + snap.player.hp + '|' + snap.currency.gold + '|' + (snap.playerPile ? snap.playerPile.deckCount + ',' + snap.playerPile.discardCount : '') + '|' + combatKey + '|' + invKey;
+        if (k !== this._lastSaveKey) {
+          this._lastSaveKey = k;
+          window.AdventureSave.save(this.eng);
+        }
+      }
+    }
+
+    _forcePersistAdventure() {
+      if (!window.AdventureSave || this._test || !this.eng || !this.eng.mapName) return;
+      this._lastSaveKey = null;
+      window.AdventureSave.save(this.eng);
+    }
+
+    _patchMapPosition() {
+      const snap = this.eng.snapshot();
+      const board = this.container && this.container.querySelector('.adventure-board');
+      if (!snap || !board || snap.phase !== window.AdventurePhase.MAP) {
+        this.render();
+        return;
+      }
+      this._persistAdventure(snap);
+      const mapViewModel = this._createMapViewModel();
+      // 原地改 class，避免重建 DOM 导致黄/绿呼吸动画从头闪一下
+      if (typeof this._syncMapCells !== 'function' || !this._syncMapCells(board, mapViewModel)) {
+        board.replaceWith(this._buildMap(Object.assign({}, snap, { mapViewModel })));
+      }
+      const side = this.container.querySelector('.adventure-sidebar');
+      if (!side) return;
+      side.querySelectorAll('.adv-room-status, .adv-stashed-loot').forEach(el => el.remove());
+      const actions = side.querySelector('.adv-actions');
+      const status = this._roomStatusMarkup(snap);
+      if (status && actions) actions.insertAdjacentHTML('beforebegin', status);
+      else if (status) side.insertAdjacentHTML('beforeend', status);
+      if (actions) actions.innerHTML = this._buildActions(snap);
+    }
+
     _onCellClick(r, c) {
       if (this.eng.canMoveTo(r, c)) {
         this.eng.move(r, c);
-        this.render();
+        this._patchMapPosition();
         return;
       }
       const room = this.eng.s.map.get(r, c);
@@ -279,7 +356,10 @@
 
     _onCellDoubleClick(r, c) {
       if (this.eng.canMoveTo(r, c)) {
-        if (this.eng.move(r, c)) this._handleEnterRoom();
+        if (this.eng.move(r, c)) {
+          this._patchMapPosition();
+          this._handleEnterRoom();
+        }
         return;
       }
       const pos = this.eng.s && this.eng.s.pos;
@@ -625,6 +705,19 @@
       const is1v2 = !!snap.combat.is1v2 && !!snap.combat.enemy2;
       const monsterName2 = is1v2 ? snap.combat.enemy2 : null;
       const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
+
+      // Lock the encounter into the adventure save before the battle UI takes
+      // over, so a refresh cannot rewind to an uncleared free rematch.
+      if (typeof this.eng.markActiveCombat === 'function') {
+        this.eng.markActiveCombat({
+          enemy: monsterName,
+          enemy2: monsterName2,
+          kind: snap.combat.kind,
+          is1v2: is1v2
+        });
+        this._forcePersistAdventure();
+      }
+
       const initialState = {
         playerState: clone(this.eng.s.player),
         playerPile: this.eng.s.playerPile ? {
@@ -659,6 +752,12 @@
         this._bridgeCombatActive = true;
         return true;
       } catch (e) {
+        // A brand-new launch failure should not leave the room permanently
+        // locked; a resume attempt keeps the lock so refresh cannot farm.
+        if (!resumeSession && this.eng && typeof this.eng.clearActiveCombat === 'function') {
+          this.eng.clearActiveCombat();
+          this._forcePersistAdventure();
+        }
         this._showCombatLaunchError('战斗启动失败：' + (e.message || e));
         return false;
       } finally {
@@ -668,6 +767,8 @@
 
     _onBridgeCombatEnd(result, state, persistentState, meta) {
       this._bridgeCombatActive = false;
+      const tip = document.getElementById('card-tooltip');
+      if (tip) tip.remove();
       const gc = document.getElementById('game-container');
       if (gc) gc.style.display = 'none';
       const gs = document.getElementById('game-screen');

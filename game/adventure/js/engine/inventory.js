@@ -149,6 +149,7 @@
         crit: p.crit || 0,
         lush: p.lush || 0,
         parasite: p.parasite || 0,
+        thorns: p.thorns || 0,
         diving: !!p.diving,
         hypothermia: p.hypothermia || 0,
         bindMark: !!p.bindMark,

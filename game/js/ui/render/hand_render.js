@@ -38,6 +38,7 @@
                 (s.chanFiveCards || []).map(cardVisualKey)
             ]);
             if (container.dataset.handRenderKey === handKey && container.children.length === s.playerHand.length) return;
+            this._hideTooltip();
             container.dataset.handRenderKey = handKey;
             container.innerHTML = '';
             container.ondblclick = null;
@@ -192,7 +193,9 @@
                 // Keep the skill explanation attached to the card itself.  The
                 // old centered tooltip under the title has been removed.
                 if (canInteract) {
-                    cv.addEventListener('mouseenter', () => this._showTooltip(card, cv, isDefend));
+                    const adventureOpts = s.isAdventure && typeof this._adventureSkillDescOpts === 'function'
+                        ? this._adventureSkillDescOpts('player') : null;
+                    cv.addEventListener('mouseenter', () => this._showTooltip(card, cv, isDefend, { adventureOpts }));
                     cv.addEventListener('mouseleave', () => this._hideTooltip());
                 }
 
@@ -288,6 +291,7 @@
         _renderAIHand(options = {}) {
             const s = this.state;
             const container = document.getElementById('ai-hand');
+            this._hideTooltip();
             container.innerHTML = '';
             const hideTrailing = this._hideTrailingCount(options, 'ai');
             const revealMode = !!s.aiHand && Array.isArray(s.aiHand);
@@ -345,11 +349,13 @@
                 }
                 if (revealMode && card && (canPeekSkill || canSelectOpponent)) {
                     const charName = this._combatDisplayName(s.ai && s.ai.name);
-                    const adventureOpts = {
-                        stage: s.adventureStage || s.stage || 1,
-                        playerHandSize: (s.playerHand && s.playerHand.length) || 0,
-                        incomingDamage: s.pendingDefenseDamage || 0
-                    };
+                    const adventureOpts = typeof this._adventureSkillDescOpts === 'function'
+                        ? this._adventureSkillDescOpts('ai')
+                        : {
+                            stage: s.adventureStage || s.stage || 1,
+                            playerHandSize: (s.playerHand && s.playerHand.length) || 0,
+                            incomingDamage: s.pendingDefenseDamage || 0
+                        };
                     cv.addEventListener('mouseenter', () => this._showTooltip(card, cv, true, { charName, adventureOpts }));
                     cv.addEventListener('mouseleave', () => this._hideTooltip());
                 }

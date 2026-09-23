@@ -26,13 +26,16 @@
   function saveCombatSession(engine) {
     if (abandonRequested) return false;
     const session = window.AdventureBattleSession;
-    return session && typeof session.save === 'function' ? session.save(engine) : false;
+    const saved = session && typeof session.save === 'function' ? session.save(engine) : false;
+    // Combat item/gold/HP changes live on the adventure engine. Persist them
+    // with the fight snapshot so a refresh cannot restore spent consumables.
+    if (engine && engine._adventureEngine) saveAdventureProgress(engine._adventureEngine);
+    return saved;
   }
 
-  // Combat sessions are intentionally short-lived (sessionStorage), but the
-  // reward overlay is a safe adventure checkpoint.  Persist that checkpoint
-  // separately so a page refresh cannot rewind the cleared room to its
-  // pre-combat state.
+  // Combat sessions persist in localStorage with the adventure save's
+  // activeCombat lock so a page refresh cannot rewind a cleared fight back
+  // to a free rematch on the same room.
   function saveAdventureProgress(engine) {
     if (abandonRequested || !engine || engine.testMode || !engine.s) return false;
     const save = window.AdventureSave;
@@ -102,8 +105,12 @@
 
   function leaveBattleToMap(finalState, persistentState, playerWon) {
     if (gameUI) {
+      if (typeof gameUI._hideTooltip === 'function') gameUI._hideTooltip();
       if (gameUI.gameScreen) gameUI.gameScreen.classList.remove('active');
       gameUI._is1v2 = false;
+    } else {
+      const tip = document.getElementById('card-tooltip');
+      if (tip) tip.remove();
     }
     const gc = document.getElementById('game-container');
     if (gc) gc.style.display = 'none';
@@ -129,8 +136,12 @@
 
   function leaveTestBattle(finalState, persistentState, playerWon) {
     if (gameUI) {
+      if (typeof gameUI._hideTooltip === 'function') gameUI._hideTooltip();
       if (gameUI.gameScreen) gameUI.gameScreen.classList.remove('active');
       gameUI._is1v2 = false;
+    } else {
+      const tip = document.getElementById('card-tooltip');
+      if (tip) tip.remove();
     }
     const gc = document.getElementById('game-container');
     if (gc) gc.style.display = 'none';
@@ -494,6 +505,11 @@
 
 
   function showAdventureSettlement(eng, finalState, persistentState, playerWon) {
+    if (gameUI && typeof gameUI._hideTooltip === 'function') gameUI._hideTooltip();
+    else {
+      const tip = document.getElementById('card-tooltip');
+      if (tip) tip.remove();
+    }
     const existing = document.getElementById('adv-settle-overlay');
     if (existing) existing.remove();
     const overlay = document.createElement('div');
@@ -626,7 +642,17 @@
     ui.state = battleEngine.state();
     saveCombatSession(battleEngine);
     ui.updateDisplay();
-    if (typeof ui._playOpeningEvents === 'function') await ui._playOpeningEvents();
+    // Resumed fights already spent their opening queue; only animate leftover
+    // pending events so acknowledgeEvents does not double-fire settlement.
+    if (!initialState.resumeBattle && typeof ui._playOpeningEvents === 'function') {
+      await ui._playOpeningEvents();
+    } else if (initialState.resumeBattle && ui.state && ui.state.events && ui.state.events.length &&
+               typeof ui._consumeEvents === 'function') {
+      await ui._consumeEvents(ui.state.events);
+      const fresh = battleEngine.state();
+      if (fresh) ui.state = fresh;
+      ui.updateDisplay();
+    }
     ui._startPolling();
     return result;
   }
@@ -692,7 +718,15 @@
     ui.state = battleEngine.state();
     saveCombatSession(battleEngine);
     ui.updateDisplay();
-    if (typeof ui._playOpeningEvents === 'function') await ui._playOpeningEvents();
+    if (!initialState.resumeBattle && typeof ui._playOpeningEvents === 'function') {
+      await ui._playOpeningEvents();
+    } else if (initialState.resumeBattle && ui.state && ui.state.events && ui.state.events.length &&
+               typeof ui._consumeEvents === 'function') {
+      await ui._consumeEvents(ui.state.events);
+      const fresh = battleEngine.state();
+      if (fresh) ui.state = fresh;
+      ui.updateDisplay();
+    }
     ui._startPolling();
     return result;
   }

@@ -47,7 +47,6 @@
       if (!modeAdapter) throw new Error('Adventure mode adapter must load before battle_engine.js');
       this.s = modeAdapter.createState(clone(data.s));
       this.piles = clone(data.piles);
-      this.h = clone(data.h) || { player: [], ai: [] };
       this.events = clone(data.events) || [];
       this.ver = Number(data.ver) || 0;
       this.pendingSettlement = clone(data.pendingSettlement) || null;
@@ -66,15 +65,34 @@
       }
       this.deck = this.piles.player.deck;
       this.discardBottom = this.piles.player.discard;
+      // JSON cloning splits h.* from piles.*.draw(). Adventure draw writes
+      // into pile.hand while AI/UI read this.h; they must be the same arrays.
+      this.h = {
+        player: this.piles.player.hand,
+        ai: this.piles.ai.hand
+      };
       // 1v2 NPCs intentionally share one deck/discard pile. JSON cloning
       // breaks that reference, so restore it explicitly.
       if (this.piles.ai2) {
         this.piles.ai2.deck = this.piles.ai.deck;
         this.piles.ai2.discard = this.piles.ai.discard;
-        this.h.ai = this.piles.ai.hand;
         this.h.ai2 = this.piles.ai2.hand;
       }
-      this.h.player = this.piles.player.hand;
+      // Battle snapshots carry the live inventory. Write it back onto the
+      // adventure engine so a refresh cannot resurrect spent items from an
+      // older map save. Must happen before state(), which re-mirrors inventory.
+      if (this._adventureEngine && this._adventureEngine.s) {
+        const names = list => Array.isArray(list)
+          ? list.map(item => typeof item === 'string' ? item : item && item.name).filter(Boolean)
+          : null;
+        const consumables = names(this.s.adventureConsumables);
+        if (consumables) this._adventureEngine.s.consumables = consumables;
+        const accessories = names(this.s.adventureAccessories);
+        if (accessories) this._adventureEngine.s.accessories = accessories;
+        if (this._adventureEngine.s.currency && Number.isFinite(Number(this.s.adventureGold))) {
+          this._adventureEngine.s.currency.gold = Number(this.s.adventureGold);
+        }
+      }
       const register = name => {
         const raw = window.AdventureRegistry &&
           (window.AdventureRegistry.getMonster(name) || window.AdventureRegistry.getBoss(name));
@@ -480,14 +498,14 @@
       }
       this._resolveAdventureTrophyDrop(defeatedKey);
       const result = super._on1v2OpponentEliminated(defeatedKey);
-      // Do not replenish the player's hand for ordinary/Boss victories. In a
-      // challenge room the surviving opponent keeps the battle going, and the
-      // player gets one explicit refill window after the first defeat only.
+      // Ordinary/Boss victories do not refill the player. A challenge room
+      // continues against the surviving NPC, and the next player-turn refill
+      // still runs through fillHands1v2(true) like a normal round.
       if (this.s && this.s.isAdventure && this.s.is1v2 &&
           !this.s.challengeRefillAvailable &&
           ((this.s.ai && this.s.ai.alive) || (this.s.ai2 && this.s.ai2.alive))) {
         this.s.challengeRefillAvailable = true;
-        this.emit('desc', '\u6311\u6218\u623f\uff1a\u7b2c\u4e00\u540d\u654c\u4eba\u5df2\u51fb\u8d25\uff0c\u4e0b\u4e00\u6b21\u8fdb\u653b\u9636\u6bb5\u5f00\u59cb\u65f6\u8865\u724c\u4e00\u6b21');
+        this.emit('desc', '挑战房：第一名敌人已击败，回合补牌仍会进行');
       }
       return result;
     }
@@ -684,14 +702,11 @@
         // their limits, so the low-deck rule is deterministic and visible.
         this._syncNpcSharedPile();
         this._refillPile('ai');
-        const canRefillPlayer = includePlayer &&
-          (!this.s.is1v2 || (this.s.challengeRefillAvailable && !this.s.challengeRefillUsed));
-        if (canRefillPlayer) {
+        if (includePlayer) {
           this.draw('player', this._drawNeedWithIceSeal('player', Math.max(0, this.piles.player.handLimit - this.h.player.length)), true);
-          if (this.s.is1v2) {
+          if (this.s.is1v2 && this.s.challengeRefillAvailable && !this.s.challengeRefillUsed) {
             this.s.challengeRefillUsed = true;
             this.s.challengeRefillAvailable = false;
-            this.emit('desc', '\u6311\u6218\u623f\uff1a\u7b2c\u4e00\u540d\u654c\u4eba\u51fa\u5c40\uff0c\u73a9\u5bb6\u8865\u724c\u4e00\u6b21');
           }
         }
         for (const key of ['ai', 'ai2']) {
@@ -942,6 +957,14 @@
     }
 
     startAITurn() {
+      if (this.s && this.s.isAdventure && this.s.is1v2) {
+        const playerAlive = this.s.player && this.s.player.hp > 0;
+        const npcAlive = (this.s.ai && this.s.ai.hp > 0) || (this.s.ai2 && this.s.ai2.hp > 0);
+        if (!playerAlive || !npcAlive) {
+          this.check();
+          return this.state();
+        }
+      }
       if (this.s && this.s.isAdventure && this._bindSkipNextAITurn) {
         this._bindSkipNextAITurn = false;
         const hands = this.handCounts();
@@ -1231,7 +1254,7 @@
              ((ch.bomb || 0) > 0) || !!ch.frozen || ((ch.iceSeal || 0) > 0) ||
              ((ch.hypothermia || 0) > 0) || (ch.guard > 0) || ((ch.fly || 0) > 0) ||
              ((ch.crit || 0) > 0) || ((ch.lush || 0) > 0) || ((ch.parasite || 0) > 0) ||
-             !!ch.diving || !!ch.chaos_red ||
+             ((ch.thorns || 0) > 0) || !!ch.diving || !!ch.chaos_red ||
              !!ch.chaos_yellow || !!ch.chaos_blue || !!ch.chaos_green;
     }
 
@@ -1242,7 +1265,7 @@
       const opponentKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
       const target = who === 'opp' ? this.s[opponentKey] : this.s.player;
       const targetLabel = who === 'opp' ? (this.s.is1v2 && opponentKey === 'ai2' ? 'AI2' : '对手') : '玩家';
-      const kindLabel = { burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', iceSeal: '冰封', bomb: '定时炸弹', blind: '致盲', hypothermia: '失温', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生', diving: '潜水', bloodthirst: '嗜血', bind: '捆缚', chaos_red: '混沌·红', chaos_yellow: '混沌·黄', chaos_blue: '混沌·蓝', chaos_green: '混沌·绿' }[kind] || 'buff';
+      const kindLabel = { burn: '灼烧', freeze: '冷冻', bleed: '流血', poison: '中毒', thorns: '荆棘', iceSeal: '冰封', bomb: '定时炸弹', blind: '致盲', hypothermia: '失温', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生', diving: '潜水', bloodthirst: '嗜血', bind: '捆缚', chaos_red: '混沌·红', chaos_yellow: '混沌·黄', chaos_blue: '混沌·蓝', chaos_green: '混沌·绿' }[kind] || 'buff';
       this._flashAccessory('PurifyCrystal');
       this.clean(target, false, kind);
       this.emit('desc', '净化水晶：清除' + targetLabel + '一层' + kindLabel);

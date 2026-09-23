@@ -26,6 +26,12 @@ function createContext() {
       setItem(k, v) { this._store[k] = String(v); },
       getItem(k) { return k in this._store ? this._store[k] : null; },
       removeItem(k) { delete this._store[k]; }
+    },
+    sessionStorage: {
+      _store: {},
+      setItem(k, v) { this._store[k] = String(v); },
+      getItem(k) { return k in this._store ? this._store[k] : null; },
+      removeItem(k) { delete this._store[k]; }
     }
   });
   ctx.window = ctx;
@@ -57,7 +63,8 @@ const SOURCES = [
   'adventure/js/engine/shop.js',
   'adventure/js/engine/rewards.js',
   'adventure/js/engine/inventory.js',
-  'adventure/js/engine/combat_result.js'
+  'adventure/js/engine/combat_result.js',
+  'adventure/js/battle/adventure_battle_session.js'
 ];
 
 function loadSources(ctx) {
@@ -208,4 +215,111 @@ test('normal room fixes monster name on first entry', () => {
   const fixed = room.monsterName;
   assert.ok(AdventureRegistry.getMonster(fixed), 'fixed monster exists in registry');
   assert.equal(eng._pickMonsterName(room), fixed);
+});
+
+test('activeCombat lock survives save/load and blocks farming after refresh', () => {
+  const ctx = createContext();
+  loadSources(ctx);
+  const { AdventureEngine, AdventureSave, AdventureBattleSession, AdventurePhase } = ctx;
+
+  const map = makeMap(ctx);
+  const eng = new AdventureEngine();
+  eng.mapName = 'stage_01_castle_1';
+  eng.start(map, 'Ryan', { gold: 0, stage: 1, scene: 'castle' });
+  assert.equal(eng.move(0, 1), true);
+  eng.enterCurrent();
+  const room = eng.currentRoom();
+  const enemy = room.monsterName;
+  assert.ok(enemy);
+
+  eng.markActiveCombat({ enemy, kind: 'monster' });
+  assert.ok(eng.s.activeCombat);
+  assert.equal(eng.s.phase, AdventurePhase.MAP);
+  assert.equal(eng.canMoveTo(1, 0), false, 'locked fight blocks map movement');
+
+  AdventureSave.save(eng);
+  const saved = AdventureSave.load();
+  assert.ok(saved.activeCombat);
+  assert.equal(saved.activeCombat.enemy, enemy);
+  assert.deepEqual(saved.activeCombat.pos, { r: 0, c: 1 });
+  assert.equal(saved.rooms['0,1'].monsterName, enemy);
+  assert.equal(saved.rooms['0,1'].cleared, false);
+
+  const restoredMap = makeMap(ctx);
+  const restored = new AdventureEngine();
+  restored.mapName = saved.mapName;
+  restored.restoreFromSave(saved, restoredMap);
+  assert.ok(restored.s.activeCombat);
+  assert.equal(restored.s.activeCombat.enemy, enemy);
+  assert.equal(restored.currentRoom().monsterName, enemy);
+  assert.equal(restored.currentRoom().cleared, false);
+  assert.equal(restored.canMoveTo(1, 0), false);
+
+  // Simulate finishing the fight: lock clears and the room can be marked done.
+  restored.s.combat = { enemy, enemy2: null, kind: 'normal', is1v2: false };
+  restored.onCombatEnd('win');
+  assert.equal(restored.s.activeCombat, null);
+  assert.equal(restored.currentRoom().cleared, true);
+});
+
+test('battle session persists in localStorage across simulated refresh', () => {
+  const ctx = createContext();
+  loadSources(ctx);
+  const { AdventureBattleSession } = ctx;
+
+  const fakeEngine = {
+    testMode: false,
+    mapName: 'stage_01_castle_1',
+    _adventureEngine: { mapName: 'stage_01_castle_1', s: { pos: { r: 0, c: 1 } } },
+    s: {
+      phase: 'PLAYER_PLAY',
+      player: { name: 'Ryan', hp: 40 },
+      ai: { name: 'CastleWolf', hp: 12 }
+    },
+    piles: { player: { deck: [], hand: [], discard: [] }, ai: { deck: [], hand: [], discard: [] } },
+    h: { player: [], ai: [] },
+    events: [],
+    ver: 3,
+    pendingSettlement: null,
+    tableTopOwner: 'player'
+  };
+
+  assert.equal(AdventureBattleSession.save(fakeEngine), true);
+  assert.ok(ctx.localStorage.getItem(AdventureBattleSession.key));
+  assert.equal(ctx.sessionStorage.getItem(AdventureBattleSession.key), null);
+
+  const loaded = AdventureBattleSession.load();
+  assert.ok(loaded);
+  assert.equal(loaded.characterName, 'Ryan');
+  assert.equal(loaded.enemy, 'CastleWolf');
+  assert.deepEqual(loaded.pos, { r: 0, c: 1 });
+  assert.equal(loaded.battle.ver, 3);
+  assert.equal(AdventureBattleSession.matches(loaded, 'Ryan', 'stage_01_castle_1'), true);
+});
+
+test('using a map item is kept after save/load', () => {
+  const ctx = createContext();
+  loadSources(ctx);
+  const { AdventureEngine, AdventureSave } = ctx;
+
+  const map = makeMap(ctx);
+  const eng = new AdventureEngine();
+  eng.mapName = 'stage_01_castle_1';
+  eng.start(map, 'Ryan', { gold: 0, stage: 1, scene: 'castle', consumables: ['FirstAidKit', 'GhostFire'] });
+  eng.s.player.hp = eng.s.player.maxHp;
+  AdventureSave.save(eng);
+
+  const used = eng.useConsumable(0);
+  assert.equal(used.ok, true);
+  assert.deepEqual(eng.s.consumables, ['GhostFire']);
+  AdventureSave.save(eng);
+
+  const saved = AdventureSave.load();
+  assert.deepEqual(saved.consumables, ['GhostFire']);
+
+  const restoredMap = makeMap(ctx);
+  const restored = new AdventureEngine();
+  restored.mapName = saved.mapName;
+  restored.restoreFromSave(saved, restoredMap);
+  assert.deepEqual(restored.s.consumables, ['GhostFire']);
 });
