@@ -228,7 +228,7 @@
     hp: 25,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/polar_bear.webp',
+    icon: '../icons/npc_icons/frozen_ocean_polar_bear.webp',
     // 进攻1/2/3：造成对手 buff 总层数点伤害
     attackDamage(card, ctx) {
       const v = card.value;

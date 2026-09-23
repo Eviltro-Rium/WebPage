@@ -888,7 +888,7 @@ test('an offer completing after connection replacement is discarded', async () =
 
 test('all game entry pages include the shared release badge', () => {
   for (const page of ['index.html', 'adventure/adventure.html', 'online_game/index.html']) {
-    assert.match(fs.readFileSync(path.join(root, page), 'utf8'), /js\/version\.js\?v=20260923-1/);
+    assert.match(fs.readFileSync(path.join(root, page), 'utf8'), /js\/version\.js\?v=20260923-2/);
   }
 });
 test('saved host battle restores even when navigation timing is not reload', () => {
