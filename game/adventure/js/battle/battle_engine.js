@@ -143,21 +143,15 @@
       const label = monsterName || defeatedKey;
       // Reuse the shared dice event contract so the normal combat UI plays the
       // same D12 animation used by Fly and Russian Roulette.
-      const dropOutcome = drops.length ? 'success' : 'fail';
-      this.s.diceRoll = { sides: 12, value: loot.roll, desc: label + '\u6218\u5229\u767d\u5361\u6389\u843d\u5224\u5b9a' };
-      this.emit('diceRoll', label + '\u6218\u5229\u767d\u5361\u6389\u843d\u5224\u5b9a\uff1a' + loot.roll, null, {
-        kind: 'd12', sides: 12, value: loot.roll, who: 'player', outcome: dropOutcome,
-        purpose: 'trophyDrop', monsterName: label
+      const dropOutcome = drops.length ? "success" : "fail";
+      const dropSummary = loot.summary || "掉落规则未配置";
+      this.s.diceRoll = { sides: 12, value: loot.roll, desc: dropSummary };
+      this.emit("diceRoll", dropSummary, null, {
+        kind: "d12", sides: 12, value: loot.roll, who: "player", outcome: dropOutcome,
+        purpose: "trophyDrop", monsterName: label, dropSummary
       });
-      if (drops.length) {
-        const names = drops.map(name => {
-          const def = window.AdventureRegistry && window.AdventureRegistry.getItem(name);
-          return def ? def.displayName : name;
-        });
-        this.emit('desc', label + '被击败，D12=' + loot.roll + '，获得' + names.join('、'));
-      } else {
-        this.emit('desc', label + '被击败，D12=' + loot.roll + '，没有掉落战利白卡');
-      }
+      // Keep the drop table beneath the die after the result lands.
+      this.emit("desc", dropSummary);
       this.emit('trophyDrop', '战利白卡掉落结算', {
         monsterName: label,
         roll: loot.roll,

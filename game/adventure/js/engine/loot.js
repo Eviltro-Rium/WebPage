@@ -50,6 +50,37 @@
 
   const SCENE_RULES = Object.freeze({ castle: CASTLE_RULES, forest: FOREST_RULES });
 
+  const TROPHY_TAGS = Object.freeze({
+    BurnTrophy: "灼伤", PiercingTrophy: "流血", FreezeTrophy: "冰冻",
+    RussianRouletteTrophy: "俄罗斯赌盘", FlyTrophy: "飞翔", LushTrophy: "茂盛",
+    PoisonTrophy: "中毒", ParasiteTrophy: "寄生", GuardTrophy: "守护",
+    DisarmTrophy: "缴械", ZeroTrophy: "0技能", TimeBombTrophy: "定时炸弹"
+  });
+
+  function formatDropSummary(rule) {
+    if (!rule) return "";
+    const outcomes = Array.isArray(rule.outcomes)
+      ? rule.outcomes
+      : [{ threshold: rule.threshold, drops: rule.drops }];
+    const parts = [];
+    let first = 1;
+    for (const outcome of outcomes) {
+      const last = Number(outcome && outcome.threshold) || 0;
+      const drops = Array.isArray(outcome && outcome.drops) ? outcome.drops : [];
+      if (last >= first && drops.length) {
+        const counts = new Map();
+        for (const item of drops) counts.set(item, (counts.get(item) || 0) + 1);
+        const range = first === last ? String(first) : first + "-" + last;
+        const cards = [...counts.entries()].map(([item, count]) =>
+          "【" + (TROPHY_TAGS[item] || item) + "】战利白卡" + (count > 1 ? "×" + count : "")
+        );
+        parts.push(range + cards.join("、"));
+      }
+      first = Math.max(first, last + 1);
+    }
+    return parts.length ? "掉落，" + parts.join("；") : "";
+  }
+
   function normalizeScene(scene) {
     const value = String(scene || '').trim().toLowerCase();
     if (value === 'castle' || value === '城堡' || value === 'castle_scene') return 'castle';
@@ -66,7 +97,7 @@
     const sceneKey = normalizeScene(scene);
     const rule = SCENE_RULES[sceneKey] && SCENE_RULES[sceneKey][monsterName];
     if (!rule) {
-      return Object.freeze({ scene: sceneKey, monsterName, roll: null, threshold: 0, drops: Object.freeze([]) });
+      return Object.freeze({ scene: sceneKey, monsterName, roll: null, threshold: 0, drops: Object.freeze([]), summary: "" });
     }
     const roll = rollD12(randomFn);
     const outcome = Array.isArray(rule.outcomes)
@@ -78,7 +109,8 @@
       monsterName,
       roll,
       threshold: outcome ? outcome.threshold : (rule.threshold || (Array.isArray(rule.outcomes) ? Math.max(...rule.outcomes.map(item => item.threshold)) : 0)),
-      drops: Object.freeze(drops)
+      drops: Object.freeze(drops),
+      summary: formatDropSummary(rule)
     });
   }
 
@@ -86,6 +118,7 @@
     SCENE_RULES,
     normalizeScene,
     rollD12,
+    formatDropSummary,
     rollMonsterDrop
   });
 })();
