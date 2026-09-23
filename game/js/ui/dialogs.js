@@ -1,5 +1,5 @@
 const statusIconPath = name => {
-    const folder = name === 'blood_thirsty' ? 'ui_icons' : name === 'binding' ? 'items_icons' : 'buff_icons';
+    const folder = (name === 'blood_thirsty' || name === 'binding') ? 'items_icons' : 'buff_icons';
     return window.gameAssetUrl ? window.gameAssetUrl(`icons/${folder}/${name}.webp`) : `icons/${folder}/${name}.webp`;
 };
 const statusRegistry = window.FurryGame && (window.FurryGame.StatusService || window.FurryGame.StatusRegistry);

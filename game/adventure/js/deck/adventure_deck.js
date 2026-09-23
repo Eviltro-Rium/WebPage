@@ -44,7 +44,7 @@
       color: 'WHITE',
       trophyWhite: true,
       trophyName: name,
-      trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', IceSealTrophy: 'iceSeal', HypothermiaTrophy: 'hypothermia', RussianRouletteTrophy: 'roulette', FlyTrophy: 'fly', DivingTrophy: 'diving', LushTrophy: 'lush', PoisonTrophy: 'poison', ParasiteTrophy: 'parasite', ThornsTrophy: 'thorns', TimeBombTrophy: 'bomb', GuardTrophy: 'guard', DisarmTrophy: 'disarm', ZeroTrophy: 'zero' })[name] || null,
+      trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', IceSealTrophy: 'iceSeal', HypothermiaTrophy: 'hypothermia', RussianRouletteTrophy: 'roulette', FlyTrophy: 'fly', CritTrophy: 'crit', DivingTrophy: 'diving', LushTrophy: 'lush', PoisonTrophy: 'poison', ParasiteTrophy: 'parasite', ThornsTrophy: 'thorns', TimeBombTrophy: 'bomb', GuardTrophy: 'guard', DisarmTrophy: 'disarm', ZeroTrophy: 'zero', SmallPotionTrophy: 'smallPotion' })[name] || null,
       chosenColor: null,
       isBlack: false,
       isWhite: true,

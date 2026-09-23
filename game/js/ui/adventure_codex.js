@@ -40,7 +40,7 @@
     { key: 'hypnosis', name: '催眠', type: '负面状态', icon: 'icons/buff_icons/sleepy_1.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有催眠的角色在自己的进攻阶段结束、切换到对手进攻阶段时立即转化为[沉睡]。已处于[沉睡]时免疫新的[催眠]。' },
     { key: 'sleep', name: '沉睡', type: '负面状态', icon: 'icons/buff_icons/sleepy_2.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n拥有沉睡的角色在自己的进攻回合开始时立刻苏醒，恢复10点生命（不超过生命上限）。同时被进攻时会跳过防御阶段，所有伤害直接结算。' },
     { key: 'thorns', name: '荆棘', type: '负面状态', icon: 'icons/buff_icons/thorns.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有荆棘的角色在进攻阶段每释放一次技能，立即受到1点独立伤害（不可用守护/飞翔减免）；可被净化。' },
-    { key: 'bloodthirst', name: '嗜血', type: '印记', icon: 'icons/ui_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：永久\nSerenity专属嗜血印记。生命低于30时获得；获得后即使恢复到30以上也不会移除，且不能被净化或超级净化清除。未获得印记时，正常恢复额外+1生命；嗜血后技能按嗜血规则结算。' }
+    { key: 'bloodthirst', name: '嗜血', type: '印记', icon: 'icons/items_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：永久\nSerenity专属嗜血印记。生命低于30时获得；获得后即使恢复到30以上也不会移除，且不能被净化或超级净化清除。未获得印记时，正常恢复额外+1生命；嗜血后技能按嗜血规则结算。' }
   ];
 
   // 主角图鉴：仅展示玩家可选择的角色（排除冒险 NPC、领主专属和测试用角色）。
@@ -131,8 +131,8 @@
   function resolveIcon(icon) {
     if (!icon) return '';
     if (icon.startsWith('http') || icon.startsWith('data:')) return icon;
-    if (icon.startsWith('../')) return icon.substring(3);
-    return icon;
+    const relative = icon.startsWith('../') ? icon.substring(3) : icon;
+    return window.gameAssetUrl ? window.gameAssetUrl(relative) : relative;
   }
 
   function makeSkillCard(value) {
@@ -240,6 +240,7 @@
   function collectSpecialNotes(entity, name) {
     const fromMd = (window.AdventureMonsterNotes && window.AdventureMonsterNotes[name]) || [];
     const notes = [];
+    const dropNotes = [];
     for (const n of fromMd) {
       if (buffKeyFromEncyclopediaTitle(n.title)) continue;
       const lines = (n.lines || []).slice();
@@ -249,14 +250,18 @@
         if (m && BUFF_BY_NAME[m[1]]) return false;
         return true;
       });
-      if (kept.length) notes.push({ title: n.title, lines: kept });
-      else if (!lines.length) notes.push({ title: n.title, lines: [] });
+      const entry = kept.length ? { title: n.title, lines: kept } : (!lines.length ? { title: n.title, lines: [] } : null);
+      if (!entry) continue;
+      if (/掉落/.test(String(n.title || ''))) dropNotes.push(entry);
+      else notes.push(entry);
     }
-    const hasTitle = re => notes.some(n => re.test(n.title) || n.lines.some(l => re.test(l)));
-    const pushAuto = (title, line) => {
+    const hasTitle = re => notes.some(n => re.test(n.title) || n.lines.some(l => re.test(l)))
+      || dropNotes.some(n => re.test(n.title) || n.lines.some(l => re.test(l)));
+    const pushAuto = (title, line, bucket = notes) => {
       if (!line) return;
       if (notes.some(n => n.title === title || n.lines.includes(line))) return;
-      notes.push({ title, lines: [line] });
+      if (dropNotes.some(n => n.title === title || n.lines.includes(line))) return;
+      bucket.push({ title, lines: [line] });
     };
     if (entity.firstStrike && !hasTitle(/先攻|先手/)) {
       pushAuto('先手攻击', '战斗开始时对手先行进攻，玩家不补起始手牌');
@@ -278,17 +283,49 @@
     if (entity.handLimit && entity.handLimit < 4 && !hasTitle(/手牌/)) {
       pushAuto('手牌', '手牌上限 ' + entity.handLimit + ' 张');
     }
-    return notes;
+    if (window.AdventureLoot && typeof window.AdventureLoot.describeMonsterDrop === 'function' && !hasTitle(/掉落/)) {
+      const dropLine = window.AdventureLoot.describeMonsterDrop(name);
+      if (dropLine) pushAuto('掉落', dropLine, dropNotes);
+    }
+    return { notes, dropNotes };
   }
 
-  function buildSpecialNotes(entity, name) {
-    const notes = collectSpecialNotes(entity, name);
-    if (!notes.length) return '';
-    let html = '<div class="codex-notes-section">';
-    html += '<div class="codex-notes-title">特殊说明</div>';
+  function renderNoteBlocks(notes) {
+    let html = '';
     for (const note of notes) {
       html += '<div class="codex-note-block">';
       html += `<div class="codex-note-heading">${formatCodexRichText('**' + note.title + '**')}</div>`;
+      if (note.lines && note.lines.length) {
+        html += '<ul class="codex-note-list">';
+        for (const line of note.lines) {
+          html += `<li class="codex-note-item">${formatCodexRichText(line)}</li>`;
+        }
+        html += '</ul>';
+      }
+      html += '</div>';
+    }
+    return html;
+  }
+
+  function buildSpecialNotesFromList(notes) {
+    if (!notes.length) return '';
+    let html = '<div class="codex-notes-section">';
+    html += '<div class="codex-notes-title">特殊说明</div>';
+    html += renderNoteBlocks(notes);
+    html += '</div>';
+    return html;
+  }
+
+  function buildDropNotesFromList(dropNotes) {
+    if (!dropNotes.length) return '';
+    let html = '<div class="codex-notes-section codex-drop-section">';
+    html += '<div class="codex-notes-title">掉落</div>';
+    // Auto loot lines already use title「掉落」; skip the duplicate heading.
+    for (const note of dropNotes) {
+      html += '<div class="codex-note-block">';
+      if (note.title && note.title !== '掉落') {
+        html += `<div class="codex-note-heading">${formatCodexRichText('**' + note.title + '**')}</div>`;
+      }
       if (note.lines && note.lines.length) {
         html += '<ul class="codex-note-list">';
         for (const line of note.lines) {
@@ -308,6 +345,7 @@
     const skills = adventureSkillArrays(name, 1);
     const icon = resolveIcon(m.icon);
     const iconHtml = icon ? `<img class="char-detail-hero-avatar" src="${icon}" onerror="this.style.display='none'" alt="${m.name}">` : `<div class="char-detail-hero-avatar codex-no-icon">${m.name[0]}</div>`;
+    const { notes, dropNotes } = collectSpecialNotes(m, name);
 
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; 怪物列表</button><h1 class="rules-title">怪物图鉴</h1></div>';
@@ -316,7 +354,8 @@
     html += `<div class="char-detail-hero-type">${m.kind || '怪物'} · HP ${m.hp}${m.handLimit ? ' · 手牌' + m.handLimit : ''}</div>`;
     html += `</div></div>`;
 
-    html += buildSpecialNotes(m, name);
+    html += buildSpecialNotesFromList(notes);
+    html += buildDropNotesFromList(dropNotes);
     html += buildSkillGrid(skills.atk, skills.def, !!m.canDefendHigh, !!m.whiteZeros);
     html += buildStageMods(name);
     html += '</div>';
@@ -349,6 +388,8 @@
     const icon = resolveIcon(b.icon);
     const iconHtml = icon ? `<img class="char-detail-hero-avatar" src="${icon}" onerror="this.style.display='none'" alt="${b.name}">` : `<div class="char-detail-hero-avatar codex-no-icon">${b.name[0]}</div>`;
 
+    const { notes, dropNotes } = collectSpecialNotes(b, name);
+
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; Boss列表</button><h1 class="rules-title">Boss图鉴</h1></div>';
     html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
@@ -356,7 +397,8 @@
     html += `<div class="char-detail-hero-type">Boss · HP ${b.hp}${b.handLimit ? ' · 手牌' + b.handLimit : ''}</div>`;
     html += `</div></div>`;
 
-    html += buildSpecialNotes(b, name);
+    html += buildSpecialNotesFromList(notes);
+    html += buildDropNotesFromList(dropNotes);
     if (skills.atk.length || skills.def.length) {
       html += buildSkillGrid(skills.atk, skills.def, !!b.canDefendHigh, !!b.whiteZeros);
     }
@@ -379,9 +421,13 @@
         const icon = resolveIcon(it.icon);
         const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-avatar codex-no-icon">${it.displayName[0]}</div>`;
         const kindLabel = it.kind === 'consumable' ? '一次性道具' : '配饰';
+        const price = it.kind === 'accessory' ? (it.price || 15) : (it.price || 0);
         const useSceneLabel = it.useScene === 'both' ? '（地图/战斗均可使用）' : it.useScene === 'combat' ? '（战斗中使用）' : it.useScene === 'map' ? '（地图使用）' : '';
+        const stackLabel = it.kind === 'accessory' && it.maxStacks
+          ? ' · 上限' + it.maxStacks
+          : '';
         html += `<div class="codex-all-item">`;
-        html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${it.displayName}</span><span class="codex-all-item-meta">${kindLabel} · ${it.kind === 'accessory' ? 15 : (it.price || 0)}金币${useSceneLabel}</span></div></div>`;
+        html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${it.displayName}</span><span class="codex-all-item-meta">${kindLabel} · ${price}金币${stackLabel}${useSceneLabel}</span></div></div>`;
         const descText = window.descToEmoji ? window.descToEmoji(it.description || '') : (it.description || '无描述');
         html += `<div class="codex-all-item-desc">${descText}</div>`;
         if (it.statBonus) {
@@ -390,6 +436,22 @@
           for (const [k, v] of Object.entries(it.statBonus)) {
             const label = k === 'maxHp' ? '生命上限' : k === 'dropRateBonus' ? '掉落概率' : k;
             html += `<span class="codex-stat-chip">${label}+${v}</span>`;
+          }
+          html += '</div></div>';
+        }
+        if (it.kind === 'accessory' && it.beastTradeCost && it.beastTradeCost.length) {
+          html += '<div class="codex-stat-bonus"><div class="codex-stat-list">';
+          const beastNames = { huo: '火兽元', shui: '水兽元', cao: '草兽元', ben: '本兽元', wuneng: '万能兽元' };
+          const beastColors = { huo: '#ff5555', shui: '#55aaff', cao: '#55cc55', ben: '#ffcc44', wuneng: '#cc88ff' };
+          const costMap = {};
+          for (const t of it.beastTradeCost) costMap[t] = (costMap[t] || 0) + 1;
+          const parts = [];
+          for (const [k, v] of Object.entries(costMap)) {
+            parts.push(`${v}<span style="color:${beastColors[k] || '#ccc'}">[${beastNames[k] || k}]</span>`);
+          }
+          html += `<span class="codex-stat-chip">铁匠铺兑换：${parts.join(' ')}</span>`;
+          if (it.breaksOnTrigger) {
+            html += '<span class="codex-stat-chip">触发后损坏消失</span>';
           }
           html += '</div></div>';
         }
@@ -410,7 +472,7 @@
       html += '<div class="codex-empty">暂无数据</div>';
     } else {
       html += '<div class="codex-all-list">';
-      const effectMap = { burn: '灼烧', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', lush: '茂盛', poison: '中毒', parasite: '寄生', thorns: '荆棘' };
+      const effectMap = { burn: '灼烧', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', crit: '暴击', lush: '茂盛', poison: '中毒', parasite: '寄生', thorns: '荆棘', diving: '潜水', iceSeal: '冰封', hypothermia: '失温', zero: '零技能' };
       for (const it of items) {
         const icon = resolveIcon(it.icon);
         const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-avatar codex-no-icon">${it.displayName[0]}</div>`;

@@ -26,7 +26,7 @@
     { id: 'lush',        property: 'lush',        label: '茂盛', icon: 'buff_icons/lush.webp',         polarity: 'buff',   stack: true, max: 2, cleanse: 'decrement', trigger: 'attackStart', transferable: true },
     { id: 'parasite',    property: 'parasite',    label: '寄生', icon: 'buff_icons/parasite.webp',     polarity: 'buff',   stack: true, max: 1, cleanse: 'decrement', trigger: 'attackStart', transferable: true },
     { id: 'diving',      property: 'diving',      label: '潜水', icon: 'buff_icons/diving.webp',       polarity: 'buff',   stack: false, max: 1, cleanse: 'reset', trigger: 'onBlueAttack', transferable: true },
-    { id: 'bloodthirst', property: 'bloodthirst', label: '嗜血', icon: 'ui_icons/blood_thirsty.webp',   polarity: 'buff', mark: true, stack: false, max: 1, cleanse: 'never', trigger: 'hpThreshold' },
+    { id: 'bloodthirst', property: 'bloodthirst', label: '嗜血', icon: 'items_icons/blood_thirsty.webp', polarity: 'buff', mark: true, stack: false, max: 1, cleanse: 'never', trigger: 'hpThreshold' },
     { id: 'chaos_red',   property: 'chaos_red',   label: '混沌·红', icon: 'buff_icons/chaos_red.webp',    polarity: 'buff', stack: false, max: 1, cleanse: 'reset', trigger: 'onColorPlay', transferable: true },
     { id: 'chaos_yellow',property: 'chaos_yellow',label: '混沌·黄', icon: 'buff_icons/chaos_yellow.webp', polarity: 'buff', stack: false, max: 1, cleanse: 'reset', trigger: 'onColorPlay', transferable: true },
     { id: 'chaos_blue',  property: 'chaos_blue',  label: '混沌·蓝', icon: 'buff_icons/chaos_blue.webp',   polarity: 'buff', stack: false, max: 1, cleanse: 'reset', trigger: 'onColorPlay', transferable: true },

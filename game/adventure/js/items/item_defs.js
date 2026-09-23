@@ -155,6 +155,33 @@
   });
 
   R.registerItem({
+    name: 'SmallPotionTrophy',
+    displayName: '小药剂战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：恢复2点生命，打出后抽1张牌，可搭桥',
+    icon: ICON + 'small_potion.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophySmallPotion',
+    trophyEffect: 'smallPotion',
+    healAmount: 2,
+    beastTradeCost: ['cao', 'shui']
+  });
+
+  R.registerItem({
+    name: 'CritTrophy',
+    displayName: '暴击战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：获得1层暴击，打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/crit.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyCrit',
+    trophyEffect: 'crit',
+    beastTradeCost: ['huo', 'ben']
+  });
+
+  R.registerItem({
     name: 'DivingTrophy',
     displayName: '潜水战利白卡',
     kind: 'trophyWhite',
@@ -355,7 +382,7 @@
     description: '防御出牌阶段使用，闪避本次NPC攻击并使其作废（不结算伤害，并撤销本轮攻击附带的负面状态）',
     icon: ICON + 'dodge.webp',
     useScene: 'combat',
-    price: 5,
+    price: 7,
     combatUse: 'dodge',
     defendOnly: true
   });
@@ -440,12 +467,24 @@
     name: 'ArmorBreakSpear',
     displayName: '破防之矛',
     kind: 'consumable',
-    description: '可防御进攻变为不可防御（与攻击修正Ⅰ/Ⅱ/Ⅲ共用选择，同一技能只能选用一种）',
+    description: '可防御进攻变为不可防御（与攻击修正Ⅰ/Ⅱ/Ⅲ、邪恶赌盘共用选择，同一技能只能选用一种）',
     icon: ICON + 'armor_piercing_spear.webp',
     useScene: 'combat',
     price: 3,
     combatUse: 'attackMod',
     attackModUnblock: true
+  });
+
+  R.registerItem({
+    name: 'EvilRoulette',
+    displayName: '邪恶赌盘',
+    kind: 'consumable',
+    description: '攻击修正：投掷12面骰；1–8本次伤害翻倍，9–12伤害降为0并跳过防御（与其他攻击修正共用选择，同一技能只能选用一种）',
+    icon: ICON + 'evil_wheel.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'attackMod',
+    attackModEvilRoulette: true
   });
 
   /* ===== 配饰 ===== */
@@ -545,6 +584,19 @@
     icon: ICON + "demon's_contrast.webp",
     beastTradeCost: ['huo', 'shui', 'cao', 'wuneng'],
     maxStacks: 1
+  });
+
+  R.registerItem({
+    name: 'RevivalCross',
+    displayName: '复活十字',
+    kind: 'accessory',
+    description: '血条清零时立刻恢复5点生命，随后该配饰损坏消失（最多1个）',
+    icon: ICON + 'revival_cross.webp',
+    beastTradeCost: ['ben', 'ben', 'ben', 'wuneng'],
+    price: 15,
+    maxStacks: 1,
+    onLethalHeal: 5,
+    breaksOnTrigger: true
   });
 
   R.registerItem({

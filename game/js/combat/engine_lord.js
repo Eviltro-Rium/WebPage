@@ -88,8 +88,9 @@
       this.resolveSerenityHalf();
        if(typeof this.applyPendingSaikiBleed==='function')this.applyPendingSaikiBleed();
        if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();
+       if(forceEnd)this.s.hypothermiaDiscardResume='START_AI_TURN';
        this.afterAttack();
-      if(forceEnd)this._lordStartNextAI();
+      if(forceEnd&&!this.s.pendingHypothermiaDiscard)this._lordStartNextAI();
       this.check();return
     }
     let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;

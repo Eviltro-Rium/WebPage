@@ -35,6 +35,7 @@
     HypothermiaTrophy: 'HYPOTHERMIA TROPHY',
     RussianRouletteTrophy: 'RUSSIAN ROULETTE',
     FlyTrophy: 'FLY TROPHY',
+    CritTrophy: 'CRIT TROPHY',
     DivingTrophy: 'DIVING TROPHY',
     LushTrophy: 'LUSH TROPHY',
     PoisonTrophy: 'POISON TROPHY',
@@ -43,7 +44,8 @@
     TimeBombTrophy: 'TIME BOMB',
     GuardTrophy: 'GUARD TROPHY',
     DisarmTrophy: 'DISARM TROPHY',
-    ZeroTrophy: 'ZERO TROPHY'
+    ZeroTrophy: 'ZERO TROPHY',
+    SmallPotionTrophy: 'SMALL POTION'
   };
 
   const ASSET_ROOT = (() => {
@@ -75,6 +77,7 @@
     trophy_TimeBombTrophy: cardAssetUrl('icons/buff_icons/time_bomb.webp'),
     trophy_RussianRouletteTrophy: cardAssetUrl('icons/card_icons/Russian_roulette.webp'),
     trophy_FlyTrophy: cardAssetUrl('icons/buff_icons/fly.webp'),
+    trophy_CritTrophy: cardAssetUrl('icons/buff_icons/crit.webp'),
     trophy_DivingTrophy: cardAssetUrl('icons/buff_icons/diving.webp'),
     trophy_LushTrophy: cardAssetUrl('icons/buff_icons/lush.webp'),
     trophy_PoisonTrophy: cardAssetUrl('icons/buff_icons/poison.webp'),
@@ -82,7 +85,8 @@
     trophy_ThornsTrophy: cardAssetUrl('icons/buff_icons/thorns.webp'),
     trophy_GuardTrophy: cardAssetUrl('icons/buff_icons/guard.webp'),
     trophy_DisarmTrophy: cardAssetUrl('icons/card_icons/disarm.webp'),
-    trophy_ZeroTrophy: cardAssetUrl('icons/card_icons/zero.webp')
+    trophy_ZeroTrophy: cardAssetUrl('icons/card_icons/zero.webp'),
+    trophy_SmallPotionTrophy: cardAssetUrl('icons/items_icons/small_potion.webp')
   };
 
   const iconCache = {};

@@ -200,8 +200,8 @@
     if(r.immediateBuffs)this._restoreAttackBuffs();
     this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage};
     {let freezeBlock=this._freezeBlocksDefend(this.s.player,this.s.atkCard);
-    if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){if(this.s.player.sleep)return this.defend1v2(true);this.s.phase='PLAYER_DEFEND';this.s.busy=false;this.s.unblockDefend=false;return}
-     if(r.d&&(r.unblock||freezeBlock)&&!(r.isDrain||r.drain)){if(this._enterPlayerDefend(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}
+    if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){if(this.s.player.sleep)return this.defend1v2(true);if(this._beginPlayerDefendFlow(r.d,{unblock:false,freezeBlock:false}))return;return}
+     if(r.d&&(r.unblock||freezeBlock)&&!(r.isDrain||r.drain)){if(this._beginPlayerDefendFlow(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}
     if(!r.d)this.emit('desc',ch.name+' 本次技能分支未造成伤害，跳过防御',c);
      if(r.d&&!r.isDrain&&!r.drain&&this.playerNeedsAvoidChoice()){this.askGuard(r.d);return}
     this._restoreAttackBuffs();this.dealAttackHit(ch,this.s.player,r.d,!!(r.isDrain||r.drain));this.s.phase=key.toUpperCase()+'_TURN';this.s.busy=true;

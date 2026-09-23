@@ -190,6 +190,7 @@
                 if (isNew) cls += ' icon-appear';
                 let modBadge = '';
                 if (isAttackModItem && def.attackModUnblock) modBadge = '<span class="adv-combat-item-bonus">破防</span>';
+                else if (isAttackModItem && def.attackModEvilRoulette) modBadge = '<span class="adv-combat-item-bonus">赌盘</span>';
                 else if (isAttackModItem && def.attackModBonus) modBadge = '<span class="adv-combat-item-bonus">+' + def.attackModBonus + '</span>';
                 html += '<button class="' + cls + '" data-item-index="' + i + '" title="' + (item.description || item.displayName) + '"' + ((!canUse && !selectable) ? ' disabled' : '') + '>' +
                     (item.icon ? '<img src="' + item.icon + '" alt="' + item.displayName + '">' : '') +

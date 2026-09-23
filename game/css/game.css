@@ -2178,6 +2178,19 @@ body {
     border-radius: 10px;
     padding: 12px 14px;
 }
+.codex-drop-section {
+    background: rgba(56, 189, 248, 0.07);
+    border-color: rgba(56, 189, 248, 0.22);
+}
+.codex-drop-section .codex-notes-title {
+    color: #7dd3fc;
+}
+.codex-drop-section .codex-note-heading {
+    color: #bae6fd;
+}
+.codex-drop-section .codex-note-item strong {
+    color: #e0f2fe;
+}
 .codex-notes-title {
     font-size: 0.9rem;
     font-weight: 700;

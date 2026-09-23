@@ -58,8 +58,9 @@
       engine.resolveSerenityHalf();
       if (typeof engine.applyPendingSaikiBleed === 'function') engine.applyPendingSaikiBleed();
       if (typeof engine.applyPendingVixrapsBurnSettle === 'function') engine.applyPendingVixrapsBurnSettle();
+      if (forceEnd) engine.s.hypothermiaDiscardResume = 'START_AI_TURN';
       engine.afterAttack();
-      if (forceEnd && !engine._allEnemiesDead()) engine.startAITurn();
+      if (forceEnd && !engine.s.pendingHypothermiaDiscard && !engine._allEnemiesDead()) engine.startAITurn();
       engine.check();
     },
 
@@ -121,6 +122,9 @@
 
     continueAIAttack(engine) {
       if (!engine.s) return;
+      if (typeof engine._openHypothermiaDiscardIfPending === 'function' && engine._openHypothermiaDiscardIfPending('AI_TURN')) {
+        return engine.check();
+      }
       if (!engine.s.player.alive || !engine.s.ai.alive) {
         engine.check();
         return;

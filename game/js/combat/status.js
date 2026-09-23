@@ -83,6 +83,9 @@
 
         freeze(engine, entity, opts) {
             if (engine.name(entity) === 'Serenity') return;
+            const mod = typeof engine._getAdventureMod === 'function'
+                ? engine._getAdventureMod(engine.name(entity)) : null;
+            if (mod && mod.immuneFreeze) return;
             if (service) setStatus(entity, 'freeze', true); else entity.frozen = true;
             if (!opts || opts.silent !== true) {
                 const target = targetKey(engine, entity);

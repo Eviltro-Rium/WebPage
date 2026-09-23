@@ -1094,8 +1094,38 @@
 
     hurt(x, n, kind = false, opts = {}) {
       // 保留 silent 等选项，避免流血结算在合并飘字之外又产生一条重复伤害事件。
+      const beforeHp = x && Number(x.hp);
       super.hurt(x, n, kind, opts);
       this._tryFreezeLaserOnAttackDamage(x, n, kind);
+      this._tryRevivalCross(x, beforeHp);
+    }
+
+    _consumeAccessory(name) {
+      const eng = this._adventureEngine;
+      if (!eng || !eng.s || !Array.isArray(eng.s.accessories)) return false;
+      const idx = eng.s.accessories.indexOf(name);
+      if (idx < 0) return false;
+      eng.s.accessories.splice(idx, 1);
+      if (typeof eng._syncBeastCap === 'function') eng._syncBeastCap();
+      if (window.AdventureSave && typeof window.AdventureSave.save === 'function') {
+        window.AdventureSave.save(eng);
+      }
+      return true;
+    }
+
+    _tryRevivalCross(entity, beforeHp) {
+      if (!this.s || !this.s.isAdventure) return;
+      if (!entity || entity !== this.s.player) return;
+      if (!(beforeHp > 0) || entity.hp > 0) return;
+      if (!this._hasAccessory('RevivalCross')) return;
+      const def = window.AdventureRegistry && window.AdventureRegistry.getItem('RevivalCross');
+      const healAmt = Math.max(1, Number(def && def.onLethalHeal) || 5);
+      this._flashAccessory('RevivalCross');
+      this._consumeAccessory('RevivalCross');
+      // Lethal damage already set hp to 0 / alive false; heal then re-mark alive.
+      this.heal(entity, healAmt, 'passive');
+      entity.alive = entity.hp > 0;
+      this.emit('desc', '复活十字：恢复' + healAmt + '点生命，配饰损坏消失');
     }
 
     afterAttack() {
@@ -1204,6 +1234,21 @@
     }
 
     _proceedToDefend(d, skip, unblock, card, delay) {
+      if (this._attackWantsDiscardBeforeDefend(card)) {
+        const targetKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
+        const hand = this.h[targetKey] || [];
+        if (hand.length) {
+          let index = this.chooseAIDiscard(hand);
+          if (!Number.isInteger(index) || index < 0 || index >= hand.length) index = hand.length - 1;
+          const discarded = hand.splice(index, 1)[0];
+          if (discarded) {
+            this.discardWithEvent(discarded, targetKey, {
+              handIndex: index,
+              desc: (this.s[targetKey] && this.s[targetKey].name || '对手') + '被强制弃掉' + this.cardText(discarded)
+            });
+          }
+        }
+      }
       if (this.s.is1v2) {
         if (d && !skip && !unblock) {
           this.s.phase = 'AI_DEFEND';

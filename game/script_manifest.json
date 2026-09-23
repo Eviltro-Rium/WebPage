@@ -119,6 +119,7 @@
     "adventure/js/content/stage_guide.js",
     "adventure/js/items/item_defs.js",
     "adventure/js/items/combat_effects.js",
-    "adventure/js/content/monster_registry.js"
+    "adventure/js/content/monster_registry.js",
+    "adventure/js/engine/loot.js"
   ]
 }

@@ -21,6 +21,7 @@
 
   const origContinueAIShared=Engine.prototype.continueAIAttack;
   Engine.prototype.continueAIAttack=function(){
+    if(this._openHypothermiaDiscardIfPending(this.s&&this.s.is1v2?(this._curAI()==='ai2'?'AI2_TURN':'AI_TURN'):'AI_TURN'))return this.check();
     if(!this.s||!this.s.is1v2)return origContinueAIShared.call(this);
     if(!this.s.player.alive||(!this.s.ai.alive&&!this.s.ai2.alive)){this.check();return}
     let key=this._curAI();
@@ -120,8 +121,9 @@
       this.resolveSerenityHalf();
        if(typeof this.applyPendingSaikiBleed==='function')this.applyPendingSaikiBleed();
        if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();
+       if(forceEnd)this.s.hypothermiaDiscardResume='START_AI_TURN';
        this.afterAttack();
-      if(forceEnd)this.startAITurn();
+      if(forceEnd&&!this.s.pendingHypothermiaDiscard)this.startAITurn();
       this.check();return
     }
     let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;let bombOwner=this.s.atkOwner || this._curAI() || 'ai';

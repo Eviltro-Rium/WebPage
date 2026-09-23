@@ -302,7 +302,7 @@ test('start room is marked visited so it can glow as explored', () => {
 
 test('combat-only consumables cannot be used on the map', () => {
   const eng = startEngine();
-  eng.s.consumables = ['Piercing', 'GhostFire', 'Vampire', 'FreezeItem', 'AttackMod1', 'Dodge', 'MagicTransfer', 'ArmorBreakSpear'];
+  eng.s.consumables = ['Piercing', 'GhostFire', 'Vampire', 'FreezeItem', 'AttackMod1', 'Dodge', 'MagicTransfer', 'ArmorBreakSpear', 'EvilRoulette'];
   for (let i = eng.s.consumables.length - 1; i >= 0; i--) {
     const before = eng.s.consumables.length;
     const result = eng.useConsumable(i);

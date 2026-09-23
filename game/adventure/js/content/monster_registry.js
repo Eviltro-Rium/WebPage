@@ -397,21 +397,29 @@
           const healAmt = mod.defendHeal(c);
           if (healAmt > 0) {
             heal(defender, healAmt);
+            const descParts = ['恢复' + healAmt + '生命'];
+            let remaining = d;
+            let blocked = false;
             if (typeof mod.defendBlock === 'function') {
               const block = mod.defendBlock(c, d, defender, eng);
               if (block > 0) {
-                const remaining = Math.max(0, d - block);
-                applyPoison(); applyBleed(); applyHypothermia(); applyLushAndParasite(); applyAllExtras();
-                return {
-                  remaining,
-                  desc: '恢复' + healAmt + '生命，格挡' + block + '点' + suffix() + lushParasiteDesc + allExtrasDesc
-                };
+                remaining = Math.max(0, d - block);
+                blocked = true;
+                descParts.push('格挡' + block + '点');
+              }
+            }
+            // Heal must not skip counter (e.g. FrozenOceanSamoyed / Vixraps-style ½ counter + heal).
+            if (typeof mod.defendCounter === 'function') {
+              const counter = mod.defendCounter(c, d, defender, opponent, eng);
+              if (counter > 0 && hurt) {
+                hurt(opponent, counter);
+                descParts.push('反击' + counter + '点伤害');
               }
             }
             applyPoison(); applyBleed(); applyHypothermia(); applyLushAndParasite(); applyAllExtras();
             return {
-              remaining: d,
-              desc: '防御恢复' + healAmt + '生命' + suffix() + lushParasiteDesc + allExtrasDesc
+              remaining: blocked ? remaining : d,
+              desc: descParts.join('，') + suffix() + lushParasiteDesc + allExtrasDesc
             };
           }
         }
@@ -784,6 +792,9 @@
     }
     if (typeof mod.attackStealItem === 'function' && mod.attackStealItem(card)) {
       parts.push('玩家随机丢失1个道具');
+    }
+    if (typeof mod.attackDiscardBeforeDefend === 'function' && mod.attackDiscardBeforeDefend(card)) {
+      parts.push('对手弃1张手牌后再防御（无手牌则不弃）');
     }
     if (typeof mod.attackDrawSelf === 'function' && mod.attackDrawSelf(card, ctx)) {
       parts.push('抽取1张牌');

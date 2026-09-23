@@ -399,7 +399,9 @@
             if (method === 'resolveAttackModChoice') {
                 if (s.phase !== 'ATTACK_MOD_CHOICE') return '当前没有攻击修正选择';
                 const bonus = Number(params.bonus || 0);
-                if (!Number.isInteger(bonus) || bonus < 0 || bonus > 10 || (params.unblock != null && typeof params.unblock !== 'boolean')) return '无效的攻击修正';
+                if (!Number.isInteger(bonus) || bonus < 0 || bonus > 10) return '无效的攻击修正';
+                if (params.unblock != null && typeof params.unblock !== 'boolean') return '无效的攻击修正';
+                if (params.evilRoulette != null && typeof params.evilRoulette !== 'boolean') return '无效的攻击修正';
             }
             if (method === 'resolveCritChoice') {
                 if (s.phase !== 'CRIT_CHOICE') return '当前没有暴击选择';

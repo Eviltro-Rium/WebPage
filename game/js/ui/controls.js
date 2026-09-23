@@ -63,6 +63,10 @@ _renderControls() {
     } else if (phase === 'PLAYER_DISCARD' && canAct) {
         const discardHint = s.pendingVixrapsPassive
             ? 'Vixraps被动：必须弃掉1张牌，然后恢复2点生命并施加1层灼伤'
+            : s.pendingDiscardBeforeDefend
+                ? '必须弃掉1张手牌后再防御'
+            : s.pendingHypothermiaDiscard
+                ? '[失温]达到2层：必须弃掉1张牌'
             : s.forcedDiscard
                 ? `手牌超限：需弃至 ${s.handLimit || 5} 张`
                 : s.mayDiscardAfterSkill
@@ -70,7 +74,7 @@ _renderControls() {
                     : '可同时选择多张牌弃掉';
         html += `<span class="ctrl-hint">${discardHint}</span>`;
         html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!hasDiscardCards ? 'disabled' : ''}>确认弃牌 (${(s.selectedCards || []).length})</button>`;
-        if (!s.forcedDiscard && !s.pendingVixrapsPassive) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
+        if (!s.forcedDiscard && !s.pendingVixrapsPassive && !s.pendingDiscardBeforeDefend && !s.pendingHypothermiaDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
     } else if (phase === 'OPPONENT_CARD_CHOICE' && canAct && s.isAdventure) {
         const targetKey = s.opponentHandTarget || (s.is1v2 ? (s.attackTarget || 'ai') : 'ai');
         const target = s[targetKey];
@@ -424,7 +428,8 @@ _confirmAttackMod() {
             this._attackModSelectedItem = null;
             await this._apiAction('resolveAttackModChoice', {
                 bonus: am.def.attackModBonus || 0,
-                unblock: !!am.def.attackModUnblock
+                unblock: !!am.def.attackModUnblock,
+                evilRoulette: !!am.def.attackModEvilRoulette
             });
         } finally {
             this._attackModPromptOpen = false;

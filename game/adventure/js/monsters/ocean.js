@@ -14,10 +14,10 @@
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.ocean = {
-    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl'],
-    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl'],
-    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl'],
-    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl']
+    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
+    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
+    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
+    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed']
   };
 
   // ===== 冻洋猞猁 =====
@@ -125,7 +125,8 @@
   R.registerMonster({
     name: 'FrozenOceanShark',
     kind: '冻洋鲨',
-    hp: 20,
+    minStage: 2,
+    hp: 27,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/frozen_ocean_shark.webp',
@@ -154,7 +155,6 @@
       return v >= 1 && v <= 3 ? 1 : 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 7 }),
       3: orig => ({
         attackDamage(card, ctx) {
           const base = orig.attackDamage(card, ctx);
@@ -331,6 +331,59 @@
         defendBlock: (card, incoming) => {
           const base = orig.defendBlock(card, incoming);
           return base > 0 ? Math.min(base + 1, incoming) : 0;
+        }
+      })
+    }
+  });
+
+  // ===== 冻洋萨摩耶 =====
+  // 被动：免疫失温与冷冻
+  // 进攻1/2/3：造成对手手牌张数点伤害（Stage3 起不可防御）
+  // 进攻4/5/6：5点伤害；玩家先弃1张手牌再防御（无手牌则不弃）
+  // 防御1/2/3：反击 ceil(incoming/2)，恢复1点生命
+  R.registerMonster({
+    name: 'FrozenOceanSamoyed',
+    kind: '冻洋萨摩耶',
+    hp: 20,
+    attack: 3,
+    defense: 2,
+    icon: '../icons/npc_icons/frozen_ocean_samoyed.webp',
+    immuneFreeze: true,
+    immuneHypothermia: true,
+    attackDamage(card, ctx) {
+      const v = card && card.value;
+      if (v >= 1 && v <= 3) return ctx ? (ctx.playerHandSize || 0) : 0;
+      if (v >= 4 && v <= 6) return 5;
+      return 0;
+    },
+    attackUnblockable(card) {
+      return false;
+    },
+    attackDiscardBeforeDefend(card) {
+      const v = card && card.value;
+      return !!(card && card.isNumberCard && v >= 4 && v <= 6);
+    },
+    defendCounter(card, incoming) {
+      const v = card && card.value;
+      if (!(v >= 1 && v <= 3)) return 0;
+      return Math.ceil(Math.max(0, Number(incoming) || 0) / 2);
+    },
+    defendHeal(card) {
+      const v = card && card.value;
+      return (v >= 1 && v <= 3) ? 1 : 0;
+    },
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 5 }),
+      3: orig => ({
+        attackUnblockable(card) {
+          const v = card && card.value;
+          return !!(card && card.isNumberCard && v >= 1 && v <= 3);
+        }
+      }),
+      4: orig => ({
+        defendHeal(card) {
+          const v = card && card.value;
+          return (v >= 1 && v <= 3) ? 1 : 0;
         }
       })
     }

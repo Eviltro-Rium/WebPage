@@ -61,7 +61,8 @@
       Object.freeze({ threshold: 1, drops: Object.freeze(['PiercingTrophy']) }),
       Object.freeze({ threshold: 2, drops: Object.freeze(['HypothermiaTrophy']) })
     ]) }),
-    FrozenOceanSnowyOwl: Object.freeze({ threshold: 2, drops: Object.freeze(['FlyTrophy']) })
+    FrozenOceanSnowyOwl: Object.freeze({ threshold: 2, drops: Object.freeze(['FlyTrophy']) }),
+    FrozenOceanSamoyed: Object.freeze({ threshold: 2, drops: Object.freeze(['SmallPotionTrophy']) })
   });
 
   const SCENE_RULES = Object.freeze({ castle: CASTLE_RULES, forest: FOREST_RULES, ocean: OCEAN_RULES });
@@ -69,9 +70,10 @@
   const TROPHY_TAGS = Object.freeze({
     BurnTrophy: "灼伤", PiercingTrophy: "流血", FreezeTrophy: "冰冻",
     IceSealTrophy: "冰封", HypothermiaTrophy: "失温",
-    RussianRouletteTrophy: "俄罗斯赌盘", FlyTrophy: "飞翔", DivingTrophy: "潜水", LushTrophy: "茂盛",
+    RussianRouletteTrophy: "俄罗斯赌盘", FlyTrophy: "飞翔", CritTrophy: "暴击", DivingTrophy: "潜水", LushTrophy: "茂盛",
     PoisonTrophy: "中毒", ParasiteTrophy: "寄生", ThornsTrophy: "荆棘", GuardTrophy: "守护",
-    DisarmTrophy: "缴械", ZeroTrophy: "0技能", TimeBombTrophy: "定时炸弹"
+    DisarmTrophy: "缴械", ZeroTrophy: "0技能", TimeBombTrophy: "定时炸弹",
+    SmallPotionTrophy: "小药剂"
   });
 
   function formatDropSummary(rule) {
@@ -96,6 +98,23 @@
       first = Math.max(first, last + 1);
     }
     return parts.length ? "掉落，" + parts.join("；") : "";
+  }
+
+  function getDropRule(monsterName) {
+    if (!monsterName) return null;
+    for (const sceneKey of Object.keys(SCENE_RULES)) {
+      const rule = SCENE_RULES[sceneKey][monsterName];
+      if (rule) return Object.freeze({ scene: sceneKey, rule });
+    }
+    return null;
+  }
+
+  function describeMonsterDrop(monsterName) {
+    const found = getDropRule(monsterName);
+    if (!found) return "";
+    const summary = formatDropSummary(found.rule);
+    if (!summary) return "";
+    return "击败后投掷12面骰。" + summary.replace(/^掉落，/, "");
   }
 
   function normalizeScene(scene) {
@@ -134,9 +153,12 @@
 
   window.AdventureLoot = Object.freeze({
     SCENE_RULES,
+    TROPHY_TAGS,
     normalizeScene,
     rollD12,
     formatDropSummary,
+    getDropRule,
+    describeMonsterDrop,
     rollMonsterDrop
   });
 })();

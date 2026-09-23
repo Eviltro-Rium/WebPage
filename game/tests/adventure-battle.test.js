@@ -730,6 +730,38 @@ test('lord mode NPC uses guard after defending in 1v2', () => {
   assert.equal(engine.s.ai.hp, 24);
 });
 
+test('RevivalCross restores 5 HP on lethal damage then breaks', () => {
+  const def = context.AdventureRegistry.getItem('RevivalCross');
+  assert.equal(def.kind, 'accessory');
+  assert.equal(def.maxStacks, 1);
+  assert.equal(def.onLethalHeal, 5);
+  assert.equal(def.price, 15);
+  assert.equal(JSON.stringify(def.beastTradeCost), JSON.stringify(['ben', 'ben', 'ben', 'wuneng']));
+  assert.ok(def.icon.endsWith('revival_cross.webp'));
+
+  const engine = start({ hand: [number(2, 'RED')] });
+  const accessories = ['RevivalCross'];
+  engine._adventureEngine = {
+    snapshot: () => ({ accessories: accessories.map(name => ({ name })), consumables: [] }),
+    s: { accessories },
+    hasAccessory(name) { return accessories.indexOf(name) >= 0; },
+    accessoryCount(name) { return accessories.filter(n => n === name).length; },
+    _syncBeastCap() {}
+  };
+  engine.s.player.hp = 3;
+  engine.s.player.alive = true;
+  engine.hurt(engine.s.player, 10);
+  assert.equal(engine.s.player.hp, 5);
+  assert.equal(engine.s.player.alive, true);
+  assert.equal(accessories.length, 0);
+  assert.equal(engine._hasAccessory('RevivalCross'), false);
+
+  engine.s.player.hp = 2;
+  engine.hurt(engine.s.player, 5);
+  assert.equal(engine.s.player.hp, 0);
+  assert.equal(engine.s.player.alive, false);
+});
+
 test('FlameFist triggers for Moze 2 defense in adventure 1v2', () => {
   const engine = new AdventureBattleEngine();
   engine.later = () => {};
@@ -920,6 +952,40 @@ test('ArmorBreakSpear makes defensible attack unblockable via attack mod choice'
   assert.equal(engine.s.pendingAttack.unblock, true);
 });
 
+test('EvilRoulette doubles damage on 1-8 and zeroes damage with skip on 9-12', () => {
+  const def = context.AdventureRegistry.getItem('EvilRoulette');
+  assert.equal(def.kind, 'consumable');
+  assert.equal(def.combatUse, 'attackMod');
+  assert.equal(def.attackModEvilRoulette, true);
+  assert.equal(def.price, 5);
+  assert.ok(def.icon.endsWith('items_icons/evil_wheel.webp'));
+
+  const engine = startLeon();
+  engine.later = () => {};
+  let roll = 3;
+  engine.rollD12 = () => roll;
+
+  engine.s.pendingAttack = { damage: 4, unblock: false };
+  engine.s.pendingAttackMod = { card: number(4, 'RED'), skip: false, unblock: false, delay: 0 };
+  engine.s.phase = 'ATTACK_MOD_CHOICE';
+  engine.s.busy = false;
+  engine.dispatch('resolveAttackModChoice', { bonus: 0, evilRoulette: true });
+  assert.equal(engine.s.pendingAttack.damage, 8);
+  assert.equal(engine.s.phase, 'AI_DEFEND');
+  assert.equal(engine.s.defenseSkipped, false);
+
+  roll = 10;
+  engine.s.pendingAttack = { damage: 5, unblock: false };
+  engine.s.pendingAttackMod = { card: number(4, 'RED'), skip: false, unblock: false, delay: 0 };
+  engine.s.phase = 'ATTACK_MOD_CHOICE';
+  engine.s.busy = false;
+  engine.s.defenseSkipped = false;
+  engine.dispatch('resolveAttackModChoice', { bonus: 0, evilRoulette: true });
+  assert.equal(engine.s.pendingAttack.damage, 0);
+  assert.equal(engine.s.defenseSkipped, true);
+  assert.notEqual(engine.s.phase, 'ATTACK_MOD_CHOICE');
+});
+
 test('Otto crit is optional after attack mod and blocked by ArmorBreakSpear', () => {
   const engine = new AdventureBattleEngine();
   engine.later = () => {};
@@ -1080,6 +1146,41 @@ test('NPC spends fly before guard and keeps retrying at 50%', () => {
     assert.equal(engine.s.ai.fly, 0);
     assert.equal(engine.s.ai.guard, 0);
     assert.equal(engine.s.ai.hp, 19);
+  } finally {
+    Math.random = origRandom;
+  }
+});
+
+test('hypothermia discard stays open after NPC fly settlement', () => {
+  const engine = startVs('FrozenOceanSnowyOwl');
+  engine.later = () => {};
+  engine.s.player.hypothermia = 1;
+  engine.h.player = [number(1, 'YELLOW'), number(3, 'RED')];
+  engine.h.ai = [number(2, 'BLUE')];
+  engine.s.ai.fly = 1;
+  engine.s.ai.hp = 24;
+  engine.s.atkCard = number(5, 'YELLOW');
+  engine.s.atkOwner = 'player';
+  engine.s.phase = 'AI_DEFEND';
+  engine.s.busy = true;
+  engine.s.pendingAttack = { damage: 5, unblock: false };
+  engine.events = [];
+  engine.ver = 0;
+  const origRandom = Math.random;
+  try {
+    Math.random = () => 0.1;
+    engine.aiDefend(engine.s.atkCard, 5);
+    engine.acknowledgeEvents(engine.ver);
+    assert.equal(engine.s.player.hypothermia, 1);
+    assert.equal(engine.s.phase, 'PLAYER_DISCARD', 'discard must wait until fly settlement ends');
+    assert.equal(engine.s.pendingHypothermiaDiscard, true);
+    assert.equal(engine.h.player.length, 2, 'hypothermia discard must not auto-skip');
+    assert.equal(engine.s.busy, false);
+    engine.s.selectedCards = [0];
+    engine.confirmDiscard();
+    assert.equal(engine.h.player.length, 1);
+    assert.equal(engine.s.phase, 'PLAYER_PLAY');
+    assert.equal(engine.s.pendingHypothermiaDiscard, false);
   } finally {
     Math.random = origRandom;
   }
@@ -1575,6 +1676,8 @@ test('ocean monster loot follows the ocean guide, including polar bear split out
   assert.equal(result.drops[0], 'HypothermiaTrophy');
   result = loot.rollMonsterDrop('ocean', 'FrozenOceanSnowyOwl', () => 0);
   assert.equal(result.drops[0], 'FlyTrophy');
+  result = loot.rollMonsterDrop('ocean', 'FrozenOceanSamoyed', () => 0);
+  assert.equal(result.drops[0], 'SmallPotionTrophy');
   result = loot.rollMonsterDrop('ocean', 'FrozenPolarBear', () => 0.99);
   assert.equal(result.drops.length, 0);
 });
@@ -1598,6 +1701,61 @@ test('FrozenOceanSnowyOwl skills match the ocean guide', () => {
   assert.equal(stage4.defendBlock({ value: 1, isNumberCard: true }, 5), 3);
 });
 
+test('FrozenOceanSamoyed skills match the ocean guide', () => {
+  const mod = context.AdventureRegistry.getMonster('FrozenOceanSamoyed');
+  assert.equal(mod.kind, '冻洋萨摩耶');
+  assert.equal(mod.hp, 20);
+  assert.equal(mod.immuneFreeze, true);
+  assert.equal(mod.immuneHypothermia, true);
+  assert.equal(mod.attackDamage({ value: 2, isNumberCard: true }, { playerHandSize: 4 }), 4);
+  assert.equal(mod.attackDamage({ value: 5, isNumberCard: true }), 5);
+  assert.equal(mod.attackUnblockable({ value: 2, isNumberCard: true }), false);
+  assert.equal(mod.attackDiscardBeforeDefend({ value: 5, isNumberCard: true }), true);
+  assert.equal(mod.defendCounter({ value: 2, isNumberCard: true }, 5), 3);
+  assert.equal(mod.defendHeal({ value: 1, isNumberCard: true }), 1);
+  const stage2 = mod.stageMods[2](mod);
+  assert.equal(stage2.hp, 25);
+  const stage3 = Object.assign({}, mod, mod.stageMods[3](mod));
+  assert.equal(stage3.attackUnblockable({ value: 2, isNumberCard: true }), true);
+  assert.equal(stage3.attackUnblockable({ value: 5, isNumberCard: true }), false);
+  const stage4 = Object.assign({}, mod, mod.stageMods[4](mod));
+  assert.equal(stage4.defendHeal({ value: 2, isNumberCard: true }), 1);
+});
+
+test('FrozenOceanSamoyed defend 1/2/3 counters half damage and heals like Vixraps 3', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure({
+    player: 'Ryan',
+    opponent: 'FrozenOceanSamoyed',
+    playerState: { hp: 70, maxHp: 80 },
+    playerPile: {
+      deck: [number(4, 'BLUE')],
+      hand: [number(1, 'YELLOW')],
+      discard: [],
+      handLimit: 5
+    },
+    discardTop: number(2, 'RED'),
+    discardTopOwner: 'player'
+  });
+  // Below max so defendHeal(+1) is observable (at full HP heal is a no-op).
+  engine.s.ai.hp = 18;
+  engine.s.player.hp = 70;
+  engine.h.ai = [number(3, 'RED')];
+  engine.s.pendingAttack = { damage: 5, unblock: false };
+  engine.s.atkCard = number(4, 'YELLOW');
+  engine.s.atkOwner = 'player';
+  engine.s.phase = 'AI_DEFEND';
+  engine.s.busy = true;
+  engine.events = [];
+  engine.ver = 0;
+  engine.aiDefend(engine.s.atkCard, 5);
+  assert.equal(engine.s.player.hp, 67, 'Samoyed should counter ceil(5/2)=3');
+  // Remaining damage is deferred like other AI_DEFEND paths; flush settlement.
+  engine.acknowledgeEvents(engine.ver);
+  assert.equal(engine.s.ai.hp, 14, 'Samoyed heals 1 then takes remaining 5 (18+1-5)');
+});
+
 test('parasite trophy is a reusable self-buff card with the registered icon and effect', () => {
   const def = context.AdventureRegistry.getItem('ParasiteTrophy');
   assert.equal(def.kind, 'trophyWhite');
@@ -1610,6 +1768,120 @@ test('parasite trophy is a reusable self-buff card with the registered icon and 
   engine.useTrophyWhite(engine.h.player[0], engine.s.ai, 'player');
   assert.equal(engine.s.player.parasite, 1);
   assert.equal(engine.s.ai.parasite || 0, 0);
+});
+
+test('crit trophy grants one crit stack and forges for fire plus body tokens', () => {
+  const def = context.AdventureRegistry.getItem('CritTrophy');
+  assert.equal(def.kind, 'trophyWhite');
+  assert.equal(def.trophyEffect, 'crit');
+  assert.equal(def.price, 5);
+  assert.ok(def.icon.endsWith('buff_icons/crit.webp'));
+  assert.equal(JSON.stringify(def.beastTradeCost), JSON.stringify(['huo', 'ben']));
+
+  const engine = start({ hand: [context.AdventureDeck.trophyWhite('CritTrophy')] });
+  engine.later = () => {};
+  engine.useTrophyWhite(engine.h.player[0], engine.s.ai, 'player');
+  assert.equal(engine.s.player.crit, 1);
+  assert.equal(engine.s.ai.crit || 0, 0);
+});
+
+test('small potion trophy heals two and forges for grass plus water tokens', () => {
+  const def = context.AdventureRegistry.getItem('SmallPotionTrophy');
+  assert.equal(def.kind, 'trophyWhite');
+  assert.equal(def.trophyEffect, 'smallPotion');
+  assert.equal(def.healAmount, 2);
+  assert.equal(JSON.stringify(def.beastTradeCost), JSON.stringify(['cao', 'shui']));
+  assert.ok(def.icon.endsWith('items_icons/small_potion.webp'));
+
+  const engine = start({ hand: [context.AdventureDeck.trophyWhite('SmallPotionTrophy')] });
+  engine.later = () => {};
+  engine.s.player.hp = 10;
+  engine.useTrophyWhite(engine.h.player[0], engine.s.ai, 'player');
+  assert.equal(engine.s.player.hp, 12);
+});
+
+test('FrozenOceanSamoyed forces a discard before defend and ignores freeze or hypothermia', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure({
+    player: 'Ryan',
+    opponent: 'FrozenOceanSamoyed',
+    playerState: { hp: 70, maxHp: 80 },
+    playerPile: {
+      deck: [number(4, 'BLUE')],
+      hand: [number(1, 'YELLOW'), number(3, 'RED')],
+      discard: [],
+      handLimit: 5
+    },
+    discardTop: number(4, 'RED'),
+    discardTopOwner: 'player'
+  });
+  engine.later = () => {};
+  engine.s.phase = 'AI_TURN';
+  engine.s.aiTurnStarted = true;
+  engine.s.aiHasPlayed = false;
+  engine.h.ai = [number(5, 'RED')];
+  engine.aiTurn();
+  assert.equal(engine.s.phase, 'PLAYER_DISCARD');
+  assert.ok(engine.s.pendingDiscardBeforeDefend);
+  assert.equal(engine.s.pendingDiscardBeforeDefend.damage, 5);
+  engine.s.selectedCards = [0];
+  engine.confirmDiscard();
+  assert.equal(engine.s.phase, 'PLAYER_DEFEND');
+  assert.equal(engine.h.player.length, 1);
+  assert.equal(engine.s.pendingDiscardBeforeDefend, null);
+
+  engine.freeze(engine.s.ai);
+  assert.equal(!!engine.s.ai.frozen, false);
+  engine.hypothermia(engine.s.ai, 1);
+  assert.equal(engine.s.ai.hypothermia || 0, 0);
+});
+
+test('player attack 4 does not make Snowy Owl discard when Samoyed is also present', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({
+    player: 'Leon',
+    opponent1: 'FrozenOceanSnowyOwl',
+    opponent2: 'FrozenOceanSamoyed',
+    playerState: { hp: 90, maxHp: 90 },
+    playerPile: {
+      deck: [number(5, 'BLUE')],
+      hand: [number(4, 'YELLOW')],
+      discard: [],
+      handLimit: 5
+    },
+    discardTop: number(2, 'RED'),
+    discardTopOwner: 'player'
+  });
+  const owlCard = number(2, 'BLUE');
+  const samoyedCard = number(1, 'RED');
+  engine.h.ai = [owlCard];
+  engine.h.ai2 = [samoyedCard];
+  engine.s.atkOwner = 'player';
+  engine.s.atkCard = number(4, 'YELLOW');
+  engine.s.attackTarget = 'ai';
+  engine.s.activeAttacker = 'player';
+  engine._proceedToDefend(5, true, false, engine.s.atkCard, 0);
+  assert.equal(engine.h.ai.length, 1, 'Snowy Owl should keep its hand');
+  assert.equal(engine.h.ai[0], owlCard);
+  assert.equal(engine.h.ai2.length, 1, 'Samoyed should keep its hand');
+  assert.equal(
+    engine.events.some(event => /被强制弃掉/.test(event.desc || '')),
+    false,
+    'Samoyed discard-before-defend is an NPC attack skill, not a player 4'
+  );
+});
+
+test('AdventureLoot describes monster and boss drop rules for the codex', () => {
+  const loot = context.AdventureLoot;
+  assert.match(loot.describeMonsterDrop('CastleFirefly'), /击败后投掷12面骰/);
+  assert.match(loot.describeMonsterDrop('CastleFirefly'), /1-2\[飞翔\]战利白卡/);
+  assert.match(loot.describeMonsterDrop('FrozenOceanLynx'), /1\[冰冻\]战利白卡/);
+  assert.match(loot.describeMonsterDrop('FrozenOceanLynx'), /2\[冰封\]战利白卡/);
+  assert.match(loot.describeMonsterDrop('CastleGargoyle'), /1-4\[0技能\]战利白卡/);
+  assert.match(loot.describeMonsterDrop('ForestDryad'), /1-4\[0技能\]战利白卡/);
+  assert.equal(loot.describeMonsterDrop('MissingMonster'), '');
+  assert.equal(loot.getDropRule('CastleWolf').scene, 'castle');
 });
 
 test('diving trophy grants diving to the player and forges for two water tokens', () => {
