@@ -32,7 +32,7 @@
     // effects need the alternating target selector; self buffs (guard/fly/
     // lush) should not rotate the target just to play a bridge card.
     const trophyTargetsOpponent = c.trophyWhite &&
-      ['burn','bleed','freeze','poison','bomb','disarm','roulette','zero','thorns'].includes(c.trophyEffect);
+      ['burn','bleed','freeze','poison','bomb','disarm','roulette','zero','thorns','iceSeal','hypothermia'].includes(c.trophyEffect);
     if(c.isItemCard&&!c.swapHand&&!trophyTargetsOpponent)return false;
     let who=this.name(this.s.player);
     if(who==='Leon'&&c.value===0)return false;

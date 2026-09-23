@@ -14,10 +14,10 @@
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.ocean = {
-    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear'],
-    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear'],
-    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear'],
-    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear']
+    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl'],
+    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl'],
+    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl'],
+    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl']
   };
 
   // ===== 冻洋猞猁 =====
@@ -281,6 +281,52 @@
           return orig.attackBleed(card);
         }
       }),
+      4: orig => ({
+        defendBlock: (card, incoming) => {
+          const base = orig.defendBlock(card, incoming);
+          return base > 0 ? Math.min(base + 1, incoming) : 0;
+        }
+      })
+    }
+  });
+
+  // ===== 冻洋雪鸮 =====
+  R.registerMonster({
+    name: 'FrozenOceanSnowyOwl',
+    kind: '冻洋雪鸮',
+    hp: 24,
+    attack: 3,
+    defense: 2,
+    icon: '../icons/npc_icons/frozen_ocean_snowy_owl.webp',
+    attackDamage(card) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return 2;
+      if (v >= 4 && v <= 6) return 4;
+      return 0;
+    },
+    // 进攻1/2/3：获得1层飞翔
+    attackFly(card) {
+      const v = card.value;
+      return v >= 1 && v <= 3 ? 1 : 0;
+    },
+    // 进攻6：玩家随机弃掉1个一次性道具
+    attackStealItem(card) {
+      return !!(card && card.isNumberCard && card.value === 6);
+    },
+    // 防御1/2/3：格挡2点
+    defendBlock(card, incoming) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return Math.min(2, incoming);
+      return 0;
+    },
+    // 防御1/2/3：施加1层失温
+    defendHypothermia(card) {
+      const v = card.value;
+      return v >= 1 && v <= 3 ? 1 : 0;
+    },
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 6 }),
+      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         defendBlock: (card, incoming) => {
           const base = orig.defendBlock(card, incoming);

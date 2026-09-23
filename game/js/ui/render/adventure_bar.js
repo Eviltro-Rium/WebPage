@@ -81,6 +81,70 @@
             overlay.addEventListener('click', event => { if (event.target === overlay) { overlay.remove(); if (onCancel) onCancel(); } });
         },
 
+        // Chaos Orb: peek NPC deck top 3. Click a card to toggle keep vs discard;
+        // relative keep order is fixed (no reordering).
+        _showChaosOrbChoice(cards, onChoose, onCancel) {
+            if (document.getElementById('chaos-orb-choice-dialog')) return;
+            const overlay = document.createElement('div');
+            overlay.id = 'chaos-orb-choice-dialog';
+            overlay.className = 'dialog-overlay';
+            const box = document.createElement('div');
+            box.className = 'dialog-box';
+            box.style.maxWidth = '560px';
+            box.innerHTML = '<div class="dialog-title">混沌球</div>' +
+                '<div class="dialog-body" style="color:rgba(255,255,255,0.85);font-size:0.85rem;margin-bottom:12px">' +
+                '左侧为NPC牌库顶。点击卡牌切换：放回牌库 / 进入弃牌堆（不可调序）</div>';
+            const row = document.createElement('div');
+            row.className = 'chan-five-row crystal-ball-row';
+            row.style.gap = '12px';
+            const discard = cards.map(() => false);
+            const paint = (wrap, index) => {
+                wrap.style.outline = discard[index] ? '2px solid #f87171' : '2px solid #34d399';
+                wrap.style.outlineOffset = '2px';
+                wrap.style.opacity = discard[index] ? '0.72' : '1';
+                const tag = wrap.querySelector('.chaos-orb-tag');
+                if (tag) tag.textContent = discard[index] ? '弃牌堆' : '放回牌库';
+                tag.style.color = discard[index] ? '#fca5a5' : '#6ee7b7';
+            };
+            cards.forEach((card, index) => {
+                const wrap = document.createElement('button');
+                wrap.type = 'button';
+                wrap.className = 'chaos-orb-card-wrap';
+                wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;background:transparent;border:0;padding:4px;cursor:pointer;';
+                const node = typeof renderCard === 'function'
+                    ? renderCard(card, 70, 100, false)
+                    : (() => { const el = document.createElement('div'); el.textContent = String(card.value != null ? card.value : '?'); return el; })();
+                const tag = document.createElement('div');
+                tag.className = 'chaos-orb-tag';
+                tag.style.cssText = 'font-size:0.75rem;font-weight:700;';
+                wrap.append(node, tag);
+                wrap.addEventListener('click', () => {
+                    discard[index] = !discard[index];
+                    paint(wrap, index);
+                });
+                paint(wrap, index);
+                row.appendChild(wrap);
+            });
+            box.appendChild(row);
+            const actions = document.createElement('div');
+            actions.className = 'dialog-buttons';
+            const confirm = document.createElement('button');
+            confirm.className = 'ctrl-btn btn-play';
+            confirm.textContent = '确认';
+            confirm.onclick = () => { overlay.remove(); onChoose(discard.slice()); };
+            const cancel = document.createElement('button');
+            cancel.className = 'ctrl-btn btn-skip';
+            cancel.textContent = '取消';
+            cancel.onclick = () => { overlay.remove(); if (onCancel) onCancel(); };
+            actions.append(confirm, cancel);
+            box.appendChild(actions);
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+            overlay.addEventListener('click', event => {
+                if (event.target === overlay) { overlay.remove(); if (onCancel) onCancel(); }
+            });
+        },
+
         _renderAdventureItemBar(s) {
             const bar = document.getElementById('adventure-item-bar');
             if (!bar) return;
@@ -290,6 +354,16 @@
                 this._showCardMasterChoice(choice => { void run(choice); });
                 return;
             }
+            if (def.combatUse === 'discardTalisman') {
+                const hand = Array.isArray(s.playerHand) ? s.playerHand : [];
+                if (!hand.length) return;
+                this.dialogs.showOpponentCardChoice(
+                    [{ key: 'player', label: '选择要弃掉的手牌', cards: hand }],
+                    choice => { void run({ index: choice.index }); },
+                    '弃牌符 · 弃1抽2'
+                );
+                return;
+            }
             if (def.combatUse === 'crystalBall') {
                 const preview = await Bridge.call('useAdventureCombatItem', { itemIndex: idx });
                 if (!preview || preview.error) return;
@@ -298,6 +372,20 @@
                 this.updateDisplay();
                 if (Array.isArray(preview.crystalBallCards) && preview.crystalBallCards.length) {
                     this._showCrystalBallChoice(preview.crystalBallCards, order => { void run({ order }); }, async () => {
+                        const cleared = await Bridge.call('useAdventureCombatItem', { itemIndex: idx, choice: { cancel: true } });
+                        if (cleared && !cleared.error) { this.state = cleared; this.updateDisplay(); }
+                    });
+                }
+                return;
+            }
+            if (def.combatUse === 'chaosOrb') {
+                const preview = await Bridge.call('useAdventureCombatItem', { itemIndex: idx });
+                if (!preview || preview.error) return;
+                this._prevState = this.state;
+                this.state = preview;
+                this.updateDisplay();
+                if (Array.isArray(preview.chaosOrbCards) && preview.chaosOrbCards.length) {
+                    this._showChaosOrbChoice(preview.chaosOrbCards, discard => { void run({ discard }); }, async () => {
                         const cleared = await Bridge.call('useAdventureCombatItem', { itemIndex: idx, choice: { cancel: true } });
                         if (cleared && !cleared.error) { this.state = cleared; this.updateDisplay(); }
                     });
@@ -321,8 +409,17 @@
                 const player = s.player;
                 const oppKey = s.attackTarget || (s.activeAttacker === 'ai2' ? 'ai2' : 'ai');
                 const opponent = s[oppKey] && s[oppKey].alive !== false ? s[oppKey] : (s.ai || null);
-                const hasTransferable = ch => ch && ((ch.burn || 0) > 0 || (ch.bleed || 0) > 0 ||
-                    (ch.poison || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0);
+                const registry = window.FurryGame && window.FurryGame.StatusRegistry;
+                const hasTransferable = ch => {
+                    if (!ch) return false;
+                    if (registry) return registry.list(ch, def => !!def.transferable).length > 0;
+                    return (ch.burn || 0) > 0 || (ch.bleed || 0) > 0 || (ch.poison || 0) > 0 ||
+                        ch.frozen || (ch.blind || 0) > 0 || (ch.bomb || 0) > 0 || (ch.iceSeal || 0) > 0 ||
+                        (ch.hypothermia || 0) > 0 || ch.hypnosis || ch.sleep || (ch.thorns || 0) > 0 ||
+                        (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0 ||
+                        (ch.lush || 0) > 0 || (ch.parasite || 0) > 0 || ch.diving ||
+                        ch.chaos_red || ch.chaos_yellow || ch.chaos_blue || ch.chaos_green;
+                };
                 if (!hasTransferable(player) && !hasTransferable(opponent)) return;
                 this.dialogs.showBuffTransferChoice(player, choice => { void run(choice); }, { opponent });
                 return;

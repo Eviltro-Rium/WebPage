@@ -82,6 +82,58 @@
     };
   });
 
+  register('chaosOrb', (eng, def, ctx) => {
+    const choice = ctx.choice;
+    if (choice && choice.cancel) {
+      eng.s.chaosOrbCards = null;
+      eng.s.pendingDialog = null;
+      return { pending: true };
+    }
+    const npcDeck = eng.piles && eng.piles.ai && eng.piles.ai.deck;
+    const npcDiscard = eng.piles && eng.piles.ai && eng.piles.ai.discard;
+    if (!npcDeck || !npcDiscard) return { ok: false, message: '混沌球：找不到NPC牌库' };
+    const count = Math.min(3, npcDeck.length);
+    if (!count) return { ok: false, message: '混沌球：NPC牌库为空' };
+    const cards = npcDeck.slice(npcDeck.length - count).reverse();
+    const discardFlags = choice && Array.isArray(choice.discard)
+      ? choice.discard.map(v => !!v)
+      : null;
+    if (!discardFlags) {
+      eng.s.chaosOrbCards = clone(cards);
+      eng.s.pendingDialog = 'chaosOrb';
+      eng.s.busy = false;
+      return { pending: true };
+    }
+    if (discardFlags.length !== count) {
+      return { ok: false, message: '混沌球选择无效' };
+    }
+    // Remove peeked top cards from the NPC deck, then put kept cards back in
+    // their original relative order (no reordering) and send the rest to discard.
+    const removed = npcDeck.splice(npcDeck.length - count, count);
+    const peeked = removed.slice().reverse();
+    const kept = [];
+    let discarded = 0;
+    for (let i = 0; i < peeked.length; i++) {
+      const card = peeked[i];
+      if (discardFlags[i]) {
+        if (card && (card.isBlack || card.isWhite)) delete card.chosenColor;
+        npcDiscard.push(card);
+        discarded++;
+      } else {
+        kept.push(card);
+      }
+    }
+    for (let i = kept.length - 1; i >= 0; i--) npcDeck.push(kept[i]);
+    eng.s.chaosOrbCards = null;
+    eng.s.pendingDialog = null;
+    return {
+      ok: true,
+      message: discarded
+        ? '将NPC牌库顶' + discarded + '张牌放入弃牌堆，其余按原顺序放回'
+        : '已查看NPC牌库顶' + count + '张牌并全部按原顺序放回'
+    };
+  });
+
   register('dodge', (eng) => {
     eng.cancelAttackDebuffs('player', false);
     eng.s.pendingBuffRestore = null;
@@ -188,6 +240,25 @@
     const applied = eng._applyCardMaster(ctx.choice);
     if (!applied.ok) return { ok: false, message: applied.message || '卡牌大师需要选择效果' };
     return { ok: true, message: applied.message };
+  });
+
+  register('discardTalisman', (eng, def, ctx) => {
+    const hand = eng.h.player || [];
+    if (!hand.length) return { ok: false, message: '手牌为空，无法使用弃牌符' };
+    const choice = ctx.choice;
+    const index = Number(choice && (choice.index != null ? choice.index : choice));
+    if (!Number.isInteger(index) || index < 0 || index >= hand.length) {
+      return { ok: false, message: '请选择要弃掉的1张手牌' };
+    }
+    const card = hand.splice(index, 1)[0];
+    const label = eng.cardText(card);
+    eng.discardWithEvent(card, 'player', {
+      handIndex: index,
+      desc: '弃牌符：弃掉' + label
+    });
+    const drawAmt = Math.max(1, Number(def.discardThenDraw) || 2);
+    const drawn = eng.draw('player', drawAmt, true);
+    return { ok: true, message: '弃掉' + label + '，抽取' + drawn.length + '张牌' };
   });
 
   register('buffTransfer', (eng, def, ctx) => {

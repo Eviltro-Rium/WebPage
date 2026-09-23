@@ -54,7 +54,7 @@
     { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
     { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
     { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层[暴击]使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
-    { name: 'Vixraps', hp: 85, type: '灼热', passive: '打出黑牌后弃1张牌恢复3点生命', avatar: 'avatars/Vixraps.webp', color: '#c0392b' }
+    { name: 'Vixraps', hp: 85, type: '灼热', passive: '打出黑牌后弃1张牌，恢复2点生命并施加1层灼伤', avatar: 'avatars/Vixraps.webp', color: '#c0392b' }
   ];
 
   const PLAYER_SKILL_GRID = [

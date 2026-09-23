@@ -103,6 +103,32 @@
   });
 
   R.registerItem({
+    name: 'IceSealTrophy',
+    displayName: '冰封战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：对手获得[冰封]，打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/ice_seal.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyIceSeal',
+    trophyEffect: 'iceSeal',
+    beastTradeCost: ['shui', 'ben']
+  });
+
+  R.registerItem({
+    name: 'HypothermiaTrophy',
+    displayName: '失温战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：对手+1层[失温]，打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/hypothermia.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyHypothermia',
+    trophyEffect: 'hypothermia',
+    beastTradeCost: ['shui', 'huo']
+  });
+
+  R.registerItem({
     name: 'RussianRouletteTrophy',
     displayName: '俄罗斯赌盘',
     kind: 'trophyWhite',
@@ -126,6 +152,19 @@
     combatUse: 'trophyFly',
     trophyEffect: 'fly',
     beastTradeCost: ['shui', 'cao']
+  });
+
+  R.registerItem({
+    name: 'DivingTrophy',
+    displayName: '潜水战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：获得[潜水]，打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/diving.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyDiving',
+    trophyEffect: 'diving',
+    beastTradeCost: ['shui', 'shui']
   });
 
   R.registerItem({
@@ -273,6 +312,18 @@
   });
 
   R.registerItem({
+    name: 'ChaosOrb',
+    displayName: '混沌球',
+    kind: 'consumable',
+    description: '查看NPC牌库顶3张牌：不可调序，可选择哪些放回牌库、哪些进入NPC弃牌堆',
+    icon: ICON + 'chaos_orb.webp',
+    useScene: 'combat',
+    price: 6,
+    combatUse: 'chaosOrb',
+    needsChoice: true
+  });
+
+  R.registerItem({
     name: 'CardMaster',
     displayName: '卡牌大师',
     kind: 'consumable',
@@ -282,6 +333,19 @@
     price: 7,
     combatUse: 'cardMaster',
     needsChoice: true
+  });
+
+  R.registerItem({
+    name: 'CardTalisman',
+    displayName: '弃牌符',
+    kind: 'consumable',
+    description: '选择弃掉1张手牌，然后抽取2张牌',
+    icon: ICON + 'card_talisman.webp',
+    useScene: 'both',
+    price: 3,
+    combatUse: 'discardTalisman',
+    needsChoice: true,
+    discardThenDraw: 2
   });
 
   R.registerItem({
@@ -352,7 +416,7 @@
     name: 'MagicTransfer',
     displayName: '魔法转移',
     kind: 'consumable',
-    description: '选择自己一层buff转移给对手',
+    description: '选择自己或对手一层 buff 转移给另一方（嗜血/捆缚印记除外）',
     icon: ICON + 'magic_transfer.webp',
     useScene: 'combat',
     price: 5,

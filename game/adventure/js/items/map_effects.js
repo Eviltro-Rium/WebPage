@@ -73,7 +73,7 @@
   }
 
   ['burn', 'bleed', 'freeze', 'vampire', 'buffTransfer', 'attackMod', 'dodge', 'bind',
-    'naturalShield', 'laserEye', 'chameleonPaint'].forEach(id => register(id, combatOnly));
+    'naturalShield', 'laserEye', 'chameleonPaint', 'chaosOrb'].forEach(id => register(id, combatOnly));
 
   register('cardMaster', (eng, def, ctx) => {
     const choice = ctx.cardMasterChoice;
@@ -93,6 +93,24 @@
     }
     const redrawn = pile.draw(n);
     return { ok: true, message: '弃掉' + n + '张并重抽' + redrawn.length + '张' };
+  });
+
+  register('discardTalisman', (eng, def, ctx) => {
+    const pile = eng.s.playerPile;
+    if (!pile) return { ok: false, message: '牌库尚未初始化' };
+    if (!pile.hand.length) return { ok: false, message: '手牌为空，无法使用弃牌符' };
+    const raw = ctx.discardIndex != null ? ctx.discardIndex
+      : (ctx.choice && ctx.choice.index != null ? ctx.choice.index : null);
+    const index = Number(raw);
+    if (!Number.isInteger(index) || index < 0 || index >= pile.hand.length) {
+      return { ok: false, needsChoice: true, message: '请选择要弃掉的1张手牌' };
+    }
+    const card = pile.hand.splice(index, 1)[0];
+    if (typeof pile.discardCard === 'function') pile.discardCard(card);
+    else pile.discard.push(card);
+    const drawAmt = Math.max(1, Number(def.discardThenDraw) || 2);
+    const drawn = pile.draw(drawAmt);
+    return { ok: true, message: '弃掉1张，抽取' + drawn.length + '张牌' };
   });
 
   window.AdventureMapEffects = Object.freeze({ register, apply, handlers });

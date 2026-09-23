@@ -311,7 +311,8 @@ test('Vixraps passive forces exactly one discard before the next bridge', () => 
   state = eng.confirmDiscard();
   assert.equal(state.phase, 'PLAYER_PLAY');
   assert.equal(state.pendingVixrapsPassive, null);
-  assert.equal(eng.s.player.hp, 53);
+  assert.equal(eng.s.player.hp, 52);
+  assert.equal(eng.s.ai.burn, 1);
   assert.equal(eng.h.player.length, 2, 'drawTwo resolves before the passive discard');
 });
 
@@ -327,7 +328,8 @@ test('Vixraps passive heals immediately when a black card leaves no hand', () =>
   const state = eng.dispatch('chooseColor', { color: 'RED' });
   assert.equal(state.phase, 'PLAYER_PLAY');
   assert.equal(state.pendingVixrapsPassive, null);
-  assert.equal(eng.s.player.hp, 53);
+  assert.equal(eng.s.player.hp, 52);
+  assert.equal(eng.s.ai.burn, 1);
 });
 
 test('Vixraps passive waits for a black purify dialog before forcing discard', () => {
@@ -350,5 +352,6 @@ test('Vixraps passive waits for a black purify dialog before forcing discard', (
   eng.s.selectedCards = [0];
   state = eng.confirmDiscard();
   assert.equal(state.phase, 'PLAYER_PLAY');
-  assert.equal(eng.s.player.hp, 53);
+  assert.equal(eng.s.player.hp, 52);
+  assert.equal(eng.s.ai.burn, 1);
 });

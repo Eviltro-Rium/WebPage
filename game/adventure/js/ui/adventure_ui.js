@@ -109,8 +109,8 @@
           if (resumedCombat) return true;
           if (combatSession && window.AdventureBattleController && typeof window.AdventureBattleController.clearCombatSession === 'function') {
             // Only drop a session that clearly belongs to another run.
-            const sessionMatches = window.AdventureBattleSession && typeof window.AdventureBattleSession.matches === 'function'
-              ? window.AdventureBattleSession.matches(combatSession, characterName, this.eng.mapName)
+          const sessionMatches = window.AdventureBattleSession && typeof window.AdventureBattleSession.matches === 'function'
+            ? window.AdventureBattleSession.matches(combatSession, characterName, this.eng.mapName)
               : !!(combatSession && combatSession.characterName === characterName);
             if (!sessionMatches) window.AdventureBattleController.clearCombatSession();
           }
@@ -622,6 +622,23 @@
               if (result && result.message) this._toast(result.message);
               this.render();
             });
+            return;
+          }
+          if (def && def.combatUse === 'discardTalisman') {
+            const hand = (this.eng.s.playerPile && this.eng.s.playerPile.hand) || [];
+            if (!hand.length) {
+              this._toast('手牌为空，无法使用弃牌符');
+              return;
+            }
+            this._getDialogs().showOpponentCardChoice(
+              [{ key: 'player', label: '选择要弃掉的手牌', cards: hand.slice() }],
+              choice => {
+                const result = this.eng.useConsumable(useIndex, { discardIndex: choice.index });
+                if (result && result.message) this._toast(result.message);
+                this.render();
+              },
+              '弃牌符 · 弃1抽2'
+            );
             return;
           }
           if (def && def.combatUse === 'crystalBall') {

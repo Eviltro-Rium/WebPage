@@ -546,7 +546,7 @@
     }
     itemKind(c){if(c.trophyWhite)return'trophyWhite';if(c.swapHand)return'swap';if(c.drawThree)return'drawThree';if(c.drawTwo)return'drawTwo';if(c.potion)return'potion';if(c.greenMagic||c.magicColor==='green')return'greenMagic';if(c.magic||c.magicColor==='purple')return'magic';if(c.superPurify)return'superPurify';if(c.purify)return'purify';if(c.shuffleToDeck)return'shuffle';return'wild'}
     _isAdventureBoss(x){if(!this.s.isAdventure||!window.AdventureRegistry)return false;return!!window.AdventureRegistry.getBoss(this.name(x))}
-    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}let label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='fly'?'获得1层飞翔':effect==='lush'?'获得1层茂盛':effect==='parasite'?'获得1层寄生':effect==='poison'?'施加1层中毒':effect==='thorns'?'施加1层荆棘':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部可净化状态（印记保留），然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
+    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}let label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='iceSeal'?'施加[冰封]':effect==='hypothermia'?'施加1层[失温]':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='fly'?'获得1层飞翔':effect==='diving'?'获得[潜水]':effect==='lush'?'获得1层茂盛':effect==='parasite'?'获得1层寄生':effect==='poison'?'施加1层中毒':effect==='thorns'?'施加1层荆棘':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部可净化状态（印记保留），然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
     useTrophyWhite(c, target, w='player'){
       if (!c || !c.trophyWhite) return false;
       // The caller resolves the target for the current card before entering
@@ -610,6 +610,12 @@
       } else if (effect === 'fly') {
         this.s.player.fly = Math.min(2, (this.s.player.fly || 0) + 1);
         this.emit('buff', '+1[飞翔]', null, { who: 'player', target: 'player', kind: 'fly', stacks: this.s.player.fly });
+      } else if (effect === 'diving') {
+        if (typeof this.setDiving === 'function') this.setDiving(this.s.player, true);
+        else {
+          this.s.player.diving = true;
+          this.emit('buff', '[潜水]', null, { who: 'player', target: 'player', kind: 'diving', stacks: 1 });
+        }
       } else if (effect === 'lush') {
         this.s.player.lush = Math.min(5, (this.s.player.lush || 0) + 1);
         this.emit('buff', '+1[茂盛]', null, { who: 'player', target: 'player', kind: 'lush', stacks: this.s.player.lush });
@@ -618,6 +624,8 @@
       } else if (target && effect !== 'disarm') {
         if (effect === 'bleed') this.bleed(target, 1);
         else if (effect === 'freeze') this.freeze(target);
+        else if (effect === 'iceSeal') this.iceSeal(target);
+        else if (effect === 'hypothermia') this.hypothermia(target, 1);
         else if (effect === 'poison') this.poison(target, 1);
         else if (effect === 'thorns') this.thorns(target, 1);
         else this.burn(target, 1);
@@ -687,7 +695,7 @@
         this.s.forcedDiscard = false;
         this.s.selectedCard = -1;
         this.s.selectedCards = [];
-        this.emit('desc', 'Vixraps被动：请弃掉1张牌，然后恢复3点生命');
+        this.emit('desc', 'Vixraps被动：请弃掉1张牌，然后恢复2点生命并施加1层灼伤');
         return true;
       }
       if (ownerKey !== 'player' && hand.length) {
@@ -706,13 +714,27 @@
       return false;
     }
 
+    _vixrapsPassiveOpponent(ownerKey, pending) {
+      if (ownerKey === 'player') {
+        if (pending && pending.phase === 'PLAYER_DEFEND') {
+          const atkKey = this.s.activeAttacker === 'ai2' ? 'ai2' : 'ai';
+          return this.s[atkKey] || this.s.ai;
+        }
+        const targetKey = this.s.attackTarget || 'ai';
+        return this.s[targetKey] || this.s.ai;
+      }
+      return this.s.player;
+    }
+
     _finishVixrapsPassive() {
       const pending = this.s && this.s.pendingVixrapsPassive;
       if (!pending) return false;
       const ownerKey = pending.owner === 'ai2' ? 'ai2' : pending.owner === 'ai' ? 'ai' : 'player';
       const entity = this.s[ownerKey];
-      if (entity) this.heal(entity, 3, 'passive');
-      this.emit('desc', (entity && entity.name || 'Vixraps') + '被动：' + (pending.discarded ? '弃掉1张牌，' : '') + '恢复3点生命');
+      if (entity) this.heal(entity, 2, 'passive');
+      const opponent = this._vixrapsPassiveOpponent(ownerKey, pending);
+      if (opponent && opponent.alive !== false) this.burn(opponent, 1);
+      this.emit('desc', (entity && entity.name || 'Vixraps') + '被动：' + (pending.discarded ? '弃掉1张牌，' : '') + '恢复2点生命并施加1层灼伤');
       this.s.pendingVixrapsPassive = null;
       if (ownerKey === 'player') {
         this.s.forcedDiscard = false;

@@ -349,43 +349,87 @@ class DialogManager {
         overlay.id = 'buff-transfer-choice-dialog';
         overlay.className = 'dialog-overlay';
         const box = document.createElement('div');
-        box.className = 'dialog-box compact-choice-box';
+        box.className = 'dialog-box compact-choice-box buff-transfer-box';
         box.innerHTML = '<h3>魔法转移 · 选择转移一层 Buff</h3>';
-        const list = document.createElement('div');
-        list.className = 'choice-list';
-        const addRows = (target, from, prefix) => {
-            if (!target) return;
-            const rows = statusRegistry
-                ? statusRegistry.list(target, def => def.polarity === 'buff' && def.transferable)
-                    .map(def => [def.id, `${def.label}${def.stack && statusRegistry.amount(target, def.id) > 1 ? ` ×${statusRegistry.amount(target, def.id)}` : ''}`, def])
-                : [];
-            if (!statusRegistry) {
-            if (target.burn > 0) rows.push(['burn', `灼烧 ×${target.burn}`, 'burn']);
-            if (target.bleed > 0) rows.push(['bleed', `流血 ×${target.bleed}`, 'bleed']);
-            if ((target.poison || 0) > 0) rows.push(['poison', `中毒 ×${target.poison}`, 'poison']);
-            if (target.frozen) rows.push(['freeze', '冷冻', 'freeze']);
-            if ((target.iceSeal || 0) > 0) rows.push(['iceSeal', '冰封', 'ice_seal']);
-            if (target.guard > 0) rows.push(['guard', `守护 ×${target.guard}`, 'guard']);
-            if ((target.fly || 0) > 0) rows.push(['fly', `飞翔 ×${target.fly}`, 'guard']);
-            if ((target.crit || 0) > 0) rows.push(['crit', `暴击 ×${target.crit}`, 'crit']);
-            }
-            for (const [kind, label, icon] of rows) {
-                const btn = document.createElement('button');
-                btn.className = 'choice-row';
-                const iconPath = statusRegistry ? statusIcon(icon) : statusIconPath(icon);
-                btn.innerHTML = `<img src="${iconPath}" alt=""><span>${prefix}${label}</span>`;
-                btn.addEventListener('click', async () => { overlay.remove(); await onChoose({ from, kind }); });
-                list.appendChild(btn);
-            }
+        const columns = document.createElement('div');
+        columns.className = 'buff-transfer-columns';
+        let closed = false;
+        const finish = async payload => {
+            if (closed) return;
+            closed = true;
+            overlay.remove();
+            await onChoose(payload);
         };
-        addRows(ch, 'self', '自己 · ');
-        if (extra.opponent) addRows(extra.opponent, 'opp', '对手 · ');
-        if (!list.childNodes.length) {
-          const empty = document.createElement('p');
-          empty.textContent = '当前没有可转移的 buff';
-          box.appendChild(empty);
-        }
-        box.appendChild(list);
+        const buildColumn = (target, from, title) => {
+            const col = document.createElement('div');
+            col.className = 'buff-transfer-col';
+            const heading = document.createElement('div');
+            heading.className = 'buff-transfer-col-title';
+            heading.textContent = title;
+            col.appendChild(heading);
+            const list = document.createElement('div');
+            list.className = 'choice-list';
+            if (!target) {
+                const empty = document.createElement('p');
+                empty.className = 'buff-transfer-empty';
+                empty.textContent = '无可转移 buff';
+                list.appendChild(empty);
+                col.appendChild(list);
+                return col;
+            }
+            const rows = statusRegistry
+                ? statusRegistry.list(target, def => !!def.transferable)
+                    .map(def => [def.id, `${def.label}${def.stack && statusRegistry.amount(target, def.id) > 1 ? ` ×${statusRegistry.amount(target, def.id)}` : ''}`, def])
+                : (() => {
+                    const legacy = [];
+                    if (target.burn > 0) legacy.push(['burn', `灼烧 ×${target.burn}`, 'burn']);
+                    if (target.bleed > 0) legacy.push(['bleed', `流血 ×${target.bleed}`, 'bleed']);
+                    if ((target.poison || 0) > 0) legacy.push(['poison', `中毒 ×${target.poison}`, 'poison']);
+                    if (target.frozen) legacy.push(['freeze', '冷冻', 'freeze']);
+                    if ((target.blind || 0) > 0) legacy.push(['blind', '致盲', 'blind']);
+                    if ((target.bomb || 0) > 0) legacy.push(['bomb', `定时炸弹 ×${target.bomb}`, 'time_bomb']);
+                    if ((target.iceSeal || 0) > 0) legacy.push(['iceSeal', '冰封', 'ice_seal']);
+                    if ((target.hypothermia || 0) > 0) legacy.push(['hypothermia', `失温 ×${target.hypothermia}`, 'hypothermia']);
+                    if (target.hypnosis) legacy.push(['hypnosis', '催眠', 'sleepy_1']);
+                    if (target.sleep) legacy.push(['sleep', '沉睡', 'sleepy_2']);
+                    if ((target.thorns || 0) > 0) legacy.push(['thorns', '荆棘', 'thorns']);
+                    if (target.guard > 0) legacy.push(['guard', `守护 ×${target.guard}`, 'guard']);
+                    if ((target.fly || 0) > 0) legacy.push(['fly', `飞翔 ×${target.fly}`, 'fly']);
+                    if ((target.crit || 0) > 0) legacy.push(['crit', `暴击 ×${target.crit}`, 'crit']);
+                    if ((target.lush || 0) > 0) legacy.push(['lush', `茂盛 ×${target.lush}`, 'lush']);
+                    if ((target.parasite || 0) > 0) legacy.push(['parasite', `寄生 ×${target.parasite}`, 'parasite']);
+                    if (target.diving) legacy.push(['diving', '潜水', 'diving']);
+                    for (const [key, label, icon] of [
+                        ['chaos_red', '混沌·红', 'chaos_red'],
+                        ['chaos_yellow', '混沌·黄', 'chaos_yellow'],
+                        ['chaos_blue', '混沌·蓝', 'chaos_blue'],
+                        ['chaos_green', '混沌·绿', 'chaos_green']
+                    ]) {
+                        if (target[key]) legacy.push([key, label, icon]);
+                    }
+                    return legacy;
+                })();
+            if (!rows.length) {
+                const empty = document.createElement('p');
+                empty.className = 'buff-transfer-empty';
+                empty.textContent = '无可转移 buff';
+                list.appendChild(empty);
+            } else {
+                for (const [kind, label, icon] of rows) {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-row';
+                    const iconPath = statusRegistry ? statusIcon(icon) : statusIconPath(icon);
+                    btn.innerHTML = `<img src="${iconPath}" alt=""><span>${label}</span>`;
+                    btn.addEventListener('click', async () => { await finish({ from, kind }); });
+                    list.appendChild(btn);
+                }
+            }
+            col.appendChild(list);
+            return col;
+        };
+        columns.appendChild(buildColumn(ch, 'self', '自己'));
+        columns.appendChild(buildColumn(extra.opponent || null, 'opp', '对手'));
+        box.appendChild(columns);
         overlay.appendChild(box);
         document.body.appendChild(overlay);
     }

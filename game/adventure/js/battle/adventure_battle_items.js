@@ -105,66 +105,109 @@
       const kinds = [];
       if (!ch) return kinds;
       const registry = window.FurryGame && window.FurryGame.StatusRegistry;
-      if (registry) return registry.list(ch, def => def.polarity === 'buff' && def.transferable).map(def => def.id);
+      if (registry) return registry.list(ch, def => !!def.transferable).map(def => def.id);
       if (ch.burn > 0) kinds.push('burn');
       if (ch.bleed > 0) kinds.push('bleed');
       if ((ch.poison || 0) > 0) kinds.push('poison');
       if (ch.frozen) kinds.push('freeze');
+      if ((ch.blind || 0) > 0) kinds.push('blind');
+      if ((ch.bomb || 0) > 0) kinds.push('bomb');
       if ((ch.iceSeal || 0) > 0) kinds.push('iceSeal');
+      if ((ch.hypothermia || 0) > 0) kinds.push('hypothermia');
+      if (ch.hypnosis) kinds.push('hypnosis');
+      if (ch.sleep) kinds.push('sleep');
+      if ((ch.thorns || 0) > 0) kinds.push('thorns');
       if (ch.guard > 0) kinds.push('guard');
       if ((ch.fly || 0) > 0) kinds.push('fly');
       if ((ch.crit || 0) > 0) kinds.push('crit');
       if ((ch.lush || 0) > 0) kinds.push('lush');
       if ((ch.parasite || 0) > 0) kinds.push('parasite');
+      if (ch.diving) kinds.push('diving');
+      if (ch.chaos_red) kinds.push('chaos_red');
+      if (ch.chaos_yellow) kinds.push('chaos_yellow');
+      if (ch.chaos_blue) kinds.push('chaos_blue');
+      if (ch.chaos_green) kinds.push('chaos_green');
       return kinds;
     },
 
     _moveBuffLayer(from, to, kind, wTo) {
-      const labels = { burn: '灼烧', bleed: '流血', poison: '中毒', freeze: '冷冻', iceSeal: '冰封', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生' };
+      const registry = window.FurryGame && window.FurryGame.StatusRegistry;
       const status = window.FurryGame && window.FurryGame.StatusService;
-      const move = (id) => {
-        if (status) {
-          status.remove(from, id, 1);
-          status.add(to, id, 1);
-          return;
+      const def = registry && registry.get(kind);
+      if (def && def.transferable && registry.has(from, kind) && status) {
+        // Non-stack statuses (and hypnosis/sleep markers) must go through clear
+        // so companion fields like hypnosisArmed are reset with the status.
+        if (!def.stack) status.clear(from, kind, 'all');
+        else status.remove(from, kind, 1);
+        status.add(to, kind, 1);
+        if (def.polarity === 'buff') {
+          this.emit('buff', '+1[' + def.label + ']', null, {
+            who: wTo, kind, stacks: registry.amount(to, kind)
+          });
         }
-        return false;
+        return def.label;
+      }
+      const labels = {
+        burn: '灼烧', bleed: '流血', poison: '中毒', freeze: '冷冻', iceSeal: '冰封',
+        blind: '致盲', bomb: '定时炸弹', hypothermia: '失温', hypnosis: '催眠', sleep: '沉睡',
+        thorns: '荆棘', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛',
+        parasite: '寄生', diving: '潜水',
+        chaos_red: '混沌·红', chaos_yellow: '混沌·黄', chaos_blue: '混沌·蓝', chaos_green: '混沌·绿'
       };
       switch (kind) {
         case 'burn':
-          if (status) move('burn'); else { from.burn--; this.burn(to, 1); }
-          break;
+          from.burn--; this.burn(to, 1); break;
         case 'bleed':
-          if (status) move('bleed'); else { from.bleed--; this.bleed(to, 1); }
-          break;
+          from.bleed--; this.bleed(to, 1); break;
         case 'poison':
-          if (status) move('poison'); else { from.poison = Math.max(0, (from.poison || 0) - 1); this.poison(to, 1); }
-          break;
+          from.poison = Math.max(0, (from.poison || 0) - 1); this.poison(to, 1); break;
         case 'freeze':
-          if (status) { status.clear(from, 'freeze', 'all'); status.add(to, 'freeze', 1); } else { from.frozen = false; this.freeze(to); }
-          break;
+          from.frozen = false; this.freeze(to); break;
         case 'iceSeal':
-          if (status) { status.clear(from, 'iceSeal', 'all'); status.add(to, 'iceSeal', 1); } else { from.iceSeal = 0; this.iceSeal(to); }
-          break;
+          from.iceSeal = 0; this.iceSeal(to); break;
+        case 'blind':
+          from.blind = 0; to.blind = 1; break;
+        case 'bomb':
+          from.bomb = Math.max(0, (from.bomb || 0) - 1); to.bomb = Math.min(5, (to.bomb || 0) + 1); break;
+        case 'hypothermia':
+          from.hypothermia = Math.max(0, (from.hypothermia || 0) - 1);
+          to.hypothermia = Math.min(2, (to.hypothermia || 0) + 1); break;
+        case 'hypnosis':
+          from.hypnosis = false; from.hypnosisArmed = false; to.hypnosis = true; break;
+        case 'sleep':
+          from.sleep = false; to.sleep = true; break;
+        case 'thorns':
+          from.thorns = 0; to.thorns = 1; break;
         case 'guard':
-          if (status) move('guard'); else { from.guard--; to.guard = Math.min(5, (to.guard || 0) + 1); }
+          from.guard--; to.guard = Math.min(5, (to.guard || 0) + 1);
           this.emit('buff', '+1[守护]', null, { who: wTo, kind: 'guard', stacks: to.guard });
           break;
         case 'fly':
-          if (status) move('fly'); else { from.fly--; to.fly = Math.min(2, (to.fly || 0) + 1); }
+          from.fly--; to.fly = Math.min(2, (to.fly || 0) + 1);
           this.emit('buff', '+1[飞翔]', null, { who: wTo, kind: 'fly', stacks: to.fly });
           break;
         case 'crit':
-          if (status) move('crit'); else { from.crit--; to.crit = Math.min(3, (to.crit || 0) + 1); }
+          from.crit--; to.crit = Math.min(3, (to.crit || 0) + 1);
           this.emit('buff', '+1[暴击]', null, { who: wTo, kind: 'crit', stacks: to.crit });
           break;
         case 'lush':
-          if (status) move('lush'); else { from.lush--; to.lush = Math.min(2, (to.lush || 0) + 1); }
+          from.lush--; to.lush = Math.min(2, (to.lush || 0) + 1);
           this.emit('buff', '+1[茂盛]', null, { who: wTo, kind: 'lush', stacks: to.lush });
           break;
         case 'parasite':
-          if (status) move('parasite'); else { from.parasite--; to.parasite = Math.min(1, (to.parasite || 0) + 1); }
+          from.parasite--; to.parasite = Math.min(1, (to.parasite || 0) + 1);
           this.emit('buff', '+1[寄生]', null, { who: wTo, kind: 'parasite', stacks: to.parasite });
+          break;
+        case 'diving':
+          from.diving = false; to.diving = true;
+          this.emit('buff', '+1[潜水]', null, { who: wTo, kind: 'diving', stacks: 1 });
+          break;
+        case 'chaos_red':
+        case 'chaos_yellow':
+        case 'chaos_blue':
+        case 'chaos_green':
+          from[kind] = false; to[kind] = true;
+          this.emit('buff', '+1[' + labels[kind] + ']', null, { who: wTo, kind, stacks: 1 });
           break;
         default:
           return null;

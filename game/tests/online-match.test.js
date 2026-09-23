@@ -497,6 +497,46 @@ test('online guest defense settles against the real attacker', () => {
   assert.equal(outcome.state.onlineActor, 'host');
 });
 
+test('online sleeping defender skips PLAYER_DEFEND and takes full damage', () => {
+  const Card = context.FurryGame.Card;
+
+  // Guest is asleep: host attack must not open a defense window.
+  {
+    const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host');
+    match.engine.h.player = [Card.number('RED', 5)];
+    match.engine.h.ai = [Card.number('BLUE', 1)];
+    match.engine.s.discardTop = Card.number('RED', 1);
+    match.engine.s.ai.sleep = true;
+    match.engine.s.ai.hp = 40;
+    const before = match.engine.s.ai.hp;
+
+    match.dispatch('host', 'selectCard', { index: 0 });
+    const outcome = match.dispatch('host', 'doPlay');
+    assert.equal(outcome.ok, true);
+    assert.notEqual(outcome.state.phase, 'PLAYER_DEFEND', 'sleeping guest must not enter PLAYER_DEFEND');
+    assert.ok(match.engine.s.ai.hp < before, 'sleeping guest takes the attack damage');
+    assert.equal(outcome.state.onlineActor, 'host');
+  }
+
+  // Host is asleep: guest attack must auto-settle without a host defend choice.
+  {
+    const match = new context.OnlineMatchHost('Leon', 'Saiki', 'guest');
+    match.engine.h.player = [Card.number('BLUE', 2)];
+    match.engine.h.ai = [Card.number('YELLOW', 1)];
+    match.engine.s.discardTop = Card.number('YELLOW', 9);
+    match.engine.s.player.sleep = true;
+    match.engine.s.player.hp = 40;
+    const before = match.engine.s.player.hp;
+
+    match.dispatch('guest', 'selectCard', { index: 0 });
+    const outcome = match.dispatch('guest', 'doPlay');
+    assert.equal(outcome.ok, true);
+    assert.notEqual(outcome.state.phase, 'PLAYER_DEFEND', 'sleeping host must not enter PLAYER_DEFEND');
+    assert.ok(match.engine.s.player.hp < before, 'sleeping host takes the attack damage');
+    assert.equal(match.engine.s.onlineActor, 'guest');
+  }
+});
+
 test('online guest defense keeps attack debuffs on the original target', () => {
   const Card = context.FurryGame.Card;
   const cases = [

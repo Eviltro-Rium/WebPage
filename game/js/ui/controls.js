@@ -62,7 +62,7 @@ _renderControls() {
         }
     } else if (phase === 'PLAYER_DISCARD' && canAct) {
         const discardHint = s.pendingVixrapsPassive
-            ? 'Vixraps被动：必须弃掉1张牌，然后恢复3点生命'
+            ? 'Vixraps被动：必须弃掉1张牌，然后恢复2点生命并施加1层灼伤'
             : s.forcedDiscard
                 ? `手牌超限：需弃至 ${s.handLimit || 5} 张`
                 : s.mayDiscardAfterSkill

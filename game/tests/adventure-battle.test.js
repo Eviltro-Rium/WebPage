@@ -146,6 +146,69 @@ test('GhostFire applies three burn stacks in adventure combat', () => {
   assert.equal(engine.s.ai.burn, 3);
 });
 
+test('CardTalisman discards one chosen hand card then draws two', () => {
+  const engine = start({
+    hand: [number(5, 'RED'), number(1, 'BLUE')],
+    deck: [number(3, 'GREEN'), number(4, 'YELLOW'), number(2, 'RED')]
+  });
+  engine._adventureEngine = {
+    snapshot: () => ({ consumables: [{ name: 'CardTalisman', displayName: '弃牌符', combatUse: 'discardTalisman', discardThenDraw: 2 }] }),
+    s: { consumables: ['CardTalisman'] }
+  };
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.busy = false;
+
+  const beforeHand = engine.h.player.length;
+  const beforeDeck = engine.deck.length;
+  const beforeDiscard = engine.piles.player.discard.length;
+  engine.useAdventureCombatItem(0, { index: 1 });
+  assert.equal(engine.h.player.length, beforeHand - 1 + 2);
+  assert.equal(engine.h.player.filter(c => c.value === 1 && c.color === 'BLUE').length, 0);
+  assert.equal(engine.h.player[0].value, 5);
+  assert.equal(engine.h.player[0].color, 'RED');
+  assert.equal(engine.deck.length, beforeDeck - 2);
+  assert.equal(engine.piles.player.discard.length, beforeDiscard + 1);
+  assert.equal(engine.piles.player.discard[engine.piles.player.discard.length - 1].value, 1);
+  assert.equal(engine._adventureEngine.s.consumables.length, 0);
+  const def = context.AdventureRegistry.getItem('CardTalisman');
+  assert.equal(def.displayName, '弃牌符');
+  assert.ok(def.icon.endsWith('card_talisman.webp'));
+});
+
+test('ChaosOrb peeks NPC deck top and discards chosen cards without reordering', () => {
+  const engine = start({ hand: [number(2, 'RED')] });
+  engine._adventureEngine = {
+    snapshot: () => ({ consumables: [{ name: 'ChaosOrb', displayName: '混沌球', combatUse: 'chaosOrb' }] }),
+    s: { consumables: ['ChaosOrb'] }
+  };
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.busy = false;
+  // Deck end is the top: values 9 (top), 8, 7.
+  engine.piles.ai.deck.splice(0, engine.piles.ai.deck.length,
+    number(5, 'RED'), number(7, 'BLUE'), number(8, 'GREEN'), number(9, 'YELLOW'));
+  engine.piles.ai.discard.splice(0, engine.piles.ai.discard.length);
+
+  const preview = engine.useAdventureCombatItem(0);
+  assert.equal(preview.pendingDialog, 'chaosOrb');
+  assert.equal(preview.chaosOrbCards.length, 3);
+  assert.equal(preview.chaosOrbCards[0].value, 9);
+  assert.equal(preview.chaosOrbCards[1].value, 8);
+  assert.equal(preview.chaosOrbCards[2].value, 7);
+  assert.equal(engine._adventureEngine.s.consumables.length, 1, 'preview must not consume the item');
+
+  // Discard middle card (8), keep 9 then 7 in original relative order.
+  engine.useAdventureCombatItem(0, { discard: [false, true, false] });
+  assert.equal(engine._adventureEngine.s.consumables.length, 0);
+  assert.equal(engine.piles.ai.discard.length, 1);
+  assert.equal(engine.piles.ai.discard[0].value, 8);
+  assert.deepEqual(Array.from(engine.piles.ai.deck, c => c.value), [5, 7, 9]);
+  assert.equal(engine.piles.ai.deck[engine.piles.ai.deck.length - 1].value, 9, 'top stays the kept original top');
+  const def = context.AdventureRegistry.getItem('ChaosOrb');
+  assert.equal(def.displayName, '混沌球');
+  assert.equal(def.price, 6);
+  assert.ok(def.icon.endsWith('chaos_orb.webp'));
+});
+
 test('adventure opponent is registered for the ordinary 1v1 character and AI interfaces', () => {
   const wolf = CharacterRegistry.get('CastleWolf');
   assert.ok(wolf);
@@ -733,7 +796,9 @@ test('challenge targeted trophy cards apply to the selected NPC2 target', () => 
     ['FreezeTrophy', 'frozen', true],
     ['PoisonTrophy', 'poison', 1],
     ['ThornsTrophy', 'thorns', 1],
-    ['TimeBombTrophy', 'bomb', 5]
+    ['TimeBombTrophy', 'bomb', 5],
+    ['IceSealTrophy', 'iceSeal', true],
+    ['HypothermiaTrophy', 'hypothermia', 1]
   ];
 
   try {
@@ -1107,6 +1172,39 @@ test('MagicTransfer can pull an NPC buff onto the player', () => {
   assert.equal(engine._adventureEngine.s.consumables.length, 0);
 });
 
+test('MagicTransfer covers diving thorns and chaos and skips permanent marks', () => {
+  const engine = startLeon();
+  engine._adventureEngine = {
+    snapshot: () => ({ consumables: [{ name: 'MagicTransfer', displayName: '魔法转移' }] }),
+    s: { consumables: ['MagicTransfer', 'MagicTransfer', 'MagicTransfer'] }
+  };
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.busy = false;
+
+  engine.s.player.diving = true;
+  engine.s.ai.diving = false;
+  engine.useAdventureCombatItem(0, { from: 'self', kind: 'diving' });
+  assert.equal(engine.s.player.diving, false);
+  assert.equal(engine.s.ai.diving, true);
+
+  engine.s.ai.thorns = 1;
+  engine.s.player.thorns = 0;
+  engine.useAdventureCombatItem(0, { from: 'opp', kind: 'thorns' });
+  assert.equal(engine.s.ai.thorns, 0);
+  assert.equal(engine.s.player.thorns, 1);
+
+  engine.s.player.chaos_blue = true;
+  engine.s.ai.chaos_blue = false;
+  engine.useAdventureCombatItem(0, { from: 'self', kind: 'chaos_blue' });
+  assert.equal(engine.s.player.chaos_blue, false);
+  assert.equal(engine.s.ai.chaos_blue, true);
+
+  const kinds = engine._listTransferableBuffs({ bloodthirst: true, bindMark: true, guard: 1 });
+  assert.ok(kinds.includes('guard'));
+  assert.ok(!kinds.includes('bloodthirst'));
+  assert.ok(!kinds.includes('bind'));
+});
+
 test('Disarm trophy discards a selected NPC card and draws for the player', () => {
   const engine = startLeon();
   const trophy = context.AdventureDeck.trophyWhite('DisarmTrophy');
@@ -1459,6 +1557,47 @@ test('forest monster loot follows the forest guide, including split outcomes', (
   assert.equal(result.drops.length, 0);
 });
 
+test('ocean monster loot follows the ocean guide, including polar bear split outcomes', () => {
+  const loot = context.AdventureLoot;
+  let result = loot.rollMonsterDrop('ocean', 'FrozenOceanLynx', () => 0);
+  assert.equal(result.drops[0], 'FreezeTrophy');
+  result = loot.rollMonsterDrop('ocean', 'FrozenOceanLynx', () => 1 / 12);
+  assert.equal(result.drops[0], 'IceSealTrophy');
+  result = loot.rollMonsterDrop('冻洋', 'FrozenWhale', () => 2 / 12);
+  assert.equal(result.drops[0], 'DivingTrophy');
+  result = loot.rollMonsterDrop('ocean', 'FrozenOceanShark', () => 0);
+  assert.equal(result.drops[0], 'PiercingTrophy');
+  result = loot.rollMonsterDrop('ocean', 'FrozenOceanSeal', () => 0);
+  assert.equal(result.drops[0], 'DisarmTrophy');
+  result = loot.rollMonsterDrop('ocean', 'FrozenPolarBear', () => 0);
+  assert.equal(result.drops[0], 'PiercingTrophy');
+  result = loot.rollMonsterDrop('ocean_scene', 'FrozenPolarBear', () => 1 / 12);
+  assert.equal(result.drops[0], 'HypothermiaTrophy');
+  result = loot.rollMonsterDrop('ocean', 'FrozenOceanSnowyOwl', () => 0);
+  assert.equal(result.drops[0], 'FlyTrophy');
+  result = loot.rollMonsterDrop('ocean', 'FrozenPolarBear', () => 0.99);
+  assert.equal(result.drops.length, 0);
+});
+
+test('FrozenOceanSnowyOwl skills match the ocean guide', () => {
+  const mod = context.AdventureRegistry.getMonster('FrozenOceanSnowyOwl');
+  assert.equal(mod.kind, '冻洋雪鸮');
+  assert.equal(mod.hp, 24);
+  assert.equal(mod.attackDamage({ value: 2, isNumberCard: true }), 2);
+  assert.equal(mod.attackFly({ value: 2, isNumberCard: true }), 1);
+  assert.equal(mod.attackDamage({ value: 5, isNumberCard: true }), 4);
+  assert.equal(mod.attackStealItem({ value: 5, isNumberCard: true }), false);
+  assert.equal(mod.attackStealItem({ value: 6, isNumberCard: true }), true);
+  assert.equal(mod.defendBlock({ value: 2, isNumberCard: true }, 5), 2);
+  assert.equal(mod.defendHypothermia({ value: 3, isNumberCard: true }), 1);
+  const stage2 = mod.stageMods[2](mod);
+  assert.equal(stage2.hp, 30);
+  const stage3 = mod.stageMods[3](mod);
+  assert.equal(stage3.attackDamage({ value: 1, isNumberCard: true }), 3);
+  const stage4 = mod.stageMods[4](mod);
+  assert.equal(stage4.defendBlock({ value: 1, isNumberCard: true }, 5), 3);
+});
+
 test('parasite trophy is a reusable self-buff card with the registered icon and effect', () => {
   const def = context.AdventureRegistry.getItem('ParasiteTrophy');
   assert.equal(def.kind, 'trophyWhite');
@@ -1471,6 +1610,41 @@ test('parasite trophy is a reusable self-buff card with the registered icon and 
   engine.useTrophyWhite(engine.h.player[0], engine.s.ai, 'player');
   assert.equal(engine.s.player.parasite, 1);
   assert.equal(engine.s.ai.parasite || 0, 0);
+});
+
+test('diving trophy grants diving to the player and forges for two water tokens', () => {
+  const def = context.AdventureRegistry.getItem('DivingTrophy');
+  assert.equal(def.kind, 'trophyWhite');
+  assert.equal(def.trophyEffect, 'diving');
+  assert.equal(def.price, 5);
+  assert.equal(JSON.stringify(def.beastTradeCost), JSON.stringify(['shui', 'shui']));
+  assert.ok(def.icon.endsWith('buff_icons/diving.webp'));
+
+  const engine = start({ hand: [context.AdventureDeck.trophyWhite('DivingTrophy')] });
+  engine.later = () => {};
+  engine.useTrophyWhite(engine.h.player[0], engine.s.ai, 'player');
+  assert.equal(engine.s.player.diving, true);
+  assert.equal(engine.s.ai.diving || false, false);
+});
+
+test('ice seal and hypothermia trophies apply to the opponent', () => {
+  const ice = context.AdventureRegistry.getItem('IceSealTrophy');
+  assert.equal(ice.trophyEffect, 'iceSeal');
+  assert.equal(JSON.stringify(ice.beastTradeCost), JSON.stringify(['shui', 'ben']));
+  const cold = context.AdventureRegistry.getItem('HypothermiaTrophy');
+  assert.equal(cold.trophyEffect, 'hypothermia');
+  assert.equal(JSON.stringify(cold.beastTradeCost), JSON.stringify(['shui', 'huo']));
+
+  const engine = start({ hand: [
+    context.AdventureDeck.trophyWhite('IceSealTrophy'),
+    context.AdventureDeck.trophyWhite('HypothermiaTrophy')
+  ] });
+  engine.later = () => {};
+  engine.useTrophyWhite(engine.h.player[0], engine.s.ai, 'player');
+  assert.ok(engine.s.ai.iceSeal);
+  assert.equal(engine.s.player.iceSeal || 0, 0);
+  engine.useTrophyWhite(engine.h.player[1], engine.s.ai, 'player');
+  assert.equal(engine.s.ai.hypothermia, 1);
 });
 
 test('restoreSession writes spent combat items back onto the adventure engine', () => {

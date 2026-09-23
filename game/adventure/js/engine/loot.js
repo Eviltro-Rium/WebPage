@@ -48,11 +48,28 @@
     ForestDryad: Object.freeze({ threshold: 4, drops: Object.freeze(['ZeroTrophy']) })
   });
 
-  const SCENE_RULES = Object.freeze({ castle: CASTLE_RULES, forest: FOREST_RULES });
+  // Ocean rules mirror docs/adventure_guide/ocean.md.
+  const OCEAN_RULES = Object.freeze({
+    FrozenOceanLynx: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 1, drops: Object.freeze(['FreezeTrophy']) }),
+      Object.freeze({ threshold: 2, drops: Object.freeze(['IceSealTrophy']) })
+    ]) }),
+    FrozenWhale: Object.freeze({ threshold: 3, drops: Object.freeze(['DivingTrophy']) }),
+    FrozenOceanShark: Object.freeze({ threshold: 2, drops: Object.freeze(['PiercingTrophy']) }),
+    FrozenOceanSeal: Object.freeze({ threshold: 2, drops: Object.freeze(['DisarmTrophy']) }),
+    FrozenPolarBear: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 1, drops: Object.freeze(['PiercingTrophy']) }),
+      Object.freeze({ threshold: 2, drops: Object.freeze(['HypothermiaTrophy']) })
+    ]) }),
+    FrozenOceanSnowyOwl: Object.freeze({ threshold: 2, drops: Object.freeze(['FlyTrophy']) })
+  });
+
+  const SCENE_RULES = Object.freeze({ castle: CASTLE_RULES, forest: FOREST_RULES, ocean: OCEAN_RULES });
 
   const TROPHY_TAGS = Object.freeze({
     BurnTrophy: "灼伤", PiercingTrophy: "流血", FreezeTrophy: "冰冻",
-    RussianRouletteTrophy: "俄罗斯赌盘", FlyTrophy: "飞翔", LushTrophy: "茂盛",
+    IceSealTrophy: "冰封", HypothermiaTrophy: "失温",
+    RussianRouletteTrophy: "俄罗斯赌盘", FlyTrophy: "飞翔", DivingTrophy: "潜水", LushTrophy: "茂盛",
     PoisonTrophy: "中毒", ParasiteTrophy: "寄生", ThornsTrophy: "荆棘", GuardTrophy: "守护",
     DisarmTrophy: "缴械", ZeroTrophy: "0技能", TimeBombTrophy: "定时炸弹"
   });
@@ -85,6 +102,7 @@
     const value = String(scene || '').trim().toLowerCase();
     if (value === 'castle' || value === '城堡' || value === 'castle_scene') return 'castle';
     if (value === 'forest' || value === '森林' || value === 'forest_scene') return 'forest';
+    if (value === 'ocean' || value === '冻洋' || value === 'ocean_scene') return 'ocean';
     return value;
   }
 

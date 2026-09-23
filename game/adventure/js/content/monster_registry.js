@@ -581,7 +581,8 @@
           const c8 = mod.defendCounter(card, 8);
           const c4 = mod.defendCounter(card, 4);
           if (c8 > 0 || c4 > 0) {
-            if (c8 !== c4 && c8 === Math.ceil(8 / 2) && c4 === Math.ceil(4 / 2)) parts.push('反击一半伤害（向上取整）');
+            if (c8 === 8 && c4 === 4) parts.push('反击相同点伤害（守护/飞翔前的点数）');
+            else if (c8 !== c4 && c8 === Math.ceil(8 / 2) && c4 === Math.ceil(4 / 2)) parts.push('反击一半伤害（向上取整）');
             else parts.push('反击' + c8 + '点伤害');
           }
         }
@@ -768,7 +769,7 @@
       parts.push('施加[冷冻]');
     }
     if (typeof mod.attackIceSeal === 'function' && mod.attackIceSeal(card)) {
-      parts.push('施加[冰封]（下次补牌少补1张）');
+      parts.push('施加[冰封]');
     }
     if (typeof mod.attackDrain === 'function') {
       const h = mod.attackDrain(card, ctx);

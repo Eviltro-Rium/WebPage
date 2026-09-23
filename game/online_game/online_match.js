@@ -190,11 +190,30 @@
                 return this.check();
             };
             e.aiDefend = function (attackCard, damage) {
+                const d = Math.max(0, Number(damage) || 0);
+                const asleep = !!this.s.ai.sleep;
+                const frozen = typeof this._freezeBlocksDefend === 'function'
+                    && this._freezeBlocksDefend(this.s.ai, attackCard);
+                // Mirror offline aiDefend: sleep / freeze-vs-blue skip defense
+                // and settle the full remaining damage immediately.
+                if (asleep || frozen) {
+                    this.emit('desc', frozen
+                        ? (this.name(this.s.ai) + '处于冷冻状态，无法防御蓝色攻击')
+                        : (this.name(this.s.ai) + '处于[沉睡]，无法防御'));
+                    this.s.selectedCard = -1;
+                    this.s.selectedAICard = -1;
+                    this.s.unblockDefend = false;
+                    this.s.pendingDefenseDamage = d;
+                    this.s.onlineActor = self._actorFor(this.s.player);
+                    this.s.activeAttacker = 'player';
+                    this.deferSettlement('PLAYER_ATTACK', d, 0);
+                    return this.check();
+                }
                 this.s.phase = 'PLAYER_DEFEND';
                 this.s.busy = false;
                 this.s.onlineActor = self._actorFor(this.s.ai);
                 this.s.activeAttacker = 'player';
-                this.s.pendingDefenseDamage = Math.max(0, Number(damage) || 0);
+                this.s.pendingDefenseDamage = d;
                 this.s.unblockDefend = false;
                 this.s.selectedCard = -1;
                 this.s.selectedAICard = -1;
@@ -361,6 +380,10 @@
                 if (!card || typeof this.engine.legal !== 'function' || !this.engine.legal(card, method === 'defendCard')) {
                     return method === 'playCard' ? '这张牌当前不能出' : '这张牌当前不能防御';
                 }
+            }
+            if (['doDefend', 'defendCard'].includes(method)) {
+                const defender = actor === 'guest' ? s.ai : s.player;
+                if (defender && defender.sleep) return '沉睡中无法防御';
             }
             if (method === 'doSkipDefend' && s.phase !== 'PLAYER_DEFEND') return '当前不是防御阶段';
             if (method === 'doEndTurn' && s.phase !== 'PLAYER_PLAY') return '当前不能结束回合';
