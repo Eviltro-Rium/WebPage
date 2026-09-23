@@ -84,6 +84,7 @@
         _renderAdventureItemBar(s) {
             const bar = document.getElementById('adventure-item-bar');
             if (!bar) return;
+            this._syncAdventureActionLayout(s);
             const activeBattle = window.AdventureBattleController && window.AdventureBattleController.activeEngine
                 ? window.AdventureBattleController.activeEngine() : null;
             const advEngine = activeBattle && activeBattle._adventureEngine;
@@ -183,6 +184,23 @@
                 bar.innerHTML = html;
                 this._bindItemBarEvents(bar, consumables, s, inAttackMod);
             }
+        },
+
+        _syncAdventureActionLayout(s) {
+            const screen = this.gameScreen || document.getElementById("game-screen");
+            if (!screen) return;
+            const isAdventure = !!(s && s.isAdventure);
+            screen.classList.toggle("adventure-combat-layout", isAdventure);
+            if (!isAdventure) return;
+
+            const hand = screen.querySelector(".player-hand-zone");
+            const controls = screen.querySelector("#controls");
+            const itemBar = screen.querySelector("#adventure-item-bar");
+            if (!hand || !controls || !itemBar) return;
+
+            // Keep adventure controls below the hand and inventory below controls.
+            if (hand.nextElementSibling !== controls) hand.after(controls);
+            if (controls.nextElementSibling !== itemBar) controls.after(itemBar);
         },
 
         _bindItemBarEvents(bar, consumables, s, inAttackMod) {

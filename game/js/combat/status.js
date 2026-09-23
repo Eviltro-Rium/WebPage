@@ -70,9 +70,11 @@
                 if (before < 30 || entity.hp < 30) { if (service) setStatus(entity, 'bloodthirst', true); else entity.bloodthirst = true; }
             }
             const target = targetKey(engine, entity);
-            const label = kind === 'drain' ? '吸血' : kind === 'passive' ? '被动' : '生命';
-            engine.emit(eventTypes.HEAL || 'heal', `+${actual}[${label}]`, null, { who: target, target, amount: actual, kind });
-            if (kind !== 'drain' && engine.name(entity) === 'Serenity' && !entity.bloodthirst && entity.hp >= 30) {
+            const desc = kind === 'wake'
+                ? `[苏醒]+${actual}♥`
+                : `+${actual}[${kind === 'drain' ? '吸血' : kind === 'passive' ? '被动' : '生命'}]`;
+            engine.emit(eventTypes.HEAL || 'heal', desc, null, { who: target, target, amount: actual, kind });
+            if (kind !== 'drain' && kind !== 'wake' && engine.name(entity) === 'Serenity' && !entity.bloodthirst && entity.hp >= 30) {
                 entity.hp = Math.min(entity.maxHp, entity.hp + 1);
                 engine.emit(eventTypes.HEAL || 'heal', '+1[被动]', null, { who: target, target, amount: 1, kind: 'passive' });
             }

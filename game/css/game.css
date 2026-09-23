@@ -2621,6 +2621,13 @@ body {
     border: 1px solid rgba(168, 85, 247, 0.25);
     flex-wrap: wrap; align-items: center;
 }
+#game-screen.adventure-combat-layout .player-hand-zone + .controls {
+    margin: 0;
+    padding: 2px 0 4px;
+}
+#game-screen.adventure-combat-layout .controls + .adventure-item-bar {
+    margin-top: 0;
+}
 .adv-item-bar-title {
     font-size: 0.7rem; font-weight: 700; color: #c4b5fd;
     margin-right: 4px; white-space: nowrap;

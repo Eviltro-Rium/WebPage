@@ -1,8 +1,7 @@
 /** Adventure map-page composition.
  *
- * AdventureUI owns state and actions; this module owns which page is mounted
- * for a snapshot. Individual page builders remain methods on AdventureUI so
- * they can share the same currency/inventory formatters.
+ * AdventureUI owns state and actions; focused map/panel modules provide the
+ * render methods. This module only composes pages from the projected snapshot.
  */
 (function (global) {
   const AdventureUIViews = {
@@ -46,7 +45,7 @@
         wrap.appendChild(mapPanel);
       }
       wrap.appendChild(ui._buildSidebar(snap));
-      wrap.appendChild(ui._buildLog());
+      wrap.appendChild(ui._buildLog(snap.logEntries));
       ui.container.appendChild(wrap);
     }
   };
