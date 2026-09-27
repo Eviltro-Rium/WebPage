@@ -36,7 +36,7 @@ function gameAssetUrl(path) {
 window.gameAssetUrl = gameAssetUrl;
 
 const TAG_COLORS = {
-    '[生命]': '#86efac', '[伤害]': '#fda4af', '[灼烧]': '#fdba74',
+    '[生命]': '#86efac', '[伤害]': '#fda4af', '[灼伤]': '#fdba74',
     '[冷冻]': '#93c5fd', '[流血]': '#fb7185', '[吸血]': '#86efac', '[牌]': '#c4b5fd',
     '[战斗]': '#fcd34d', '[交换]': '#c4b5fd', '[洗入]': '#c4b5fd',
     '[净化]': '#ddd6fe', '[解冻]': '#bae6fd',
@@ -48,12 +48,13 @@ const TAG_COLORS = {
     '[寄生]': '#c084fc',       // 紫色
     '[暴击]': '#facc15',       // 黄色
     '[荆棘]': '#facc15',
+    '[沙盲]': '#d6b07c',
     '[催眠]': '#f472b6',       // 粉色
     '[沉睡]': '#c084fc',       // 紫色
     '[嗜血]': '#fb7185',       // 红色
     '[捆缚]': '#34d399',       // 绿色
     '[冰封]': '#7dd3fc',
-    '[灼烧层数]': '#fdba74', '[流血层数]': '#fb7185',
+    '[灼伤层数]': '#fdba74', '[流血层数]': '#fb7185',
     '[定时炸弹]': '#fb923c', '[炸弹]': '#fb923c', '[束缚]': '#22c55e',
     '[自然之盾]': '#86efac', '[战利白卡]': '#fbbf24', '[道具]': '#fbbf24',
     '[混沌]': '#c084fc', '[混沌·红]': '#f87171', '[混沌·黄]': '#fde047',
@@ -579,10 +580,10 @@ class GameUI {
         } catch (e) {
             this.characters = [
                 { name: 'Ryan', hp: 70, type: '战士', passive: '进攻回合开始前恢复1点生命' },
-                { name: 'Leon', hp: 90, type: '骑士', passive: '免疫灼烧' },
+                { name: 'Leon', hp: 90, type: '骑士', passive: '免疫灼伤' },
                 { name: 'Chan', hp: 80, type: '谋士', passive: '进攻回合开始前抽1张牌' },
                 { name: 'Saiki', hp: 80, type: '猎手', passive: '有效黄色牌在防御结算后施加1层流血' },
-                { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼烧时1至7牌攻击伤害+1' },
+                { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼伤时1至7牌攻击伤害+1' },
                 { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；低于30生命获得嗜血印记，印记永久且不可净化；未获得印记时恢复+1' },
                 { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害' },
                 { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌' },

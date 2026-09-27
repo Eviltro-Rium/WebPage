@@ -29,8 +29,8 @@
       const prev = target.burn || 0;
       if (statusRegistry && statusRegistry.add) statusRegistry.add(target, 'burn', n);
       else target.burn = Math.min(5, prev + n);
-      this._log((target === this.s.player ? '玩家' : '敌方') + '灼烧+' + n + '（当前' + target.burn + '层）');
-      this.emit('buff', '+' + n + '[灼烧]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'burn', stacks: target.burn });
+      this._log((target === this.s.player ? '玩家' : '敌方') + '灼伤+' + n + '（当前' + target.burn + '层）');
+      this.emit('buff', '+' + n + '[灼伤]', null, { who: target === this.s.player ? 'player' : 'enemy', kind: 'burn', stacks: target.burn });
     },
     bleed(target, n) {
       if (n <= 0) return;
@@ -113,8 +113,8 @@
         if (statusRegistry && statusRegistry.remove) statusRegistry.remove(target, 'burn', 1);
         else target.burn--;
         target.hp = Math.max(0, target.hp - dmg);
-        this._log(who + '灼烧结算：-' + dmg + '生命，灼烧层数-1');
-        this.emit('buffSettle', '-' + dmg + '❤️[灼烧]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
+        this._log(who + '灼伤结算：-' + dmg + '生命，灼伤层数-1');
+        this.emit('buffSettle', '-' + dmg + '❤️[灼伤]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
       }
       if (target.bleed > 0) {
         const dmg = target.bleed;
@@ -150,6 +150,7 @@
         lush: p.lush || 0,
         parasite: p.parasite || 0,
         thorns: p.thorns || 0,
+        sandblind: p.sandblind || 0,
         diving: !!p.diving,
         hypothermia: p.hypothermia || 0,
         bindMark: !!p.bindMark,
@@ -313,6 +314,8 @@
       if ((ch.iceSeal || 0) > 0) kinds.push('iceSeal');
       if (ch.frozen) kinds.push('freeze');
       if ((ch.bomb || 0) > 0) kinds.push('bomb');
+      if ((ch.thorns || 0) > 0) kinds.push('thorns');
+      if ((ch.sandblind || 0) > 0) kinds.push('sandblind');
       if ((ch.guard || 0) > 0) kinds.push('guard');
       if ((ch.fly || 0) > 0) kinds.push('fly');
       if ((ch.crit || 0) > 0) kinds.push('crit');
@@ -343,6 +346,14 @@
       }
       if (kind === 'blind' && (player.blind || 0) > 0) {
         player.blind = 0;
+        return true;
+      }
+      if (kind === 'thorns' && (player.thorns || 0) > 0) {
+        player.thorns = 0;
+        return true;
+      }
+      if (kind === 'sandblind' && (player.sandblind || 0) > 0) {
+        player.sandblind = Math.max(0, player.sandblind - 1);
         return true;
       }
       if (kind === 'iceSeal' && (player.iceSeal || 0) > 0) {

@@ -10,7 +10,12 @@
   if (!R) return;
 
   window.AdventureBossPool = window.AdventureBossPool || {};
-  window.AdventureBossPool.ocean = window.AdventureBossPool.ocean || { '*': [] };
+  window.AdventureBossPool.ocean = window.AdventureBossPool.ocean || {
+    '*': ['FrozenOrca'],
+    2: ['FrozenOrca'],
+    3: ['FrozenOrca'],
+    4: ['FrozenOrca']
+  };
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.ocean = {
@@ -286,6 +291,64 @@
           const base = orig.defendBlock(card, incoming);
           return base > 0 ? Math.min(base + 1, incoming) : 0;
         }
+      })
+    }
+  });
+
+  // ===== 冻洋虎鲸（Boss） =====
+  // 进攻1/2/3：3伤害，获得潜水，防御结束后施加1层失温
+  // 进攻4/5/6：5伤害，施加1层流血
+  // 进攻0：2+2×对手[流血]层数伤害
+  // 防御1/2/3：清除自身所有负面状态，格挡1/2（向上取整）
+  // 防御0：反击相同伤害，清除自身所有负面状态（stage4 起额外免疫所有伤害）
+  R.registerBoss({
+    name: 'FrozenOrca',
+    kind: '冻洋虎鲸',
+    hp: 40,
+    attack: 3,
+    defense: 2,
+    handLimit: 3,
+    whiteZeros: 2,
+    icon: '../icons/npc_icons/frozen_ocean_killer_whale.webp',
+    attackDamage(card, ctx) {
+      if (!card || !card.isNumberCard) return 0;
+      const v = card.value;
+      if (v >= 1 && v <= 3) return 3;
+      if (v >= 4 && v <= 6) return 5;
+      if (v === 0) return 2 + 2 * ((ctx && ctx.playerBleed) || 0);
+      return 0;
+    },
+    // 进攻1/2/3：获得潜水（上限1）
+    attackGainDiving(card) {
+      return !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3);
+    },
+    // 进攻1/2/3：防御阶段结束后施加1层失温
+    attackHypothermia(card) {
+      return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+    },
+    // 进攻4/5/6：施加1层流血
+    attackBleed(card) {
+      return (card && card.isNumberCard && card.value >= 4 && card.value <= 6) ? 1 : 0;
+    },
+    // 防御1/2/3/0：清除自身所有负面状态
+    defendClearDebuffs(card) {
+      return !!(card && card.isNumberCard);
+    },
+    // 防御1/2/3：格挡1/2（向上取整）点伤害
+    defendBlock(card, incoming) {
+      const v = card && card.value;
+      return (v >= 1 && v <= 3) ? Math.ceil((incoming || 0) / 2) : 0;
+    },
+    // 防御0：反击相同伤害（守护/飞翔结算前的点数）
+    defendCounter(card, incoming) {
+      return (card && card.isNumberCard && card.value === 0) ? (incoming || 0) : 0;
+    },
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 10 }),
+      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
+      4: orig => ({
+        // 防御0：额外免疫所有伤害（仍反击相同伤害并清除负面状态）
+        defendImmune: card => !!(card && card.isNumberCard && card.value === 0)
       })
     }
   });

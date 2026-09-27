@@ -31,8 +31,11 @@
 
 ## Emoji 说明
 
-- 🗡️ = 伤害点数
-- ❤️ = 恢复生命值
-- 🛡️ = 格挡/防御
-- 🃏 = 卡牌
-- Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)
+| Emoji | 含义 |
+|-------|------|
+| 🗡️ | 伤害点数 |
+| ❤️ | 恢复生命值 |
+| 🛡️ | 格挡/防御 |
+| 🃏 | 卡牌 |
+
+Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。

@@ -4,7 +4,7 @@
     name: 'Blaze',
     hp: 85,
     type: '狂战',
-    passive: '自身有灼烧时，1至7牌的攻击伤害+1',
+    passive: '自身有灼伤时，1至7牌的攻击伤害+1',
     init() { return {}; },
     turnStart(eng, ch) {},
     effect(eng, v, c, a, t, owner, helpers) {
@@ -43,7 +43,7 @@
       if (v === 0) {
         d = 5;
         unblock = true;
-        // 0牌的灼烧覆盖所有对手，1v2时不能只给当前目标施加。
+        // 0牌的灼伤覆盖所有对手，1v2时不能只给当前目标施加。
         const targetKeys = typeof eng._enemyKeys === 'function'
           ? eng._enemyKeys(owner)
           : [t];
@@ -74,14 +74,14 @@
         burn(opponent, 1);
         burn(defender, 1);
         remaining = d;
-        desc = `Blaze 1牌：恢复${bh}点+双方灼烧1`;
+        desc = `Blaze 1牌：恢复${bh}点+双方灼伤1`;
       }
       if (v === 2) {
-        // 文档：对进攻玩家施加2层灼烧，格挡½（向上取整）
+        // 文档：对进攻玩家施加2层灼伤，格挡½（向上取整）
         burn(opponent, 2);
         let b = Math.ceil(d / 2);
         remaining = Math.max(0, d - b);
-        desc = `Blaze 2牌：进攻方+2灼烧+格挡${b}点`;
+        desc = `Blaze 2牌：进攻方+2灼伤+格挡${b}点`;
       }
       if (v === 3) {
         // 文档：先对进攻玩家施加2层灼伤，再按其灼伤层数反击
@@ -89,17 +89,17 @@
         let fb = opponent.burn || 0;
         counter(opponent, fb);
         remaining = d;
-        desc = `Blaze 3牌：反击攻击方灼烧${fb}点+攻击方+2灼烧`;
+        desc = `Blaze 3牌：反击攻击方灼伤${fb}点+攻击方+2灼伤`;
       }
       if (v === 0) {
-        // 文档：对进攻玩家施加5层灼烧，恢复场上所有灼烧数+3❤️
+        // 文档：对进攻玩家施加5层灼伤，恢复场上所有灼伤数+3❤️
         burn(opponent, 5);
         let tb = [eng.s.player, eng.s.ai, eng.s.ai2]
           .filter((entity, index, all) => entity && all.indexOf(entity) === index)
           .reduce((sum, entity) => sum + (entity.burn || 0), 0);
         heal(defender, tb + 3);
         remaining = d;
-        desc = `Blaze 0牌：进攻方+5灼烧+恢复${tb + 3}点`;
+        desc = `Blaze 0牌：进攻方+5灼伤+恢复${tb + 3}点`;
       }
       return { remaining, desc };
     }

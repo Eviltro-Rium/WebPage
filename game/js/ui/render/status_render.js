@@ -99,6 +99,7 @@
                 blind: { colorClass: 'blind-buff' }, iceSeal: { colorClass: 'ice-seal-buff' },
                 hypnosis: { colorClass: 'hypnosis-buff' }, sleep: { colorClass: 'sleep-buff' },
                 thorns: { colorClass: 'thorns-buff' },
+                sandblind: { colorClass: 'sandblind-buff' },
                 bomb: { colorClass: 'bomb-mark' }, hypothermia: { colorClass: 'hypothermia-buff' },
                 guard: { colorClass: 'guard-buff' }, fly: { colorClass: 'fly-buff' },
                 lush: { colorClass: 'lush-buff' }, parasite: { colorClass: 'parasite-buff' },
@@ -117,7 +118,7 @@
                     label: def.mark ? `${def.label}（印记，不可净化）` : def.label
                 }, uiOverrides[def.id] || {}))
                 : [
-                    { key: 'burn', stacks: ch.burn, icon: 'burn', label: '灼烧', colorClass: 'burn-buff' },
+                    { key: 'burn', stacks: ch.burn, icon: 'burn', label: '灼伤', colorClass: 'burn-buff' },
                     { key: 'freeze', stacks: ch.frozen ? 1 : 0, icon: 'freeze', label: '冷冻', colorClass: 'freeze-buff' },
                     { key: 'bleed', stacks: ch.bleed, icon: 'bleed', label: '流血', colorClass: 'bleed-buff' },
                     { key: 'poison', stacks: ch.poison || 0, icon: 'poison', label: '中毒', colorClass: 'poison-buff' }

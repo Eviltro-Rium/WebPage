@@ -18,7 +18,7 @@
   // 所有会在战斗界面显示的状态集中维护，避免规则页和图鉴出现两套说明。
   // desc 三行：堆叠上限：n / 维持效果：衰减|持续|瞬爆 / 效果说明
   const BUFF_DATA = [
-    { key: 'burn', name: '灼烧', type: '负面状态', icon: 'icons/buff_icons/burn.webp', desc: '堆叠上限：5\n维持效果：衰减\n拥有灼烧的角色在自己的进攻回合结束时受到等同于层数的伤害，随后减少1层。' },
+    { key: 'burn', name: '灼伤', type: '负面状态', icon: 'icons/buff_icons/burn.webp', desc: '堆叠上限：5\n维持效果：衰减\n拥有灼伤的角色在自己的进攻回合结束时受到等同于层数的伤害，随后减少1层。' },
     { key: 'bleed', name: '流血', type: '负面状态', icon: 'icons/buff_icons/bleed.webp', desc: '堆叠上限：3\n维持效果：衰减\n防御方用0~3点数字牌防御时，额外承受等同于[流血]层数的伤害，随后减少1层流血。' },
     { key: 'poison', name: '中毒', type: '负面状态', icon: 'icons/buff_icons/poison.webp', desc: '堆叠上限：2\n维持效果：持续\n拥有中毒的角色在自己的进攻回合开始前受到等同于层数的伤害；层数不会自然减少，可被净化。' },
     { key: 'freeze', name: '冷冻', type: '负面状态', icon: 'icons/buff_icons/freeze.webp', desc: '堆叠上限：1\n维持效果：持续\n无法防御蓝色攻击。受到蓝色攻击时只能跳过防御并承受全部伤害。' },
@@ -40,16 +40,17 @@
     { key: 'hypnosis', name: '催眠', type: '负面状态', icon: 'icons/buff_icons/sleepy_1.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有催眠的角色在自己的进攻阶段结束、切换到对手进攻阶段时立即转化为[沉睡]。已处于[沉睡]时免疫新的[催眠]。' },
     { key: 'sleep', name: '沉睡', type: '负面状态', icon: 'icons/buff_icons/sleepy_2.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n拥有沉睡的角色在自己的进攻回合开始时立刻苏醒，恢复10点生命（不超过生命上限）。同时被进攻时会跳过防御阶段，所有伤害直接结算。' },
     { key: 'thorns', name: '荆棘', type: '负面状态', icon: 'icons/buff_icons/thorns.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有荆棘的角色在进攻阶段每释放一次技能，立即受到1点独立伤害（不可用守护/飞翔减免）；可被净化。' },
+    { key: 'sandblind', name: '沙盲', type: '负面状态', icon: 'icons/buff_icons/sandblind.webp', desc: '堆叠上限：6\n维持效果：持续\n进攻触发技能时立刻投掷12面骰：若结果≤2×层数则本次技能落空（对手跳过防御）；每次判定后层数-1。6层时必定失败；可被净化（每次净化减1层）。' },
     { key: 'bloodthirst', name: '嗜血', type: '印记', icon: 'icons/items_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：永久\nSerenity专属嗜血印记。生命低于30时获得；获得后即使恢复到30以上也不会移除，且不能被净化或超级净化清除。未获得印记时，正常恢复额外+1生命；嗜血后技能按嗜血规则结算。' }
   ];
 
   // 主角图鉴：仅展示玩家可选择的角色（排除冒险 NPC、领主专属和测试用角色）。
   const PLAYER_CHARS = [
     { name: 'Ryan', hp: 70, type: '战士', passive: '进攻回合开始前恢复1点生命', avatar: 'avatars/Ryan.webp', color: '#14eb5f' },
-    { name: 'Leon', hp: 90, type: '骑士', passive: '免疫灼烧伤害', avatar: 'avatars/Leon.webp', color: '#ee1111' },
+    { name: 'Leon', hp: 90, type: '骑士', passive: '免疫灼伤伤害', avatar: 'avatars/Leon.webp', color: '#ee1111' },
     { name: 'Chan', hp: 80, type: '谋士', passive: '进攻回合开始前抽1张牌', avatar: 'avatars/Chan.webp', color: '#1399f2' },
     { name: 'Saiki', hp: 80, type: '猎手', passive: '有效黄色牌在防御结算后施加1层流血', avatar: 'avatars/Saiki.webp', color: '#9b59b6' },
-    { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼烧时1至7牌攻击伤害+1', avatar: 'avatars/Blaze.webp', color: '#e67e22' },
+    { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼伤时1至7牌攻击伤害+1', avatar: 'avatars/Blaze.webp', color: '#e67e22' },
     { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；低于30生命获得嗜血印记，印记永久且不可净化；未获得印记时恢复+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
     { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
     { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
@@ -472,7 +473,7 @@
       html += '<div class="codex-empty">暂无数据</div>';
     } else {
       html += '<div class="codex-all-list">';
-      const effectMap = { burn: '灼烧', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', crit: '暴击', lush: '茂盛', poison: '中毒', parasite: '寄生', thorns: '荆棘', diving: '潜水', iceSeal: '冰封', hypothermia: '失温', zero: '零技能' };
+      const effectMap = { burn: '灼伤', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', crit: '暴击', lush: '茂盛', poison: '中毒', parasite: '寄生', thorns: '荆棘', sandblind: '沙盲', diving: '潜水', iceSeal: '冰封', hypothermia: '失温', zero: '零技能' };
       for (const it of items) {
         const icon = resolveIcon(it.icon);
         const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-avatar codex-no-icon">${it.displayName[0]}</div>`;

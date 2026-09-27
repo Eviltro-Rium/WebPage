@@ -7,7 +7,7 @@
     name: 'Leon',
     hp: 90,
     type: '骑士',
-    passive: '免疫灼烧',
+    passive: '免疫灼伤',
     init() { return {}; },
     turnStart(eng, ch) {},
     effect(eng, v, c, a, t, owner, helpers) {
@@ -77,7 +77,7 @@
         burn(opponent, 1);
         heal(defender, 2);
         remaining = d;
-        desc = 'Leon 1牌：施加1层灼烧+恢复2点生命';
+        desc = 'Leon 1牌：施加1层灼伤+恢复2点生命';
       } else if (v === 2) {
         let cd = Math.ceil(d / 2);
         counter(opponent, cd);

@@ -4,7 +4,7 @@
 
 奖励领取时不会因为道具槽已满而被拒绝：奖励会先完整加入道具槽，超过 6 个后立即进入舍弃流程，玩家选择要保留的道具。
 
-Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
+Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Emoji 说明
 

@@ -193,10 +193,11 @@
       if (!b) return '';
       const items = [];
       const icon = (kind, label) => '<img class="adv-buff-icon" src="' + BUFF_ICON_DIR + kind + '.webp" alt="' + label + '">';
-      if (b.burn > 0)      items.push('<span class="adv-buff adv-buff-burn" title="灼烧">' + icon('burn', '灼烧') + '×' + b.burn + '</span>');
+      if (b.burn > 0)      items.push('<span class="adv-buff adv-buff-burn" title="灼伤">' + icon('burn', '灼伤') + '×' + b.burn + '</span>');
       if (b.bleed > 0)     items.push('<span class="adv-buff adv-buff-bleed" title="流血">' + icon('bleed', '流血') + '×' + b.bleed + '</span>');
       if (b.poison > 0)    items.push('<span class="adv-buff adv-buff-poison" title="中毒">' + icon('poison', '中毒') + '×' + b.poison + '</span>');
       if (b.thorns > 0)    items.push('<span class="adv-buff adv-buff-thorns" title="荆棘">' + icon('thorns', '荆棘') + '×' + b.thorns + '</span>');
+      if (b.sandblind > 0) items.push('<span class="adv-buff adv-buff-sandblind" title="沙盲">' + icon('sandblind', '沙盲') + '×' + b.sandblind + '</span>');
       if (b.frozen)        items.push('<span class="adv-buff adv-buff-frozen" title="冷冻">' + icon('freeze', '冷冻') + '</span>');
       if (b.iceSeal > 0)   items.push('<span class="adv-buff" title="冰封">' + icon('ice_seal', '冰封') + '×' + b.iceSeal + '</span>');
       if (b.guard > 0)     items.push('<span class="adv-buff adv-buff-guard" title="守护">' + icon('guard', '守护') + '×' + b.guard + '</span>');

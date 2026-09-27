@@ -107,7 +107,7 @@
             if (service) addStatus(entity, 'burn', amount); else entity.burn = Math.min(5, entity.burn + amount);
             if (!opts || opts.silent !== true) {
                 const target = targetKey(engine, entity);
-                engine.emit(eventTypes.BUFF || 'buff', `+${amount}[灼烧]`, null, { who: target, target, kind: 'burn', stacks: entity.burn });
+                engine.emit(eventTypes.BUFF || 'buff', `+${amount}[灼伤]`, null, { who: target, target, kind: 'burn', stacks: entity.burn });
             }
         },
 
@@ -164,6 +164,42 @@
             engine.emit(eventTypes.DESC || 'desc', label + '因[荆棘]受到1点独立伤害');
             return true;
         },
+        sandblind(engine, entity, amount, opts) {
+            if (!entity || amount <= 0) return;
+            const before = entity.sandblind || 0;
+            if (service) addStatus(entity, 'sandblind', amount);
+            else entity.sandblind = Math.min(6, before + amount);
+            const added = Math.max(0, (entity.sandblind || 0) - before);
+            if (added > 0 && (!opts || opts.silent !== true)) {
+                const target = targetKey(engine, entity);
+                engine.emit(eventTypes.BUFF || 'buff', `+${added}[沙盲]`, null, {
+                    who: target, target, kind: 'sandblind', stacks: entity.sandblind || 0
+                });
+            }
+        },
+        /** Returns true when the attack skill misses. Always spends 1 stack when stacks > 0. */
+        resolveSandblindOnAttackSkill(engine, entity) {
+            if (!entity || !entity.alive) return false;
+            const stacks = Math.max(0, Number(entity.sandblind) || 0);
+            if (stacks <= 0) return false;
+            const who = targetKey(engine, entity);
+            const label = who === 'player' ? '玩家' : (entity.name || 'AI');
+            const threshold = Math.min(12, stacks * 2);
+            const roll = typeof engine.rollD12 === 'function'
+                ? engine.rollD12('沙盲判定', { who })
+                : 1 + Math.floor(Math.random() * 12);
+            if (service) removeStatus(entity, 'sandblind', 1);
+            else entity.sandblind = Math.max(0, stacks - 1);
+            engine.emit(eventTypes.BUFF || 'buff', '-1[沙盲]', null, {
+                who, target: who, kind: 'sandblind', stacks: entity.sandblind || 0
+            });
+            const failed = roll <= threshold;
+            engine.emit(eventTypes.DESC || 'desc',
+                label + (failed
+                    ? `[沙盲]判定失败（${roll}≤${threshold}），技能落空，跳过防御`
+                    : `[沙盲]判定通过（${roll}>${threshold}）`));
+            return failed;
+        },
         parasite(engine, entity, amount, opts) {
             if (!entity || amount <= 0) return;
             const before = entity.parasite || 0;
@@ -185,7 +221,7 @@
             }
             entity.burn = 0; entity.bleed = 0; entity.poison = 0;
             entity.frozen = false; entity.bomb = 0; entity.blind = 0; entity.iceSeal = 0;
-            entity.hypothermia = 0; entity.thorns = 0;
+            entity.hypothermia = 0; entity.thorns = 0; entity.sandblind = 0;
         },
         clearPositiveBuffs(entity) {
             if (!entity) return;
@@ -211,7 +247,7 @@
             if (all) {
                 entity.burn = 0; entity.bleed = 0; entity.poison = 0; entity.frozen = false;
                 entity.bomb = 0; entity.blind = 0; entity.iceSeal = 0; entity.hypothermia = 0;
-                entity.thorns = 0;
+                entity.thorns = 0; entity.sandblind = 0;
                 entity.guard = 0; entity.fly = 0; entity.lush = 0; entity.crit = 0; entity.parasite = 0;
                 entity.diving = false;
                 entity.chaos_red = false; entity.chaos_yellow = false;
@@ -222,6 +258,7 @@
             else if (kind === 'bleed' && entity.bleed) entity.bleed--;
             else if (kind === 'poison' && entity.poison) entity.poison--;
             else if (kind === 'thorns') entity.thorns = 0;
+            else if (kind === 'sandblind' && entity.sandblind) entity.sandblind--;
             else if (kind === 'freeze') entity.frozen = false;
             else if (kind === 'bomb') entity.bomb = 0;
             else if (kind === 'blind') entity.blind = 0;

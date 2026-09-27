@@ -363,7 +363,7 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const amt = Math.max(0, Number(evt.amount) || 0);
             const text = amt > 0
-                ? `-${amt}❤️[灼烧]，-1[灼烧层数]`
+                ? `-${amt}❤️[灼伤]，-1[灼伤层数]`
                 : (evt.desc || '');
             this.playFloatingText(text, '#ff8800', side);
             if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
@@ -438,7 +438,7 @@ async _playEvents(events, fast = false) {
             const amt = Math.max(0, Number(evt.amount) || 0);
             const tag = kind === DAMAGE_KINDS.BLEED || kind === 'bleed' ? '流血'
                 : kind === DAMAGE_KINDS.POISON || kind === 'poison' ? '中毒'
-                : '灼烧';
+                : '灼伤';
             const text = amt > 0 ? `-${amt}❤️[${tag}]` : (evt.desc || '');
             this.playFloatingText(text, color, side);
             if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
@@ -448,7 +448,7 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const colors = {
                 burn: '#ff8800', bleed: '#cc2222', freeze: '#44aaff', guard: '#00bcd4',
-                poison: '#84cc16', thorns: '#facc15', crit: '#fbbf24', fly: '#a5b4fc', lush: '#4ade80',
+                poison: '#84cc16', thorns: '#facc15', sandblind: '#d6b07c', crit: '#fbbf24', fly: '#a5b4fc', lush: '#4ade80',
                 parasite: '#86efac', blind: '#c4b5fd', bomb: '#fb923c', iceSeal: '#7dd3fc',
                 chaos_reset: '#c084fc',
                 chaos_red: '#f87171', chaos_yellow: '#fde047', chaos_blue: '#60a5fa', chaos_green: '#4ade80'

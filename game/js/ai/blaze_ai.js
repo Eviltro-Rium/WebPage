@@ -51,7 +51,7 @@
         helpers.selfHand.push(drawn);
         helpers.burnSelf(1);
         helpers.burnTarget(1);
-        eng.emit('desc', `Blaze AI保留${eng.cardText(drawn)}，双方灼烧+1并跳过防御`);
+        eng.emit('desc', `Blaze AI保留${eng.cardText(drawn)}，双方灼伤+1并跳过防御`);
         return { d: 0, skip: true, unblock: false };
       }
 

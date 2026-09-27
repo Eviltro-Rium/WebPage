@@ -37,6 +37,11 @@
         };
       },
       turnStart(eng, x, w) {
+        if (w !== 'ai' && w !== 'ai2') return;
+        if ((x.lush || 0) > 0) {
+          const amt = Math.min(x.lush, 2);
+          eng.heal(x, amt, 'passive');
+        }
         if (typeof mod.attackTurnStart === 'function') mod.attackTurnStart(eng, x, w);
       },
       effect(eng, v, c, a, t, owner, helpers) {
@@ -56,7 +61,7 @@
 
         const attackerKey = a === eng.s.ai2 ? 'ai2' : (a === eng.s.ai ? 'ai' : 'player');
         const buffTotal = (t) =>
-          (t.burn || 0) + (t.bleed || 0) + (t.poison || 0) + (t.thorns || 0) + (t.blind || 0) + (t.iceSeal || 0) +
+          (t.burn || 0) + (t.bleed || 0) + (t.poison || 0) + (t.blind || 0) + (t.iceSeal || 0) +
           (t.guard || 0) + (t.fly || 0) + (t.parasite || 0) + (t.bomb || 0) + (t.hypothermia || 0) +
           (t.crit || 0) + (t.lush || 0) + (t.frozen ? 1 : 0) + (t.diving ? 1 : 0) + (t.bloodthirst ? 1 : 0) +
           (t.chaos_red ? 1 : 0) + (t.chaos_yellow ? 1 : 0) + (t.chaos_blue ? 1 : 0) + (t.chaos_green ? 1 : 0);
@@ -110,8 +115,8 @@
             }
           }
         }
-        // 4/5/6 延迟失温：防御结束后施加给被攻击目标，记录到 pendingAttack
-        if (isFrozenWhale && typeof mod.attackHypothermia === 'function' && eng.s && eng.s.pendingAttack) {
+        // 延迟失温：防御结束后施加给被攻击目标，记录到 pendingAttack（蓝鲸4/5/6、虎鲸1/2/3）
+        if (typeof mod.attackHypothermia === 'function' && eng.s && eng.s.pendingAttack) {
           const hyAmt = mod.attackHypothermia(c);
           if (hyAmt > 0) {
             const hypothermiaTargetKey = t === eng.s.ai2 ? 'ai2' : (t === eng.s.ai ? 'ai' : 'player');
@@ -127,11 +132,9 @@
           const f = mod.attackFly(c);
           if (f > 0) {
             if (fly) fly(f);
-            else {
-              a.fly = Math.min(2, (a.fly || 0) + f);
-              const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
-              eng.emit('buff', '+' + f + '[飞翔]', null, { who, kind: 'fly', stacks: a.fly });
-            }
+            else a.fly = Math.min(2, (a.fly || 0) + f);
+            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+            eng.emit('buff', '+' + f + '[飞翔]', null, { who, kind: 'fly', stacks: a.fly });
           }
         }
         if (typeof mod.attackClearPositive === 'function' && mod.attackClearPositive(c)) {
@@ -226,7 +229,7 @@
         if (typeof mod.attackTransferDebuff === 'function' && mod.attackTransferDebuff(c)) {
           if ((a.burn || 0) > 0) { if (burn) burn(a.burn); else t.burn = Math.min(5, (t.burn || 0) + a.burn); a.burn = 0; }
           if ((a.bleed || 0) > 0) { if (bleed) bleed(a.bleed); else t.bleed = Math.min(3, (t.bleed || 0) + a.bleed); a.bleed = 0; }
-          if ((a.poison || 0) > 0) { if (poison) poison(a.poison); else t.poison = Math.min(2, (t.poison || 0) + a.poison); a.poison = 0; }
+          if ((a.poison || 0) > 0) { if (poison) poison(a.poison); else t.poison = Math.min(3, (t.poison || 0) + a.poison); a.poison = 0; }
           if (a.frozen) { t.frozen = true; a.frozen = false; }
           eng.emit('desc', a.name + '将自身所有debuff转移给' + t.name);
         }
@@ -289,6 +292,11 @@
             eng.hypothermia(opponent, hypothermiaAmt);
           }
         };
+        const clearSelfDebuffs = typeof mod.defendClearDebuffs === 'function' ? !!mod.defendClearDebuffs(c) : false;
+        const applyClearSelfDebuffs = () => {
+          if (clearSelfDebuffs && clearDebuffs) clearDebuffs(defender);
+        };
+        const clearSelfDebuffsDesc = clearSelfDebuffs ? '，清除自身所有负面状态' : '';
         const suffix = () =>
           (poisonAmt ? '，施加' + poisonAmt + '层中毒' : '') +
           (bleedAmt ? '，施加' + bleedAmt + '层流血' : '') +
@@ -350,11 +358,20 @@
           if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c) && clearDebuffs) {
             clearDebuffs(defender);
           }
+          let counterDesc = '';
+          if (typeof mod.defendCounter === 'function') {
+            const counter = mod.defendCounter(c, d, defender, opponent, eng);
+            if (counter > 0 && hurt) {
+              hurt(opponent, counter);
+              counterDesc = '，反击' + counter + '点伤害';
+            }
+          }
+          applyClearSelfDebuffs();
           applyPoison(); applyBleed(); applyHypothermia(); applyDrawSelf(); applyAllExtras();
           const clearText = (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c))
             ? '，免疫buff，清除自身所有debuff'
             : '';
-          return { remaining: 0, desc: '免疫所有伤害' + clearText + suffix() + drawSelfDesc + allExtrasDesc };
+          return { remaining: 0, desc: '免疫所有伤害' + counterDesc + clearText + suffix() + clearSelfDebuffsDesc + drawSelfDesc + allExtrasDesc };
         }
 
         const lushAmt = typeof mod.defendLush === 'function' ? (mod.defendLush(c) || 0) : 0;
@@ -383,10 +400,11 @@
         if (typeof mod.defendSplit === 'function' && mod.defendSplit(c)) {
           const split = Math.ceil(d / 2);
           if (hurt) hurt(opponent, split);
+          applyClearSelfDebuffs();
           applyPoison(); applyBleed(); applyHypothermia(); applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
           return {
             remaining: split,
-            desc: '均摊伤害，双方各受' + split + '点' + suffix() + drawSelfDesc + lushParasiteDesc + allExtrasDesc
+            desc: '均摊伤害，双方各受' + split + '点' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc
           };
         }
 
@@ -394,29 +412,22 @@
           const healAmt = mod.defendHeal(c);
           if (healAmt > 0) {
             heal(defender, healAmt);
-            const descParts = ['恢复' + healAmt + '生命'];
-            let remaining = d;
-            let blocked = false;
             if (typeof mod.defendBlock === 'function') {
               const block = mod.defendBlock(c, d, defender, eng);
               if (block > 0) {
-                remaining = Math.max(0, d - block);
-                blocked = true;
-                descParts.push('格挡' + block + '点');
+                const remaining = Math.max(0, d - block);
+                applyPoison(); applyBleed(); applyHypothermia(); applyLushAndParasite(); applyAllExtras();
+                return {
+                  remaining,
+                  desc: '恢复' + healAmt + '生命，格挡' + block + '点' + suffix() + lushParasiteDesc + allExtrasDesc
+                };
               }
             }
-            // Heal must not skip counter (e.g. FrozenOceanSamoyed / Vixraps-style ½ counter + heal).
-            if (typeof mod.defendCounter === 'function') {
-              const counter = mod.defendCounter(c, d, defender, opponent, eng);
-              if (counter > 0 && hurt) {
-                hurt(opponent, counter);
-                descParts.push('反击' + counter + '点伤害');
-              }
-            }
+            applyClearSelfDebuffs();
             applyPoison(); applyBleed(); applyHypothermia(); applyLushAndParasite(); applyAllExtras();
             return {
               remaining: blocked ? remaining : d,
-              desc: descParts.join('，') + suffix() + lushParasiteDesc + allExtrasDesc
+              desc: descParts.join('，') + suffix() + clearSelfDebuffsDesc + lushParasiteDesc + allExtrasDesc
             };
           }
         }
@@ -441,18 +452,20 @@
             }
           }
           if (descParts.length) {
+            applyClearSelfDebuffs();
             applyPoison(); applyBleed(); applyHypothermia(); applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
             return {
               remaining: hasBlock ? remaining : d,
-              desc: descParts.join('，') + suffix() + drawSelfDesc + lushParasiteDesc + allExtrasDesc
+              desc: descParts.join('，') + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc
             };
           }
         }
 
+        applyClearSelfDebuffs();
         applyPoison(); applyBleed(); applyHypothermia(); applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
-        if (v === 1) return { remaining: Math.max(0, d - Math.ceil(d / 2)), desc: '1牌防御' + suffix() + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
-        if (v === 3) return { remaining: Math.max(0, d - Math.floor(d / 2)), desc: '3牌防御' + suffix() + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
-        return { remaining: d, desc: '直接承受' + suffix() + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
+        if (v === 1) return { remaining: Math.max(0, d - Math.ceil(d / 2)), desc: '1牌防御' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
+        if (v === 3) return { remaining: Math.max(0, d - Math.floor(d / 2)), desc: '3牌防御' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
+        return { remaining: d, desc: '直接承受' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
       }
     });
   }
@@ -520,7 +533,23 @@
     if (opts.stage) mod = applyStageMods(mod, opts.stage);
 
     if (isDefend) {
-      let parts = [];
+    // FrozenOrca: diving + deferred hypothermia on 1/2/3, bleed on 4/5/6,
+    // bleed-scaled damage on 0 (ocean.md).
+    if (mod.name === 'FrozenOrca' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成' + (3 + stageBonus) + '点[伤害]，获得[潜水]，防御结束后施加1层[失温]';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成' + (5 + stageBonus) + '点[伤害]，施加1层[流血]';
+      }
+      if (v === 0) {
+        return '造成' + (2 + stageBonus) + '+玩家[流血]层数×2点[伤害]';
+      }
+      return '无进攻效果';
+    }
+    let parts = [];
       if (typeof mod.defendImmune === 'function' && mod.defendImmune(card)) {
         parts.push('免疫所有伤害');
         if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(card)) {
@@ -586,11 +615,13 @@
           const c8 = mod.defendCounter(card, 8);
           const c4 = mod.defendCounter(card, 4);
           if (c8 > 0 || c4 > 0) {
-            if (c8 === 8 && c4 === 4) parts.push('反击相同点伤害（守护/飞翔前的点数）');
-            else if (c8 !== c4 && c8 === Math.ceil(8 / 2) && c4 === Math.ceil(4 / 2)) parts.push('反击一半伤害（向上取整）');
+            if (c8 !== c4 && c8 === Math.ceil(8 / 2) && c4 === Math.ceil(4 / 2)) parts.push('反击一半伤害（向上取整）');
             else parts.push('反击' + c8 + '点伤害');
           }
         }
+      }
+      if (typeof mod.defendClearDebuffs === 'function' && mod.defendClearDebuffs(card)) {
+        parts.push('清除自身所有负面状态');
       }
       if (typeof mod.defendGuard === 'function') {
         const g = mod.defendGuard(card);
@@ -645,35 +676,6 @@
       }
       return '无进攻效果';
     }
-    // ForestDendrobatidFrog: 1-3 fixed poison hit; 4-6 scales with poison stacks.
-    if (mod.name === 'ForestDendrobatidFrog' && card.isNumberCard) {
-      const v = card.value;
-      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
-        return '造成' + (2 + stageBonus) + '点[伤害]，施加1层[中毒]';
-      }
-      if (v >= 4 && v <= 6) {
-        return '造成' + (4 + stageBonus) + '+[中毒]层数点[伤害]';
-      }
-      return '无进攻效果';
-    }
-    // ForestPython: conditional draw on 1-3; poison-first scaling on 4-6/0.
-    if (mod.name === 'ForestPython' && card.isNumberCard) {
-      const v = card.value;
-      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
-        return '造成' + (v + stageBonus) + '点[伤害]（玩家[中毒]≥2时额外抽1张）';
-      }
-      if (v >= 4 && v <= 6) {
-        const extra = stageBonus > 0 ? '+' + stageBonus : '';
-        return '施加1层[中毒]，造成3×（玩家[中毒]层数+1）' + extra + '点[伤害]';
-      }
-      if (v === 0) {
-        const extra = stageBonus > 0 ? '+' + stageBonus : '';
-        return '施加1层[中毒]，造成2×（玩家[中毒]层数+1）' + extra + '点[伤害]（不可防御）';
-      }
-      return '无进攻效果';
-    }
     // CastleBat 4/5/6: drain scales with player bleed (castle.md).
     if (mod.name === 'CastleBat' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
@@ -721,7 +723,7 @@
       const dmg1 = mod.attackDamage(card, ctx1) || 0;
       if (dmg !== dmg1) {
         const perBleed = dmg1 - dmg;
-        bleedDmgDesc = (dmg > 0 ? '造成' + dmg + '点伤害+' : '') + '对手每有1层[流血]' + perBleed + '点伤害';
+        bleedDmgDesc = (dmg > 0 ? '造成' + dmg + '点伤害+' : '') + '对手每有1层【流血】' + perBleed + '点伤害';
       }
     } else if (card.isNumberCard) dmg = card.value || 0;
     if (mod.name === 'CastleGhost' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
@@ -774,7 +776,7 @@
       parts.push('施加[冷冻]');
     }
     if (typeof mod.attackIceSeal === 'function' && mod.attackIceSeal(card)) {
-      parts.push('施加[冰封]');
+      parts.push('施加[冰封]（下次补牌少补1张）');
     }
     if (typeof mod.attackDrain === 'function') {
       const h = mod.attackDrain(card, ctx);
@@ -789,9 +791,6 @@
     }
     if (typeof mod.attackStealItem === 'function' && mod.attackStealItem(card)) {
       parts.push('玩家随机丢失1个道具');
-    }
-    if (typeof mod.attackDiscardBeforeDefend === 'function' && mod.attackDiscardBeforeDefend(card)) {
-      parts.push('对手弃1张手牌后再防御（无手牌则不弃）');
     }
     if (typeof mod.attackDrawSelf === 'function' && mod.attackDrawSelf(card, ctx)) {
       parts.push('抽取1张牌');

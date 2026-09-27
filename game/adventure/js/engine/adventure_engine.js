@@ -3,7 +3,7 @@
  * 串联一层地牢的完整流程：地图浏览 → 进入房间 → 战斗/拾取/购买 → 奖励 → 移动 → 通关。
  *
  *   - 玩家牌库与手牌跨战斗持久保持：首场战斗初始化，后续战斗沿用上场结束时的状态。
- *   - 玩家状态效果（灼烧/流血/冷冻/守护/飞翔/暴击/混沌）跨战斗持久保持，战斗结束时不清除。
+ *   - 玩家状态效果（灼伤/流血/冷冻/守护/飞翔/暴击/混沌）跨战斗持久保持，战斗结束时不清除。
  *   - 普通/Boss房：战斗胜利后先结算基础奖励，可领取或留在房间；
  *     随后再进行专门的兽元结算（普通房），领完再返回地图。
  *   - 奖励房：开门后本层只滚动一次奖励；可领取或留在房间，已领取后不能再刷。
@@ -87,6 +87,8 @@
         poison: 0,
         blind: 0,
         iceSeal: 0,
+        thorns: 0,
+        sandblind: 0,
         frozen: false,
         guard: 0,
         fly: 0,
@@ -98,6 +100,8 @@
         bloodthirst: false,
         extra: charMod.init ? charMod.init() : {}
       };
+      const status = window.FurryGame && window.FurryGame.StatusService;
+      if (status && status.ensure) status.ensure(player);
 
       this.s = {
         map: map,

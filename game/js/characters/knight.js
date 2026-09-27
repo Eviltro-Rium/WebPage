@@ -89,7 +89,7 @@
         let b = Math.ceil(d / 2);
         if (defender.chaos_red) burn(opponent, 2);
         remaining = Math.max(0, d - b);
-        desc = `Knight 3牌：格挡${b}点` + (defender.chaos_red ? '+施加2层灼烧' : '');
+        desc = `Knight 3牌：格挡${b}点` + (defender.chaos_red ? '+施加2层灼伤' : '');
       } else if (v === 0) {
         let p = defender, chaosCount = [p.chaos_red, p.chaos_yellow, p.chaos_blue, p.chaos_green].filter(Boolean).length;
         let drain = chaosCount * 2;

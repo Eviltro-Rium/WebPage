@@ -1197,6 +1197,11 @@ body {
     background: linear-gradient(135deg, rgba(113, 77, 0, 0.9), rgba(250, 204, 21, 0.55));
     box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
 }
+.buff-icon-wrap.sandblind-buff {
+    border-color: rgba(214, 176, 124, 0.95);
+    background: linear-gradient(135deg, rgba(120, 84, 45, 0.9), rgba(214, 176, 124, 0.55));
+    box-shadow: 0 0 10px rgba(214, 176, 124, 0.45);
+}
 .buff-icon-wrap.sleep-buff {
     border-color: rgba(244, 114, 182, 0.95);
     background: linear-gradient(135deg, rgba(131, 24, 67, 0.88), rgba(244, 114, 182, 0.5));

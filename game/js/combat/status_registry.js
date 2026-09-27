@@ -7,7 +7,7 @@
 (function (global) {
   const root = global.FurryGame || (global.FurryGame = {});
   const definitions = [
-    { id: 'burn',        property: 'burn',        label: '灼烧', icon: 'buff_icons/burn.webp',         polarity: 'debuff', stack: true,  max: 5, cleanse: 'decrement', trigger: 'turnEnd', transferable: true },
+    { id: 'burn',        property: 'burn',        label: '灼伤', icon: 'buff_icons/burn.webp',         polarity: 'debuff', stack: true,  max: 5, cleanse: 'decrement', trigger: 'turnEnd', transferable: true },
     { id: 'bleed',       property: 'bleed',       label: '流血', icon: 'buff_icons/bleed.webp',        polarity: 'debuff', stack: true,  max: 3, cleanse: 'decrement', trigger: 'turnEnd', transferable: true },
     { id: 'poison',      property: 'poison',      label: '中毒', icon: 'buff_icons/poison.webp',       polarity: 'debuff', stack: true,  max: 2, cleanse: 'decrement', trigger: 'turnEnd', transferable: true },
     { id: 'freeze',      property: 'frozen',      label: '冷冻', icon: 'buff_icons/freeze.webp',       polarity: 'debuff', stack: false, max: 1, cleanse: 'reset',     trigger: 'turnEnd', transferable: true },
@@ -19,6 +19,7 @@
     { id: 'hypnosis',    property: 'hypnosis',    label: '催眠', icon: 'buff_icons/sleepy_1.webp',   polarity: 'debuff', stack: false, max: 1, cleanse: 'reset', trigger: 'persistent', transferable: true },
     { id: 'sleep',       property: 'sleep',       label: '沉睡', icon: 'buff_icons/sleepy_2.webp',   polarity: 'debuff', stack: false, max: 1, cleanse: 'reset', trigger: 'turnStart', transferable: true },
     { id: 'thorns',      property: 'thorns',      label: '荆棘', icon: 'buff_icons/thorns.webp',     polarity: 'debuff', stack: true,  max: 1, cleanse: 'reset', trigger: 'onAttackSkill', transferable: true },
+    { id: 'sandblind',   property: 'sandblind',   label: '沙盲', icon: 'buff_icons/sandblind.webp', polarity: 'debuff', stack: true,  max: 6, cleanse: 'decrement', trigger: 'onAttackSkill', transferable: true },
 
     { id: 'guard',       property: 'guard',       label: '守护', icon: 'buff_icons/guard.webp',        polarity: 'buff',   stack: true, max: 5, cleanse: 'decrement', trigger: 'onDamage', transferable: true },
     { id: 'fly',         property: 'fly',         label: '飞翔', icon: 'buff_icons/fly.webp',          polarity: 'buff',   stack: true, max: 2, cleanse: 'decrement', trigger: 'onDamage', transferable: true },

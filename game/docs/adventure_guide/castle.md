@@ -9,7 +9,8 @@
 | 3 | 增加伤害 |
 | 4 | 加强防御 |
 
-Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
+Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
+
 ## Emoji 说明
 
 | Emoji | 含义 |
@@ -38,7 +39,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：4/5/6 牌改为按剩余手牌点数的 **2 倍**造成伤害
 - **Stage 4**：防御骰投出 1-6 即可触发免疫
 
-### 掉落：投出1-3，掉落飞翔战利品白卡
+### 掉落：投出1-3，掉落飞翔战利白卡
+
 ---
 
 ## 萤火虫（CastleFirefly）
@@ -57,7 +59,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：所有进攻伤害 +1
 - **Stage 4**：防御格挡改为 `1 + 玩家当前一次性道具数量`
 
-### 掉落：投出1-2，掉落飞翔战利品白卡
+### 掉落：投出1-2，掉落飞翔战利白卡
+
 ---
 
 ## 狼（CastleWolf）
@@ -78,7 +81,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：格挡 +1
 
-### 掉落：投出1-2，掉落守护战利品白卡
+### 掉落：投出1-2，掉落守护战利白卡
+
 ---
 
 ## 狐（CastleFox）
@@ -97,7 +101,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：1/2/3 牌伤害 +1
 - **Stage 4**：恢复生命改为 3❤️
 
-### 掉落：投出1-2，掉落流血战利品白卡
+### 掉落：投出1-2，掉落流血战利白卡
+
 ---
 
 ## 熊（CastleBear）
@@ -116,7 +121,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：1/2/3 牌伤害 +1，4/5/6 牌伤害 +2
 - **Stage 4**：防御时增加 **反击 1🗡️**
 
-### 掉落：投出1-3，掉落守护战利品白卡
+### 掉落：投出1-3，掉落守护战利白卡
+
 ---
 
 ## 虎（CastleTiger）
@@ -139,7 +145,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：1/2/3 牌伤害变为 **不可防御**
 - **Stage 4**：反击伤害 +1
 
-### 掉落：投出1-3，掉落流血战利品白卡
+### 掉落：投出1-3，掉落流血战利白卡
+
 ---
 
 ## 鸦（CastleCrow）
@@ -159,7 +166,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：1/2 牌防御**伤害的1/2🛡️（向上取整）**
 
-### 掉落：投出1-2，掉落缴械战利品白卡
+### 掉落：投出1-2，掉落缴械战利白卡
+
 ---
 
 ## 蝠（CastleBat）
@@ -178,7 +186,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：吸血 +1（变为 3❤️）
 - **Stage 4**：格挡 +1（至多 3🗡️）
 
-### 掉落：投出1-2，掉落流血战利品白卡
+### 掉落：投出1-2，掉落流血战利白卡
+
 ---
 
 ## 哥布林（DungeonGoblin）
@@ -204,7 +213,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：伤害 **+1**
 - **Stage 4**：防御恢复生命 +1（出1→2❤️，出2→3❤️，出3→4❤️）
 
-### 掉落：投出1，掉落2张缴械战利品白卡
+### 掉落：投出1，掉落2张缴械战利白卡
+
 ---
 
 ## Boss · 隐之避役（CastleChameleon）
@@ -234,7 +244,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：进攻 4/5/6/0 伤害 +1（变为 4/4/4/3）
 - **Stage 4**：防御 1/2/3 恢复生命 +1（变为 3❤️）
 
-### 掉落：投出1-6，掉落中毒战利品白卡
+### 掉落：投出1-6，掉落中毒战利白卡
+
 ---
 
 ## Boss · 自由之鹰（CastleEagle）
@@ -266,7 +277,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：反击伤害 +1
 
-### 掉落：投出1-6，掉落俄罗斯赌盘战利品白卡
+### 掉落：投出1-6，掉落俄罗斯赌盘战利白卡
+
 ---
 
 ## Boss · 石像鬼（CastleGargoyle）
@@ -289,6 +301,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：防御 1/2/3 牌额外恢复 **1❤️**
 
-### 掉落：投出1-4，掉落0技能战利品白卡
+### 掉落：投出1-4，掉落0技能战利白卡
+
 ---
 Boss 房从本场景 Boss 池 **等可能** 刷新一只（隐之避役 / 自由之鹰 / 石像鬼）。

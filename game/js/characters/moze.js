@@ -33,7 +33,8 @@
       } else if (v === 7) {
         const q = (a.burn || 0) + (a.bleed || 0) + (a.poison || 0) +
           (a.frozen ? 1 : 0) + (a.bomb || 0) + (a.blind || 0) +
-          (a.iceSeal || 0) + (a.hypothermia || 0) + (a.bindMark ? 1 : 0);
+          (a.iceSeal || 0) + (a.hypothermia || 0) + (a.thorns || 0) +
+          (a.sandblind || 0) + (a.bindMark ? 1 : 0);
         clearDebuffs(a);
         d = 3 + q;
       } else if (v === 0) {

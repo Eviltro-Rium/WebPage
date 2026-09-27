@@ -127,7 +127,7 @@
       this._detectAndPlayAnimations(prev,s,{skipEventBacked:skipStateDiffAnimations});
 
       if(prev.ai2&&s.ai2){
-        if(!skipStateDiffAnimations&&s.ai2.burn>prev.ai2.burn)this.playFloatingText(`+${s.ai2.burn-prev.ai2.burn}[灼烧]`,'#ff8800','ai2');
+        if(!skipStateDiffAnimations&&s.ai2.burn>prev.ai2.burn)this.playFloatingText(`+${s.ai2.burn-prev.ai2.burn}[灼伤]`,'#ff8800','ai2');
         if(!skipStateDiffAnimations&&s.ai2.bleed>prev.ai2.bleed)this.playFloatingText(`[流血]`,'#cc2222','ai2');
         if(!skipStateDiffAnimations&&s.ai2.frozen&&!prev.ai2.frozen)this.playFloatingText('[冷冻]','#44aaff','ai2');
         if(!skipStateDiffAnimations&&s.ai2.guard>prev.ai2.guard)this.playFloatingText(`+${s.ai2.guard-prev.ai2.guard}[守护]`,'#00bcd4','ai2');

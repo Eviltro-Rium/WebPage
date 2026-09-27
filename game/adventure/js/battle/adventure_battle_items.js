@@ -124,6 +124,7 @@
       if (ch.hypnosis) kinds.push('hypnosis');
       if (ch.sleep) kinds.push('sleep');
       if ((ch.thorns || 0) > 0) kinds.push('thorns');
+      if ((ch.sandblind || 0) > 0) kinds.push('sandblind');
       if (ch.guard > 0) kinds.push('guard');
       if ((ch.fly || 0) > 0) kinds.push('fly');
       if ((ch.crit || 0) > 0) kinds.push('crit');
@@ -155,9 +156,9 @@
         return def.label;
       }
       const labels = {
-        burn: '灼烧', bleed: '流血', poison: '中毒', freeze: '冷冻', iceSeal: '冰封',
+        burn: '灼伤', bleed: '流血', poison: '中毒', freeze: '冷冻', iceSeal: '冰封',
         blind: '致盲', bomb: '定时炸弹', hypothermia: '失温', hypnosis: '催眠', sleep: '沉睡',
-        thorns: '荆棘', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛',
+        thorns: '荆棘', sandblind: '沙盲', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛',
         parasite: '寄生', diving: '潜水',
         chaos_red: '混沌·红', chaos_yellow: '混沌·黄', chaos_blue: '混沌·蓝', chaos_green: '混沌·绿'
       };
@@ -185,6 +186,10 @@
           from.sleep = false; to.sleep = true; break;
         case 'thorns':
           from.thorns = 0; to.thorns = 1; break;
+        case 'sandblind':
+          from.sandblind = Math.max(0, (from.sandblind || 0) - 1);
+          to.sandblind = Math.min(6, (to.sandblind || 0) + 1);
+          break;
         case 'guard':
           from.guard--; to.guard = Math.min(5, (to.guard || 0) + 1);
           this.emit('buff', '+1[守护]', null, { who: wTo, kind: 'guard', stacks: to.guard });

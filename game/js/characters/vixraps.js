@@ -35,7 +35,7 @@
         const currentBurn = t.burn || 0;
         if (currentBurn > 0) {
           t.burn = Math.min(5, currentBurn * 2);
-          eng.emit('buff', `灼烧翻倍至${t.burn}层`, null, { who: owner === 'player' ? 'ai' : 'player', kind: 'burn', stacks: t.burn });
+          eng.emit('buff', `灼伤翻倍至${t.burn}层`, null, { who: owner === 'player' ? 'ai' : 'player', kind: 'burn', stacks: t.burn });
         }
       }
       if (v === 6) {
@@ -54,7 +54,7 @@
         d = (t.burn || 0) * 2;
       }
       if (v === 0) {
-        // 对目标施加催眠，对所有对手施加2层灼烧，然后所有对手连续结算两次灼伤伤害
+        // 对目标施加催眠，对所有对手施加2层灼伤，然后所有对手连续结算两次灼伤伤害
         if (typeof eng.applyHypnosis === 'function') eng.applyHypnosis(t);
         const targetKeys = typeof eng._enemyKeys === 'function'
           ? eng._enemyKeys(owner)

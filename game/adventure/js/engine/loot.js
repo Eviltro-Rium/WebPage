@@ -61,6 +61,11 @@
       Object.freeze({ threshold: 1, drops: Object.freeze(['PiercingTrophy']) }),
       Object.freeze({ threshold: 2, drops: Object.freeze(['HypothermiaTrophy']) })
     ]) }),
+    FrozenOrca: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 3, drops: Object.freeze(['DivingTrophy']) }),
+      Object.freeze({ threshold: 5, drops: Object.freeze(['PiercingTrophy']) }),
+      Object.freeze({ threshold: 6, drops: Object.freeze(['HypothermiaTrophy']) })
+    ]) }),
     FrozenOceanSnowyOwl: Object.freeze({ threshold: 2, drops: Object.freeze(['FlyTrophy']) }),
     FrozenOceanSamoyed: Object.freeze({ threshold: 2, drops: Object.freeze(['SmallPotionTrophy']) })
   });

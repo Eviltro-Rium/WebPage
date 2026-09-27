@@ -329,21 +329,21 @@ attackPoison(card) {
 - 上限：2 层；层数不自然衰减（需净化移除）
 - 标签：`kind='poison'`
 
-### 灼烧（Burn）
+### 灼伤（Burn）
 
-灼烧不由怪物方法直接施加，由配饰「火焰之拳」触发：
+灼伤不由怪物方法直接施加，由配饰「火焰之拳」触发：
 
 ```javascript
 // adventure/js/battle/battle_engine.js
 _tryFlameFistOnDefend(skip) {
-  // 玩家防御时，对攻击方施加灼烧
+  // 玩家防御时，对攻击方施加灼伤
   this.burn(attacker, stacks); // stacks = 1
 }
 ```
 
-- 结算：攻击方（持有灼烧者）**回合结束后**受 `层数 × 1🗡️`，然后层数 -1
+- 结算：攻击方（持有灼伤者）**回合结束后**受 `层数 × 1🗡️`，然后层数 -1
 - 上限：5 层
-- Leon 免疫灼烧
+- Leon 免疫灼伤
 
 ---
 
@@ -386,7 +386,7 @@ defendCounter(card, incoming, defender, opponent, eng) {
 
 ---
 
-## 八、汇总对照表
+## 九、汇总对照表
 
 | 伤害类型 | 方法 | 可防御 | 可被格挡 | 可被守护/飞翔减免 | 其他 |
 |----------|------|--------|----------|-------------------|------|
@@ -397,12 +397,12 @@ defendCounter(card, incoming, defender, opponent, eng) {
 | 自伤 | `attackSelfHurt` | ❌ | ❌ | ❌ | 不经过防御系统；bridge 调用 `hurt(attacker, n)` |
 | 流血 DoT | `attackBleed` / `defendBleed` | ❌ | ❌ | ❌ | 攻击方回合结束结算 |
 | 中毒 DoT | `attackPoison` | ❌ | ❌ | ❌ | 回合开始结算 |
-| 灼烧 DoT | 火焰之拳配饰 | ❌ | ❌ | ❌ | 攻击方回合结束结算 |
+| 灼伤 DoT | 火焰之拳配饰 | ❌ | ❌ | ❌ | 攻击方回合结束结算 |
 | 反击 | `defendCounter` | ❌（直接命中） | — | ✅（守护减免） | 不经过玩家防御；bridge 调用 `hurt(opponent, n)` |
 
 ---
 
-## 九、实现文件索引
+## 十、实现文件索引
 
 | 内容 | 文件 |
 |------|------|
@@ -410,5 +410,5 @@ defendCounter(card, incoming, defender, opponent, eng) {
 | 攻击结算引擎 | `adventure/js/battle/battle_engine.js` → `settleAIAttack()` |
 | 通用战斗引擎 | `game/js/combat/engine.js` → `performAttack()` / `dealAttackHit()` / `hurt()` |
 | 攻击修正（含吸血结算） | `game/js/combat/engine.js` → `gateAdventureAttackMod()` |
-| DoT 结算（[流血]/中毒/灼烧） | `game/js/combat/engine.js` / `adventure/js/battle/battle_engine.js` |
+| DoT 结算（[流血]/中毒/灼伤） | `game/js/combat/engine.js` / `adventure/js/battle/battle_engine.js` |
 | 防御结算 | `adventure/js/content/monster_registry.js` → `defend()` 分支 |

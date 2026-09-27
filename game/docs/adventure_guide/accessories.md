@@ -2,7 +2,7 @@
 
 配饰获得后**永久生效**，不占 6 格道具槽；多数配饰**不会消耗**（`复活十字` 触发后会损坏消失）。在地图侧栏与对战界面均可查看已持有的配饰列表。
 
-Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
+Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Emoji 说明
 
@@ -188,8 +188,8 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](./buff_guide.md)。
 
 ## 相关文件
 
-定义：`game/adventure/js/items/item_defs.js`  
-持有与兽元上限：`adventure/js/engine/inventory.js` / `rewards.js`  
-对战触发：`adventure/js/battle/battle_engine.js`  
+定义：`game/adventure/js/items/item_defs.js`
+持有与兽元上限：`adventure/js/engine/inventory.js` / `rewards.js`
+对战触发：`adventure/js/battle/battle_engine.js`
 
 一次性道具图鉴见 [consumables.md](./consumables.md)。

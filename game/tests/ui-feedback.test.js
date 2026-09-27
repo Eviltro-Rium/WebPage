@@ -77,18 +77,18 @@ test('status damage keeps its semantic floating text', async () => {
 test('burn settle float uses red HP loss heart marker', async () => {
   const { ui, floating } = feedbackHarness();
 
-  await ui._playEvents([{ type: 'burnSettle', desc: '-3[灼烧]，-1[灼烧层数]', who: 'player', amount: 3 }], true);
+  await ui._playEvents([{ type: 'burnSettle', desc: '-3[灼伤]，-1[灼伤层数]', who: 'player', amount: 3 }], true);
 
-  assert.deepEqual(floating, [['-3❤️[灼烧]，-1[灼烧层数]', '#ff8800', 'player']]);
+  assert.deepEqual(floating, [['-3❤️[灼伤]，-1[灼伤层数]', '#ff8800', 'player']]);
 });
 
 test('parseSegments colors -n❤️ red while keeping status tag color', () => {
-  const segs = JSON.parse(JSON.stringify(context.parseSegments('-3❤️[灼烧]，-1[灼烧层数]', '#ff8800')));
+  const segs = JSON.parse(JSON.stringify(context.parseSegments('-3❤️[灼伤]，-1[灼伤层数]', '#ff8800')));
   assert.deepEqual(segs, [
     { text: '-3❤️', color: '#ff4444' },
-    { text: '[灼烧]', color: '#fdba74' },
+    { text: '[灼伤]', color: '#fdba74' },
     { text: '，-1', color: '#ff8800' },
-    { text: '[灼烧层数]', color: '#fdba74' }
+    { text: '[灼伤层数]', color: '#fdba74' }
   ]);
 });
 

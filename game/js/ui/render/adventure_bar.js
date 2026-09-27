@@ -398,7 +398,7 @@
                 const oppKey = s.attackTarget || (s.activeAttacker === 'ai2' ? 'ai2' : 'ai');
                 const opponent = s[oppKey] && s[oppKey].alive ? s[oppKey] : (s.ai && s.ai.alive ? s.ai : null);
                 const hasBuff = ch => ch && ((ch.burn || 0) > 0 || (ch.bleed || 0) > 0 ||
-                    (ch.poison || 0) > 0 || (ch.thorns || 0) > 0 || (ch.blind || 0) > 0 || (ch.iceSeal || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.lush || 0) > 0 || (ch.parasite || 0) > 0 || (ch.crit || 0) > 0);
+                    (ch.poison || 0) > 0 || (ch.thorns || 0) > 0 || (ch.sandblind || 0) > 0 || (ch.blind || 0) > 0 || (ch.iceSeal || 0) > 0 || (ch.bomb || 0) > 0 || ch.frozen || (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.lush || 0) > 0 || (ch.parasite || 0) > 0 || (ch.crit || 0) > 0);
                 if (!hasBuff(player) && !hasBuff(opponent)) return;
                 this.dialogs.collectPurifyChoices(player, def.purifyCount || 1, choices => {
                     if (!choices.length) return;
@@ -416,7 +416,7 @@
                     if (registry) return registry.list(ch, def => !!def.transferable).length > 0;
                     return (ch.burn || 0) > 0 || (ch.bleed || 0) > 0 || (ch.poison || 0) > 0 ||
                         ch.frozen || (ch.blind || 0) > 0 || (ch.bomb || 0) > 0 || (ch.iceSeal || 0) > 0 ||
-                        (ch.hypothermia || 0) > 0 || ch.hypnosis || ch.sleep || (ch.thorns || 0) > 0 ||
+                        (ch.hypothermia || 0) > 0 || ch.hypnosis || ch.sleep || (ch.thorns || 0) > 0 || (ch.sandblind || 0) > 0 ||
                         (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0 ||
                         (ch.lush || 0) > 0 || (ch.parasite || 0) > 0 || ch.diving ||
                         ch.chaos_red || ch.chaos_yellow || ch.chaos_blue || ch.chaos_green;
