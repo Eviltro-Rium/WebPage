@@ -189,6 +189,7 @@
       let kind=this.itemKind(c);
       this.emit('itemEffect',this.itemEffectDesc(c,key),c,{effect:kind,who:key});
       this.useItem1v2(c,ch,this.s.player,key);
+      this._grantChaosOnItemPlay(key,c);
       if(c.isBlack&&this.name(ch)==='Vixraps')this._beginVixrapsPassive(key,c,key==='ai2'?'AI2_TURN':'AI_TURN');
       this.s.pendingAIBridge={mode:'attack',afterEventId:this.ver,effect:kind,owner:key};
       return this.check()
@@ -242,6 +243,7 @@
       let kind=this.itemKind(c);
       this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:kind,who:'player',target});
       if(window.CardEffects.isTrophyWhite(c))this.useTrophyWhite(c,targetChar,'player');else this.useItem1v2(c,this.s.player,targetChar,'player');
+      this._grantChaosOnItemPlay('player',c);
       const vixrapsPassive=c.isBlack&&this.name(this.s.player)==='Vixraps'
         ? this._beginVixrapsPassive('player',c,'PLAYER_PLAY') : false;
       if(!this.s.pendingDialog&&!vixrapsPassive)this._tickBomb('player');
@@ -330,6 +332,7 @@
         let kind=this.itemKind(c);
         this.emit('itemEffect',this.itemEffectDesc(c,key),c,{effect:kind,who:key});
         this.useItem1v2(c,ch,this.s.player,key);
+        this._grantChaosOnItemPlay(key,c);
         if(c.isBlack&&this.name(ch)==='Vixraps')this._beginVixrapsPassive(key,c,key==='ai2'?'AI2_TURN':'AI_TURN');
         this.s.pendingAIBridge={mode:'defense',afterEventId:this.ver,attackCard:cp(atk),damage:d,owner:key};
         
@@ -408,6 +411,7 @@
         this.emit('defend',bridgeLabel+'牌指定'+this.colorName(c.chosenColor||c.color)+'并搭桥，请继续选择防御牌',c);
         this.emit('itemEffect',this.itemEffectDesc(c,'player'),c,{effect:this.itemKind(c),who:'player',target});
         if(window.CardEffects.isTrophyWhite(c))this.useTrophyWhite(c,targetChar,'player');else this.useItem1v2(c,this.s.player,targetChar,'player');
+        this._grantChaosOnItemPlay('player',c);
         const vixrapsPassive=c.isBlack&&this.name(this.s.player)==='Vixraps'
           ? this._beginVixrapsPassive('player',c,'PLAYER_DEFEND') : false;
         if(!this.s.pendingDialog&&!vixrapsPassive)this._tickBomb('player');

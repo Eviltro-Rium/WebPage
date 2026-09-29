@@ -30,10 +30,10 @@
     { key: 'lush', name: '茂盛', type: '正面状态', icon: 'icons/buff_icons/lush.webp', desc: '堆叠上限：2\n维持效果：持续\n每有1层，在自己进攻开始前恢复1点生命；可被净化移除。' },
     { key: 'parasite', name: '寄生', type: '正面状态', icon: 'icons/buff_icons/parasite.webp', desc: '堆叠上限：1\n维持效果：持续\n在自己进攻开始前，吸取对手1点生命（不可用守护/飞翔/道具减免）；可被净化移除。' },
     { key: 'crit', name: '暴击', type: '正面状态', icon: 'icons/buff_icons/crit.webp', desc: '堆叠上限：3\n维持效果：持续\n进攻时若伤害超过4点（防御前，不含流血；含攻击修正后），可在攻击修正/破防选择之后消耗1层，使该攻击变为不可防御；若攻击本身已不可防御则不能再使用。可被净化移除。' },
-    { key: 'chaos_red', name: '混沌·红', type: '正面状态', icon: 'icons/buff_icons/chaos_red.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出红色数字牌并完成防御后获得，进攻回合开始前清除。' },
-    { key: 'chaos_yellow', name: '混沌·黄', type: '正面状态', icon: 'icons/buff_icons/chaos_yellow.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出黄色数字牌并完成防御后获得，进攻回合开始前清除。' },
-    { key: 'chaos_blue', name: '混沌·蓝', type: '正面状态', icon: 'icons/buff_icons/chaos_blue.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出蓝色数字牌并完成防御后获得，进攻回合开始前清除。' },
-    { key: 'chaos_green', name: '混沌·绿', type: '正面状态', icon: 'icons/buff_icons/chaos_green.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出绿色数字牌并完成防御后获得，进攻回合开始前清除。' },
+    { key: 'chaos_red', name: '混沌·红', type: '正面状态', icon: 'icons/buff_icons/chaos_red.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出红色数字牌/指定为红的黑白牌，或指定为红的白色道具牌后获得，进攻回合开始前清除。' },
+    { key: 'chaos_yellow', name: '混沌·黄', type: '正面状态', icon: 'icons/buff_icons/chaos_yellow.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出黄色数字牌/指定为黄的黑白牌，或指定为黄的白色道具牌后获得，进攻回合开始前清除。' },
+    { key: 'chaos_blue', name: '混沌·蓝', type: '正面状态', icon: 'icons/buff_icons/chaos_blue.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出蓝色数字牌/指定为蓝的黑白牌，或指定为蓝的白色道具牌后获得，进攻回合开始前清除。' },
+    { key: 'chaos_green', name: '混沌·绿', type: '正面状态', icon: 'icons/buff_icons/chaos_green.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出绿色数字牌/指定为绿的黑白牌，或指定为绿的白色道具牌后获得，进攻回合开始前清除。' },
     { key: 'diving', name: '潜水', type: '正面状态', icon: 'icons/buff_icons/diving.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有潜水的角色免疫蓝色攻击（含被指定为蓝色的白牌）造成的伤害和buff施加。对手依旧可以对自己施加正面增益。冰封、诅咒等仍能命中。' },
     { key: 'hypothermia', name: '失温', type: '负面状态', icon: 'icons/buff_icons/hypothermia.webp', desc: '堆叠上限：2\n维持效果：衰减\n当失温达到2层时，立即强制弃1张牌（玩家自选，NPC按最低优先级弃牌），随后失温削减1层。' },
     { key: 'bind', name: '捆缚', type: '印记', icon: 'icons/items_icons/binding.webp', desc: '堆叠上限：1\n维持效果：规则结束\n捆缚印记不能被净化或超级净化清除；目标在本回合结束后跳过自己的进攻阶段，由当前回合角色再发动一次进攻，额外进攻完成后按规则移除。' },
@@ -53,7 +53,7 @@
     { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼伤时1至7牌攻击伤害+1', avatar: 'avatars/Blaze.webp', color: '#e67e22' },
     { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；低于30生命获得嗜血印记，印记永久且不可净化；未获得印记时恢复+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
     { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
-    { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
+    { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出数字牌或白色道具牌获得对应颜色混沌（含指定颜色）', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
     { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层[暴击]使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
     { name: 'Vixraps', hp: 85, type: '灼热', passive: '打出黑牌后弃1张牌，恢复2点生命并施加1层灼伤', avatar: 'avatars/Vixraps.webp', color: '#c0392b' }
   ];

@@ -4,7 +4,7 @@
     name: 'Knight',
     hp: 80,
     type: '混沌',
-    passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌',
+    passive: '进攻前清除混沌；打出数字牌或白色道具牌获得对应颜色混沌（含指定颜色）',
     init() { return { chaos_red: false, chaos_yellow: false, chaos_blue: false, chaos_green: false }; },
     turnStart(eng, ch, w) {
       const had = !!(ch.chaos_red || ch.chaos_yellow || ch.chaos_blue || ch.chaos_green);

@@ -586,7 +586,7 @@ class GameUI {
                 { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼伤时1至7牌攻击伤害+1' },
                 { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；低于30生命获得嗜血印记，印记永久且不可净化；未获得印记时恢复+1' },
                 { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害' },
-                { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出基础颜色数字牌获得对应混沌' },
+                { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出数字牌或白色道具牌获得对应颜色混沌（含指定颜色）' },
                 { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层[暴击]使攻击不可防御' },
             ];
         }
