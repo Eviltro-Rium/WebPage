@@ -4,16 +4,16 @@
  * Optimized for low latency:
  * - Adaptive request timeout based on recent RTT
  * - Exponential backoff with jitter for retries
- * - Predictive resend for high-latency connections
+ * - Single in-flight command and idempotent retries
  */
 (function (global) {
     const Base = global.CombatSession || class {};
     const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
-    const PROTOCOL_VERSION = 3;  // Bump version to indicate optimizations
-    const BASE_REQUEST_TIMEOUT = 6000;   // Reduced from 12000ms
-    const MIN_REQUEST_TIMEOUT = 2000;   // Minimum timeout for local connections
-    const BASE_RETRY_DELAY = 800;        // Reduced from 1800ms
-    const MIN_RETRY_DELAY = 200;         // Minimum retry delay
+    const PROTOCOL_VERSION = 2;  // Must match OnlineMatchHost.
+    const BASE_REQUEST_TIMEOUT = 12000;
+    const MIN_REQUEST_TIMEOUT = 6000;   // Allow transient browser/network stalls.
+    const BASE_RETRY_DELAY = 1800;
+    const MIN_RETRY_DELAY = 800;         // Minimum retry delay
     const resultWithState = (outcome, state) => {
         const snapshot = clone(state || (outcome && outcome.state) || null) || {};
         return Object.assign({}, snapshot, outcome || {}, { state: snapshot });
@@ -28,7 +28,7 @@
             this.state = clone(state || (match && match.project('host')));
             this.onStateChange = typeof onStateChange === 'function' ? onStateChange : null;
             this._requestId = 0;
-            this._pendingBroadcast = null;
+            this._pendingBroadcast = [];
             this._broadcastRetryTimer = null;
         }
 
@@ -49,29 +49,20 @@
                 events,
                 winner: outcome.winner || null
             };
-            if (this.peer.send(packet) !== false) {
-                this._pendingBroadcast = null;
-                if (this._broadcastRetryTimer) clearTimeout(this._broadcastRetryTimer);
-                this._broadcastRetryTimer = null;
-            } else {
-                // Keep only the newest authoritative snapshot. A retry is
-                // safe because requestId/stateVersion make duplicate packets
-                // idempotent on the guest.
-                this._pendingBroadcast = packet;
-                if (!this._broadcastRetryTimer) {
-                    this._broadcastRetryTimer = setTimeout(() => {
-                        this._broadcastRetryTimer = null;
-                        const pending = this._pendingBroadcast;
-                        this._pendingBroadcast = null;
-                        if (pending && this.peer && this.peer.send(pending) === false) {
-                            this._pendingBroadcast = pending;
-                            this._broadcastRetryTimer = setTimeout(() => {
-                                this._broadcastRetryTimer = null;
-                                this._broadcast(outcome, requestId, source);
-                            }, 350);
-                        }
-                    }, 120);
+            this._pendingBroadcast.push(packet);
+            this._flushBroadcasts();
+        }
+
+        _flushBroadcasts() {
+            if (this._broadcastRetryTimer) clearTimeout(this._broadcastRetryTimer);
+            this._broadcastRetryTimer = null;
+            while (this._pendingBroadcast.length) {
+                // Retry the original packet: never pair old events with a new version.
+                if (!this.peer || this.peer.send(this._pendingBroadcast[0]) === false) {
+                    this._broadcastRetryTimer = setTimeout(() => this._flushBroadcasts(), 250);
+                    return;
                 }
+                this._pendingBroadcast.shift();
             }
         }
 
@@ -153,7 +144,7 @@
         close() {
             if (this._broadcastRetryTimer) clearTimeout(this._broadcastRetryTimer);
             this._broadcastRetryTimer = null;
-            this._pendingBroadcast = null;
+            this._pendingBroadcast = [];
         }
     }
 
@@ -213,7 +204,7 @@
                     if (this._pending.has(requestId)) {
                         // Exponential backoff with jitter for retries
                         const jitter = Math.random() * adaptiveRetryDelay * 0.3;
-                        pending.retryTimer = setTimeout(retry, adaptiveRetryDelay + jitter);
+                        pending.retryTimer = setTimeout(retry, Math.min(4000, adaptiveRetryDelay * Math.pow(2, pending.attempts)) + jitter);
                     }
                 };
                 
@@ -267,7 +258,10 @@
             const incomingVersion = Number(message.stateVersion != null
                 ? message.stateVersion
                 : (message.guestState && message.guestState.stateVersion));
-            if (Number.isFinite(incomingVersion) && incomingVersion < this._stateVersion) return;
+            if (Number.isFinite(incomingVersion) && incomingVersion < this._stateVersion) {
+                this._resolve(message.requestId, resultWithState({ ok: true, events: [] }, this.state));
+                return;
+            }
             const state = message.guestState || message.state;
             if (state) {
                 this.state = clone(state);
@@ -283,7 +277,10 @@
             if (!message || Number(message.protocolVersion) !== this._protocolVersion) return;
             if (this._matchId && message.matchId !== this._matchId) return;
             const errorVersion = Number(message && message.stateVersion);
-            if (Number.isFinite(errorVersion) && errorVersion < this._stateVersion) return;
+            if (Number.isFinite(errorVersion) && errorVersion < this._stateVersion) {
+                this._resolve(message.requestId, resultWithState({ ok: false, error: message.error || '操作未执行', events: [] }, this.state));
+                return;
+            }
             const errorState = message && (message.guestState || message.state) || this.state;
             const result = resultWithState({ ok: false, error: message && message.error || '操作未执行', events: [] }, clone(errorState));
             if (result.state) {

@@ -153,3 +153,23 @@
 以上修复仍需按第 8 节的双浏览器、移动网络和强制 relay 场景验收；本地自动化通过不等于生产网络已验证。
 
 关联：[联机风险审查](bug_risk_review.md)、[功能清单](function_list.md)。本分析只列当前源码可确认的行为和待验证风险，不代表真实双端性能测试已完成。
+
+
+## 11. 2026-09-29 P2P stability fixes
+
+This pass fixes transport/session code without changing game rules or adding TURN.
+
+- Create exactly one reliable ordered DataChannel. The previous dual-channel setup closed the reliable channel while attaching the fast channel, and created another untracked reliable channel.
+- Keep legacy fast-channel lifecycle separate. Only the reliable channel announces readiness. Reset/close retires optional fast channels as well.
+- Send JSON text. The former binary encoder only encoded JSON as UTF-8; it did not compress snapshots. Set binaryType to arraybuffer for compatibility with older peers.
+- Configure bufferedAmountLowThreshold and drain the queue immediately on low-water notification. A 50 ms fallback timer replaces the previous 120 ms polling delay. New queued packets cannot overtake older queued packets.
+- Retry commands with the same request ID, using exponential backoff (800 ms minimum, capped interval around 4 seconds). Keep a 6–12 second response window instead of failing after only 2 seconds on an unmeasured connection. This changes failure/retry behavior, not normal response latency.
+- Late command acknowledgements release pending actions without rolling back a newer state or replaying old events.
+- Host broadcast retries preserve complete original packets in FIFO order. Never reconstruct an old event batch using the latest match version.
+- Align the session fallback protocol version with OnlineMatchHost (2). Bump frontend asset query versions to avoid stale cached transport code.
+
+Validation: 7 dedicated transport/session tests pass; signaling tests 2/2 pass; existing online-match tests 39/41 pass (baseline 37/41). The two remaining baseline failures are the tooltip DOM mock missing remove(), and a hard-coded outdated release-badge query version. Load-order verification also reports a pre-existing adventure map/panel manifest mismatch; the online entry graph passes. No production two-device/mobile-network latency measurements have been performed. No numerical latency reduction is claimed.
+
+Run: node --test game/tests/online-transport.test.js game/tests/online-match.test.js game/tests/signaling-room.test.js
+
+Deployment: publish updated static assets; no signaling Worker change is required. Reload both participants before starting a new match. Verify direct P2P, relay fallback, fast alternating actions, refresh/reconnect and temporary network loss on two devices.

@@ -86,6 +86,7 @@ const stableTests = [
   'engine-modules.test.js',
   'runtime-invariants.test.js',
   'online-match.test.js',
+  'online-transport.test.js',
   'signaling-room.test.js'
 ].map(file => path.join(gameRoot, 'tests', file));
 const tests = allTests

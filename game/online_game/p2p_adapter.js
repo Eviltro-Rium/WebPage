@@ -6,8 +6,8 @@
  *
  * Optimized for low latency:
  * - Multiple STUN servers for better NAT traversal
- * - Unreliable unordered channel for non-critical updates
- * - Binary MessagePack encoding for reduced payload size
+ * - One reliable ordered channel for authoritative traffic
+ * - JSON text encoding for browser interoperability
  * - Trickle ICE for faster connection establishment
  * - Adaptive backpressure with priority queues
  */
@@ -31,26 +31,8 @@
         bundlePolicy: 'max-bundle'
     });
 
-    // MessagePack-like binary encoding for lower latency
-    // Uses a simple fixed-width format + delta encoding
+    // Receive-only compatibility with earlier clients' binary JSON packets.
     const _msgpack = {
-        encode(obj) {
-            if (obj == null) return new Uint8Array([0xC0]); // null
-            if (typeof obj === 'boolean') return new Uint8Array([obj ? 0xC3 : 0xC2]);
-            if (typeof obj === 'number') {
-                if (Number.isInteger(obj) && obj >= 0 && obj <= 0xFFFFFFFF) {
-                    const buf = new ArrayBuffer(5);
-                    new DataView(buf).setUint8(0, 0xCF); // uint64
-                    new DataView(buf).setUint32(1, obj, false);
-                    return new Uint8Array(buf);
-                }
-            }
-            // Fallback to JSON for complex objects
-            const json = JSON.stringify(obj);
-            const encoder = new TextEncoder();
-            return encoder.encode(json);
-        },
-        
         decode(buf) {
             if (!buf || buf.length === 0) return null;
             const first = buf[0];
@@ -261,6 +243,10 @@
         }
 
         _resetConnection() {
+            const fast = this._fastChannel;
+            this._fastChannel = null;
+            this._fastQueue = [];
+            try { if (fast) fast.close(); } catch (_) {}
             const channel = this.channel, pc = this.pc;
             this.channel = this.pc = null;
             this.pendingIce = [];
@@ -320,16 +306,19 @@
         }
 
         _attachChannel(channel, channelType = 'default') {
-            if (this.channel && this.channel !== channel) {
-                this._expectedChannelCloses.add(this.channel);
-                try { this.channel.close(); } catch (_) {}
-            }
-            
             const targetChannel = channelType === 'fast' ? '_fastChannel' : 'channel';
+            const previous = this[targetChannel];
+            if (previous && previous !== channel) {
+                this._expectedChannelCloses.add(previous);
+                try { previous.close(); } catch (_) {}
+            }
             this[targetChannel] = channel;
+            channel.binaryType = 'arraybuffer';
+            channel.bufferedAmountLowThreshold = 32768;
             
             channel.addEventListener('open', () => {
                 if (this[targetChannel] !== channel || this.closed) return;
+                if (channelType === 'fast') { this._flushFastQueue(); return; }
                 // Upgrade relay sessions as soon as the reliable ordered
                 // channel opens. Late relay packets are accepted above but
                 // no longer force future sends back through the Worker.
@@ -352,6 +341,7 @@
                 if (this[targetChannel] !== channel || this.closed || this._expectedChannelCloses.has(channel)) return;
                 if (channelType === 'fast') this._fastChannel = null;
                 else this.channel = null;
+                if (channelType === 'fast') return;
                 this.emit('channelClose');
                 if (this.dataQueue.length && this.ws && this.ws.readyState === WebSocket.OPEN) this._flushDataQueue();
             });
@@ -428,20 +418,9 @@
             if (!pc) return;
             this._offerStarted = true;
             try {
-                // Create dual channels for priority-based delivery:
-                // 1. Reliable ordered channel for game state sync
-                // 2. Unreliable unordered channel for real-time updates (input, positions)
-                const reliableChannel = pc.createDataChannel('game-reliable', { ordered: true });
-                const unreliableChannel = pc.createDataChannel('game-fast', { ordered: false, maxRetransmits: 0 });
-                
-                this._attachChannel(reliableChannel, 'reliable');
-                this._fastChannel = unreliableChannel;
-                this._attachChannel(unreliableChannel, 'fast');
-                
-                // Use BUNDLE to combine both channels efficiently
-                // Disable unnecessary ICE gathering for faster connection
-                pc.createDataChannel('game-reliable', { ordered: true });
-                
+                // All authoritative traffic uses one reliable, ordered channel.
+                this._attachChannel(pc.createDataChannel('game-reliable', { ordered: true }), 'reliable');
+
                 const offer = await pc.createOffer({});
                 if (this.pc !== pc || this.closed) return;
                 await pc.setLocalDescription(offer);
@@ -482,45 +461,6 @@
             } catch (error) { if (this.pc === pc && !this.closed) this.emit('error', error); }
         }
         
-        // Update the connection state handler to handle fast channel
-        _setupConnectionHandlers(pc) {
-            pc.addEventListener('icecandidate', event => {
-                if (this.pc !== pc) return;
-                if (event.candidate) {
-                    const candidate = event.candidate.toJSON ? event.candidate.toJSON() : {
-                        candidate: event.candidate.candidate,
-                        sdpMid: event.candidate.sdpMid,
-                        sdpMLineIndex: event.candidate.sdpMLineIndex,
-                        usernameFragment: event.candidate.usernameFragment
-                    };
-                    this._sendSignal({ type: 'signal', signal: { type: 'ice', candidate } });
-                }
-            });
-            pc.addEventListener('connectionstatechange', () => {
-                if (this.pc !== pc) return;
-                this.emit('connectionState', pc.connectionState);
-                if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
-                    if (this._suppressPeerDisconnect) {
-                        this._suppressPeerDisconnect = false;
-                        return;
-                    }
-                    this.emit('peerDisconnected', pc.connectionState);
-                }
-            });
-            pc.addEventListener('datachannel', event => {
-                if (this.pc !== pc && !this.closed) {
-                    // Determine channel type by label
-                    const label = event.channel && event.channel.label || '';
-                    if (label === 'game-fast') {
-                        this._fastChannel = event.channel;
-                        this._attachChannel(event.channel, 'fast');
-                    } else if (label === 'game-reliable' || label === 'game') {
-                        this._attachChannel(event.channel, 'reliable');
-                    }
-                }
-            });
-        }
-
         _description(value) {
             if (!value) return value;
             return { type: value.type, sdp: value.sdp };
@@ -533,14 +473,18 @@
         }
 
         send(payload) {
-            // Determine message priority based on payload type
-            const priority = this._getMessagePriority(payload);
-            
-            // High priority/fast path: use unreliable channel for real-time updates
-            if (priority === 'fast') {
-                return this.sendFast(payload);
+            if (this.closed) return false;
+            // New packets must not overtake packets already waiting for buffer space.
+            if (this.dataQueue.length) {
+                if (this.dataQueue.length >= 64) {
+                    this.metrics.dropped += 1;
+                    return false;
+                }
+                this.dataQueue.push(payload);
+                this.metrics.queued += 1;
+                this._flushDataQueue();
+                return true;
             }
-            
             // Reliable ordered path for state-critical messages
             if (this.transportMode !== 'relay' && this.channel && this.channel.readyState === 'open') {
                 if (this.transportMode !== 'p2p') {
@@ -548,21 +492,9 @@
                     this.emit('transportMode', 'p2p');
                 }
                 
-                // Try binary encoding for smaller payload
-                let encoded;
-                if (typeof payload === 'object' && payload !== null) {
-                    // Only use binary for simple state updates
-                    if (payload.kind === 'state' || payload.kind === 'command') {
-                        encoded = _msgpack.encode(payload);
-                    } else {
-                        encoded = JSON.stringify(payload);
-                    }
-                } else {
-                    encoded = JSON.stringify(payload);
-                }
-                
-                // Check buffer with lower threshold for faster response
-                const bufferLimit = encoded instanceof Uint8Array ? 32768 : 262144;
+                // JSON text avoids Blob/ArrayBuffer differences across browsers.
+                const encoded = JSON.stringify(payload);
+                const bufferLimit = 131072;
                 const currentBuffered = Number.isFinite(Number(this.channel.bufferedAmount)) 
                     ? Number(this.channel.bufferedAmount) : 0;
                     
@@ -612,31 +544,12 @@
             return false;
         }
         
-        _getMessagePriority(payload) {
-            // Mark high-frequency real-time updates for fast channel
-            if (!payload || typeof payload !== 'object') return 'normal';
-            
-            const fastTypes = ['input', 'cursor', 'position', 'animation', 'tick'];
-            const kind = payload.kind || payload.type || '';
-            
-            if (fastTypes.some(t => kind.toLowerCase().includes(t))) {
-                return 'fast';
-            }
-            
-            // Command acknowledgments and state snapshots are reliable-ordered
-            if (kind === 'state' || kind === 'commandAck' || kind === 'error') {
-                return 'normal';
-            }
-            
-            return 'normal';
-        }
-
         _scheduleDataFlush() {
-            if (this._dataFlushTimer) return;
+            if (this.closed || this._dataFlushTimer) return;
             this._dataFlushTimer = setTimeout(() => {
                 this._dataFlushTimer = null;
                 this._flushDataQueue();
-            }, 120);
+            }, 50);
         }
 
         _flushDataQueue() {
@@ -689,6 +602,10 @@
         close(options = {}) {
             const notify = options.notify !== false;
             this.closed = true;
+            const fast = this._fastChannel;
+            this._fastChannel = null;
+            this._fastQueue = [];
+            try { if (fast) fast.close(); } catch (_) {}
             if (this.channel) this._expectedChannelCloses.add(this.channel);
             try { if (this.channel) this.channel.close(); } catch (_) {}
             try { if (this.pc) this.pc.close(); } catch (_) {}
