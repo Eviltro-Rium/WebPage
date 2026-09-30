@@ -59,6 +59,11 @@
           return { d: 0, skip: false, unblock: false };
         }
 
+        // 白7：轮空，无进攻效果（所有怪物/Boss 通用）
+        if (c && c.isNumberCard && c.value === 7) {
+          return { d: 0, skip: false, unblock: false };
+        }
+
         const attackerKey = a === eng.s.ai2 ? 'ai2' : (a === eng.s.ai ? 'ai' : 'player');
         const buffTotal = (t) =>
           (t.burn || 0) + (t.bleed || 0) + (t.poison || 0) + (t.blind || 0) + (t.iceSeal || 0) +
@@ -100,28 +105,38 @@
         if (typeof mod.attackUnblockable === 'function') {
           unblock = mod.attackUnblockable(c);
         }
+        let aoeTargets = null;
+        let aoeDamage = 0;
+        let hypothermiaTarget = null;
+        let hypothermiaAmount = 0;
         if (isFrozenWhale && typeof mod.attackAoEOtherChars === 'function') {
           const aoeDmg = mod.attackAoEOtherChars(c);
           if (aoeDmg > 0) {
             // AOE deferred to settleAIAttack; only fire when there are OTHER characters to hit.
             // In 1v1 adventure, FrozenWhale is the only enemy → no one else to AOE.
-            if (eng.s && eng.s.pendingAttack) {
-              const atkKey = a === eng.s.player ? 'player' : (a === eng.s.ai2 ? 'ai2' : 'ai');
-              const victims = typeof eng._allKeysExcept === 'function' ? eng._allKeysExcept(atkKey) : [];
-              if (victims.length > 0) {
+            const atkKey = a === eng.s.ai2 ? 'ai2' : (a === eng.s.ai ? 'ai' : 'player');
+            const victims = typeof eng._allKeysExcept === 'function' ? eng._allKeysExcept(atkKey) : [];
+            if (victims.length > 0) {
+              aoeTargets = victims;
+              aoeDamage = aoeDmg;
+              if (eng.s && eng.s.pendingAttack) {
                 eng.s.pendingAttack.aoeTargets = victims;
                 eng.s.pendingAttack.aoeDamage = aoeDmg;
               }
             }
           }
         }
-        // 延迟失温：防御结束后施加给被攻击目标，记录到 pendingAttack（蓝鲸4/5/6、虎鲸1/2/3）
-        if (typeof mod.attackHypothermia === 'function' && eng.s && eng.s.pendingAttack) {
+        // 延迟失温：防御结束后施加给被攻击目标（蓝鲸4/5/6、虎鲸1/2/3）
+        // 同时写回返回值，供 AI 在 effect 之后创建 pendingAttack 时带上字段。
+        if (typeof mod.attackHypothermia === 'function') {
           const hyAmt = mod.attackHypothermia(c);
           if (hyAmt > 0) {
-            const hypothermiaTargetKey = t === eng.s.ai2 ? 'ai2' : (t === eng.s.ai ? 'ai' : 'player');
-            eng.s.pendingAttack.hypothermiaTarget = hypothermiaTargetKey;
-            eng.s.pendingAttack.hypothermiaAmount = hyAmt;
+            hypothermiaTarget = t === eng.s.ai2 ? 'ai2' : (t === eng.s.ai ? 'ai' : 'player');
+            hypothermiaAmount = hyAmt;
+            if (eng.s && eng.s.pendingAttack) {
+              eng.s.pendingAttack.hypothermiaTarget = hypothermiaTarget;
+              eng.s.pendingAttack.hypothermiaAmount = hyAmt;
+            }
           }
         }
         if (typeof mod.attackGuard === 'function') {
@@ -153,6 +168,17 @@
         if (typeof mod.attackBleed === 'function') {
           const b = mod.attackBleed(c);
           if (b > 0 && bleed) bleed(b);
+        }
+        if (typeof mod.attackBurn === 'function') {
+          const burnAmt = Math.max(0, Number(mod.attackBurn(c)) || 0);
+          if (burnAmt > 0) {
+            if (typeof eng.burn === 'function') eng.burn(t, burnAmt, { silent: true });
+            else t.burn = Math.min(5, (t.burn || 0) + burnAmt);
+          }
+        }
+        // 冻洋管虫 4/5/6：施加灼伤后立刻结算一次（配合 immediateBuffs，避免 defer 回滚剩余层数）
+        if (typeof mod.attackBurnSettle === 'function' && mod.attackBurnSettle(c) && (t.burn || 0) > 0) {
+          if (typeof eng.settleBurn === 'function') eng.settleBurn(t);
         }
         if (typeof mod.attackPoison === 'function') {
           const p = mod.attackPoison(c);
@@ -261,7 +287,13 @@
           }
         }
 
-        return { d, skip, unblock, drain, isDrain: drain > 0 };
+        const settleTargetBurn = typeof mod.attackBurnSettle === 'function' && !!mod.attackBurnSettle(c);
+        return {
+          d, skip, unblock, drain, isDrain: drain > 0, aoeTargets, aoeDamage,
+          hypothermiaTarget, hypothermiaAmount,
+          immediateBuffs: settleTargetBurn,
+          settleTargetBurn
+        };
       },
 
       defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
@@ -276,6 +308,11 @@
           }
           if (eng && typeof eng.clearPositiveBuffs === 'function') eng.clearPositiveBuffs(opponent);
           return { remaining: d, desc: '紫魔法防御：恢复' + magicHp + '生命，清除玩家正面buff' };
+        }
+
+        // 白7：轮空，无防御效果（大王花等 canDefendHigh 仍可打出）
+        if (c && c.isNumberCard && c.value === 7) {
+          return { remaining: d, desc: '无防御效果' };
         }
 
         const poisonAmt = typeof mod.defendPoison === 'function' ? (mod.defendPoison(c) || 0) : 0;
@@ -300,7 +337,7 @@
         const suffix = () =>
           (poisonAmt ? '，施加' + poisonAmt + '层中毒' : '') +
           (bleedAmt ? '，施加' + bleedAmt + '层流血' : '') +
-          (hypothermiaAmt ? '，施加' + hypothermiaAmt + '层失温' : '');
+          (hypothermiaAmt ? '，施加' + hypothermiaAmt + '层[失温]' : '');
         if (typeof mod.defendRollImmune === 'function' && mod.defendRollImmune(c, eng, defender, d, owner)) {
           return { remaining: 0, desc: '12面骰判定成功，免疫所有伤害和buff' };
         }
@@ -351,8 +388,20 @@
         };
         const allHealDesc = allHealAmt > 0 ? '，全体友方恢复' + allHealAmt + '点生命' : '';
 
-        const applyAllExtras = () => { applyGuard(); applyAllLush(); applyAllHeal(); };
-        const allExtrasDesc = guardDesc + allLushDesc + allHealDesc;
+        const gainDiving = typeof mod.defendGainDiving === 'function' && !!mod.defendGainDiving(c);
+        const applyDiving = () => {
+          if (!gainDiving || defender.diving) return;
+          if (typeof eng.setDiving === 'function') eng.setDiving(defender, true);
+          else {
+            defender.diving = true;
+            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+            eng.emit('buff', '[潜水]', null, { who, kind: 'diving', stacks: 1 });
+          }
+        };
+        const divingDesc = gainDiving ? '，获得[潜水]' : '';
+
+        const applyAllExtras = () => { applyGuard(); applyAllLush(); applyAllHeal(); applyDiving(); };
+        const allExtrasDesc = guardDesc + allLushDesc + allHealDesc + divingDesc;
 
         if (typeof mod.defendImmune === 'function' && mod.defendImmune(c)) {
           if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c) && clearDebuffs) {
@@ -485,6 +534,8 @@
         if (c && (c.magic || c.magicColor === 'purple')) return 100;
         if (c && (c.greenMagic || c.magicColor === 'green')) return 90;
         if (!c || !c.isNumberCard) return null;
+        // 白7 可防御但对大王花等 canDefendHigh 无实际效果，不优先于有技能的高牌。
+        if (v === 7) return mod.canDefendHigh ? 5 : null;
         if (v > 3 && !mod.canDefendHigh) return null;
         return v * 10 + 30 + (x.lethal ? 50 : 0);
       },
@@ -532,22 +583,26 @@
     }
     if (opts.stage) mod = applyStageMods(mod, opts.stage);
 
+    // 白7：全怪物通用轮空牌
+    if (card.isNumberCard && card.value === 7) {
+      return isDefend ? '无防御效果' : '无进攻效果';
+    }
+
     if (isDefend) {
-    // FrozenOrca: diving + deferred hypothermia on 1/2/3, bleed on 4/5/6,
-    // bleed-scaled damage on 0 (ocean.md).
+    // FrozenOrca defend copy (ocean.md). Attack copy lives in the attack branch below.
     if (mod.name === 'FrozenOrca' && card.isNumberCard) {
       const v = card.value;
-      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v === 7) return '无防御效果';
       if (v >= 1 && v <= 3) {
-        return '造成' + (3 + stageBonus) + '点[伤害]，获得[潜水]，防御结束后施加1层[失温]';
-      }
-      if (v >= 4 && v <= 6) {
-        return '造成' + (5 + stageBonus) + '点[伤害]，施加1层[流血]';
+        return '清除自身所有负面状态，格挡半数伤害（向上取整）';
       }
       if (v === 0) {
-        return '造成' + (2 + stageBonus) + '+玩家[流血]层数×2点[伤害]';
+        const immune = typeof mod.defendImmune === 'function' && mod.defendImmune(card);
+        return immune
+          ? '免疫所有伤害，反击相同点伤害（守护/飞翔结算前），清除自身所有负面状态'
+          : '反击相同点伤害（守护/飞翔结算前），清除自身所有负面状态';
       }
-      return '无进攻效果';
+      return '清除自身所有负面状态';
     }
     let parts = [];
       if (typeof mod.defendImmune === 'function' && mod.defendImmune(card)) {
@@ -568,15 +623,15 @@
       }
       if (typeof mod.defendPoison === 'function') {
         const p = mod.defendPoison(card);
-        if (p > 0) parts.push('施加' + p + '层中毒');
+        if (p > 0) parts.push('施加' + p + '层[中毒]');
       }
       if (typeof mod.defendBleed === 'function') {
         const b = mod.defendBleed(card);
-        if (b > 0) parts.push('施加' + b + '层流血');
+        if (b > 0) parts.push('施加' + b + '层[流血]');
       }
       if (typeof mod.defendHypothermia === 'function') {
         const h = mod.defendHypothermia(card);
-        if (h > 0) parts.push('施加' + h + '层失温');
+        if (h > 0) parts.push('施加' + h + '层[失温]');
       }
       if (typeof mod.defendBlock === 'function') {
         if (mod.name === 'CastleFirefly') {
@@ -598,7 +653,7 @@
             const rem8 = 8 - b8, rem4 = 4 - b4;
             if (rem8 === rem4 && rem8 < 8) parts.push('将伤害降低为' + rem8 + '点');
             else if (b8 === b4) {
-              const capStyle = (mod.name === 'CastleBat' || mod.name === 'ForestDeer' || mod.name === 'ForestLadybug' || mod.name === 'FrozenOceanLynx');
+              const capStyle = (mod.name === 'CastleBat' || mod.name === 'ForestDeer' || mod.name === 'ForestLadybug' || mod.name === 'FrozenOceanLynx' || mod.name === 'FrozenOceanTubeWorm');
               parts.push((capStyle ? '格挡至多' : '格挡') + b8 + '点伤害');
             }
             else if (b8 === Math.ceil(8 / 2) && b4 === Math.ceil(4 / 2)) parts.push('格挡半数伤害（向上取整）');
@@ -625,19 +680,19 @@
       }
       if (typeof mod.defendGuard === 'function') {
         const g = mod.defendGuard(card);
-        if (g > 0) parts.push('获得' + g + '层守护');
+        if (g > 0) parts.push('获得' + g + '层[守护]');
       }
       if (typeof mod.defendAllLush === 'function') {
         const al = mod.defendAllLush(card);
-        if (al > 0) parts.push('全体友方获得' + al + '层茂盛');
+        if (al > 0) parts.push('全体友方获得' + al + '层[茂盛]');
       }
       if (typeof mod.defendLush === 'function') {
         const l = mod.defendLush(card);
-        if (l > 0) parts.push('获得' + l + '层茂盛');
+        if (l > 0) parts.push('获得' + l + '层[茂盛]');
       }
       if (typeof mod.defendParasite === 'function') {
         const p = mod.defendParasite(card);
-        if (p > 0) parts.push('获得' + p + '层寄生');
+        if (p > 0) parts.push('获得' + p + '层[寄生]');
       }
       if (typeof mod.defendAllHeal === 'function') {
         const ah = mod.defendAllHeal(card);
@@ -646,6 +701,9 @@
       if (typeof mod.defendDrawSelf === 'function') {
         const dd = mod.defendDrawSelf(card);
         if (dd > 0) parts.push('抽取' + dd + '张牌');
+      }
+      if (typeof mod.defendGainDiving === 'function' && mod.defendGainDiving(card)) {
+        parts.push('获得[潜水]');
       }
       if (typeof mod.defendSplit === 'function' && mod.defendSplit(card)) {
         parts.push('与玩家均摊伤害（向上取整）');
@@ -693,17 +751,33 @@
       }
       return '无进攻效果';
     }
+    // FrozenOrca: diving + deferred hypothermia on 1/2/3, bleed on 4/5/6,
+    // bleed-scaled damage on 0 (ocean.md). Defend copy is in the isDefend branch.
+    if (mod.name === 'FrozenOrca' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成' + (3 + stageBonus) + '点[伤害]，获得[潜水]，防御结束后施加1层[失温]';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成' + (5 + stageBonus) + '点[伤害]，施加1层[流血]';
+      }
+      if (v === 0) {
+        return '造成' + (2 + stageBonus) + '+玩家[流血]层数×2点[伤害]';
+      }
+      return '无进攻效果';
+    }
     // FrozenPolarBear: buff-total damage on 1/2/3, crit+bleed on 4/5/6.
     if (mod.name === 'FrozenPolarBear' && card.isNumberCard) {
       const v = card.value;
       const stage3 = (Number(opts.stage) || 1) >= 3;
       if (v >= 1 && v <= 3) {
-        return '造成对手buff总层数点[伤害]（伤害>4且有[暴击]时消耗1层使攻击不可防御）';
+        return '造成对手buff总层数点[伤害]';
       }
       if (v >= 4 && v <= 6) {
         const dmg = stage3 ? 4 : 3;
         const bleed = stage3 ? 2 : 1;
-        return '造成' + dmg + '点[伤害]，获得1层[暴击]（上限2），施加' + bleed + '层[流血]';
+        return '造成' + dmg + '点[伤害]，获得1层[暴击]，施加' + bleed + '层[流血]';
       }
       return '无进攻效果';
     }
@@ -744,39 +818,46 @@
     }
     if (typeof mod.attackLush === 'function') {
       const l = mod.attackLush(card);
-      if (l > 0) parts.push('获得' + l + '层茂盛');
+      if (l > 0) parts.push('获得' + l + '层[茂盛]');
     }
     if (typeof mod.attackGuard === 'function') {
       const g = mod.attackGuard(card);
-      if (g > 0) parts.push('获得' + g + '层守护');
+      if (g > 0) parts.push('获得' + g + '层[守护]');
     }
     if (typeof mod.attackFly === 'function') {
       const f = mod.attackFly(card);
-      if (f > 0) parts.push('获得' + f + '层飞翔');
+      if (f > 0) parts.push('获得' + f + '层[飞翔]');
     }
     if (typeof mod.attackGainCrit === 'function') {
       const gc = mod.attackGainCrit(card);
-      if (gc > 0) parts.push('获得' + gc + '层暴击');
+      if (gc > 0) parts.push('获得' + gc + '层[暴击]');
     }
     if (typeof mod.attackClearPositive === 'function' && mod.attackClearPositive(card)) {
       parts.push('清除玩家所有正面buff');
     }
     if (typeof mod.attackBleed === 'function') {
       const b = mod.attackBleed(card);
-      if (b > 0) parts.push('施加' + b + '层流血');
+      if (b > 0) parts.push('施加' + b + '层[流血]');
+    }
+    if (typeof mod.attackBurn === 'function') {
+      const b = mod.attackBurn(card);
+      if (b > 0) parts.push('施加' + b + '层[灼伤]');
+    }
+    if (typeof mod.attackBurnSettle === 'function' && mod.attackBurnSettle(card)) {
+      parts.push('进行一次[灼伤]结算');
     }
     if (typeof mod.attackPoison === 'function') {
       const p = mod.attackPoison(card);
-      if (p > 0) parts.push('施加' + p + '层中毒');
+      if (p > 0) parts.push('施加' + p + '层[中毒]');
     }
     if (typeof mod.attackBlind === 'function' && mod.attackBlind(card)) {
-      parts.push('施加1层致盲（致盲期间不能使用一次性道具）');
+      parts.push('施加1层[致盲]');
     }
     if (typeof mod.attackFreeze === 'function' && mod.attackFreeze(card)) {
       parts.push('施加[冷冻]');
     }
     if (typeof mod.attackIceSeal === 'function' && mod.attackIceSeal(card)) {
-      parts.push('施加[冰封]（下次补牌少补1张）');
+      parts.push('施加[冰封]');
     }
     if (typeof mod.attackDrain === 'function') {
       const h = mod.attackDrain(card, ctx);

@@ -20,9 +20,9 @@
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.ocean = {
     '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
-    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
-    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
-    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed']
+    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm'],
+    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm'],
+    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm']
   };
 
   // ===== 冻洋猞猁 =====
@@ -447,6 +447,61 @@
         defendHeal(card) {
           const v = card && card.value;
           return (v >= 1 && v <= 3) ? 1 : 0;
+        }
+      })
+    }
+  });
+
+  // ===== 冻洋管虫 =====
+  // Stage2+；手牌上限3
+  // 进攻1/2/3：造成1/2/3点伤害，施加1层灼伤
+  // 进攻4/5/6：先施加2层灼伤，再对玩家进行一次灼伤结算（无卡面伤害）
+  // 防御1/2/3：格挡至多2点，获得潜水
+  // Stage3：进攻灼伤层数+1；Stage4：格挡+1
+  R.registerMonster({
+    name: 'FrozenOceanTubeWorm',
+    kind: '冻洋管虫',
+    minStage: 2,
+    hp: 25,
+    handLimit: 3,
+    attack: 3,
+    defense: 2,
+    icon: '../icons/npc_icons/frozen_ocean_tube_worm.webp',
+    attackDamage(card) {
+      const v = card && card.value;
+      if (v >= 1 && v <= 3) return v;
+      return 0;
+    },
+    attackBurn(card) {
+      const v = card && card.value;
+      if (v >= 1 && v <= 3) return 1;
+      if (v >= 4 && v <= 6) return 2;
+      return 0;
+    },
+    attackBurnSettle(card) {
+      const v = card && card.value;
+      return !!(card && card.isNumberCard && v >= 4 && v <= 6);
+    },
+    defendBlock(card, incoming) {
+      const v = card && card.value;
+      if (v >= 1 && v <= 3) return Math.min(2, Math.max(0, Number(incoming) || 0));
+      return 0;
+    },
+    defendGainDiving(card) {
+      const v = card && card.value;
+      return !!(card && card.isNumberCard && v >= 1 && v <= 3);
+    },
+    stageMods: {
+      3: orig => ({
+        attackBurn(card) {
+          const base = orig.attackBurn(card) || 0;
+          return base > 0 ? base + 1 : 0;
+        }
+      }),
+      4: orig => ({
+        defendBlock(card, incoming) {
+          const base = orig.defendBlock(card, incoming);
+          return base > 0 ? Math.min(base + 1, Math.max(0, Number(incoming) || 0)) : 0;
         }
       })
     }

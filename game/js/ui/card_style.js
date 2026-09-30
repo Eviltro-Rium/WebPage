@@ -37,15 +37,18 @@
     FlyTrophy: 'FLY TROPHY',
     CritTrophy: 'CRIT TROPHY',
     DivingTrophy: 'DIVING TROPHY',
+    ScorchTrophy: 'SCORCH TROPHY',
     LushTrophy: 'LUSH TROPHY',
     PoisonTrophy: 'POISON TROPHY',
     ParasiteTrophy: 'PARASITE TROPHY',
     ThornsTrophy: 'THORNS TROPHY',
+    SandblindTrophy: 'SANDBLIND TROPHY',
     TimeBombTrophy: 'TIME BOMB',
     GuardTrophy: 'GUARD TROPHY',
     DisarmTrophy: 'DISARM TROPHY',
     ZeroTrophy: 'ZERO TROPHY',
-    SmallPotionTrophy: 'SMALL POTION'
+    SmallPotionTrophy: 'SMALL POTION',
+    PurifyWaterTrophy: 'PURIFY WATER'
   };
 
   const ASSET_ROOT = (() => {
@@ -79,14 +82,17 @@
     trophy_FlyTrophy: cardAssetUrl('icons/buff_icons/fly.webp'),
     trophy_CritTrophy: cardAssetUrl('icons/buff_icons/crit.webp'),
     trophy_DivingTrophy: cardAssetUrl('icons/buff_icons/diving.webp'),
+    trophy_ScorchTrophy: cardAssetUrl('icons/buff_icons/scorch.webp'),
     trophy_LushTrophy: cardAssetUrl('icons/buff_icons/lush.webp'),
     trophy_PoisonTrophy: cardAssetUrl('icons/buff_icons/poison.webp'),
     trophy_ParasiteTrophy: cardAssetUrl('icons/buff_icons/parasite.webp'),
     trophy_ThornsTrophy: cardAssetUrl('icons/buff_icons/thorns.webp'),
+    trophy_SandblindTrophy: cardAssetUrl('icons/buff_icons/sandblind.webp'),
     trophy_GuardTrophy: cardAssetUrl('icons/buff_icons/guard.webp'),
     trophy_DisarmTrophy: cardAssetUrl('icons/card_icons/disarm.webp'),
     trophy_ZeroTrophy: cardAssetUrl('icons/card_icons/zero.webp'),
-    trophy_SmallPotionTrophy: cardAssetUrl('icons/items_icons/small_potion.webp')
+    trophy_SmallPotionTrophy: cardAssetUrl('icons/items_icons/small_potion.webp'),
+    trophy_PurifyWaterTrophy: cardAssetUrl('icons/items_icons/purify_water.webp')
   };
 
   const iconCache = {};

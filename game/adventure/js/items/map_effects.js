@@ -113,5 +113,45 @@
     return { ok: true, message: '弃掉1张，抽取' + drawn.length + '张牌' };
   });
 
+  function furnaceTrophyForCard(def, card) {
+    if (!card || !card.isNumberCard || card.isItemCard || card.isBlack || card.isWhite) return null;
+    const map = (def && def.furnaceByColor) || {
+      RED: 'ScorchTrophy', YELLOW: 'SandblindTrophy', BLUE: 'DivingTrophy', GREEN: 'LushTrophy'
+    };
+    return map[card.color] || null;
+  }
+
+  register('furnace', (eng, def, ctx) => {
+    const pile = eng.s.playerPile;
+    if (!pile) return { ok: false, message: '牌库尚未初始化' };
+    const eligible = pile.hand.filter(c => !!furnaceTrophyForCard(def, c));
+    if (!eligible.length) {
+      return { ok: false, message: '没有可熔炼的普通颜色手牌' };
+    }
+    const raw = ctx.discardIndex != null ? ctx.discardIndex
+      : (ctx.choice && ctx.choice.index != null ? ctx.choice.index : null);
+    if (raw == null || raw === '') {
+      return { ok: false, needsChoice: true, message: '请选择要弃掉的1张普通颜色手牌' };
+    }
+    const index = Number(raw);
+    if (!Number.isInteger(index) || index < 0 || index >= pile.hand.length) {
+      return { ok: false, needsChoice: true, message: '请选择要弃掉的1张普通颜色手牌' };
+    }
+    const card = pile.hand[index];
+    const trophyName = furnaceTrophyForCard(def, card);
+    if (!trophyName) {
+      return { ok: false, message: '只能弃掉红/黄/蓝/绿普通颜色牌' };
+    }
+    pile.hand.splice(index, 1);
+    if (typeof pile.discardCard === 'function') pile.discardCard(card);
+    else pile.discard.push(card);
+    eng.addItem(trophyName);
+    const trophyDef = window.AdventureRegistry && window.AdventureRegistry.getItem(trophyName);
+    return {
+      ok: true,
+      message: '弃掉1张，获得' + ((trophyDef && trophyDef.displayName) || trophyName)
+    };
+  });
+
   window.AdventureMapEffects = Object.freeze({ register, apply, handlers });
 })();

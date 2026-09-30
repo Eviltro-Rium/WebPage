@@ -415,7 +415,7 @@
                 if (!s.needColorChoice || selected < 0 || selected >= hand.length) return '当前没有待指定颜色的牌';
                 if (!['RED', 'YELLOW', 'BLUE', 'GREEN'].includes(String(params.color || ''))) return '无效的颜色';
             }
-            const purifyKinds = new Set(['burn', 'bleed', 'freeze', 'poison', 'blind', 'bomb', 'guard', 'fly', 'crit', 'lush', 'parasite', 'iceSeal', 'diving', 'hypothermia', 'bind', 'chaos_red', 'chaos_yellow', 'chaos_blue', 'chaos_green']);
+            const purifyKinds = new Set(['burn', 'bleed', 'freeze', 'poison', 'blind', 'bomb', 'guard', 'fly', 'crit', 'lush', 'parasite', 'iceSeal', 'diving', 'scorch', 'hypothermia', 'bind', 'chaos_red', 'chaos_yellow', 'chaos_blue', 'chaos_green']);
             const purifyDone = params && (params.done === true || (params.kind && typeof params.kind === 'object' && params.kind.done === true));
             if (method === 'choosePurify' && (s.pendingDialog !== 'purify' || (!purifyDone && !purifyKinds.has(String(params.kind || ''))))) return '当前没有该净化选择';
             if (method === 'choosePurifyCrystal' && s.pendingDialog !== 'purifyCrystal') return '当前没有水晶球净化选择';

@@ -67,7 +67,11 @@
       Object.freeze({ threshold: 6, drops: Object.freeze(['HypothermiaTrophy']) })
     ]) }),
     FrozenOceanSnowyOwl: Object.freeze({ threshold: 2, drops: Object.freeze(['FlyTrophy']) }),
-    FrozenOceanSamoyed: Object.freeze({ threshold: 2, drops: Object.freeze(['SmallPotionTrophy']) })
+    FrozenOceanSamoyed: Object.freeze({ threshold: 2, drops: Object.freeze(['SmallPotionTrophy']) }),
+    FrozenOceanTubeWorm: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 2, drops: Object.freeze(['BurnTrophy']) }),
+      Object.freeze({ threshold: 3, drops: Object.freeze(['DivingTrophy']) })
+    ]) })
   });
 
   const SCENE_RULES = Object.freeze({ castle: CASTLE_RULES, forest: FOREST_RULES, ocean: OCEAN_RULES });
@@ -75,8 +79,8 @@
   const TROPHY_TAGS = Object.freeze({
     BurnTrophy: "灼伤", PiercingTrophy: "流血", FreezeTrophy: "冰冻",
     IceSealTrophy: "冰封", HypothermiaTrophy: "失温",
-    RussianRouletteTrophy: "俄罗斯赌盘", FlyTrophy: "飞翔", CritTrophy: "暴击", DivingTrophy: "潜水", LushTrophy: "茂盛",
-    PoisonTrophy: "中毒", ParasiteTrophy: "寄生", ThornsTrophy: "荆棘", GuardTrophy: "守护",
+    DivingTrophy: "潜水", ScorchTrophy: "炙热", LushTrophy: "茂盛",
+    PoisonTrophy: "中毒", ParasiteTrophy: "寄生", ThornsTrophy: "荆棘", SandblindTrophy: "沙盲", GuardTrophy: "守护",
     DisarmTrophy: "缴械", ZeroTrophy: "0技能", TimeBombTrophy: "定时炸弹",
     SmallPotionTrophy: "小药剂"
   });

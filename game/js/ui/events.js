@@ -450,6 +450,7 @@ async _playEvents(events, fast = false) {
                 burn: '#ff8800', bleed: '#cc2222', freeze: '#44aaff', guard: '#00bcd4',
                 poison: '#84cc16', thorns: '#facc15', sandblind: '#d6b07c', crit: '#fbbf24', fly: '#a5b4fc', lush: '#4ade80',
                 parasite: '#86efac', blind: '#c4b5fd', bomb: '#fb923c', iceSeal: '#7dd3fc',
+                scorch: '#ff4d00',
                 chaos_reset: '#c084fc',
                 chaos_red: '#f87171', chaos_yellow: '#fde047', chaos_blue: '#60a5fa', chaos_green: '#4ade80'
             };

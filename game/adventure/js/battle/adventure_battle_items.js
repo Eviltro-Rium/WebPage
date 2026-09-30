@@ -131,6 +131,7 @@
       if ((ch.lush || 0) > 0) kinds.push('lush');
       if ((ch.parasite || 0) > 0) kinds.push('parasite');
       if (ch.diving) kinds.push('diving');
+      if (ch.scorch) kinds.push('scorch');
       if (ch.chaos_red) kinds.push('chaos_red');
       if (ch.chaos_yellow) kinds.push('chaos_yellow');
       if (ch.chaos_blue) kinds.push('chaos_blue');
@@ -159,7 +160,7 @@
         burn: '灼伤', bleed: '流血', poison: '中毒', freeze: '冷冻', iceSeal: '冰封',
         blind: '致盲', bomb: '定时炸弹', hypothermia: '失温', hypnosis: '催眠', sleep: '沉睡',
         thorns: '荆棘', sandblind: '沙盲', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛',
-        parasite: '寄生', diving: '潜水',
+        parasite: '寄生', diving: '潜水', scorch: '炙热',
         chaos_red: '混沌·红', chaos_yellow: '混沌·黄', chaos_blue: '混沌·蓝', chaos_green: '混沌·绿'
       };
       switch (kind) {
@@ -213,6 +214,10 @@
         case 'diving':
           from.diving = false; to.diving = true;
           this.emit('buff', '+1[潜水]', null, { who: wTo, kind: 'diving', stacks: 1 });
+          break;
+        case 'scorch':
+          from.scorch = false; to.scorch = true;
+          this.emit('buff', '[炙热]', null, { who: wTo, kind: 'scorch', stacks: 1 });
           break;
         case 'chaos_red':
         case 'chaos_yellow':

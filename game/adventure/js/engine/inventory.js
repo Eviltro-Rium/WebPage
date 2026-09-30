@@ -110,11 +110,14 @@
       const who = target === this.s.player ? '玩家' : '敌方';
       if (target.burn > 0) {
         const dmg = target.burn;
-        if (statusRegistry && statusRegistry.remove) statusRegistry.remove(target, 'burn', 1);
-        else target.burn--;
+        const keep = !!target.scorch;
+        if (!keep) {
+          if (statusRegistry && statusRegistry.remove) statusRegistry.remove(target, 'burn', 1);
+          else target.burn--;
+        }
         target.hp = Math.max(0, target.hp - dmg);
-        this._log(who + '灼伤结算：-' + dmg + '生命，灼伤层数-1');
-        this.emit('buffSettle', '-' + dmg + '❤️[灼伤]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
+        this._log(who + '灼伤结算：-' + dmg + '生命' + (keep ? '（炙热不消退）' : '，灼伤层数-1'));
+        this.emit('buffSettle', '-' + dmg + '❤️[灼伤]' + (keep ? '（[炙热]不消退）' : ''), null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
       }
       if (target.bleed > 0) {
         const dmg = target.bleed;
@@ -152,6 +155,7 @@
         thorns: p.thorns || 0,
         sandblind: p.sandblind || 0,
         diving: !!p.diving,
+        scorch: !!p.scorch,
         hypothermia: p.hypothermia || 0,
         bindMark: !!p.bindMark,
         chaos_red: !!p.chaos_red,
@@ -250,6 +254,7 @@
         this.s.player.hp += def.statBonus.maxHp;
       }
       this._syncBeastCap();
+      this._syncHandLimit();
     },
     _syncBeastCap() {
       if (!this.s || !this.s.currency) return;
@@ -262,6 +267,12 @@
         else if (def.beastCap && def.beastCap > max) max = def.beastCap;
       }
       this.s.currency.setMaxBeast(max);
+    },
+    _syncHandLimit() {
+      if (!this.s || !this.s.playerPile) return;
+      const base = 5;
+      const bonus = this.getAccessoryStatBonuses();
+      this.s.playerPile.handLimit = base + (bonus.handLimitBonus || 0);
     },
     useConsumable(index, ctx = {}) {
       if (index < 0 || index >= this.s.consumables.length) return { ok: false, message: '无效道具' };
@@ -390,6 +401,10 @@
       }
       if (kind === 'diving' && player.diving) {
         player.diving = false;
+        return true;
+      }
+      if (kind === 'scorch' && player.scorch) {
+        player.scorch = false;
         return true;
       }
       if (kind === 'hypothermia' && (player.hypothermia || 0) > 0) {

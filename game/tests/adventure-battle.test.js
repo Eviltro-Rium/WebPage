@@ -152,6 +152,43 @@ test('adventure opponent is registered for the ordinary 1v1 character and AI int
   assert.ok(context.AIRegistry.get('CastleWolf'));
 });
 
+test('NPC decks include two white 7 pass cards with no skill effect', () => {
+  const deck = context.AdventureDeck.makeNpcDeck();
+  const sevens = deck.filter(c => c.isNumberCard && c.isWhite && c.value === 7);
+  assert.equal(sevens.length, 2);
+  assert.ok(sevens.every(c => c.npcCard));
+
+  const bossDeck = context.AdventureDeck.makeNpcDeck({ whiteZeros: 2 });
+  assert.equal(bossDeck.filter(c => c.isNumberCard && c.isWhite && c.value === 7).length, 2);
+  assert.equal(bossDeck.filter(c => c.isNumberCard && c.isWhite && c.value === 0).length, 2);
+
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure({
+    player: 'Ryan',
+    opponent: 'ForestRafflesia',
+    stage: 1,
+    playerPile: { deck: [number(4, 'BLUE')], hand: [number(1, 'YELLOW')], discard: [], handLimit: 5 },
+    discardTop: number(2, 'RED'),
+    discardTopOwner: 'player'
+  });
+  const white7 = number(7, 'WHITE', true);
+  const rAtk = engine.effect('ForestRafflesia', 7, white7, engine.s.ai, engine.s.player);
+  assert.equal(rAtk.d, 0);
+  const rDef = context.CharacterRegistry.get('ForestRafflesia').defend(
+    engine, 'ForestRafflesia', 7, 5, white7,
+    engine.s.ai, engine.s.player, 'ai', 'RED',
+    { heal: () => {}, hurt: () => {}, poison: () => {}, bleed: () => {}, clearDebuffs: () => {}, draw: () => {} }
+  );
+  assert.equal(rDef.remaining, 5);
+  assert.match(rDef.desc, /无防御效果/);
+
+  const x = engine.aiContext({ incomingDamage: 4 });
+  assert.equal(engine.aiDefendLegal(white7, engine.s.discardTop, x), true);
+
+  const wolf = start({ hand: [number(2, 'RED')] }, number(2, 'RED'));
+  assert.equal(wolf.aiDefendLegal(white7, wolf.s.discardTop, wolf.aiContext({})), false);
+});
+
 test('adventure battle controller detects the exported shared 1v1 UI', () => {
   assert.equal(typeof context.GameUI, 'function');
   assert.equal(typeof context.AnimLayer, 'function');
@@ -217,9 +254,11 @@ test('battle startup preserves the player pile and gives the NPC its own two-car
   const engine = start();
   assert.deepEqual(Array.from(engine.h.player, card => card.value), [1, 3]);
   assert.deepEqual(Array.from(engine.piles.player.deck, card => card.value), [4, 5]);
-  assert.deepEqual(Array.from(engine.piles.player.discard, card => card.value), [6]);
+  // discardTop is mirrored as the newest card in the owner's discard pile.
+  assert.deepEqual(Array.from(engine.piles.player.discard, card => card.value), [6, 2]);
   assert.equal(engine.h.ai.length, 2);
-  assert.equal(engine.piles.ai.deck.length, 26);
+  // NPC deck: 白1~3×4 + 白4~6×2 + 白7×2 + 紫/绿魔法 = 22，开局抽 2 张后剩 20。
+  assert.equal(engine.piles.ai.deck.length, 20);
   assert.equal(engine.s.player.hp, 74);
   assert.equal(engine.s.player.burn, 1);
   assert.equal(engine.s.player.guard, 2);
@@ -237,7 +276,9 @@ test('player and NPC refill only from their own discard piles', () => {
 
   engine.draw('ai', 1);
   assert.equal(engine.h.ai[0].value, 2);
-  assert.equal(engine.piles.player.discard.length, 0);
+  // Active table top stays in the owner's discard while the rest is reshuffled.
+  assert.equal(engine.piles.player.discard.length, 1);
+  assert.equal(engine.piles.player.discard[0].value, 2);
 });
 
 test('shared table top returns to the previous card owner discard pile', () => {
@@ -246,8 +287,9 @@ test('shared table top returns to the previous card owner discard pile', () => {
 
   engine.s.atkOwner = 'ai';
   engine.setDiscardTop(number(3, 'WHITE', true));
-  assert.equal(engine.piles.player.discard.length, playerDiscardBefore + 1);
-  assert.equal(engine.piles.ai.discard.length, 0);
+  // New top goes to the AI discard; the previous player top was already there.
+  assert.equal(engine.piles.player.discard.length, playerDiscardBefore);
+  assert.equal(engine.piles.ai.discard.length, 1);
   assert.equal(engine.tableTopOwner, 'ai');
 
   engine.s.atkOwner = 'player';
@@ -296,11 +338,12 @@ test('the next room keeps the exact player hand, deck and discard snapshot', () 
     Array.from(second.h.player, card => card.value),
     Array.from(saved.playerPile.hand, card => card.value)
   );
-  // A new shared top is drawn from the persistent player deck at room start.
+  // A new shared top is drawn from the persistent player deck at room start
+  // and appended to the player discard (deck was [4,5], pop yields 5).
   assert.equal(second.piles.player.deck.length, saved.playerPile.deck.length - 1);
   assert.deepEqual(
     Array.from(second.piles.player.discard, card => card.value),
-    Array.from(saved.playerPile.discard, card => card.value)
+    Array.from(saved.playerPile.discard, card => card.value).concat([5])
   );
   assert.equal(second.tableTopOwner, 'player');
 });
@@ -549,7 +592,7 @@ test('adventure 1v2 keeps one shared NPC pile isolated from the player pile', ()
     ...engine.h.ai,
     ...engine.h.ai2
   ];
-  assert.equal(npcCards.filter(card => card.greenMagic).length, 2);
+  assert.equal(npcCards.filter(card => card.greenMagic).length, 1);
 
   // Even if the phase fields still point at an NPC, an explicit player
   // shuffle must only consume the player's discard pile.
@@ -731,7 +774,8 @@ test('challenge targeted trophy cards apply to the selected NPC2 target', () => 
     ['PiercingTrophy', 'bleed', 1],
     ['FreezeTrophy', 'frozen', true],
     ['PoisonTrophy', 'poison', 1],
-    ['TimeBombTrophy', 'bomb', 5]
+    ['TimeBombTrophy', 'bomb', 5],
+    ['SandblindTrophy', 'sandblind', 2]
   ];
 
   try {
@@ -1357,4 +1401,86 @@ test('Chan passive and refill emit a single player draw when a new attack turn s
   assert.equal(draws.length, 1);
   assert.equal(engine.h.player.length, before + draws[0].count);
   assert.ok(draws[0].count >= 1);
+});
+
+test('FrozenOrca stage4 attack 1/2/3 applies deferred hypothermia after defense', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure({
+    player: 'Ryan',
+    opponent: 'FrozenOrca',
+    stage: 4,
+    opponentStage: 4,
+    playerState: { hp: 80, maxHp: 80 },
+    playerPile: {
+      deck: [number(4, 'BLUE'), number(5, 'GREEN')],
+      hand: [number(1, 'YELLOW')],
+      discard: [],
+      handLimit: 5
+    },
+    discardTop: number(2, 'RED'),
+    discardTopOwner: 'player'
+  });
+  engine.later = () => {};
+  engine.h.ai = [number(2, 'RED')];
+  engine.s.player.hypothermia = 0;
+  engine.s.phase = 'AI_TURN';
+  engine.s.busy = true;
+  engine.s.aiTurnStarted = true;
+  engine.s.aiHasPlayed = false;
+  engine.aiTurn();
+  assert.equal(engine.s.phase, 'PLAYER_DEFEND');
+  assert.equal(engine.s.pendingAttack.hypothermiaTarget, 'player');
+  assert.equal(engine.s.pendingAttack.hypothermiaAmount, 1);
+  engine.defend(true);
+  const through = engine.ver;
+  engine.acknowledgeEvents(through);
+  assert.equal(engine.s.player.hypothermia, 1, 'stage4 orca 1/2/3 should apply 1 hypothermia after defend settles');
+});
+
+test('Furnace discards a color card and grants matching trophy white', () => {
+  const advEngine = new AdventureEngine();
+  advEngine.s = { consumables: ['Furnace'], trophyWhiteCards: [] };
+  advEngine.snapshot = () => ({
+    consumables: [{ name: 'Furnace', displayName: '熔炉' }]
+  });
+  const engine = start({
+    hand: [number(3, 'RED'), black(), number(0, 'WHITE', true)]
+  });
+  engine._adventureEngine = advEngine;
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.busy = false;
+  engine.s.trophyDrops = [];
+
+  const reject = engine.useAdventureCombatItem(0, { index: 1 });
+  assert.equal(advEngine.s.consumables.length, 1, 'black card must not consume furnace');
+
+  engine.useAdventureCombatItem(0, { index: 0 });
+  assert.equal(advEngine.s.consumables.length, 0);
+  assert.deepEqual(advEngine.s.trophyWhiteCards, ['ScorchTrophy']);
+  assert.equal(engine.h.player.some(c => c.trophyWhite && c.trophyName === 'ScorchTrophy'), true);
+  assert.equal(engine.h.player.some(c => c.color === 'RED' && c.value === 3), false);
+  assert.equal(engine.h.player.some(c => c.isBlack), true);
+});
+
+test('Furnace yellow/blue/green map to sandblind/diving/lush trophies', () => {
+  const cases = [
+    ['YELLOW', 'SandblindTrophy'],
+    ['BLUE', 'DivingTrophy'],
+    ['GREEN', 'LushTrophy']
+  ];
+  for (const [color, trophy] of cases) {
+    const advEngine = new AdventureEngine();
+    advEngine.s = { consumables: ['Furnace'], trophyWhiteCards: [] };
+    advEngine.snapshot = () => ({
+      consumables: [{ name: 'Furnace', displayName: '熔炉' }]
+    });
+    const engine = start({ hand: [number(2, color)] });
+    engine._adventureEngine = advEngine;
+    engine.s.phase = 'PLAYER_PLAY';
+    engine.s.busy = false;
+    engine.s.trophyDrops = [];
+    engine.useAdventureCombatItem(0, { index: 0 });
+    assert.deepEqual(advEngine.s.trophyWhiteCards, [trophy], color + ' should grant ' + trophy);
+    assert.equal(engine.h.player.some(c => c.trophyName === trophy), true);
+  }
 });

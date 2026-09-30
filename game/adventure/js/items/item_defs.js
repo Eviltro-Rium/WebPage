@@ -195,6 +195,19 @@
   });
 
   R.registerItem({
+    name: 'ScorchTrophy',
+    displayName: '炙热战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：对手获得[炙热]；灼伤结算时不消退灼伤，打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/scorch.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyScorch',
+    trophyEffect: 'scorch',
+    beastTradeCost: ['huo', 'huo']
+  });
+
+  R.registerItem({
     name: 'LushTrophy',
     displayName: '茂盛战利白卡',
     kind: 'trophyWhite',
@@ -243,6 +256,19 @@
     combatUse: 'trophyThorns',
     trophyEffect: 'thorns',
     beastTradeCost: ['ben', 'cao']
+  });
+  R.registerItem({
+    name: 'SandblindTrophy',
+    displayName: '沙盲战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：对手+2层沙盲，打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/sandblind.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophySandblind',
+    trophyEffect: 'sandblind',
+    trophyStacks: 2,
+    beastTradeCost: ['ben', 'huo']
   });
   R.registerItem({
     name: 'AttackMod1',
@@ -373,6 +399,24 @@
     combatUse: 'discardTalisman',
     needsChoice: true,
     discardThenDraw: 2
+  });
+
+  R.registerItem({
+    name: 'Furnace',
+    displayName: '熔炉',
+    kind: 'consumable',
+    description: '弃掉1张普通颜色手牌：红→炙热战利白卡，黄→沙盲战利白卡，蓝→潜水战利白卡，绿→茂盛战利白卡',
+    icon: ICON + 'furnace.webp',
+    useScene: 'both',
+    price: 7,
+    combatUse: 'furnace',
+    needsChoice: true,
+    furnaceByColor: {
+      RED: 'ScorchTrophy',
+      YELLOW: 'SandblindTrophy',
+      BLUE: 'DivingTrophy',
+      GREEN: 'LushTrophy'
+    }
   });
 
   R.registerItem({
@@ -634,6 +678,18 @@
     price: 15,
     maxStacks: 1,
     shopDiscount: 2
+  });
+
+  R.registerItem({
+    name: 'MagicBook',
+    displayName: '魔法书',
+    kind: 'accessory',
+    description: '手牌上限+1（最多1个；不影响 Chan 进攻前额外抽牌被动）',
+    icon: ICON + 'magic_book.webp',
+    beastTradeCost: ['huo', 'shui', 'cao', 'ben', 'ben'],
+    price: 15,
+    maxStacks: 1,
+    statBonus: { handLimitBonus: 1 }
   });
 
   R.registerItem({

@@ -104,7 +104,7 @@
                 guard: { colorClass: 'guard-buff' }, fly: { colorClass: 'fly-buff' },
                 lush: { colorClass: 'lush-buff' }, parasite: { colorClass: 'parasite-buff' },
                 crit: { colorClass: 'crit-buff' },
-                diving: { colorClass: 'diving-buff' }, bloodthirst: { colorClass: 'bloodthirst-buff' },
+                diving: { colorClass: 'diving-buff' }, scorch: { colorClass: 'scorch-buff' }, bloodthirst: { colorClass: 'bloodthirst-buff' },
                 bind: { colorClass: 'bind-mark' }, chaos_red: { colorClass: 'chaos-red-buff' },
                 chaos_yellow: { colorClass: 'chaos-yellow-buff' }, chaos_blue: { colorClass: 'chaos-blue-buff' },
                 chaos_green: { colorClass: 'chaos-green-buff' }

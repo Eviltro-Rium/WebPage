@@ -199,13 +199,13 @@
     let r=this._swapAIContext(key,()=>this.aiSpecialEffect(this.name(ch),c.value,c))||this.effect(this.name(ch),c.value,c,ch,this.s.player);
     this._deferAttackBuffs('player',_buffBefore);
     if(r.immediateBuffs)this._restoreAttackBuffs();
-    this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage};
+    this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage,hypothermiaTarget:r.hypothermiaTarget,hypothermiaAmount:r.hypothermiaAmount};
     {let freezeBlock=this._freezeBlocksDefend(this.s.player,this.s.atkCard);
     if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){if(this.s.player.sleep)return this.defend1v2(true);if(this._beginPlayerDefendFlow(r.d,{unblock:false,freezeBlock:false}))return;return}
      if(r.d&&(r.unblock||freezeBlock)&&!(r.isDrain||r.drain)){if(this._beginPlayerDefendFlow(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}
     if(!r.d)this.emit('desc',ch.name+' 本次技能分支未造成伤害，跳过防御',c);
      if(r.d&&!r.isDrain&&!r.drain&&this.playerNeedsAvoidChoice()){this.askGuard(r.d);return}
-    this._restoreAttackBuffs();this.dealAttackHit(ch,this.s.player,r.d,!!(r.isDrain||r.drain));this.s.phase=key.toUpperCase()+'_TURN';this.s.busy=true;
+    this._restoreAttackBuffs();this.dealAttackHit(ch,this.s.player,r.d,!!(r.isDrain||r.drain));{const pa=this.s.pendingAttack||{};if((pa.hypothermiaTarget&&pa.hypothermiaAmount)||(pa.aoeTargets&&pa.aoeDamage))this.performAttack({type:'aoe',target:'player',aoeTargets:pa.aoeTargets,aoeDamage:pa.aoeDamage,skipTarget:true,hypothermiaTarget:pa.hypothermiaTarget,hypothermiaAmount:pa.hypothermiaAmount});}this.s.phase=key.toUpperCase()+'_TURN';this.s.busy=true;
     this.s.pendingAIContinue={afterEventId:this.ver};return this.check()
   };
 
@@ -269,11 +269,11 @@
     if(r.immediateBuffs)this._restoreAttackBuffs();
 
      if(r.pendingPurify&&this._hasPurifyableBuff(this.s.player)){
-       this.s.pendingVixrapsPurify={card:cp(c),damage:r.d,skip:!!r.skip,unblock:!!r.unblock,opts:{isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage}};
+       this.s.pendingVixrapsPurify={card:cp(c),damage:r.d,skip:!!r.skip,unblock:!!r.unblock,opts:{isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage,hypothermiaTarget:r.hypothermiaTarget,hypothermiaAmount:r.hypothermiaAmount}};
        this.s.pendingDialog='purify';this.s.busy=false;
        return this.check();
      }
-     return this.gateAdventureAttackMod(c,r.d,r.skip,r.unblock,0,{isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage})
+     return this.gateAdventureAttackMod(c,r.d,r.skip,r.unblock,0,{isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage,hypothermiaTarget:r.hypothermiaTarget,hypothermiaAmount:r.hypothermiaAmount})
   };
 
   Engine.prototype.leonZero1v2=function(card){

@@ -2,17 +2,18 @@
  * 图鉴 —— 展示主角（玩家角色）/怪物/Boss/道具/饰品/Buff图鉴。
  */
 (function () {
-  // 怪物/Boss NPC 牌堆：白1~3×5、白4~6×3（无白7）；Boss 另加白0。
+  // 怪物/Boss NPC 牌堆：白1~3×4、白4~6×2、白7×2；Boss 另加白0。
   // atk/def 下标与 NPC_SKILL_VALUES 一一对应。
-  const NPC_SKILL_VALUES = [1, 2, 3, 4, 5, 6, 0];
+  const NPC_SKILL_VALUES = [1, 2, 3, 4, 5, 6, 7, 0];
   const NPC_SKILL_GRID = [
     { atkKey: 0, defKey: 0, label: '1' },
     { atkKey: 1, defKey: 1, label: '2' },
     { atkKey: 2, defKey: 2, label: '3' },
-    { atkKey: 6, defKey: 6, label: '0' },
+    { atkKey: 7, defKey: 7, label: '0' },
     { atkKey: 3, defKey: -1, label: '4' },
     { atkKey: 4, defKey: -1, label: '5' },
-    { atkKey: 5, defKey: -1, label: '6' }
+    { atkKey: 5, defKey: -1, label: '6' },
+    { atkKey: 6, defKey: -1, label: '7' }
   ];
 
   // 所有会在战斗界面显示的状态集中维护，避免规则页和图鉴出现两套说明。
@@ -35,6 +36,7 @@
     { key: 'chaos_blue', name: '混沌·蓝', type: '正面状态', icon: 'icons/buff_icons/chaos_blue.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出蓝色数字牌/指定为蓝的黑白牌，或指定为蓝的白色道具牌后获得，进攻回合开始前清除。' },
     { key: 'chaos_green', name: '混沌·绿', type: '正面状态', icon: 'icons/buff_icons/chaos_green.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出绿色数字牌/指定为绿的黑白牌，或指定为绿的白色道具牌后获得，进攻回合开始前清除。' },
     { key: 'diving', name: '潜水', type: '正面状态', icon: 'icons/buff_icons/diving.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有潜水的角色免疫蓝色攻击（含被指定为蓝色的白牌）造成的伤害和buff施加。对手依旧可以对自己施加正面增益。冰封、诅咒等仍能命中。' },
+    { key: 'scorch', name: '炙热', type: '负面状态', icon: 'icons/buff_icons/scorch.webp', desc: '堆叠上限：1\n维持效果：持续\n持有期间触发灼伤结算时，仍造成灼伤伤害，但不消退灼伤层数；可被净化。' },
     { key: 'hypothermia', name: '失温', type: '负面状态', icon: 'icons/buff_icons/hypothermia.webp', desc: '堆叠上限：2\n维持效果：衰减\n当失温达到2层时，立即强制弃1张牌（玩家自选，NPC按最低优先级弃牌），随后失温削减1层。' },
     { key: 'bind', name: '捆缚', type: '印记', icon: 'icons/items_icons/binding.webp', desc: '堆叠上限：1\n维持效果：规则结束\n捆缚印记不能被净化或超级净化清除；目标在本回合结束后跳过自己的进攻阶段，由当前回合角色再发动一次进攻，额外进攻完成后按规则移除。' },
     { key: 'hypnosis', name: '催眠', type: '负面状态', icon: 'icons/buff_icons/sleepy_1.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有催眠的角色在自己的进攻阶段结束、切换到对手进攻阶段时立即转化为[沉睡]。已处于[沉睡]时免疫新的[催眠]。' },
@@ -119,6 +121,8 @@
     for (const b of BUFF_DATA) {
       if (t === b.name) return b.key;
       if (t.startsWith(b.name + '（') || t.startsWith(b.name + '(')) return b.key;
+      // 「暴击机制」等标题只复述统一 buff 规则，归 Buff 图鉴。
+      if (t === b.name + '机制' || t === b.name + '规则') return b.key;
     }
     return null;
   }
@@ -276,10 +280,7 @@
       pushAuto('被动', entity.attackSkipDescription);
     }
     if (entity.canDefendHigh && !hasTitle(/高牌|4\/5\/6/)) {
-      pushAuto('被动', '可用高牌（4/5/6）防御');
-    }
-    if (entity.whiteZeros && !hasTitle(/白色\s*0|白0|牌库/)) {
-      pushAuto('牌库', '普通 NPC 牌库 + ' + entity.whiteZeros + ' 张白色 0');
+      pushAuto('被动', '可用高牌（4/5/6/7）防御');
     }
     if (entity.handLimit && entity.handLimit < 4 && !hasTitle(/手牌/)) {
       pushAuto('手牌', '手牌上限 ' + entity.handLimit + ' 张');
@@ -435,7 +436,7 @@
           html += '<div class="codex-stat-bonus">';
           html += '<div class="codex-stat-list">';
           for (const [k, v] of Object.entries(it.statBonus)) {
-            const label = k === 'maxHp' ? '生命上限' : k === 'dropRateBonus' ? '掉落概率' : k;
+            const label = k === 'maxHp' ? '生命上限' : k === 'dropRateBonus' ? '掉落概率' : k === 'handLimitBonus' ? '手牌上限' : k;
             html += `<span class="codex-stat-chip">${label}+${v}</span>`;
           }
           html += '</div></div>';
@@ -473,7 +474,7 @@
       html += '<div class="codex-empty">暂无数据</div>';
     } else {
       html += '<div class="codex-all-list">';
-      const effectMap = { burn: '灼伤', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', crit: '暴击', lush: '茂盛', poison: '中毒', parasite: '寄生', thorns: '荆棘', sandblind: '沙盲', diving: '潜水', iceSeal: '冰封', hypothermia: '失温', zero: '零技能' };
+      const effectMap = { burn: '灼伤', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', crit: '暴击', lush: '茂盛', poison: '中毒', parasite: '寄生', thorns: '荆棘', sandblind: '沙盲', diving: '潜水', scorch: '炙热', iceSeal: '冰封', hypothermia: '失温', zero: '零技能' };
       for (const it of items) {
         const icon = resolveIcon(it.icon);
         const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-avatar codex-no-icon">${it.displayName[0]}</div>`;
@@ -544,7 +545,7 @@
     let html = '<div class="skill-grid">';
     for (const row of npcSkillGrid(includeZero)) {
       const atkDesc = atk[row.atkKey] ? formatCodexSkillText(atk[row.atkKey]) : '—';
-      const highDefKey = canDefendHigh && ['4', '5', '6'].includes(row.label) ? row.atkKey : -1;
+      const highDefKey = canDefendHigh && ['4', '5', '6', '7'].includes(row.label) ? row.atkKey : -1;
       const defKey = row.defKey >= 0 ? row.defKey : highDefKey;
       const defDesc = defKey >= 0 && def[defKey] ? formatCodexSkillText(def[defKey]) : (defKey >= 0 ? '无防御效果' : '');
       html += '<div class="skill-row">';

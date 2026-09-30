@@ -195,7 +195,7 @@ class DialogManager {
             ? statusRegistry.list(snap, def => def.cleanse !== 'never').length > 0
             : snap && (snap.burn > 0 || snap.bleed > 0 || snap.poison > 0 || snap.thorns > 0 || snap.sandblind > 0 || snap.blind > 0 || snap.bomb > 0 || snap.frozen || snap.iceSeal > 0 ||
                 snap.guard > 0 || snap.fly > 0 || snap.crit > 0 || snap.lush > 0 || snap.parasite > 0 ||
-                snap.diving || snap.hypothermia > 0);
+                snap.diving || snap.scorch || snap.hypothermia > 0);
         const applyLocal = (snap, kind) => {
             if (statusRegistry && statusRegistry.clear(snap, kind)) return;
             if (kind === 'burn') snap.burn = Math.max(0, snap.burn - 1);
@@ -213,6 +213,7 @@ class DialogManager {
             else if (kind === 'lush') snap.lush = Math.max(0, snap.lush - 1);
             else if (kind === 'parasite') snap.parasite = Math.max(0, snap.parasite - 1);
             else if (kind === 'diving') snap.diving = false;
+            else if (kind === 'scorch') snap.scorch = false;
             else if (kind === 'hypothermia') snap.hypothermia = 0;
         };
         const choices = [];

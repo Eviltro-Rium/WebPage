@@ -209,6 +209,7 @@
         this.s.player.hp = Math.min(this.s.player.hp, this.s.player.maxHp);
       }
       this._syncBeastCap();
+      this._syncHandLimit();
       const refundGold = 10;
       this.s.currency.addGold(refundGold);
       this._log('回收配饰：' + def.displayName + '（获得' + refundGold + '金币）');

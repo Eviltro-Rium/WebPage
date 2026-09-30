@@ -365,6 +365,24 @@
                 );
                 return;
             }
+            if (def.combatUse === 'furnace') {
+                const hand = Array.isArray(s.playerHand) ? s.playerHand : [];
+                const selectable = [];
+                const indices = [];
+                hand.forEach((card, i) => {
+                    if (!card || !card.isNumberCard || card.isItemCard || card.isBlack || card.isWhite) return;
+                    if (!['RED', 'YELLOW', 'BLUE', 'GREEN'].includes(card.color)) return;
+                    selectable.push(card);
+                    indices.push(i);
+                });
+                if (!selectable.length) return;
+                this.dialogs.showOpponentCardChoice(
+                    [{ key: 'player', label: '红→炙热 / 黄→沙盲 / 蓝→潜水 / 绿→茂盛', cards: selectable }],
+                    choice => { void run({ index: indices[choice.index] }); },
+                    '熔炉 · 弃颜色牌换战利白卡'
+                );
+                return;
+            }
             if (def.combatUse === 'crystalBall') {
                 const preview = await Bridge.call('useAdventureCombatItem', { itemIndex: idx });
                 if (!preview || preview.error) return;
@@ -418,7 +436,7 @@
                         ch.frozen || (ch.blind || 0) > 0 || (ch.bomb || 0) > 0 || (ch.iceSeal || 0) > 0 ||
                         (ch.hypothermia || 0) > 0 || ch.hypnosis || ch.sleep || (ch.thorns || 0) > 0 || (ch.sandblind || 0) > 0 ||
                         (ch.guard || 0) > 0 || (ch.fly || 0) > 0 || (ch.crit || 0) > 0 ||
-                        (ch.lush || 0) > 0 || (ch.parasite || 0) > 0 || ch.diving ||
+                        (ch.lush || 0) > 0 || (ch.parasite || 0) > 0 || ch.diving || ch.scorch ||
                         ch.chaos_red || ch.chaos_yellow || ch.chaos_blue || ch.chaos_green;
                 };
                 if (!hasTransferable(player) && !hasTransferable(opponent)) return;

@@ -1107,6 +1107,11 @@
       if (idx < 0) return false;
       eng.s.accessories.splice(idx, 1);
       if (typeof eng._syncBeastCap === 'function') eng._syncBeastCap();
+      if (typeof eng._syncHandLimit === 'function') eng._syncHandLimit();
+      if (eng.s.playerPile && this.piles && this.piles.player) {
+        this.piles.player.handLimit = eng.s.playerPile.handLimit;
+        this.s.handLimit = eng.s.playerPile.handLimit;
+      }
       if (window.AdventureSave && typeof window.AdventureSave.save === 'function') {
         window.AdventureSave.save(eng);
       }
@@ -1310,7 +1315,7 @@
       const opponentKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
       const target = who === 'opp' ? this.s[opponentKey] : this.s.player;
       const targetLabel = who === 'opp' ? (this.s.is1v2 && opponentKey === 'ai2' ? 'AI2' : '对手') : '玩家';
-      const kindLabel = { burn: '灼伤', freeze: '冷冻', bleed: '流血', poison: '中毒', thorns: '荆棘', sandblind: '沙盲', iceSeal: '冰封', bomb: '定时炸弹', blind: '致盲', hypothermia: '失温', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生', diving: '潜水', bloodthirst: '嗜血', bind: '捆缚', chaos_red: '混沌·红', chaos_yellow: '混沌·黄', chaos_blue: '混沌·蓝', chaos_green: '混沌·绿' }[kind] || 'buff';
+      const kindLabel = { burn: '灼伤', freeze: '冷冻', bleed: '流血', poison: '中毒', thorns: '荆棘', sandblind: '沙盲', iceSeal: '冰封', bomb: '定时炸弹', blind: '致盲', hypothermia: '失温', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生', diving: '潜水', scorch: '炙热', bloodthirst: '嗜血', bind: '捆缚', chaos_red: '混沌·红', chaos_yellow: '混沌·黄', chaos_blue: '混沌·蓝', chaos_green: '混沌·绿' }[kind] || 'buff';
       this._flashAccessory('PurifyCrystal');
       this.clean(target, false, kind);
       this.emit('desc', '净化水晶：清除' + targetLabel + '一层' + kindLabel);
@@ -1322,12 +1327,16 @@
 
     endAi() {
       this.trimAI();
-      if (this.s.ai.burn) {
+      if (typeof this.settleBurn === 'function') this.settleBurn(this.s.ai);
+      else if (this.s.ai.burn) {
         let dmg = this.s.ai.burn;
+        const keep = !!this.s.ai.scorch;
         const status = window.FurryGame && window.FurryGame.StatusService;
-        if (status) status.remove(this.s.ai, 'burn', 1); else this.s.ai.burn--;
+        if (!keep) {
+          if (status) status.remove(this.s.ai, 'burn', 1); else this.s.ai.burn--;
+        }
         if (this.name(this.s.ai) !== 'Leon') {
-          this.emit('burnSettle', `-${dmg}❤️[灼伤]，-1[灼伤层数]`, null, { who: 'ai', target: 'ai', amount: dmg, kind: 'burn' });
+          this.emit('burnSettle', keep ? `-${dmg}❤️[灼伤]（[炙热]不消退）` : `-${dmg}❤️[灼伤]，-1[灼伤层数]`, null, { who: 'ai', target: 'ai', amount: dmg, kind: 'burn', scorch: keep });
           this.s.ai.hp = Math.max(0, this.s.ai.hp - dmg);
           this.s.ai.alive = this.s.ai.hp > 0;
         }

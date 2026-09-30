@@ -345,6 +345,30 @@ test('purify water requires player to choose debuff kinds', () => {
   assert.equal(eng.s.consumables.length, 0);
 });
 
+test('Furnace on map discards color card and grants trophy white', () => {
+  const eng = startEngine();
+  eng.s.consumables = ['Furnace'];
+  eng.s.trophyWhiteCards = [];
+  eng.s.playerPile.hand = [
+    { value: 4, color: 'BLUE', isNumberCard: true, isItemCard: false, isBlack: false, isWhite: false },
+    { value: -1, color: 'BLACK', isNumberCard: false, isItemCard: true, isBlack: true, isWhite: false }
+  ];
+  const pending = eng.useConsumable(0);
+  assert.equal(pending.ok, false);
+  assert.equal(pending.needsChoice, true);
+
+  const bad = eng.useConsumable(0, { discardIndex: 1 });
+  assert.equal(bad.ok, false);
+  assert.equal(eng.s.consumables.length, 1);
+
+  const ok = eng.useConsumable(0, { discardIndex: 0 });
+  assert.equal(ok.ok, true);
+  assert.equal(eng.s.consumables.length, 0);
+  assert.deepEqual(Array.from(eng.s.trophyWhiteCards), ['DivingTrophy']);
+  assert.equal(eng.s.playerPile.hand.some(c => c.trophyWhite && c.trophyName === 'DivingTrophy'), true);
+  assert.equal(eng.s.playerPile.hand.some(c => c.color === 'BLUE' && c.value === 4), false);
+});
+
 test('shop offers 3 item + 2 beast + 1 accessory slots', () => {
   const map = new AdventureMap([[0, 4]]);
   const eng = new AdventureEngine();
@@ -492,6 +516,28 @@ test('wisdom necklace draws 2 when returning to map and accessories have beast t
   assert.equal(fist.onDefendBurn, 1);
   const bag = context.AdventureRegistry.getItem('BeastBag');
   assert.equal(JSON.stringify(bag.beastTradeCost), '["ben","ben","ben","cao","cao"]');
+});
+
+test('MagicBook raises hand limit by 1 and respects carry cap', () => {
+  const map = new AdventureMap([[0, 1]]);
+  const eng = new AdventureEngine();
+  eng.start(map, 'Ryan');
+  assert.equal(eng.s.playerPile.handLimit, 5);
+  const def = context.AdventureRegistry.getItem('MagicBook');
+  assert.ok(def);
+  assert.equal(def.kind, 'accessory');
+  assert.equal(def.maxStacks, 1);
+  assert.equal(def.price || 15, 15);
+  assert.equal(def.statBonus.handLimitBonus, 1);
+  assert.equal(JSON.stringify(def.beastTradeCost), '["huo","shui","cao","ben","ben"]');
+  assert.ok(eng.addItem('MagicBook'));
+  assert.equal(eng.s.playerPile.handLimit, 6);
+  assert.equal(eng.addItem('MagicBook'), false, 'carry cap is 1');
+  assert.equal(eng.s.playerPile.handLimit, 6);
+  eng.s.phase = AdventurePhase.BLACKSMITH;
+  const at = eng.s.accessories.indexOf('MagicBook');
+  assert.ok(eng.recycleAccessory(at).ok);
+  assert.equal(eng.s.playerPile.handLimit, 5);
 });
 
 test('blacksmith entry gold by stage and beast trade with wuneng', () => {

@@ -1142,6 +1142,11 @@ body {
     background: linear-gradient(135deg, rgba(150, 60, 0, 0.88), rgba(255, 136, 0, 0.5));
     box-shadow: 0 0 10px rgba(255, 136, 0, 0.45);
 }
+.buff-icon-wrap.scorch-buff {
+    border-color: rgba(255, 77, 0, 0.95);
+    background: linear-gradient(135deg, rgba(120, 20, 0, 0.88), rgba(255, 77, 0, 0.5));
+    box-shadow: 0 0 10px rgba(255, 77, 0, 0.45);
+}
 .buff-icon-wrap.freeze-buff {
     border-color: rgba(68, 170, 255, 0.95);
     background: linear-gradient(135deg, rgba(0, 60, 150, 0.88), rgba(68, 170, 255, 0.5));

@@ -641,6 +641,31 @@
             );
             return;
           }
+          if (def && def.combatUse === 'furnace') {
+            const hand = (this.eng.s.playerPile && this.eng.s.playerPile.hand) || [];
+            const selectable = [];
+            const indices = [];
+            hand.forEach((card, i) => {
+              if (!card || !card.isNumberCard || card.isItemCard || card.isBlack || card.isWhite) return;
+              if (!['RED', 'YELLOW', 'BLUE', 'GREEN'].includes(card.color)) return;
+              selectable.push(card);
+              indices.push(i);
+            });
+            if (!selectable.length) {
+              this._toast('没有可熔炼的普通颜色手牌');
+              return;
+            }
+            this._getDialogs().showOpponentCardChoice(
+              [{ key: 'player', label: '红→炙热 / 黄→沙盲 / 蓝→潜水 / 绿→茂盛', cards: selectable }],
+              choice => {
+                const result = this.eng.useConsumable(useIndex, { discardIndex: indices[choice.index] });
+                if (result && result.message) this._toast(result.message);
+                this.render();
+              },
+              '熔炉 · 弃颜色牌换战利白卡'
+            );
+            return;
+          }
           if (def && def.combatUse === 'crystalBall') {
             const preview = this.eng.useConsumable(useIndex);
             if (preview && preview.needsChoice && preview.crystalBallCards) {

@@ -44,7 +44,7 @@
       color: 'WHITE',
       trophyWhite: true,
       trophyName: name,
-      trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', IceSealTrophy: 'iceSeal', HypothermiaTrophy: 'hypothermia', RussianRouletteTrophy: 'roulette', FlyTrophy: 'fly', CritTrophy: 'crit', DivingTrophy: 'diving', LushTrophy: 'lush', PoisonTrophy: 'poison', ParasiteTrophy: 'parasite', ThornsTrophy: 'thorns', TimeBombTrophy: 'bomb', GuardTrophy: 'guard', DisarmTrophy: 'disarm', PurifyWaterTrophy: 'purify', ZeroTrophy: 'zero', SmallPotionTrophy: 'smallPotion' })[name] || null,
+      trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', IceSealTrophy: 'iceSeal', HypothermiaTrophy: 'hypothermia', RussianRouletteTrophy: 'roulette', FlyTrophy: 'fly', CritTrophy: 'crit', DivingTrophy: 'diving', ScorchTrophy: 'scorch', LushTrophy: 'lush', PoisonTrophy: 'poison', ParasiteTrophy: 'parasite', ThornsTrophy: 'thorns', SandblindTrophy: 'sandblind', TimeBombTrophy: 'bomb', GuardTrophy: 'guard', DisarmTrophy: 'disarm', PurifyWaterTrophy: 'purify', ZeroTrophy: 'zero', SmallPotionTrophy: 'smallPotion' })[name] || null,
       chosenColor: null,
       isBlack: false,
       isWhite: true,
@@ -75,8 +75,10 @@
     for (let v = 1; v <= 7; v++) d.push(num('WHITE', v, true));
 
     for (let i = 0; i < 2; i++) d.push(item('BLACK', 'black'), item('BLACK', 'drawTwo'), item('WHITE', 'drawThree'));
-    for (let i = 0; i < 4; i++) d.push(item('BLACK', 'shuffle'), item('WHITE', 'potion'), item('WHITE', 'superPurify'));
-    for (let i = 0; i < 6; i++) d.push(item('WHITE', 'purify'));
+    for (let i = 0; i < 4; i++) d.push(item('WHITE', 'potion'));
+    // 洗入 / 净化 / 超级净化各比对战标准组少 2 张。
+    for (let i = 0; i < 2; i++) d.push(item('BLACK', 'shuffle'), item('WHITE', 'superPurify'));
+    for (let i = 0; i < 4; i++) d.push(item('WHITE', 'purify'));
     return shuffle(d);
   }
 
@@ -87,6 +89,8 @@
     for (let i = 0; i < whiteZeros; i++) d.push(num('WHITE', 0, true, npc));
     for (let v = 1; v <= 3; v++) for (let n = 0; n < 4; n++) d.push(num('WHITE', v, true, npc));
     for (let v = 4; v <= 6; v++) for (let n = 0; n < 2; n++) d.push(num('WHITE', v, true, npc));
+    // 白7：轮空牌，无攻防效果；所有怪物/Boss 各 2 张。
+    for (let i = 0; i < 2; i++) d.push(num('WHITE', 7, true, npc));
     // Purple magic is the original magic card; green magic cleanses the caster.
     d.push(item('WHITE', 'magic', npc));
     d.push(item('WHITE', 'greenMagic', npc));

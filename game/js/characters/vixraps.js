@@ -9,7 +9,7 @@
     turnStart(eng, ch) {},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, heal, draw, hurt } = helpers;
-      let d = 0, skip = false, unblock = false;
+      let d = 0, skip = false, unblock = false, immediateBuffs = false;
 
       if (v === 1) {
         d = 2;
@@ -35,7 +35,12 @@
         const currentBurn = t.burn || 0;
         if (currentBurn > 0) {
           t.burn = Math.min(5, currentBurn * 2);
-          eng.emit('buff', `灼伤翻倍至${t.burn}层`, null, { who: owner === 'player' ? 'ai' : 'player', kind: 'burn', stacks: t.burn });
+          const who = (typeof eng._who === 'function') ? eng._who(t)
+            : (owner === 'player' ? (t === (eng.s && eng.s.ai2) ? 'ai2' : 'ai') : 'player');
+          eng.emit('buff', `灼伤翻倍至${t.burn}层`, null, { who, kind: 'burn', stacks: t.burn });
+          // Keep the doubled stacks visible during defense; otherwise
+          // _deferAttackBuffs rolls burn back until settle restores it.
+          immediateBuffs = true;
         }
       }
       if (v === 6) {
@@ -74,7 +79,7 @@
         });
       }
 
-      return { d, skip, unblock };
+      return { d, skip, unblock, immediateBuffs };
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, burn } = helpers;

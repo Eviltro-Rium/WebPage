@@ -221,7 +221,7 @@
             }
             entity.burn = 0; entity.bleed = 0; entity.poison = 0;
             entity.frozen = false; entity.bomb = 0; entity.blind = 0; entity.iceSeal = 0;
-            entity.hypothermia = 0; entity.thorns = 0; entity.sandblind = 0;
+            entity.hypothermia = 0; entity.thorns = 0; entity.sandblind = 0; entity.scorch = false;
         },
         clearPositiveBuffs(entity) {
             if (!entity) return;
@@ -250,6 +250,7 @@
                 entity.thorns = 0; entity.sandblind = 0;
                 entity.guard = 0; entity.fly = 0; entity.lush = 0; entity.crit = 0; entity.parasite = 0;
                 entity.diving = false;
+                entity.scorch = false;
                 entity.chaos_red = false; entity.chaos_yellow = false;
                 entity.chaos_blue = false; entity.chaos_green = false;
                 return;
@@ -265,6 +266,7 @@
             else if (kind === 'iceSeal') entity.iceSeal = 0;
             else if (kind === 'hypothermia' && entity.hypothermia) entity.hypothermia = 0;
             else if (kind === 'diving') entity.diving = false;
+            else if (kind === 'scorch') entity.scorch = false;
             else if (kind === 'bloodthirst') { /* permanent mark */ }
             else if (kind === 'bind') { /* expires through its gameplay rule */ }
             else if (kind === 'guard' && entity.guard) entity.guard--;

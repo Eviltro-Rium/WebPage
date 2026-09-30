@@ -194,6 +194,22 @@ test('Vixraps attack 6 settles one burn and heals the actual burn damage', () =>
   assert.equal(recovery && recovery.kind, 'heal', 'Vixraps 6 uses ordinary recovery floating text');
 });
 
+test('Vixraps attack 5 keeps doubled burn during defense (no defer rollback flash)', () => {
+  const eng = new Engine();
+  eng.start('Vixraps', 'Saiki');
+  eng.s.ai.burn = 2;
+  eng.h.player = [number(5, 'RED')];
+  eng.s.discardTop = number(5, 'RED');
+  eng.s.phase = 'PLAYER_PLAY';
+  eng.s.busy = false;
+  eng.s.selectedCard = 0;
+  eng.later = () => {};
+  eng.play();
+  assert.equal(eng.s.ai.burn, 4, 'doubled burn must remain while opponent defends');
+  assert.equal(eng.s.pendingBuffRestore, null, 'immediateBuffs clears deferred burn restore');
+  assert.equal(eng.s.phase, 'AI_DEFEND');
+});
+
 test('Vixraps defend 0 applies hypnosis to the attacker for the next defense', () => {
   const eng = new Engine();
   eng.start('Saiki', 'Vixraps');

@@ -274,6 +274,54 @@
     return { ok: true, message: '弃掉' + label + '，抽取' + drawn.length + '张牌' };
   });
 
+  function furnaceTrophyForCard(def, card) {
+    if (!card || !card.isNumberCard || card.isItemCard || card.isBlack || card.isWhite) return null;
+    const map = (def && def.furnaceByColor) || {
+      RED: 'ScorchTrophy', YELLOW: 'SandblindTrophy', BLUE: 'DivingTrophy', GREEN: 'LushTrophy'
+    };
+    return map[card.color] || null;
+  }
+
+  register('furnace', (eng, def, ctx) => {
+    const hand = eng.h.player || [];
+    const eligible = hand.filter(c => !!furnaceTrophyForCard(def, c));
+    if (!eligible.length) return { ok: false, message: '没有可熔炼的普通颜色手牌' };
+    const choice = ctx.choice;
+    const raw = choice && (choice.index != null ? choice.index : (typeof choice === 'number' ? choice : null));
+    if (raw == null || raw === '') {
+      return { ok: false, message: '请选择要弃掉的1张普通颜色手牌' };
+    }
+    const index = Number(raw);
+    if (!Number.isInteger(index) || index < 0 || index >= hand.length) {
+      return { ok: false, message: '请选择要弃掉的1张普通颜色手牌' };
+    }
+    const card = hand[index];
+    const trophyName = furnaceTrophyForCard(def, card);
+    if (!trophyName) return { ok: false, message: '只能弃掉红/黄/蓝/绿普通颜色牌' };
+    hand.splice(index, 1);
+    const label = eng.cardText(card);
+    eng.discardWithEvent(card, 'player', {
+      handIndex: index,
+      desc: '熔炉：弃掉' + label
+    });
+    const trophyCard = window.AdventureDeck.trophyWhite(trophyName);
+    hand.push(trophyCard);
+    const adv = ctx.advEngine || eng._adventureEngine;
+    if (adv && adv.s) {
+      if (!Array.isArray(adv.s.trophyWhiteCards)) adv.s.trophyWhiteCards = [];
+      adv.s.trophyWhiteCards.push(trophyName);
+    }
+    if (Array.isArray(eng.s.trophyDrops)) eng.s.trophyDrops.push(trophyName);
+    else eng.s.trophyDrops = [trophyName];
+    eng._invariantBaseline = null;
+    if (typeof eng._checkInvariants === 'function') eng._checkInvariants('furnace');
+    const trophyDef = window.AdventureRegistry && window.AdventureRegistry.getItem(trophyName);
+    return {
+      ok: true,
+      message: '弃掉' + label + '，获得' + ((trophyDef && trophyDef.displayName) || trophyName)
+    };
+  });
+
   register('buffTransfer', (eng, def, ctx) => {
     const applied = eng._applyBuffTransfer(ctx.choice, ctx.player, ctx.ai);
     if (!applied.ok) return { ok: false, message: applied.message || '魔法转移需要选择一层buff' };

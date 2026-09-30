@@ -298,13 +298,21 @@ _showSkillOverlay() {
         { atkKey: 0, defKey: 0, label: '1' }, { atkKey: 1, defKey: 1, label: '2' },
         { atkKey: 2, defKey: 2, label: '3' }, { atkKey: 7, defKey: 3, label: '0' },
         { atkKey: 3, defKey: -1, label: '4' }, { atkKey: 4, defKey: -1, label: '5' },
-        { atkKey: 5, defKey: -1, label: '6' }
+        { atkKey: 5, defKey: -1, label: '6' }, { atkKey: 6, defKey: -1, label: '7' }
     ];
     const stripPrefix = t => (t || '').replace(/^\d+\s*/, '');
+    const tagifySkill = t => {
+        let out = String(t || '');
+        const names = ['失温', '炙热', '冰封', '定时炸弹', '沙盲', '荆棘', '催眠', '沉睡', '捆缚', '嗜血', '寄生', '茂盛', '潜水', '飞翔', '守护', '暴击', '致盲', '中毒', '流血', '冷冻', '灼伤'];
+        for (const name of names) {
+            out = out.replace(new RegExp('(?<!\\[)' + name + '(?!\\])', 'g'), '[' + name + ']');
+        }
+        return out;
+    };
     const colorize = t => {
         t = String(t || '').replace(/\[牌\]/g, '🃏');
         if (typeof parseSegments !== 'function') return t;
-        const segs = parseSegments(t, '');
+        const segs = parseSegments(tagifySkill(t), '');
         return segs.map(sg => sg.color ? `<span style="color:${sg.color}">${sg.text}</span>` : sg.text).join('');
     };
     for (const ch of chars) {
@@ -319,17 +327,18 @@ _showSkillOverlay() {
             }
         }
         let dynAtk = null, dynDef = null;
-        if (!atk.length && !def.length && ch.isNpc) {
+        if (ch.isNpc) {
             const fn = window.AdventureMonsterBridge && window.AdventureMonsterBridge.getAdventureNpcSkillDesc;
             if (fn) {
-                const mkCard = vv => ({ value: vv, isNumberCard: true, isItemCard: false, isBlack: false, isWhite: false });
+                const mkCard = vv => ({ value: vv, isNumberCard: true, isItemCard: false, isBlack: false, isWhite: true });
                 const st = ch.stage || 1;
-                for (const vv of [1, 2, 3, 4, 5, 6, 0]) {
+                for (const vv of [1, 2, 3, 4, 5, 6, 7, 0]) {
                     const aDesc = fn(ch.name, mkCard(vv), false, { stage: st });
                     const dDesc = fn(ch.name, mkCard(vv), true, { stage: st });
-                    if (aDesc && aDesc !== '无进攻效果') { if (!dynAtk) dynAtk = {}; dynAtk[vv] = aDesc; }
-                    if (dDesc && dDesc !== '无防御效果') { if (!dynDef) dynDef = {}; dynDef[vv] = dDesc; }
+                    if (aDesc) { if (!dynAtk) dynAtk = {}; dynAtk[vv] = aDesc; }
+                    if (dDesc) { if (!dynDef) dynDef = {}; dynDef[vv] = dDesc; }
                 }
+                if (dynAtk || dynDef) { atk = []; def = []; }
             }
         }
         if (!atk.length && !def.length && !dynAtk && !dynDef) continue;
@@ -348,7 +357,7 @@ _showSkillOverlay() {
             const rv = parseInt(row.label, 10);
             let atkDesc, defDesc;
             const hasDefSlot = ch.isNpc
-                ? (['1', '2', '3', '0'].includes(row.label) || (canDefendHigh && ['4', '5', '6'].includes(row.label)))
+                ? (['1', '2', '3', '0'].includes(row.label) || (canDefendHigh && ['4', '5', '6', '7'].includes(row.label)))
                 : (row.defKey >= 0);
             if (dynAtk) atkDesc = dynAtk[rv] ? colorize(dynAtk[rv]) : '—';
             else atkDesc = atk[row.atkKey] ? colorize(stripPrefix(atk[row.atkKey])) : '—';

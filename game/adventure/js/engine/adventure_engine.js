@@ -136,6 +136,7 @@
 
       if (opts.gold) this.s.currency.addGold(opts.gold);
       this._syncBeastCap();
+      this._syncHandLimit();
 
       if (this.s.pos) {
         const startRoom = map.get(this.s.pos.r, this.s.pos.c);
@@ -258,6 +259,7 @@
       }
 
       this._syncBeastCap();
+      this._syncHandLimit();
       this._initItemDoorCosts(map);
       this.emit('restore', '已恢复冒险进度', { character: save.characterName });
       return this.s;

@@ -159,3 +159,11 @@ Chan 4/7、Saiki 5、Blaze 4、Moze 5、Leon 7 等会检查攻击目标手牌的
 持有优惠券配饰（仅能携带1个，锻造需1本兽元+2万能兽元）时，商店所有商品（兽元、配饰、一次性道具）价格变为原来的1/2（向上取整）。商店刷新费用不受折扣影响。
 
 - 代码：`shop.js` `_applyShopDiscount()`、`_shopBeastPrice()`、`_shopSlotPrice()`
+
+---
+
+## 20. 炙热 — 灼伤结算不消退
+
+持有[炙热]（上限1层，持续，可净化）的角色触发灼伤结算时，仍按当前灼伤层数扣血，但灼伤层数不-1。炙热战利白卡对当前对手施加[炙热]。炙热属于负面buff，可被净化牌/超级净化/净化之水清除，也能被清除自身debuff的技能（Ryan 6/0、Blaze 6、Moze 7）清除；超级净化同样清除。
+
+- 代码：`engine.js` `settleBurn()` / `setScorch()`、`status_registry.js` 的 `scorch` 定义；冒险 AI 侧见 `battle_engine.js` 灼伤结算、`inventory.js` 地图侧结算

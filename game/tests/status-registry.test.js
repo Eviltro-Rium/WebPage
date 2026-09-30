@@ -18,13 +18,17 @@ test('status registry describes and clears every current status', () => {
   const entity = {
     burn: 2, bleed: 2, poison: 1, frozen: true, blind: 1, bomb: 3, iceSeal: 1,
     hypothermia: 2, bindMark: true, guard: 2, fly: 1, crit: 1, lush: 1,
-    parasite: 1, diving: true, bloodthirst: true, hypnosis: true, sleep: true, thorns: 1, sandblind: 3,
+    parasite: 1, diving: true, scorch: true, bloodthirst: true, hypnosis: true, sleep: true, thorns: 1, sandblind: 3,
     chaos_red: true, chaos_yellow: true, chaos_blue: true, chaos_green: true
   };
 
   assert.ok(registry.get('hypothermia'));
   assert.equal(registry.get('bind').property, 'bindMark');
   assert.equal(registry.get('diving').trigger, 'onBlueAttack');
+  assert.equal(registry.get('scorch').polarity, 'debuff');
+  assert.equal(registry.get('scorch').max, 1);
+  assert.equal(registry.get('scorch').cleanse, 'reset');
+  assert.equal(registry.get('scorch').trigger, 'onBurnSettle');
   registry.all.forEach(def => {
     assert.ok(def.icon, `${def.id} needs an icon`);
     assert.ok(def.polarity === 'buff' || def.polarity === 'debuff', `${def.id} needs polarity`);
@@ -48,13 +52,21 @@ test('status registry describes and clears every current status', () => {
 });
 
 test('EngineStatus delegates cleanup to the registry', () => {
-  const entity = { burn: 1, bindMark: true, diving: true, chaos_blue: true, guard: 2 };
+  const entity = { burn: 1, scorch: true, bindMark: true, diving: true, chaos_blue: true, guard: 2 };
   context.FurryGame.EngineStatus.clearDebuffs(entity);
   assert.equal(entity.burn, 0);
+  assert.equal(entity.scorch, false);
   assert.equal(entity.bindMark, true);
   context.FurryGame.EngineStatus.clearPositiveBuffs(entity);
   assert.equal(entity.diving, false);
   assert.equal(entity.chaos_blue, false);
+  assert.equal(entity.guard, 0);
+});
+
+test('scorch survives positive-buff clears', () => {
+  const entity = { scorch: true, guard: 2 };
+  context.FurryGame.EngineStatus.clearPositiveBuffs(entity);
+  assert.equal(entity.scorch, true);
   assert.equal(entity.guard, 0);
 });
 

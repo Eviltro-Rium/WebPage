@@ -199,3 +199,32 @@ test('FrozenOrca stage4: defendImmune on 0', () => {
   assert.equal(s4.defendCounter(numCard(0), 6), 6, 'stage4 still counters on 0');
   assert.equal(s4.defendClearDebuffs(numCard(0)), true, 'stage4 still clears debuffs');
 });
+
+test('FrozenOrca skill desc: attack and defend match ocean.md', () => {
+  const { getAdventureNpcSkillDesc } = AdventureMonsterBridge;
+  const atk123 = getAdventureNpcSkillDesc('FrozenOrca', numCard(2), false, { stage: 1 });
+  assert.ok(atk123.includes('潜水'), 'attack 1/2/3 should mention diving');
+  assert.ok(atk123.includes('失温'), 'attack 1/2/3 should mention hypothermia');
+  assert.ok(!atk123.includes('清除自身'), 'attack should not show defend clear text');
+
+  const atk456 = getAdventureNpcSkillDesc('FrozenOrca', numCard(5), false, { stage: 1 });
+  assert.ok(atk456.includes('流血'), 'attack 4/5/6 should mention bleed');
+
+  const atk0 = getAdventureNpcSkillDesc('FrozenOrca', numCard(0), false, { stage: 1 });
+  assert.ok(atk0.includes('流血'), 'attack 0 should mention bleed-scaled damage');
+
+  const def123 = getAdventureNpcSkillDesc('FrozenOrca', numCard(2), true, { stage: 1 });
+  assert.equal(def123, '清除自身所有负面状态，格挡半数伤害（向上取整）');
+
+  const def0 = getAdventureNpcSkillDesc('FrozenOrca', numCard(0), true, { stage: 1 });
+  assert.ok(def0.includes('反击相同点伤害'), 'defend 0 should mention same-point counter');
+  assert.ok(def0.includes('清除自身所有负面状态'), 'defend 0 should mention clear debuffs');
+  assert.ok(!def0.includes('免疫所有伤害'), 'stage1 defend 0 should not be immune');
+
+  const def0s4 = getAdventureNpcSkillDesc('FrozenOrca', numCard(0), true, { stage: 4 });
+  assert.ok(def0s4.includes('免疫所有伤害'), 'stage4 defend 0 should be immune');
+  assert.ok(def0s4.includes('清除自身所有负面状态'), 'stage4 defend 0 still clears');
+
+  const def7 = getAdventureNpcSkillDesc('FrozenOrca', numCard(7), true, { stage: 1 });
+  assert.equal(def7, '清除自身所有负面状态');
+});
