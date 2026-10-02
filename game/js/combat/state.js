@@ -70,6 +70,7 @@
         defCard: null,
         defOwner: null,
         revealCards: [],
+        pendingJudgmentMoves: [],
         diceRoll: null
     });
 
@@ -77,6 +78,7 @@
         const state = Object.assign({}, DEFAULTS);
         state.selectedCards = [];
         state.revealCards = [];
+        state.pendingJudgmentMoves = [];
         return Object.assign(state, overrides, {
             selectedCards: Array.isArray(overrides.selectedCards) ? overrides.selectedCards : state.selectedCards,
             revealCards: Array.isArray(overrides.revealCards) ? overrides.revealCards : state.revealCards

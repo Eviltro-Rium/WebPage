@@ -78,6 +78,17 @@
     }
     setDiscardTop(card){if(this.s.discardTop&&!this._skipNextDiscardTop)this.discardToBottom(this.s.discardTop);this._skipNextDiscardTop=false;this.s.discardTop=Card.normalize(card)||Object.assign({},card);this.s.diceRoll=null;const actor=this.s.defOwner||this.s.atkOwner;const owner=actor==='ai2'?'ai2':actor==='ai'?'ai':null;if(owner)this._markBombPlay(owner);this._checkInvariants('setDiscardTop')}
     emit(type,desc,card,extra={}){
+      // A revealed card has already reached its real pile/hand. Only its
+      // presentation stays on the table until this attack's defense settles.
+      if(this.s && type==='reveal'){
+        this.s.revealCards=cp((extra.cards&&extra.cards.length?extra.cards:[card]).filter(Boolean));
+        this.s.diceRoll=null;
+      }
+      if(this.s && this.s.atkCard && extra.from==='reveal' && (type==='discard'||type==='discardMany')){
+        const move=cp(Object.assign({},extra,{type,desc,card}));
+        (this.s.pendingJudgmentMoves||(this.s.pendingJudgmentMoves=[])).push(move);
+        extra=Object.assign({},extra,{deferRevealExit:true});
+      }
       const createEvent=Combat.CombatEvent&&Combat.CombatEvent.create;
       const make=(payload)=>createEvent?createEvent(payload):Object.assign({},payload);
       if(type!=='playerPlay'&&this.s&&this.s.atkOwner==='player'&&this.s.atkCard&&this._animatedPlayerAttack!==this.s.atkCard){

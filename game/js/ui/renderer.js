@@ -162,6 +162,39 @@ _repaintOwnerHand(owner) {
     }
 },
 
+_paintJudgmentCards(cards) {
+    const box=document.getElementById('reveal-cards');
+    if(!box)return;
+    const list=cards||[], multi=list.length>1;
+    this._judgmentCards=list;
+    box.innerHTML='';
+    box.classList.toggle('reveal-multi',multi);
+    for(const card of list){
+        const canvas=renderCard(card,multi?52:60,multi?74:86,false);
+        canvas.dataset.cardId=cardId(card);
+        canvas.classList.add('revealed-card');
+        box.appendChild(canvas);
+    }
+    if(!list.length)box.innerHTML='<span class="reveal-empty">等待判定</span>';
+    box.dataset.cardKey=JSON.stringify({cards:list,dice:null});
+},
+
+async _finishJudgmentAnimation(evt) {
+    const box=document.getElementById('reveal-cards');
+    // A refresh/final snapshot may have cleared the DOM. Carry visible faces
+    // at the boundary so judgment flights never remove innocent hand cards.
+    if(box&&!box.querySelector('.card-canvas')&&(evt.cards||[]).length)this._paintJudgmentCards(evt.cards);
+    try {
+        for(const move of evt.moves||[]){
+            if(move.type==='discardMany')await this._playDiscardManyAnimation(move);
+            else await this._playDiscardAnimation(move);
+        }
+    } finally {
+        this._paintJudgmentCards([]);
+        this._hideZoneDesc('reveal-desc');
+    }
+},
+
 async _playDiscardAnimation(evt) {
     const discard = document.getElementById('discard-top');
     if (!discard) return;
@@ -171,8 +204,10 @@ async _playDiscardAnimation(evt) {
     let source = null;
 
     if (evt.from === 'reveal') {
-        source = document.querySelector('#reveal-cards .card-canvas') ||
-            document.querySelector('.ai-revealed-card');
+        const box=document.getElementById('reveal-cards');
+        source=(box&&this._findHandCardElement(box,evt.card))||box;
+        // Judgment exit, never a second discard from the owner's hand.
+        if(!source)return;
     }
     // The discarded card usually left the authoritative hand before its
     // events play, so a positional index can resolve to an innocent card
@@ -196,7 +231,7 @@ async _playDiscardAnimation(evt) {
     }
     if (!source) source = document.getElementById('reveal-cards') || document.getElementById('deck-area');
 
-    const faceUp = evt.faceUp === true || owner === 'player';
+    const faceUp = evt.from === 'reveal' || evt.faceUp === true || owner === 'player';
     const landsOnTop = evt.destination === 'top';
     await this.anim.discardCard(evt.card, source, discard, faceUp, { landsOnTop });
     this._repaintOwnerHand(owner);
@@ -208,9 +243,11 @@ async _playDiscardManyAnimation(evt) {
     const owner = evt.who === 'ai2' ? 'ai2' : evt.who === 'ai' ? 'ai' : 'player';
     const hand = document.getElementById(owner === 'player' ? 'player-hand' : `${owner}-hand`);
     const cards = Array.from(evt.cards || []);
-    const faceUp = evt.faceUp === true || owner === 'player';
+    const faceUp = evt.from === 'reveal' || evt.faceUp === true || owner === 'player';
     const landsOnTop = evt.destination === 'top';
-    const handCards = hand ? Array.from(hand.querySelectorAll('.card-canvas')) : [];
+    const reveal=evt.from==='reveal'?document.getElementById('reveal-cards'):null;
+    const container=reveal||hand;
+    const handCards = container ? Array.from(container.querySelectorAll('.card-canvas')) : [];
     const used = new Set();
     const sources = cards.map(card => {
         const id = cardId(card);
@@ -224,6 +261,7 @@ async _playDiscardManyAnimation(evt) {
             used.add(foundIdx);
             return match;
         }
+        if(reveal)return reveal;
         const fallbackIdx = handCards.findIndex((_, idx) => !used.has(idx));
         if (fallbackIdx >= 0) {
             used.add(fallbackIdx);
@@ -401,6 +439,7 @@ async _playRevealAnimation(cardOrCards, fromOwner, fromSource, handIndex = -1) {
         ? cardOrCards.filter(Boolean)
         : (cardOrCards ? [cardOrCards] : []);
     if (!cards.length) return;
+    this._judgmentCards=cards;
     // 默认从牌库飞出；仅显式 from:'hand' 时从对应手牌飞出（追加/抽取手牌判定）
     const fromHand = fromSource === 'hand';
     let ownerEl = document.getElementById('deck-area');
@@ -471,6 +510,7 @@ async _playRevealAnimation(cardOrCards, fromOwner, fromSource, handIndex = -1) {
         await wait(multi ? 320 : 430);
         flying.remove();
         const shown = renderCard(card, cw, ch, false);
+        shown.dataset.cardId=cardId(card);
         shown.classList.add('revealed-card');
         toEl.appendChild(shown);
     }

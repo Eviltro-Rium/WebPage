@@ -101,8 +101,15 @@
       }
       if (v === 2) {
         const currentBurn = opponent.burn || 0;
+        const service = window.FurryGame && window.FurryGame.StatusService;
         if (currentBurn > 0) {
-          opponent.burn = Math.min(5, currentBurn * 2);
+          if (service) service.set(opponent, 'burn', currentBurn * 2);
+          else opponent.burn = Math.min(5, currentBurn * 2);
+          if (opponent.burn !== currentBurn) {
+            const target = typeof eng._who === 'function' ? eng._who(opponent) : (owner === 'player' ? 'ai' : 'player');
+            eng.emit('buff', '[灼伤]翻倍至' + opponent.burn + '层', null,
+              {who:target, target, kind:'burn', stacksBefore:currentBurn, stacks:opponent.burn, operation:'multiply'});
+          }
         }
         const healAmount = opponent.burn || 0;
         heal(defender, healAmount);

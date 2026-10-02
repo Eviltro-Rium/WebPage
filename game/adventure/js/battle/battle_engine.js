@@ -1331,6 +1331,7 @@
     }
 
     endAi() {
+      this.finishJudgmentPresentation();
       this.trimAI();
       if (typeof this.settleBurn === 'function') this.settleBurn(this.s.ai);
       else if (this.s.ai.burn) {

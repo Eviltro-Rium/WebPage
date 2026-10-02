@@ -81,14 +81,15 @@
             // whole defense resolution.  Do not let that final snapshot paint a
             // judgment card while its preceding defense-card event is still being
             // animated; the reveal event itself owns the judgment area meanwhile.
-            if (this._isConsumingEvents) return;
+            if (this._isConsumingEvents || (this.state.events||[]).some(evt=>evt.type==='reveal'||evt.type==='judgmentEnd')) return;
             const cards = this.state.revealCards || [];
             const dice = this.state.diceRoll || null;
+            this._judgmentCards=cards;
             const key = JSON.stringify({ cards, dice });
             if (box.dataset.cardKey === key) return;
             box.innerHTML = '';
             box.classList.toggle('reveal-multi', !dice && cards.length > 1);
-            if (dice && Number.isFinite(Number(dice.value))) {
+            if (!cards.length && dice && Number.isFinite(Number(dice.value))) {
                 box.innerHTML = '<div class="d12-result" aria-label="12面骰结果"><span class="d12-label">D12</span><strong>' + dice.value + '</strong></div>';
             } else {
                 if (!cards.length) box.innerHTML = '<span class="reveal-empty">等待判定</span>';
@@ -96,6 +97,7 @@
                 const ch = cards.length > 1 ? 74 : 86;
                 for (const card of cards) {
                     const cv = renderCard(card, cw, ch, false);
+                    cv.dataset.cardId=cardId(card);
                     cv.classList.add('revealed-card'); box.appendChild(cv);
                 }
             }

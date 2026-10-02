@@ -5,6 +5,7 @@
   const Engine = global.Engine;
   if (!Engine) throw new Error('engine_attack.js requires engine.js');
 
+  const clone = value => Combat.Card.clone(value);
   const EngineAttack = {
     prepareAttackSettlement(remaining, defenderKey) {
       const attack = this.s.pendingAttack;
@@ -144,6 +145,58 @@
       return result;
     },
 
+    // This queue contains only visual copies, never physical pile ownership.
+    finishJudgmentPresentation() {
+      if(!this.s)return;
+      const cards=clone(this.s.revealCards||[]), moves=clone(this.s.pendingJudgmentMoves||[]);
+      this.s.pendingJudgmentMoves=[];
+      if(!cards.length&&!moves.length)return;
+      this.s.revealCards=[];
+      this.s.diceRoll=null;
+      this.emit('judgmentEnd','防御结算结束，移走判定牌',null,{cards,moves});
+    },
+
+    // Defense effects commit immediately in skill order; never join the attack queue.
+    // Older skills that write a status directly still receive a typed feedback event.
+    resolveDefenseSkill(callback) {
+      const registry = Combat.StatusRegistry, service = Combat.StatusService;
+      if (!registry || !service || this._resolvingDefenseSkill) return callback();
+      const keys = ['player', 'ai', 'ai2'].filter(key => this.s[key]);
+      const seen = new Map(keys.map(key => [key, service.snapshot(this.s[key])]));
+      const originalEmit = this.emit;
+      const properties = entity => Object.fromEntries(registry.all.map(def => [def.property, entity[def.property]]));
+      const flush = (type, extra = {}) => {
+        for (const key of keys) {
+          const entity = this.s[key], before = seen.get(key), after = service.snapshot(entity);
+          seen.set(key, after);
+          for (const def of registry.all) {
+            if (before[def.id] === after[def.id]) continue;
+            const covered = (extra.target || extra.who) === key &&
+              (['buff', 'buffSettle', 'burnSettle', 'bleedSettle', 'poisonSettle', 'bombExplode'].includes(type)) &&
+              (extra.kind === def.id || extra.kind === 'chaos_reset' && def.id.startsWith('chaos_'));
+            if (covered) continue;
+            const previous = Number(before[def.id]) || 0, current = registry.amount(entity, def.id);
+            const delta = current - previous;
+            const desc = (delta > 0 ? '+' : '-') + (Math.abs(delta) > 1 ? Math.abs(delta) : '') + '[' + def.label + ']';
+            originalEmit.call(this, 'buff', desc, null, {who:key, target:key, kind:def.id,
+              stacksBefore:previous, stacks:current, source:'defense', statusAfter:properties(entity)});
+          }
+        }
+      };
+      this._resolvingDefenseSkill = true;
+      this.emit = (type, desc, card, extra = {}) => {
+        flush(type, extra);
+        const key = extra.target || extra.who, entity = this.s[key];
+        const metadata = entity ? Object.assign({}, extra, {source:'defense', statusAfter:properties(entity)}) : extra;
+        return originalEmit.call(this, type, desc, card, metadata);
+      };
+      try { return callback(); }
+      finally {
+        try { flush(); }
+        finally { this.emit = originalEmit; this._resolvingDefenseSkill = false; }
+      }
+    },
+
     resolveAttack(attacker, defender, amount, options) {
       const opts = options || {};
       if (typeof this.dealAttackHit !== 'function') return 0;
@@ -170,6 +223,23 @@
 
   Combat.EngineAttack = Object.freeze(EngineAttack);
   Object.assign(Engine.prototype, EngineAttack);
+  // Every mode shares the same settlement boundary. Item/counter AOE does
+  // not finish the current attack and therefore cannot release its judgment.
+  const perform = Engine.prototype.performAttack;
+  Engine.prototype.performAttack = function(options = {}) {
+    const result=perform.call(this,options);
+    if(options.commitAttackEffects)this.finishJudgmentPresentation();
+    return result;
+  };
+  // Pure-effect/zero-damage branches can skip the main settlement path.
+  for(const method of ['afterAttack','continueAIAttack','endAi','endAi1v2']) {
+    const original=Engine.prototype[method];
+    if(typeof original!=='function')continue;
+    Engine.prototype[method]=function(...args) {
+      this.finishJudgmentPresentation();
+      return original.apply(this,args);
+    };
+  }
   const defer = Engine.prototype.deferSettlement;
   Engine.prototype.deferSettlement = function(kind, damage, bleed) {
     const target = kind === 'PLAYER_ATTACK' ? (this.s.attackTarget || 'ai') : 'player';

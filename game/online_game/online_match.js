@@ -55,6 +55,7 @@
             else if (projected.type === 'defend') projected.type = 'aiDefend';
             else if (projected.type === 'aiDefend') projected.type = 'defend';
             for (const key of keys) if (Object.prototype.hasOwnProperty.call(projected, key)) projected[key] = swapKey(projected[key]);
+            if (Array.isArray(projected.moves)) projected.moves = projectEvents(projected.moves, viewer, source);
             if (Array.isArray(projected.aoeTargets)) projected.aoeTargets = projected.aoeTargets.map(swapKey);
             return projected;
         });
@@ -75,6 +76,9 @@
         if (state.pendingBuffRestore &&
             (state.pendingBuffRestore.target === 'player' || state.pendingBuffRestore.target === 'ai')) {
             state.pendingBuffRestore.target = swapKey(state.pendingBuffRestore.target);
+        }
+        if (Array.isArray(state.pendingJudgmentMoves)) {
+            state.pendingJudgmentMoves = projectEvents(state.pendingJudgmentMoves, 'guest', 'host');
         }
         if (Array.isArray(state.pendingSkillStatuses)) {
             state.pendingSkillStatuses.forEach(effect => { effect.target = swapKey(effect.target); });
@@ -223,6 +227,7 @@
                 return this.check();
             };
             e.continueAIAttack = function () {
+                this.finishJudgmentPresentation();
                 if (!this.s.player.alive || !this.s.ai.alive) return this.check();
                 this.s.phase = 'PLAYER_PLAY';
                 this.s.busy = false;
@@ -238,6 +243,7 @@
                 return this.check();
             };
             e.endAi = function () {
+                this.finishJudgmentPresentation();
                 this.s.turn++;
                 this.s.phase = 'PLAYER_PLAY';
                 this.s.busy = false;
