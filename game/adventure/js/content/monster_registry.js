@@ -102,8 +102,81 @@
             }
           }
         }
+        // 冻洋章鱼专属：进攻1/2/3抽取玩家牌库一张牌判定；普通颜色3点伤害并放回玩家牌库底，黑/白牌（含战利白卡）5点伤害并置入玩家弃牌堆
+        if (typeof mod.attackOctopusJudge === 'function' && mod.attackOctopusJudge(c)) {
+          const pp = eng.piles && eng.piles.player;
+          if (pp) {
+            if (typeof eng._refillPile === 'function') eng._refillPile('player');
+            if (pp.deck.length) {
+              const drawn = pp.deck.pop();
+              eng.emit('reveal', a.name + '抽取玩家牌库' + eng.cardText(drawn) + '判定', drawn, { who: 'player', from: 'deck' });
+              const isBW = !!(drawn.isBlack || drawn.isWhite || drawn.trophyWhite || !drawn.isNumberCard);
+              if (typeof mod.attackOctopusJudgeDamage === 'function') d = mod.attackOctopusJudgeDamage(isBW);
+              else d = isBW ? 5 : 3;
+              if (isBW) {
+                pp.discard.push(drawn);
+                eng.emit('desc', eng.cardText(drawn) + '为黑/白牌，造成' + d + '点伤害并置入玩家弃牌堆');
+              } else {
+                pp.deck.unshift(drawn);
+                eng.emit('desc', eng.cardText(drawn) + '为普通颜色，造成' + d + '点伤害并放回玩家牌库底');
+              }
+            }
+          }
+        }
+        // 克拉肯专属：进攻1/2/3抽取玩家牌库一张牌判定；普通颜色造成对应数字伤害并放回玩家牌库底，数字零/道具牌0伤害并置入玩家弃牌堆、跳过防御、获得潜水、施加冰封
+        if (typeof mod.attackKrakenJudge === 'function' && mod.attackKrakenJudge(c)) {
+          const pp = eng.piles && eng.piles.player;
+          if (pp) {
+            if (typeof eng._refillPile === 'function') eng._refillPile('player');
+            if (pp.deck.length) {
+              const drawn = pp.deck.pop();
+              eng.emit('reveal', a.name + '抽取玩家牌库' + eng.cardText(drawn) + '判定', drawn, { who: 'player', from: 'deck' });
+              const isDud = !!(drawn.isBlack || drawn.isWhite || drawn.trophyWhite || !drawn.isNumberCard || drawn.value === 0);
+              if (isDud) {
+                d = 0;
+                unblock = true;
+                pp.discard.push(drawn);
+                eng.emit('desc', eng.cardText(drawn) + '为零/道具牌，置入玩家弃牌堆并跳过防御');
+                if (!a.diving) {
+                  a.diving = true;
+                  const diveWho = attackerKey === 'ai2' ? 'ai2' : (attackerKey === 'ai' ? 'ai' : 'player');
+                  eng.emit('buff', '[潜水]', null, { who: diveWho, kind: 'diving', stacks: 1 });
+                }
+                if (typeof eng.iceSeal === 'function') eng.iceSeal(t);
+                else t.iceSeal = Math.min(1, (t.iceSeal || 0) + 1);
+              } else {
+                d = Math.max(0, Number(drawn.value) || 0);
+                pp.deck.unshift(drawn);
+                eng.emit('desc', eng.cardText(drawn) + '造成' + d + '点伤害并放回玩家牌库底');
+              }
+            }
+          }
+        }
+        // 克拉肯专属0牌：施加1层失温，清除自身所有负面效果，造成3+清除层数点伤害
+        if (typeof mod.attackKrakenPurge === 'function' && mod.attackKrakenPurge(c)) {
+          if (typeof eng.hypothermia === 'function') eng.hypothermia(t, 1);
+          else t.hypothermia = Math.min(2, (t.hypothermia || 0) + 1);
+          let cleared = Math.max(0, Number(a.burn) || 0) + Math.max(0, Number(a.bleed) || 0)
+            + Math.max(0, Number(a.poison) || 0) + Math.max(0, Number(a.bomb) || 0)
+            + Math.max(0, Number(a.hypothermia) || 0) + Math.max(0, Number(a.thorns) || 0)
+            + Math.max(0, Number(a.sandblind) || 0);
+          if (a.frozen) cleared += 1;
+          if (a.blind) cleared += 1;
+          if (a.iceSeal) cleared += 1;
+          if (a.hypnosis) cleared += 1;
+          if (a.sleep) cleared += 1;
+          if (a.scorch) cleared += 1;
+          if (typeof eng.clearDebuffs === 'function') eng.clearDebuffs(a);
+          d = 3 + cleared;
+          eng.emit('desc', a.name + '清除自身' + cleared + '层负面效果，造成' + d + '点伤害');
+        }
         if (typeof mod.attackUnblockable === 'function') {
           unblock = mod.attackUnblockable(c);
+        }
+        // 伤害低于阈值时不可防御（克拉肯0牌常驻<5；stage3 起全牌适用）
+        if (!unblock && typeof mod.attackUnblockableBelow === 'function') {
+          const belowThreshold = Number(mod.attackUnblockableBelow(c)) || 0;
+          if (belowThreshold > 0 && d > 0 && d < belowThreshold) unblock = true;
         }
         let aoeTargets = null;
         let aoeDamage = 0;
@@ -315,6 +388,17 @@
           return { remaining: d, desc: '无防御效果' };
         }
 
+        // 克拉肯0牌：反击后玩家选择1张手牌弃掉（弃牌选择在本次防御结算后打开）
+        if (typeof mod.defendPlayerDiscard === 'function' && mod.defendPlayerDiscard(c)
+          && opponent && eng.s && opponent === eng.s.player) {
+          if (opponent.alive && eng.h && (eng.h.player || []).length) {
+            eng.s.pendingKrakenDefendDiscard = true;
+            eng.emit('desc', '克拉肯0牌：反击后请选择1张手牌弃掉');
+          } else {
+            eng.emit('desc', '克拉肯0牌：无手牌可弃');
+          }
+        }
+
         const poisonAmt = typeof mod.defendPoison === 'function' ? (mod.defendPoison(c) || 0) : 0;
         const applyPoison = () => {
           if (poisonAmt > 0 && poison) poison(opponent, poisonAmt);
@@ -474,8 +558,17 @@
             }
             applyClearSelfDebuffs();
             applyPoison(); applyBleed(); applyHypothermia(); applyLushAndParasite(); applyAllExtras();
+            let remaining = d;
+            const descParts = ['恢复' + healAmt + '生命'];
+            if (typeof mod.defendCounter === 'function') {
+              const counter = mod.defendCounter(c, d, defender, opponent, eng);
+              if (counter > 0 && hurt) {
+                hurt(opponent, counter);
+                descParts.push('反击' + counter + '点伤害');
+              }
+            }
             return {
-              remaining: blocked ? remaining : d,
+              remaining,
               desc: descParts.join('，') + suffix() + clearSelfDebuffsDesc + lushParasiteDesc + allExtrasDesc
             };
           }
@@ -602,14 +695,18 @@
           ? '免疫所有伤害，反击相同点伤害（守护/飞翔结算前），清除自身所有负面状态'
           : '反击相同点伤害（守护/飞翔结算前），清除自身所有负面状态';
       }
-      return '清除自身所有负面状态';
+      return '无防御效果';
     }
     let parts = [];
       if (typeof mod.defendImmune === 'function' && mod.defendImmune(card)) {
-        parts.push('免疫所有伤害');
         if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(card)) {
-          parts.push('免疫buff');
-          parts.push('清除自身所有debuff');
+          if (mod.name === 'ForestPanda') {
+            parts.push('免疫所有伤害和即将被施加的debuff，清除自身所有debuff');
+          } else {
+            parts.push('免疫所有伤害和debuff');
+          }
+        } else {
+          parts.push('免疫所有伤害');
         }
       }
       if (typeof mod.defendRollImmune === 'function' && mod.defendRollImmune(card)) {
@@ -635,7 +732,10 @@
       }
       if (typeof mod.defendBlock === 'function') {
         if (mod.name === 'CastleFirefly') {
-          parts.push((opts.stage >= 4 ? '格挡1+道具数量点伤害' : '格挡向上取整(1+道具数量×1/2)点伤害'));
+          const v = card && card.value;
+          if (v >= 1 && v <= 3) {
+            parts.push((opts.stage >= 4 ? '格挡1+道具数量点伤害' : '格挡向上取整(1+道具数量×1/2)点伤害'));
+          }
         } else if (mod.name === 'ForestPanda') {
           const base = Math.max(0, Number(mod.defendBlock(card, 8, { lush: 0 })) || 0);
           const withLush = Math.max(0, Number(mod.defendBlock(card, 8, { lush: 2 })) || 0);
@@ -670,10 +770,14 @@
           const c8 = mod.defendCounter(card, 8);
           const c4 = mod.defendCounter(card, 4);
           if (c8 > 0 || c4 > 0) {
-            if (c8 !== c4 && c8 === Math.ceil(8 / 2) && c4 === Math.ceil(4 / 2)) parts.push('反击一半伤害（向上取整）');
+            if (c8 === 8 && c4 === 4) parts.push('反击相同点伤害（守护/飞翔结算前）');
+            else if (c8 !== c4 && c8 === Math.ceil(8 / 2) && c4 === Math.ceil(4 / 2)) parts.push('反击一半伤害（向上取整）');
             else parts.push('反击' + c8 + '点伤害');
           }
         }
+      }
+      if (typeof mod.defendPlayerDiscard === 'function' && mod.defendPlayerDiscard(card)) {
+        parts.push('玩家选择1张手牌弃掉');
       }
       if (typeof mod.defendClearDebuffs === 'function' && mod.defendClearDebuffs(card)) {
         parts.push('清除自身所有负面状态');
@@ -747,9 +851,62 @@
         return '造成' + (2 + stageBonus) + '点[伤害]，获得[潜水]';
       }
       if (v >= 4 && v <= 6) {
-        return '对场上所有角色造成' + (4 + stageBonus) + '点[伤害]（不可防御），防御结束后对对手施加1层[失温]';
+        return '对场上所有其他角色造成' + (4 + stageBonus) + '点[伤害]（不可防御），防御结束后对对手施加1层[失温]';
       }
       return '无进攻效果';
+    }
+    // ForestPython: poison-scaled formulas + conditional draw (forest.md).
+    if (mod.name === 'ForestPython' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成' + (v + stageBonus) + '点[伤害]；玩家有≥2层[中毒]时额外抽取1张牌';
+      }
+      if (v >= 4 && v <= 6) {
+        return '先施加1层[中毒]，造成' + (3 + stageBonus) + '×玩家[中毒]层数点[伤害]';
+      }
+      if (v === 0) {
+        return '先施加1层[中毒]，造成' + (2 + stageBonus) + '×玩家[中毒]层数点[伤害]（不可防御）';
+      }
+      return '无进攻效果';
+    }
+    // CastleGhost 4/5/6: keep full branch text (castle.md), not live hand-size substitution.
+    if (mod.name === 'CastleGhost' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
+      return (Number(opts.stage) || 1) >= 3
+        ? '若打出后手上正好剩1张牌，按剩余手牌点数的2倍造成[伤害]；否则本轮空过'
+        : '若打出后手上正好剩1张牌，按剩余手牌点数的1.5倍（向上取整）造成[伤害]；否则本轮空过';
+    }
+    // CastleFox / FrozenOceanSamoyed: hand-size damage as formula (not live count).
+    if ((mod.name === 'CastleFox' || mod.name === 'FrozenOceanSamoyed') && card.isNumberCard) {
+      const v = card.value;
+      const stage = Number(opts.stage) || 1;
+      if (mod.name === 'CastleFox') {
+        if (v >= 1 && v <= 3) {
+          const dmg = v + (stage >= 3 ? 1 : 0);
+          return '造成' + dmg + '点[伤害]（不可防御）';
+        }
+        if (v >= 4 && v <= 6) return '造成玩家手牌数点[伤害]';
+        return '无进攻效果';
+      }
+      if (v >= 1 && v <= 3) {
+        return '造成对手手牌张数点[伤害]' + (stage >= 3 ? '（不可防御）' : '');
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成5点[伤害]；玩家先选择1张手牌弃掉再防御（无手牌则不弃）';
+      }
+      return '无进攻效果';
+    }
+    // ForestDendrobatidFrog 4/5/6: poison-scaled formula.
+    if (mod.name === 'ForestDendrobatidFrog' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      return '造成' + (4 + stageBonus) + '+玩家[中毒]层数点[伤害]';
+    }
+    // ForestPiranha 1/2/3: bleed×2 formula (forest.md / SKILL_DATA).
+    if (mod.name === 'ForestPiranha' && card.isNumberCard && card.value >= 1 && card.value <= 3) {
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      return stageBonus
+        ? '造成' + stageBonus + '+玩家[流血]层数×2点[伤害]'
+        : '造成玩家[流血]层数×2点[伤害]';
     }
     // FrozenOrca: diving + deferred hypothermia on 1/2/3, bleed on 4/5/6,
     // bleed-scaled damage on 0 (ocean.md). Defend copy is in the isDefend branch.
@@ -781,9 +938,36 @@
       }
       return '无进攻效果';
     }
+    // FrozenOceanOctopus: player-deck judgment on 1/2/3, diving on 4/5/6 (ocean.md).
+    if (mod.name === 'FrozenOceanOctopus' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '抽取玩家牌库1张牌判定：普通颜色造成' + (3 + stageBonus) + '点[伤害]并放回牌库底，黑/白牌造成' + (5 + stageBonus) + '点[伤害]并置入玩家弃牌堆';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成' + (4 + stageBonus) + '点[伤害]，获得[潜水]';
+      }
+      return '无进攻效果';
+    }
+    // FrozenKraken: player-deck judgment on 1/2/3, hand-size damage + hypothermia on 4/5/6,
+    // purge burst on 0 (ocean.md). Weak damage (<5) is unblockable (0 always, all cards stage3+).
+    if (mod.name === 'FrozenKraken' && card.isNumberCard) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) {
+        return '抽取玩家牌库1张牌判定：普通颜色造成对应数字点[伤害]并放回牌库底，数字零/道具牌0伤害并置入玩家弃牌堆、跳过防御、获得[潜水]、施加[冰封]';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成玩家手牌数点[伤害]，施加1层[失温]';
+      }
+      if (v === 0) {
+        return '施加1层[失温]，清除自身所有负面效果，造成3+清除层数点[伤害]（<5不可防御）';
+      }
+      return '无进攻效果';
+    }
     let parts = [];
     let dmg = 0;
-    let bleedDmgDesc = null;
+    let scaleDmgDesc = null;
     if (typeof mod.attackRevealDraw === 'function' && mod.attackRevealDraw(card)) {
       parts.push('从牌堆抽1张牌展示，造成对应数字的伤害');
     }
@@ -791,22 +975,26 @@
       ? Math.max(0, Number(mod.attackDrain(card, ctx)) || 0)
       : 0;
     if (typeof mod.attackDamage === 'function') {
-      const ctx0 = Object.assign({}, ctx, { playerBleed: 0 });
-      const ctx1 = Object.assign({}, ctx, { playerBleed: 1 });
-      dmg = mod.attackDamage(card, ctx0) || 0;
-      const dmg1 = mod.attackDamage(card, ctx1) || 0;
-      if (dmg !== dmg1) {
-        const perBleed = dmg1 - dmg;
-        bleedDmgDesc = (dmg > 0 ? '造成' + dmg + '点伤害+' : '') + '对手每有1层【流血】' + perBleed + '点伤害';
+      const ctxBleed0 = Object.assign({}, ctx, { playerBleed: 0, playerPoison: 0, playerHandSize: 0 });
+      const ctxBleed1 = Object.assign({}, ctx, { playerBleed: 1, playerPoison: 0, playerHandSize: 0 });
+      const ctxPoison1 = Object.assign({}, ctx, { playerBleed: 0, playerPoison: 1, playerHandSize: 0 });
+      const ctxHand1 = Object.assign({}, ctx, { playerBleed: 0, playerPoison: 0, playerHandSize: 1 });
+      dmg = mod.attackDamage(card, ctxBleed0) || 0;
+      const dmgBleed1 = mod.attackDamage(card, ctxBleed1) || 0;
+      const dmgPoison1 = mod.attackDamage(card, ctxPoison1) || 0;
+      const dmgHand1 = mod.attackDamage(card, ctxHand1) || 0;
+      if (dmg !== dmgBleed1) {
+        const per = dmgBleed1 - dmg;
+        scaleDmgDesc = (dmg > 0 ? '造成' + dmg + '+' : '造成') + '玩家[流血]层数×' + per + '点[伤害]';
+      } else if (dmg !== dmgPoison1) {
+        const per = dmgPoison1 - dmg;
+        scaleDmgDesc = (dmg > 0 ? '造成' + dmg + '+' : '造成') + '玩家[中毒]层数' + (per === 1 ? '' : '×' + per) + '点[伤害]';
+      } else if (dmg !== dmgHand1) {
+        scaleDmgDesc = '造成对手手牌张数点[伤害]';
       }
     } else if (card.isNumberCard) dmg = card.value || 0;
-    if (mod.name === 'CastleGhost' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
-      parts.push(ctx.attackerHandSize === 1
-        ? '若打出后剩1张牌，按剩余手牌点数造成' + (opts.stage >= 3 ? '2倍' : '1.5倍') + '伤害'
-        : '若打出后手牌不剩1张，跳过本轮');
-    }
-    if (bleedDmgDesc) {
-      let line = bleedDmgDesc;
+    if (scaleDmgDesc) {
+      let line = scaleDmgDesc;
       if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) line += '（不可防御）';
       parts.push(line);
     } else if (dmg > 0 && !drainAmount) {
@@ -862,19 +1050,28 @@
     if (typeof mod.attackDrain === 'function') {
       const h = mod.attackDrain(card, ctx);
       if (h > 0) {
-        let line = '吸取' + h + '点生命';
-        if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) line += '（不可防御）';
-        parts.push(line);
+        // Drain is always unblockable by number defense (combat sets unblock=true).
+        parts.push('吸取' + h + '点生命（不可防御）');
       }
     } else if (typeof mod.attackHeal === 'function') {
       const h = mod.attackHeal(card, ctx);
       if (h > 0) parts.push('恢复' + h + '点生命');
     }
+    if (typeof mod.attackDiscardBeforeDefend === 'function' && mod.attackDiscardBeforeDefend(card)) {
+      parts.push('玩家先选择1张手牌弃掉再防御（无手牌则不弃）');
+    }
     if (typeof mod.attackStealItem === 'function' && mod.attackStealItem(card)) {
       parts.push('玩家随机丢失1个道具');
     }
-    if (typeof mod.attackDrawSelf === 'function' && mod.attackDrawSelf(card, ctx)) {
-      parts.push('抽取1张牌');
+    if (typeof mod.attackDrawSelf === 'function') {
+      // Describe conditional draws as a formula when they depend on poison stacks.
+      const draw0 = mod.attackDrawSelf(card, Object.assign({}, ctx, { playerPoison: 0 }));
+      const draw2 = mod.attackDrawSelf(card, Object.assign({}, ctx, { playerPoison: 2 }));
+      if (draw2 && !draw0) {
+        parts.push('玩家有≥2层[中毒]时额外抽取1张牌');
+      } else if (mod.attackDrawSelf(card, ctx)) {
+        parts.push('抽取1张牌');
+      }
     }
     if (typeof mod.attackTransferDebuff === 'function' && mod.attackTransferDebuff(card)) {
       parts.push('将自身debuff转移给对手');

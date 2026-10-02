@@ -148,10 +148,13 @@ test('FrozenOrca attackBleed: 4/5/6 applies 1 stack', () => {
 
 // ===== 防御测试 =====
 
-test('FrozenOrca defendClearDebuffs: all number cards clear debuffs', () => {
+test('FrozenOrca defendClearDebuffs: only 0/1/2/3 clear debuffs', () => {
   const boss = getBoss('FrozenOrca');
-  for (const v of [0, 1, 2, 3, 4, 5, 6]) {
+  for (const v of [0, 1, 2, 3]) {
     assert.equal(boss.defendClearDebuffs(numCard(v)), true);
+  }
+  for (const v of [4, 5, 6, 7]) {
+    assert.equal(boss.defendClearDebuffs(numCard(v)), false);
   }
 });
 
@@ -226,5 +229,8 @@ test('FrozenOrca skill desc: attack and defend match ocean.md', () => {
   assert.ok(def0s4.includes('清除自身所有负面状态'), 'stage4 defend 0 still clears');
 
   const def7 = getAdventureNpcSkillDesc('FrozenOrca', numCard(7), true, { stage: 1 });
-  assert.equal(def7, '清除自身所有负面状态');
+  assert.equal(def7, '无防御效果');
+
+  const def456 = getAdventureNpcSkillDesc('FrozenOrca', numCard(5), true, { stage: 1 });
+  assert.equal(def456, '无防御效果');
 });

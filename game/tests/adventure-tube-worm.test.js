@@ -52,18 +52,20 @@ test('FrozenOceanTubeWorm base stats and pool', () => {
   assert.ok(!pool['*'].includes('FrozenOceanTubeWorm'));
 });
 
-test('FrozenOceanTubeWorm loot: 1-2 BurnTrophy, 3 DivingTrophy', () => {
+test('FrozenOceanTubeWorm loot: 1-2 BurnTrophy, 3-4 DivingTrophy', () => {
   for (const roll of [1, 2]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenOceanTubeWorm', () => (roll - 1) / 12);
     assert.equal(result.roll, roll);
     assert.equal(result.drops.length, 1);
     assert.equal(result.drops[0], 'BurnTrophy');
   }
-  const r3 = AdventureLoot.rollMonsterDrop('ocean', 'FrozenOceanTubeWorm', () => 2 / 12);
-  assert.equal(r3.roll, 3);
-  assert.equal(r3.drops.length, 1);
-  assert.equal(r3.drops[0], 'DivingTrophy');
-  for (const roll of [4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+  for (const roll of [3, 4]) {
+    const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenOceanTubeWorm', () => (roll - 1) / 12);
+    assert.equal(result.roll, roll);
+    assert.equal(result.drops.length, 1);
+    assert.equal(result.drops[0], 'DivingTrophy');
+  }
+  for (const roll of [5, 6, 7, 8, 9, 10, 11, 12]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenOceanTubeWorm', () => (roll - 1) / 12);
     assert.equal(result.drops.length, 0);
   }

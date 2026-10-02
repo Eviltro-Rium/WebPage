@@ -70,7 +70,7 @@ _renderControls() {
             : s.forcedDiscard
                 ? `手牌超限：需弃至 ${s.handLimit || 5} 张`
                 : s.mayDiscardAfterSkill
-                    ? 'Ryan 3牌：可选择1张牌弃掉，也可取消'
+                    ? '可选择1张牌弃掉，也可取消'
                     : '可同时选择多张牌弃掉';
         html += `<span class="ctrl-hint">${discardHint}</span>`;
         html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!hasDiscardCards ? 'disabled' : ''}>确认弃牌 (${(s.selectedCards || []).length})</button>`;

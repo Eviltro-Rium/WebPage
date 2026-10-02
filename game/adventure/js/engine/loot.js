@@ -4,73 +4,84 @@
  * This module is deliberately independent from the adventure engine and battle
  * engine.  It only owns scene/monster -> d12 -> trophy-card mapping; callers
  * decide when to roll and how to persist the resulting card.
+ *
+ * Cap: ordinary monsters ≤ 4/12 (1/3); Boss monsters ≤ 6/12 (1/2).
  */
 (function () {
   const random = () => window.FurryGame && window.FurryGame.CombatRuntime
     ? window.FurryGame.CombatRuntime.random() : Math.random();
 
   const CASTLE_RULES = Object.freeze({
-    CastleGhost: Object.freeze({ threshold: 3, drops: Object.freeze(['FlyTrophy']) }),
-    CastleFirefly: Object.freeze({ threshold: 2, drops: Object.freeze(['FlyTrophy']) }),
-    CastleWolf: Object.freeze({ threshold: 2, drops: Object.freeze(['GuardTrophy']) }),
-    CastleFox: Object.freeze({ threshold: 2, drops: Object.freeze(['PiercingTrophy']) }),
-    CastleBear: Object.freeze({ threshold: 3, drops: Object.freeze(['GuardTrophy']) }),
-    CastleTiger: Object.freeze({ threshold: 3, drops: Object.freeze(['PiercingTrophy']) }),
-    CastleCrow: Object.freeze({ threshold: 2, drops: Object.freeze(['DisarmTrophy']) }),
-    CastleBat: Object.freeze({ threshold: 2, drops: Object.freeze(['PiercingTrophy']) }),
-    DungeonGoblin: Object.freeze({ threshold: 1, drops: Object.freeze(['DisarmTrophy', 'DisarmTrophy']) }),
+    CastleGhost: Object.freeze({ threshold: 4, drops: Object.freeze(['FlyTrophy']) }),
+    CastleFirefly: Object.freeze({ threshold: 4, drops: Object.freeze(['FlyTrophy']) }),
+    CastleWolf: Object.freeze({ threshold: 4, drops: Object.freeze(['GuardTrophy']) }),
+    CastleFox: Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) }),
+    CastleBear: Object.freeze({ threshold: 4, drops: Object.freeze(['GuardTrophy']) }),
+    CastleTiger: Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) }),
+    CastleCrow: Object.freeze({ threshold: 4, drops: Object.freeze(['DisarmTrophy']) }),
+    CastleBat: Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) }),
+    DungeonGoblin: Object.freeze({ threshold: 4, drops: Object.freeze(['DisarmTrophy', 'DisarmTrophy']) }),
     CastleChameleon: Object.freeze({ threshold: 6, drops: Object.freeze(['PoisonTrophy']) }),
     CastleEagle: Object.freeze({ threshold: 6, drops: Object.freeze(['RussianRouletteTrophy']) }),
-    CastleGargoyle: Object.freeze({ threshold: 4, drops: Object.freeze(['ZeroTrophy']) })
+    CastleGargoyle: Object.freeze({ threshold: 6, drops: Object.freeze(['ZeroTrophy']) })
   });
 
   // Forest rules mirror docs/adventure_guide/forest.md. Most monsters use a
   // simple threshold (roll <= threshold), while Deer and Rafflesia have two
   // distinct successful outcomes, represented by ordered outcomes.
   const FOREST_RULES = Object.freeze({
-    ForestMonkey: Object.freeze({ threshold: 2, drops: Object.freeze(['LushTrophy']) }),
+    ForestMonkey: Object.freeze({ threshold: 4, drops: Object.freeze(['LushTrophy']) }),
     ForestDeer: Object.freeze({ outcomes: Object.freeze([
-      Object.freeze({ threshold: 1, drops: Object.freeze(['LushTrophy']) }),
-      Object.freeze({ threshold: 2, drops: Object.freeze(['GuardTrophy']) })
+      Object.freeze({ threshold: 2, drops: Object.freeze(['LushTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['GuardTrophy']) })
     ]) }),
-    ForestLeech: Object.freeze({ threshold: 2, drops: Object.freeze(['ParasiteTrophy']) }),
-    ForestCrocodile: Object.freeze({ threshold: 2, drops: Object.freeze(['PiercingTrophy']) }),
-    ForestDendrobatidFrog: Object.freeze({ threshold: 2, drops: Object.freeze(['PoisonTrophy']) }),
-    ForestLadybug: Object.freeze({ threshold: 2, drops: Object.freeze(['LushTrophy']) }),
-    ForestCapybara: Object.freeze({ threshold: 2, drops: Object.freeze(['GuardTrophy']) }),
+    ForestLeech: Object.freeze({ threshold: 4, drops: Object.freeze(['ParasiteTrophy']) }),
+    ForestCrocodile: Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) }),
+    ForestDendrobatidFrog: Object.freeze({ threshold: 4, drops: Object.freeze(['PoisonTrophy']) }),
+    ForestLadybug: Object.freeze({ threshold: 4, drops: Object.freeze(['LushTrophy']) }),
+    ForestCapybara: Object.freeze({ threshold: 4, drops: Object.freeze(['GuardTrophy']) }),
     ForestRafflesia: Object.freeze({ outcomes: Object.freeze([
-      Object.freeze({ threshold: 1, drops: Object.freeze(['LushTrophy']) }),
-      Object.freeze({ threshold: 2, drops: Object.freeze(['PoisonTrophy']) })
+      Object.freeze({ threshold: 2, drops: Object.freeze(['LushTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['PoisonTrophy']) })
     ]) }),
-    ForestPiranha: Object.freeze({ threshold: 3, drops: Object.freeze(['PiercingTrophy']) }),
+    ForestPiranha: Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) }),
     ForestPanda: Object.freeze({ threshold: 6, drops: Object.freeze(['LushTrophy']) }),
     ForestPython: Object.freeze({ threshold: 6, drops: Object.freeze(['PoisonTrophy']) }),
-    ForestDryad: Object.freeze({ threshold: 4, drops: Object.freeze(['ZeroTrophy']) })
+    ForestDryad: Object.freeze({ threshold: 6, drops: Object.freeze(['ZeroTrophy']) })
   });
 
   // Ocean rules mirror docs/adventure_guide/ocean.md.
   const OCEAN_RULES = Object.freeze({
     FrozenOceanLynx: Object.freeze({ outcomes: Object.freeze([
-      Object.freeze({ threshold: 1, drops: Object.freeze(['FreezeTrophy']) }),
-      Object.freeze({ threshold: 2, drops: Object.freeze(['IceSealTrophy']) })
+      Object.freeze({ threshold: 2, drops: Object.freeze(['FreezeTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['IceSealTrophy']) })
     ]) }),
-    FrozenWhale: Object.freeze({ threshold: 3, drops: Object.freeze(['DivingTrophy']) }),
-    FrozenOceanShark: Object.freeze({ threshold: 2, drops: Object.freeze(['PiercingTrophy']) }),
-    FrozenOceanSeal: Object.freeze({ threshold: 2, drops: Object.freeze(['DisarmTrophy']) }),
+    FrozenWhale: Object.freeze({ threshold: 4, drops: Object.freeze(['DivingTrophy']) }),
+    FrozenOceanShark: Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) }),
+    FrozenOceanSeal: Object.freeze({ threshold: 4, drops: Object.freeze(['DisarmTrophy']) }),
     FrozenPolarBear: Object.freeze({ outcomes: Object.freeze([
-      Object.freeze({ threshold: 1, drops: Object.freeze(['PiercingTrophy']) }),
-      Object.freeze({ threshold: 2, drops: Object.freeze(['HypothermiaTrophy']) })
+      Object.freeze({ threshold: 2, drops: Object.freeze(['PiercingTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['HypothermiaTrophy']) })
     ]) }),
     FrozenOrca: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 3, drops: Object.freeze(['DivingTrophy']) }),
       Object.freeze({ threshold: 5, drops: Object.freeze(['PiercingTrophy']) }),
       Object.freeze({ threshold: 6, drops: Object.freeze(['HypothermiaTrophy']) })
     ]) }),
-    FrozenOceanSnowyOwl: Object.freeze({ threshold: 2, drops: Object.freeze(['FlyTrophy']) }),
-    FrozenOceanSamoyed: Object.freeze({ threshold: 2, drops: Object.freeze(['SmallPotionTrophy']) }),
+    FrozenOceanSnowyOwl: Object.freeze({ threshold: 4, drops: Object.freeze(['FlyTrophy']) }),
+    FrozenOceanSamoyed: Object.freeze({ threshold: 4, drops: Object.freeze(['SmallPotionTrophy']) }),
     FrozenOceanTubeWorm: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 2, drops: Object.freeze(['BurnTrophy']) }),
-      Object.freeze({ threshold: 3, drops: Object.freeze(['DivingTrophy']) })
+      Object.freeze({ threshold: 4, drops: Object.freeze(['DivingTrophy']) })
+    ]) }),
+    FrozenOceanOctopus: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 2, drops: Object.freeze(['DivingTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['SmallPotionTrophy']) })
+    ]) }),
+    FrozenKraken: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 2, drops: Object.freeze(['DivingTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['IceSealTrophy']) }),
+      Object.freeze({ threshold: 6, drops: Object.freeze(['HypothermiaTrophy']) })
     ]) })
   });
 

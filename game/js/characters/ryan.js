@@ -14,7 +14,6 @@
         heal(a, 1);
         draw(owner, 1, true);
         skip = true;
-        if (owner === 'player') eng.s.mayDiscardAfterSkill = true;
       } else if (v === 2) {
         d = 3;
         heal(a, 1);

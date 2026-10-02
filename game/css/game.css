@@ -1568,9 +1568,10 @@ body {
 
 .dialog-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.68);
+    /* Keep clicks blocked on the overlay, but leave the board readable. */
+    background: rgba(0,0,0,0.28);
     display: flex; align-items: center; justify-content: center;
-    z-index: 1500; backdrop-filter: blur(4px);
+    z-index: 1500; backdrop-filter: none;
 }
 .dialog-box {
     background: linear-gradient(145deg, rgba(8,22,38,0.98), rgba(12,39,49,0.98));
@@ -1581,8 +1582,25 @@ body {
     -webkit-backdrop-filter: blur(22px) saturate(145%);
     box-shadow: inset 0 1px 0 var(--glass-highlight), 0 12px 36px rgba(12,74,110,0.2);
     color: var(--text-main);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+}
+.dialog-box.dialog-draggable {
+    z-index: 1;
+    will-change: left, top;
+}
+.dialog-drag-handle {
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+.dialog-box.dialog-dragging .dialog-drag-handle,
+.dialog-drag-handle.dialog-dragging {
+    cursor: grabbing;
 }
 .dialog-box h3 { font-size: 1rem; margin-bottom: 14px; }
+.dialog-title { font-size: 1rem; font-weight: 700; margin-bottom: 12px; }
 .compact-choice-box { min-width: 300px; }
 .choice-list { display:flex; flex-direction:column; gap:8px; }
 .buff-transfer-box { min-width: min(560px, 92vw); max-width: 640px; }

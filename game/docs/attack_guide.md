@@ -387,7 +387,61 @@ defendCounter(card, incoming, defender, opponent, eng) {
 
 ---
 
-## 九、汇总对照表
+## 九、牌库判定与复合结算（章鱼 / 克拉肯）
+
+### 玩家牌库判定
+
+```javascript
+// 进攻满足条件时返回 true，桥接层抽取玩家牌库顶牌展示并按判定牌结算
+attackKrakenJudge(card) {
+  const v = card.value;
+  return v >= 1 && v <= 3;
+}
+```
+
+- 结算：从玩家牌库顶翻 1 张牌展示（`reveal` 事件，`from: 'deck'`），随后按判定牌决定伤害与去向。
+- 章鱼（`attackOctopusJudge` + `attackOctopusJudgeDamage(isBlackWhite)`）：普通颜色 3🗡️并放回玩家牌库底；黑/白牌（含战利白卡）5🗡️并置入玩家弃牌堆。
+- 克拉肯：普通颜色造成对应数字🗡️并放回玩家牌库底；数字零/道具牌 0🗡️并置入玩家弃牌堆、跳过防御、获得潜水、施加冰封。
+- 牌库见底时先尝试洗回（`eng._refillPile('player')`）；仍无牌则本次判定无伤害。
+
+### 净化爆发（克拉肯 0 牌）
+
+```javascript
+attackKrakenPurge(card) {
+  return card.value === 0;
+}
+```
+
+1. 对玩家施加 1 层[失温]（`eng.hypothermia`，含 2 层强制弃牌的常规连锁）。
+2. 统计自身负面效果层数（灼伤/流血/中毒/炸弹/失温/荆棘/沙盲按层计，冷冻/致盲/冰封/催眠/沉睡/炙热按 1 层计），`eng.clearDebuffs` 清除。
+3. 造成 `3 + 清除层数`🗡️。
+
+### 弱伤不可防御
+
+```javascript
+// 返回伤害阈值（0 表示关闭）：本次伤害 d 满足 0 < d < threshold 时不可防御
+attackUnblockableBelow(card) {
+  return card.value === 0 ? 5 : 0;
+}
+```
+
+- 克拉肯基础仅 0 牌适用（即净化爆发 <5 点时不可防御）；stage3 起覆盖为全牌返回 5。
+- 在 `attackUnblockable` 校验之后、伤害已确定的位置判断，不影响已有技能。
+
+### 防御后玩家弃牌（克拉肯 0 牌）
+
+```javascript
+defendPlayerDiscard(card) {
+  return card.value === 0;
+}
+```
+
+- 防御结算时置 `pendingKrakenDefendDiscard` 并提示；本次进攻结算后（`afterAttack`）若玩家存活且有手牌，进入强制弃 1 张（`PLAYER_DISCARD`，不可取消），完成后回到 `PLAYER_PLAY`。
+- 玩家无手牌时仅提示，不阻断流程。
+
+---
+
+## 十、汇总对照表
 
 | 伤害类型 | 方法 | 可防御 | 可被格挡 | 可被守护/飞翔减免 | 其他 |
 |----------|------|--------|----------|-------------------|------|
@@ -400,10 +454,13 @@ defendCounter(card, incoming, defender, opponent, eng) {
 | 中毒 DoT | `attackPoison` | ❌ | ❌ | ❌ | 回合开始结算 |
 | 灼伤 DoT | 火焰之拳配饰 | ❌ | ❌ | ❌ | 攻击方回合结束结算 |
 | 反击 | `defendCounter` | ❌（直接命中） | — | ✅（守护减免） | 不经过玩家防御；bridge 调用 `hurt(opponent, n)` |
+| 牌库判定 | `attackKrakenJudge` / `attackOctopusJudge` | ✅ | ✅ | ✅ | 判定牌决定伤害与去向（放回牌库底 / 置入弃牌堆） |
+| 净化爆发 | `attackKrakenPurge` | ✅（伤害<5时不可防御） | ✅ | ✅ | 先施加失温再清除自身负面，伤害 3+清除层数 |
+| 防御后弃牌 | `defendPlayerDiscard` | — | — | — | 防御结算后玩家强制弃 1 张（不可取消，无手牌跳过） |
 
 ---
 
-## 十、实现文件索引
+## 十一、实现文件索引
 
 | 内容 | 文件 |
 |------|------|

@@ -72,6 +72,7 @@ test('AI hypnosis promotes when its attack phase ends', () => {
   eng.s.pendingAttack = { damage: 3, unblock: false, isDrain: false };
   eng.applyHypnosis(eng.s.ai);
   // AI 完成自己的进攻回合，玩家回合开始时立即转化。
+  eng.s.pendingHypnosisPromote = 'ai';
   eng.turnStart('player');
   assert.ok(eng.s.ai.sleep === true, 'hypnosis must promote at the phase transition');
   assert.ok(!eng.s.ai.hypnosis);
@@ -86,6 +87,7 @@ test('defend-0 hypnosis promotes when the attack turn ends', () => {
   eng.start('Saiki', 'Vixraps');
   // AI 进攻玩家，玩家 Vixraps 防御 0 反击施加催眠给 AI（AI 攻击流程中）
   eng.applyHypnosis(eng.s.ai);
+  eng.s.pendingHypnosisPromote = 'ai';
   eng.turnStart('player'); // AI 攻击回合结束 → 玩家回合开始 → 立即转化
   eng.s.phase = 'AI_DEFEND';
   eng.s.pendingAttack = { damage: 3, unblock: false, isDrain: false };
@@ -133,6 +135,7 @@ test('player hypnosis promotes when AI attack phase starts and skips defense', (
   assert.ok(eng.s.player.hypnosis === true, 'no promotion on the first defense');
   assert.ok(!eng.s.player.sleep);
   // 玩家进攻回合结束（AI 回合开始）→ 立即转化并跳过下一次防御
+  eng.s.pendingHypnosisPromote = 'player';
   eng.turnStart('ai');
   assert.ok(eng.s.player.sleep === true);
   eng.s.pendingAttack = { damage: 4, unblock: false, isDrain: false };
@@ -234,7 +237,7 @@ test('wake emits one ordinary heal event', () => {
   eng.s.ai.hp = 40;
   eng.s.ai.sleep = true;
   eng.turnStart('ai');
-  const wakes = eng.events.filter(event => event.type === 'heal' && event.kind === 'heal');
+  const wakes = eng.events.filter(event => event.type === 'heal' && (event.kind === 'wake' || event.kind === 'heal'));
   assert.equal(wakes.length, 1);
   assert.match(wakes[0].desc, /\+10/);
 });
@@ -253,6 +256,7 @@ test('clearDebuffs removes hypnosis and sleep', () => {
 test('end-to-end: AI hypnosis on player promotes at the attack-phase transition', () => {
   const eng = new Engine();
   eng.start('Saiki', 'Vixraps');
+  eng.s.pendingHypnosisPromote = 'player';
   eng.turnStart('ai');
   eng.applyHypnosis(eng.s.player);
   assert.ok(eng.s.player.hypnosis === true);
@@ -262,8 +266,10 @@ test('end-to-end: AI hypnosis on player promotes at the attack-phase transition'
   eng._enterPlayerDefend(4, {});
   assert.ok(eng.s.player.hypnosis === true, 'hypnosis survives first defense');
   assert.ok(!eng.s.player.sleep, 'no sleep on first defense');
+  eng.s.pendingHypnosisPromote = 'ai';
   eng.turnStart('player');
   assert.ok(!eng.s.player.hypnosisArmed, 'legacy phase marker remains clear');
+  eng.s.pendingHypnosisPromote = 'player';
   eng.turnStart('ai');
   assert.ok(eng.s.player.sleep === true, 'player sleeps when AI attack phase starts');
   eng.s.phase = 'AI_TURN';
@@ -277,6 +283,7 @@ test('end-to-end: AI hypnosis on player promotes at the attack-phase transition'
 test('end-to-end: AI Vixraps attack-7 effect applies hypnosis to player', () => {
   const eng = new Engine();
   eng.start('Saiki', 'Vixraps');
+  eng.s.pendingHypnosisPromote = 'player';
   eng.turnStart('ai');
   const r = eng.effect('Vixraps', 7, number(7), eng.s.ai, eng.s.player);
   assert.ok(eng.s.player.hypnosis === true, 'player has hypnosis after AI attack-7');
@@ -285,7 +292,9 @@ test('end-to-end: AI Vixraps attack-7 effect applies hypnosis to player', () => 
   eng.s.pendingAttack = { damage: r.d, unblock: false, isDrain: false };
   eng._enterPlayerDefend(r.d, {});
   assert.ok(!eng.s.player.sleep, 'no sleep on first defense');
+  eng.s.pendingHypnosisPromote = 'ai';
   eng.turnStart('player');
+  eng.s.pendingHypnosisPromote = 'player';
   eng.turnStart('ai');
   assert.ok(eng.s.player.sleep === true, 'player sleeps before the next defense');
   eng.s.phase = 'AI_TURN';
@@ -302,9 +311,44 @@ test('1v1 normal attack path promotes player hypnosis to sleep', () => {
   eng.s.discardTop = number(1, 'RED');
   eng.s.aiTurnStarted = false;
   eng.s.phase = 'AI_TURN';
+  eng.s.pendingHypnosisPromote = 'player';
   eng.aiTurn();
   assert.ok(eng.s.player.sleep === true, 'player hypnosis promotes to sleep on normal attack');
   assert.ok(!eng.s.player.hypnosis, 'hypnosis consumed');
+});
+
+test('1v2: AI2 hypnosis does not promote when AI1 turn starts', () => {
+  const eng = new Engine();
+  eng.start1v2('Vixraps', 'Saiki', 'Ryan');
+  eng.applyHypnosis(eng.s.ai2);
+  eng.s.pendingHypnosisPromote = 'player';
+  eng.turnStart('ai');
+  assert.ok(eng.s.ai2.hypnosis === true, 'AI2 hypnosis survives AI1 turn start');
+  assert.ok(!eng.s.ai2.sleep, 'AI2 must not sleep when AI1 starts');
+});
+
+test('1v2: AI2 hypnosis promotes after AI2 attack ends, wakes on next own turn', () => {
+  const eng = new Engine();
+  eng.start1v2('Vixraps', 'Saiki', 'Leon');
+  eng.applyHypnosis(eng.s.ai2);
+  eng.s.pendingHypnosisPromote = 'player';
+  eng.turnStart('ai');
+  assert.ok(eng.s.ai2.hypnosis === true);
+  eng.s.pendingHypnosisPromote = 'ai';
+  eng.turnStart('ai2');
+  assert.ok(eng.s.ai2.hypnosis === true, 'AI2 still hypnotized at own attack start');
+  assert.ok(!eng.s.ai2.sleep);
+  eng.s.ai2.hp = 40;
+  eng.s.pendingHypnosisPromote = 'ai2';
+  eng.turnStart('player');
+  assert.ok(eng.s.ai2.sleep === true, 'AI2 sleeps when its attack phase ends');
+  assert.ok(!eng.s.ai2.hypnosis);
+  eng.s.ai2.lush = 0;
+  eng.s.ai2.parasite = 0;
+  eng.s.pendingHypnosisPromote = 'player';
+  eng.turnStart('ai2');
+  assert.ok(!eng.s.ai2.sleep, 'AI2 wakes at its next attack turn start');
+  assert.equal(eng.s.ai2.hp, 50);
 });
 
 test('Vixraps passive forces exactly one discard before the next bridge', () => {

@@ -29,6 +29,18 @@
     };
   }
 
+  function applyAdventureHandLimit(engine) {
+    if (!engine || !engine.piles || !engine.piles.player) return;
+    const adv = engine._adventureEngine;
+    if (adv && typeof adv._syncHandLimit === 'function') {
+      adv._syncHandLimit();
+      if (adv.s && adv.s.playerPile) {
+        engine.piles.player.handLimit = adv.s.playerPile.handLimit;
+      }
+    }
+    if (engine.s) engine.s.handLimit = engine.piles.player.handLimit;
+  }
+
   class AdventureBattleEngine extends window.Engine {
     constructor() {
       super();
@@ -265,7 +277,7 @@
       this._ensureStatuses();
       this.s.ai = this.character(opponentName, true);
       this.s.ai.name = opponentName;
-      this.s.handLimit = this.piles.player.handLimit;
+      applyAdventureHandLimit(this);
       this.s.isAdventure = true;
       this.s.adventureStage = stage;
       this.s.adventureScene = config.scene || null;
@@ -430,6 +442,7 @@
 
       this.tableTopOwner = topOwner;
       this._initTrophyLootState();
+      applyAdventureHandLimit(this);
 
 
       this.draw('ai', this.piles.ai.handLimit, false);

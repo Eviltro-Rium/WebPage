@@ -459,6 +459,8 @@
         this.s.playerPile.hand = clone(pile.hand || []);
         this.s.playerPile.discard = clone(pile.discard || []);
         this.s.playerPile.handLimit = Number(pile.handLimit || 5);
+        // Battle snapshot must not erase accessory bonuses (e.g. MagicBook +1).
+        if (typeof this._syncHandLimit === 'function') this._syncHandLimit();
       }
 
       const savedTop = clone(result.discardTop || null);

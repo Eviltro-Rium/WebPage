@@ -505,7 +505,8 @@ test('wisdom necklace draws 2 when returning to map and accessories have beast t
   assert.equal(pile.hand.length, before, 'the draw is deferred while the settlement is open');
   const effect = eng.onCombatReturnToMap();
   assert.equal(pile.hand.length, before + 2);
-  assert.deepEqual(effect, { itemName: 'WisdomNecklace', drawn: 2 });
+  assert.equal(effect && effect.itemName, 'WisdomNecklace');
+  assert.equal(effect && effect.drawn, 2);
   assert.equal(eng.onCombatReturnToMap(), null, 'the deferred trigger is one-shot');
   const necklace = context.AdventureRegistry.getItem('WisdomNecklace');
   assert.equal(JSON.stringify(necklace.beastTradeCost), '["shui","shui","shui","ben","cao"]');
@@ -538,6 +539,15 @@ test('MagicBook raises hand limit by 1 and respects carry cap', () => {
   const at = eng.s.accessories.indexOf('MagicBook');
   assert.ok(eng.recycleAccessory(at).ok);
   assert.equal(eng.s.playerPile.handLimit, 5);
+});
+
+test('MagicBook starting accessory applies hand limit 6 immediately', () => {
+  const map = new AdventureMap([[0, 1]]);
+  const eng = new AdventureEngine();
+  eng.start(map, 'Ryan', { accessories: ['MagicBook'] });
+  assert.ok(eng.s.accessories.includes('MagicBook'));
+  assert.equal(eng.s.playerPile.handLimit, 6);
+  assert.equal(eng.s.playerPile.hand.length, 6);
 });
 
 test('blacksmith entry gold by stage and beast trade with wuneng', () => {
@@ -913,15 +923,14 @@ test('returnToMap exits boss-exit settlement to MAP phase', () => {
   }
 });
 
-test('beast token cap is 8 by default and 12 with BeastBag', () => {
+test('beast token cap is 8 by default and +3 with BeastBag', () => {
   const eng = startEngine();
   assert.equal(eng.s.currency.maxBeast, 8);
   assert.equal(context.AdventureCurrency.DEFAULT_MAX_BEAST_TOKENS, 8);
-  assert.equal(context.AdventureCurrency.BOOSTED_MAX_BEAST_TOKENS, 12);
   assert.ok(eng.addItem('BeastBag'));
-  assert.equal(eng.s.currency.maxBeast, 12);
+  assert.equal(eng.s.currency.maxBeast, 11);
   const bag = context.AdventureRegistry.getItem('BeastBag');
-  assert.equal(bag.beastCap, 12);
+  assert.equal(bag.beastCapBonus, 3);
   assert.ok(bag.icon.indexOf('beast_core_sack') >= 0);
 });
 

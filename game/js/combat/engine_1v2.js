@@ -103,6 +103,7 @@
     let ch=this.s[key];
     this.settleBurn(ch);
     this.check();if(this.s.phase==='GAME_OVER')return;
+    this.s.pendingHypnosisPromote=key;
     if(this._advanceAI()){
       this.later(()=>this.aiTurn1v2());return this.check()
     }
@@ -165,7 +166,10 @@
   Engine.prototype.aiTurn1v2=function(){
     let key=this._curAI(),ch=this.s[key],hand=this.h[key];
     if(!ch.alive)return this.endAi1v2();
-    if(!this.s.aiTurnStarted){this.turnStart(key==='ai2'?'ai2':'ai');this.s.aiTurnStarted=true;this.s.aiHasPlayed=false}
+    if(!this.s.aiTurnStarted){
+      if(this.s.pendingHypnosisPromote==null&&key==='ai')this.s.pendingHypnosisPromote='player';
+      this.turnStart(key==='ai2'?'ai2':'ai');this.s.aiTurnStarted=true;this.s.aiHasPlayed=false
+    }
     let _noAtkMod=this._getAdventureMod(this.name(ch));if(_noAtkMod&&_noAtkMod.noAttack){this.emit('desc',ch.name+'无进攻阶段，跳过进攻',null,{who:key});if(typeof _noAtkMod.attackSkipEffect==='function')_noAtkMod.attackSkipEffect(this,ch,this.s.player);return this.later(()=>this.endAi1v2(),700)}
     let top=this.s.discardTop,chosen=this._chooseAIPlay1v2(key,top);
      if(!chosen){
@@ -299,8 +303,8 @@
       const entry=candidates[randomIndex(candidates)];
       const dropped=this.h[entry.key].splice(entry.index,1)[0];
       if(dropped){
-        this.discardWithEvent(dropped,entry.key,{handIndex:entry.index,desc:'Leon 0牌随机弃掉'+this.cardText(dropped)});
-        this.emit('reveal','Leon 0牌随机弃掉对手手牌',dropped,{who:entry.key,from:'hand'});
+        this.emit('reveal','Leon 0牌随机弃掉对手手牌',dropped,{who:entry.key,fromOwner:entry.key,from:'hand',handIndex:entry.index});
+        this.discardWithEvent(dropped,entry.key,{from:'reveal',faceUp:true,desc:'Leon 0牌随机弃掉'+this.cardText(dropped)});
       }
     }
      this.emit('desc','Leon 0牌：对所有对手+2层灼伤、随机弃掉对手至多2张手牌、7点不可防御伤害；自身受到'+(targets.length*2)+'点伤害',card);

@@ -188,6 +188,7 @@
     this.s.forceEndAITurn=false;this.s.pendingAIContinue=null;this.s.pendingAttack=null;
     this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.selectedCards=[];
     this.s.aiTurnStarted=false;this.s.aiHasPlayed=false;this.s.attackTarget=null;
+    this.s.pendingHypnosisPromote='player';
     this.later(()=>this.aiTurn1v2());return this.check()
   };
 
@@ -215,6 +216,7 @@
     this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];
     this.s.hasPlayedThisTurn=false;this.s.aiTurnStarted=false;this.s.aiHasPlayed=false;
     this.s.currentAITarget=0;
+    this.s.pendingHypnosisPromote=key;
     let _hands=this.handCounts();this.silentDraws(function(){this.fillHands1v2(true);this.turnStart('player')});this.emitDrawDiff(_hands);this.check()
   };
 

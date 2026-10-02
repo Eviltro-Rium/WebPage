@@ -136,7 +136,6 @@
 
       if (opts.gold) this.s.currency.addGold(opts.gold);
       this._syncBeastCap();
-      this._syncHandLimit();
 
       if (this.s.pos) {
         const startRoom = map.get(this.s.pos.r, this.s.pos.c);
@@ -146,7 +145,9 @@
       const AD = window.AdventureDeck;
       const playerDeck = AD.makePlayerDeck();
       this.s.playerPile = new AD.AdventurePile('player', playerDeck, 5);
-      this.s.playerPile.draw(5);
+      // Accessories like MagicBook adjust handLimit; sync AFTER the pile exists.
+      this._syncHandLimit();
+      this.s.playerPile.draw(this.s.playerPile.handLimit);
       for (const name of this.s.trophyWhiteCards) {
         if (window.AdventureRegistry.getItem(name) && window.AdventureRegistry.getItem(name).kind === 'trophyWhite') {
           this.s.playerPile.hand.push(AD.trophyWhite(name));

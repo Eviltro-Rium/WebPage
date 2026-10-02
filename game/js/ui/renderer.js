@@ -142,6 +142,26 @@ _clearZones() {
     if (actionDesc) actionDesc.textContent = '';
 },
 
+_pendingDrawMask(owner) {
+    const remaining = this._drawAnimationRemaining;
+    return Math.max(0, Number(remaining && remaining[owner]) || 0);
+},
+
+_repaintOwnerHand(owner) {
+    // Repaint one owner's hand from authoritative state after a flight that
+    // may have hidden or removed a DOM element. Pending draws stay masked so
+    // not-yet-flown cards never pop in early.
+    if (owner === 'player') {
+        this._renderPlayerHand({ hideTrailing: this._pendingDrawMask('player') });
+    } else if (owner === 'ai2' && this._renderAIHand1v2) {
+        this._renderAIHand1v2({ hideTrailing: this._pendingDrawMask('ai2'), who: 'ai2' });
+    } else if (this.state && this.state.is1v2 && this._renderAIHand1v2) {
+        this._renderAIHand1v2({ hideTrailing: this._pendingDrawMask('ai'), who: 'ai' });
+    } else if (typeof this._renderAIHand === 'function') {
+        this._renderAIHand({ hideTrailing: this._pendingDrawMask(owner === 'ai2' ? 'ai2' : 'ai') });
+    }
+},
+
 async _playDiscardAnimation(evt) {
     const discard = document.getElementById('discard-top');
     if (!discard) return;
@@ -154,21 +174,32 @@ async _playDiscardAnimation(evt) {
         source = document.querySelector('#reveal-cards .card-canvas') ||
             document.querySelector('.ai-revealed-card');
     }
+    // The discarded card usually left the authoritative hand before its
+    // events play, so a positional index can resolve to an innocent card
+    // that shifted into its place. Only consume a hand element when its
+    // identity matches; otherwise anchor the flight to the hand container
+    // (which is never removed) and repaint the hand afterwards.
+    const wantId = evt.card ? cardId(evt.card) : null;
+    const identityOk = el => !el || !el.dataset || !el.dataset.cardId || !wantId || el.dataset.cardId === wantId;
     if (!source && hand && Number.isInteger(evt.handIndex)) {
-        source = hand.querySelector(`[data-index="${evt.handIndex}"]`) || hand.children[evt.handIndex];
+        const byIndex = hand.querySelector(`[data-index="${evt.handIndex}"]`) || hand.children[evt.handIndex];
+        source = (byIndex && identityOk(byIndex)) ? byIndex : hand;
     }
-    if (!source && hand && evt.card) {
+    if ((!source || source === hand) && hand && evt.card) {
         const id = cardId(evt.card);
-        source = Array.from(hand.querySelectorAll('.card-canvas')).find(el => el.dataset.cardId === id) || null;
+        const match = Array.from(hand.querySelectorAll('.card-canvas')).find(el => el.dataset.cardId === id) || null;
+        if (match) source = match;
     }
     if (!source && hand) {
-        source = hand.querySelector('.selected') || hand.lastElementChild || hand;
+        const picked = hand.querySelector('.selected') || hand.lastElementChild || hand;
+        source = identityOk(picked) ? picked : hand;
     }
     if (!source) source = document.getElementById('reveal-cards') || document.getElementById('deck-area');
 
     const faceUp = evt.faceUp === true || owner === 'player';
     const landsOnTop = evt.destination === 'top';
     await this.anim.discardCard(evt.card, source, discard, faceUp, { landsOnTop });
+    this._repaintOwnerHand(owner);
 },
 
 async _playDiscardManyAnimation(evt) {
@@ -204,6 +235,7 @@ async _playDiscardManyAnimation(evt) {
         if (index) await wait(70);
         await this.anim.discardCard(cards[index], sources[index], discard, faceUp, { landsOnTop });
     }
+    this._repaintOwnerHand(owner);
 },
 
 async _playHandSwapAnimation(evt) {
@@ -389,7 +421,18 @@ async _playRevealAnimation(cardOrCards, fromOwner, fromSource, handIndex = -1) {
         fromEl = selectedIndex >= 0 && ownerEl.children[selectedIndex]
             ? ownerEl.children[selectedIndex]
             : ownerEl.lastElementChild || ownerEl;
-        if (fromEl !== ownerEl) fromEl.style.visibility = 'hidden';
+        if (fromEl !== ownerEl) {
+            // The judged card already left the hand state before events play,
+            // so a positional index can point at an innocent card that shifted
+            // into its place. Only hide/remove the element when its identity
+            // matches the judged card; otherwise anchor to the hand container.
+            const wantId = cards.length === 1 && cards[0] ? cardId(cards[0]) : null;
+            if (wantId && fromEl.dataset && fromEl.dataset.cardId && fromEl.dataset.cardId !== wantId) {
+                fromEl = ownerEl;
+            } else {
+                fromEl.style.visibility = 'hidden';
+            }
+        }
     }
     if (!fromEl) fromEl = document.body;
 

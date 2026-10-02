@@ -12,17 +12,17 @@
   window.AdventureBossPool = window.AdventureBossPool || {};
   window.AdventureBossPool.ocean = window.AdventureBossPool.ocean || {
     '*': ['FrozenOrca'],
-    2: ['FrozenOrca'],
-    3: ['FrozenOrca'],
-    4: ['FrozenOrca']
+    2: ['FrozenOrca', 'FrozenKraken'],
+    3: ['FrozenOrca', 'FrozenKraken'],
+    4: ['FrozenOrca', 'FrozenKraken']
   };
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.ocean = {
-    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
-    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm'],
-    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm'],
-    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm']
+    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanOctopus'],
+    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm', 'FrozenOceanOctopus'],
+    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm', 'FrozenOceanOctopus'],
+    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm', 'FrozenOceanOctopus']
   };
 
   // ===== 冻洋猞猁 =====
@@ -330,9 +330,10 @@
     attackBleed(card) {
       return (card && card.isNumberCard && card.value >= 4 && card.value <= 6) ? 1 : 0;
     },
-    // 防御1/2/3/0：清除自身所有负面状态
+    // 防御1/2/3/0：清除自身所有负面状态（4/5/6 无防御效果）
     defendClearDebuffs(card) {
-      return !!(card && card.isNumberCard);
+      const v = card && card.value;
+      return !!(card && card.isNumberCard && (v === 0 || (v >= 1 && v <= 3)));
     },
     // 防御1/2/3：格挡1/2（向上取整）点伤害
     defendBlock(card, incoming) {
@@ -502,6 +503,136 @@
         defendBlock(card, incoming) {
           const base = orig.defendBlock(card, incoming);
           return base > 0 ? Math.min(base + 1, Math.max(0, Number(incoming) || 0)) : 0;
+        }
+      })
+    }
+  });
+
+  // ===== 冻洋章鱼 =====
+  // 进攻1/2/3：抽取玩家牌库1张牌判定；普通颜色3点伤害并放回玩家牌库底，黑/白牌（含战利白卡）5点伤害并置入玩家弃牌堆
+  // 进攻4/5/6：4点伤害，获得潜水
+  // 防御1/2/3：反击2点，恢复1点
+  R.registerMonster({
+    name: 'FrozenOceanOctopus',
+    kind: '冻洋章鱼',
+    hp: 24,
+    attack: 3,
+    defense: 2,
+    icon: '../icons/npc_icons/frozen_ocean_octopus.webp',
+    attackDamage(card) {
+      const v = card && card.value;
+      if (v >= 4 && v <= 6) return 4;
+      return 0;
+    },
+    // 进攻1/2/3：抽取玩家牌库判定（桥接层结算伤害与判定牌去向）
+    attackOctopusJudge(card) {
+      const v = card && card.value;
+      return !!(card && card.isNumberCard && v >= 1 && v <= 3);
+    },
+    // 判定伤害基数：黑/白牌5点，普通颜色3点（stage3 通过 stageMods +1）
+    attackOctopusJudgeDamage(isBlackWhite) {
+      return isBlackWhite ? 5 : 3;
+    },
+    // 进攻4/5/6：获得潜水（上限1）
+    attackGainDiving(card) {
+      const v = card && card.value;
+      return !!(card && card.isNumberCard && v >= 4 && v <= 6);
+    },
+    // 防御1/2/3：反击2点
+    defendCounter(card, incoming, defender, opponent) {
+      const v = card && card.value;
+      if (!(v >= 1 && v <= 3)) return 0;
+      return 2;
+    },
+    // 防御1/2/3：恢复1点
+    defendHeal(card) {
+      const v = card && card.value;
+      return (v >= 1 && v <= 3) ? 1 : 0;
+    },
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 6 }),
+      3: orig => ({
+        attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1,
+        attackOctopusJudgeDamage: (isBlackWhite) => orig.attackOctopusJudgeDamage(isBlackWhite) + 1
+      }),
+      4: orig => ({
+        defendHeal(card) {
+          const v = card && card.value;
+          return (v >= 1 && v <= 3) ? 2 : 0;
+        }
+      })
+    }
+  });
+
+  // ===== 克拉肯（Boss，Stage 2 起） =====
+  // 进攻1/2/3：抽取玩家牌库1张牌判定；普通颜色造成对应数字伤害并放回玩家牌库底，数字零/道具牌0伤害并置入玩家弃牌堆、跳过防御、获得潜水、施加冰封
+  // 进攻4/5/6：造成玩家手牌数点伤害，施加1层失温
+  // 进攻0：施加1层失温，清除自身所有负面效果，造成3+清除层数点伤害（<5不可防御）
+  // 防御1/2/3：反击1/2（向上取整）点伤害，获得潜水
+  // 防御0：反击相同点数伤害，玩家选择1张手牌弃掉
+  R.registerBoss({
+    name: 'FrozenKraken',
+    kind: '克拉肯',
+    minStage: 2,
+    hp: 50,
+    attack: 3,
+    defense: 2,
+    handLimit: 3,
+    whiteZeros: 2,
+    icon: '../icons/npc_icons/kraken.webp',
+    attackDamage(card, ctx) {
+      if (!card || !card.isNumberCard) return 0;
+      const v = card.value;
+      if (v >= 4 && v <= 6) return ctx ? (ctx.playerHandSize || 0) : 0;
+      return 0;
+    },
+    // 进攻1/2/3：抽取玩家牌库判定（桥接层结算伤害与判定牌去向）
+    attackKrakenJudge(card) {
+      const v = card && card.value;
+      return !!(card && card.isNumberCard && v >= 1 && v <= 3);
+    },
+    // 进攻0：净化爆发（桥接层计数清除层数、结算伤害与不可防御）
+    attackKrakenPurge(card) {
+      const v = card && card.value;
+      return !!(card && card.isNumberCard && v === 0);
+    },
+    // 伤害<5时不可防御的阈值（0牌常驻；stage3 起覆盖为全牌适用）
+    attackUnblockableBelow(card) {
+      const v = card && card.value;
+      return (card && card.isNumberCard && v === 0) ? 5 : 0;
+    },
+    // 进攻4/5/6：施加1层失温
+    attackHypothermia(card) {
+      const v = card && card.value;
+      return (v >= 4 && v <= 6) ? 1 : 0;
+    },
+    // 防御1/2/3：反击1/2（向上取整）；防御0：反击相同点数伤害（守护/飞翔结算前）
+    defendCounter(card, incoming) {
+      const v = card && card.value;
+      if (!card || !card.isNumberCard) return 0;
+      if (v === 0) return Math.max(0, Number(incoming) || 0);
+      if (v >= 1 && v <= 3) return Math.ceil(Math.max(0, Number(incoming) || 0) / 2);
+      return 0;
+    },
+    // 防御1/2/3：获得潜水
+    defendGainDiving(card) {
+      const v = card && card.value;
+      return !!(card && card.isNumberCard && v >= 1 && v <= 3);
+    },
+    // 防御0：玩家选择1张手牌弃掉（桥接层在反击后打开弃牌选择）
+    defendPlayerDiscard(card) {
+      const v = card && card.value;
+      return !!(card && card.isNumberCard && v === 0);
+    },
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 6 }),
+      3: orig => ({
+        attackUnblockableBelow: () => 5
+      }),
+      4: orig => ({
+        defendHeal(card) {
+          const v = card && card.value;
+          return (v === 0 || (v >= 1 && v <= 3)) ? 1 : 0;
         }
       })
     }

@@ -293,7 +293,12 @@ async _playEvents(events, fast = false) {
             const revealCards = (evt.cards && evt.cards.length) ? evt.cards : [evt.card];
             await this._playRevealAnimation(revealCards, evt.fromOwner || evt.who, evt.from, evt.handIndex);
             this._showZoneDesc('reveal-desc', evt.desc || '判定');
-            if (evt.who === 'player' || evt.from === 'deck') this._renderPlayerHand();
+            // The judged card already left (or joined) the hand in state; keep
+            // not-yet-flown draws masked so they never pop in early.
+            if (evt.who === 'player' || evt.from === 'deck') {
+                const revealMask = typeof this._pendingDrawMask === 'function' ? this._pendingDrawMask('player') : 0;
+                this._renderPlayerHand({ hideTrailing: revealMask });
+            }
             await wait(1200);
         } else if (evt.type === 'diceRoll' && Number.isFinite(Number(evt.value))) {
             const value = Number(evt.value);

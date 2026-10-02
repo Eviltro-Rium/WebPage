@@ -199,6 +199,23 @@
   border-color: #6ee7b7;
   box-shadow: 0 0 18px 6px rgba(52, 211, 153, 0.9), inset 0 0 12px rgba(52, 211, 153, 0.38);
 }
+/* 战斗房（普通/挑战/Boss）：仅进入（visited）不等同探索完成，
+   击败怪物（cleared）后才显示绿色探索光效。未清除前恢复中性边框，
+   可行动时仍保留金色 reachable 指引。 */
+.adv-cell.room-normal.visited:not(.cleared),
+.adv-cell.room-challenge.visited:not(.cleared),
+.adv-cell.room-boss.visited:not(.cleared) {
+  border-color: rgba(120, 110, 180, 0.25);
+  box-shadow: none;
+  animation: none;
+}
+.adv-cell.room-normal.visited.reachable:not(.cleared),
+.adv-cell.room-challenge.visited.reachable:not(.cleared),
+.adv-cell.room-boss.visited.reachable:not(.cleared) {
+  border-color: #fbbf24;
+  box-shadow: 0 0 12px 3px rgba(251, 191, 36, 0.6), inset 0 0 8px rgba(251, 191, 36, 0.2);
+  animation: adv-pulse 1.5s ease-in-out infinite;
+}
 .adv-cell.cleared {
   opacity: 0.78;
 }

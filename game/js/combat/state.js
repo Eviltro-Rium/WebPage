@@ -50,6 +50,7 @@
         pendingVixrapsPassive: null,
         pendingDiscardBeforeDefend: null,
         pendingHypothermiaDiscard: false,
+        pendingKrakenDefendDiscard: false,
         hypothermiaDiscardResume: null,
         forceEndAITurn: false,
         activeAttacker: 'player',

@@ -497,3 +497,112 @@ class DialogManager {
         box.appendChild(list);overlay.appendChild(box);document.body.appendChild(overlay);
     }
 }
+
+/**
+ * Make a combat / adventure .dialog-box movable by its title so players can
+ * peek at HP, hands, and the board underneath the lighter overlay.
+ */
+function makeDialogDraggable(box) {
+    if (!box || box.nodeType !== 1 || box.dataset.dragBound === '1') return box;
+    if (!box.classList.contains('dialog-box') && !box.classList.contains('game-over-box')) return box;
+    box.dataset.dragBound = '1';
+    box.classList.add('dialog-draggable');
+
+    const handle = box.querySelector('.dialog-title, h3') || box;
+    handle.classList.add('dialog-drag-handle');
+    if (!handle.getAttribute('title')) handle.setAttribute('title', '拖动可移动弹窗');
+
+    let dragging = false;
+    let startX = 0;
+    let startY = 0;
+    let originLeft = 0;
+    let originTop = 0;
+    let pointerId = null;
+
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+    const pinFixed = () => {
+        const rect = box.getBoundingClientRect();
+        box.style.position = 'fixed';
+        box.style.left = rect.left + 'px';
+        box.style.top = rect.top + 'px';
+        box.style.right = 'auto';
+        box.style.bottom = 'auto';
+        box.style.margin = '0';
+        box.style.transform = 'none';
+        return rect;
+    };
+
+    const onPointerDown = (event) => {
+        if (event.button != null && event.button !== 0) return;
+        if (event.target.closest('button, input, select, textarea, a, label, .chan-five-row, .crystal-ball-row, [draggable="true"]')) return;
+        if (handle !== box && !handle.contains(event.target)) return;
+        const rect = pinFixed();
+        dragging = true;
+        pointerId = event.pointerId;
+        startX = event.clientX;
+        startY = event.clientY;
+        originLeft = rect.left;
+        originTop = rect.top;
+        box.classList.add('dialog-dragging');
+        handle.classList.add('dialog-dragging');
+        try { handle.setPointerCapture(event.pointerId); } catch (_) {}
+        event.preventDefault();
+    };
+
+    const onPointerMove = (event) => {
+        if (!dragging || (pointerId != null && event.pointerId !== pointerId)) return;
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
+        const width = box.offsetWidth || 0;
+        const height = box.offsetHeight || 0;
+        const left = clamp(originLeft + dx, 8 - Math.min(80, width * 0.4), window.innerWidth - Math.min(width, 80) - 8);
+        const top = clamp(originTop + dy, 8, window.innerHeight - Math.min(height, 48) - 8);
+        box.style.left = left + 'px';
+        box.style.top = top + 'px';
+    };
+
+    const onPointerUp = (event) => {
+        if (!dragging || (pointerId != null && event.pointerId !== pointerId)) return;
+        dragging = false;
+        pointerId = null;
+        box.classList.remove('dialog-dragging');
+        handle.classList.remove('dialog-dragging');
+        try { handle.releasePointerCapture(event.pointerId); } catch (_) {}
+    };
+
+    handle.addEventListener('pointerdown', onPointerDown);
+    handle.addEventListener('pointermove', onPointerMove);
+    handle.addEventListener('pointerup', onPointerUp);
+    handle.addEventListener('pointercancel', onPointerUp);
+    return box;
+}
+
+function bindDialogDragOnNode(node) {
+    if (!node || node.nodeType !== 1) return;
+    if (node.classList.contains('dialog-box') || node.classList.contains('game-over-box')) {
+        makeDialogDraggable(node);
+    }
+    if (typeof node.querySelectorAll === 'function') {
+        node.querySelectorAll('.dialog-box, .game-over-box').forEach(makeDialogDraggable);
+    }
+}
+
+(function installDialogDragObserver() {
+    if (typeof document === 'undefined') return;
+    const boot = () => {
+        document.querySelectorAll('.dialog-box, .game-over-box').forEach(makeDialogDraggable);
+        if (window.__dialogDragObserver) return;
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                mutation.addedNodes.forEach(bindDialogDragOnNode);
+            }
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        window.__dialogDragObserver = observer;
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else boot();
+})();
+
+window.makeDialogDraggable = makeDialogDraggable;
