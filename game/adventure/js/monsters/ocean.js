@@ -330,10 +330,14 @@
     attackBleed(card) {
       return (card && card.isNumberCard && card.value >= 4 && card.value <= 6) ? 1 : 0;
     },
-    // 防御1/2/3/0：清除自身所有负面状态（4/5/6 无防御效果）
+    // 防御1/2/3：施加1层流血
+    defendBleed(card) {
+      return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+    },
+    // 防御0：清除自身所有负面状态（4/5/6 无防御效果）
     defendClearDebuffs(card) {
       const v = card && card.value;
-      return !!(card && card.isNumberCard && (v === 0 || (v >= 1 && v <= 3)));
+      return !!(card && card.isNumberCard && v === 0);
     },
     // 防御1/2/3：格挡1/2（向上取整）点伤害
     defendBlock(card, incoming) {

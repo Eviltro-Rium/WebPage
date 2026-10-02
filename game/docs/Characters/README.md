@@ -11,6 +11,6 @@
 - [Ryan](Ryan.md)
 - [Saiki](Saiki.md)
 - [Serenity](Serenity.md)
-- [Vixraps](Vixraps.md)（设计中）
+- [Vixraps](Vixraps.md)
 
 状态含义见 [Buff 图鉴](../buff_guide.md)。通用出牌、防御、搭桥规则见 [卡牌介绍](../Cards_deck.md)。

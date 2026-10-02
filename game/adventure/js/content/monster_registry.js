@@ -722,7 +722,7 @@
       const v = card.value;
       if (v === 7) return '无防御效果';
       if (v >= 1 && v <= 3) {
-        return '清除自身所有负面状态，格挡半数伤害（向上取整）';
+        return '施加1层[流血]，格挡半数伤害（向上取整）';
       }
       if (v === 0) {
         const immune = typeof mod.defendImmune === 'function' && mod.defendImmune(card);
