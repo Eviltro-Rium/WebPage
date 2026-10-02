@@ -109,7 +109,7 @@
     proto.shakeScreen = function (intensity, duration) {
         const container = document.getElementById('game-container');
         if (!container) return;
-        if (this._shakeTimer) cancelAnimationFrame(this._shakeTimer);
+        if (this._shakeTimer) uiCancelFrame(this._shakeTimer);
         const start = performance.now();
         const dur = duration || 300;
         const int = intensity || 5;
@@ -120,9 +120,9 @@
             const dx = (random() - 0.5) * 2 * int * decay;
             const dy = (random() - 0.5) * 2 * int * decay;
             container.style.transform = `translate(${dx}px, ${dy}px)`;
-            this._shakeTimer = requestAnimationFrame(tick);
+            this._shakeTimer = uiFrame(tick);
         };
-        this._shakeTimer = requestAnimationFrame(tick);
+        this._shakeTimer = uiFrame(tick);
     };
 
     proto._inferD12Outcome = function (desc, value) {
@@ -210,18 +210,17 @@
         const start = performance.now();
         const dur = 600;
         const tick = (now) => {
-            const dt = (now - start) / dur;
+            const dt = Math.min(1,(now - start) / dur);
+            const seconds = dt * dur / 1000;
             if (dt >= 1) { particles.forEach(p => p.el.remove()); return; }
             for (const p of particles) {
-                const px = parseFloat(p.el.style.left) + p.vx * 0.016;
-                const py = parseFloat(p.el.style.top) + p.vy * 0.016;
-                p.vy += 120 * 0.016; p.life = 1 - dt;
-                p.el.style.left = px + 'px'; p.el.style.top = py + 'px';
-                p.el.style.opacity = p.life; p.el.style.transform = `scale(${p.life})`;
+                const px=p.vx*seconds,py=p.vy*seconds+60*seconds*seconds;p.life=1-dt;
+                p.el.style.opacity=p.life;
+                p.el.style.transform=`translate(${px}px, ${py}px) scale(${p.life})`;
             }
-            requestAnimationFrame(tick);
+            uiFrame(tick);
         };
-        requestAnimationFrame(tick);
+        uiFrame(tick);
     };
 
     /** Flash an equipped accessory icon in the combat item bar before its effect float. */

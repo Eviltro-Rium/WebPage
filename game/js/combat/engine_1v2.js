@@ -209,8 +209,7 @@
      if(r.d&&(r.unblock||freezeBlock)&&!(r.isDrain||r.drain)){if(this._beginPlayerDefendFlow(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}
     if(!r.d)this.emit('desc',ch.name+' 本次技能分支未造成伤害，跳过防御',c);
      if(r.d&&!r.isDrain&&!r.drain&&this.playerNeedsAvoidChoice()){this.askGuard(r.d);return}
-    this._restoreAttackBuffs();this.dealAttackHit(ch,this.s.player,r.d,!!(r.isDrain||r.drain));{const pa=this.s.pendingAttack||{};if((pa.hypothermiaTarget&&pa.hypothermiaAmount)||(pa.aoeTargets&&pa.aoeDamage))this.performAttack({type:'aoe',target:'player',aoeTargets:pa.aoeTargets,aoeDamage:pa.aoeDamage,skipTarget:true,hypothermiaTarget:pa.hypothermiaTarget,hypothermiaAmount:pa.hypothermiaAmount});}this.s.phase=key.toUpperCase()+'_TURN';this.s.busy=true;
-    this.s.pendingAIContinue={afterEventId:this.ver};return this.check()
+    this.s.phase=key.toUpperCase()+'_TURN';this.s.busy=true;this.deferSettlement('AI_ATTACK',r.d,0);return this.check()
   };
 
   Engine.prototype.play1v2=function(){

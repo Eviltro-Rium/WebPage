@@ -45,7 +45,7 @@ _showZoneDesc(id, desc) {
             toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         });
         el.appendChild(toggle);
-        requestAnimationFrame(() => {
+        uiFrame(() => {
             if (!el.isConnected || el.classList.contains('is-expanded')) return;
             if (text.scrollHeight <= text.clientHeight + 1 && plain.length <= 28) {
                 toggle.remove();

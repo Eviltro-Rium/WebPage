@@ -48,6 +48,11 @@
       }
       return { d, skip, unblock };
     },
+    damageAfterDefense(v, damage, defender) {
+      if ([1].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2));
+
+      return null;
+    },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;
       const counter = helpers.counter || ((target, amount) => hurt(target, amount));

@@ -75,16 +75,10 @@
       let forceEnd=!!this.s.forceEndPlayerTurn;this.s.forceEndPlayerTurn=false;
       let targetKey=this.s.attackTarget||'ai';
       let target=this.s[targetKey];
-      let isDrain=!!(p.isDrain||(this.s.pendingAttack&&this.s.pendingAttack.isDrain));
-      let dmg=p.damage;
-      if(this.divingBlocksDamage(target,this.s.atkCard)){this.emit('desc',target.name+'有[潜水]，免疫蓝色攻击伤害');dmg=0;}
-      else if(!isDrain)dmg=this.applyDefenderAvoidance(target,dmg);
-      this.dealAttackHit(this.s.player,target,dmg,isDrain);
-      this.settleBleed(target,p.bleed);
-      this._restoreAttackBuffs();
+      this.settlePreparedHit(this.s.player,target,p);
       // 结算延迟失温 / AOE（跳过主目标）
       const pa1=this.s.pendingAttack||{};
-      this.performAttack({type:'aoe',target:targetKey,aoeTargets:pa1.aoeTargets,aoeDamage:pa1.aoeDamage,skipTarget:true,hypothermiaTarget:pa1.hypothermiaTarget,hypothermiaAmount:pa1.hypothermiaAmount});
+      this.performAttack({type:'aoe',commitAttackEffects:true,target:targetKey,aoeTargets:pa1.aoeTargets,aoeDamage:pa1.aoeDamage,skipTarget:true,hypothermiaTarget:pa1.hypothermiaTarget,hypothermiaAmount:pa1.hypothermiaAmount});
       this.resolveSerenityHalf();
        if(typeof this.applyPendingSaikiBleed==='function')this.applyPendingSaikiBleed();
        if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();
@@ -95,13 +89,10 @@
     }
     let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;
     let bombOwner=this.s.atkOwner||'ai';
-    let isDrainAi=!!(p.isDrain||(this.s.pendingAttack&&this.s.pendingAttack.isDrain));
-    let dmg2=p.damage;if(this.divingBlocksDamage(this.s.player,this.s.atkCard)){this.emit('desc','你有[潜水]，免疫蓝色攻击伤害');dmg2=0;}this.dealAttackHit(this.s[bombOwner]||this.s.ai,this.s.player,dmg2,isDrainAi);
-    this.settleBleed(this.s.player,p.bleed);
-    this._restoreAttackBuffs();
+    this.settlePreparedHit(this.s[bombOwner]||this.s.ai,this.s.player,p);
     // 结算延迟失温 / AOE（跳过主目标玩家）
     const pa2=this.s.pendingAttack||{};
-    this.performAttack({type:'aoe',target:'player',aoeTargets:pa2.aoeTargets,aoeDamage:pa2.aoeDamage,skipTarget:true,hypothermiaTarget:pa2.hypothermiaTarget,hypothermiaAmount:pa2.hypothermiaAmount});
+    this.performAttack({type:'aoe',commitAttackEffects:true,target:'player',aoeTargets:pa2.aoeTargets,aoeDamage:pa2.aoeDamage,skipTarget:true,hypothermiaTarget:pa2.hypothermiaTarget,hypothermiaAmount:pa2.hypothermiaAmount});
     this.resolveSerenityHalf();if(typeof this.applyPendingSaikiBleed==='function')this.applyPendingSaikiBleed();
      if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();
      this._grantChaosIfKnight('ai');

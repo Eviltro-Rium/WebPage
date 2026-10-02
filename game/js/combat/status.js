@@ -22,6 +22,7 @@
 
         hurt(engine, entity, amount, kind = false, opts = {}) {
             const damage = Math.max(0, Number(amount) || 0);
+            const hpBefore = entity.hp;
             entity.hp = Math.max(0, entity.hp - damage);
             entity.alive = entity.hp > 0;
             if (engine.name(entity) === 'Serenity') {
@@ -38,7 +39,7 @@
                 const damageKind = isDrain ? kinds.DRAIN : isBleed ? kinds.BLEED : isPoison ? kinds.POISON : (kinds.THORNS || 'thorns');
                 const text = isDrain ? '吸血' : isBleed ? '流血' : isPoison ? '中毒' : '荆棘';
                 engine.emit(eventTypes.HURT || 'hurt', `-${damage}❤️[${text}]`, null, {
-                    who: target, target, amount: damage, kind: damageKind,
+                    who: target, target, amount: damage, hpBefore, hpAfter: entity.hp, kind: damageKind,
                     bleed: isBleed, drain: isDrain, poison: isPoison, thorns: isThorns,
                     // Special attacks may keep their own consolidated feedback
                     // (for example, life steal shows one heal float only).
@@ -47,18 +48,19 @@
                 return;
             }
             engine.emit(eventTypes.HIT || 'hit', `受到${damage}点伤害`, null, {
-                who: target, target, amount: damage, kind: kinds.NORMAL
+                who: target, target, amount: damage, hpBefore, hpAfter: entity.hp, kind: kinds.NORMAL
             });
         },
 
         settleBleed(engine, entity, stacks) {
             const count = Math.max(0, Number(stacks) || 0);
             if ((entity.bleed || 0) <= 0 || count <= 0) return;
+            const hpBefore = entity.hp;
             this.hurt(engine, entity, count, true, { silent: true });
             if (service) removeStatus(entity, 'bleed', 1); else entity.bleed--;
             const target = targetKey(engine, entity);
             engine.emit(eventTypes.BLEED_SETTLE || 'bleedSettle', `-${count}❤️[流血]，-1[流血层数]`, null, {
-                who: target, target, amount: count, kind: kinds.BLEED
+                who: target, target, amount: count, hpBefore, hpAfter: entity.hp, kind: kinds.BLEED
             });
         },
 
@@ -74,10 +76,11 @@
             const desc = kind === 'wake'
                 ? `[苏醒]+${actual}❤️`
                 : `+${actual}[${kind === 'drain' ? '吸血' : kind === 'passive' ? '被动' : '生命'}]`;
-            engine.emit(eventTypes.HEAL || 'heal', desc, null, { who: target, target, amount: actual, kind });
+            engine.emit(eventTypes.HEAL || 'heal', desc, null, { who: target, target, amount: actual, hpBefore: before, hpAfter: entity.hp, kind });
             if (kind !== 'drain' && kind !== 'wake' && engine.name(entity) === 'Serenity' && !entity.bloodthirst && entity.hp >= 30) {
+                const passiveBefore = entity.hp;
                 entity.hp = Math.min(entity.maxHp, entity.hp + 1);
-                engine.emit(eventTypes.HEAL || 'heal', '+1[被动]', null, { who: target, target, amount: 1, kind: 'passive' });
+                if (entity.hp > passiveBefore) engine.emit(eventTypes.HEAL || 'heal', '+1[被动]', null, { who: target, target, amount: entity.hp-passiveBefore, hpBefore: passiveBefore, hpAfter: entity.hp, kind: 'passive' });
             }
         },
 

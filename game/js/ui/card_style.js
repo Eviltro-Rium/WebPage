@@ -95,14 +95,25 @@
     trophy_PurifyWaterTrophy: cardAssetUrl('icons/items_icons/purify_water.webp')
   };
 
-  const iconCache = {};
-  const iconLoadPromises = Object.keys(ICON_PATHS).map(name => new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => resolve();
-    img.onerror = () => resolve();
-    img.src = ICON_PATHS[name];
-    iconCache[name] = img;
-  }));
+  const faceCache = new Map(), backCache = new Map();
+  const CACHE_LIMIT=128;
+  let iconRevision=0;
+  function remember(cache,key,canvas){
+    // Cache our own bitmap: callers may draw on the returned canvas.
+    const bitmap=document.createElement('canvas');bitmap.width=canvas.width;bitmap.height=canvas.height;
+    bitmap.getContext('2d').drawImage(canvas,0,0);cache.set(key,bitmap);
+    if(cache.size>CACHE_LIMIT)cache.delete(cache.keys().next().value);
+  }
+  function cached(cache,key,selected,label){const face=cache.get(key);if(!face)return null;cache.delete(key);cache.set(key,face);const c=document.createElement('canvas');c.width=face.width;c.height=face.height;c.className=selected?'card-canvas selected':cache===backCache?'card-back-canvas':'card-canvas';c.setAttribute('role','img');c.setAttribute('aria-label',label);if(selected)c.setAttribute('aria-selected','true');c.getContext('2d').drawImage(face,0,0);return c;}
+  const iconCache = {}, byUrl=new Map();
+  const iconLoadPromises=Object.keys(ICON_PATHS).map(name=>{
+    const url=ICON_PATHS[name];let entry=byUrl.get(url);
+    if(!entry){const img=new Image();img.decoding='async';const ready=new Promise(resolve=>{
+      img.onload=async()=>{if(img.decode)try{await img.decode();}catch(error){}iconRevision++;faceCache.clear();resolve();};
+      img.onerror=()=>resolve();img.src=url;
+    });entry={img,ready};byUrl.set(url,entry);}
+    iconCache[name]=entry.img;return entry.ready;
+  });
 
   function loadIcon(name) {
     return iconCache[name] || null;
@@ -187,6 +198,8 @@
 
   function renderCard(card, w, h, selected, opts) {
     card = normalizeCard(card);
+    const label=cardDescription(card,opts), cacheKey=[w,h,card.color,card.value,card.chosenColor||'',card.isBlack,card.isWhite,card.isNumberCard,itemKind(card),card.trophyName||'',isNpcWhiteCard(card,opts),iconRevision].join('|');
+    const hit=cached(faceCache,cacheKey,selected,label);if(hit)return hit;
     const c = document.createElement('canvas');
     c.width = w; c.height = h;
     c.className = 'card-canvas' + (selected ? ' selected' : '');
@@ -385,10 +398,12 @@
       g.fillText(cornerMark, RIM + 3, RIM + 3);
     }
 
+    remember(faceCache,cacheKey,c);
     return c;
   }
 
   function renderCardBack(w, h) {
+    const cacheKey=w+'x'+h;const hit=cached(backCache,cacheKey,false,'卡牌背面');if(hit)return hit;
     const c = document.createElement('canvas');
     c.width = w; c.height = h;
     c.className = 'card-back-canvas';
@@ -436,12 +451,14 @@
       g.fillText('FURRY TRIAL', w / 2, h / 2 + h * 0.105);
     }
 
+    remember(backCache,cacheKey,c);
     return c;
   }
 
   window.CardStyle = {
     CARD_COLORS,
     COLOR_SHORT,
+    get iconRevision() {return iconRevision;},
     normalizeCard,
     isNpcWhiteCard,
     renderCard,

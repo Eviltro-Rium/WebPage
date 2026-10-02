@@ -44,6 +44,41 @@
         }
         if (typeof mod.attackTurnStart === 'function') mod.attackTurnStart(eng, x, w);
       },
+      attackEffectTiming(v, eng) {
+        const active = eng._getAdventureMod(mod.name) || mod;
+        if (typeof active.attackEffectTiming === 'function') return active.attackEffectTiming(v);
+        // Ladybug explicitly gains lush BEFORE its attack; Kraken purges first.
+        const before = mod.name === 'ForestLadybug' && v >= 4 && v <= 6 ||
+          mod.name === 'FrozenKraken' && v === 0 ||
+          mod.name === 'ForestPython' && (v === 0 || v >= 4 && v <= 6) ||
+          mod.name === 'ForestPanda' && v === 0 ||
+          mod.name === 'ForestDryad' && (v === 0 || v >= 1 && v <= 3) ||
+          mod.name === 'CastleEagle' && (v === 0 || v >= 4 && v <= 6) ||
+          mod.name === 'CastleGargoyle' && v >= 1 && v <= 6;
+        return before ? 'beforeDamage' : 'afterDamage';
+      },
+      damageAtSettlement(eng, v, a, t) {
+        const active = typeof eng._getAdventureMod==='function' ? eng._getAdventureMod(mod.name) || mod : mod;
+        const card = eng.s.atkCard;
+        // Card/dice judgment damage is locked to its revealed result, not rolled again.
+        if (!card || typeof active.attackDamage!=='function' ||
+            active.attackRevealDraw || active.attackOctopusJudge || active.attackKrakenJudge) return null;
+        const owner = eng._who(a), hand=eng.h[owner] || [];
+        const total = window.FurryGame.StatusRegistry.all.reduce((sum,def) => sum+window.FurryGame.StatusRegistry.amount(t,def.id),0);
+        const ctx = {playerHandSize:(eng.h.player||[]).length,attackerHandSize:hand.length,attackerHand:hand,
+          playerBleed:t.bleed||0,playerPoison:t.poison||0,attackerLush:a.lush||0,playerBuffTotal:total};
+        const drain = typeof active.attackDrain==='function' ? Number(active.attackDrain(card,ctx)) || 0 : 0;
+        const damage=Number(active.attackDamage(card,ctx)) || 0;
+        return damage > 0 ? damage : drain > 0 ? drain : damage;
+      },
+      damageAfterDefense(v, damage, defender, eng) {
+        const active = eng._getAdventureMod(mod.name) || mod, card = eng.s.defCard;
+        // Recompute arithmetic only: never repeat dice, counters or status gains.
+        if (typeof active.defendImmune==='function' && active.defendImmune(card)) return 0;
+        if (typeof active.defendSplit==='function' && active.defendSplit(card)) return Math.ceil(damage/2);
+        if (typeof active.defendBlock==='function') return Math.max(0,damage-(active.defendBlock(card,damage,defender,eng)||0));
+        return null;
+      },
       effect(eng, v, c, a, t, owner, helpers) {
         const { heal, guard, fly, bleed, poison, clearPositiveBuffs, draw } = helpers;
         let d = 0, skip = false, unblock = false, drain = 0;

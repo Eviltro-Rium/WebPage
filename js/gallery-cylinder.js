@@ -243,8 +243,13 @@
     return html;
   }
 
+  var lastLayoutWidth = -1;
+  var layoutFrame = 0;
   function layout() {
     var vw = viewport.clientWidth;
+    // Height-only toolbar/keyboard resizes must not rebuild all WebP strips.
+    if (vw === lastLayoutWidth) return;
+    lastLayoutWidth = vw;
     var m = metrics(vw);
     var radius = m.radius;
     var circumference = 2 * Math.PI * radius;
@@ -310,15 +315,24 @@
     document.dispatchEvent(new CustomEvent("rium-page-assets-ready", {
       detail: { source: "gallery" }
     }));
-    window.addEventListener("resize", layout);
+    window.addEventListener("resize", function () {
+      if (layoutFrame) return;
+      layoutFrame = requestAnimationFrame(function () {
+        layoutFrame = 0;
+        layout();
+      });
+    }, { passive: true });
   }
 
   for (i = 0; i < sources.length; i++) {
     (function (src) {
       var probe = new Image();
+      probe.decoding = "async";
       probe.onload = function () {
         natural[src] = { w: probe.naturalWidth, h: probe.naturalHeight };
-        done();
+        // Present sources only after their bitmaps finish decoding.
+        if (probe.decode) probe.decode().catch(function () {}).then(done);
+        else done();
       };
       probe.onerror = done;
       probe.src = src;

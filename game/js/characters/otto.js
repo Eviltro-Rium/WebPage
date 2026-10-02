@@ -7,6 +7,8 @@
     passive: '进攻时伤害>4可选择消耗1层[暴击]使攻击不可防御',
     init() { return { crit: 0 }; },
     turnStart(eng, ch) {},
+    damageAtSettlement(eng, v, a, t) { return v === 7 ? Math.ceil(a.hp / (eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10)) : null; },
+    attackEffectTiming: {1: 'afterDamage', 2: 'afterDamage', 6: 'afterDamage'},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, heal, draw, clearDebuffs, hurt } = helpers;
       let d = 0, skip = false, unblock = false;
@@ -47,6 +49,11 @@
         }
       }
       return { d, skip, unblock };
+    },
+    damageAfterDefense(v, damage, defender) {
+      if ([1].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2));
+
+      return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, burn, bleed, addGuard } = helpers;

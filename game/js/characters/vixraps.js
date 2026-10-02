@@ -7,6 +7,8 @@
     passive: '打出黑牌后，在搭桥出牌之前，必须弃掉1张牌，然后恢复2点生命并对对手施加1层灼伤。如果打出黑牌后没有手牌，则不需要弃牌，仍可恢复2点生命并施加1层灼伤',
     init() { return {}; },
     turnStart(eng, ch) {},
+    damageAtSettlement(eng, v, a, t) { return v === 7 ? (t.burn || 0) * 2 : null; },
+    attackEffectTiming: {1: 'afterDamage', 5: 'afterDamage'},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, heal, draw, hurt } = helpers;
       let d = 0, skip = false, unblock = false, immediateBuffs = false;
@@ -80,6 +82,11 @@
       }
 
       return { d, skip, unblock, immediateBuffs };
+    },
+    damageAfterDefense(v, damage, defender) {
+      if ([0].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2));
+
+      return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, burn } = helpers;

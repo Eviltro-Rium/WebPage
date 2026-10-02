@@ -1,6 +1,6 @@
 # Furry Trial 游戏架构
 
-> 文档版本：2026-09-23
+> 文档版本：2026-10-02
 > 适用范围：单机 1v1、单机 1v2、领主模式、冒险模式、在线对决。
 > 运行方式：静态网页、原生浏览器脚本，无构建器也可以通过 `file://` 加载。
 
@@ -153,6 +153,8 @@ close()
 
 `CardEffects.resolve(card)` 能把历史字段转换成 `id/kind/family`，`apply(engine, card, context)` 集中了多类通用牌效果；目前 1v2 等路径已有局部调用，但主引擎中仍有重复的卡牌分支，尚未形成所有模式共用的唯一结算入口。下一轮迁移要逐类完成并删除重复路径，不能只把新卡登记到注册表就视为接入完成。复杂效果仍由引擎/适配器提供稳定能力，不让注册表持有回合状态。
 
+攻击结算顺序及扩展协议见 [统一攻击与伤害结算](COMBAT_SETTLEMENT.md)。
+
 ## 5. 引擎与模式适配器
 
 ### 5.1 当前引擎拆分状态
@@ -162,7 +164,7 @@ close()
 | 文件 | 作用 |
 | --- | --- |
 | `engine_turns.js` | 回合开始/结束、弃牌阶段、手牌补齐 |
-| `engine_attack.js` | 稳定的攻击/防御门面 |
+| `engine_attack.js` | 统一攻击效果暂存、状态公式重算、特殊减伤与命中入口 |
 | `engine_ai.js` | AI 上下文和角色策略入口；具体策略在 `js/ai/*` |
 | `engine_snapshot.js` | 战斗快照 capture/restore |
 | `engine_1v2.js` | 1v2 参与者、AI 轮换、死亡和共享牌库流程 |
@@ -235,6 +237,7 @@ close()
 
 `ui_core.js` 定义 `GameUI`、常量、卡牌/动画基础工具；其余功能按职责拆分：
 
+- `render/runtime.js`：稳定图片 DOM、图标入退场生命周期、共用动画 RAF 调度。
 - `render/home_screen.js`：模式和角色选择页。
 - `render/combat_screen.js`：战斗 DOM 骨架和标题/参与者区域。
 - `render/zone_render.js`：进攻、防御、判定、弃牌库顶区域。
@@ -251,6 +254,8 @@ close()
 `GameUI.mountBattle(session, state, gameScreen)` 是单机、冒险、在线共用的装配入口。在线 UI 通过 `_onlineResultSink` 把本地/远端结果送入同一个版本队列；在线页面不应再创建一套卡牌渲染器。
 
 卡牌能否出牌由快照中的 `legalHand` 决定。不可出的牌应不可选中，但悬停仍可显示技能说明；选中、动画和状态反馈只能影响 DOM/CSS，不能直接修改 `engine.s`。
+
+渲染稳定性、位图缓存与动画算法详见 [RENDER_PERFORMANCE.md](RENDER_PERFORMANCE.md)。
 
 ### 7.2 冒险 UI 与战斗 UI 的关系
 

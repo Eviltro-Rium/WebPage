@@ -197,13 +197,33 @@
       if(!revealFace||!ownerCard||!(s.phase==='PLAYER_PLAY'||s.phase==='PLAYER_DEFEND'||s.phase==='OPPONENT_CARD_CHOICE'))return;
       const charName=this._combatDisplayName(opponent&&opponent.name);
       const ownerKey=opponent===s.ai2?'ai2':'ai';
-      const adventureOpts=typeof this._adventureSkillDescOpts==='function'
-        ? this._adventureSkillDescOpts(ownerKey)
-        : {stage:s.adventureStage||s.stage||1,playerHandSize:(s.playerHand&&s.playerHand.length)||0,incomingDamage:s.pendingDefenseDamage||0};
-      card.addEventListener('mouseenter',()=>this._showTooltip(ownerCard,card,true,{charName,adventureOpts}));
+      card.addEventListener('mouseenter',()=>{
+        const live=this.state;
+        const adventureOpts=typeof this._adventureSkillDescOpts==='function'
+          ? this._adventureSkillDescOpts(ownerKey)
+          : {stage:live.adventureStage||live.stage||1,playerHandSize:(live.playerHand||[]).length,incomingDamage:live.pendingDefenseDamage||0};
+        this._showTooltip(ownerCard,card,true,{charName,adventureOpts});
+      });
       card.addEventListener('mouseleave',()=>this._hideTooltip());
     };
     let aiEl=document.getElementById('ai-hand');
+    const second=document.getElementById('ai2-hand');
+    const revision=window.CardStyle && window.CardStyle.iconRevision;
+    const key=JSON.stringify([
+      s.phase,s.onlineCanAct,s.isAdventure,revealFace,selectedTarget,s.selectedAICard,
+      hideWho,hideTrailing,revision,s.ai && s.ai.name,s.ai && s.ai.alive,
+      s.aiHandSize,(s.aiHand||[]).map(cardVisualKey),s.ai2 && s.ai2.name,s.ai2 && s.ai2.alive,
+      s.ai2HandSize,(s.ai2Hand||[]).map(cardVisualKey)
+    ]);
+    const expected=(owner)=>{
+      const ch=s[owner];if(!ch)return 0;if(!ch.alive)return 1;
+      const hand=revealFace && Array.isArray(s[owner+'Hand'])?s[owner+'Hand']:[];
+      return Math.max(0,Math.max(Number(s[owner+'HandSize'])||0,hand.length)-((!hideWho||hideWho===owner)?hideTrailing:0));
+    };
+    if(aiEl && aiEl.dataset.handRenderKey===key && aiEl.children.length===expected('ai') &&
+      (!s.ai2 || (second && second.dataset.handRenderKey===key && second.children.length===expected('ai2'))))return;
+    if(aiEl)aiEl.dataset.handRenderKey=key;
+    if(second)second.dataset.handRenderKey=key;
     if(aiEl){
       aiEl.innerHTML='';
       if(s.ai.alive){

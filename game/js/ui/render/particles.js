@@ -32,6 +32,7 @@
                 }
             };
             const frame = () => {
+                raf=0;
                 if (!running) return;
                 const now = Date.now(); ctx.clearRect(0, 0, width, height);
                 for (const p of particles) {
@@ -45,6 +46,7 @@
             };
             const onVisibility = () => {
                 running = document.visibilityState !== 'hidden';
+                if(!running&&raf){cancelAnimationFrame(raf);raf=0;}
                 if (running && !raf) { resize(); frame(); }
             };
             resize();

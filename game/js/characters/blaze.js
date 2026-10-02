@@ -7,6 +7,13 @@
     passive: '自身有灼伤时，1至7牌的攻击伤害+1',
     init() { return {}; },
     turnStart(eng, ch) {},
+    damageAtSettlement(eng, v, a, t) {
+      if (v === 5) return 2 + (a.burn || 0) + (a.burn ? 1 : 0);
+      if (v === 7) return [...new Set([eng.s.player, eng.s.ai, eng.s.ai2])].filter(Boolean).reduce((n, x) => n + (x.burn || 0), 0) + (a.burn ? 1 : 0);
+      if (v >= 1 && v <= 3) return [0,2,3,4][v] + (a.burn ? 1 : 0);
+      return null;
+    },
+    attackEffectTiming: {0: 'afterDamage', 1: 'afterDamage', 2: 'afterDamage'},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, burnSelf, burnTarget, heal } = helpers;
       let d = 0;
@@ -62,6 +69,11 @@
         ? eng._allKeysExcept(owner)
         : null;
       return { d, skip, unblock, aoeTargets, aoeDamage: v === 0 ? 5 : 0, immediateBuffs: v === 7 };
+    },
+    damageAfterDefense(v, damage, defender) {
+      if ([2].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2));
+
+      return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, burn } = helpers;

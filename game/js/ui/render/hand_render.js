@@ -24,6 +24,9 @@
             // player card is selected, never leave a stale NPC focus marker in
             // place — otherwise the opponent hand looks selected as well.
             if (s.selectedCard >= 0) this._npcHandFocusIndex = -1;
+            const [cardWidth,cardHeight]=currentCardSize();
+            const revision=window.CardStyle?window.CardStyle.iconRevision||0:0;
+            const paintKey=JSON.stringify([s.onlineCanAct,s.phase,s.needColorChoice,s.unblockDefend,s.legalHand||null,this._animatingPlayerCardKey||'',hideTrailing,cardWidth,cardHeight,revision,(s.playerHand||[]).map(cardVisualKey),(s.chanFiveCards||[]).map(cardVisualKey)]);
             const handKey = JSON.stringify([
                 s.onlineCanAct,
                 s.phase,
@@ -37,9 +40,14 @@
                 (s.playerHand || []).map(cardVisualKey),
                 (s.chanFiveCards || []).map(cardVisualKey)
             ]);
-            if (container.dataset.handRenderKey === handKey && container.children.length === s.playerHand.length) return;
+            const visibleCount=Math.max(0,s.playerHand.length-hideTrailing);
+            if(container.dataset.handRenderKey&&container.dataset.handPaintKey===paintKey&&container.children.length===visibleCount){
+                for(const node of container.children){const index=Number(node.dataset.index),selected=index===s.selectedCard||(s.selectedCards||[]).includes(index);node.classList.toggle('selected',selected);node.setAttribute('aria-selected',String(selected));}
+                container.dataset.handRenderKey=handKey;return;
+            }
             this._hideTooltip();
             container.dataset.handRenderKey = handKey;
+            container.dataset.handPaintKey = paintKey;
             container.innerHTML = '';
             container.ondblclick = null;
             const handleDoubleClick = async (index) => {
@@ -89,7 +97,7 @@
                 const sel = i === s.selectedCard || ((s.selectedCards || []).includes(i));
                 const isUnplayable = (isPlayPhase || isNumericChoice)
                     && Array.isArray(s.legalHand) && s.legalHand[i] === false;
-                const [cw, ch] = currentCardSize();
+                const [cw, ch] = [cardWidth,cardHeight];
                 const cv = renderCard(card, cw, ch, sel);
                 if (this._animatingPlayerCardKey && cardMatchKey(card) === this._animatingPlayerCardKey) {
                     // The authoritative hand may be repainted while the
@@ -193,9 +201,11 @@
                 // Keep the skill explanation attached to the card itself.  The
                 // old centered tooltip under the title has been removed.
                 if (canInteract) {
-                    const adventureOpts = s.isAdventure && typeof this._adventureSkillDescOpts === 'function'
-                        ? this._adventureSkillDescOpts('player') : null;
-                    cv.addEventListener('mouseenter', () => this._showTooltip(card, cv, isDefend, { adventureOpts }));
+                    cv.addEventListener('mouseenter', () => {
+                        const adventureOpts = this.state.isAdventure && typeof this._adventureSkillDescOpts === 'function'
+                            ? this._adventureSkillDescOpts('player') : null;
+                        this._showTooltip(card, cv, isDefend, { adventureOpts });
+                    });
                     cv.addEventListener('mouseleave', () => this._hideTooltip());
                 }
 
@@ -291,8 +301,7 @@
         _renderAIHand(options = {}) {
             const s = this.state;
             const container = document.getElementById('ai-hand');
-            this._hideTooltip();
-            container.innerHTML = '';
+            if (!container || !s) return;
             const hideTrailing = this._hideTrailingCount(options, 'ai');
             const revealMode = !!s.aiHand && Array.isArray(s.aiHand);
             const handSize = Math.max(Number(s.aiHandSize) || 0, revealMode ? s.aiHand.length : 0);
@@ -303,6 +312,10 @@
             if (!canPeekSkill) this._npcHandFocusIndex = -1;
             else if (this._npcHandFocusIndex >= handSize) this._npcHandFocusIndex = -1;
 
+            const key = JSON.stringify([s.phase,s.isAdventure,s.onlineCanAct,s.opponentHandTarget,s.selectedAICard,this._npcHandFocusIndex,hideTrailing,handSize,revealMode,s.ai && s.ai.name,s.adventureStage,s.stage,s.pendingDefenseDamage,(s.playerHand || []).length,(s.aiHand || []).map(cardVisualKey),s.chanSevenKeepMode,s.chanSevenChosenCard,window.CardStyle && window.CardStyle.iconRevision]);
+            const visibleCount=Math.max(0,handSize-hideTrailing)+(s.chanSevenKeepMode && s.chanSevenChosenCard ? 1 : 0);
+            if (container.dataset.handRenderKey===key && container.children.length===visibleCount) return;
+            this._hideTooltip();container.replaceChildren();container.dataset.handRenderKey=key;
             for (let i = 0; i < handSize; i++) {
                 // hideTrailing: skip rendering new (just-drawn) cards entirely.
                 if (hideTrailing && i >= handSize - hideTrailing) continue;
@@ -348,15 +361,14 @@
                     });
                 }
                 if (revealMode && card && (canPeekSkill || canSelectOpponent)) {
-                    const charName = this._combatDisplayName(s.ai && s.ai.name);
-                    const adventureOpts = typeof this._adventureSkillDescOpts === 'function'
-                        ? this._adventureSkillDescOpts('ai')
-                        : {
-                            stage: s.adventureStage || s.stage || 1,
-                            playerHandSize: (s.playerHand && s.playerHand.length) || 0,
-                            incomingDamage: s.pendingDefenseDamage || 0
-                        };
-                    cv.addEventListener('mouseenter', () => this._showTooltip(card, cv, true, { charName, adventureOpts }));
+                    cv.addEventListener('mouseenter', () => {
+                        const live=this.state;
+                        const charName=this._combatDisplayName(live.ai && live.ai.name);
+                        const adventureOpts=typeof this._adventureSkillDescOpts === 'function'
+                            ? this._adventureSkillDescOpts('ai')
+                            : {stage:live.adventureStage||live.stage||1,playerHandSize:(live.playerHand||[]).length,incomingDamage:live.pendingDefenseDamage||0};
+                        this._showTooltip(card,cv,true,{charName,adventureOpts});
+                    });
                     cv.addEventListener('mouseleave', () => this._hideTooltip());
                 }
                 container.appendChild(cv);

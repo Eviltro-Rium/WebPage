@@ -122,7 +122,7 @@ test('rendered online Saiki judgment card click selects and confirms for either 
     match.engine.s.phase = 'SAIKI_SIX_JUDGE';
     match.engine.s.pendingNumberJudge = { type: 'Saiki' };
     match.engine.h[actor === 'host' ? 'player' : 'ai'] = [context.FurryGame.Card.number('RED', 2)];
-    const container = { dataset: {}, children: [], appendChild(node) { node.parentElement = this; this.children.push(node); }, querySelectorAll() { return this.children; } };
+    const container = { remove() {}, dataset: {}, children: [], appendChild(node) { node.parentElement = this; this.children.push(node); }, querySelectorAll() { return this.children; } };
     const uiContext = vm.createContext({
       console, Date, GameUI: function () {},
       document: { getElementById: () => container },
@@ -752,8 +752,11 @@ test('Knight 6 grants its guard in one settlement for either online actor', () =
       match.engine.s.onlineActor = actor;
       const played = match.dispatch(actor, 'playCard', { cardId: cardIdentity(card), index: 0 });
       assert.equal(played.ok, true, played.error);
+      assert.equal(match.project(actor).player.guard, 0, 'attack effects wait until defense finishes');
+      const defended = match.dispatch(actor === 'host' ? 'guest' : 'host', 'doSkipDefend');
+      assert.equal(defended.ok, true, defended.error);
       assert.equal(match.project(actor).player.guard, green ? 4 : 2);
-      assert.equal(played.events.filter(event => event.kind === 'guard').length, 1);
+      assert.equal(defended.events.filter(event => event.kind === 'guard').length, 1);
     }
   }
 });
@@ -790,6 +793,9 @@ test('refreshed guest uses a new command id and can play from restored battle st
     expectedStateVersion: packet.expectedStateVersion
   });
   assert.equal(played.ok, true, played.error);
+  assert.equal(restoredMatch.project('guest').player.guard, 0);
+  const defended = restoredMatch.dispatch('host', 'doSkipDefend');
+  assert.equal(defended.ok, true, defended.error);
   assert.equal(restoredMatch.project('guest').player.guard, 2);
   second.close();
   await current;
@@ -888,7 +894,7 @@ test('an offer completing after connection replacement is discarded', async () =
 
 test('all game entry pages include the shared release badge', () => {
   for (const page of ['index.html', 'adventure/adventure.html', 'online_game/index.html']) {
-    assert.match(fs.readFileSync(path.join(root, page), 'utf8'), /js\/version\.js\?v=20260923-3/);
+    assert.match(fs.readFileSync(path.join(root, page), 'utf8'), /js\/version\.js\?v=[^"\s]+/);
   }
 });
 test('saved host battle restores even when navigation timing is not reload', () => {

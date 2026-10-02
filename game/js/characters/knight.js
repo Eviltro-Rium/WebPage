@@ -13,6 +13,7 @@
         eng.emit('buff', '[混沌重制]', null, { who: w, kind: 'chaos_reset', stacks: 0 });
       }
     },
+    attackEffectTiming: {1: 'afterDamage', 6: 'afterDamage'},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs } = helpers;
       let d = 0, skip = false, unblock = false;
@@ -71,6 +72,11 @@
         }
       }
       return { d, skip, unblock };
+    },
+    damageAfterDefense(v, damage, defender) {
+      if ([2,3].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2));
+
+      return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;

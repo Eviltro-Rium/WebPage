@@ -97,17 +97,17 @@
         const legalHand = Array.isArray(options.legalHand)
             ? options.legalHand.slice()
             : (Array.isArray(state.legalHand) ? state.legalHand.slice() : null);
-        const projected = Object.assign({}, clone(state), {
+        const projected = Object.assign({}, state, {
             deck: deck.length,
             discard: 1 + discard.length,
             discardBottomCount: discard.length,
             playerHand: hands.player || [],
             aiHandSize: (hands.ai || []).length,
-            aiHand: state.revealAIHand ? clone(hands.ai || []) : null,
+            aiHand: state.revealAIHand ? (hands.ai || []) : null,
             ai2HandSize: (hands.ai2 || []).length,
-            ai2Hand: state.revealAIHand ? clone(hands.ai2 || []) : null,
+            ai2Hand: state.revealAIHand ? (hands.ai2 || []) : null,
             eventLogVersion: options.eventLogVersion != null ? options.eventLogVersion : (engine ? engine.ver || 0 : source && source.ver || 0),
-            events: (options.events || (engine ? engine.events : source && source.events) || []).slice(),
+            events: (options.events || (engine ? engine.events : source && source.events) || []),
             legalHand
         });
         return clone(projected);

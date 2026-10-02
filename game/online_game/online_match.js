@@ -76,6 +76,9 @@
             (state.pendingBuffRestore.target === 'player' || state.pendingBuffRestore.target === 'ai')) {
             state.pendingBuffRestore.target = swapKey(state.pendingBuffRestore.target);
         }
+        if (Array.isArray(state.pendingSkillStatuses)) {
+            state.pendingSkillStatuses.forEach(effect => { effect.target = swapKey(effect.target); });
+        }
         if (state.attackDebuffSnapshot &&
             (state.attackDebuffSnapshot.owner === 'player' || state.attackDebuffSnapshot.owner === 'ai')) {
             state.attackDebuffSnapshot.owner = swapKey(state.attackDebuffSnapshot.owner);

@@ -114,6 +114,12 @@ async _consumeEvents(events, options = {}) {
 },
 
 
+_feedbackEntity(evt, side) {
+    const entity = this.state && this.state[side];
+    return entity && Number.isFinite(evt && evt.hpAfter)
+        ? Object.assign({}, entity, {hp: evt.hpAfter, alive: evt.hpAfter > 0}) : entity;
+},
+
 _isDefenseJudgmentEvent(evt) {
     const desc = String(evt && evt.desc || '');
     return !!evt && evt.type === 'reveal' && desc.includes('防御') && desc.includes('判定');
@@ -179,6 +185,7 @@ async _playEvents(events, fast = false) {
     try { for (const evt of orderedEvents) {
         try {
           if (evt.type === 'aiPlay') {
+            this._lastAnimatedAIDefenseKey = null;
             // Some older/bridge states omitted the card payload even though
             // the engine had already recorded the active attack card. Keep
             // the play animation visible by falling back to that snapshot.
@@ -189,8 +196,9 @@ async _playEvents(events, fast = false) {
             this._renderDiscardTop();
             await wait(600);
             this._showCardSkillDesc('atk-desc', aiPlayCard, evt.who || 'ai', false);
-            await wait(1400);
+            await wait(500);
         } else if (evt.type === 'playerPlay' && evt.card) {
+            this._lastAnimatedAIDefenseKey = null;
             this._updateAttackerIndicator('player');
             await this._playPlayerCardAnimation(evt.card);
             this._renderDiscardTop();
@@ -221,7 +229,7 @@ async _playEvents(events, fast = false) {
             } else {
                 const side = evt.who === 'ai2' ? 'ai2' : evt.who === 'ai' ? 'ai' : 'player';
                 if (this.state[side]) {
-                    this._updateHpBar(side, this.state[side]);
+                    this._updateHpBar(side, this._feedbackEntity(evt, side));
                     this._updateBuffs(side, this.state[side]);
                 }
                 await wait(380);
@@ -237,7 +245,7 @@ async _playEvents(events, fast = false) {
             this._renderDiscardTop();
             await wait(600);
             this._showCardSkillDesc('def-desc', evt.card, who, true);
-            await wait(800);
+            await wait(350);
         } else if (evt.type === 'draw') {
             const count = Math.max(0, Number(evt.count) || 1);
             const drawOwner = evt.who === 'ai2' ? 'ai2' : evt.who === 'ai' ? 'ai' : evt.who === 'player' ? 'player' : 'ai';
@@ -357,7 +365,7 @@ async _playEvents(events, fast = false) {
             }
         } else if (evt.type === EVENT_TYPES.HIT) {
             const side = this._eventTarget(evt);
-            if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+            if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this.state[side]); }
             // 普通扣血显示简洁的红色数字；不再复用冗余的“[伤害]”标签。
             if (Number(evt.amount) > 0) {
                 this.playFloatingText(evt.floatText || `-${evt.amount}`, '#ff4444', side);
@@ -371,7 +379,7 @@ async _playEvents(events, fast = false) {
                 ? `-${amt}❤️[灼伤]，-1[灼伤层数]`
                 : (evt.desc || '');
             this.playFloatingText(text, '#ff8800', side);
-            if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+            if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this.state[side]); }
             if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,136,0,0.8)', Math.min(amt * 3, 20)); } }
             await wait(500);
         } else if (evt.type === 'bleedSettle') {
@@ -381,7 +389,7 @@ async _playEvents(events, fast = false) {
                 ? `-${amt}❤️[流血]，-1[流血层数]`
                 : (evt.desc || '');
             this.playFloatingText(text, '#cc2222', side);
-            if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+            if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this.state[side]); }
             if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(204,34,34,0.8)', Math.min(amt * 3, 20)); } }
             await wait(500);
         } else if (evt.type === 'poisonSettle') {
@@ -391,7 +399,7 @@ async _playEvents(events, fast = false) {
                 ? `-${amt}❤️[中毒]`
                 : (evt.desc || '');
             this.playFloatingText(text, '#84cc16', side);
-            if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+            if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this.state[side]); }
             if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); }
             await wait(500);
         } else if (evt.type === 'bombExplode') {
@@ -401,7 +409,7 @@ async _playEvents(events, fast = false) {
                 ? `-${amt}❤️[定时炸弹]`
                 : (evt.desc || '炸弹爆炸！');
             this.playFloatingText(text, '#ff4444', side);
-            if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+            if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this.state[side]); }
             this.shakeScreen(10, 400);
             const hpEl = document.getElementById(side + '-hp-section');
             if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,68,68,0.9)', 25); }
@@ -433,7 +441,7 @@ async _playEvents(events, fast = false) {
                     this.playFloatingText(text, color, side);
                 }
             }
-            if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+            if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this.state[side]); }
             this._playHitFeedback(side, evt.amount);
             await wait(400);
         } else if (evt.type === 'buffSettle') {
@@ -446,7 +454,7 @@ async _playEvents(events, fast = false) {
                 : '灼伤';
             const text = amt > 0 ? `-${amt}❤️[${tag}]` : (evt.desc || '');
             this.playFloatingText(text, color, side);
-            if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+            if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this.state[side]); }
             if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); }
             await wait(500);
         } else if (evt.type === 'buff') {
@@ -485,7 +493,7 @@ async _playEvents(events, fast = false) {
             const color = evt.kind === 'drain' ? '#e040fb' : evt.kind === 'passive' ? '#b388ff' : '#44dd44';
             const side = this._eventTarget(evt);
             this.playFloatingText(evt.desc || '', color, side);
-            if (this.state[side]) { this._updateHpBar(side, this.state[side]); this._updateBuffs(side, this.state[side]); }
+            if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this.state[side]); }
             await wait(400);
         } else if (evt.type === 'gameOver') {
             this.playFloatingText(evt.desc || '游戏结束', '#ffd700', 'player');

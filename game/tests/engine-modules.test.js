@@ -56,3 +56,10 @@ test('combat snapshots round-trip state and piles', () => {
   assert.equal(engine.h.player[0].value, 2);
   assert.equal(engine.deck[0].value, 3);
 });
+
+test('public combined attack facade applies life-steal avoidance once', () => {
+  const engine=new context.Engine();let reductions=0;
+  engine.applyDefenderAvoidance=(_,amount)=>{reductions++;return amount-1;};
+  engine.dealAttackHit=(_,__,amount,isDrain,opts)=>{assert.equal(amount,4);assert.ok(isDrain);assert.equal(opts.allowAvoidance,false);};
+  assert.equal(engine.resolveAttackAndDefense({}, {}, 5, {isDrain:true}),4);assert.equal(reductions,1);
+});

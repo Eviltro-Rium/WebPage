@@ -10,6 +10,8 @@
     passive: '免疫灼伤',
     init() { return {}; },
     turnStart(eng, ch) {},
+    damageAtSettlement(eng, v, a, t) { return v === 5 ? 4 + (t.burn ? 2 : 0) : null; },
+    attackEffectTiming: {2: 'afterDamage', 7: 'afterDamage'},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, takeReveal, draw, hurt } = helpers;
       let d = 0, skip = false, unblock = false;
@@ -68,6 +70,11 @@
         if (typeof hurt === 'function') hurt(a, 2);
       }
       return { d, skip, unblock };
+    },
+    damageAfterDefense(v, damage, defender) {
+      if ([3].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2));
+
+      return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn } = helpers;

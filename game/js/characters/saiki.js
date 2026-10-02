@@ -7,6 +7,8 @@
     passive: '进攻时打出有效黄色牌会在防御结算后施加1层流血',
     init() { return {}; },
     turnStart(eng, ch) {},
+    damageAtSettlement(eng, v, a, t) { return v === 7 ? 3 + (t.bleed || 0) : null; },
+    attackEffectTiming: {1: 'afterDamage', 6: 'afterDamage'},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs } = helpers;
       let d = 0, skip = false, unblock = false, immediateBuffs = false;
@@ -44,6 +46,10 @@
         immediateBuffs = true;
       }
       return { d, skip, unblock, immediateBuffs };
+    },
+    damageAfterDefense(v, damage, defender) {
+      if (v === 1) return Math.max(0, damage - 3);
+      return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;

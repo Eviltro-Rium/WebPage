@@ -32,7 +32,7 @@ const indexExpected = expand(['characters', 'ai', 'combat']).concat([
   'js/ui/skills.js', 'js/ui/dialogs.js', 'js/ui/rules.js'
 ], manifest.index_extra_content, [
   'js/ui/adventure_codex.js', 'js/ui/card_style.js', 'js/ui/ui_core.js',
-  'js/ui/render/particles.js', 'js/ui/render/home_screen.js', 'js/ui/render/combat_screen.js',
+  'js/ui/render/runtime.js', 'js/ui/render/particles.js', 'js/ui/render/home_screen.js', 'js/ui/render/combat_screen.js',
   'js/ui/render/status_render.js', 'js/ui/render/hand_render.js', 'js/ui/render/adventure_bar.js',
   'js/ui/render/zone_render.js',
   'js/ui/feedback.js', 'js/ui/renderer.js', 'js/ui/events.js', 'js/ui/controls.js',
@@ -41,7 +41,7 @@ const indexExpected = expand(['characters', 'ai', 'combat']).concat([
 
 const adventureExpected = expand(['characters', 'ai', 'combat']).concat([
   'js/ui/skills.js', 'js/ui/dialogs.js', 'js/ui/card_style.js', 'js/ui/ui_core.js',
-  'js/ui/render/particles.js', 'js/ui/render/home_screen.js', 'js/ui/render/combat_screen.js',
+  'js/ui/render/runtime.js', 'js/ui/render/particles.js', 'js/ui/render/home_screen.js', 'js/ui/render/combat_screen.js',
   'js/ui/render/status_render.js', 'js/ui/render/hand_render.js', 'js/ui/render/adventure_bar.js',
   'js/ui/render/zone_render.js',
   'js/ui/feedback.js', 'js/ui/renderer.js', 'js/ui/events.js', 'js/ui/controls.js',
@@ -65,6 +65,8 @@ const adventureExpected = expand(['characters', 'ai', 'combat']).concat([
   'adventure/js/battle/adventure_battle_session.js',
   'adventure/js/battle/adventure_battle_controller.js',
   'adventure/js/ui/adventure_ui.js',
+  'adventure/js/ui/adventure_ui_map_view.js',
+  'adventure/js/ui/adventure_ui_panels.js',
   'adventure/js/ui/adventure_ui_views.js', 'js/version.js'
 ]);
 
@@ -87,7 +89,7 @@ function diff(label, actual, expected) {
 function verifyUiComposition(label, actual) {
   const required = [
     'js/ui/ui_core.js',
-    'js/ui/render/particles.js',
+    'js/ui/render/runtime.js', 'js/ui/render/particles.js',
     'js/ui/render/home_screen.js',
     'js/ui/render/combat_screen.js',
     'js/ui/render/status_render.js',
@@ -132,7 +134,7 @@ function verifyOnlinePage() {
     '../js/ui/skills.js',
     '../js/ui/dialogs.js',
     '../js/ui/ui_core.js',
-    '../js/ui/render/particles.js',
+    '../js/ui/render/runtime.js', '../js/ui/render/particles.js',
     '../js/ui/render/combat_screen.js',
     '../js/ui/render/status_render.js',
     '../js/ui/render/hand_render.js',

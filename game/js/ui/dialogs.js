@@ -445,57 +445,59 @@ class DialogManager {
     }
 
     showGuardOrFlyChoice(ch, damage, onChoose) {
-        if (document.getElementById('guard-choice-dialog')) return;
-        const overlay=document.createElement('div'); overlay.id='guard-choice-dialog'; overlay.className='dialog-overlay'; overlay.dataset.combatDecision='guard';
-        const box=document.createElement('div'); box.className='dialog-box compact-choice-box';
-        const fly = ch.fly || 0;
-        const guard = ch.guard || 0;
-        box.innerHTML=`<h3>即将受到 ${damage} 点伤害</h3>`;
-        const list=document.createElement('div'); list.className='choice-list';
-        const addBtn = (html, payload) => {
-            const btn=document.createElement('button'); btn.className='choice-row';
-            btn.innerHTML=html;
-            btn.addEventListener('click',async()=>{overlay.remove();await onChoose(payload)});
-            list.appendChild(btn);
-        };
-        const flyIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/fly.webp') : 'icons/buff_icons/fly.webp';
-        const guardIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/guard.webp') : 'icons/buff_icons/guard.webp';
-        if (fly > 0) {
-            addBtn(`<img src="${flyIcon}" alt=""><span>使用 1 层飞翔躲避（1-6成功，剩余 ${fly - 1}）</span>`, { action: 'fly' });
-        }
-        if (guard > 0) {
-            const max=Math.min(guard,damage);
-            for(let i=1;i<=max;i++){
-                addBtn(`<img src="${guardIcon}" alt=""><span>使用 ${i} 层守护（剩余伤害 ${damage-i}）</span>`, { action: 'guard', stacks: i });
-            }
-        }
-        addBtn(`<span>不使用</span>`, { action: 'none' });
-        box.appendChild(list);overlay.appendChild(box);document.body.appendChild(overlay);
+        this._showAvoidanceChoice(ch, damage, onChoose, false);
     }
 
     showFlyRetryChoice(ch, damage, onChoose) {
-        if (document.getElementById('fly-retry-choice-dialog')) return;
-        const overlay=document.createElement('div'); overlay.id='fly-retry-choice-dialog'; overlay.className='dialog-overlay'; overlay.dataset.combatDecision='flyRetry';
-        const box=document.createElement('div'); box.className='dialog-box compact-choice-box';
-        box.innerHTML=`<h3>飞翔躲避失败 · 仍将受到 ${damage} 点伤害</h3>`;
-        const list=document.createElement('div'); list.className='choice-list';
-        const addBtn = (label, payload, iconPath) => {
-            const btn=document.createElement('button'); btn.className='choice-row';
-            const icon = iconPath ? `<img src="${iconPath}" alt="">` : '';
-            btn.innerHTML=`${icon}<span>${label}</span>`;
-            btn.addEventListener('click',async()=>{overlay.remove();await onChoose(payload)});
-            list.appendChild(btn);
-        };
-        const flyIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/fly.webp') : 'icons/buff_icons/fly.webp';
-        const guardIcon = window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/guard.webp') : 'icons/buff_icons/guard.webp';
-        if ((ch.fly || 0) > 0) addBtn(`继续使用 1 层飞翔躲避（剩余 ${ch.fly - 1}）`, { action: 'fly' }, flyIcon);
-        const guard = Math.min(ch.guard || 0, Math.max(0, damage));
-        for (let i = 1; i <= guard; i++) {
-            addBtn(`改用 ${i} 层守护（剩余伤害 ${Math.max(0, damage - i)}）`, { action: 'guard', stacks: i }, guardIcon);
-        }
-        addBtn('不再躲避，承受伤害', { action: 'none' });
-        box.appendChild(list);overlay.appendChild(box);document.body.appendChild(overlay);
+        this._showAvoidanceChoice(ch, damage, onChoose, true);
     }
+
+    _showAvoidanceChoice(ch, damage, onChoose, retry) {
+        const id = retry ? 'fly-retry-choice-dialog' : 'guard-choice-dialog';
+        if (document.getElementById(id)) return;
+        const overlay = document.createElement('div');
+        overlay.id = id; overlay.className = 'dialog-overlay';
+        overlay.dataset.combatDecision = retry ? 'flyRetry' : 'guard';
+        const box = document.createElement('div');
+        box.className = 'dialog-box compact-choice-box avoidance-choice-box';
+        const title = document.createElement('h3');
+        title.textContent = retry ? '飞翔失败 · 选择下一步' : '选择伤害减免';
+        box.appendChild(title);
+        const summary = document.createElement('p'); summary.className = 'dialog-summary';
+        summary.innerHTML = '剩余伤害 <strong>' + damage + '</strong><span>守护 ' + (ch.guard || 0) + ' · 飞翔 ' + (ch.fly || 0) + '</span>';
+        box.appendChild(summary);
+        const list = document.createElement('div'); list.className = 'choice-list';
+        let submitted = false;
+        const submit = async payload => {
+            if (submitted) return; submitted = true;
+            overlay.remove(); await onChoose(payload);
+        };
+        const icon = name => window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/' + name + '.webp') : 'icons/buff_icons/' + name + '.webp';
+        const addButton = (text, action, image, extraClass = '') => {
+            const button = document.createElement('button'); button.type = 'button';
+            button.className = 'choice-row ' + extraClass;
+            if (image) { const img = document.createElement('img'); img.src = icon(image); img.alt = ''; button.appendChild(img); }
+            const label = document.createElement('span'); label.textContent = text; button.appendChild(label);
+            button.addEventListener('click', action); list.appendChild(button); return button;
+        };
+        if ((ch.fly || 0) > 0) addButton(retry ? '再次尝试飞翔 · 1–6成功' : '使用飞翔 · 1–6成功', () => submit({action:'fly'}), 'fly');
+        const max = Math.min(Math.floor(ch.guard || 0), Math.ceil(Math.max(0, damage)));
+        if (max > 0) {
+            const panel = document.createElement('section'); panel.className = 'guard-layer-control';
+            const label = document.createElement('label'); label.htmlFor = id + '-layers'; label.textContent = '消耗守护层数';
+            const value = document.createElement('output'); value.htmlFor = label.htmlFor;
+            const input = document.createElement('input'); input.type = 'range'; input.id = label.htmlFor;
+            input.min = '1'; input.max = String(max); input.step = '1'; input.value = String(max);
+            const preview = document.createElement('p'); preview.className = 'guard-damage-preview';
+            const update = () => { value.textContent = input.value + ' 层'; preview.textContent = '减免后伤害：' + Math.max(0, damage - Number(input.value)); };
+            input.addEventListener('input', update); update();
+            panel.append(label, value, input, preview); list.appendChild(panel);
+            addButton('确认使用守护', () => submit({action:'guard', stacks:Number(input.value)}), 'guard', 'choice-primary');
+        }
+        addButton(retry ? '不再躲避，承受伤害' : '不使用减免', () => submit({action:'none'}), null, 'choice-secondary');
+        box.appendChild(list); overlay.appendChild(box); document.body.appendChild(overlay);
+    }
+
 }
 
 /**
@@ -506,6 +508,12 @@ function makeDialogDraggable(box) {
     if (!box || box.nodeType !== 1 || box.dataset.dragBound === '1') return box;
     if (!box.classList.contains('dialog-box') && !box.classList.contains('game-over-box')) return box;
     box.dataset.dragBound = '1';
+    box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+    const title = box.querySelector('.dialog-title, h3, h2');
+    if (title) {
+        if (!title.id) title.id = 'dialog-heading-' + (window.__dialogHeadingId = (window.__dialogHeadingId || 0) + 1);
+        box.setAttribute('aria-labelledby', title.id);
+    }
     box.classList.add('dialog-draggable');
 
     const handle = box.querySelector('.dialog-title, h3') || box;
@@ -518,6 +526,7 @@ function makeDialogDraggable(box) {
     let originLeft = 0;
     let originTop = 0;
     let pointerId = null;
+    let dragWidth = 0, dragHeight = 0;
 
     const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -544,6 +553,7 @@ function makeDialogDraggable(box) {
         startY = event.clientY;
         originLeft = rect.left;
         originTop = rect.top;
+        dragWidth = rect.width; dragHeight = rect.height;
         box.classList.add('dialog-dragging');
         handle.classList.add('dialog-dragging');
         try { handle.setPointerCapture(event.pointerId); } catch (_) {}
@@ -554,8 +564,8 @@ function makeDialogDraggable(box) {
         if (!dragging || (pointerId != null && event.pointerId !== pointerId)) return;
         const dx = event.clientX - startX;
         const dy = event.clientY - startY;
-        const width = box.offsetWidth || 0;
-        const height = box.offsetHeight || 0;
+        const width = dragWidth;
+        const height = dragHeight;
         const left = clamp(originLeft + dx, 8 - Math.min(80, width * 0.4), window.innerWidth - Math.min(width, 80) - 8);
         const top = clamp(originTop + dy, 8, window.innerHeight - Math.min(height, 48) - 8);
         box.style.left = left + 'px';

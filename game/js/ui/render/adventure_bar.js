@@ -10,6 +10,24 @@
         const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
         return runtime ? runtime.schedule(owner, fn, ms, channel) : setTimeout(fn, ms);
     };
+    // An inventory projection avoids cloning the map, decks and event history.
+    function combatInventory(engine, state) {
+        const detail = name => {
+            if (typeof name !== 'string') return name;
+            const def = window.AdventureRegistry.getItem(name);
+            return def ? Object.assign({ name }, def) : { name, displayName: name };
+        };
+        const raw = engine && engine.s;
+        return raw ? {
+            consumables: (raw.consumables || []).map(detail),
+            accessories: (raw.accessories || []).map(detail),
+            consumableSlots: 6
+        } : {
+            consumables: state.adventureConsumables || [],
+            accessories: state.adventureAccessories || [],
+            consumableSlots: state.adventureConsumableSlots || 6
+        };
+    }
     Object.assign(GameUI.prototype, {
         _canUseAdventureCombatItem(s, def) {
             if (!s || !s.isAdventure || !def) return false;
@@ -153,13 +171,7 @@
                 ? window.AdventureBattleController.activeEngine() : null;
             const advEngine = activeBattle && activeBattle._adventureEngine;
             if (!s.isAdventure) { bar.style.display = 'none'; return; }
-            const snap = advEngine && typeof advEngine.snapshot === 'function'
-                ? (advEngine.snapshot() || {})
-                : {
-                    consumables: s.adventureConsumables || [],
-                    accessories: s.adventureAccessories || [],
-                    consumableSlots: s.adventureConsumableSlots || 6
-                };
+            const snap = combatInventory(advEngine, s);
             const consumables = snap.consumables || [];
             const slots = snap.consumableSlots || 6;
             bar.style.display = 'flex';
@@ -168,12 +180,16 @@
             let html = '<div class="adv-item-bar-title">道具</div><div class="adv-combat-item-slots">';
             const prevItems = this._prevItemNames || (this._prevItemNames = []);
             const currentItemNames = [];
+            const itemOccurrences = new Map();
             for (let i = 0; i < slots; i++) {
                 const item = consumables[i];
                 if (!item) {
                     html += '<div class="adv-combat-item-slot empty" title="空道具槽"></div>';
                     continue;
                 }
+                const occurrence = itemOccurrences.get(item.name) || 0;
+                itemOccurrences.set(item.name, occurrence + 1);
+                const renderKey = item.name + ":" + occurrence;
                 currentItemNames.push(item.name);
                 const def = window.AdventureRegistry.getItem(item.name);
                 const isAttackModItem = def && def.combatUse === 'attackMod';
@@ -192,7 +208,7 @@
                 if (isAttackModItem && def.attackModUnblock) modBadge = '<span class="adv-combat-item-bonus">破防</span>';
                 else if (isAttackModItem && def.attackModEvilRoulette) modBadge = '<span class="adv-combat-item-bonus">赌盘</span>';
                 else if (isAttackModItem && def.attackModBonus) modBadge = '<span class="adv-combat-item-bonus">+' + def.attackModBonus + '</span>';
-                html += '<button class="' + cls + '" data-item-index="' + i + '" title="' + (item.description || item.displayName) + '"' + ((!canUse && !selectable) ? ' disabled' : '') + '>' +
+                html += '<button class="' + cls + '" data-item-index="' + i + '" data-render-key="' + renderKey + '" title="' + (item.description || item.displayName) + '"' + ((!canUse && !selectable) ? ' disabled' : '') + '>' +
                     (item.icon ? '<img src="' + item.icon + '" alt="' + item.displayName + '">' : '') +
                     '<span class="adv-combat-item-name">' + item.displayName + '</span>' +
                     modBadge +
@@ -228,27 +244,12 @@
             }
             html += '</div></div>';
 
-            const removedItems = prevItems.filter(n => !currentItemNames.includes(n));
-            const removedAccs = prevAccs.filter(n => !currentAccNames.includes(n));
             this._prevItemNames = currentItemNames;
             this._prevAccNames = currentAccNames;
-            const hasRemoved = removedItems.length || removedAccs.length;
-            if (hasRemoved) {
-                bar.querySelectorAll('.adv-combat-item-slot.filled').forEach(el => {
-                    const title = el.getAttribute('title') || '';
-                    if (removedItems.some(n => { const d = window.AdventureRegistry.getItem(n); return d && title === (d.description || d.displayName); }))
-                        el.classList.add('icon-disappear');
-                });
-                bar.querySelectorAll('.adv-combat-acc-slot').forEach(el => {
-                    const title = (el.getAttribute('title') || '').split(' — ')[0];
-                    if (removedAccs.some(n => { const d = window.AdventureRegistry.getItem(n); return d && d.displayName === title; }))
-                        el.classList.add('icon-disappear');
-                });
-                schedule(() => { bar.innerHTML = html; this._bindItemBarEvents(bar, consumables, s, inAttackMod); }, 160, this, 'item-render');
-            } else {
-                bar.innerHTML = html;
-                this._bindItemBarEvents(bar, consumables, s, inAttackMod);
-            }
+            const dom = window.FurryGame && window.FurryGame.RenderDOM;
+            if (dom) dom.patchMarkup(bar,html);
+            else if (bar._renderMarkup !== html) {bar.innerHTML=html;bar._renderMarkup=html;}
+            this._bindItemBarEvents(bar,consumables,s,inAttackMod);
         },
 
         _syncAdventureActionLayout(s) {
@@ -270,8 +271,9 @@
 
         _bindItemBarEvents(bar, consumables, s, inAttackMod) {
             bar.querySelectorAll('[data-item-index]').forEach(btn => {
-                let clickTimer = null;
+                if (btn._renderRetirement) return;
                 const selectItem = () => {
+                    if(this._isHandlingAction||this._isConsumingEvents||btn.disabled)return;
                     const idx = parseInt(btn.getAttribute('data-item-index'), 10);
                     const item = consumables[idx];
                     const def = item && window.AdventureRegistry.getItem(item.name);
@@ -287,20 +289,21 @@
                     this._renderAdventureItemBar(this.state);
                     this._updateUseItemButton();
                 };
-                btn.addEventListener('click', (event) => {
+                btn._selectItem=selectItem;
+                btn.onclick = (event) => {
                     if (event.detail !== 1) return;
-                    clickTimer = schedule(selectItem, 230, btn, 'item-click');
-                });
-                btn.addEventListener('dblclick', async (event) => {
+                    btn._itemClickTimer = schedule(()=>{btn._itemClickTimer=null;if(btn.isConnected&&!btn._renderRetirement)btn._selectItem();},230,btn,'item-click');
+                };
+                btn.ondblclick = async (event) => {
                     event.preventDefault();
-                    if (clickTimer) clearTimeout(clickTimer);
+                    if (btn._itemClickTimer) {clearTimeout(btn._itemClickTimer);btn._itemClickTimer=null;}
                     const idx = parseInt(btn.getAttribute('data-item-index'), 10);
                     const item = consumables[idx];
                     const def = item && window.AdventureRegistry.getItem(item.name);
                     if (btn.classList.contains('disabled') || (def && def.combatUse === 'attackMod')) return;
                     this._selectedCombatItem = idx;
                     await this._useSelectedCombatItem();
-                });
+                };
             });
         },
 
@@ -310,7 +313,7 @@
             const idx = this._selectedCombatItem;
             if (idx == null) { btn.disabled = true; btn.textContent = '使用道具'; return; }
             const advEngine = window.AdventureBattleController && window.AdventureBattleController.activeEngine && window.AdventureBattleController.activeEngine()._adventureEngine;
-            const snap = advEngine && advEngine.snapshot();
+            const snap = combatInventory(advEngine, this.state || {});
             const item = snap && (snap.consumables || [])[idx];
             btn.disabled = false;
             btn.textContent = item ? '使用[' + item.displayName + ']' : '使用道具';
@@ -322,7 +325,7 @@
             const s = this.state;
             const advEngine = window.AdventureBattleController && window.AdventureBattleController.activeEngine && window.AdventureBattleController.activeEngine()._adventureEngine;
             if (!advEngine || !s) return;
-            const snap = advEngine.snapshot();
+            const snap = combatInventory(advEngine, s);
             const consumables = snap.consumables || [];
             const item = consumables[idx];
             const def = item && window.AdventureRegistry.getItem(item.name);
@@ -480,7 +483,8 @@
               }
             }
             }
-            bar.innerHTML = html;
+            const dom = window.FurryGame && window.FurryGame.RenderDOM;
+            if(dom)dom.patchMarkup(bar,html);else if(bar._renderMarkup!==html){bar.innerHTML=html;bar._renderMarkup=html;}
 
             const npcDeckInfo = document.getElementById('npc-deck-info');
             const hasNpcPile = s.isAdventure && (s.aiDeckCount != null || s.aiDiscardCount != null);

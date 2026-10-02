@@ -7,6 +7,8 @@
     passive: '可消耗守护减免伤害，但不能减免流血伤害',
     init() { return {}; },
     turnStart(eng, ch) {},
+    damageAtSettlement(eng, v, a, t) { return v === 6 ? 3 + (a.guard || 0) : null; },
+    attackEffectTiming: {1: 'afterDamage', 2: 'afterDamage'},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs } = helpers;
       let d = 0, skip = false, unblock = false;
@@ -43,6 +45,11 @@
         draw(owner, 1, true);
       }
       return { d, skip, unblock };
+    },
+    damageAfterDefense(v, damage, defender) {
+      if ([0,1].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2));
+
+      return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;

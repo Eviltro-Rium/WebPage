@@ -9,7 +9,7 @@
       if (!ui || !snap) return;
       const Phase = global.AdventurePhase;
       const combatPhases = ['ADVENTURE_PLAYER_PLAY', 'ADVENTURE_PLAYER_DEFEND', 'ADVENTURE_NPC_TURN'];
-      ui.container.innerHTML = '';
+      // Keep decoded image nodes alive until the new page has been composed.
 
       if (snap.phase === Phase.GAME_OVER) {
         global.location.href = '../index.html';
@@ -46,7 +46,9 @@
       }
       wrap.appendChild(ui._buildSidebar(snap));
       wrap.appendChild(ui._buildLog(snap.logEntries));
-      ui.container.appendChild(wrap);
+      const dom=global.FurryGame&&global.FurryGame.RenderDOM;
+      if(dom)dom.preserveImages(ui.container,wrap);
+      ui.container.replaceChildren(wrap);
     }
   };
 

@@ -164,6 +164,9 @@ test('FrozenKraken 0: purge counts cleared layers into damage', () => {
   const r = eng.effect('FrozenKraken', 0, numCard(0), eng.s.ai, eng.s.player);
   assert.equal(r.d, 6);
   assert.equal(r.unblock, false);
+  assert.equal(eng.s.ai.burn, 2, 'attack status operations wait for defense');
+  eng.s.atkOwner='ai';eng.s.atkCard=numCard(0);eng.s.pendingAttack={damage:r.d};
+  assert.equal(eng.prepareAttackSettlement(r.d,'player'),6);
   assert.equal(eng.s.ai.burn, 0);
   assert.equal(eng.s.ai.poison, 0);
   assert.equal(eng.s.player.hypothermia, 1);

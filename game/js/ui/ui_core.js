@@ -1,3 +1,5 @@
+function uiFrame(fn) { const frames=window.FurryGame&&window.FurryGame.RenderFrames;return frames?frames.frame(fn):requestAnimationFrame(fn); }
+function uiCancelFrame(id) {const frames=window.FurryGame&&window.FurryGame.RenderFrames;if(frames)frames.cancel(id);else cancelAnimationFrame(id);}
 /* Core UI bootstrap: shared constants, card helpers, animations and the
  * GameUI class skeleton. Rendering mixins live in ui/render/*.js and are
  * assigned onto GameUI.prototype after this file loads. */
@@ -68,24 +70,6 @@ const TAG_COLORS = {
     '[混沌重制]': '#c084fc'
 };
 
-const ICON_PATHS = {
-    black: gameAssetUrl('icons/card_icons/color_palette.webp'),
-    potion: gameAssetUrl('icons/card_icons/potion.webp'),
-    magic: gameAssetUrl('icons/card_icons/purple_magic.webp'),
-    green_magic: gameAssetUrl('icons/card_icons/green_magic.webp'),
-    draw_three: gameAssetUrl('icons/card_icons/draw_cards.webp'),
-    purify: gameAssetUrl('icons/card_icons/purify.webp'),
-    super_purify: gameAssetUrl('icons/card_icons/super_purify.webp'),
-    swap: gameAssetUrl('icons/card_icons/swap_cards.webp'),
-    shuffle: gameAssetUrl('icons/card_icons/shuffle.webp'),
-    burn: gameAssetUrl('icons/buff_icons/burn.webp'),
-    freeze: gameAssetUrl('icons/buff_icons/freeze.webp'),
-    bleed: gameAssetUrl('icons/buff_icons/bleed.webp'),
-    guard: gameAssetUrl('icons/buff_icons/guard.webp')
-};
-ICON_PATHS.blind = gameAssetUrl('icons/buff_icons/blind.webp');
-ICON_PATHS.iceSeal = gameAssetUrl('icons/buff_icons/ice_seal.webp');
-
 const PHASE_NAMES = {
     PLAYER_PLAY: '出牌阶段', PLAYER_DISCARD: '弃牌阶段',
     PLAYER_DEFEND: '防御阶段', ATTACK_MOD_CHOICE: '攻击修正', CRIT_CHOICE: '暴击选择', PLAYER_FIVE_CHOICE: '选择5效果',
@@ -93,14 +77,6 @@ const PHASE_NAMES = {
     SAIKI_SIX_JUDGE: '判定选择', AI_TURN: 'AI回合', AI2_TURN: 'AI2回合',
     AI_DEFEND: 'AI防御中', CHAN_FIVE_REORDER: '排列牌库顶', GUARD_CHOICE: '选择守护', TARGET_CHOICE: '选择目标', PURIFY_CRYSTAL_CHOICE: '净化水晶', TROPHY_DISARM_CHOICE: '缴械选择', TROPHY_PURIFY_CHOICE: '净化选择', GAME_OVER: '游戏结束'
 };
-
-const iconCache = {};
-function loadIcon(name) {
-    if (iconCache[name]) return iconCache[name];
-    const img = new Image(); img.src = ICON_PATHS[name];
-    iconCache[name] = img; return img;
-}
-Object.keys(ICON_PATHS).forEach(k => loadIcon(k));
 
 function cardLabel(card) {
     if (!card) return '';
@@ -246,10 +222,10 @@ class AnimLayer {
                 const rot = (ex - sx) * 0.0003 * Math.sin(ease * Math.PI);
                 flyEl.style.transform = `translate(${x}px, ${y}px) scale(${scale}) rotate(${rot}rad)`;
                 flyEl.style.opacity = t < 0.1 ? t / 0.1 : 1;
-                if (t < 1) requestAnimationFrame(tick);
+                if (t < 1) uiFrame(tick);
                 else { flyEl.remove(); resolve(); }
             };
-            requestAnimationFrame(tick);
+            uiFrame(tick);
         });
     }
 
@@ -280,10 +256,10 @@ class AnimLayer {
                 const scale = 1 + 0.15 * Math.sin(ease * Math.PI);
                 flyEl.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
                 flyEl.style.opacity = t < 0.08 ? t / 0.08 : t > 0.94 ? (1 - t) / 0.06 : 1;
-                if (t < 1) requestAnimationFrame(tick);
+                if (t < 1) uiFrame(tick);
                 else { flyEl.remove(); resolve(); }
             };
-            requestAnimationFrame(tick);
+            uiFrame(tick);
         });
     }
 
@@ -319,10 +295,10 @@ class AnimLayer {
                 const opacity = ease;
                 el.style.transform = `translate(${cx}px, ${cy}px) scale(${scale})`;
                 el.style.opacity = opacity;
-                if (t < 1) requestAnimationFrame(tick);
+                if (t < 1) uiFrame(tick);
                 else { el.remove(); resolve(); }
             };
-            requestAnimationFrame(tick);
+            uiFrame(tick);
         });
     }
 
@@ -379,7 +355,7 @@ class AnimLayer {
                 flyEl.style.transform = `translate(${x}px, ${y + settle * (landsOnTop ? 10 : 16)}px) scale(${scale}) rotate(${rotate}deg)`;
                 flyEl.style.opacity = t < 0.08 ? t / 0.08 : (t > 0.96 ? (1 - t) / 0.04 : 1);
                 if (t < 1) {
-                    requestAnimationFrame(tick);
+                    uiFrame(tick);
                     return;
                 }
                 flyEl.remove();
@@ -390,7 +366,7 @@ class AnimLayer {
                 }
                 resolve();
             };
-            requestAnimationFrame(tick);
+            uiFrame(tick);
         });
     }
 
@@ -463,7 +439,7 @@ class AnimLayer {
                     ghost.el.style.opacity = t < 0.08 ? t / 0.08 : t > 0.9 ? (1 - t) / 0.1 : 1;
                 }
                 if (!done && now - start < duration + 80) {
-                    requestAnimationFrame(tick);
+                    uiFrame(tick);
                     return;
                 }
                 ghosts.forEach(ghost => ghost.el.remove());
@@ -471,7 +447,7 @@ class AnimLayer {
                 opponentEl.classList.remove('hand-swap-active');
                 resolve();
             };
-            requestAnimationFrame(tick);
+            uiFrame(tick);
         });
     }
 }

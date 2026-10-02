@@ -40,7 +40,8 @@
                 html += `<button class="home-secondary-btn rules-entry-btn" id="rules-entry-btn" type="button"><span class="home-secondary-icon" aria-hidden="true">📖</span><span>规则介绍</span></button>`;
                 html += `<button class="home-secondary-btn codex-entry-btn" id="codex-entry-btn" type="button"><span class="home-secondary-icon" aria-hidden="true">📚</span><span>图鉴</span></button>`;
                 html += `</div></div></div>`;
-                this.selectScreen.innerHTML = html;
+                const dom=window.FurryGame&&window.FurryGame.RenderDOM;
+                if(dom)dom.replacePreservingImages(this.selectScreen,html);else this.selectScreen.innerHTML=html;
                 const m1 = document.getElementById('mode-1v1');
                 const m2 = document.getElementById('mode-1v2');
                 const mL = document.getElementById('mode-lord');
@@ -83,7 +84,9 @@
             }
             html += `</div></div>`;
 
-            this.selectScreen.innerHTML = html;
+            const dom = window.FurryGame && window.FurryGame.RenderDOM;
+            if (dom) dom.replacePreservingImages(this.selectScreen, html);
+            else this.selectScreen.innerHTML = html;
 
             const updateAssignBtns = () => {
                 const ap = document.getElementById('assign-player');
@@ -182,8 +185,9 @@
             });
 
             // 屏幕断点变化（移动/桌面切换、设备旋转）时重绘，避免卡牌尺寸与CSS不一致
-            if (typeof window !== 'undefined' && window.matchMedia) {
+            if (typeof window !== 'undefined' && window.matchMedia && !this._layoutMediaQuery) {
                 const mq = window.matchMedia('(max-width: 768px)');
+                this._layoutMediaQuery=mq;
                 const onChange = () => {
                     // 清掉 handRenderKey / zone cardKey 让下次 updateDisplay 强制重渲染
                     const ph = document.getElementById('player-hand');
@@ -196,7 +200,7 @@
                 };
                 if (mq.addEventListener) mq.addEventListener('change', onChange);
                 else if (mq.addListener) mq.addListener(onChange);
-                window.addEventListener('resize', onChange);
+                // Card dimensions depend on the breakpoint, not every toolbar/keyboard resize.
             }
         },
 

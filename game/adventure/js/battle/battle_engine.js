@@ -1282,16 +1282,8 @@
       }
       if (d && !skip && !unblock) { this.s.phase = 'AI_DEFEND'; this.s.busy = true; this.later(() => this.aiDefend(card, d), delay); }
       else {
-        let targetKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
-        if (d > 0) {
-          // Skip-defense attacks can still be life-steal attacks (for example
-          // Otto 4 with two item cards). Route them through the shared attack
-          // resolver so the attacker heals for the damage actually dealt.
-          const isDrain = !!(this.s.pendingAttack && this.s.pendingAttack.isDrain);
-          this.applyIncomingDamage(this.s.player, this.s[targetKey], d, { isDrain });
-        }
         this.s.phase = 'AI_DEFEND'; this.s.busy = true;
-        this.later(() => { this._restoreAttackBuffs(); this.afterAttack(); this.check(); }, 1700);
+        this.deferSettlement('PLAYER_ATTACK', d, 0);
       }
       return this.check();
     }

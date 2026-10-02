@@ -79,19 +79,9 @@
         _updateBuffs(prefix, ch) {
             const container = document.getElementById(`${prefix}-buffs`);
             if (!container) return;
-            const renderTimers = this._buffRenderTimers || (this._buffRenderTimers = {});
-            // Cancelling a pending disappear flush without rewriting the DOM leaves
-            // stale icons (e.g. lush) on screen when the next pass early-returns.
-            let cancelledPending = false;
-            if (renderTimers[prefix]) {
-                clearTimeout(renderTimers[prefix]);
-                renderTimers[prefix] = null;
-                cancelledPending = true;
-            }
             const prevKeys = this._prevBuffKeys || (this._prevBuffKeys = {});
             const prevSet = new Set(prevKeys[prefix] || []);
             const currentKeys = [];
-            const currentStacks = {};
             let html = '';
             const uiOverrides = {
                 burn: { colorClass: 'burn-buff' }, freeze: { colorClass: 'freeze-buff' },
@@ -126,7 +116,6 @@
             for (const b of buffs) {
                 if (b.stacks > 0) {
                     currentKeys.push(b.key);
-                    currentStacks[b.key] = b.stacks;
                     const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.webp`);
                     const title = b.label || b.key;
                     const animCls = !prevSet.has(b.key) ? ' icon-appear' : '';
@@ -134,40 +123,10 @@
                     html += `<div class="buff-icon-wrap ${specialClass}${animCls}" data-buff-key="${b.key}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}</div>`;
                 }
             }
-            const currentSet = new Set(currentKeys);
-            const removed = [...prevSet].filter(k => !currentSet.has(k));
-            const prevStacks = (this._prevBuffStacks || (this._prevBuffStacks = {}))[prefix] || {};
-            let stacksChanged = currentKeys.length !== prevSet.size;
-            if (!stacksChanged) {
-                for (const k of currentKeys) {
-                    if (!prevSet.has(k) || prevStacks[k] !== currentStacks[k]) { stacksChanged = true; break; }
-                }
-            }
             prevKeys[prefix] = currentKeys;
-            (this._prevBuffStacks || (this._prevBuffStacks = {}))[prefix] = currentStacks;
-            if (!stacksChanged && !removed.length) {
-                if (cancelledPending) container.innerHTML = html;
-                return;
-            }
-            if (removed.length) {
-                container.querySelectorAll('.buff-icon-wrap').forEach(el => {
-                    const title = el.getAttribute('title');
-                    const key = el.dataset && el.dataset.buffKey;
-                    if (key && removed.includes(key)) el.classList.add('icon-disappear');
-                });
-                const expectedKeys = currentKeys.slice();
-                const expectedStacks = Object.assign({}, currentStacks);
-                renderTimers[prefix] = schedule(() => {
-                    renderTimers[prefix] = null;
-                    const latestKeys = (this._prevBuffKeys && this._prevBuffKeys[prefix]) || [];
-                    const latestStacks = (this._prevBuffStacks && this._prevBuffStacks[prefix]) || {};
-                    if (JSON.stringify(latestKeys) !== JSON.stringify(expectedKeys) ||
-                        JSON.stringify(latestStacks) !== JSON.stringify(expectedStacks)) return;
-                    container.innerHTML = html;
-                }, 160, this, `buff-render-${prefix}`);
-            } else {
-                container.innerHTML = html;
-            }
+            const dom = global.FurryGame && global.FurryGame.RenderDOM;
+            if (dom) dom.patchMarkup(container,html);
+            else if (container._renderMarkup !== html) { container.innerHTML=html;container._renderMarkup=html; }
         },
 
         _flashBuffIcon(prefix, kind) {

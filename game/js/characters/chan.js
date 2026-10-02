@@ -7,6 +7,7 @@
     passive: '进攻回合开始前抽1张牌',
     init() { return {}; },
     turnStart(eng, ch, w) { eng.draw(w, 1, true); },
+    attackEffectTiming: {0: 'afterDamage', 1: 'afterDamage'},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, takeReveal, heal, draw, hurt, clearDebuffs } = helpers;
       let d = 0, skip = false, unblock = false;
@@ -46,6 +47,11 @@
         draw(owner, 1, true);
       }
       return { d, skip, unblock };
+    },
+    damageAfterDefense(v, damage, defender) {
+      if ([1].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2));
+
+      return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;

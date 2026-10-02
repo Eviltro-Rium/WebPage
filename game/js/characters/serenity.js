@@ -58,6 +58,11 @@
       }
       return { d, skip, unblock };
     },
+    damageAfterDefense(v, damage, defender) {
+      if ([3].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2) - (defender.bloodthirst ? 2 : 0));
+      if (v === 1) return Math.max(0, damage - 3);
+      return null;
+    },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;
       let remaining = d, desc = '';

@@ -22,9 +22,10 @@
             if (status) status.remove(entity, 'bomb', 1); else entity.bomb--;
             const target = owner === 'player' ? 'player' : owner === 'ai2' ? 'ai2' : 'ai';
             if (entity.bomb <= 0) {
+                const hpBefore = entity.hp;
                 this.apply(engine, entity, 5, false, { silent: true });
                 engine.emit(eventTypes.BOMB_EXPLODE || 'bombExplode', `-${5}❤️[定时炸弹]`, null, {
-                    who: target, target, amount: 5, kind: 'bomb'
+                    who: target, target, amount: 5, hpBefore, hpAfter: entity.hp, kind: 'bomb'
                 });
             } else {
                 engine.emit(eventTypes.BUFF || 'buff', '炸弹倒计时：' + entity.bomb, null, {

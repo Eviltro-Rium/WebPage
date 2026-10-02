@@ -126,9 +126,9 @@ test('Leon attack 1 applies burn after skip-defense attack resolves', () => {
   engine.dispatch('selectCard', { index: 0 });
   engine.dispatch('doPlay');
 
-  assert.equal(engine.s.ai.burn, 0);
-  assert.ok(deferred, 'skip-defense attack should schedule settlement');
-  deferred();
+  assert.equal(engine.s.ai.burn, 3, 'skip-defense effect commits before its damage');
+  assert.ok(engine.pendingSettlement);
+  engine.acknowledgeEvents(engine.ver);
   assert.equal(engine.s.ai.burn, 3);
 });
 
@@ -893,8 +893,8 @@ test('ArmorBreakSpear makes defensible attack unblockable via attack mod choice'
   engine.dispatch('resolveAttackModChoice', { bonus: 0, unblock: true });
 
   assert.equal(engine.s.pendingAttackMod, null);
-  assert.equal(engine.s.phase, 'AI_DEFEND');
-  assert.equal(engine.s.pendingAttack.unblock, true);
+  assert.equal(engine.s.phase, 'PLAYER_PLAY', 'empty event batch settles synchronously');
+  assert.equal(engine.s.pendingAttack, null);
 });
 
 test('Otto crit is optional after attack mod and blocked by ArmorBreakSpear', () => {
@@ -1018,6 +1018,9 @@ test('CastleEagle attack and defend skills', () => {
   const atk4 = engine.effect('CastleEagle', 4, number(4, 'RED'), engine.s.ai, engine.s.player);
   assert.equal(atk4.d, 3);
   assert.equal(atk4.unblock, true);
+  assert.equal(engine.s.player.guard, 2, 'buff clear is delayed until defense ends');
+  engine.s.atkOwner='ai'; engine.s.atkCard=number(4,'RED'); engine.s.pendingAttack={damage:atk4.d};
+  engine.prepareAttackSettlement(atk4.d,'player');
   assert.equal(engine.s.player.guard, 0);
   assert.equal(engine.s.player.fly, 0);
   assert.equal(engine.s.player.crit, 0);
@@ -1025,6 +1028,9 @@ test('CastleEagle attack and defend skills', () => {
   engine.s.ai.fly = 0;
   const atk0 = engine.effect('CastleEagle', 0, number(0, 'RED', true), engine.s.ai, engine.s.player);
   assert.equal(atk0.d, 4);
+  assert.equal(engine.s.ai.fly, 0);
+  engine.s.atkCard=number(0,'RED',true);engine.s.pendingAttack={damage:atk0.d};
+  engine.prepareAttackSettlement(atk0.d,'player');
   assert.equal(engine.s.ai.fly, 2);
 
   const helpers = {

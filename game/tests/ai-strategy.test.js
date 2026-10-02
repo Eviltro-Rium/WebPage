@@ -56,6 +56,7 @@ for (const file of [
   path.join(gameRoot, 'js', 'combat', 'engine.js'),
   path.join(gameRoot, 'js', 'combat', 'engine_1v2.js'),
   path.join(gameRoot, 'js', 'combat', 'engine_turns.js'),
+  path.join(gameRoot, 'js', 'combat', 'engine_attack.js'),
   path.join(gameRoot, 'js', 'combat', 'engine_ai.js'),
   ...aiFiles
 ]) {

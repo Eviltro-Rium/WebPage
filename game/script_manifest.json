@@ -61,6 +61,7 @@
     "js/ui/card_style.js",
     "js/ui/adventure_codex.js",
     "js/ui/ui_core.js",
+    "js/ui/render/runtime.js",
     "js/ui/render/particles.js",
     "js/ui/render/home_screen.js",
     "js/ui/render/combat_screen.js",
@@ -107,6 +108,8 @@
     "adventure/js/battle/adventure_battle_session.js",
     "adventure/js/battle/adventure_battle_controller.js",
     "adventure/js/ui/adventure_ui.js",
+    "adventure/js/ui/adventure_ui_map_view.js",
+    "adventure/js/ui/adventure_ui_panels.js",
     "adventure/js/ui/adventure_ui_views.js"
   ],
   "index_extra_content": [

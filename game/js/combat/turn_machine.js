@@ -42,19 +42,11 @@
       engine._restoreAttackBuffs();
       const target = resolvePlayerAttackTarget(engine);
       const targetChar = engine.s[target] || engine.s.ai;
-      const isDrain = !!(pending.isDrain || (engine.s.pendingAttack && engine.s.pendingAttack.isDrain));
-      let dmg = pending.damage;
-      if (typeof engine.divingBlocksDamage === 'function' && engine.divingBlocksDamage(targetChar, engine.s.atkCard)) {
-        engine.emit('desc', targetChar.name + '有[潜水]，免疫蓝色攻击伤害');
-        dmg = 0;
-      } else if (!isDrain) {
-        dmg = engine.applyDefenderAvoidance(targetChar, dmg);
-      }
-      engine.dealAttackHit(engine.s.player, targetChar, dmg, isDrain);
-      engine.settleBleed(targetChar, pending.bleed);
+      if (typeof engine.settlePreparedHit === 'function') engine.settlePreparedHit(engine.s.player, targetChar, pending);
+      else { const damage = engine.applyDefenderAvoidance(targetChar, pending.damage); engine.dealAttackHit(engine.s.player,targetChar,damage,!!pending.isDrain); engine.settleBleed(targetChar,pending.bleed); }
       // 结算延迟失温 / AOE（跳过主目标）
       const pa1 = engine.s.pendingAttack || {};
-      engine.performAttack({type:'aoe',target,aoeTargets:pa1.aoeTargets,aoeDamage:pa1.aoeDamage,skipTarget:true,hypothermiaTarget:pa1.hypothermiaTarget,hypothermiaAmount:pa1.hypothermiaAmount});
+      engine.performAttack({type:'aoe',commitAttackEffects:true,target,aoeTargets:pa1.aoeTargets,aoeDamage:pa1.aoeDamage,skipTarget:true,hypothermiaTarget:pa1.hypothermiaTarget,hypothermiaAmount:pa1.hypothermiaAmount});
       engine.resolveSerenityHalf();
       if (typeof engine.applyPendingSaikiBleed === 'function') engine.applyPendingSaikiBleed();
       if (typeof engine.applyPendingVixrapsBurnSettle === 'function') engine.applyPendingVixrapsBurnSettle();
@@ -69,19 +61,13 @@
       engine.s.forceEndAITurn = false;
       const bombOwner = engine.s.atkOwner || 'ai';
       engine._restoreAttackBuffs();
-      const isDrain = !!(pending.isDrain || (engine.s.pendingAttack && engine.s.pendingAttack.isDrain));
       const attacker = engine.s[bombOwner] || engine.s.ai;
-      let dmg = pending.damage;
-      if (typeof engine.divingBlocksDamage === 'function' && engine.divingBlocksDamage(engine.s.player, engine.s.atkCard)) {
-        engine.emit('desc', '你有[潜水]，免疫蓝色攻击伤害');
-        dmg = 0;
-      }
-      engine.dealAttackHit(attacker, engine.s.player, dmg, isDrain);
-      engine.settleBleed(engine.s.player, pending.bleed);
+      if (typeof engine.settlePreparedHit === 'function') engine.settlePreparedHit(attacker, engine.s.player, pending);
+      else { engine.dealAttackHit(attacker,engine.s.player,pending.damage,!!pending.isDrain); engine.settleBleed(engine.s.player,pending.bleed); }
       engine._tickBomb(bombOwner);
       // 结算延迟失温 / AOE（跳过主目标玩家）
       const pa2 = engine.s.pendingAttack || {};
-      engine.performAttack({type:'aoe',target:'player',aoeTargets:pa2.aoeTargets,aoeDamage:pa2.aoeDamage,skipTarget:true,hypothermiaTarget:pa2.hypothermiaTarget,hypothermiaAmount:pa2.hypothermiaAmount});
+      engine.performAttack({type:'aoe',commitAttackEffects:true,target:'player',aoeTargets:pa2.aoeTargets,aoeDamage:pa2.aoeDamage,skipTarget:true,hypothermiaTarget:pa2.hypothermiaTarget,hypothermiaAmount:pa2.hypothermiaAmount});
       engine.resolveSerenityHalf();
       if (typeof engine.applyPendingSaikiBleed === 'function') engine.applyPendingSaikiBleed();
       if (typeof engine.applyPendingVixrapsBurnSettle === 'function') engine.applyPendingVixrapsBurnSettle();
