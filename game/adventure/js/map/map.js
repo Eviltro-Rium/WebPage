@@ -75,6 +75,27 @@
       return list;
     }
 
+    // Include the frontier itself, but only traverse rooms that have opened
+    // exploration. Historical visited flags cannot jump over an uncleared fight.
+    explorablePositions() {
+      const result = new Set();
+      if (!this.start) return result;
+      const queue = [this.start];
+      result.add(this.start.r + ',' + this.start.c);
+      for (let i = 0; i < queue.length; i++) {
+        const {r, c} = queue[i];
+        const room = this.get(r, c);
+        if (!room || !room.opensExploration()) continue;
+        for (const next of this.neighbors(r, c)) {
+          const key = next.r + ',' + next.c;
+          if (result.has(key)) continue;
+          result.add(key);
+          queue.push(next);
+        }
+      }
+      return result;
+    }
+
     reachableFromStart() {
       if (!this.start) return [];
       const seen = new Set();

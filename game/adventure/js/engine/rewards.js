@@ -748,6 +748,8 @@
     continueTo(map, opts = {}) {
       if (!this.s) return null;
       this.s.map = map;
+      if (opts.mapName) this.mapName = opts.mapName;
+      this.s.activeCombat = null;
       this.s.pos = map.start ? { r: map.start.r, c: map.start.c } : null;
       this.s.combat = null;
       this.s.beastReward = null;

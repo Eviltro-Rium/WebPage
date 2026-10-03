@@ -7,6 +7,7 @@
 (function () {
   const KEY = 'furryAdventureSave';
   const VERSION = 1;
+  let lastContent = null, lastRaw = null;
 
   const SAFE_PHASES = [
     'ADVENTURE_MAP',
@@ -29,8 +30,18 @@
   function save(eng) {
     try {
       const data = serialize(eng);
-      if (data) localStorage.setItem(KEY, JSON.stringify(data));
-    } catch (e) { /* 存档失败不影响游戏 */ }
+      if (!data) return false;
+      const {savedAt, ...state} = data;
+      const content = JSON.stringify(state);
+      // Compare the complete snapshot, including room progress, buffs, token
+      // balances and card order. Timestamp-only changes need no storage write.
+      if (content === lastContent && localStorage.getItem(KEY) === lastRaw) return true;
+      const raw = JSON.stringify(data);
+      localStorage.setItem(KEY, raw);
+      lastContent = content;
+      lastRaw = raw;
+      return true;
+    } catch (e) { return false; }
   }
 
   function load() {
@@ -47,6 +58,7 @@
   }
 
   function clear() {
+    lastContent = lastRaw = null;
     try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
   }
 
@@ -84,6 +96,8 @@
       savedAt: Date.now(),
       characterName: s.player.name,
       mapName: eng.mapName || null,
+      mapLayout: s.map.grid.map(row => row.map(room => room.code())),
+      explorationVersion: 1,
       stage: s.stage || 1,
       scene: s.scene || 'castle',
       pos: CLONE(s.pos),

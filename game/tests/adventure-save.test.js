@@ -46,6 +46,7 @@ const SOURCES = [
   'adventure/js/content/registry.js',
   'adventure/js/content/currency.js',
   'adventure/js/content/room.js',
+  'adventure/js/map/csv_loader.js',
   'adventure/js/map/map.js',
   'adventure/js/content/monster.js',
   'adventure/js/monsters/castle.js',
@@ -322,4 +323,92 @@ test('using a map item is kept after save/load', () => {
   restored.mapName = saved.mapName;
   restored.restoreFromSave(saved, restoredMap);
   assert.deepEqual(restored.s.consumables, ['GhostFire']);
+});
+
+function mapUI(ctx, eng) {
+  vm.runInContext(fs.readFileSync(path.join(gameRoot, 'adventure/js/ui/adventure_ui.js'), 'utf8'),ctx);
+  const ui=Object.create(ctx.AdventureUI.prototype);
+  ui.eng=eng;ui._test=null;ui.container={innerHTML:'',replaceChildren(){}};
+  ui._patchMapPosition=()=>ui._persistAdventure(eng.snapshot());ui._toast=()=>{};
+  ui.render=()=>ui._persistAdventure(eng.snapshot());
+  return ui;
+}
+function mapRun(ctx, grid) {
+  const eng=new ctx.AdventureEngine();eng.mapName='stage_01_castle_1';
+  eng.start(new ctx.AdventureMap(grid),'Ryan',{scene:'castle',stage:1});
+  return eng;
+}
+
+test('single-click selection and refresh cannot explore through an uncleared combat room',()=>{
+ const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,1,1,2]]),ui=mapUI(ctx,eng);
+ ui._onCellClick(0,1);
+ assert.equal(eng.s.pos.c,1);assert.equal(eng.currentRoom().visited,false);
+ assert.equal(eng.canMoveTo(0,2),false);ui._onCellClick(0,2);assert.equal(eng.s.pos.c,1);
+ const saved=ctx.AdventureSave.load(),restored=new ctx.AdventureEngine();
+ restored.restoreFromSave(saved,ctx.AdventureMap.fromGrid(saved.mapLayout));
+ assert.equal(restored.s.pos.c,1);assert.equal(restored.canMoveTo(0,2),false);
+ restored.currentRoom().visited=true;assert.equal(restored.canMoveTo(0,2),false,'entering an unfinished fight is not clearing it');
+ restored.currentRoom().cleared=true;assert.equal(restored.canMoveTo(0,2),true);
+ assert.equal(restored.canMoveTo(0,3),false,'only the immediate frontier opens');
+});
+
+test('functional rooms expand exploration only after entry/payment succeeds',()=>{
+ const ctx=createContext();loadSources(ctx);
+ for(const code of [3,4,5]){
+  const eng=mapRun(ctx,[[0,code,1]]);eng.move(0,1);
+  assert.equal(eng.canMoveTo(0,2),false);
+  if(code!==4){const result=eng.enterCurrent();assert.equal(result.ok,false);assert.equal(eng.currentRoom().visited,false);assert.equal(eng.canMoveTo(0,2),false);}
+  eng.s.currency.gold=10;eng.s.currency.addTokens({ben:10,huo:10,shui:10,cao:10,wan:10});
+  if(code===3)eng.currentRoom().doorCost=['ben','ben'];
+  eng.enterCurrent();assert.equal(eng.currentRoom().visited,true);eng.returnToMap();
+  assert.equal(eng.canMoveTo(0,2),true);
+ }
+});
+
+test('legacy click-only marks cannot unlock a disconnected chain after restore',()=>{
+ const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,1,4,1,2]]);
+ for(const room of eng.s.map.grid[0])room.visited=true;
+ eng.s.pos={r:0,c:3};const saved=ctx.AdventureSave.serialize(eng);delete saved.explorationVersion;
+ const restored=new ctx.AdventureEngine();restored.restoreFromSave(saved,ctx.AdventureMap.fromGrid(saved.mapLayout));
+ assert.equal(restored.s.pos.c,0);assert.equal(restored.s.map.get(0,2).visited,false);
+ assert.equal(restored.canMoveTo(0,2),false);assert.equal(restored.canMoveTo(0,4),false);
+});
+
+test('map autosave includes tokens, buffs, card order and room changes with successful-write deduplication',()=>{
+ const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,1,2]]),ui=mapUI(ctx,eng);
+ let writes=0;const set=ctx.localStorage.setItem.bind(ctx.localStorage);ctx.localStorage.setItem=(k,v)=>{writes++;set(k,v);};
+ ui.render();ui.render();assert.equal(writes,1);
+ eng.s.currency.tokens.ben=2;eng.s.player.guard=3;eng.s.playerPile.deck.reverse();eng.s.map.get(0,1).cleared=true;
+ ui.render();assert.equal(writes,2);
+ const save=ctx.AdventureSave.load();assert.equal(save.currency.tokens.ben,2);assert.equal(save.player.guard,3);
+ assert.equal(JSON.stringify(save.playerPile.deck),JSON.stringify(eng.s.playerPile.deck));assert.equal(save.rooms['0,1'].cleared,true);
+ eng.s.player.guard=4;ctx.localStorage.setItem=()=>{throw Error('quota');};ui.render();
+ assert.equal(ctx.AdventureSave.load().player.guard,3);
+ ctx.localStorage.setItem=(k,v)=>{writes++;set(k,v);};ui.render();assert.equal(ctx.AdventureSave.load().player.guard,4);
+ ctx.AdventureSave.clear();ui.render();assert.ok(ctx.AdventureSave.load(),'clearing storage invalidates the old content cache');
+});
+
+test('next-floor transition saves matching map identity/layout and restores without loading another map',async()=>{
+ const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]),ui=mapUI(ctx,eng);
+ eng.move(0,1);eng.currentRoom().cleared=true;
+ ctx.AdventureMapData={};for(let i=1;i<=3;i++)ctx.AdventureMapData['stage_02_castle_'+i]='0,1,-1\n-1,1,2';
+ await ui._advanceStage();assert.equal(eng.s.stage,2);assert.match(eng.mapName,/^stage_02_castle_[123]$/);
+ const save=ctx.AdventureSave.load();assert.equal(save.mapName,eng.mapName);assert.equal(save.stage,2);assert.equal(save.mapLayout.length,2);
+ const restored=new ctx.AdventureEngine(),ui2=mapUI(ctx,restored);
+ ctx.AdventureMap.fromCsvUrl=()=>{throw Error('restore must use saved layout');};ctx.AdventureMapData={};
+ await ui2.restoreFromSave(save);assert.equal(restored.s.map.rows,2);assert.equal(restored.s.map.cols,3);assert.equal(restored.s.stage,2);
+ assert.equal(restored.s.map.get(1,2).type,ctx.RoomType.BOSS);assert.equal(restored.mapName,save.mapName);
+});
+
+test('failed next-floor loading and failed restore keep the previous checkpoint',async()=>{
+ const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]),ui=mapUI(ctx,eng);
+ eng.move(0,1);eng.currentRoom().cleared=true;ui.render();const before=JSON.stringify(ctx.AdventureSave.load());
+ ctx.AdventureMap.fromCsvUrl=async()=>{throw Error('network unavailable');};
+ await ui._advanceStage();assert.equal(eng.s.phase,ctx.AdventurePhase.MAP);assert.equal(eng.s.stage,1);
+ assert.equal(JSON.stringify(ctx.AdventureSave.load()),before);assert.equal(ui._advancingStage,false);
+ const emptyUI=mapUI(ctx,new ctx.AdventureEngine());emptyUI.restoreFromSave=async()=>{throw Error('bad resource');};
+ emptyUI.start=()=>{throw Error('must not start over');};ctx.document={createElement:()=>({})};
+ const oldConsole=ctx.console;ctx.console={...console,error:()=>{}};
+ await emptyUI.restoreOrStart('maps/stage_01_castle_1.csv','Ryan');ctx.console=oldConsole;
+ assert.equal(JSON.stringify(ctx.AdventureSave.load()),before);
 });

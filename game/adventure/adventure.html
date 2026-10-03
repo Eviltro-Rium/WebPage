@@ -105,7 +105,7 @@
 
     <script src="js/content/registry.js"></script>
     <script src="js/content/currency.js"></script>
-    <script src="js/content/room.js"></script>
+    <script src="js/content/room.js?v=20261003-map-save"></script>
     <script src="js/content/monster.js"></script>
     <script src="js/monsters/castle.js"></script>
     <script src="js/monsters/forest.js"></script>
@@ -117,22 +117,22 @@
     <script src="js/items/map_effects.js?v=20260929-furnace"></script>
     <script src="js/map/csv_loader.js"></script>
     <script src="js/map/map_data.js"></script>
-    <script src="js/map/map.js"></script>
+    <script src="js/map/map.js?v=20261003-map-save"></script>
     <script src="js/deck/adventure_deck.js?v=20260930-player-trim"></script>
     <script src="js/deck/npc_strategy.js"></script>
-    <script src="js/engine/adventure_engine.js?v=20261001-hypno-hand"></script>
+    <script src="js/engine/adventure_engine.js?v=20261003-map-save"></script>
     <script src="js/engine/loot.js?v=20260930-tube-worm"></script>
     <script src="js/engine/shop.js"></script>
-    <script src="js/engine/rewards.js?v=20261001-hypno-hand"></script>
+    <script src="js/engine/rewards.js?v=20261003-map-save"></script>
     <script src="js/engine/inventory.js?v=20260930-magicbook"></script>
     <script src="js/engine/combat_result.js"></script>
     <script src="js/battle/battle_engine.js?20261003-judgment1"></script>
     <script src="js/battle/adventure_battle_items.js?v=20260925-1"></script>
-    <script src="js/save/adventure_save.js"></script>
+    <script src="js/save/adventure_save.js?v=20261003-map-save"></script>
     <script src="js/ui/card_render.js"></script>
     <script src="js/battle/adventure_battle_session.js"></script>
     <script src="js/battle/adventure_battle_controller.js?v=20260923-4"></script>
-    <script src="js/ui/adventure_ui.js?v=20260929-furnace"></script>
+    <script src="js/ui/adventure_ui.js?v=20261003-map-save"></script>
     <script src="js/ui/adventure_ui_map_view.js"></script>
     <script src="js/ui/adventure_ui_panels.js?v=20260925-1"></script>
     <script src="js/ui/adventure_ui_views.js"></script>
@@ -332,8 +332,9 @@
             });
 
             const params = new URLSearchParams(window.location.search);
-            const presetChar = params.get('char');
             const testMode = params.get('test') === '1';
+            const savedAdventure = !testMode && window.AdventureSave ? window.AdventureSave.load() : null;
+            const presetChar = params.get('char') || (savedAdventure && savedAdventure.characterName);
 
             const advScenes = ['castle', 'forest', 'ocean'];
             const pickStartMap = () => 'maps/stage_01_' + advScenes[Math.floor(Math.random() * advScenes.length)] + '_' + (1 + Math.floor(Math.random() * 3)) + '.csv';

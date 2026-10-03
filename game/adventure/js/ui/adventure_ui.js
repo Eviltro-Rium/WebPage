@@ -117,10 +117,12 @@
           if (window.cardIconsReady) window.cardIconsReady.then(() => this.render());
           return true;
         } catch (e) {
-          if (window.AdventureSave) window.AdventureSave.clear();
-          if (window.AdventureBattleController && typeof window.AdventureBattleController.clearCombatSession === 'function') {
-            window.AdventureBattleController.clearCombatSession();
-          }
+          console.error('[Adventure] restore failed', e);
+          const message = document.createElement('div');
+          message.className = 'adv-loading';
+          message.textContent = '恢复进度失败，存档已保留。请刷新重试。';
+          this.container.replaceChildren(message);
+          return false;
         }
       }
       if (combatSession && window.AdventureBattleController && typeof window.AdventureBattleController.clearCombatSession === 'function') {
@@ -177,7 +179,9 @@
       this.container.innerHTML = '<div class="adv-loading">恢复冒险进度…</div>';
       const mapName = save.mapName;
       let map;
-      if (window.AdventureMapData && window.AdventureMapData[mapName]) {
+      if (Array.isArray(save.mapLayout) && save.mapLayout.length) {
+        map = window.AdventureMap.fromGrid(save.mapLayout);
+      } else if (window.AdventureMapData && window.AdventureMapData[mapName]) {
         map = window.AdventureMap.fromCsvText(window.AdventureMapData[mapName]);
       } else {
         map = await window.AdventureMap.fromCsvUrl('maps/' + mapName + '.csv');
@@ -191,6 +195,7 @@
       const map = this.eng && this.eng.s && this.eng.s.map;
       if (!map) return null;
       const pos = this.eng.s.pos;
+      const explorable = this.eng.explorableRooms();
       const cells = [];
       for (let r = 0; r < map.rows; r++) {
         for (let c = 0; c < map.cols; c++) {
@@ -201,7 +206,7 @@
             label: AC.BEAST_LABEL[key] || key,
             icon: AC.BEAST_ICON[key] || ''
           })) : [];
-          const reachable = this.eng.canMoveTo(r, c);
+          const reachable = explorable.has(r + ',' + c);
           const hasLoot = !!room.stashedLoot;
           const isItemRoom = room.type === T.ITEM;
           const isBlacksmith = room.type === T.BLACKSMITH;
@@ -216,7 +221,7 @@
             (isItemRoom && doorLocked ? '（开门：' + doorCost.map(item => item.label).join('+') + '）' : '') +
             (isBlacksmith && doorLocked ? '（进入：' + entryGold + '金币）' : '') +
             (doorUnlocked ? '（已开门）' : '') +
-            (reachable ? '（单击移动，双击进入）' : '');
+            (reachable ? '（单击选中，双击进入）' : '');
           cells.push({
             r, c, type: room.type, visited: !!room.visited, cleared: !!room.cleared,
             rewardClaimed: !!room.rewardClaimed, hasLoot, lootIcon: hasLoot ? this._stashedLootIconSrc(room.stashedLoot) : null,
@@ -300,16 +305,7 @@
         return;
       }
       if (window.AdventureSave.isSafePhase(snap.phase) && this.eng.mapName) {
-        const names = arr => (arr || []).map(item => typeof item === 'string' ? item : (item && item.name) || '').join(',');
-        const combatKey = this.eng.s && this.eng.s.activeCombat
-          ? (this.eng.s.activeCombat.enemy || '') + '|' + (this.eng.s.activeCombat.enemy2 || '')
-          : '';
-        const invKey = names(snap.consumables) + '|' + names(snap.accessories) + '|' + names(snap.trophyWhiteCards);
-        const k = snap.phase + '|' + (snap.pos ? snap.pos.r + ',' + snap.pos.c : '') + '|' + snap.player.hp + '|' + snap.currency.gold + '|' + (snap.playerPile ? snap.playerPile.deckCount + ',' + snap.playerPile.discardCount : '') + '|' + combatKey + '|' + invKey;
-        if (k !== this._lastSaveKey) {
-          this._lastSaveKey = k;
-          window.AdventureSave.save(this.eng);
-        }
+        window.AdventureSave.save(this.eng);
       }
     }
 
@@ -1083,8 +1079,10 @@
     }
 
     async _advanceStage() {
-      this.eng.enterNextStage();
-      if (this.eng.s.phase !== window.AdventurePhase.CLEAR) return;
+      if (this._advancingStage) return;
+      const room = this.eng.currentRoom();
+      if (!room || room.type !== T.BOSS || !room.cleared) return;
+      this._advancingStage = true;
       const scenes = ['castle', 'forest', 'ocean'];
       let stage = this.eng.s.stage || 1;
       let scene = this.eng.s.scene || 'castle';
@@ -1100,7 +1098,11 @@
         } else {
           map = await window.AdventureMap.fromCsvUrl(mapUrl);
         }
-        this.eng.continueTo(map, { stage: stage, scene: scene });
+        this.eng.enterNextStage();
+        this.eng.continueTo(map, { stage: stage, scene: scene, mapName });
+        if (window.AdventureBattleController && window.AdventureBattleController.clearCombatSession) {
+          window.AdventureBattleController.clearCombatSession();
+        }
         if (typeof this.eng.onCombatReturnToMap === 'function') {
           const returnEffect = this.eng.onCombatReturnToMap();
           if (returnEffect) this._pendingMapReturnEffect = returnEffect;
@@ -1108,6 +1110,8 @@
         this.render();
       } catch (e) {
         this._toast('加载下一层失败：' + (e.message || e));
+      } finally {
+        this._advancingStage = false;
       }
     }
 

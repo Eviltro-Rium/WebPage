@@ -178,6 +178,7 @@
 
     /** 从存档恢复引擎状态；map 需由调用方先按存档的 mapName 加载 */
     restoreFromSave(save, map) {
+      this.mapName = save.mapName;
       const charMod = window.CharacterRegistry.get(save.characterName);
       if (!charMod) throw new Error('未知角色: ' + save.characterName);
       const clone = v => v == null ? v : JSON.parse(JSON.stringify(v));
@@ -256,12 +257,22 @@
           room.shopSold = clone(d.shopSold) || {};
           if (Array.isArray(d.doorCost) && d.doorCost.length === 2) room.doorCost = d.doorCost.slice(0, 2);
           room.doorUnlocked = !!d.doorUnlocked;
+          if (!save.explorationVersion) {
+            // Old builds marked a single click as visited. Retain evidence of
+            // an actual entry/completion, but remove selection-only marks.
+            room.visited = room.opensExploration() || room.cleared ||
+              (room.isCombatRoom() && !!d.visited && !!(d.monsterName || d.bossName));
+          }
         }
       }
 
       this._syncBeastCap();
       this._syncHandLimit();
       this._initItemDoorCosts(map);
+      if (this.s.phase === Phase.MAP && !this.s.activeCombat &&
+          (!this.s.pos || !map.explorablePositions().has(this.s.pos.r + ',' + this.s.pos.c))) {
+        this.s.pos = map.start ? {r:map.start.r, c:map.start.c} : null;
+      }
       this.emit('restore', '已恢复冒险进度', { character: save.characterName });
       return this.s;
     }
@@ -305,25 +316,24 @@
       return this.s.map.get(this.s.pos.r, this.s.pos.c);
     }
 
+    explorableRooms() {
+      if (!this.s || this.s.activeCombat) return new Set();
+      const blocked = [Phase.PLAYER_PLAY, Phase.PLAYER_DEFEND, Phase.NPC_TURN,
+        Phase.BEAST_CHOICE, Phase.BEAST_DISCARD, Phase.ITEM_DISCARD, Phase.COMBAT_SETTLE, Phase.GAME_OVER];
+      if (blocked.includes(this.s.phase)) return new Set();
+      return this.s.map.explorablePositions();
+    }
+
     canMoveTo(r, c) {
-      if (!this.s || this.s.activeCombat) return false;
-      if (this.s.phase === Phase.PLAYER_PLAY || this.s.phase === Phase.PLAYER_DEFEND || this.s.phase === Phase.NPC_TURN || this.s.phase === Phase.BEAST_CHOICE || this.s.phase === Phase.BEAST_DISCARD || this.s.phase === Phase.ITEM_DISCARD || this.s.phase === Phase.COMBAT_SETTLE || this.s.phase === Phase.GAME_OVER) return false;
+      if (!Number.isInteger(r) || !Number.isInteger(c) || !this.s) return false;
       const room = this.s.map.get(r, c);
-      if (!room || !room.isEnterable()) return false;
-      if (room.visited) return true;
-      const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-      for (const [dr, dc] of dirs) {
-        const neighbor = this.s.map.get(r + dr, c + dc);
-        if (neighbor && neighbor.visited) return true;
-      }
-      return false;
+      return !!room && room.isEnterable() && this.explorableRooms().has(r + ',' + c);
     }
 
     move(r, c) {
       if (!this.canMoveTo(r, c)) return false;
       this.s.pos = { r, c };
       const room = this.s.map.get(r, c);
-      if (room) room.visited = true;
       this._log('移动到 (' + (r + 1) + ',' + (c + 1) + ') ' + room.label() + '房间');
       this.emit('move', '移动', { r, c, roomType: room.type });
       return true;
@@ -414,23 +424,24 @@
 
     enterCurrent() {
       const room = this.currentRoom();
-      if (!room) return;
-      this.s.phase = Phase.ROOM_ENTER;
-      this.emit('enterRoom', '进入' + room.label() + '房间', { r: this.s.pos.r, c: this.s.pos.c, roomType: room.type });
-      this._log('进入 ' + room.label() + ' 房间');
-
-      switch (room.type) {
-        case window.RoomType.START:  this.s.phase = Phase.MAP; return;
-        case window.RoomType.NORMAL: return this._handleNormal(room);
-        case window.RoomType.BOSS:   return this._handleBoss(room);
-        case window.RoomType.ITEM:   return this._handleItem(room);
-        case window.RoomType.SHOP:   return this._handleShop(room);
-        case window.RoomType.BLACKSMITH: return this._handleBlacksmith(room);
-        case window.RoomType.CHALLENGE: return this._handleChallenge(room);
-        default:
-          this.s.phase = Phase.MAP;
-          return;
+      if (!room || !room.isEnterable()) return {ok:false, message:'无法进入此房间'};
+      if (this.s.phase === Phase.MAP && !this.s.activeCombat && !this.canMoveTo(this.s.pos.r, this.s.pos.c)) {
+        return {ok:false, message:'请先探索相邻房间'};
       }
+      this.s.phase = Phase.ROOM_ENTER;
+      this.emit('enterRoom', '进入' + room.label() + '房间', {r:this.s.pos.r, c:this.s.pos.c, roomType:room.type});
+      this._log('进入 ' + room.label() + ' 房间');
+      const handlers = {
+        [window.RoomType.NORMAL]:'_handleNormal', [window.RoomType.BOSS]:'_handleBoss',
+        [window.RoomType.ITEM]:'_handleItem', [window.RoomType.SHOP]:'_handleShop',
+        [window.RoomType.BLACKSMITH]:'_handleBlacksmith', [window.RoomType.CHALLENGE]:'_handleChallenge'
+      };
+      const handler = handlers[room.type];
+      let result;
+      if (handler) result = this[handler](room);
+      else this.s.phase = Phase.MAP;
+      if (!result || result.ok !== false) room.visited = true;
+      return result;
     }
 
     _isAvailableAtStage(def, stage) {

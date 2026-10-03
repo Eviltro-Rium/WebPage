@@ -94,6 +94,18 @@
       return this.type === RoomType.NORMAL || this.type === RoomType.BOSS || this.type === RoomType.CHALLENGE;
     }
 
+    // Selecting a room is not exploration. Only completed fights or an
+    // actually opened functional room may expose its neighboring rooms.
+    opensExploration() {
+      if (!this.isEnterable()) return false;
+      if (this.type === RoomType.START) return true;
+      if (this.isCombatRoom()) return !!this.cleared;
+      if (this.type === RoomType.ITEM || this.type === RoomType.BLACKSMITH) return !!this.doorUnlocked;
+      if (this.type === RoomType.SHOP) return !!this.visited &&
+        (Array.isArray(this.shopSlots) || Array.isArray(this.shopItems));
+      return false;
+    }
+
     isClearable() {
       return this.type === RoomType.ITEM || this.type === RoomType.SHOP || this.type === RoomType.BLACKSMITH
         || (this.isCombatRoom() && this.cleared);
