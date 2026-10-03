@@ -470,3 +470,7 @@ defendPlayerDiscard(card) {
 | 攻击修正（含吸血结算） | `game/js/combat/engine.js` → `gateAdventureAttackMod()` |
 | DoT 结算（[流血]/中毒/灼伤） | `game/js/combat/engine.js` / `adventure/js/battle/battle_engine.js` |
 | 防御结算 | `adventure/js/content/monster_registry.js` → `defend()` 分支 |
+
+### 飞翔、守护与伤害来源
+
+反击经 `counterAttack` 结算，可被飞翔和守护减免。灼伤、流血、中毒、定时炸弹、荆棘、寄生等 Buff 独立伤害均不能减免，也不消耗飞翔或守护。按 Buff 层数计算的攻击技能仍属于攻击伤害。统一由 `EngineDamage.canAvoid(options)` 判断；Buff 伤害使用 `damageSource: 'buff'` 或相应 `kind`，即使传入 `allowAvoidance: true` 也不能绕过此规则。扣血飘字使用 `-N🗡️`，恢复使用 `+N❤️`。

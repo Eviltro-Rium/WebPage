@@ -75,7 +75,7 @@ const PHASE_NAMES = {
     PLAYER_DEFEND: '防御阶段', ATTACK_MOD_CHOICE: '攻击修正', CRIT_CHOICE: '暴击选择', PLAYER_FIVE_CHOICE: '选择5效果',
     PLAYER_SEVEN_CHOICE: '处理抽取牌', SAIKI_THREE_CHOICE: '处理抽取牌', OPPONENT_CARD_CHOICE: '选择对手手牌',
     SAIKI_SIX_JUDGE: '判定选择', AI_TURN: 'AI回合', AI2_TURN: 'AI2回合',
-    AI_DEFEND: 'AI防御中', CHAN_FIVE_REORDER: '排列牌库顶', GUARD_CHOICE: '选择守护', TARGET_CHOICE: '选择目标', PURIFY_CRYSTAL_CHOICE: '净化水晶', TROPHY_DISARM_CHOICE: '缴械选择', TROPHY_PURIFY_CHOICE: '净化选择', GAME_OVER: '游戏结束'
+    AI_DEFEND: 'AI防御中', CHAN_FIVE_REORDER: '排列牌库顶', GUARD_CHOICE: '选择守护', TARGET_CHOICE: '选择目标', PURIFY_CRYSTAL_CHOICE: '净化水晶', TROPHY_DISARM_CHOICE: '缴械选择', TROPHY_PURIFY_CHOICE: '净化选择', DICE_CHOICE: '选择骰面', GAME_OVER: '游戏结束'
 };
 
 function cardLabel(card) {
@@ -139,7 +139,7 @@ function parseSegments(text, defaultColor) {
     const HP_GAIN = '#86efac';
     while (i < text.length) {
         // Buff / heal floats: keep the numeric HP delta as a dedicated colored segment.
-        const hp = text.slice(i).match(/^([+-]\d+)❤️/);
+        const hp = text.slice(i).match(/^([+-]\d+)(?:❤️|🗡️)/);
         if (hp) {
             segs.push({ text: hp[0], color: hp[1][0] === '-' ? HP_LOSS : HP_GAIN });
             i += hp[0].length;

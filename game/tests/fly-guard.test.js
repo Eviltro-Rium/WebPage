@@ -160,3 +160,49 @@ test('skip-defense incoming damage still spends NPC fly and guard', () => {
   assert.equal(engine.s.ai.guard, 0);
   assert.equal(engine.s.ai.hp, 17);
 });
+
+
+test('buff damage cannot spend fly or guard through any shared attack entry', () => {
+  for (const target of ['player','ai','ai2']) {
+    for (const kind of ['burn','bleed','poison','bomb','thorns','parasite']) {
+      const engine = combatHarness();
+      engine.s.ai2 = {name:'A2',hp:20,maxHp:20,alive:true,fly:2,guard:5};
+      const entity = engine.s[target];
+      entity.fly=2; entity.guard=5;
+      let rolls=0;
+      engine.rollD12=()=>{rolls++;return 1;};
+      // Buff damage must bypass attack-color immunity as well as avoidance.
+      engine.divingBlocksDamage=()=>true;
+      const attacker=target==='player'?'ai':'player';
+      const hp=entity.hp;
+      engine.performAttack({attacker,target,damage:3,kind,allowAvoidance:true});
+      assert.equal(entity.hp,hp-3,kind+'/'+target);
+      engine.applyIncomingDamage(engine.s[attacker],entity,2,{kind,allowAvoidance:true});
+      assert.equal(entity.hp,hp-5,kind+'/'+target);
+      engine.applyDefenderAvoidance(entity,2,{kind,forceSpend:true});
+      assert.equal(entity.fly,2);assert.equal(entity.guard,5);assert.equal(rolls,0);
+    }
+  }
+});
+
+test('status life steal bypasses avoidance even with forceDrainAvoidance enabled', () => {
+  const engine=combatHarness();engine.s.ai.fly=2;engine.s.ai.guard=5;
+  engine.s.player.hp=30;
+  let rolls=0;engine.rollD12=()=>{rolls++;return 1;};
+  const taken=engine.drainAttack(engine.s.player,engine.s.ai,3,{damageSource:'buff',forceDrainAvoidance:true,allowAvoidance:true});
+  assert.equal(taken,3);assert.equal(engine.s.player.hp,33);assert.equal(engine.s.ai.hp,17);
+  assert.equal(engine.s.ai.guard,5);assert.equal(engine.s.ai.fly,2);assert.equal(rolls,0);
+});
+
+test('a counter can consume fly then guard but leaves later buff damage intact', () => {
+  const engine=combatHarness();engine.s.player.fly=1;engine.s.player.guard=3;
+  engine.rollD12=()=>12;
+  engine.counterAttack('ai','player',5);
+  assert.equal(engine.s.player.fly,0);assert.equal(engine.s.player.guard,0);assert.equal(engine.s.player.hp,38);
+  engine.s.player.fly=1;engine.s.player.guard=3;
+  engine.s.player.burn=2;engine.settleBurn(engine.s.player);
+  engine.s.player.bleed=1;engine.settleBleed(engine.s.player,1);
+  engine.s.player.bomb=1;engine.s.bombPlayTokens={player:1};engine._tickBomb('player');
+  assert.equal(engine.s.player.hp,30);
+  assert.equal(engine.s.player.fly,1);assert.equal(engine.s.player.guard,3);
+});

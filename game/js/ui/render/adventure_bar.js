@@ -31,6 +31,7 @@
     Object.assign(GameUI.prototype, {
         _canUseAdventureCombatItem(s, def) {
             if (!s || !s.isAdventure || !def) return false;
+            if (def.diceOnly) return false;
             if (s.busy) return false;
             if (s.needColorChoice) return false;
             if (s.player && (s.player.blind || 0) > 0 && def.kind === 'consumable') return false;

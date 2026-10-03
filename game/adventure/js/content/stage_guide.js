@@ -5,6 +5,11 @@
  */
 (function () {
   window.AdventureStageGuide = {
+  "FrozenMammoth": [
+    { "stage": "2", "text": "生命上限 +10（55）" },
+    { "stage": "3", "text": "所有进攻伤害 +1" },
+    { "stage": "4", "text": "所有有效防御额外施加1层[流血]" }
+  ],
   "CastleGhost": [
     {
       "stage": "3",
@@ -437,6 +442,9 @@
   ]
 };
   window.AdventureMonsterNotes = {
+  "FrozenMammoth": [
+    { "title": "进攻时机", "lines": ["进攻4/5/6按当前对手的[流血]层数计算伤害，扣血后施加[失温]", "进攻0先施加[失温]并获得[守护]，再造成不可防御伤害"] }
+  ],
   "CastleGhost": [
     {
       "title": "出现条件",

@@ -9,6 +9,11 @@
     const EVENT_TYPES = eventNamespace.Types || { HIT: 'hit' };
     const DAMAGE_KINDS = eventNamespace.DamageKinds || { NORMAL: 'normal', BLEED: 'bleed', POISON: 'poison', DRAIN: 'drain' };
 
+    const damageFloat = (amount, suffix = '', custom = '') => {
+        if (!custom) return '-' + amount + '🗡️' + suffix;
+        return custom.includes('🗡️') ? custom : custom.replace(/^-\d+(?:\.\d+)?(?:❤️)?/, '-' + amount + '🗡️');
+    };
+
     Object.assign(GameUI.prototype, {
 _missingAIPlay(previous, current) {
     if (!previous || !current || current.events && current.events.length) return null;
@@ -377,7 +382,7 @@ async _playEvents(events, fast = false) {
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
             // 普通扣血显示简洁的红色数字；不再复用冗余的“[伤害]”标签。
             if (Number(evt.amount) > 0) {
-                this.playFloatingText(evt.floatText || `-${evt.amount}`, '#ff4444', side);
+                this.playFloatingText(damageFloat(evt.amount, '', evt.floatText), '#ff4444', side);
             }
             this._playHitFeedback(side, evt.amount);
             await wait(400);
@@ -385,7 +390,7 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const amt = Math.max(0, Number(evt.amount) || 0);
             const text = amt > 0
-                ? `-${amt}❤️[灼伤]，-1[灼伤层数]`
+                ? damageFloat(amt, '[灼伤]，-1[灼伤层数]')
                 : (evt.desc || '');
             this.playFloatingText(text, '#ff8800', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
@@ -395,7 +400,7 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const amt = Math.max(0, Number(evt.amount) || 0);
             const text = amt > 0
-                ? `-${amt}❤️[流血]，-1[流血层数]`
+                ? damageFloat(amt, '[流血]，-1[流血层数]')
                 : (evt.desc || '');
             this.playFloatingText(text, '#cc2222', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
@@ -405,7 +410,7 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const amt = Math.max(0, Number(evt.amount) || 0);
             const text = amt > 0
-                ? `-${amt}❤️[中毒]`
+                ? damageFloat(amt, '[中毒]')
                 : (evt.desc || '');
             this.playFloatingText(text, '#84cc16', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
@@ -415,7 +420,7 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const amt = Math.max(0, Number(evt.amount) || 0);
             const text = amt > 0
-                ? `-${amt}❤️[定时炸弹]`
+                ? damageFloat(amt, '[定时炸弹]')
                 : (evt.desc || '炸弹爆炸！');
             this.playFloatingText(text, '#ff4444', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
@@ -431,7 +436,7 @@ async _playEvents(events, fast = false) {
             const amt = Math.max(0, Number(evt.amount) || 0);
             if (kind === DAMAGE_KINDS.NORMAL) {
                 if (!evt.suppressFloat && amt > 0) {
-                    this.playFloatingText(evt.floatText || `-${amt}`, '#ff4444', side);
+                    this.playFloatingText(damageFloat(amt, '', evt.floatText), '#ff4444', side);
                 }
             } else {
                 const tag = kind === DAMAGE_KINDS.POISON ? '中毒'
@@ -445,7 +450,7 @@ async _playEvents(events, fast = false) {
                     : '#ff4444';
                 if (!evt.suppressFloat) {
                     const text = (amt > 0 && tag)
-                        ? `-${amt}❤️[${tag}]`
+                        ? damageFloat(amt, '[' + tag + ']')
                         : (evt.desc || '');
                     this.playFloatingText(text, color, side);
                 }
@@ -461,7 +466,7 @@ async _playEvents(events, fast = false) {
             const tag = kind === DAMAGE_KINDS.BLEED || kind === 'bleed' ? '流血'
                 : kind === DAMAGE_KINDS.POISON || kind === 'poison' ? '中毒'
                 : '灼伤';
-            const text = amt > 0 ? `-${amt}❤️[${tag}]` : (evt.desc || '');
+            const text = amt > 0 ? damageFloat(amt, '[' + tag + ']') : (evt.desc || '');
             this.playFloatingText(text, color, side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
             if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); }

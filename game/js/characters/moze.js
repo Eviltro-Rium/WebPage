@@ -4,7 +4,7 @@
     name: 'Moze',
     hp: 100,
     type: '守护',
-    passive: '可消耗守护减免伤害，但不能减免流血伤害',
+    passive: '可消耗守护减免攻击与反击伤害，不能减免Buff伤害',
     init() { return {}; },
     turnStart(eng, ch) {},
     damageAtSettlement(eng, v, a, t) { return v === 6 ? 3 + (a.guard || 0) : null; },

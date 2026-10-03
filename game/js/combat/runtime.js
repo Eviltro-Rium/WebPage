@@ -52,6 +52,16 @@
 
   const api = {
     random,
+    // Replay only a synchronous combat decision; never replace the global source permanently.
+    withRandomTape(tape, callback) {
+      const previous = source;
+      let index = 0;
+      source = () => {
+        if (index < tape.length) return tape[index++];
+        const value = previous(); tape.push(value); index++; return value;
+      };
+      try { return callback(); } finally { source = previous; }
+    },
     randomInt,
     schedule,
     cancel,

@@ -78,6 +78,11 @@
       Object.freeze({ threshold: 2, drops: Object.freeze(['DivingTrophy']) }),
       Object.freeze({ threshold: 4, drops: Object.freeze(['SmallPotionTrophy']) })
     ]) }),
+    FrozenMammoth: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 3, drops: Object.freeze(['PiercingTrophy']) }),
+      Object.freeze({ threshold: 5, drops: Object.freeze(['GuardTrophy']) }),
+      Object.freeze({ threshold: 6, drops: Object.freeze(['HypothermiaTrophy']) })
+    ]) }),
     FrozenKraken: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 2, drops: Object.freeze(['DivingTrophy']) }),
       Object.freeze({ threshold: 4, drops: Object.freeze(['IceSealTrophy']) }),
@@ -150,13 +155,14 @@
     return Math.floor(Math.max(0, Math.min(0.999999999, Number(source()) || 0)) * 12) + 1;
   }
 
-  function rollMonsterDrop(scene, monsterName, randomFn) {
+  function rollMonsterDrop(scene, monsterName, randomFn, selectedRoll) {
     const sceneKey = normalizeScene(scene);
     const rule = SCENE_RULES[sceneKey] && SCENE_RULES[sceneKey][monsterName];
     if (!rule) {
       return Object.freeze({ scene: sceneKey, monsterName, roll: null, threshold: 0, drops: Object.freeze([]), summary: "" });
     }
-    const roll = rollD12(randomFn);
+    const roll = Number.isInteger(selectedRoll) && selectedRoll >= 1 && selectedRoll <= 12
+      ? selectedRoll : rollD12(randomFn);
     const outcome = Array.isArray(rule.outcomes)
       ? rule.outcomes.find(item => roll <= item.threshold)
       : (roll <= rule.threshold ? rule : null);

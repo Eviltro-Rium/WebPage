@@ -1490,3 +1490,67 @@ test('Furnace yellow/blue/green map to sandblind/diving/lush trophies', () => {
     assert.equal(engine.h.player.some(c => c.trophyName === trophy), true);
   }
 });
+
+
+for (const opponent of ['FrozenKraken', 'CastleWolf']) {
+  for (const testMode of [false, true]) {
+    test('adventure hypnosis promotes after '+opponent+' attacks (testMode='+testMode+')', () => {
+      const engine = new AdventureBattleEngine();
+      engine.startAdventure({
+        player: 'Vixraps', opponent, testMode, stage: 2,
+        playerPile: { deck: [number(4)], hand: [number(2)], discard: [], handLimit: 5 }
+      });
+      if (opponent === 'FrozenKraken') assert.equal(engine.s.ai.maxHp, 50);
+      engine.later = () => {};
+      engine.applyHypnosis(engine.s.ai);
+      assert.ok(engine.s.ai.hypnosis, 'application keeps hypnosis during the first defense');
+      assert.ok(!engine.s.ai.sleep);
+      engine.startAITurn();
+      engine.turnStart('ai');
+      assert.ok(engine.s.ai.hypnosis, 'own attack starts without sleeping');
+      engine.s.aiTurnStarted = true;
+      engine.endAi();
+      assert.equal(engine.s.phase, 'PLAYER_PLAY');
+      assert.equal(engine.s.pendingHypnosisPromote, null);
+      assert.equal(engine.s.ai.hypnosis, false);
+      assert.equal(engine.s.ai.sleep, true, 'sleep begins before the next player attack');
+      assert.equal(engine.events.filter(evt => evt.type === 'buff' && evt.kind === 'sleep').length, 1);
+      engine.s.ai.hp = 20;
+      engine.startAITurn();
+      engine.turnStart('ai');
+      assert.equal(engine.s.ai.sleep, false);
+      assert.equal(engine.s.ai.hp, Math.min(30, engine.s.ai.maxHp), 'wakes only at its next attack start');
+    });
+  }
+}
+
+test('adventure hypnosis cleansed before NPC attack ends does not become sleep', () => {
+  const engine = start();
+  engine.applyHypnosis(engine.s.ai);
+  engine.clearDebuffs(engine.s.ai);
+  engine.endAi();
+  assert.ok(!engine.s.ai.hypnosis);
+  assert.ok(!engine.s.ai.sleep);
+});
+
+test('adventure challenge promotes only the NPC whose attack ended', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure1v2({
+    player: 'Vixraps', opponent1: 'CastleWolf', opponent2: 'CastleFox', testMode: true,
+    playerPile: { deck: [number(4)], hand: [number(2)], discard: [], handLimit: 5 }
+  });
+  engine.later = () => {};
+  engine.applyHypnosis(engine.s.ai);
+  engine.applyHypnosis(engine.s.ai2);
+  engine.startAITurn();
+  engine.turnStart('ai');
+  engine.endAi1v2();
+  assert.ok(engine.s.ai2.hypnosis, 'second NPC has not attacked yet');
+  engine.startAITurn();
+  engine.turnStart('ai2');
+  assert.equal(engine.s.ai.sleep, true);
+  assert.ok(engine.s.ai2.hypnosis);
+  assert.ok(!engine.s.ai2.sleep, 'second NPC has not finished its attack');
+  engine.endAi1v2();
+  assert.equal(engine.s.ai2.sleep, true);
+});

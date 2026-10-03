@@ -45,7 +45,8 @@
         if (typeof mod.attackTurnStart === 'function') mod.attackTurnStart(eng, x, w);
       },
       attackEffectTiming(v, eng) {
-        const active = eng._getAdventureMod(mod.name) || mod;
+        // The registered definition already contains its cumulative stage modifiers.
+        const active = mod;
         if (typeof active.attackEffectTiming === 'function') return active.attackEffectTiming(v);
         // Ladybug explicitly gains lush BEFORE its attack; Kraken purges first.
         const before = mod.name === 'ForestLadybug' && v >= 4 && v <= 6 ||
@@ -58,7 +59,7 @@
         return before ? 'beforeDamage' : 'afterDamage';
       },
       damageAtSettlement(eng, v, a, t) {
-        const active = typeof eng._getAdventureMod==='function' ? eng._getAdventureMod(mod.name) || mod : mod;
+        const active = mod; // Do not replace the staged definition with the raw registry entry.
         const card = eng.s.atkCard;
         // Card/dice judgment damage is locked to its revealed result, not rolled again.
         if (!card || typeof active.attackDamage!=='function' ||
@@ -72,7 +73,7 @@
         return damage > 0 ? damage : drain > 0 ? drain : damage;
       },
       damageAfterDefense(v, damage, defender, eng) {
-        const active = eng._getAdventureMod(mod.name) || mod, card = eng.s.defCard;
+        const active = mod, card = eng.s.defCard;
         // Recompute arithmetic only: never repeat dice, counters or status gains.
         if (typeof active.defendImmune==='function' && active.defendImmune(card)) return 0;
         if (typeof active.defendSplit==='function' && active.defendSplit(card)) return Math.ceil(damage/2);
@@ -234,16 +235,21 @@
             }
           }
         }
-        // 延迟失温：防御结束后施加给被攻击目标（蓝鲸4/5/6、虎鲸1/2/3）
+        // 延迟失温：防御结束后施加给被攻击目标（默认先伤害后施加；显式 beforeDamage 时走统一状态队列）
         // 同时写回返回值，供 AI 在 effect 之后创建 pendingAttack 时带上字段。
         if (typeof mod.attackHypothermia === 'function') {
           const hyAmt = mod.attackHypothermia(c);
           if (hyAmt > 0) {
-            hypothermiaTarget = t === eng.s.ai2 ? 'ai2' : (t === eng.s.ai ? 'ai' : 'player');
-            hypothermiaAmount = hyAmt;
-            if (eng.s && eng.s.pendingAttack) {
-              eng.s.pendingAttack.hypothermiaTarget = hypothermiaTarget;
-              eng.s.pendingAttack.hypothermiaAmount = hyAmt;
+            if (typeof mod.attackEffectTiming === 'function' && mod.attackEffectTiming(v) === 'beforeDamage') {
+              // Unified skill capture defers this operation until after defense, before damage.
+              eng.hypothermia(t, hyAmt);
+            } else {
+              hypothermiaTarget = t === eng.s.ai2 ? 'ai2' : (t === eng.s.ai ? 'ai' : 'player');
+              hypothermiaAmount = hyAmt;
+              if (eng.s && eng.s.pendingAttack) {
+                eng.s.pendingAttack.hypothermiaTarget = hypothermiaTarget;
+                eng.s.pendingAttack.hypothermiaAmount = hyAmt;
+              }
             }
           }
         }
@@ -1072,6 +1078,10 @@
     if (typeof mod.attackPoison === 'function') {
       const p = mod.attackPoison(card);
       if (p > 0) parts.push('施加' + p + '层[中毒]');
+    }
+    if (typeof mod.attackHypothermia === 'function') {
+      const h = mod.attackHypothermia(card);
+      if (h > 0) parts.push('施加' + h + '层[失温]');
     }
     if (typeof mod.attackBlind === 'function' && mod.attackBlind(card)) {
       parts.push('施加1层[致盲]');

@@ -11,10 +11,10 @@
 
   window.AdventureBossPool = window.AdventureBossPool || {};
   window.AdventureBossPool.ocean = window.AdventureBossPool.ocean || {
-    '*': ['FrozenOrca'],
-    2: ['FrozenOrca', 'FrozenKraken'],
-    3: ['FrozenOrca', 'FrozenKraken'],
-    4: ['FrozenOrca', 'FrozenKraken']
+    '*': ['FrozenOrca', 'FrozenMammoth'],
+    2: ['FrozenOrca', 'FrozenMammoth', 'FrozenKraken'],
+    3: ['FrozenOrca', 'FrozenMammoth', 'FrozenKraken'],
+    4: ['FrozenOrca', 'FrozenMammoth', 'FrozenKraken']
   };
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
@@ -629,7 +629,6 @@
       return !!(card && card.isNumberCard && v === 0);
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({
         attackUnblockableBelow: () => 5
       }),
@@ -637,6 +636,62 @@
         defendHeal(card) {
           const v = card && card.value;
           return (v === 0 || (v >= 1 && v <= 3)) ? 1 : 0;
+        }
+      })
+    }
+  });
+  // ===== 冻洋猛犸（Boss） =====
+  // 0 牌先施加失温/获得守护再结算伤害，其他进攻先伤害后施加效果。
+  R.registerBoss({
+    name: 'FrozenMammoth',
+    kind: '冻洋猛犸',
+    hp: 45,
+    attack: 2,
+    defense: 2,
+    handLimit: 3,
+    whiteZeros: 2,
+    icon: '../icons/npc_icons/frozen_ocean_wooli.webp',
+    attackDamage(card, ctx) {
+      if (!card || !card.isNumberCard) return 0;
+      const v = card.value;
+      if (v >= 1 && v <= 3) return 2;
+      if (v >= 4 && v <= 6) return 3 + Math.max(0, Number(ctx && ctx.playerBleed) || 0);
+      return v === 0 ? 3 : 0;
+    },
+    attackEffectTiming(value) { return value === 0 ? 'beforeDamage' : 'afterDamage'; },
+    attackGuard(card) {
+      if (!card || !card.isNumberCard) return 0;
+      return card.value === 0 ? 4 : card.value >= 1 && card.value <= 3 ? 2 : 0;
+    },
+    attackBleed(card) {
+      return card && card.isNumberCard && card.value >= 1 && card.value <= 3 ? card.value : 0;
+    },
+    attackHypothermia(card) {
+      return card && card.isNumberCard && (card.value === 0 || card.value >= 4 && card.value <= 6) ? 1 : 0;
+    },
+    attackUnblockable(card) { return !!(card && card.isNumberCard && card.value === 0); },
+    defendBlock(card, incoming) {
+      return card && card.isNumberCard && card.value >= 1 && card.value <= 3
+        ? Math.ceil(Math.max(0, Number(incoming) || 0) / 2) : 0;
+    },
+    defendImmune(card) { return !!(card && card.isNumberCard && card.value === 0); },
+    defendGuard(card) { return card && card.isNumberCard && card.value === 0 ? 2 : 0; },
+    defendBleed(card) {
+      if (!card || !card.isNumberCard) return 0;
+      return card.value === 0 ? 2 : card.value >= 1 && card.value <= 3 ? 1 : 0;
+    },
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 10 }),
+      3: orig => ({
+        attackDamage(card, ctx) {
+          const damage = orig.attackDamage(card, ctx);
+          return damage > 0 ? damage + 1 : 0;
+        }
+      }),
+      4: orig => ({
+        defendBleed(card) {
+          const stacks = orig.defendBleed(card);
+          return stacks > 0 ? stacks + 1 : 0;
         }
       })
     }

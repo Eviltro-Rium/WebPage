@@ -918,9 +918,9 @@ body {
 .reveal-zone {
     position: relative;
     flex: 0 0 168px;
-    height: 156px;
-    min-height: 156px;
-    max-height: 156px;
+    height: 162px;
+    min-height: 162px;
+    max-height: 162px;
     overflow: visible;
     background: linear-gradient(145deg, rgba(45,35,12,0.94) 0%, rgba(38,34,25,0.92) 55%, rgba(19,31,43,0.94) 100%);
     border: 1.5px solid rgba(253,224,71,0.62);
@@ -2899,3 +2899,19 @@ body {
 .crystal-ball-sort-card { cursor: grab; transition: transform .16s ease, filter .16s ease; }
 .crystal-ball-sort-card.dragging { opacity: .45; transform: translateY(-6px) scale(.97); }
 .crystal-ball-sort-card.drag-target { filter: drop-shadow(0 0 8px #c4b5fd); transform: translateY(-6px); }
+
+/* The controller lives inside the existing fixed-height judgment area. */
+.dice-control-panel { position:absolute; inset:auto 5px 4px; z-index:4; }
+.dice-control-actions { display:flex; gap:4px; justify-content:center; }
+.dice-control-panel button { min-width:0; border:1px solid rgba(192,132,252,.6); border-radius:6px; padding:3px 5px; color:#f5f3ff; background:rgba(57,37,87,.97); font:600 10px var(--font-body); cursor:pointer; }
+.dice-control-panel button:hover { background:#6544a5; border-color:#e9d5ff; }
+.dice-control-panel button:focus-visible { outline:2px solid #e9d5ff; outline-offset:1px; }
+.dice-control-panel button:disabled { opacity:.5; cursor:wait; }
+.dice-face-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; margin-top:3px; padding:4px; border:1px solid rgba(192,132,252,.5); border-radius:8px; background:rgba(13,20,35,.98); }
+.dice-face-grid[hidden] { display:none; }
+.dice-face-grid button { padding:3px 0; }
+.dice-control-active .reveal-card-area { height:54px; min-height:54px; max-height:54px; flex-basis:54px; }
+.dice-control-active .d12-result { width:48px; height:48px; padding:2px; }
+.dice-control-active .d12-result strong { font-size:1.4rem; line-height:1.1; }
+.dice-control-active .d12-result .d12-label { font-size:.5rem; }
+.dice-control-active .reveal-desc { max-height:28px; }

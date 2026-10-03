@@ -3,7 +3,15 @@
 (function (global) {
     const root = global.FurryGame || (global.FurryGame = {});
     const eventTypes = root.CombatEvents && root.CombatEvents.Types || { BOMB_EXPLODE: 'bombExplode', BUFF: 'buff' };
+    const buffDamageKinds = new Set(['burn', 'bleed', 'poison', 'bomb', 'thorns', 'parasite', 'buff']);
     const EngineDamage = {
+        isBuffDamage(options = {}) {
+            return options.damageSource === 'buff' ||
+                buffDamageKinds.has(options.kind === true ? 'bleed' : options.kind);
+        },
+        canAvoid(options = {}) {
+            return options.allowAvoidance !== false && !this.isBuffDamage(options);
+        },
         apply(engine, target, amount, kind = false, opts = {}) {
             if (!root.EngineStatus || typeof root.EngineStatus.hurt !== 'function') {
                 throw new Error('EngineStatus must be loaded before EngineDamage');
@@ -23,7 +31,7 @@
             const target = owner === 'player' ? 'player' : owner === 'ai2' ? 'ai2' : 'ai';
             if (entity.bomb <= 0) {
                 const hpBefore = entity.hp;
-                this.apply(engine, entity, 5, false, { silent: true });
+                this.apply(engine, entity, 5, 'bomb', { silent: true, damageSource: 'buff' });
                 engine.emit(eventTypes.BOMB_EXPLODE || 'bombExplode', `-${5}❤️[定时炸弹]`, null, {
                     who: target, target, amount: 5, hpBefore, hpAfter: entity.hp, kind: 'bomb'
                 });

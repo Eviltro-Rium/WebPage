@@ -113,11 +113,13 @@ test('FrozenKraken defend hooks', () => {
 test('FrozenKraken stage mods', () => {
   const m = getMonster('FrozenKraken');
   const s2 = applyStageMods(m, 2);
-  assert.equal(s2.hp, 56);
+  assert.equal(s2.hp, 50, 'Stage 2 is the first appearance, without HP enhancement');
   const s3 = applyStageMods(m, 3);
+  assert.equal(s3.hp, 50);
   assert.equal(s3.attackUnblockableBelow(numCard(5)), 5);
   assert.equal(s3.attackUnblockableBelow(numCard(0)), 5);
   const s4 = applyStageMods(m, 4);
+  assert.equal(s4.hp, 50);
   assert.equal(s4.defendHeal(numCard(2)), 1);
   assert.equal(s4.defendHeal(numCard(0)), 1);
   assert.equal(s4.attackUnblockableBelow(numCard(5)), 5, 'stage4 keeps stage3 weak-unblock');

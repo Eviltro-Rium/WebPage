@@ -206,6 +206,7 @@
     resolveDefense(defender, amount, options) {
       const remaining = Math.max(0, Number(amount) || 0);
       if (remaining <= 0) return 0;
+      if (Combat.EngineDamage && !Combat.EngineDamage.canAvoid(options || {})) return remaining;
       // skip/unblock only skip playing a defend card; fly and guard still apply.
       if (typeof this.applyDefenderAvoidance === 'function') {
         return this.applyDefenderAvoidance(defender, remaining, { forceSpend: true });

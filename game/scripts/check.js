@@ -90,6 +90,7 @@ const stableTests = [
   'card-effects.test.js',
   'engine-modules.test.js',
   'runtime-invariants.test.js',
+  'dice-controller.test.js',
   'online-match.test.js',
   'online-transport.test.js',
   'signaling-room.test.js'

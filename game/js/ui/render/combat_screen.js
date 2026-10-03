@@ -124,6 +124,7 @@
             this._renderDiscardTop();
             this._renderZones();
             this._renderReveal();
+            this._renderDiceControl();
             this._renderControls();
             this._updateAdventureInfo(s);
             this._renderAdventureItemBar(s);

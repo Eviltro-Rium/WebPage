@@ -40,6 +40,7 @@
                 const text = isDrain ? '吸血' : isBleed ? '流血' : isPoison ? '中毒' : '荆棘';
                 engine.emit(eventTypes.HURT || 'hurt', `-${damage}❤️[${text}]`, null, {
                     who: target, target, amount: damage, hpBefore, hpAfter: entity.hp, kind: damageKind,
+                    damageSource: root.EngineDamage && root.EngineDamage.isBuffDamage(Object.assign({kind}, opts)) ? 'buff' : (opts.damageSource || 'attack'),
                     bleed: isBleed, drain: isDrain, poison: isPoison, thorns: isThorns,
                     // Special attacks may keep their own consolidated feedback
                     // (for example, life steal shows one heal float only).
@@ -48,7 +49,8 @@
                 return;
             }
             engine.emit(eventTypes.HIT || 'hit', `受到${damage}点伤害`, null, {
-                who: target, target, amount: damage, hpBefore, hpAfter: entity.hp, kind: kinds.NORMAL
+                who: target, target, amount: damage, hpBefore, hpAfter: entity.hp, kind: kinds.NORMAL,
+                damageSource: root.EngineDamage && root.EngineDamage.isBuffDamage(Object.assign({kind}, opts)) ? 'buff' : (opts.damageSource || 'attack')
             });
         },
 
@@ -293,7 +295,7 @@
             if (!attacker || !target) return 0;
             let remaining = Math.max(0, Number(amount) || 0);
             if (remaining <= 0) return 0;
-            if (opts.allowAvoidance !== false) {
+            if (root.EngineDamage ? root.EngineDamage.canAvoid(opts) : opts.allowAvoidance !== false) {
                 if (opts.forceDrainAvoidance && typeof engine.applyDrainAvoidance === 'function') {
                     remaining = engine.applyDrainAvoidance(target, remaining);
                 } else if (typeof engine.applyDefenderAvoidance === 'function') {

@@ -661,11 +661,13 @@
       const isDrain=!!opts.isDrain;let dmg=Math.max(0,Number(damage)||0);
       if(!attacker||!target)return 0;
       const card=opts.atkCard||(this.s&&this.s.atkCard);
-      if(!opts.direct&&this.divingBlocksDamage&&this.divingBlocksDamage(target,card)){
+      const policy=this._damage(),isBuff=policy&&policy.isBuffDamage(opts);
+      const canAvoid=policy?policy.canAvoid(opts):opts.allowAvoidance!==false;
+      if(!opts.direct&&!isBuff&&this.divingBlocksDamage&&this.divingBlocksDamage(target,card)){
         this.emit('desc',(target.name||'')+'有[潜水]，免疫蓝色攻击伤害');dmg=0;
       }else if(isDrain){
         return this.dealAttackHit(attacker,target,dmg,true,opts);
-      }else if(opts.allowAvoidance!==false){
+      }else if(canAvoid){
         dmg=this.applyDefenderAvoidance(target,dmg,{forceSpend:true});
       }
       return this.dealAttackHit(attacker,target,dmg,false,opts);
@@ -677,16 +679,17 @@
       if(!attacker||((type!=='aoe')&&(!target||!target.alive)))return 0;
       let total=0;
       const card=atkCard||this.s.atkCard;
-      const canAvoid=allowAvoidance!==undefined?!!allowAvoidance:true;
+      const policy=this._damage(),isBuff=policy&&policy.isBuffDamage(cfg);
+      const canAvoid=policy?policy.canAvoid(cfg):allowAvoidance!==false;
       const avoidOpts={forceSpend:true};
-      const hitOpts={silent,suppressFloat};
+      const hitOpts={silent,suppressFloat,damageSource:isBuff?'buff':(cfg.damageSource||'attack')};
       if(type==='aoe'){
         if(aoeTargets&&aoeDamage>0){
           for(const vk of aoeTargets){
             if(skipTarget&&vk===tk)continue;
             const vc=this.s[vk];
             if(!vc||!vc.alive)continue;
-            if(!direct&&this.divingBlocksDamage(vc,card))continue;
+            if(!direct&&!isBuff&&this.divingBlocksDamage(vc,card))continue;
             let admg=Math.max(0,Number(aoeDamage)||0);
             if(canAvoid)admg=this.applyDefenderAvoidance(vc,admg,avoidOpts);
             if(admg<=0)continue;
@@ -697,7 +700,7 @@
         }
       }else{
         let dmg=Math.max(0,Number(damage)||0);
-        if(!direct&&this.divingBlocksDamage(target,card)){this.emit('desc',target.name+'有[潜水]，免疫蓝色攻击伤害');dmg=0}
+        if(!direct&&!isBuff&&this.divingBlocksDamage(target,card)){this.emit('desc',target.name+'有[潜水]，免疫蓝色攻击伤害');dmg=0}
         else if(canAvoid){dmg=this.applyDefenderAvoidance(target,dmg,avoidOpts)}
         if(type==='drain'){
           const before=target.hp;this.hurt(target,dmg,'drain',hitOpts);
@@ -724,8 +727,8 @@
     chooseDefenderGuardUse(defender,damage){let guard=defender.guard||0;if(damage<=0||guard<=0)return 0;if(this.s.isAdventure)return Math.min(guard,damage);return this.chooseMozeGuardUse(guard,damage,defender.hp)}
     applyDefenderGuard(defender,damage,opts={}){if(!defender||damage<=0)return Math.max(0,damage);let use=opts.forceSpend?Math.min(defender.guard||0,damage):this.chooseDefenderGuardUse(defender,damage);if(use<=0)return Math.max(0,damage);let S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.remove(defender,'guard',use);else defender.guard-=use;let remaining=Math.max(0,damage-use);this.emit('desc',defender.name+'消耗'+use+'层[守护]，减免'+use+'点伤害');return remaining}
     applyDefenderFly(defender,damage){if(!defender||damage<=0)return Math.max(0,damage);let stacks=Math.max(0,Number(defender.fly)||0);if(stacks<=0)return Math.max(0,damage);let S=window.FurryGame&&window.FurryGame.StatusService;while(stacks>0&&damage>0){if(S)S.remove(defender,'fly',1);else defender.fly=stacks-1;stacks=Math.max(0,Number(defender.fly)||0);this.emit('desc',defender.name+'消耗1层[飞翔]尝试躲避');const roll=this.rollD12('飞翔判定',{who:this._who(defender)});if(roll<=6){this.emit('desc',defender.name+'飞翔躲避成功（'+roll+'，1-6成功）');return 0}this.emit('desc',defender.name+'飞翔躲避失败（'+roll+'，7-12失败）')}return Math.max(0,damage)}
-    applyDefenderAvoidance(defender,damage,opts={}){let remaining=this.applyDefenderFly(defender,damage);if(remaining>0)remaining=this.applyDefenderGuard(defender,remaining,opts);return remaining}
-    counterAttack(attacker,target,damage,opts={}){const attackerKey=typeof attacker==='string'?attacker:this._who(attacker),targetKey=typeof target==='string'?target:this._who(target);if(!attackerKey||!targetKey||!damage)return 0;return this.performAttack(Object.assign({type:'normal',attacker:attackerKey,target:targetKey,damage:Number(damage)||0,allowAvoidance:true,direct:true},opts))}
+    applyDefenderAvoidance(defender,damage,opts={}){const policy=this._damage();if(policy&&!policy.canAvoid(opts))return Math.max(0,damage);let remaining=this.applyDefenderFly(defender,damage);if(remaining>0)remaining=this.applyDefenderGuard(defender,remaining,opts);return remaining}
+    counterAttack(attacker,target,damage,opts={}){const attackerKey=typeof attacker==='string'?attacker:this._who(attacker),targetKey=typeof target==='string'?target:this._who(target);if(!attackerKey||!targetKey||!damage)return 0;return this.performAttack(Object.assign({type:'normal',attacker:attackerKey,target:targetKey,damage:Number(damage)||0,damageSource:'counter',allowAvoidance:true,direct:true},opts))}
     applyDrainAvoidance(defender,damage){
       let remaining=this.applyDefenderFly(defender,damage);
       if(remaining>0&&defender&&(defender.guard||0)>0){
@@ -764,7 +767,7 @@
         const ch=this.s[ended];
         if(ch&&ch.alive&&ch.hypnosis)this._promoteHypnosis(ch,ended);
       }
-      if((x.poison||0)>0){let dmg=x.poison,who=w==='player'?'player':(w==='ai2'?'ai2':'ai');this.emit('poisonSettle',`-${dmg}❤️[中毒]`,null,{who,amount:dmg,hpBefore:x.hp,hpAfter:Math.max(0,x.hp-dmg)});this.hurt(x,dmg,'poison',{silent:true});if(this.name(x)==='Serenity'&&x.hp<30)x.bloodthirst=true}if((x.parasite||0)>0){let opp=null;if(w==='player'){opp=(this.s.ai&&this.s.ai.alive)?this.s.ai:((this.s.ai2&&this.s.ai2.alive)?this.s.ai2:null)}else opp=this.s.player;if(opp&&opp.alive)this.drainAttack(x,opp,1,{allowAvoidance:false})}if((x.lush||0)>0){const amt=Math.min(2,x.lush);this.heal(x,amt)}let n=this.name(x),m=CharacterRegistry.get(n);if(m)m.turnStart(this,x,w)}
+      if((x.poison||0)>0){let dmg=x.poison,who=w==='player'?'player':(w==='ai2'?'ai2':'ai');this.emit('poisonSettle',`-${dmg}❤️[中毒]`,null,{who,amount:dmg,hpBefore:x.hp,hpAfter:Math.max(0,x.hp-dmg)});this.hurt(x,dmg,'poison',{silent:true});if(this.name(x)==='Serenity'&&x.hp<30)x.bloodthirst=true}if((x.parasite||0)>0){let opp=null;if(w==='player'){opp=(this.s.ai&&this.s.ai.alive)?this.s.ai:((this.s.ai2&&this.s.ai2.alive)?this.s.ai2:null)}else opp=this.s.player;if(opp&&opp.alive)this.drainAttack(x,opp,1,{allowAvoidance:false,damageSource:'buff'})}if((x.lush||0)>0){const amt=Math.min(2,x.lush);this.heal(x,amt)}let n=this.name(x),m=CharacterRegistry.get(n);if(m)m.turnStart(this,x,w)}
     legal(c,def=false){let t=this.s.discardTop,tc=t.chosenColor||t.color,cc=c.chosenColor||c.color;if(c.trophyWhite&&c.trophyEffect==='disarm'&&def)return false;if(c.isItemCard)return true;if(def&&c.value>3)return false;return c.isWhite||tc===cc||t.value===c.value}
     select(i){
       const card=this.h.player[i];

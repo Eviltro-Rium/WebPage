@@ -104,6 +104,48 @@
             box.dataset.cardKey = key;
         },
 
+        // Inline D12 decisions, no modal and no inventory-slot activation.
+        _renderDiceControl() {
+            const zone = document.getElementById('reveal-cards')?.closest('.reveal-zone');
+            if (!zone) return;
+            let panel = zone.querySelector('.dice-control-panel');
+            const pending = this.state && this.state.pendingDiceControl;
+            zone.classList.toggle('dice-control-active', !!pending);
+            if (!pending) { if (panel) panel.remove(); return; }
+            if (!panel) {
+                panel = document.createElement('div');
+                panel.className = 'dice-control-panel';
+                zone.appendChild(panel);
+            }
+            const key = pending.presentedThrough + ':' + pending.diceIndex;
+            if (panel.dataset.key === key) return;
+            panel.dataset.key = key;
+            panel.innerHTML = '<div class="dice-control-actions"><button type="button" data-keep>保留 ' + pending.value + '</button>' +
+                '<button type="button" data-edit aria-expanded="false">遥控骰子</button></div>' +
+                '<div class="dice-face-grid" hidden aria-label="选择骰面">' +
+                Array.from({length:12},(_,i)=>'<button type="button" data-face="'+(i+1)+'">'+(i+1)+'</button>').join('') + '</div>';
+            const submit = (use,value) => {
+                if (this._isHandlingAction || this._isConsumingEvents) return;
+                if (use) {
+                    const face = zone.querySelector('.d12-result strong, .d12-die-face');
+                    if (face) face.textContent = String(value);
+                }
+                panel.querySelectorAll('button').forEach(button => button.disabled = true);
+                this._apiAction('chooseDiceControl',{use,value}).finally(() => {
+                    if (panel.isConnected) panel.querySelectorAll('button').forEach(button => button.disabled = false);
+                });
+            };
+            panel.querySelector('[data-keep]').onclick = () => submit(false);
+            panel.querySelector('[data-edit]').onclick = event => {
+                const grid = panel.querySelector('.dice-face-grid');
+                grid.hidden = !grid.hidden;
+                event.currentTarget.setAttribute('aria-expanded',String(!grid.hidden));
+            };
+            panel.querySelectorAll('[data-face]').forEach(button => {
+                button.onclick = () => submit(true,Number(button.dataset.face));
+            });
+        },
+
         showError(msg) {
             const el = document.getElementById('error-hint');
             if (!el) return;

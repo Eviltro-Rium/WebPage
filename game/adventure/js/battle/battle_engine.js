@@ -159,9 +159,16 @@
       this.s.trophyDropHandled[defeatedKey] = true;
       const defeated = this.s[defeatedKey];
       const monsterName = defeated && defeated.name;
-      const loot = window.AdventureLoot && typeof window.AdventureLoot.rollMonsterDrop === 'function'
-        ? window.AdventureLoot.rollMonsterDrop(this.s.adventureScene || 'castle', monsterName)
-        : null;
+      const lootService = window.AdventureLoot;
+      const found = lootService && lootService.getDropRule(monsterName);
+      if (!found) return null;
+      const dropSummary = lootService.formatDropSummary(found.rule);
+      const label = monsterName || defeatedKey;
+      // All D12 outcomes go through one engine boundary, including loot.
+      const roll = this.rollD12(dropSummary, {
+        who: 'player', purpose: 'trophyDrop', monsterName: label, dropSummary
+      });
+      const loot = lootService.rollMonsterDrop(this.s.adventureScene || found.scene, monsterName, null, roll);
       if (!loot || loot.roll == null) return loot;
       const drops = Array.isArray(loot.drops) ? loot.drops.slice() : [];
       if (drops.length && this.piles && this.piles.player && window.AdventureDeck) {
@@ -170,16 +177,8 @@
           this.s.trophyDrops.push(itemName);
         }
       }
-      const label = monsterName || defeatedKey;
-      // Reuse the shared dice event contract so the normal combat UI plays the
-      // same D12 animation used by Fly and Russian Roulette.
-      const dropOutcome = drops.length ? "success" : "fail";
-      const dropSummary = loot.summary || "掉落规则未配置";
-      this.s.diceRoll = { sides: 12, value: loot.roll, desc: dropSummary };
-      this.emit("diceRoll", dropSummary, null, {
-        kind: "d12", sides: 12, value: loot.roll, who: "player", outcome: dropOutcome,
-        purpose: "trophyDrop", monsterName: label, dropSummary
-      });
+      const diceEvent = [...this.events].reverse().find(evt => evt.type === 'diceRoll');
+      if (diceEvent) { diceEvent.desc = dropSummary; diceEvent.outcome = drops.length ? 'success' : 'fail'; }
       // Keep the drop table beneath the die after the result lands.
       this.emit("desc", dropSummary);
       this.emit('trophyDrop', '战利白卡掉落结算', {
@@ -1365,6 +1364,8 @@
       this.s.aiHasPlayed = false;
       this.s.bindUsedThisTurn = false;
       this._energyShieldAppliedThisTurn = false;
+      // The NPC just finished attacking; turnStart consumes this phase marker.
+      this.s.pendingHypnosisPromote = 'ai';
       const hands = this.handCounts();
       this.silentDraws(function () {
         this.fillHands(false);

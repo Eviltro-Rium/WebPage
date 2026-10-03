@@ -15,6 +15,18 @@
   /* ===== 一次性道具 ===== */
 
   R.registerItem({
+    name: 'DiceController',
+    displayName: '遥控骰子',
+    kind: 'consumable',
+    description: '每次12面骰判定时，可在判定区选择保留结果，或消耗此道具指定1–12的骰面（含敌方及掉落判定；致盲时不能使用）',
+    icon: ICON + 'dice_controller.webp',
+    useScene: 'combat',
+    price: 4,
+    combatUse: 'diceController',
+    diceOnly: true
+  });
+
+  R.registerItem({
     name: 'PurifyWater1',
     displayName: '净化之水',
     kind: 'consumable',

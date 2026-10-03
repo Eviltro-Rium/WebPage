@@ -60,6 +60,7 @@ const adventureExpected = expand(['characters', 'ai', 'combat']).concat([
   'adventure/js/engine/combat_result.js',
   'adventure/js/battle/battle_engine.js',
   'adventure/js/battle/adventure_battle_items.js',
+  'adventure/js/battle/dice_controller.js',
   'adventure/js/save/adventure_save.js',
   'adventure/js/ui/card_render.js',
   'adventure/js/battle/adventure_battle_session.js',

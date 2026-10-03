@@ -527,7 +527,7 @@ _isDecisionAction(method) {
         'doSaikiThreeDiscard', 'doChanFourDiscard', 'doChanFourSwap',
         'doSaikiSixConfirm', 'resolveAttackModChoice', 'resolveCritChoice', 'chooseTarget', 'chooseColor', 'choosePurify',
         'chooseSuperPurifyTarget', 'chooseGuard', 'chanFiveReorder', 'choosePurifyCrystal', 'chooseMozeSeven',
-        'chooseAICard', 'doOpponentCardConfirm', 'chooseTrophyDisarm', 'chooseTrophyPurify'
+        'chooseAICard', 'doOpponentCardConfirm', 'chooseTrophyDisarm', 'chooseTrophyPurify', 'chooseDiceControl'
     ]).has(method);
 },
 
@@ -536,7 +536,7 @@ _isInteractiveDecisionPhase(phase) {
         'PLAYER_FIVE_CHOICE', 'PLAYER_SEVEN_CHOICE',
         'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'ATTACK_MOD_CHOICE', 'CRIT_CHOICE', 'PLAYER_DISCARD',
         'CHAN_FIVE_REORDER', 'GUARD_CHOICE', 'TARGET_CHOICE', 'PURIFY_CRYSTAL_CHOICE', 'OPPONENT_CARD_CHOICE',
-        'TROPHY_DISARM_CHOICE', 'TROPHY_PURIFY_CHOICE'
+        'TROPHY_DISARM_CHOICE', 'TROPHY_PURIFY_CHOICE', 'DICE_CHOICE'
     ]).has(phase);
 },
 

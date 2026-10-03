@@ -72,6 +72,7 @@
 
     _canUseAdventureCombatItemNow(def) {
       if (!this.s || !this.s.isAdventure) return false;
+      if (def && def.diceOnly) return false; // Only the judgment area's decision can consume this item.
       if (this.s.busy) return false;
       if (this.s.needColorChoice) return false;
       if (this.s.player && (this.s.player.blind || 0) > 0 && def && def.kind === 'consumable') return false;
