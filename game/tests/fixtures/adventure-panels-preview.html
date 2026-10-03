@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../../adventure/"><title>商店与铁匠铺稳定渲染预览</title>
+<link rel="stylesheet" href="../css/game.css"><link rel="stylesheet" href="css/adventure.css"></head>
+<body><nav style="padding:12px;text-align:center"><button id="preview-shop">商店预览</button> <button id="preview-blacksmith">铁匠铺预览</button></nav><div id="panels"></div>
+<script src="../js/ui/render/runtime.js"></script><script src="js/content/registry.js"></script><script src="js/content/currency.js"></script><script src="js/content/room.js"></script><script src="js/items/item_defs.js"></script><script src="js/deck/adventure_deck.js"></script><script src="../js/ui/card_style.js"></script>
+<script src="js/ui/adventure_ui.js"></script><script src="js/ui/adventure_ui_map_view.js"></script><script src="js/ui/adventure_ui_panels.js"></script><script src="js/ui/adventure_ui_views.js"></script>
+<script>
+window.AdventurePhase=Object.fromEntries(['MAP','SHOP','BLACKSMITH','REWARD','COMBAT','PLAYER_PLAY','PLAYER_DEFEND','NPC_TURN','CLEAR','GAME_OVER'].map(name=>[name,'ADVENTURE_'+name]));
+const definition=name=>({...AdventureRegistry.getItem(name)});
+const snap={phase:'ADVENTURE_SHOP',stage:2,scene:'forest',player:{name:'Ryan',type:'战士',hp:70,maxHp:70,buffs:{}},currency:{gold:20,tokens:{ben:3,cao:2,shui:2,huo:2,wuneng:1},totalBeast:10,maxBeast:12},consumables:[definition('Dodge')],accessories:[definition('WisdomNecklace')],trophyWhiteCards:[],roomInfo:{},playerPile:{hand:[{value:3,color:'RED',isNumberCard:true}],handCount:1,deckCount:98,discardCount:0},blacksmithCanPay:{slots:[true,true,true],trophy:true},logEntries:[]};
+snap.roomInfo.shopSlots=[definition('Dodge'),definition('NaturalShield'),definition('LaserEye'),{displayName:'本兽元',icon:AdventureCurrency.BEAST_ICON.ben,price:2},{displayName:'水兽元',icon:AdventureCurrency.BEAST_ICON.shui,price:2},{...definition('WisdomNecklace'),price:15}];
+snap.roomInfo.blacksmithSlots=[definition('WisdomNecklace'),definition('EnergyShield'),definition('FreezeLaser')];
+snap.roomInfo.blacksmithTrophy=definition('BurnTrophy');
+const ui=Object.create(AdventureUI.prototype);ui.container=document.getElementById('panels');ui._test=null;ui._toast=()=>{};
+ui.eng={s:snap,selectShopSlot:index=>snap.shopSelectedSlot=index,selectBlacksmithSlot:index=>snap.blacksmithSelectedSlot=index};
+ui.render=()=>AdventureUIViews.render(ui,snap);ui.bindActions();
+document.getElementById('preview-shop').onclick=()=>{snap.phase='ADVENTURE_SHOP';ui.render();};
+document.getElementById('preview-blacksmith').onclick=()=>{snap.phase='ADVENTURE_BLACKSMITH';ui.render();};
+ui.render();cardIconsReady.then(()=>ui.render());
+</script></body></html>

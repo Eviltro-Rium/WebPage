@@ -60,6 +60,7 @@
         const height = Number(slot.getAttribute('data-trophy-card-height')) || 78;
         const canvas = window.renderCard(card, width, height, false);
         canvas.classList.add('adv-scene-trophy-card-canvas');
+        canvas.dataset.renderKey = ['trophy', card.trophyName, width, height, window.CardStyle && window.CardStyle.iconRevision || 0].join(':');
         slot.replaceWith(canvas);
       });
     }
@@ -157,32 +158,13 @@
       const handZone = side.querySelector('#adv-hand-zone');
       if (handZone && snap.playerPile && snap.playerPile.hand) {
         const cw = window.CARD_W || 70, ch = window.CARD_H || 100;
-        const paintHand = () => {
-          handZone.innerHTML = '';
-          for (const card of snap.playerPile.hand) {
-            const cv = window.renderCard(card, cw, ch, false);
-            cv.classList.add('disabled');
-            handZone.appendChild(cv);
-          }
-        };
-        const animatePendingEffect = () => {
-          if (!this._pendingMapReturnEffect) return;
-          const effect = this._pendingMapReturnEffect;
-          this._pendingMapReturnEffect = null;
-          // Let the map/sidebar finish mounting before applying transforms.
-          schedule(() => this._animateMapReturnEffects(effect), 30);
-        };
-        paintHand();
-        if (window.cardIconsReady) {
-          window.cardIconsReady.then(() => {
-            if (side.isConnected && side.querySelector('#adv-hand-zone') === handZone) {
-              paintHand();
-              animatePendingEffect();
-            }
-          });
-        } else {
-          animatePendingEffect();
-        }
+        const revision = window.CardStyle && window.CardStyle.iconRevision || 0;
+        snap.playerPile.hand.forEach((card, index) => {
+          const cv = window.renderCard(card, cw, ch, false);
+          cv.classList.add('disabled');
+          cv.dataset.renderKey = ['map-hand', index, JSON.stringify(card), cw, ch, revision].join(':');
+          handZone.appendChild(cv);
+        });
       }
     
       return side;
@@ -539,8 +521,8 @@
       } else if (snap.phase === Phase.BLACKSMITH) {
         btns += '<div class="adv-action-hint">请在铁匠铺页操作</div>';
       } else if (snap.phase === Phase.CLEAR) {
-        btns += '<div class="adv-clear-hint">地牢通关！</div>';
-        btns += '<button class="adv-btn adv-btn-primary" id="adv-next-stage">进入下一层</button>';
+        btns += '<div class="adv-clear-hint">' + (snap.stage >= 4 ? '冒险胜利！' : '本层通关！') + '</div>';
+        if (snap.stage < 4) btns += '<button class="adv-btn adv-btn-primary" id="adv-next-stage">进入下一层</button>';
       } else if (snap.phase === Phase.GAME_OVER) {
         btns += '<div class="adv-gameover-hint">冒险失败</div>';
       }

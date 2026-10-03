@@ -634,7 +634,7 @@
   .adv-test-mode-grid { grid-template-columns:1fr; }
 }
 
-.adv-settle-box { min-width: 340px; max-width: 460px; }
+.adv-settle-box { min-width: 0; }
 .adv-settle-rewards { text-align: left; margin: 8px 0 16px; }
 .adv-settle-row {
   display: flex; align-items: center; gap: 8px;
@@ -675,25 +675,30 @@
   border: 2px solid transparent;
 }
 
-/* ===== 结算弹窗侧边栏 ===== */
-.adv-settle-wrapper {
-  display: flex; gap: 16px; align-items: stretch;
-  max-width: 92vw; max-height: 90vh;
+/* ===== 奖励与当前持有共用一张结算卡片 ===== */
+.game-over-box.adv-settle-wrapper {
+  width: min(820px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.adv-settle-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  gap: 24px;
+  align-items: start;
 }
 .adv-settle-sidebar {
-  background: var(--glass-fill, rgba(20, 18, 38, 0.85));
-  border: 1px solid var(--glass-border, rgba(168, 85, 247, 0.25));
-  border-radius: var(--radius, 14px);
-  padding: 18px 20px; min-width: 200px; max-width: 260px;
-  backdrop-filter: blur(22px) saturate(145%);
-  -webkit-backdrop-filter: blur(22px) saturate(145%);
-  box-shadow: 0 16px 48px rgba(12, 74, 110, 0.25);
-  overflow-y: auto; text-align: left;
-  align-self: center;
+  min-width: 0;
+  padding-left: 24px;
+  border-left: 1px solid var(--glass-border, rgba(168, 85, 247, 0.25));
+  text-align: left;
 }
 .adv-sidebar-title {
   font-size: 1rem; font-weight: 700; color: #c4b5fd;
-  margin-bottom: 12px; text-align: center;
+  margin-bottom: 12px; text-align: left;
   border-bottom: 1px solid rgba(168, 85, 247, 0.25); padding-bottom: 8px;
 }
 .adv-sidebar-section { margin-bottom: 12px; }
@@ -714,11 +719,16 @@
 }
 .adv-sidebar-icon { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
 .adv-sidebar-noicon { width: 18px; height: 18px; flex-shrink: 0; display: inline-block; }
-.adv-sidebar-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adv-sidebar-item-name { min-width: 0; overflow-wrap: anywhere; }
 
 @media (max-width: 700px) {
-  .adv-settle-wrapper { flex-direction: column; }
-  .adv-settle-sidebar { min-width: 0; max-width: none; width: 100%; }
+  .game-over-box.adv-settle-wrapper { padding: 20px 16px; }
+  .adv-settle-content { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .adv-settle-sidebar {
+    padding: 16px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--glass-border, rgba(168, 85, 247, 0.25));
+  }
 }
 
 /* ===== 道具系统 ===== */
@@ -909,8 +919,7 @@
   .adventure-header,
   .adv-card,
   .adv-select-screen,
-  .adv-test-shell,
-  .adv-settle-sidebar
+  .adv-test-shell
 ) {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;

@@ -47,8 +47,20 @@
       wrap.appendChild(ui._buildSidebar(snap));
       wrap.appendChild(ui._buildLog(snap.logEntries));
       const dom=global.FurryGame&&global.FurryGame.RenderDOM;
-      if(dom)dom.preserveImages(ui.container,wrap);
-      ui.container.replaceChildren(wrap);
+      if (dom && [Phase.SHOP, Phase.BLACKSMITH].includes(snap.phase)) {
+        dom.patchTree(ui.container, [wrap]);
+      } else {
+        if(dom)dom.preserveImages(ui.container,wrap);
+        ui.container.replaceChildren(wrap);
+      }
+      if (snap.phase === Phase.MAP && ui._pendingMapReturnEffect) {
+        const effect = ui._pendingMapReturnEffect;
+        ui._pendingMapReturnEffect = null;
+        const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
+        const play = () => ui._animateMapReturnEffects(effect);
+        if (runtime) runtime.schedule(null, play, 30);
+        else global.setTimeout(play, 30);
+      }
     }
   };
 

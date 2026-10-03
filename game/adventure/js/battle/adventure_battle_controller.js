@@ -242,32 +242,29 @@
   }
 
   function bindSettleEvents(overlay, eng, leave) {
-    overlay.querySelectorAll('[data-beast-slot]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        eng.toggleBeastSlot(parseInt(btn.getAttribute('data-beast-slot'), 10));
+    overlay._settlementContext = { eng, leave };
+    if (overlay._settlementBound) return;
+    overlay._settlementBound = true;
+    overlay.addEventListener('click', event => {
+      const button = event.target.closest && event.target.closest('button');
+      if (!button || !overlay.contains(button) || button.disabled) return;
+      const { eng, leave } = overlay._settlementContext;
+      const refresh = () => {
+        saveAdventureProgress(eng);
+        if (eng.s.phase === window.AdventurePhase.MAP) leave();
+        else renderSettlement(overlay, eng, leave);
+      };
+      if (button.hasAttribute('data-beast-slot')) {
+        eng.toggleBeastSlot(Number(button.getAttribute('data-beast-slot')));
         saveAdventureProgress(eng);
         renderSettlement(overlay, eng, leave);
-      });
-    });
-    overlay.querySelectorAll('[data-beast-discard]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        eng.discardBeastToken(btn.getAttribute('data-beast-discard'));
-        saveAdventureProgress(eng);
-        if (eng.s.phase === window.AdventurePhase.MAP) leave();
-        else renderSettlement(overlay, eng, leave);
-      });
-    });
-    overlay.querySelectorAll('[data-item-discard]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        eng.discardConsumable(parseInt(btn.getAttribute('data-item-discard'), 10));
-        saveAdventureProgress(eng);
-        if (eng.s.phase === window.AdventurePhase.MAP) leave();
-        else renderSettlement(overlay, eng, leave);
-      });
-    });
-    const claimBtn = overlay.querySelector('#adv-settle-claim');
-    if (claimBtn) {
-      claimBtn.addEventListener('click', () => {
+      } else if (button.hasAttribute('data-beast-discard')) {
+        eng.discardBeastToken(button.getAttribute('data-beast-discard'));
+        refresh();
+      } else if (button.hasAttribute('data-item-discard')) {
+        eng.discardConsumable(Number(button.getAttribute('data-item-discard')));
+        refresh();
+      } else if (button.id === 'adv-settle-claim') {
         if (!eng.claimCombatReward()) {
           if (eng._lastRewardError && eng._lastRewardError.reason === 'accessoryFull') {
             saveAdventureProgress(eng);
@@ -275,48 +272,34 @@
           }
           return;
         }
-        saveAdventureProgress(eng);
-        if (eng.s.phase === window.AdventurePhase.MAP) leave();
-        else renderSettlement(overlay, eng, leave);
-      });
-    }
-    const deferBtn = overlay.querySelector('#adv-settle-defer');
-    if (deferBtn) {
-      deferBtn.addEventListener('click', () => {
-        if (!eng.deferCombatReward()) return;
-        saveAdventureProgress(eng);
-        if (eng.s.phase === window.AdventurePhase.MAP) leave();
-        else renderSettlement(overlay, eng, leave);
-      });
-    }
-    const nextBtn = overlay.querySelector('#adv-settle-next');
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
+        refresh();
+      } else if (button.id === 'adv-settle-defer') {
+        if (eng.deferCombatReward()) refresh();
+      } else if (button.id === 'adv-settle-next') {
         const current = eng.snapshot();
-        if (current.pendingCombatReward && current.pendingCombatReward.stage === 'basic' && !current.pendingCombatReward.applied && current.pendingCombatReward.roomType === 'boss') {
+        const pending = current.pendingCombatReward;
+        if (pending && pending.stage === 'basic' && !pending.applied && pending.roomType === 'boss') {
           if (!eng.deferCombatReward()) return;
         }
         eng.enterNextStage();
         saveAdventureProgress(eng);
         leave();
-      });
-    }
-    const mapBtn = overlay.querySelector('#adv-settle-map');
-    if (mapBtn) mapBtn.addEventListener('click', () => {
-      // If the Boss reward is still pending, stash it before leaving so the
-      // player can collect it by revisiting the cleared room later.
-      const current = eng.snapshot();
-      const pending = current && current.pendingCombatReward;
-      if (current && current.phase === window.AdventurePhase.COMBAT_SETTLE &&
-          pending && pending.stage === 'basic' && !pending.applied && pending.roomType === 'boss') {
-        if (!eng.deferCombatReward()) return;
+      } else if (button.id === 'adv-settle-map') {
+        const current = eng.snapshot(), pending = current.pendingCombatReward;
+        if (current.phase === window.AdventurePhase.COMBAT_SETTLE && pending &&
+            pending.stage === 'basic' && !pending.applied && pending.roomType === 'boss') {
+          if (!eng.deferCombatReward()) return;
+        }
+        eng.returnToMap();
+        saveAdventureProgress(eng);
+        leave();
+      } else if (button.id === 'adv-settle-victory-home') {
+        abandonAdventure();
+        goToGameHome();
+      } else if (button.id === 'adv-settle-return') {
+        goToGameHome();
       }
-      eng.returnToMap();
-      saveAdventureProgress(eng);
-      leave();
     });
-    const returnBtn = overlay.querySelector('#adv-settle-return');
-    if (returnBtn) returnBtn.addEventListener('click', () => goToGameHome());
   }
 
   function beastAutoRewardHtml(beast, AC) {
@@ -453,16 +436,19 @@
     const AC = window.AdventureCurrency;
     const Phase = window.AdventurePhase;
     const playerWon = snap.phase !== Phase.GAME_OVER;
+    const adventureWon = snap.phase === Phase.CLEAR && snap.stage >= 4;
     const pending = snap.pendingCombatReward;
 
-    let html = '<div class="adv-settle-wrapper">';
-    html += '<div class="game-over-box adv-settle-box">';
-    if (!playerWon) {
-      html += '<h2>败北...</h2>' +
-        '<div class="winner-text">冒险失败</div>' +
+    let html = '<div class="game-over-box adv-settle-wrapper">';
+    html += '<h2>' + (adventureWon ? '冒险胜利!' : playerWon ? '胜利!' : '败北...') + '</h2>';
+    html += '<div class="adv-settle-content"><div class="adv-settle-box">';
+    if (adventureWon) {
+      html += '<div class="winner-text">已通关全部四层，冒险完成！</div>' +
+        '<button id="adv-settle-victory-home">返回游戏主页</button>';
+    } else if (!playerWon) {
+      html += '<div class="winner-text">冒险失败</div>' +
         '<button id="adv-settle-return">返回主页</button>';
     } else {
-      html += '<h2>胜利!</h2>';
       html += '<div class="adv-settle-rewards">';
 
       if (errorMsg) {
@@ -553,8 +539,10 @@
     }
     html += '</div>';
     html += buildSidebarHtml(snap);
-    html += '</div>';
-    overlay.innerHTML = html;
+    html += '</div></div>';
+    const dom = window.FurryGame && window.FurryGame.RenderDOM;
+    if (dom) dom.patchMarkup(overlay, html);
+    else overlay.innerHTML = html;
     bindSettleEvents(overlay, eng, leave);
   }
 
@@ -586,7 +574,9 @@
     if (!eng || !eng.s) return false;
     const Phase = window.AdventurePhase || {};
     const resumable = [Phase.COMBAT_SETTLE, Phase.BEAST_CHOICE, Phase.BEAST_DISCARD, Phase.ITEM_DISCARD];
-    if (resumable.indexOf(eng.s.phase) < 0) return false;
+    const adventureWon = eng.s.phase === Phase.CLEAR && eng.s.stage >= 4;
+    if (!adventureWon && resumable.indexOf(eng.s.phase) < 0) return false;
+    if (adventureWon) clearCombatSession();
     onComplete = typeof callback === 'function' ? callback : null;
     battleEngine = null;
     completing = false;
@@ -627,6 +617,7 @@
         advEng.applyBattleResult(persistentState);
         advEng.onCombatEnd(playerWon ? 'win' : 'lose');
         if (playerWon) saveAdventureProgress(advEng);
+        if (advEng.s.phase === window.AdventurePhase.CLEAR && advEng.s.stage >= 4) clearCombatSession();
         showAdventureSettlement(advEng, finalState, persistentState, playerWon);
         return;
       }

@@ -84,6 +84,7 @@ const stableTests = [
   'defense-effects.test.js',
   'judgment-lifetime.test.js',
   'dialog-ui.test.js',
+  'settlement-ui.test.js',
   'fly-guard.test.js',
   'hypnosis-sleep.test.js',
   'status-registry.test.js',

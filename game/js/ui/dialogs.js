@@ -134,14 +134,14 @@ class DialogManager {
         overlay.innerHTML = `<div class="game-over-box">
             <h2>${playerWon ? '胜利!' : '败北...'}</h2>
             <div class="winner-text">${playerWon ? s.player.name : (s.is1v2 ? 'AI阵营' : s.ai.name)}赢得了比赛</div>
-            <button id="btn-restart-overlay">${online ? '返回房间' : '再来一局'}</button>
+${online ? '            <button id="btn-online-room-overlay">返回房间</button>' : ''}
             <button id="btn-back-select-overlay">${online ? '返回主页' : '重新选择'}</button></div>`;
         document.body.appendChild(overlay);
         const closeFn = async action => {
             overlay.remove();
             if (onClose) await onClose(online ? action : undefined);
         };
-        document.getElementById('btn-restart-overlay').addEventListener('click', () => closeFn('room'));
+        if (online) document.getElementById('btn-online-room-overlay').addEventListener('click', () => closeFn('room'));
         document.getElementById('btn-back-select-overlay').addEventListener('click', () => closeFn('home'));
     }
 

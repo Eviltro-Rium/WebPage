@@ -29,10 +29,16 @@
   }
 
   const transient = ['icon-appear', 'buff-trigger-flash', 'acc-trigger-flash'];
-  const key = node => node.nodeType === 1 && (
-    node.id || node.getAttribute('data-buff-key') || node.getAttribute('data-render-key') ||
-    node.getAttribute('data-acc-name') || node.getAttribute('data-item-index')
-  );
+  function key(node) {
+    if (node.nodeType !== 1) return null;
+    const explicit = node.id || node.getAttribute('data-buff-key') || node.getAttribute('data-render-key') ||
+      node.getAttribute('data-acc-name') || node.getAttribute('data-item-index');
+    if (explicit) return explicit;
+    for (const name of ['data-shop-slot', 'data-blacksmith-slot', 'data-beast-slot', 'data-beast-discard', 'data-recycle-index', 'data-accessory-name']) {
+      if (node.hasAttribute(name)) return name + ':' + node.getAttribute(name);
+    }
+    return node.nodeName === 'IMG' ? 'image:' + node.getAttribute('src') : null;
+  }
 
   function attributes(node, next) {
     for (const attr of [...node.attributes]) {
@@ -99,11 +105,14 @@
     node._renderRetirement = null;
   }
 
-  function children(parent, nextParent) {
+  function children(parent, nextParent, adoptNodes = false) {
     const old = [...parent.childNodes], keyed = new Map(), unkeyed = new Map();
     for (const node of old) {
       const id = key(node);
-      if (id) keyed.set(id, node);
+      if (id) {
+        if (!keyed.has(id)) keyed.set(id, { nodes: [], index: 0 });
+        keyed.get(id).nodes.push(node);
+      }
       else {
         const type = node.nodeType + ':' + node.nodeName;
         if (!unkeyed.has(type)) unkeyed.set(type, { nodes: [], index: 0 });
@@ -114,12 +123,16 @@
     let cursor = parent.firstChild;
     for (const next of [...nextParent.childNodes]) {
       const id = key(next), pool = unkeyed.get(next.nodeType + ':' + next.nodeName);
-      let node = id ? keyed.get(id) : pool && pool.nodes[pool.index++];
+      const candidates = id ? keyed.get(id) : pool;
+      let node = candidates && candidates.nodes[candidates.index++];
       if (node && (node.nodeType !== next.nodeType || node.nodeName !== next.nodeName)) node = null;
-      if (!node) { node = next.cloneNode(true); arm(node); }
+      // Canvas pixels cannot be cloned. Adopt newly painted canvases, and
+      // retain keyed ones only when their full visual signature is unchanged.
+      if (adoptNodes && next.nodeName === 'CANVAS' && !id) node = null;
+      if (!node) { node = adoptNodes ? next : next.cloneNode(true); arm(node); }
       else {
         revive(node);
-        if (node.nodeType === 1) { attributes(node, next); children(node, next); }
+        if (node.nodeType === 1) { attributes(node, next); children(node, next, adoptNodes); }
         else if (node.nodeValue !== next.nodeValue) node.nodeValue = next.nodeValue;
       }
       used.add(node);
@@ -136,6 +149,13 @@
     children(host, template.content);
     host._renderMarkup = html;
     return true;
+  }
+
+  function patchTree(host, nextNodes) {
+    const fragment = global.document.createDocumentFragment();
+    nextNodes.forEach(node => fragment.appendChild(node));
+    children(host, fragment, true);
+    host._renderMarkup = null;
   }
 
   function preserveImages(host, next) {
@@ -162,5 +182,5 @@
   }
 
   root.RenderFrames = Object.freeze({ frame, cancel: cancelFrame });
-  root.RenderDOM = Object.freeze({ patchMarkup, preserveImages, replacePreservingImages });
+  root.RenderDOM = Object.freeze({ patchMarkup, patchTree, preserveImages, replacePreservingImages });
 })(window);

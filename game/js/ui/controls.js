@@ -130,7 +130,6 @@ _renderControls() {
             html += `<button class="ctrl-btn btn-play" id="btn-online-room">返回房间</button>`;
             html += `<button class="ctrl-btn btn-skip" id="btn-online-home">返回主页</button>`;
         } else {
-            html += `<button class="ctrl-btn btn-play" id="btn-restart">再来一局</button>`;
             html += `<button class="ctrl-btn btn-skip" id="btn-back-select">重新选择</button>`;
         }
     } else if (phase === 'AI_TURN' || phase === 'AI_DEFEND' || phase === 'AI2_TURN' || !canAct) {
@@ -175,7 +174,7 @@ async _bindControls() {
         bind('btn-color-' + c, async () => { await this._apiAction('chooseColor', { color: c }); });
     });
 
-    const restartFn = async () => {
+    const returnToSelectFn = async () => {
         if (typeof this.onBattleExit === 'function') {
             await this.onBattleExit();
             return;
@@ -193,10 +192,9 @@ async _bindControls() {
             await this.onGameOverClose(action);
             return;
         }
-        await restartFn();
+        await returnToSelectFn();
     };
-    bind('btn-restart', restartFn);
-    bind('btn-back-select', restartFn);
+    bind('btn-back-select', returnToSelectFn);
     bind('btn-online-room', () => onlineGameOverFn('room'));
     bind('btn-online-home', () => onlineGameOverFn('home'));
 

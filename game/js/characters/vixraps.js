@@ -61,18 +61,14 @@
         d = (t.burn || 0) * 2;
       }
       if (v === 0) {
-        // 对目标施加催眠，对所有对手施加2层灼伤，然后所有对手连续结算两次灼伤伤害
+        // 只对当前目标施加催眠和2层灼伤，所有对手仍连续结算两次已有灼伤。
         if (typeof eng.applyHypnosis === 'function') eng.applyHypnosis(t);
+        burn(2);
         const targetKeys = typeof eng._enemyKeys === 'function'
           ? eng._enemyKeys(owner)
           : [t];
         const targets = (targetKeys.length ? targetKeys : [t])
           .map(key => typeof key === 'string' && eng.s ? eng.s[key] : key);
-        targets.forEach(entity => {
-          if (!entity) return;
-          if (entity === t) burn(2);
-          else if (typeof eng.burn === 'function') eng.burn(entity, 2);
-        });
         targets.forEach(entity => {
           if (!entity) return;
           for (let i = 0; i < 2; i++) {

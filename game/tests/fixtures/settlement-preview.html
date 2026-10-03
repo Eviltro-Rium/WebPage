@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base href="../../adventure/">
+  <title>冒险结算卡片预览</title>
+  <link rel="stylesheet" href="../css/game.css">
+  <link rel="stylesheet" href="css/adventure.css">
+</head>
+<body>
+  <script src="../js/ui/render/runtime.js"></script>
+  <script src="js/content/currency.js"></script>
+  <script src="js/battle/adventure_battle_controller.js"></script>
+  <script id="fixture-state">
+    window.AdventurePhase = { COMBAT_SETTLE: 'settle', BEAST_CHOICE: 'choice', BEAST_DISCARD: 'discard', ITEM_DISCARD: 'items', GAME_OVER: 'over', MAP: 'map', CLEAR: 'clear' };
+    const previewState = {
+      phase: AdventurePhase.BEAST_CHOICE,
+      currency: { gold: 12, tokens: { ben: 1, cao: 2, shui: 1, huo: 0, wuneng: 0 } },
+      consumables: [{ name: 'Dodge', displayName: '闪避', icon: '../icons/items_icons/dodge.webp' }],
+      accessories: [{ name: 'WisdomNecklace', displayName: '智慧项链', icon: '../icons/items_icons/wisdom_necklace.webp' }],
+      beastReward: { pickCount: 2, selection: [], slots: ['ben', 'cao', 'shui', 'huo'].map((type, index) => ({ type, index, selected: false })) }
+    };
+    if (new URLSearchParams(location.search).has('victory')) { previewState.phase=AdventurePhase.CLEAR; previewState.stage=4; }
+    window.previewEngine = {
+      s: previewState,
+      snapshot: () => previewState,
+      toggleBeastSlot(index) {
+        const br = previewState.beastReward, slot = br.slots[index];
+        if (!slot.selected && br.selection.length >= br.pickCount) return;
+        slot.selected = !slot.selected;
+        br.selection = br.slots.filter(s => s.selected).map(s => s.type);
+      },
+      claimCombatReward() {
+        document.getElementById('preview-result').textContent = '领取完成';
+        return false;
+      }
+    };
+    const result = document.createElement('output');
+    result.id = 'preview-result';
+    result.style.cssText = 'position:fixed;bottom:10px;left:16px;z-index:2100';
+    document.body.appendChild(result);
+    AdventureBattleController.resumeSettlement(previewEngine);
+  </script>
+</body>
+</html>

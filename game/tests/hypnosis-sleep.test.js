@@ -511,3 +511,37 @@ test('attack resource consumption stays committed before defense', () => {
   const r=setupAttack(eng,'Knight',7);assert.equal(r.d,8);assert.ok(!eng.s.player.chaos_red);assert.ok(!eng.s.player.chaos_blue);
   eng.prepareAttackSettlement(r.d,'ai');assert.ok(!eng.s.player.chaos_red);
 });
+
+
+test('1v2: Vixraps attack 0 adds burn only to the selected target', () => {
+  for (const targetKey of ['ai', 'ai2']) {
+    const eng = new Engine();
+    eng.start1v2('Vixraps', 'Saiki', 'Ryan');
+    eng.s.attackTarget = targetKey;
+    const otherKey = targetKey === 'ai' ? 'ai2' : 'ai';
+    const target = eng.s[targetKey], other = eng.s[otherKey];
+    target.burn = other.burn = 0;
+    const targetHp = target.hp, otherHp = other.hp, playerHp = eng.s.player.hp;
+    const result = eng.effect('Vixraps', 0, number(0), eng.s.player, target);
+    assert.equal(result.d, 0);
+    assert.equal(target.hypnosis, true);
+    assert.equal(!!other.hypnosis, false);
+    assert.equal(target.hp, targetHp - 3, 'target settles its newly applied 2 burn twice');
+    assert.equal(other.hp, otherHp, 'unselected enemy has no new burn or damage');
+    assert.equal(other.burn, 0);
+    assert.equal(eng.s.player.hp, playerHp);
+  }
+});
+
+test('1v2: Vixraps attack 0 still settles existing burn on all opponents', () => {
+  const eng = new Engine();
+  eng.start1v2('Vixraps', 'Saiki', 'Ryan');
+  eng.s.attackTarget = 'ai2';
+  eng.s.ai.burn = 3;
+  eng.s.ai2.burn = 0;
+  const hp = eng.s.ai.hp;
+  eng.effect('Vixraps', 0, number(0), eng.s.player, eng.s.ai2);
+  assert.equal(eng.s.ai.burn, 1, 'existing burn settles twice without gaining new stacks');
+  assert.equal(eng.s.ai.hp, hp - 5);
+  assert.equal(!!eng.s.ai.hypnosis, false);
+});

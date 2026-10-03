@@ -21,6 +21,15 @@
   ];
 
   class AdventureUI {
+    static selectStageMap(stage) {
+      if (!Number.isInteger(stage) || stage < 1 || stage > 4) throw new Error('冒险层数必须为1–4');
+      const scenes = ['castle', 'forest', 'ocean'];
+      const scene = scenes[Math.floor(random() * scenes.length)];
+      const variant = 1 + Math.floor(random() * 3);
+      const mapName = 'stage_' + String(stage).padStart(2, '0') + '_' + scene + '_' + variant;
+      return { stage, scene, mapName, mapUrl: 'maps/' + mapName + '.csv' };
+    }
+
     constructor(container) {
       this.container = typeof container === 'string' ? document.getElementById(container) : container;
       this.eng = new window.AdventureEngine();
@@ -92,6 +101,7 @@
           // and pending loot remain actionable instead of silently returning
           // to the map.
           const settlementPhases = [
+            window.AdventurePhase.CLEAR,
             window.AdventurePhase.COMBAT_SETTLE,
             window.AdventurePhase.BEAST_CHOICE,
             window.AdventurePhase.BEAST_DISCARD,
@@ -242,6 +252,10 @@
       this._updateBackground(snap.scene);
 
       this._persistAdventure(snap);
+      if (snap.phase === window.AdventurePhase.CLEAR && snap.stage >= 4) {
+        if (window.AdventureBattleController) window.AdventureBattleController.resumeSettlement(this.eng);
+        return;
+      }
 
       const viewModel = Object.assign({}, snap, {
         mapViewModel: this._createMapViewModel(),
@@ -1083,15 +1097,13 @@
       const room = this.eng.currentRoom();
       if (!room || room.type !== T.BOSS || !room.cleared) return;
       this._advancingStage = true;
-      const scenes = ['castle', 'forest', 'ocean'];
-      let stage = this.eng.s.stage || 1;
-      let scene = this.eng.s.scene || 'castle';
-      stage++;
-      if (stage > 4) { stage = 1; scene = scenes[Math.floor(random() * scenes.length)]; }
-      const variant = 1 + Math.floor(random() * 3);
-      const mapName = 'stage_' + String(stage).padStart(2, '0') + '_' + scene + '_' + variant;
-      const mapUrl = 'maps/' + mapName + '.csv';
       try {
+        if ((this.eng.s.stage || 1) >= 4) {
+          this.eng.completeAdventure();
+          this.render();
+          return;
+        }
+        const { stage, scene, mapName, mapUrl } = AdventureUI.selectStageMap((this.eng.s.stage || 1) + 1);
         let map;
         if (window.AdventureMapData && window.AdventureMapData[mapName]) {
           map = window.AdventureMap.fromCsvText(window.AdventureMapData[mapName]);

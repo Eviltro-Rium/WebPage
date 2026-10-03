@@ -166,3 +166,63 @@ test('homepage WebP gallery ignores height-only resizes and coalesces real width
   width=800;for(let i=0;i<30;i++)w.dispatchEvent(new w.Event('resize'));assert.equal(frames.size,1);
   tick();assert.notEqual(layers.firstChild,first);
 });
+
+
+function adventurePanelHarness(t, phase) {
+ const env=setup(t,'<div id="panels"></div>');if(!env)return null;
+ const {w,load}=env;
+ w.RoomType={BOSS:'boss',EMPTY:'empty'};
+ w.AdventurePhase={MAP:'map',SHOP:'shop',BLACKSMITH:'blacksmith',REWARD:'reward',COMBAT:'combat',PLAYER_PLAY:'play',PLAYER_DEFEND:'defend',NPC_TURN:'npc',CLEAR:'clear',GAME_OVER:'over'};
+ load('adventure/js/content/currency.js');load('adventure/js/ui/adventure_ui.js');
+ load('adventure/js/ui/adventure_ui_map_view.js');load('adventure/js/ui/adventure_ui_panels.js');load('adventure/js/ui/adventure_ui_views.js');
+ const item=(name,icon)=>({name,displayName:name,description:'效果',icon,price:5,beastCost:['ben','ben'],beastCostText:'2本'});
+ const items=[item('Potion','potion.webp'),item('Shield','shield.webp'),item('Laser','laser.webp')];
+ w.AdventureRegistry={getItem:name=>items.find(item=>item.name===name)};
+ w.AdventureDeck={trophyWhite:name=>({trophyName:name,color:'WHITE'})};w.CardStyle={iconRevision:1};
+ w.renderCard=(card,width,height)=>{const canvas=w.document.createElement('canvas');canvas.width=width;canvas.height=height;canvas._painted=JSON.stringify(card);return canvas;};
+ const snap={phase,stage:2,scene:'forest',player:{name:'Ryan',type:'战士',hp:70,maxHp:70,buffs:{}},currency:{gold:20,tokens:{ben:3,cao:1,shui:1,huo:1,wuneng:0},totalBeast:6,maxBeast:8},roomInfo:{shopSlots:[...items,...items],blacksmithSlots:items,blacksmithTrophy:{name:'BurnTrophy',displayName:'灼伤',kind:'trophyWhite',beastCost:['ben','ben'],description:'灼伤'}},consumables:[items[0]],accessories:[items[1]],trophyWhiteCards:[],playerPile:{hand:[{value:3,color:'RED'}],handCount:1,deckCount:93,discardCount:0},blacksmithCanPay:{slots:[true,true,true],trophy:true},logEntries:[]};
+ const ui=Object.create(w.AdventureUI.prototype);ui.container=w.document.getElementById('panels');ui._test=null;ui._toast=()=>{};
+ let selections=0;
+ ui.eng={s:snap,selectShopSlot(index){selections++;snap.shopSelectedSlot=index;},selectBlacksmithSlot(index){selections++;snap.blacksmithSelectedSlot=index;}};
+ ui.render=()=>w.AdventureUIViews.render(ui,snap);ui.bindActions();ui.render();
+ return {...env,ui,snap,selections:()=>selections};
+}
+
+test('shop and blacksmith clicks update in place without disconnecting icons or card faces',t=>{
+ for(const phase of ['shop','blacksmith']) {
+  const env=adventurePanelHarness(t,phase);if(!env)return;
+  const {w,ui,snap}=env,host=ui.container;
+  const images=[...host.querySelectorAll('img')],canvases=[...host.querySelectorAll('canvas')];
+  const attr=phase==='shop'?'data-shop-slot':'data-blacksmith-slot';
+  const buttons=[...host.querySelectorAll('['+attr+']')];
+  const observer=new w.MutationObserver(()=>{});observer.observe(host,{subtree:true,childList:true,attributes:true,attributeFilter:['src','width','height']});
+  for(let i=0;i<30;i++)buttons[i%3].click();
+  assert.equal(env.selections(),30);
+  assert.deepEqual([...host.querySelectorAll('img')],images);
+  assert.deepEqual([...host.querySelectorAll('canvas')],canvases);
+  assert.ok(canvases.every(canvas=>canvas._painted),'painted canvases are never replaced by blank clones');
+  for(const record of observer.takeRecords()) {
+   if(record.type==='attributes')assert.ok(!images.includes(record.target)&&!canvases.includes(record.target),'unchanged asset attributes are not rewritten');
+   for(const removed of record.removedNodes)for(const asset of [...images,...canvases])assert.ok(removed!==asset&&!(removed.contains&&removed.contains(asset)),'assets remain in the live document');
+  }
+  observer.disconnect();
+  if(phase==='shop') {
+   const keep=buttons[1].querySelector('img');snap.roomInfo.shopSlots[0]={...snap.roomInfo.shopSlots[0],icon:'new.webp'};ui.render();
+   assert.equal(host.querySelector('[data-shop-slot="1"] img'),keep,'refreshing one product does not recreate other icons');
+   assert.equal(host.querySelector('[data-shop-slot="0"] img').getAttribute('src'),'new.webp');
+  } else {
+   const old=host.querySelector('.adv-scene-trophy-card-canvas');
+   snap.roomInfo.blacksmithTrophy={...snap.roomInfo.blacksmithTrophy,name:'GuardTrophy'};ui.render();
+   const next=host.querySelector('.adv-scene-trophy-card-canvas');assert.notEqual(next,old);assert.match(next._painted,/GuardTrophy/);
+  }
+ }
+});
+
+test('tree patching retains duplicate icons and adopts new canvas pixels',t=>{
+ const env=setup(t,'<div id="tree"></div>');if(!env)return;const {w}=env,host=w.document.getElementById('tree'),dom=w.FurryGame.RenderDOM;
+ const make=()=>{const box=w.document.createElement('div');box.innerHTML='<img src="same.webp"><img src="same.webp">';const canvas=w.document.createElement('canvas');canvas._pixels='painted';canvas.dataset.renderKey='face';box.appendChild(canvas);return box;};
+ dom.patchTree(host,[make()]);const images=[...host.querySelectorAll('img')],canvas=host.querySelector('canvas');
+ for(let i=0;i<20;i++)dom.patchTree(host,[make()]);
+ assert.deepEqual([...host.querySelectorAll('img')],images);assert.equal(images.length,2);
+ assert.equal(host.querySelector('canvas'),canvas);assert.equal(canvas._pixels,'painted');
+});

@@ -8,7 +8,7 @@
     <link rel="icon" href="../../favicon-ryan.webp" type="image/webp">
     <link rel="apple-touch-icon" href="../../favicon-ryan.webp">
     <link rel="stylesheet" href="../css/game.css?v=20261003-dice-control">
-    <link rel="stylesheet" href="css/adventure.css">
+    <link rel="stylesheet" href="css/adventure.css?v=20261004-settlement">
     <style>
         /* Keep the initial/test screens on the shared game-home background.
            Adventure scene artwork is assigned only when a real map starts. */
@@ -45,7 +45,7 @@
     <script src="../js/characters/moze.js?v=20261003-damage-source"></script>
     <script src="../js/characters/knight.js?v=20261002-settlement2"></script>
     <script src="../js/characters/otto.js?v=20261002-settlement2"></script>
-    <script src="../js/characters/vixraps.js?v=20261003-defense1"></script>
+    <script src="../js/characters/vixraps.js?v=20261004-vixraps-target"></script>
     <script src="../js/ai/registry.js"></script>
     <script src="../js/ai/knight_ai.js"></script>
     <script src="../js/ai/leon_ai.js?v=20260916-3"></script>
@@ -84,11 +84,11 @@
     <script src="../js/combat/engine_lord.js?v=20261002-settlement2"></script>
     <script src="../js/combat/bridge.js"></script>
     <script src="../js/combat/session.js"></script>
-    <script src="../js/ui/skills.js?v=20260930-tube-worm"></script>
-    <script src="../js/ui/dialogs.js?v=20261002-settlement2"></script>
+    <script src="../js/ui/skills.js?v=20261004-vixraps-target"></script>
+    <script src="../js/ui/dialogs.js?v=20261004-end-screen"></script>
     <script src="../js/ui/card_style.js?v=20261002-render1"></script>
     <script src="../js/ui/ui_core.js?v=20261003-dice-control"></script>
-      <script src="../js/ui/render/runtime.js?v=20261002-render1"></script>
+      <script src="../js/ui/render/runtime.js?v=20261004-stable-panels"></script>
 <script src="../js/ui/render/particles.js"></script>
     <script src="../js/ui/render/home_screen.js"></script>
     <script src="../js/ui/render/combat_screen.js?v=20261003-dice-control"></script>
@@ -99,7 +99,7 @@
     <script src="../js/ui/feedback.js"></script>
     <script src="../js/ui/renderer.js?20261003-judgment1"></script>
     <script src="../js/ui/events.js?v=20261003-damage-source"></script>
-    <script src="../js/ui/controls.js?v=20261003-dice-control"></script>
+    <script src="../js/ui/controls.js?v=20261004-end-screen"></script>
     <script src="../js/ui/mode_1v2.js?v=20261003-dice-control"></script>
     <script src="../js/ui/mode_lord.js"></script>
 
@@ -123,20 +123,20 @@
     <script src="js/engine/adventure_engine.js?v=20261003-map-save"></script>
     <script src="js/engine/loot.js?v=20261003-dice-control"></script>
     <script src="js/engine/shop.js"></script>
-    <script src="js/engine/rewards.js?v=20261003-map-save"></script>
+    <script src="js/engine/rewards.js?v=20261004-stage-progression"></script>
     <script src="js/engine/inventory.js?v=20260930-magicbook"></script>
-    <script src="js/engine/combat_result.js"></script>
+    <script src="js/engine/combat_result.js?v=20261004-stage-progression"></script>
     <script src="js/battle/battle_engine.js?v=20261003-dice-control"></script>
     <script src="js/battle/adventure_battle_items.js?v=20261003-dice-control"></script>
     <script src="js/battle/dice_controller.js?v=20261003-dice-control"></script>
     <script src="js/save/adventure_save.js?v=20261003-map-save"></script>
     <script src="js/ui/card_render.js"></script>
     <script src="js/battle/adventure_battle_session.js"></script>
-    <script src="js/battle/adventure_battle_controller.js?v=20260923-4"></script>
-    <script src="js/ui/adventure_ui.js?v=20261003-map-save"></script>
+    <script src="js/battle/adventure_battle_controller.js?v=20261004-stable-panels"></script>
+    <script src="js/ui/adventure_ui.js?v=20261004-stage-progression"></script>
     <script src="js/ui/adventure_ui_map_view.js"></script>
-    <script src="js/ui/adventure_ui_panels.js?v=20260925-1"></script>
-    <script src="js/ui/adventure_ui_views.js"></script>
+    <script src="js/ui/adventure_ui_panels.js?v=20261004-stable-panels"></script>
+    <script src="js/ui/adventure_ui_views.js?v=20261004-stable-panels"></script>
 
     <script>
         (function () {
@@ -337,8 +337,7 @@
             const savedAdventure = !testMode && window.AdventureSave ? window.AdventureSave.load() : null;
             const presetChar = params.get('char') || (savedAdventure && savedAdventure.characterName);
 
-            const advScenes = ['castle', 'forest', 'ocean'];
-            const pickStartMap = () => 'maps/stage_01_' + advScenes[Math.floor(Math.random() * advScenes.length)] + '_' + (1 + Math.floor(Math.random() * 3)) + '.csv';
+            const pickStartMap = () => AdventureUI.selectStageMap(1).mapUrl;
 
             if (presetChar) {
                 currentChar = presetChar;
@@ -393,6 +392,6 @@
             });
         })();
     </script>
-    <script src="../js/version.js?v=2.32"></script>
+    <script src="../js/version.js?v=2.33"></script>
 </body>
 </html>

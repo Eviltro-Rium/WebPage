@@ -728,13 +728,14 @@
     enterNextStage() {
       const room = this.currentRoom();
       if (!room || room.type !== window.RoomType.BOSS || !room.cleared) return;
+      if (this.s.stage >= 4) return this.completeAdventure();
       this.s.pendingCombatReward = null;
       this.s.phase = Phase.CLEAR;
       this.emit('stageClear', '进入下一层', {});
       this._log('进入下一层');
     },
     returnToMap() {
-      if (!this.s) return false;
+      if (!this.s || (this.s.phase === Phase.CLEAR && this.s.stage >= 4)) return false;
       this.s.pendingCombatReward = null;
       this.s.beastReward = null;
       this.s.beastSelection = [];
@@ -747,6 +748,7 @@
     },
     continueTo(map, opts = {}) {
       if (!this.s) return null;
+      if (this.s.phase === Phase.CLEAR && this.s.stage >= 4) return this.s;
       this.s.map = map;
       if (opts.mapName) this.mapName = opts.mapName;
       this.s.activeCombat = null;

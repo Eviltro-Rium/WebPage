@@ -58,7 +58,7 @@
           // here means reward/overflow dialogs cannot consume the draw early.
           this._wisdomNecklacePending = this.hasAccessory('WisdomNecklace');
           this.emit('combatEnd', '战斗胜利', { result: 'win' });
-          this._prepareCombatSettlement(room);
+          if (!isBoss || !this.completeAdventure()) this._prepareCombatSettlement(room);
         } else {
           this._wisdomNecklacePending = false;
           this.emit('combatEnd', '战斗胜利', { result: 'win' });
@@ -74,6 +74,27 @@
       }
 
       this.s.combat = null;
+    },
+
+    /** A final Boss victory is a terminal, refresh-safe checkpoint. */
+    completeAdventure() {
+      const room = this.s && this.currentRoom();
+      if (!room || room.type !== window.RoomType.BOSS || !room.cleared || this.s.stage < 4) return false;
+      if (this.s.phase === Phase.CLEAR) return true;
+      this._wisdomNecklacePending = false;
+      this.s.activeCombat = null;
+      this.s.combat = null;
+      this.s.pendingCombatReward = null;
+      this.s.pendingRoomReward = null;
+      this.s.beastReward = null;
+      this.s.beastSelection = [];
+      this.s.pendingDiscard = 0;
+      this.s.pendingItemDiscard = 0;
+      this.s.itemDiscardReturn = null;
+      this.s.phase = Phase.CLEAR;
+      this._log('冒险胜利：已通关全部四层');
+      this.emit('adventureVictory', '冒险胜利：已通关全部四层', { stage: this.s.stage, scene: this.s.scene });
+      return true;
     },
 
     /**

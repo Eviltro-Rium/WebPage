@@ -391,8 +391,9 @@ test('map autosave includes tokens, buffs, card order and room changes with succ
 test('next-floor transition saves matching map identity/layout and restores without loading another map',async()=>{
  const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]),ui=mapUI(ctx,eng);
  eng.move(0,1);eng.currentRoom().cleared=true;
- ctx.AdventureMapData={};for(let i=1;i<=3;i++)ctx.AdventureMapData['stage_02_castle_'+i]='0,1,-1\n-1,1,2';
- await ui._advanceStage();assert.equal(eng.s.stage,2);assert.match(eng.mapName,/^stage_02_castle_[123]$/);
+ ctx.FurryGame.CombatRuntime.setRandomSource(()=>0.5);
+ ctx.AdventureMapData={};for(const scene of ['castle','forest','ocean'])for(let i=1;i<=3;i++)ctx.AdventureMapData['stage_02_'+scene+'_'+i]='0,1,-1\n-1,1,2';
+ await ui._advanceStage();assert.equal(eng.s.stage,2);assert.match(eng.mapName,/^stage_02_forest_[123]$/);assert.equal(eng.s.scene,'forest');
  const save=ctx.AdventureSave.load();assert.equal(save.mapName,eng.mapName);assert.equal(save.stage,2);assert.equal(save.mapLayout.length,2);
  const restored=new ctx.AdventureEngine(),ui2=mapUI(ctx,restored);
  ctx.AdventureMap.fromCsvUrl=()=>{throw Error('restore must use saved layout');};ctx.AdventureMapData={};
@@ -411,4 +412,57 @@ test('failed next-floor loading and failed restore keep the previous checkpoint'
  const oldConsole=ctx.console;ctx.console={...console,error:()=>{}};
  await emptyUI.restoreOrStart('maps/stage_01_castle_1.csv','Ryan');ctx.console=oldConsole;
  assert.equal(JSON.stringify(ctx.AdventureSave.load()),before);
+});
+
+
+test('each stage independently selects a supported scene and map variant', () => {
+ const ctx=createContext();loadSources(ctx);mapUI(ctx,mapRun(ctx,[[0,2]]));
+ for(const stage of [1,2,3,4])for(const [roll,scene] of [[0,'castle'],[0.4,'forest'],[0.8,'ocean']]) {
+  ctx.FurryGame.CombatRuntime.setRandomSource(()=>roll);
+  const selected=ctx.AdventureUI.selectStageMap(stage);
+  assert.equal(selected.stage,stage);assert.equal(selected.scene,scene);
+  assert.ok(fs.existsSync(path.join(gameRoot,'adventure',selected.mapUrl)));
+ }
+ assert.throws(()=>ctx.AdventureUI.selectStageMap(5),/1–4/);
+ assert.throws(()=>ctx.AdventureUI.selectStageMap(0),/1–4/);
+});
+
+test('final Boss victory is terminal and persists across refresh without another encounter', () => {
+ const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]);
+ eng.s.stage=4;eng.s.scene='ocean';eng.mapName='stage_04_ocean_1';
+ eng.move(0,1);eng.s.combat={enemy:'FrozenMammoth',kind:'boss'};
+ eng.s.activeCombat={enemy:'FrozenMammoth'};eng.s.pendingCombatReward={stage:'basic'};
+ eng.onCombatEnd('win');
+ assert.equal(eng.s.phase,ctx.AdventurePhase.CLEAR);
+ assert.equal(eng.s.activeCombat,null);assert.equal(eng.s.combat,null);
+ assert.equal(eng.s.pendingCombatReward,null);assert.equal(eng.currentRoom().cleared,true);
+ assert.equal(eng.events.filter(e=>e.type==='adventureVictory').length,1);
+ assert.equal(eng.completeAdventure(),true);
+ assert.equal(eng.events.filter(e=>e.type==='adventureVictory').length,1,'completion is idempotent');
+ ctx.AdventureSave.save(eng);const saved=ctx.AdventureSave.load();
+ const restored=new ctx.AdventureEngine();restored.restoreFromSave(saved,ctx.AdventureMap.fromGrid(saved.mapLayout));
+ assert.equal(restored.s.phase,ctx.AdventurePhase.CLEAR);assert.equal(restored.s.stage,4);
+ assert.equal(restored.currentRoom().cleared,true);assert.equal(restored.s.activeCombat,null);
+ assert.equal(restored.returnToMap(),false);
+ restored.continueTo(new ctx.AdventureMap([[0,2]]),{stage:1,scene:'castle'});
+ assert.equal(restored.s.stage,4,'completed adventure cannot loop back to stage 1');
+ assert.equal(restored.s.phase,ctx.AdventurePhase.CLEAR);
+});
+
+test('advancing after stage 4 completes the run without loading another map', async () => {
+ const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]),ui=mapUI(ctx,eng);
+ eng.s.stage=4;eng.move(0,1);eng.currentRoom().cleared=true;
+ ctx.AdventureMap.fromCsvUrl=()=>{throw Error('no map should load after stage 4');};
+ await ui._advanceStage();
+ assert.equal(eng.s.stage,4);assert.equal(eng.s.phase,ctx.AdventurePhase.CLEAR);
+ assert.equal(ui._advancingStage,false);
+ assert.equal(ctx.AdventureSave.load().phase,ctx.AdventurePhase.CLEAR);
+});
+
+test('stage 4 non-Boss victories still use normal rewards', () => {
+ const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,1,2]]);
+ eng.s.stage=4;eng.move(0,1);eng.s.combat={enemy:'CastleWolf',kind:'normal'};
+ eng.onCombatEnd('win');
+ assert.equal(eng.s.phase,ctx.AdventurePhase.COMBAT_SETTLE);
+ assert.equal(eng.events.filter(e=>e.type==='adventureVictory').length,0);
 });
