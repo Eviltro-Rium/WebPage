@@ -180,6 +180,7 @@
       if (b.poison > 0)    items.push('<span class="adv-buff adv-buff-poison" title="中毒">' + icon('poison', '中毒') + '×' + b.poison + '</span>');
       if (b.thorns > 0)    items.push('<span class="adv-buff adv-buff-thorns" title="荆棘">' + icon('thorns', '荆棘') + '×' + b.thorns + '</span>');
       if (b.sandblind > 0) items.push('<span class="adv-buff adv-buff-sandblind" title="沙盲">' + icon('sandblind', '沙盲') + '×' + b.sandblind + '</span>');
+      if (b.quicksand > 0) items.push('<span class="adv-buff adv-buff-sandblind" title="流沙：手牌上限-1">' + icon('quicksand', '流沙') + '</span>');
       if (b.frozen)        items.push('<span class="adv-buff adv-buff-frozen" title="冷冻">' + icon('freeze', '冷冻') + '</span>');
       if (b.scorch)        items.push('<span class="adv-buff" title="炙热">' + icon('scorch', '炙热') + '</span>');
       if (b.iceSeal > 0)   items.push('<span class="adv-buff" title="冰封">' + icon('ice_seal', '冰封') + '×' + b.iceSeal + '</span>');

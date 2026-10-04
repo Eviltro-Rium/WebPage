@@ -576,6 +576,8 @@
     setScorch(entity,on,opts){if(!entity)return;const was=!!entity.scorch;const S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.set(entity,'scorch',!!on);else entity.scorch=!!on;if(!opts||opts.silent!==true){const w=this._who(entity);if(on&&!was)this.emit('buff','[炙热]',null,{who:w,kind:'scorch',stacks:1});else if(!on&&was)this.emit('buff','-[炙热]',null,{who:w,kind:'scorch',stacks:0})}}
     poison(x,n,opts){const S=this._status();if(S&&S.poison){S.poison(this,x,n,opts);return}if(n>0){x.poison=Math.min(2,(x.poison||0)+n);if(!opts||opts.silent!==true){let w=x===this.s.player?'player':(x===this.s.ai2?'ai2':'ai');this.emit('buff',`+${n}[中毒]`,null,{who:w,kind:'poison',stacks:x.poison})}}}
     thorns(x,n,opts){const S=this._status();if(S&&S.thorns){S.thorns(this,x,n,opts);return}if(!x||n<=0)return;const before=x.thorns||0;x.thorns=Math.min(1,before+n);const added=x.thorns-before;if(added>0&&(!opts||opts.silent!==true))this.emit('buff',`+${added}[荆棘]`,null,{who:this._who(x),kind:'thorns',stacks:x.thorns})}
+    getHandLimit(owner='player'){const adapter=this._adapter();if(adapter&&adapter.handLimit)return adapter.handLimit(this,owner);const base=owner==='player'?(this.s.handLimit||5):5;return window.StatusService?window.StatusService.handLimit(this.s[owner],base):base}
+    quicksand(x,n=1,opts){const service=window.StatusService;if(!x||n<=0||!service)return;const before=service.amount(x,'quicksand');service.add(x,'quicksand',n);if(service.amount(x,'quicksand')>before&&(!opts||!opts.silent)){const who=this._who(x);this.emit('buff','+1[流沙]',null,{who,target:who,kind:'quicksand',stacks:service.amount(x,'quicksand')})}}
     sandblind(x,n,opts){const S=this._status();if(S&&S.sandblind){S.sandblind(this,x,n,opts);return}if(!x||n<=0)return;const before=x.sandblind||0;x.sandblind=Math.min(6,before+n);const added=x.sandblind-before;if(added>0&&(!opts||opts.silent!==true))this.emit('buff',`+${added}[沙盲]`,null,{who:this._who(x),kind:'sandblind',stacks:x.sandblind})}
     _applyAttackSkillThorns(x){const S=this._status();if(S&&S.applyAttackSkillThorns){S.applyAttackSkillThorns(this,x);return}if(!x||!x.alive||!(x.thorns>0))return;this.hurt(x,1,'thorns')}
     /** Attack-skill release hooks: thorns damage, then sandblind miss check. Returns true if skill misses. */
@@ -788,7 +790,7 @@
     }
     itemKind(c){if(c.trophyWhite)return'trophyWhite';if(c.swapHand)return'swap';if(c.drawThree)return'drawThree';if(c.drawTwo)return'drawTwo';if(c.potion)return'potion';if(c.greenMagic||c.magicColor==='green')return'greenMagic';if(c.magic||c.magicColor==='purple')return'magic';if(c.superPurify)return'superPurify';if(c.purify)return'purify';if(c.shuffleToDeck)return'shuffle';return'wild'}
     _isAdventureBoss(x){if(!this.s.isAdventure||!window.AdventureRegistry)return false;return!!window.AdventureRegistry.getBoss(this.name(x))}
-    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}let label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='iceSeal'?'施加[冰封]':effect==='hypothermia'?'施加1层[失温]':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='purify'?'清除自身或对手至多1个buff':effect==='fly'?'获得1层飞翔':effect==='crit'?'获得1层暴击':effect==='diving'?'获得[潜水]':effect==='scorch'?'施加[炙热]':effect==='lush'?'获得1层茂盛':effect==='parasite'?'获得1层寄生':effect==='poison'?'施加1层中毒':effect==='thorns'?'施加1层荆棘':effect==='sandblind'?'施加2层沙盲':effect==='smallPotion'?'恢复2点生命':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部可净化状态（印记保留），然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
+    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}let label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='iceSeal'?'施加[冰封]':effect==='hypothermia'?'施加1层[失温]':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='purify'?'清除自身或对手至多1个buff':effect==='fly'?'获得1层飞翔':effect==='crit'?'获得1层暴击':effect==='diving'?'获得[潜水]':effect==='scorch'?'施加[炙热]':effect==='lush'?'获得1层茂盛':effect==='parasite'?'获得1层寄生':effect==='poison'?'施加1层中毒':effect==='thorns'?'施加1层荆棘':effect==='sandblind'?'施加2层沙盲':effect==='quicksand'?'施加1层[流沙]，手牌上限-1':effect==='smallPotion'?'恢复2点生命':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部可净化状态（印记保留），然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
     useTrophyWhite(c, target, w='player'){
       if (!c || !c.trophyWhite) return false;
       // The caller resolves the target for the current card before entering
@@ -902,6 +904,7 @@
         else if (effect === 'poison') this.poison(target, 1);
         else if (effect === 'thorns') this.thorns(target, 1);
         else if (effect === 'sandblind') this.sandblind(target, Math.max(1, Number(def && def.trophyStacks) || 2));
+        else if (effect === 'quicksand') this.quicksand(target);
         else if (effect === 'scorch') {
           if (typeof this.setScorch === 'function') this.setScorch(target, true);
           else {
@@ -965,7 +968,7 @@
       const count = Math.max(1, Number(pending.count) || 1);
       const oppKey = pending.targetKey || (this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai');
       const labels = {
-        burn: '灼伤', freeze: '冷冻', bleed: '流血', poison: '中毒', thorns: '荆棘', sandblind: '沙盲',
+        burn: '灼伤', freeze: '冷冻', bleed: '流血', poison: '中毒', thorns: '荆棘', sandblind: '沙盲', quicksand: '流沙',
         blind: '致盲', bomb: '炸弹', guard: '守护', fly: '飞翔', crit: '暴击',
         lush: '茂盛', parasite: '寄生', hypothermia: '失温', diving: '潜水', scorch: '炙热',
         hypnosis: '催眠', sleep: '沉睡', bloodthirst: '嗜血', bind: '捆缚',
@@ -1076,7 +1079,7 @@
     effect(n,v,c,a,t){
       let d=0,skip=false,unblock=false,owner=a===this.s.player?'player':(this.s.is1v2&&a===this.s.ai2?'ai2':'ai'),target=owner==='player'?this._who(t):'player';
       const silent={silent:true},burn=q=>this.burn(t,q,silent),burnSelf=q=>this.burn(a,q),burnTarget=(x,q)=>this.burn(x||t,q,silent),bleed=q=>this.bleed(t,q,silent),poison=q=>this.poison(t,q,silent),guard=q=>this.addGuard(a,q),fly=q=>{const before=a.fly||0;const S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.add(a,'fly',q);else a.fly=Math.min(2,before+(Number(q)||0));const added=(a.fly||0)-before;if(added>0)this.emit('buff','+'+added+'[飞翔]',null,{who:owner,kind:'fly',stacks:a.fly})},takeReveal=label=>{let r=this.reveal(label,owner);if(r)this.h[owner].push(r);return r};
-      let helpers={burn, burnSelf, burnTarget, bleed,poison,guard,fly,takeReveal,heal:(x,n,k)=>this.heal(x,n,k),draw:(w,n,an)=>this.draw(w,n,an),clearDebuffs:x=>this.clearDebuffs(x),clearPositiveBuffs:x=>this.clearPositiveBuffs(x),hurt:(x,n,k)=>this.hurt(x,n,k),blind:(x,o)=>this.blind(x,o),thorns:(x,n,o)=>this.thorns(x,n,o),sandblind:(x,n,o)=>this.sandblind(x,n,o),iceSeal:(x,o)=>this.iceSeal(x,o)};
+      let helpers={burn, burnSelf, burnTarget, bleed,poison,guard,fly,takeReveal,heal:(x,n,k)=>this.heal(x,n,k),draw:(w,n,an)=>this.draw(w,n,an),clearDebuffs:x=>this.clearDebuffs(x),clearPositiveBuffs:x=>this.clearPositiveBuffs(x),hurt:(x,n,k)=>this.hurt(x,n,k),blind:(x,o)=>this.blind(x,o),thorns:(x,n,o)=>this.thorns(x,n,o),sandblind:(x,n,o)=>this.sandblind(x,n,o),quicksand:(x,n,o)=>this.quicksand(x,n,o),iceSeal:(x,o)=>this.iceSeal(x,o)};
       let m=CharacterRegistry.get(n);
       if(m){let r=this.captureAttackSkill(()=>m.effect(this,v,c,a,t,owner,helpers),n,v,a,t);if(r)return r}
       return{d,skip,unblock}
@@ -1196,7 +1199,7 @@
         desc=`清除${target.name||'对手'}所有正面buff`;
       }else if((isTargetChoice&&targetKey==='player')||selected==='debuff'){
         const self=this.s.player;
-        cleared=(self.burn||0)+(self.bleed||0)+(self.poison||0)+(self.thorns||0)+(self.sandblind||0)+(self.frozen?1:0)+(self.bomb||0)+
+        cleared=(self.burn||0)+(self.bleed||0)+(self.poison||0)+(self.thorns||0)+(self.sandblind||0)+(self.quicksand||0)+(self.frozen?1:0)+(self.bomb||0)+
           (self.blind||0)+(self.iceSeal||0)+(self.hypothermia||0)+(self.bindMark?1:0);
         this.clearDebuffs(self);
         desc='清除自身所有负面buff';
@@ -1402,10 +1405,10 @@
     _grantChaosIfKnight(who){this._grantChaosForCard(this.s[who],this.s.atkCard);let defWho=this.s.defOwner;if(defWho&&defWho!==who)this._grantChaosForCard(this.s[defWho],this.s.defCard)}
     /** Item plays skip afterAttack; grant white-item chaos immediately. */
     _grantChaosOnItemPlay(who,card){if(!card||!card.isItemCard||!card.isWhite)return;this._grantChaosForCard(this.s[who],card)}
-    fillHands(isPlayerPhase){const adapter=this._adapter();const limit=adapter&&adapter.handLimit?owner=>adapter.handLimit(this,owner):owner=>owner==='player'?(this.s.handLimit||5):5;let playerLimit=limit('player'),aiLimit=limit('ai');this.draw('player',this._drawNeedWithIceSeal('player',Math.max(0,playerLimit-this.h.player.length)),true);this.draw('ai',this._drawNeedWithIceSeal('ai',Math.max(0,aiLimit-this.h.ai.length)),true);if(isPlayerPhase)this.emit('desc','回合结束：双方手牌补至5张')}
+    fillHands(isPlayerPhase){const adapter=this._adapter();const limit=adapter&&adapter.handLimit?owner=>adapter.handLimit(this,owner):owner=>owner==='player'?(this.s.handLimit||5):5;let playerLimit=limit('player'),aiLimit=limit('ai');this.draw('player',this._drawNeedWithIceSeal('player',Math.max(0,playerLimit-this.h.player.length)),true);this.draw('ai',this._drawNeedWithIceSeal('ai',Math.max(0,aiLimit-this.h.ai.length)),true);if(isPlayerPhase)this.emit('desc','回合结束：双方按当前手牌上限补牌')}
     trimAI(){while(this.h.ai.length>5){let worst=this.chooseAIDiscard(this.h.ai),card=this.h.ai.splice(worst,1)[0];this.discardWithEvent(card,'ai',{handIndex:worst,desc:`AI手牌超限，按角色策略弃掉${this.cardText(card)}`})}}
     startAITurn(){this.s.pendingHypnosisPromote='player';this.fillHands(true);this.s.phase='AI_TURN';this.s.busy=true;this.s.activeAttacker='ai';this.s.forceEndAITurn=false;this.s.pendingAIContinue=null;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.selectedCards=[];this.later(()=>this.aiTurn());return this.check()}
-    endTurn(){if(this.s.phase!=='PLAYER_PLAY')throw Error('当前不能结束回合');if(this.h.player.length>this.s.handLimit){this.s.forcedDiscard=true;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc',`手牌超过${this.s.handLimit}张，请弃至不超过${this.s.handLimit}张`);return this.state()}this.settleBurn(this.s.player);return this.startAITurn()}
+    endTurn(){if(this.s.phase!=='PLAYER_PLAY')throw Error('当前不能结束回合');if(this.h.player.length > this.getHandLimit('player')){this.s.forcedDiscard=true;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc',`手牌超过${this.getHandLimit('player')}张，请弃至不超过${this.getHandLimit('player')}张`);return this.state()}this.settleBurn(this.s.player);return this.startAITurn()}
     enterDiscard(){if(this.s.hasPlayedThisTurn)throw Error('本回合已出牌，不能再弃牌');this.s.forcedDiscard=false;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];return this.state()}
     confirmDiscard(){
       let selected=this.s.selectedCards||[];
@@ -1432,7 +1435,7 @@
         return this._finishKrakenDefendDiscard();
       }
       if(this.s.mayDiscardAfterSkill){this.s.mayDiscardAfterSkill=false;this.s.phase='PLAYER_PLAY';this.emit('desc','已完成可选弃牌');return this.state()}
-      if(this.s.forcedDiscard&&this.h.player.length>this.s.handLimit){this.emit('desc',`仍需弃牌，手牌必须不超过${this.s.handLimit}张`);return this.state()}
+      if(this.s.forcedDiscard&&this.h.player.length > this.getHandLimit('player')){this.emit('desc',`仍需弃牌，手牌必须不超过${this.getHandLimit('player')}张`);return this.state()}
       this.s.forcedDiscard=false;return this.startAITurn()
     }
     cancelDiscard(){if(this.s.pendingVixrapsPassive)throw Error('Vixraps被动必须弃掉1张牌，不能取消');if(this.s.pendingDiscardBeforeDefend)throw Error('必须弃掉1张牌后再防御，不能取消');if(this.s.pendingHypothermiaDiscard)throw Error('失温必须弃掉1张牌，不能取消');if(this.s.pendingKrakenDefendDiscard)throw Error('克拉肯0牌：必须弃掉1张牌，不能取消');if(this.s.forcedDiscard)throw Error('手牌超限，不能取消弃牌');this.s.mayDiscardAfterSkill=false;this.s.phase='PLAYER_PLAY';this.s.selectedCard=-1;this.s.selectedCards=[];return this.state()}
@@ -1467,7 +1470,7 @@
       if(!kind)throw Error('请选择要净化的状态，或点击完成');
       this.clean(this.s.player,false,kind);
       this.s.pendingDialog=null;this.s.pendingVixrapsPurify=null;
-      this.emit('desc','净化移除一层'+({burn:'灼伤',freeze:'冷冻',bleed:'流血',poison:'中毒',thorns:'荆棘',sandblind:'沙盲',blind:'致盲',bomb:'炸弹',guard:'守护',fly:'飞翔',crit:'暴击',lush:'茂盛',parasite:'寄生',hypothermia:'失温',diving:'潜水',scorch:'炙热',bloodthirst:'嗜血',bind:'捆缚'}[kind]||'buff'));
+      this.emit('desc','净化移除一层'+({burn:'灼伤',freeze:'冷冻',bleed:'流血',poison:'中毒',thorns:'荆棘',sandblind:'沙盲',quicksand:'流沙',blind:'致盲',bomb:'炸弹',guard:'守护',fly:'飞翔',crit:'暴击',lush:'茂盛',parasite:'寄生',hypothermia:'失温',diving:'潜水',scorch:'炙热',bloodthirst:'嗜血',bind:'捆缚'}[kind]||'buff'));
       if(pending)return this.gateAdventureAttackMod(pending.card,pending.damage,pending.skip,pending.unblock,0,pending.opts||{});
       this._resumeVixrapsPassiveAfterDialog();
       return this.state();

@@ -88,6 +88,7 @@ const stableTests = [
   'fly-guard.test.js',
   'hypnosis-sleep.test.js',
   'status-registry.test.js',
+  'quicksand.test.js',
   'card-effects.test.js',
   'engine-modules.test.js',
   'runtime-invariants.test.js',

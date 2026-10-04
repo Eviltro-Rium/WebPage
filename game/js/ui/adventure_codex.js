@@ -42,6 +42,7 @@
     { key: 'hypnosis', name: '催眠', type: '负面状态', icon: 'icons/buff_icons/sleepy_1.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有催眠的角色在自己的进攻阶段结束、切换到对手进攻阶段时立即转化为[沉睡]。已处于[沉睡]时免疫新的[催眠]。' },
     { key: 'sleep', name: '沉睡', type: '负面状态', icon: 'icons/buff_icons/sleepy_2.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n拥有沉睡的角色在自己的进攻回合开始时立刻苏醒，恢复10点生命（不超过生命上限）。同时被进攻时会跳过防御阶段，所有伤害直接结算。' },
     { key: 'thorns', name: '荆棘', type: '负面状态', icon: 'icons/buff_icons/thorns.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有荆棘的角色在进攻阶段每释放一次技能，立即受到1点独立伤害（不可用守护/飞翔减免）；可被净化。' },
+    { key: 'quicksand', name: '流沙', type: '负面状态', icon: 'icons/buff_icons/quicksand.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有流沙的角色手牌上限减少1张；回合结束时按降低后的上限弃牌和补牌。不会立即弃掉现有手牌；可被普通净化、超级净化清除，清除后恢复原上限。' },
     { key: 'sandblind', name: '沙盲', type: '负面状态', icon: 'icons/buff_icons/sandblind.webp', desc: '堆叠上限：6\n维持效果：持续\n进攻触发技能时立刻投掷12面骰：若结果≤2×层数则本次技能落空（对手跳过防御）；每次判定后层数-1。6层时必定失败；可被净化（每次净化减1层）。' },
     { key: 'bloodthirst', name: '嗜血', type: '印记', icon: 'icons/items_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：永久\nSerenity专属嗜血印记。生命低于30时获得；获得后即使恢复到30以上也不会移除，且不能被净化或超级净化清除。未获得印记时，正常恢复额外+1生命；嗜血后技能按嗜血规则结算。' }
   ];
@@ -474,7 +475,7 @@
       html += '<div class="codex-empty">暂无数据</div>';
     } else {
       html += '<div class="codex-all-list">';
-      const effectMap = { burn: '灼伤', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', crit: '暴击', lush: '茂盛', poison: '中毒', parasite: '寄生', thorns: '荆棘', sandblind: '沙盲', diving: '潜水', scorch: '炙热', iceSeal: '冰封', hypothermia: '失温', zero: '零技能' };
+      const effectMap = { burn: '灼伤', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', crit: '暴击', lush: '茂盛', poison: '中毒', parasite: '寄生', thorns: '荆棘', sandblind: '沙盲', quicksand: '流沙', diving: '潜水', scorch: '炙热', iceSeal: '冰封', hypothermia: '失温', zero: '零技能' };
       for (const it of items) {
         const icon = resolveIcon(it.icon);
         const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-avatar codex-no-icon">${it.displayName[0]}</div>`;

@@ -14,11 +14,11 @@
       const aiLimit = limit('ai');
       this.draw('player', this._drawNeedWithIceSeal('player', Math.max(0, playerLimit - this.h.player.length)), true);
       this.draw('ai', this._drawNeedWithIceSeal('ai', Math.max(0, aiLimit - this.h.ai.length)), true);
-      if (isPlayerPhase) this.emit('desc', '回合结束：双方手牌补至5张');
+      if (isPlayerPhase) this.emit('desc', '回合结束：双方按当前手牌上限补牌');
     },
 
     trimAI() {
-      while (this.h.ai.length > 5) {
+      while (this.h.ai.length > this.getHandLimit('ai')) {
         const worst = this.chooseAIDiscard(this.h.ai);
         const card = this.h.ai.splice(worst, 1)[0];
         this.discardWithEvent(card, 'ai', { handIndex: worst, desc: `AI手牌超限，按角色策略弃掉${this.cardText(card)}` });
@@ -42,12 +42,12 @@
 
     endTurn() {
       if (this.s.phase !== 'PLAYER_PLAY') throw Error('当前不能结束回合');
-      if (this.h.player.length > this.s.handLimit) {
+      if (this.h.player.length > this.getHandLimit('player')) {
         this.s.forcedDiscard = true;
         this.s.phase = 'PLAYER_DISCARD';
         this.s.selectedCard = -1;
         this.s.selectedCards = [];
-        this.emit('desc', `手牌超过${this.s.handLimit}张，请弃至不超过${this.s.handLimit}张`);
+        this.emit('desc', `手牌超过${this.getHandLimit('player')}张，请弃至不超过${this.getHandLimit('player')}张`);
         return this.state();
       }
       this.settleBurn(this.s.player);
@@ -103,8 +103,8 @@
         this.emit('desc', '已完成可选弃牌');
         return this.state();
       }
-      if (this.s.forcedDiscard && this.h.player.length > this.s.handLimit) {
-        this.emit('desc', `仍需弃牌，手牌必须不超过${this.s.handLimit}张`);
+      if (this.s.forcedDiscard && this.h.player.length > this.getHandLimit('player')) {
+        this.emit('desc', `仍需弃牌，手牌必须不超过${this.getHandLimit('player')}张`);
         return this.state();
       }
       this.s.forcedDiscard = false;
@@ -116,7 +116,7 @@
       if (this.s.pendingDiscardBeforeDefend) throw Error('必须弃掉1张牌后再防御，不能取消');
       if (this.s.pendingHypothermiaDiscard) throw Error('失温必须弃掉1张牌，不能取消');
       if (this.s.pendingKrakenDefendDiscard) throw Error('克拉肯0牌：必须弃掉1张牌，不能取消');
-      if (this.s.forcedDiscard) throw Error(`手牌超过${this.s.handLimit}张，不能取消弃牌`);
+      if (this.s.forcedDiscard) throw Error(`手牌超过${this.getHandLimit('player')}张，不能取消弃牌`);
       this.s.mayDiscardAfterSkill = false;
       this.s.phase = 'PLAYER_PLAY';
       this.s.selectedCard = -1;

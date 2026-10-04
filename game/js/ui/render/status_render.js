@@ -90,6 +90,7 @@
                 hypnosis: { colorClass: 'hypnosis-buff' }, sleep: { colorClass: 'sleep-buff' },
                 thorns: { colorClass: 'thorns-buff' },
                 sandblind: { colorClass: 'sandblind-buff' },
+                quicksand: { colorClass: 'sandblind-buff' },
                 bomb: { colorClass: 'bomb-mark' }, hypothermia: { colorClass: 'hypothermia-buff' },
                 guard: { colorClass: 'guard-buff' }, fly: { colorClass: 'fly-buff' },
                 lush: { colorClass: 'lush-buff' }, parasite: { colorClass: 'parasite-buff' },

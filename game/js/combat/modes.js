@@ -70,11 +70,15 @@
     }
 
     function handLimit(engine, owner = 'player') {
+        let base;
         if (engine && engine.piles && engine.piles[owner] && engine.piles[owner].handLimit != null) {
-            return Number(engine.piles[owner].handLimit);
-        }
-        if (owner === 'ai' || owner === 'ai2') return 5;
-        return (engine && engine.s && engine.s.handLimit) || 5;
+            base = Number(engine.piles[owner].handLimit);
+        } else if (owner === 'ai' || owner === 'ai2') {
+            base = engine && engine.s && engine.s.is1v2 && !engine.s.isLord && engine._aiFillTarget
+                ? engine._aiFillTarget() : 5;
+        } else base = (engine && engine.s && engine.s.handLimit) || 5;
+        const service = global.FurryGame && global.FurryGame.StatusService;
+        return service ? service.handLimit(engine && engine.s && engine.s[owner], base) : base;
     }
 
     // The invariant checker must not infer pile topology from mode flags or

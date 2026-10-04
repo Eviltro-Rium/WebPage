@@ -424,3 +424,9 @@ node game/scripts/check.js --all
 - AdventureSave 以完整序列化快照去重，只有 savedAt 不参与内容比较；兽元、Buff、牌序和房间奖励变化都能保存。写入失败不更新去重缓存，之后允许重试。
 - 存档携带地图布局 mapLayout 和 explorationVersion；旧存档按房间实际进入/通关证据修正 visited。新存档优先从保存的布局恢复，避免地图资源变化影响已有进度。
 - continueTo 同步更新 mapName、stage、scene 并清除旧战斗锁。UI 在下一层地图加载成功后才切层，阻止重复点击；刷新从已保存角色继续，恢复失败保留原存档。
+
+### 持续状态与手牌上限
+
+`StatusRegistry.handLimitDelta` 定义持续状态对手牌上限的修正；`StatusService.handLimit(entity, base)` 纯计算有效上限，`EngineModes.handLimit()` / `Engine.getHandLimit(owner)` 统一用于补牌、AI 弃牌和玩家回合结束检查。流沙（`quicksand`）上限为 1，修正为 -1。牌堆和存档里的 `handLimit` 始终保存基础上限，避免刷新、净化和配饰同步造成重复扣减。
+
+铁匠铺成本中的 `wuneng` 是必须预留并扣除的万能兽元；剩余万能兽元才可替代普通兽元不足部分。

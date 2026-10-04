@@ -32,7 +32,7 @@
     // effects need the alternating target selector; self buffs (guard/fly/
     // lush) should not rotate the target just to play a bridge card.
     const trophyTargetsOpponent = c.trophyWhite &&
-      ['burn','bleed','freeze','poison','bomb','disarm','roulette','zero','thorns','sandblind','iceSeal','hypothermia'].includes(c.trophyEffect);
+      ['burn','bleed','freeze','poison','bomb','disarm','roulette','zero','thorns','sandblind','quicksand','iceSeal','hypothermia'].includes(c.trophyEffect);
     if(c.isItemCard&&!c.swapHand&&!trophyTargetsOpponent)return false;
     let who=this.name(this.s.player);
     if(who==='Leon'&&c.value===0)return false;
@@ -131,7 +131,7 @@
     }
     if(m==='doEndTurn'){
       if(this.s.phase!=='PLAYER_PLAY')throw Error('当前不能结束回合');
-      if(this.h.player.length>this.s.handLimit){this.s.forcedDiscard=true;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','手牌超过'+this.s.handLimit+'张，请弃至不超过'+this.s.handLimit+'张');return this.state()}
+      if(this.h.player.length > this.getHandLimit('player')){this.s.forcedDiscard=true;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','手牌超过'+this.getHandLimit('player')+'张，请弃至不超过'+this.getHandLimit('player')+'张');return this.state()}
       return this._lordStartNextAI()
     }
     if(m==='doDefend'||m==='doSkipDefend'){
@@ -223,20 +223,20 @@
 
   E.prototype._refillLordPlayer=function(){
     if(!this.s||!this.s.isLord||!this.s.player.alive)return;
-    const need=Math.max(0,7-this.h.player.length);
+    const need=Math.max(0,this.getHandLimit('player')-this.h.player.length);
     if(need)this.draw('player',need,true)
   };
 
   E.prototype._normalizeLordAIHands=function(){
     for(const key of ['ai','ai2']){
       if(!this.s[key]||!this.s[key].alive)continue;
-      while(this.h[key].length>5){
+      while(this.h[key].length>this.getHandLimit(key)){
         let worst=0;
         for(let i=1;i<this.h[key].length;i++)if(this.h[key][i].value<this.h[key][worst].value)worst=i;
         const card=this.h[key].splice(worst,1)[0];
         this.discardWithEvent(card,key,{handIndex:worst,desc:this.s[key].name+'手牌超限，弃掉'+this.cardText(card)})
       }
-      this.draw(key,Math.max(0,5-this.h[key].length),true)
+      this.draw(key,Math.max(0,this.getHandLimit(key)-this.h[key].length),true)
     }
   };
 
@@ -245,14 +245,14 @@
     if(!this.s||!this.s.isLord)return origFillHands1v2.call(this,includePlayer);
     if(includePlayer)this._refillLordPlayer();
     this._normalizeLordAIHands();
-    this.emit('desc','领主模式：玩家补至7张，存活AI各补至5张')
+    this.emit('desc','领主模式：玩家与存活AI按各自手牌上限补牌')
   };
 
   const origFillAIHands1v2=E.prototype.fillAIHands1v2;
   E.prototype.fillAIHands1v2=function(){
     if(!this.s||!this.s.isLord)return origFillAIHands1v2.call(this);
     this._normalizeLordAIHands();
-    this.emit('desc','领主模式：存活AI手牌保持5张')
+    this.emit('desc','领主模式：存活AI按各自手牌上限补牌')
   };
 
   const origHandleElim=E.prototype._handleEliminated1v2;

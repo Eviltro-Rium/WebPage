@@ -112,7 +112,8 @@
     canPayBeastCost(needed) {
       const req = this._countBeastNeed(needed);
       if (!req) return false;
-      let wild = this.tokens.wuneng || 0;
+      let wild = (this.tokens.wuneng || 0) - (req.wuneng || 0);
+      if (wild < 0) return false;
       for (let i = 0; i < BEAST_TYPES.length; i++) {
         const t = BEAST_TYPES[i];
         const need = req[t] || 0;
@@ -128,7 +129,7 @@
     payBeastCost(needed) {
       if (!this.canPayBeastCost(needed)) return false;
       const req = this._countBeastNeed(needed);
-      let wildUsed = 0;
+      let wildUsed = req.wuneng || 0;
       for (let i = 0; i < BEAST_TYPES.length; i++) {
         const t = BEAST_TYPES[i];
         const need = req[t] || 0;
@@ -142,10 +143,10 @@
 
     _countBeastNeed(needed) {
       if (!Array.isArray(needed) || !needed.length) return null;
-      const req = { ben: 0, cao: 0, shui: 0, huo: 0 };
+      const req = { ben: 0, cao: 0, shui: 0, huo: 0, wuneng: 0 };
       for (let i = 0; i < needed.length; i++) {
         const t = needed[i];
-        if (t === UNIVERSAL_TYPE) continue;  // 万能兽元不计入普通需求，由 canPay/payBeastCost 单独处理
+        if (t === UNIVERSAL_TYPE) { req.wuneng++; continue; }
         if (BEAST_TYPES.indexOf(t) < 0) return null;
         req[t]++;
       }

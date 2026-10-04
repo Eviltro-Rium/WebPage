@@ -702,8 +702,8 @@
       // drops below three cards.  Do this before calculating the hand refill,
       // so a full hand cannot postpone the recycle until a later draw.
       this._refillPile('ai');
-      this.draw('player', this._drawNeedWithIceSeal('player', Math.max(0, this.piles.player.handLimit - this.h.player.length)), true);
-      this.draw('ai', this._drawNeedWithIceSeal('ai', Math.max(0, this.piles.ai.handLimit - this.piles.ai.hand.length)), true);
+      this.draw('player', this._drawNeedWithIceSeal('player', Math.max(0, this.getHandLimit('player') - this.h.player.length)), true);
+      this.draw('ai', this._drawNeedWithIceSeal('ai', Math.max(0, this.getHandLimit('ai') - this.piles.ai.hand.length)), true);
       if (isPlayerPhase) this.emit('desc', '回合结束：玩家与NPC分别从自己的牌库补牌');
     }
 
@@ -715,7 +715,7 @@
         this._syncNpcSharedPile();
         this._refillPile('ai');
         if (includePlayer) {
-          this.draw('player', this._drawNeedWithIceSeal('player', Math.max(0, this.piles.player.handLimit - this.h.player.length)), true);
+          this.draw('player', this._drawNeedWithIceSeal('player', Math.max(0, this.getHandLimit('player') - this.h.player.length)), true);
           if (this.s.is1v2 && this.s.challengeRefillAvailable && !this.s.challengeRefillUsed) {
             this.s.challengeRefillUsed = true;
             this.s.challengeRefillAvailable = false;
@@ -725,7 +725,7 @@
           if (!this.s[key] || !this.s[key].alive) continue;
           const pile = this._pile(key);
           if (!pile) continue;
-          this.draw(key, this._drawNeedWithIceSeal(key, Math.max(0, pile.handLimit - pile.hand.length)), true);
+          this.draw(key, this._drawNeedWithIceSeal(key, Math.max(0, this.getHandLimit(key) - pile.hand.length)), true);
         }
         this.emit('desc', '冒险模式：存活NPC从共享牌库补牌');
         return;
@@ -739,7 +739,7 @@
           if (!this.s[key] || !this.s[key].alive) continue;
           const pile = this._pile(key);
           if (!pile) continue;
-          while (pile.hand.length > pile.handLimit) {
+          while (pile.hand.length > this.getHandLimit(key)) {
             let worst = 0;
             for (let i = 1; i < pile.hand.length; i++) {
               if (pile.hand[i].value < pile.hand[worst].value) worst = i;
@@ -747,16 +747,16 @@
             const card = pile.hand.splice(worst, 1)[0];
             this.discardWithEvent(card, key, { handIndex: worst, desc: this.s[key].name + '手牌超限，弃掉' + this.cardText(card) });
           }
-          this.draw(key, Math.max(0, pile.handLimit - pile.hand.length), true);
+          this.draw(key, Math.max(0, this.getHandLimit(key) - pile.hand.length), true);
         }
-        this.emit('desc', '冒险模式：存活NPC手牌保持5张');
+        this.emit('desc', '冒险模式：存活NPC按各自手牌上限补牌');
         return;
       }
       return super.fillAIHands1v2();
     }
 
     trimAI() {
-      while (this.h.ai.length > this.piles.ai.handLimit) {
+      while (this.h.ai.length > this.getHandLimit('ai')) {
         const index = this.chooseAIDiscard(this.h.ai);
         const card = this.h.ai.splice(index, 1)[0];
         this.discardWithEvent(card, 'ai', { handIndex: index, desc: `NPC手牌超限，弃掉${this.cardText(card)}` });
@@ -1031,7 +1031,7 @@
           this.later(() => this.aiTurn1v2());
           return this.check();
         }
-        this.draw('ai', Math.max(0, this.piles.ai.handLimit - this.h.ai.length), true);
+        this.draw('ai', Math.max(0, this.getHandLimit('ai') - this.h.ai.length), true);
         this.s.phase = 'AI_TURN';
         this.s.busy = true;
         this.s.activeAttacker = 'ai';
@@ -1319,7 +1319,7 @@
       const opponentKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
       const target = who === 'opp' ? this.s[opponentKey] : this.s.player;
       const targetLabel = who === 'opp' ? (this.s.is1v2 && opponentKey === 'ai2' ? 'AI2' : '对手') : '玩家';
-      const kindLabel = { burn: '灼伤', freeze: '冷冻', bleed: '流血', poison: '中毒', thorns: '荆棘', sandblind: '沙盲', iceSeal: '冰封', bomb: '定时炸弹', blind: '致盲', hypothermia: '失温', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生', diving: '潜水', scorch: '炙热', bloodthirst: '嗜血', bind: '捆缚', chaos_red: '混沌·红', chaos_yellow: '混沌·黄', chaos_blue: '混沌·蓝', chaos_green: '混沌·绿' }[kind] || 'buff';
+      const kindLabel = { burn: '灼伤', freeze: '冷冻', bleed: '流血', poison: '中毒', thorns: '荆棘', sandblind: '沙盲', quicksand: '流沙', iceSeal: '冰封', bomb: '定时炸弹', blind: '致盲', hypothermia: '失温', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生', diving: '潜水', scorch: '炙热', bloodthirst: '嗜血', bind: '捆缚', chaos_red: '混沌·红', chaos_yellow: '混沌·黄', chaos_blue: '混沌·蓝', chaos_green: '混沌·绿' }[kind] || 'buff';
       this._flashAccessory('PurifyCrystal');
       this.clean(target, false, kind);
       this.emit('desc', '净化水晶：清除' + targetLabel + '一层' + kindLabel);

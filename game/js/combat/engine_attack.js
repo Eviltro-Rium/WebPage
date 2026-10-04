@@ -74,7 +74,7 @@
       const keys = ['player','ai','ai2'].filter(key => this.s[key]);
       const snapshots = keys.map(key => ({key, entity:this.s[key], values:registry.all.map(def => registry.amount(this.s[key],def.id))}));
       const firstEvent = this.ver;
-      const methods = {burn:'burn',bleed:'bleed',poison:'poison',freeze:'freeze',blind:'blind',iceSeal:'iceSeal',applyHypnosis:'hypnosis',hypothermia:'hypothermia',thorns:'thorns',sandblind:'sandblind',addGuard:'guard',parasite:'parasite',settleBurn:'burn',clearDebuffs:'debuffs',clearPositiveBuffs:'buffs'};
+      const methods = {burn:'burn',bleed:'bleed',poison:'poison',freeze:'freeze',blind:'blind',iceSeal:'iceSeal',applyHypnosis:'hypnosis',hypothermia:'hypothermia',thorns:'thorns',sandblind:'sandblind',quicksand:'quicksand',addGuard:'guard',parasite:'parasite',settleBurn:'burn',clearDebuffs:'debuffs',clearPositiveBuffs:'buffs'};
       const operations = [], originals = {};
       for (const [method,id] of Object.entries(methods)) {
         if (typeof this[method] !== 'function') continue;

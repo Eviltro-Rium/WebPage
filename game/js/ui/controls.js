@@ -68,7 +68,7 @@ _renderControls() {
             : s.pendingHypothermiaDiscard
                 ? '[失温]达到2层：必须弃掉1张牌'
             : s.forcedDiscard
-                ? `手牌超限：需弃至 ${s.handLimit || 5} 张`
+                ? `手牌超限：需弃至 ${global.StatusService ? global.StatusService.handLimit(s.player, s.handLimit || 5) : (s.handLimit || 5)} 张`
                 : s.mayDiscardAfterSkill
                     ? '可选择1张牌弃掉，也可取消'
                     : '可同时选择多张牌弃掉';
@@ -301,7 +301,7 @@ _showSkillOverlay() {
     const stripPrefix = t => (t || '').replace(/^\d+\s*/, '');
     const tagifySkill = t => {
         let out = String(t || '');
-        const names = ['失温', '炙热', '冰封', '定时炸弹', '沙盲', '荆棘', '催眠', '沉睡', '捆缚', '嗜血', '寄生', '茂盛', '潜水', '飞翔', '守护', '暴击', '致盲', '中毒', '流血', '冷冻', '灼伤'];
+        const names = ['失温', '炙热', '冰封', '定时炸弹', '流沙', '沙盲', '荆棘', '催眠', '沉睡', '捆缚', '嗜血', '寄生', '茂盛', '潜水', '飞翔', '守护', '暴击', '致盲', '中毒', '流血', '冷冻', '灼伤'];
         for (const name of names) {
             out = out.replace(new RegExp('(?<!\\[)' + name + '(?!\\])', 'g'), '[' + name + ']');
         }

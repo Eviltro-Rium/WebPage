@@ -104,7 +104,15 @@
     return entity;
   }
 
+  // Effective limits are derived, never written back to base pile/save limits.
+  function handLimit(entity, base) {
+    const delta = registry.list(entity).reduce((sum, definition) =>
+      sum + (Number(definition.handLimitDelta) || 0) * registry.amount(entity, definition.id), 0);
+    return Math.max(0, Number(base) + delta);
+  }
+
   const api = Object.freeze({
+    handLimit,
     registry,
     all: registry.all,
     get: registry.get,

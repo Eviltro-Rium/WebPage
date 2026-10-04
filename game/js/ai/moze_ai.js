@@ -97,7 +97,7 @@
         const bonus = (a.burn || 0) + (a.bleed || 0) + (a.poison || 0) +
           (a.frozen ? 1 : 0) + (a.bomb || 0) + (a.blind || 0) +
           (a.iceSeal || 0) + (a.hypothermia || 0) + (a.thorns || 0) +
-          (a.sandblind || 0) + (a.bindMark ? 1 : 0);
+          (a.sandblind || 0) + (a.quicksand || 0) + (a.bindMark ? 1 : 0);
         helpers.clearSelf();
         eng.emit('desc', `Moze AI清除${bonus}层debuff，造成${3 + bonus}点伤害`);
         return { d: 3 + bonus, skip: false, unblock: false };

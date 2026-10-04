@@ -270,6 +270,18 @@
     beastTradeCost: ['ben', 'cao']
   });
   R.registerItem({
+    name: 'QuicksandTrophy',
+    displayName: '流沙战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：对当前对手施加1层[流沙]（持续，手牌上限-1，上限1层），打出后抽1张牌，可搭桥',
+    icon: '../icons/buff_icons/quicksand.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyQuicksand',
+    trophyEffect: 'quicksand',
+    beastTradeCost: ['ben', 'wuneng']
+  });
+  R.registerItem({
     name: 'SandblindTrophy',
     displayName: '沙盲战利白卡',
     kind: 'trophyWhite',

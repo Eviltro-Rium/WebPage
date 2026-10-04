@@ -195,7 +195,8 @@
           let cleared = Math.max(0, Number(a.burn) || 0) + Math.max(0, Number(a.bleed) || 0)
             + Math.max(0, Number(a.poison) || 0) + Math.max(0, Number(a.bomb) || 0)
             + Math.max(0, Number(a.hypothermia) || 0) + Math.max(0, Number(a.thorns) || 0)
-            + Math.max(0, Number(a.sandblind) || 0);
+            + Math.max(0, Number(a.sandblind) || 0)
+            + Math.max(0, Number(a.quicksand) || 0);
           if (a.frozen) cleared += 1;
           if (a.blind) cleared += 1;
           if (a.iceSeal) cleared += 1;

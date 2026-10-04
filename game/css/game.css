@@ -1411,28 +1411,25 @@ body {
 .card-canvas.card-playable {
     outline: 3px solid rgba(192,132,252,0.98);
     outline-offset: 2px;
-    filter: saturate(1.18) brightness(1.08);
-    box-shadow: 0 0 0 2px rgba(17,24,39,0.82), 0 0 14px rgba(192,132,252,0.95), 0 0 28px rgba(168,85,247,0.75), inset 0 0 12px rgba(255,255,255,0.25), 0 8px 20px rgba(15,23,42,0.3);
-    animation: cardPlayablePulse 1s ease-in-out infinite;
+    filter: none;
+    box-shadow: 0 0 0 2px rgba(17,24,39,0.82), 0 0 14px rgba(192,132,252,0.95), 0 0 28px rgba(168,85,247,0.75), 0 8px 20px rgba(15,23,42,0.3);
+    animation: none;
     z-index: 2;
 }
 .card-canvas.card-playable:hover {
     transform: scale(1.045);
-    filter: saturate(1.25) brightness(1.12);
-    box-shadow: 0 0 0 2px rgba(17,24,39,0.9), 0 0 18px rgba(192,132,252,1), 0 0 34px rgba(168,85,247,0.9), inset 0 0 14px rgba(255,255,255,0.3), 0 10px 24px rgba(15,23,42,0.34);
+    filter: none;
+    box-shadow: 0 0 0 2px rgba(17,24,39,0.9), 0 0 18px rgba(192,132,252,1), 0 0 34px rgba(168,85,247,0.9), 0 10px 24px rgba(15,23,42,0.34);
 }
 .card-canvas.card-unplayable { opacity: 0.62; cursor: not-allowed; }
 .card-canvas.card-unplayable:hover { transform: none; filter: none; box-shadow: 0 1px 2px rgba(15,23,42,0.24), 0 5px 14px rgba(15,23,42,0.18); }
 .card-canvas.card-playable.selected {
     transform: scale(1.035);
-    outline: 3px solid rgba(255,255,255,0.98);
+    outline: 3px solid rgba(216,180,254,0.98);
     outline-offset: 3px;
-    box-shadow: 0 0 0 5px rgba(192,132,252,0.95), 0 0 22px rgba(168,85,247,0.95), inset 0 0 14px rgba(255,255,255,0.3), 0 10px 24px rgba(15,23,42,0.3);
+    box-shadow: 0 0 0 5px rgba(192,132,252,0.95), 0 0 22px rgba(168,85,247,0.95), 0 10px 24px rgba(15,23,42,0.3);
 }
-@keyframes cardPlayablePulse {
-    0%, 100% { box-shadow: 0 0 0 2px rgba(17,24,39,0.82), 0 0 12px rgba(192,132,252,0.82), 0 0 24px rgba(168,85,247,0.62), inset 0 0 10px rgba(255,255,255,0.2), 0 8px 20px rgba(15,23,42,0.28); }
-    50% { box-shadow: 0 0 0 2px rgba(17,24,39,0.9), 0 0 20px rgba(192,132,252,1), 0 0 34px rgba(168,85,247,0.88), inset 0 0 14px rgba(255,255,255,0.3), 0 10px 24px rgba(15,23,42,0.34); transform: scale(1.02); }
-}
+
 @media (prefers-reduced-motion: reduce) {
     .card-canvas.card-playable { animation: none; }
 }

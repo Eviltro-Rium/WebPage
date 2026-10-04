@@ -154,6 +154,7 @@
         parasite: p.parasite || 0,
         thorns: p.thorns || 0,
         sandblind: p.sandblind || 0,
+        quicksand: p.quicksand || 0,
         diving: !!p.diving,
         scorch: !!p.scorch,
         hypothermia: p.hypothermia || 0,

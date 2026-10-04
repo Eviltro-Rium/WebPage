@@ -187,7 +187,7 @@
     }
     if(m==='doEndTurn'){
       if(this.s.phase!=='PLAYER_PLAY')throw Error('当前不能结束回合');
-      if(this.h.player.length>this.s.handLimit){this.s.forcedDiscard=true;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','手牌超过'+this.s.handLimit+'张，请弃至不超过'+this.s.handLimit+'张');return this.state()}
+      if(this.h.player.length > this.getHandLimit('player')){this.s.forcedDiscard=true;this.s.phase='PLAYER_DISCARD';this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','手牌超过'+this.getHandLimit('player')+'张，请弃至不超过'+this.getHandLimit('player')+'张');return this.state()}
       return this._startAISequence1v2()
     }
     if(m==='doDefend'||m==='doSkipDefend'){

@@ -86,15 +86,15 @@
   };
   Engine.prototype.fillHands1v2=function(includePlayer=false){
     let limit=this._aiFillTarget();
-    if(includePlayer)this.draw('player',this._drawNeedWithIceSeal('player',Math.max(0,this.s.handLimit-this.h.player.length)),true);
-    if(this.s.ai.alive)this.draw('ai',this._drawNeedWithIceSeal('ai',Math.max(0,limit-this.h.ai.length)),true);
-    if(this.s.ai2.alive)this.draw('ai2',this._drawNeedWithIceSeal('ai2',Math.max(0,limit-this.h.ai2.length)),true);
+    if(includePlayer)this.draw('player',this._drawNeedWithIceSeal('player',Math.max(0,this.getHandLimit('player')-this.h.player.length)),true);
+    if(this.s.ai.alive)this.draw('ai',this._drawNeedWithIceSeal('ai',Math.max(0,this.getHandLimit('ai')-this.h.ai.length)),true);
+    if(this.s.ai2.alive)this.draw('ai2',this._drawNeedWithIceSeal('ai2',Math.max(0,this.getHandLimit('ai2')-this.h.ai2.length)),true);
     this.emit('desc','双方按当前手牌上限完成补牌')
   };
   Engine.prototype.fillAIHands1v2=function(){
     let limit=this._aiFillTarget();
-    if(this.s.ai.alive)this.draw('ai',Math.max(0,limit-this.h.ai.length),true);
-    if(this.s.ai2.alive)this.draw('ai2',Math.max(0,limit-this.h.ai2.length),true);
+    if(this.s.ai.alive)this.draw('ai',Math.max(0,this.getHandLimit('ai')-this.h.ai.length),true);
+    if(this.s.ai2.alive)this.draw('ai2',Math.max(0,this.getHandLimit('ai2')-this.h.ai2.length),true);
     this.emit('desc','AI1与AI2补牌至'+limit+'张')
   };
   Engine.prototype.endAi1v2=function(){
@@ -116,7 +116,7 @@
     let _hands=this.handCounts();this.silentDraws(function(){this.fillHands1v2(true);this.turnStart('player')});this.emitDrawDiff(_hands);this.check()
   };
   Engine.prototype.trimAI1v2=function(){
-    let key=this._curAI(),limit=this._aiFillTarget();
+    let key=this._curAI(),limit=this.getHandLimit(key);
     while(this.h[key].length>limit){
       let worst=this._swapAIContext(key,()=>this.chooseAIDiscard(this.h.ai));
       let card=this.h[key].splice(worst,1)[0];
