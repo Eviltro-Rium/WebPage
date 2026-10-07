@@ -13,7 +13,7 @@
 ## 冒险模式
 
 - [冒险指南](adventure_guide/README.md)：地图、房间、奖励和测试模式。
-  - [城堡怪物](adventure_guide/castle.md) · [丛林怪物](adventure_guide/forest.md) · [冻洋怪物](adventure_guide/ocean.md)
+  - [城堡怪物](adventure_guide/castle.md) · [丛林怪物](adventure_guide/forest.md) · [冻洋怪物](adventure_guide/ocean.md) · [沙漠怪物](adventure_guide/desert.md)（框架）
   - [配饰](adventure_guide/accessories.md) · [一次性道具](adventure_guide/consumables.md)
   - [掉落](adventure_guide/loot.md) · [奖励](adventure_guide/rewards.md)
 - [角色图鉴](Characters/README.md)：玩家角色技能说明。

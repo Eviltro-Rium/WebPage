@@ -5,6 +5,7 @@
 - [城堡场景 · 怪物图鉴](castle.md)
 - [丛林场景 · 怪物图鉴](forest.md)
 - [冻洋场景 · 怪物图鉴](ocean.md)
+- [沙漠场景 · 怪物图鉴](desert.md)（框架，怪物待填充）
 - [配饰图鉴](accessories.md)
 - [一次性道具图鉴](consumables.md)（含战利白卡）
 - [战利白卡掉落规则](loot.md)

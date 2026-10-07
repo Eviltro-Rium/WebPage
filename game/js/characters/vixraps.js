@@ -28,8 +28,8 @@
         d = 4;
       }
       if (v === 4) {
-        const healAmount = Math.ceil((t.burn || 0) / 2);
-        heal(a, healAmount);
+        heal(a, 1);
+        burn(1);
         draw(owner, 1, true);
       }
       if (v === 5) {
@@ -46,14 +46,11 @@
         }
       }
       if (v === 6) {
-        // 先施加1层灼伤，再在攻防结算后触发一次灼伤结算。
-        // 与回血延后到 ack 流程之后，避免被 _deferAttackBuffs 把灼伤减层
-        // 当成 buff 变化回滚。
+        // 先施加1层灼伤，再按对手当前灼伤层数恢复等量生命并造成等额伤害。
         burn(1);
-        const layer = t.burn || 0;
-        if (layer > 0 && eng && eng.s) {
-          eng.s.pendingVixrapsBurnSettle = { owner, attacker: a, target: t, layer };
-        }
+        const stacks = t.burn || 0;
+        if (stacks > 0) heal(a, stacks);
+        d = stacks;
       }
       if (v === 7) {
         if (typeof eng.applyHypnosis === 'function') eng.applyHypnosis(t);
@@ -80,8 +77,6 @@
       return { d, skip, unblock, immediateBuffs };
     },
     damageAfterDefense(v, damage, defender) {
-      if ([0].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2));
-
       return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
@@ -96,6 +91,7 @@
         desc = 'Vixraps 1牌：反击2点+施加2层灼伤';
       }
       if (v === 2) {
+        heal(defender, 2);
         const currentBurn = opponent.burn || 0;
         const service = window.FurryGame && window.FurryGame.StatusService;
         if (currentBurn > 0) {
@@ -107,10 +103,8 @@
               {who:target, target, kind:'burn', stacksBefore:currentBurn, stacks:opponent.burn, operation:'multiply'});
           }
         }
-        const healAmount = opponent.burn || 0;
-        heal(defender, healAmount);
         remaining = d;
-        desc = `Vixraps 2牌：对手灼伤翻倍至${opponent.burn}层，恢复${healAmount}点`;
+        desc = `Vixraps 2牌：恢复2点` + (opponent.burn > currentBurn ? `+对手灼伤翻倍至${opponent.burn}层` : '');
       }
       if (v === 3) {
         const counterDmg = Math.ceil(d / 2);
@@ -122,11 +116,10 @@
       if (v === 0) {
         if (typeof eng.applyHypnosis === 'function') eng.applyHypnosis(opponent);
         burn(opponent, 1);
-        const block = Math.ceil(d / 2);
-        remaining = Math.max(0, d - block);
+        remaining = d;
         const healAmount = (opponent.burn || 0) * 2;
         heal(defender, healAmount);
-        desc = `Vixraps 0牌：防御${block}点+对手灼伤${opponent.burn}层+恢复${healAmount}点`;
+        desc = `Vixraps 0牌：对手灼伤${opponent.burn}层+恢复${healAmount}点`;
       }
 
       return { remaining, desc };

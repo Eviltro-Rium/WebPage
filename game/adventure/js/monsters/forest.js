@@ -195,7 +195,7 @@
     icon: '../icons/npc_icons/forest_dendrobatid_frog.webp',
     attackDamage(card, ctx) {
       const v = card.value;
-      if (v >= 1 && v <= 3) return 2;
+      if (v >= 1 && v <= 3) return 3;
       if (v >= 4 && v <= 6) return 4 + ((ctx && ctx.playerPoison) || 0);
       return 0;
     },
@@ -478,7 +478,7 @@
     },
     defendCounter(card) {
       const v = card.value;
-      if (v >= 1 && v <= 3) return Math.ceil(v / 2);
+      if (v >= 1 && v <= 3) return v;
       return 0;
     },
     defendSplit(card) {
@@ -536,7 +536,7 @@
       return card.value === 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 10 }),
+
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({ defendBlock: (card, incoming) => orig.defendBlock(card, incoming) + 1 })
     }

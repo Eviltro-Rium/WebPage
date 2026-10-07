@@ -159,7 +159,7 @@
             }
           }
         }
-        // 克拉肯专属：进攻1/2/3抽取玩家牌库一张牌判定；普通颜色造成对应数字伤害并放回玩家牌库底，数字零/道具牌0伤害并置入玩家弃牌堆、跳过防御、获得潜水、施加冰封
+        // 克拉肯专属：进攻1/2/3抽取玩家牌库一张牌判定；彩色牌造成对应数字伤害，黑白牌不造成伤害；伤害为0走弃牌库分支（跳过防御、潜水、冰封），伤害>0走回牌库分支
         if (typeof mod.attackKrakenJudge === 'function' && mod.attackKrakenJudge(c)) {
           const pp = eng.piles && eng.piles.player;
           if (pp) {
@@ -167,12 +167,13 @@
             if (pp.deck.length) {
               const drawn = pp.deck.pop();
               eng.emit('reveal', a.name + '抽取玩家牌库' + eng.cardText(drawn) + '判定', drawn, { who: 'player', from: 'deck' });
-              const isDud = !!(drawn.isBlack || drawn.isWhite || drawn.trophyWhite || !drawn.isNumberCard || drawn.value === 0);
-              if (isDud) {
+              const isColorNumber = !!(drawn.isNumberCard && !drawn.isBlack && !drawn.isWhite && !drawn.trophyWhite);
+              const judgeDmg = isColorNumber ? Math.max(0, Number(drawn.value) || 0) : 0;
+              if (judgeDmg === 0) {
                 d = 0;
                 unblock = true;
                 pp.discard.push(drawn);
-                eng.emit('desc', eng.cardText(drawn) + '为零/道具牌，置入玩家弃牌堆并跳过防御');
+                eng.emit('desc', eng.cardText(drawn) + '伤害为0，置入玩家弃牌堆并跳过防御');
                 if (!a.diving) {
                   a.diving = true;
                   const diveWho = attackerKey === 'ai2' ? 'ai2' : (attackerKey === 'ai' ? 'ai' : 'player');
@@ -181,7 +182,7 @@
                 if (typeof eng.iceSeal === 'function') eng.iceSeal(t);
                 else t.iceSeal = Math.min(1, (t.iceSeal || 0) + 1);
               } else {
-                d = Math.max(0, Number(drawn.value) || 0);
+                d = judgeDmg;
                 pp.deck.unshift(drawn);
                 eng.emit('desc', eng.cardText(drawn) + '造成' + d + '点伤害并放回玩家牌库底');
               }
@@ -214,6 +215,10 @@
         if (!unblock && typeof mod.attackUnblockableBelow === 'function') {
           const belowThreshold = Number(mod.attackUnblockableBelow(c)) || 0;
           if (belowThreshold > 0 && d > 0 && d < belowThreshold) unblock = true;
+        }
+        // 条件不可防御：目标有指定 buff 时不可防御（沙虫沙盲/蝎子中毒）
+        if (!unblock && typeof mod.attackUnblockableIfBuff === 'function' && mod.attackUnblockableIfBuff(c, t)) {
+          unblock = true;
         }
         let aoeTargets = null;
         let aoeDamage = 0;
@@ -267,6 +272,15 @@
             eng.emit('buff', '+' + f + '[飞翔]', null, { who, kind: 'fly', stacks: a.fly });
           }
         }
+        // 进攻获得寄生（上限1，沙虫4/5/6）
+        if (typeof mod.attackParasite === 'function') {
+          const p = mod.attackParasite(c);
+          if (p > 0) {
+            a.parasite = Math.min(1, (a.parasite || 0) + p);
+            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+            eng.emit('buff', '+' + p + '[寄生]', null, { who, kind: 'parasite', stacks: a.parasite });
+          }
+        }
         if (typeof mod.attackClearPositive === 'function' && mod.attackClearPositive(c)) {
           if (clearPositiveBuffs) clearPositiveBuffs(t);
           else {
@@ -312,6 +326,45 @@
         if (typeof mod.attackIceSeal === 'function' && mod.attackIceSeal(c)) {
           if (typeof eng.iceSeal === 'function') eng.iceSeal(t, { silent: true });
           else t.iceSeal = Math.min(1, (t.iceSeal || 0) + 1);
+        }
+        // 沙漠骆驼：进攻1/2/3施加沙盲（层数，与攻击debuff一致延迟到防御结算后）
+        if (typeof mod.attackSandblind === 'function') {
+          const sb = Math.max(0, Number(mod.attackSandblind(c)) || 0);
+          if (sb > 0) {
+            if (typeof eng.sandblind === 'function') eng.sandblind(t, sb, { silent: true });
+            else t.sandblind = Math.min(6, (t.sandblind || 0) + sb);
+          }
+        }
+        if(typeof mod.attackQuicksand === 'function'){
+          const sb = Math.max(0, Number(mod.attackQuicksand(c)) || 0);
+          if (sb > 0) {
+            if (typeof eng.quicksand === 'function') eng.quicksand(t, sb, { silent: true });
+            else t.quicksand = Math.min(6, (t.quicksand || 0) + sb);
+          }
+        }
+        // 沙漠骆驼：进攻4/5/6施加荆棘（上限1，延迟到防御结算后）
+        if (typeof mod.attackThorns === 'function') {
+          const th = Math.max(0, Number(mod.attackThorns(c)) || 0);
+          if (th > 0) {
+            if (typeof eng.thorns === 'function') eng.thorns(t, th, { silent: true });
+            else t.thorns = Math.min(1, (t.thorns || 0) + th);
+          }
+        }
+        // 圣甲虫：进攻1/2/3按技能牌颜色施加不同 buff
+        if (typeof mod.attackColorBuff === 'function') {
+          const cb = mod.attackColorBuff(c);
+          if (cb) {
+            if (cb.burn) {
+              if (typeof eng.burn === 'function') eng.burn(t, cb.burn, { silent: true });
+              else t.burn = Math.min(5, (t.burn || 0) + cb.burn);
+            }
+            if (cb.thorns) {
+              if (typeof eng.thorns === 'function') eng.thorns(t, cb.thorns, { silent: true });
+              else t.thorns = Math.min(1, (t.thorns || 0) + cb.thorns);
+            }
+            if (cb.iceSeal && typeof eng.iceSeal === 'function') eng.iceSeal(t, cb.iceSeal, { silent: true });
+            if (cb.poison && poison) poison(cb.poison);
+          }
         }
         // Life steal: unblockable card defense; fly/guard still reduce the amount,
         // and heal syncs to HP actually lost at settlement (pendingAttack.isDrain).
@@ -455,6 +508,29 @@
             eng.hypothermia(opponent, hypothermiaAmt);
           }
         };
+        const thornsAmt = typeof mod.defendThorns === 'function' ? (mod.defendThorns(c) || 0) : 0;
+        const applyThorns = () => {
+          if (thornsAmt > 0) {
+            if (typeof eng.thorns === 'function') eng.thorns(opponent, thornsAmt);
+            else opponent.thorns = Math.min(1, (opponent.thorns || 0) + thornsAmt);
+          }
+        };
+        const sandblindDefAmt = typeof mod.defendSandblind === 'function' ? (mod.defendSandblind(c) || 0) : 0;
+        const applySandblind = () => {
+          if (sandblindDefAmt > 0) {
+            if (typeof eng.sandblind === 'function') eng.sandblind(opponent, sandblindDefAmt);
+            else opponent.sandblind = Math.min(6, (opponent.sandblind || 0) + sandblindDefAmt);
+          }
+        };
+        const poisonDrainConfig = typeof mod.defendPoisonDrain === 'function' ? mod.defendPoisonDrain(c) : null;
+        const applyPoisonDrain = () => {
+          if (poisonDrainConfig && poisonDrainConfig.poison > 0 && poison) {
+            poison(opponent, poisonDrainConfig.poison);
+            const poisonStacks = opponent.poison || 0;
+            const drainAmount = poisonStacks + (poisonDrainConfig.drain || 0);
+            if (drainAmount > 0) heal(defender, drainAmount);
+          }
+        };
         const clearSelfDebuffs = typeof mod.defendClearDebuffs === 'function' ? !!mod.defendClearDebuffs(c) : false;
         const applyClearSelfDebuffs = () => {
           if (clearSelfDebuffs && clearDebuffs) clearDebuffs(defender);
@@ -463,7 +539,8 @@
         const suffix = () =>
           (poisonAmt ? '，施加' + poisonAmt + '层中毒' : '') +
           (bleedAmt ? '，施加' + bleedAmt + '层流血' : '') +
-          (hypothermiaAmt ? '，施加' + hypothermiaAmt + '层[失温]' : '');
+          (hypothermiaAmt ? '，施加' + hypothermiaAmt + '层[失温]' : '') +
+          (thornsAmt ? '，施加' + thornsAmt + '层荆棘' : '');
         if (typeof mod.defendRollImmune === 'function' && mod.defendRollImmune(c, eng, defender, d, owner)) {
           return { remaining: 0, desc: '12面骰判定成功，免疫所有伤害和buff' };
         }
@@ -542,7 +619,7 @@
             }
           }
           applyClearSelfDebuffs();
-          applyPoison(); applyBleed(); applyHypothermia(); applyDrawSelf(); applyAllExtras();
+          applyPoison(); applyBleed(); applyHypothermia(); applyThorns(); applySandblind(); applyPoisonDrain();applyDrawSelf(); applyAllExtras();
           const clearText = (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c))
             ? '，免疫buff，清除自身所有debuff'
             : '';
@@ -576,7 +653,7 @@
           const split = Math.ceil(d / 2);
           if (hurt) hurt(opponent, split);
           applyClearSelfDebuffs();
-          applyPoison(); applyBleed(); applyHypothermia(); applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
+          applyPoison(); applyBleed(); applyHypothermia(); applyThorns(); applySandblind(); applyPoisonDrain();applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
           return {
             remaining: split,
             desc: '均摊伤害，双方各受' + split + '点' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc
@@ -591,7 +668,7 @@
               const block = mod.defendBlock(c, d, defender, eng);
               if (block > 0) {
                 const remaining = Math.max(0, d - block);
-                applyPoison(); applyBleed(); applyHypothermia(); applyLushAndParasite(); applyAllExtras();
+                applyPoison(); applyBleed(); applyHypothermia(); applyThorns(); applySandblind(); applyPoisonDrain();applyLushAndParasite(); applyAllExtras();
                 return {
                   remaining,
                   desc: '恢复' + healAmt + '生命，格挡' + block + '点' + suffix() + lushParasiteDesc + allExtrasDesc
@@ -599,7 +676,7 @@
               }
             }
             applyClearSelfDebuffs();
-            applyPoison(); applyBleed(); applyHypothermia(); applyLushAndParasite(); applyAllExtras();
+            applyPoison(); applyBleed(); applyHypothermia(); applyThorns(); applySandblind(); applyPoisonDrain();applyLushAndParasite(); applyAllExtras();
             let remaining = d;
             const descParts = ['恢复' + healAmt + '生命'];
             if (typeof mod.defendCounter === 'function') {
@@ -637,7 +714,7 @@
           }
           if (descParts.length) {
             applyClearSelfDebuffs();
-            applyPoison(); applyBleed(); applyHypothermia(); applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
+            applyPoison(); applyBleed(); applyHypothermia(); applyThorns(); applySandblind(); applyPoisonDrain();applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
             return {
               remaining: hasBlock ? remaining : d,
               desc: descParts.join('，') + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc
@@ -646,7 +723,7 @@
         }
 
         applyClearSelfDebuffs();
-        applyPoison(); applyBleed(); applyHypothermia(); applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
+        applyPoison(); applyBleed(); applyHypothermia(); applyThorns(); applySandblind(); applyPoisonDrain();applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
         if (v === 1) return { remaining: Math.max(0, d - Math.ceil(d / 2)), desc: '1牌防御' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
         if (v === 3) return { remaining: Math.max(0, d - Math.floor(d / 2)), desc: '3牌防御' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
         return { remaining: d, desc: '直接承受' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
@@ -739,6 +816,15 @@
       }
       return '无防御效果';
     }
+    // DesertBison defend: counter card value + bleed (desert.md).
+    if (mod.name === 'DesertBison' && card.isNumberCard) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) {
+        const bleed = (Number(opts.stage) || 1) >= 4 ? 2 : 1;
+        return '反击1/2/3点伤害，施加' + bleed + '层[流血]';
+      }
+      return '无防御效果';
+    }
     let parts = [];
       if (typeof mod.defendImmune === 'function' && mod.defendImmune(card)) {
         if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(card)) {
@@ -772,6 +858,18 @@
         const h = mod.defendHypothermia(card);
         if (h > 0) parts.push('施加' + h + '层[失温]');
       }
+      if (typeof mod.defendThorns === 'function') {
+        const th = mod.defendThorns(card);
+        if (th > 0) parts.push('施加' + th + '层[荆棘]');
+      }
+      if (typeof mod.defendSandblind === 'function') {
+        const sb = mod.defendSandblind(card);
+        if (sb > 0) parts.push('施加' + sb + '层[沙盲]');
+      }
+      if (typeof mod.defendPoisonDrain === 'function') {
+        const pd = mod.defendPoisonDrain(card);
+        if (pd && pd.poison > 0) parts.push('施加' + pd.poison + '层[中毒]并按层数吸取生命');
+      }
       if (typeof mod.defendBlock === 'function') {
         if (mod.name === 'CastleFirefly') {
           const v = card && card.value;
@@ -795,7 +893,7 @@
             const rem8 = 8 - b8, rem4 = 4 - b4;
             if (rem8 === rem4 && rem8 < 8) parts.push('将伤害降低为' + rem8 + '点');
             else if (b8 === b4) {
-              const capStyle = (mod.name === 'CastleBat' || mod.name === 'ForestDeer' || mod.name === 'ForestLadybug' || mod.name === 'FrozenOceanLynx' || mod.name === 'FrozenOceanTubeWorm');
+              const capStyle = (mod.name === 'CastleBat' || mod.name === 'ForestDeer' || mod.name === 'ForestLadybug' || mod.name === 'FrozenOceanLynx' || mod.name === 'FrozenOceanTubeWorm' || mod.name === 'DesertLizard' || mod.name === 'DesertViper');
               parts.push((capStyle ? '格挡至多' : '格挡') + b8 + '点伤害');
             }
             else if (b8 === Math.ceil(8 / 2) && b4 === Math.ceil(4 / 2)) parts.push('格挡半数伤害（向上取整）');
@@ -997,13 +1095,73 @@
     if (mod.name === 'FrozenKraken' && card.isNumberCard) {
       const v = card.value;
       if (v >= 1 && v <= 3) {
-        return '抽取玩家牌库1张牌判定：普通颜色造成对应数字点[伤害]并放回牌库底，数字零/道具牌0伤害并置入玩家弃牌堆、跳过防御、获得[潜水]、施加[冰封]';
+        return '抽取玩家牌库1张牌判定：彩色牌造成对应数字点[伤害]，黑白牌不造成伤害；伤害为0（数字零牌或黑白牌）置入玩家弃牌堆、跳过防御、获得[潜水]、施加[冰封]，否则放回牌库底';
       }
       if (v >= 4 && v <= 6) {
         return '造成玩家手牌数点[伤害]，施加1层[失温]';
       }
       if (v === 0) {
         return '施加1层[失温]，清除自身所有负面效果，造成3+清除层数点[伤害]（<5不可防御）';
+      }
+      return '无进攻效果';
+    }
+    // DesertSandworm: sandblind-conditional unblock on 1/2/3, parasite on 4/5/6 (desert.md).
+    if (mod.name === 'DesertSandworm' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成' + (4 + stageBonus) + '点[伤害]，若目标有[沙盲]则不可防御';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成' + (5 + stageBonus) + '点[伤害]，获得[寄生]';
+      }
+      return '无进攻效果';
+    }
+    // DesertScarab: color-based buff on 1/2/3, fly on 4/5/6 (desert.md).
+    if (mod.name === 'DesertScarab' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成' + (3 + stageBonus) + '点[伤害]，按技能牌颜色施加：🔴→2层[灼伤]、🟡→[荆棘]、🔵→[冰封]、🟢→[中毒]';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成' + (4 + stageBonus) + '点[伤害]，获得1层[飞翔]';
+      }
+      return '无进攻效果';
+    }
+    // DesertScorpion: poison-conditional unblock on 1/2/3, unblockable thorns+poison on 4/5/6 (desert.md).
+    if (mod.name === 'DesertScorpion' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成' + (3 + stageBonus) + '点[伤害]，若目标有[中毒]则不可防御';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成' + (2 + stageBonus) + '点[伤害]（不可防御），施加1层[荆棘]，施加1层[中毒]';
+      }
+      return '无进攻效果';
+    }
+    // DesertViper: poison on 1/2/3, poison-scaled drain on 4/5/6 (desert.md).
+    if (mod.name === 'DesertViper' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成3点[伤害]，施加1层[中毒]';
+      }
+      if (v >= 4 && v <= 6) {
+        return '吸取' + (2 + stageBonus) + '+玩家[中毒]层数点生命（不可防御）';
+      }
+      return '无进攻效果';
+    }
+    // DesertVulture: yellow-conditional sandblind/fly on 1/2/3, clear positive on 4/5/6 (desert.md).
+    if (mod.name === 'DesertVulture' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成' + (3 + stageBonus) + '点[伤害]，若技能牌为🟡施加2层[沙盲]，否则获得[飞翔]';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成' + (5 + stageBonus) + '点[伤害]，清除玩家所有正面buff';
       }
       return '无进攻效果';
     }
@@ -1068,6 +1226,18 @@
     if (typeof mod.attackBleed === 'function') {
       const b = mod.attackBleed(card);
       if (b > 0) parts.push('施加' + b + '层[流血]');
+    }
+    if (typeof mod.attackSandblind === 'function') {
+      const sb = mod.attackSandblind(card);
+      if (sb > 0) parts.push('施加' + sb + '层[沙盲]');
+    }
+    if (typeof mod.attackQuicksand === 'function') {
+      const q = mod.attackQuicksand(card);
+      if (q > 0) parts.push('施加' + q + '层[流沙]');
+    }
+    if (typeof mod.attackThorns === 'function') {
+      const th = mod.attackThorns(card);
+      if (th > 0) parts.push('施加' + th + '层[荆棘]');
     }
     if (typeof mod.attackBurn === 'function') {
       const b = mod.attackBurn(card);

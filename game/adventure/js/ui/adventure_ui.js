@@ -23,7 +23,7 @@
   class AdventureUI {
     static selectStageMap(stage) {
       if (!Number.isInteger(stage) || stage < 1 || stage > 4) throw new Error('冒险层数必须为1–4');
-      const scenes = ['castle', 'forest', 'ocean'];
+      const scenes = ['castle', 'forest', 'ocean', 'desert'];
       const scene = scenes[Math.floor(random() * scenes.length)];
       const variant = 1 + Math.floor(random() * 3);
       const mapName = 'stage_' + String(stage).padStart(2, '0') + '_' + scene + '_' + variant;

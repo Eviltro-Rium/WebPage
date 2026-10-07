@@ -23,32 +23,32 @@ function defend(engine, defenderKey, opponentKey, value=2) {
   });
 }
 for (const [defenderKey,opponentKey] of [['player','ai'],['player','ai2'],['ai','player'],['ai2','player']]) {
-  test('Vixraps defense2 commits burn before healing: '+defenderKey+' vs '+opponentKey,()=>{
+  test('Vixraps defense2 heals 2 then doubles burn: '+defenderKey+' vs '+opponentKey,()=>{
     const engine=setup();engine.s[defenderKey]=engine.character('Vixraps',defenderKey!=='player');
     engine.s[defenderKey].hp=40;engine.s[opponentKey].burn=2;
     assert.equal(defend(engine,defenderKey,opponentKey).remaining,6);
-    assert.equal(engine.s[opponentKey].burn,4);assert.equal(engine.s[defenderKey].hp,44);
+    assert.equal(engine.s[opponentKey].burn,4);assert.equal(engine.s[defenderKey].hp,42);
     const burn=engine.events.filter(e=>e.type==='buff'&&e.kind==='burn');assert.equal(burn.length,1);
     assert.equal(burn[0].target,opponentKey);assert.equal(burn[0].stacksBefore,2);assert.equal(burn[0].stacks,4);
     assert.equal(burn[0].statusAfter.burn,4);
-    const heal=engine.events.find(e=>e.type==='heal');assert.equal(heal.target,defenderKey);assert.ok(burn[0].id<heal.id);
+    const heal=engine.events.find(e=>e.type==='heal');assert.equal(heal.target,defenderKey);assert.ok(heal.id<burn[0].id);
     assert.equal((engine.s.pendingSkillStatuses||[]).length,0,'defense does not join attack queue');
   });
 }
-test('Vixraps defense2 uses actual capped burn and has no fake buff increase',()=>{
+test('Vixraps defense2 heals flat 2 and respects the burn cap',()=>{
   for(const [burn,expected,events]of [[0,0,0],[3,5,1],[5,5,0]]){
     const engine=setup();engine.s.player.hp=40;engine.s.ai.burn=burn;defend(engine,'player','ai');
-    assert.equal(engine.s.ai.burn,expected);assert.equal(engine.s.player.hp,40+expected);
+    assert.equal(engine.s.ai.burn,expected);assert.equal(engine.s.player.hp,42);
     assert.equal(engine.events.filter(e=>e.type==='buff'&&e.kind==='burn').length,events);
   }
 });
-test('defense2 against NPC2 and remaining attack finish in the same exchange',()=>{
+test('defense2 against NPC2 heals flat and doubles only the attacker',()=>{
   const engine=setup();engine.s.player.hp=40;engine.s.ai.burn=1;engine.s.ai2.burn=2;
   engine.s.atkOwner='ai2';engine.s.activeAttacker='ai2';engine.s.atkCard=Card.number('RED',3);
   engine.s.discardTop=engine.s.atkCard;engine.s.pendingAttack={damage:5};engine.s.phase='PLAYER_DEFEND';engine.s.busy=false;
   engine.h.player=[Card.number('RED',2)];engine.s.selectedCard=0;
-  engine.defend1v2();assert.equal(engine.s.ai2.burn,4);assert.equal(engine.s.ai.burn,1);assert.equal(engine.s.player.hp,44);
-  engine.acknowledgeEvents(engine.ver);assert.equal(engine.s.player.hp,39);assert.equal(engine.s.ai2.burn,4);
+  engine.defend1v2();assert.equal(engine.s.ai2.burn,4);assert.equal(engine.s.ai.burn,1);assert.equal(engine.s.player.hp,42);
+  engine.acknowledgeEvents(engine.ver);assert.equal(engine.s.player.hp,37);assert.equal(engine.s.ai2.burn,4);
 });
 test('unreported legacy status writes flush before the next heal, existing burn events are not duplicated',()=>{
   const engine=setup();engine.s.player.hp=40;
@@ -71,7 +71,7 @@ for(const defenderActor of ['host','guest'])test('online defense2 commits and pr
   match.engine.h[attacker]=[Card.number('RED',3)];match.engine.h[defender]=[Card.number('RED',2)];match.engine.s.discardTop=Card.number('RED',1);
   match.dispatch(first,'selectCard',{index:0});assert.ok(match.dispatch(first,'doPlay').ok);
   match.dispatch(defenderActor,'selectCard',{index:0});const result=match.dispatch(defenderActor,'doDefend');assert.ok(result.ok);
-  assert.equal(match.engine.s[attacker].burn,4);assert.equal(match.engine.s[defender].hp,39);
+  assert.equal(match.engine.s[attacker].burn,4);assert.equal(match.engine.s[defender].hp,37);
   const events=match.eventsForViewer(result.events,defenderActor,defenderActor);
   const buff=events.find(e=>e.kind==='burn'&&e.operation==='multiply');assert.ok(buff);assert.equal(buff.target,'ai');assert.equal(buff.statusAfter.burn,4);
   const opposite=match.eventsForViewer(result.events,first,defenderActor).find(e=>e.operation==='multiply');assert.equal(opposite.target,'player');assert.equal(opposite.statusAfter.burn,4);

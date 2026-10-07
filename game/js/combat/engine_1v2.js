@@ -186,7 +186,7 @@
     if(c.isBlack)c.chosenColor=this._chooseAIColor1v2(key);
     else if(c.isWhite)c.chosenColor=this.effective(top);
     this.s.aiHasPlayed=true;this.s.atkCard=cp(c);this.s.atkOwner=key;this.s.activeAttacker=key;
-    this.setDiscardTop(c,key);this.rememberAttackDebuffs('player');let _buffBefore={bleed:this.s.player.bleed||0,burn:this.s.player.burn||0,poison:this.s.player.poison||0,blind:this.s.player.blind||0,iceSeal:this.s.player.iceSeal||0,frozen:!!this.s.player.frozen};this.applySaikiPassive(ch,this.s.player,c);
+    this.setDiscardTop(c,key);this.rememberAttackDebuffs('player');let _buffBefore={bleed:this.s.player.bleed||0,burn:this.s.player.burn||0,poison:this.s.player.poison||0,blind:this.s.player.blind||0,iceSeal:this.s.player.iceSeal||0,frozen:!!this.s.player.frozen,sandblind:this.s.player.sandblind||0,thorns:this.s.player.thorns||0,quicksand:this.s.player.quicksand||0};this.applySaikiPassive(ch,this.s.player,c);
     this.emit('aiPlay',ch.name+' 按角色策略出牌',c,{who:key});
     if(c.isBlack||c.isWhite)this.emit('colorChoice',ch.name+'指定'+this.colorName(c.chosenColor),c);
     if(window.CardEffects&&window.CardEffects.isItem(c)){
@@ -234,7 +234,7 @@
     // Keep the exact attack-card reference used by emit(). A cloned object makes
     // the automatic animation guard treat the same play as a second new card.
     this._animatedPlayerAttack=this.s.atkCard;
-    this.setDiscardTop(c,'player');this._markBombPlay('player'); this._tickBomb('player');let _buffBefore={bleed:targetChar.bleed||0,burn:targetChar.burn||0,poison:targetChar.poison||0,blind:targetChar.blind||0,iceSeal:targetChar.iceSeal||0,frozen:!!targetChar.frozen};if(!c.borrowedMonster){this.rememberAttackDebuffs(target);this.applySaikiPassive(this.s.player,targetChar,c);}
+    this.setDiscardTop(c,'player');this._markBombPlay('player'); this._tickBomb('player');let _buffBefore={bleed:targetChar.bleed||0,burn:targetChar.burn||0,poison:targetChar.poison||0,blind:targetChar.blind||0,iceSeal:targetChar.iceSeal||0,frozen:!!targetChar.frozen,sandblind:targetChar.sandblind||0,thorns:targetChar.thorns||0,quicksand:targetChar.quicksand||0};if(!c.borrowedMonster){this.rememberAttackDebuffs(target);this.applySaikiPassive(this.s.player,targetChar,c);}
     this.emit('playerPlay','玩家打出进攻牌',c);
     if(c.isBlack)this.emit('colorChoice','黑牌指定'+this.colorName(c.chosenColor),c);
     else if(c.isWhite)this.emit('colorChoice','白色牌自动指定'+this.colorName(c.chosenColor),c);

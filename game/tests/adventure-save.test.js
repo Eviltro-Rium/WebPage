@@ -392,8 +392,8 @@ test('next-floor transition saves matching map identity/layout and restores with
  const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]),ui=mapUI(ctx,eng);
  eng.move(0,1);eng.currentRoom().cleared=true;
  ctx.FurryGame.CombatRuntime.setRandomSource(()=>0.5);
- ctx.AdventureMapData={};for(const scene of ['castle','forest','ocean'])for(let i=1;i<=3;i++)ctx.AdventureMapData['stage_02_'+scene+'_'+i]='0,1,-1\n-1,1,2';
- await ui._advanceStage();assert.equal(eng.s.stage,2);assert.match(eng.mapName,/^stage_02_forest_[123]$/);assert.equal(eng.s.scene,'forest');
+ ctx.AdventureMapData={};for(const scene of ['castle','forest','ocean','desert'])for(let i=1;i<=3;i++)ctx.AdventureMapData['stage_02_'+scene+'_'+i]='0,1,-1\n-1,1,2';
+ await ui._advanceStage();assert.equal(eng.s.stage,2);assert.match(eng.mapName,/^stage_02_ocean_[123]$/);assert.equal(eng.s.scene,'ocean');
  const save=ctx.AdventureSave.load();assert.equal(save.mapName,eng.mapName);assert.equal(save.stage,2);assert.equal(save.mapLayout.length,2);
  const restored=new ctx.AdventureEngine(),ui2=mapUI(ctx,restored);
  ctx.AdventureMap.fromCsvUrl=()=>{throw Error('restore must use saved layout');};ctx.AdventureMapData={};
@@ -417,7 +417,7 @@ test('failed next-floor loading and failed restore keep the previous checkpoint'
 
 test('each stage independently selects a supported scene and map variant', () => {
  const ctx=createContext();loadSources(ctx);mapUI(ctx,mapRun(ctx,[[0,2]]));
- for(const stage of [1,2,3,4])for(const [roll,scene] of [[0,'castle'],[0.4,'forest'],[0.8,'ocean']]) {
+ for(const stage of [1,2,3,4])for(const [roll,scene] of [[0,'castle'],[0.4,'forest'],[0.6,'ocean'],[0.8,'desert']]) {
   ctx.FurryGame.CombatRuntime.setRandomSource(()=>roll);
   const selected=ctx.AdventureUI.selectStageMap(stage);
   assert.equal(selected.stage,stage);assert.equal(selected.scene,scene);

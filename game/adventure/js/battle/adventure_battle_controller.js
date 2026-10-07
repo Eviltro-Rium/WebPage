@@ -245,7 +245,7 @@
     overlay._settlementContext = { eng, leave };
     if (overlay._settlementBound) return;
     overlay._settlementBound = true;
-    overlay.addEventListener('click', event => {
+    overlay.addEventListener('click', async event => {
       const button = event.target.closest && event.target.closest('button');
       if (!button || !overlay.contains(button) || button.disabled) return;
       const { eng, leave } = overlay._settlementContext;
@@ -281,7 +281,19 @@
         if (pending && pending.stage === 'basic' && !pending.applied && pending.roomType === 'boss') {
           if (!eng.deferCombatReward()) return;
         }
+        // 进入下一层：与 AdventureUI._advanceStage 一致，enterNextStage 后选下一层地图并
+        // continueTo 推进 stage，否则 phase 停留在 CLEAR，leave 后仍渲染当前层地图
         eng.enterNextStage();
+        const nextStage = (eng.s.stage || 1) + 1;
+        if (nextStage <= 4 && window.AdventureUI && typeof window.AdventureUI.selectStageMap === 'function' && window.AdventureMap) {
+          try {
+            const chosen = window.AdventureUI.selectStageMap(nextStage);
+            const map = (window.AdventureMapData && window.AdventureMapData[chosen.mapName])
+              ? window.AdventureMap.fromCsvText(window.AdventureMapData[chosen.mapName])
+              : await window.AdventureMap.fromCsvUrl(chosen.mapUrl);
+            eng.continueTo(map, { stage: chosen.stage, scene: chosen.scene, mapName: chosen.mapName });
+          } catch (e) { /* 地图加载失败时保留 CLEAR 状态 */ }
+        }
         saveAdventureProgress(eng);
         leave();
       } else if (button.id === 'adv-settle-map') {

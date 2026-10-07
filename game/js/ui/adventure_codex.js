@@ -265,12 +265,17 @@
       || dropNotes.some(n => re.test(n.title) || n.lines.some(l => re.test(l)));
     const pushAuto = (title, line, bucket = notes) => {
       if (!line) return;
-      if (notes.some(n => n.title === title || n.lines.includes(line))) return;
-      if (dropNotes.some(n => n.title === title || n.lines.includes(line))) return;
-      bucket.push({ title, lines: [line] });
+      if (notes.some(n => n.lines.includes(line))) return;
+      if (dropNotes.some(n => n.lines.includes(line))) return;
+      const existing = bucket.find(n => n.title === title);
+      if (existing) {
+        if (!existing.lines.includes(line)) existing.lines.push(line);
+      } else {
+        bucket.push({ title, lines: [line] });
+      }
     };
     if (entity.firstStrike && !hasTitle(/先攻|先手/)) {
-      pushAuto('先手攻击', '战斗开始时对手先行进攻，玩家不补起始手牌');
+      pushAuto('被动', '先手攻击：战斗开始时对手先行进攻，玩家不补起始手牌');
     }
     if (entity.initialLush && !hasTitle(/茂盛|开局/)) {
       pushAuto('被动', '开局获得' + entity.initialLush + '层[茂盛]');
@@ -284,7 +289,7 @@
       pushAuto('被动', '可用高牌（4/5/6/7）防御');
     }
     if (entity.handLimit && entity.handLimit < 4 && !hasTitle(/手牌/)) {
-      pushAuto('手牌', '手牌上限 ' + entity.handLimit + ' 张');
+      pushAuto('被动', '手牌上限 ' + entity.handLimit + ' 张');
     }
     if (window.AdventureLoot && typeof window.AdventureLoot.describeMonsterDrop === 'function' && !hasTitle(/掉落/)) {
       const dropLine = window.AdventureLoot.describeMonsterDrop(name);

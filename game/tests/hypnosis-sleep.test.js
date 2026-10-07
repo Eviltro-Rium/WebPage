@@ -185,20 +185,35 @@ test('Vixraps attack 0 applies hypnosis to the main target only', () => {
   assert.ok(r.d === 0);
 });
 
-test('Vixraps attack 6 settles one burn and heals the actual burn damage', () => {
+test('Vixraps attack 6 applies burn, heals by stacks and deals equal damage', () => {
   const eng = new Engine();
   eng.start('Vixraps', 'Saiki');
   eng.s.ai.burn = 2;
   eng.s.player.hp = 50;
   const r = eng.effect('Vixraps', 6, number(6), eng.s.player, eng.s.ai);
-  assert.equal(r.d, 0);
-  assert.ok(eng.s.pendingVixrapsBurnSettle, 'attack 6 records a deferred settlement');
-  eng.afterAttack();
-  assert.equal(eng.s.ai.burn, 2, 'one newly added burn layer is consumed');
-  assert.equal(eng.s.ai.hp, 77, 'the added burn is included in the settlement');
-  assert.equal(eng.s.player.hp, 53, 'Vixraps heals the actual burn damage');
+  assert.equal(r.d, 3, 'damage equals burn stacks including the new layer');
+  assert.equal(eng.s.player.hp, 53, 'Vixraps heals by opponent burn stacks');
+  assert.equal(eng.s.pendingVixrapsBurnSettle, null, 'no deferred settlement anymore');
+  assert.equal(eng.s.ai.burn, 2, 'burn queues until damage settlement');
   const recovery = [...eng.events].reverse().find(event => event.type === 'heal');
   assert.equal(recovery && recovery.kind, 'heal', 'Vixraps 6 uses ordinary recovery floating text');
+  eng.s.atkOwner = 'player'; eng.s.atkCard = number(6); eng.s.pendingAttack = { damage: r.d };
+  assert.equal(eng.prepareAttackSettlement(r.d, 'ai'), 3);
+  eng.settlePreparedHit(eng.s.player, eng.s.ai, { damage: 3, bleed: 0 });
+  assert.equal(eng.s.ai.burn, 3, 'queued burn layer commits at settlement');
+});
+
+test('Vixraps attack 6 with no prior burn still hits for 1', () => {
+  const eng = new Engine();
+  eng.start('Vixraps', 'Saiki');
+  eng.s.player.hp = 50;
+  const r = eng.effect('Vixraps', 6, number(6), eng.s.player, eng.s.ai);
+  assert.equal(r.d, 1);
+  assert.equal(eng.s.player.hp, 51);
+  eng.s.atkOwner = 'player'; eng.s.atkCard = number(6); eng.s.pendingAttack = { damage: r.d };
+  assert.equal(eng.prepareAttackSettlement(r.d, 'ai'), 1);
+  eng.settlePreparedHit(eng.s.player, eng.s.ai, { damage: 1, bleed: 0 });
+  assert.equal(eng.s.ai.burn, 1);
 });
 
 test('Vixraps attack 5 doubles burn after defense without pre-defense feedback', () => {
@@ -236,7 +251,7 @@ test('Vixraps defend 0 applies hypnosis to the attacker for the next defense', (
   });
   assert.ok(eng.s.ai.hypnosis === true, 'defend 0 applies hypnosis to the attacker');
   assert.ok(eng.s.ai.burn >= 1);
-  assert.ok(r.remaining === 2, 'ceil(5/2)=2 damage still pending');
+  assert.ok(r.remaining === 5, 'defend 0 no longer blocks: full damage pending');
 });
 
 test('wake emits one ordinary heal event', () => {

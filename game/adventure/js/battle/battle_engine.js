@@ -1189,7 +1189,7 @@
       this.s.borrowedMonsterSkill = true;
       this.s.pendingAttack = this.s.pendingAttack || {};
       this.rememberAttackDebuffs(sourceKey);
-      const before = { bleed: monster.bleed || 0, burn: monster.burn || 0, poison: monster.poison || 0, frozen: !!monster.frozen, blind: monster.blind || 0, iceSeal: monster.iceSeal || 0 };
+      const before = { bleed: monster.bleed || 0, burn: monster.burn || 0, poison: monster.poison || 0, frozen: !!monster.frozen, blind: monster.blind || 0, iceSeal: monster.iceSeal || 0, sandblind: monster.sandblind || 0, thorns: monster.thorns || 0, quicksand: monster.quicksand || 0 };
       try {
         if (mod && typeof mod.attackSkipEffect === 'function') {
           mod.attackSkipEffect(this, this.s.player, monster);

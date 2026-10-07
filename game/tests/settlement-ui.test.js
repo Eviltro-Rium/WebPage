@@ -93,6 +93,46 @@ test('final victory restores one settlement card with only a return-home action'
 });
 
 
+test('adv-settle-next selects the next stage map instead of returning to the current map', async () => {
+  const { dom, w, document, engine } = setup();
+  try {
+    const P = w.AdventurePhase;
+    let chosen = null;
+    w.AdventureSave = { save: () => true, isSafePhase: () => true };
+    w.AdventureBattleSession = { clear: () => {} };
+    w.AdventureUI = { selectStageMap: stage => ({ stage, scene: 'castle', mapName: 'stage_0' + stage + '_castle_1', mapUrl: 'maps/stage_0' + stage + '_castle_1.csv' }) };
+    w.AdventureMapData = { 'stage_02_castle_1': 'r,c\n0,0' };
+    w.AdventureMap = {
+      fromCsvText: () => ({ start: { r: 0, c: 0 }, get: () => null }),
+      fromCsvUrl: () => Promise.reject(new Error('inline map data should be used'))
+    };
+    Object.assign(engine.s, {
+      phase: P.COMBAT_SETTLE,
+      stage: 1,
+      pendingCombatReward: { stage: 'basic', basic: { kind: 'gold', gold: 3 }, roomType: 'boss', applied: false }
+    });
+    engine.currentRoom = () => ({ type: 'boss', cleared: true });
+    engine.deferCombatReward = () => true;
+    engine.enterNextStage = () => { engine.s.phase = P.CLEAR; };
+    engine.continueTo = (map, opts = {}) => {
+      chosen = { stage: opts.stage, scene: opts.scene, mapName: opts.mapName };
+      engine.s.stage = opts.stage;
+      engine.s.phase = P.MAP;
+      return engine.s;
+    };
+    assert.equal(w.AdventureBattleController.resumeSettlement(engine), true);
+    const nextBtn = document.getElementById('adv-settle-next');
+    assert.ok(nextBtn, 'boss basic settle shows the enter-next-stage button');
+    nextBtn.click();
+    await new Promise(r => setTimeout(r, 0));
+    assert.ok(chosen, 'next stage map was selected via continueTo');
+    assert.equal(chosen.stage, 2);
+    assert.equal(engine.s.stage, 2, 'stage advanced to 2');
+    assert.equal(engine.s.phase, P.MAP, 'phase becomes MAP instead of staying CLEAR');
+    assert.equal(document.getElementById('adv-settle-overlay'), null, 'settlement overlay closed');
+  } finally { dom.window.close(); }
+});
+
 test('repeated beast clicks retain live icons and do not multiply listeners', () => {
  const {dom,w,document,engine}=setup();
  try {

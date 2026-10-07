@@ -348,6 +348,10 @@
     {
       "stage": "3",
       "text": "所有进攻伤害 +1"
+    },
+    {
+      "stage": "4",
+      "text": "防御反击 +1"
     }
   ],
   "FrozenOceanShark": [
@@ -402,6 +406,118 @@
       "text": "防御 0 额外免疫所有伤害（仍反击相同伤害）"
     }
   ],
+  "DesertBison": [
+    {
+      "stage": "2",
+      "text": "生命上限 +6（30）"
+    },
+    {
+      "stage": "3",
+      "text": "进攻 1/2/3 技能改为：造成 3×[流血]层数伤害"
+    },
+    {
+      "stage": "4",
+      "text": "防御技能施加[流血]层数 +1"
+    }
+  ],
+  "DesertCamel": [
+    {
+      "stage": "2",
+      "text": "生命上限 +5（25）"
+    },
+    {
+      "stage": "3",
+      "text": "进攻 1/2/3 技能伤害 +1"
+    },
+    {
+      "stage": "4",
+      "text": "防御 1/2/3 额外施加1层[荆棘]"
+    }
+  ],
+  "DesertLizard": [
+    {
+      "stage": "2",
+      "text": "生命上限 +5（25）"
+    },
+    {
+      "stage": "3",
+      "text": "进攻改为施加2层[沙盲]"
+    },
+    {
+      "stage": "4",
+      "text": "防御格挡 +1"
+    }
+  ],
+  "DesertSandworm": [
+    {
+      "stage": "2",
+      "text": "生命上限 +5（30）"
+    },
+    {
+      "stage": "3",
+      "text": "进攻技能伤害 +1"
+    },
+    {
+      "stage": "4",
+      "text": "防御额外恢复 2 生命"
+    }
+  ],
+  "DesertScarab": [
+    {
+      "stage": "2",
+      "text": "生命上限 +5（25）"
+    },
+    {
+      "stage": "3",
+      "text": "进攻技能伤害 +1"
+    },
+    {
+      "stage": "4",
+      "text": "防御格挡 +1"
+    }
+  ],
+  "DesertScorpion": [
+    {
+      "stage": "2",
+      "text": "生命上限 +6（24）"
+    },
+    {
+      "stage": "3",
+      "text": "进攻技能伤害 +1"
+    },
+    {
+      "stage": "4",
+      "text": "防御额外吸取1点生命"
+    }
+  ],
+  "DesertViper": [
+    {
+      "stage": "2",
+      "text": "生命上限 +4（24）"
+    },
+    {
+      "stage": "3",
+      "text": "进攻 4/5/6 吸取 +1"
+    },
+    {
+      "stage": "4",
+      "text": "防御施加[中毒]层数 +1"
+    }
+  ],
+  "DesertVulture": [
+    {
+      "stage": "2",
+      "text": "生命上限 +6（30）"
+    },
+    {
+      "stage": "3",
+      "text": "进攻技能伤害 +1"
+    },
+    {
+      "stage": "4",
+      "text": "防御反击 +1"
+    }
+  ],
   "FrozenOceanSnowyOwl": [
     {
       "stage": "2",
@@ -442,14 +558,12 @@
   ]
 };
   window.AdventureMonsterNotes = {
-  "FrozenMammoth": [
-    { "title": "进攻时机", "lines": ["进攻4/5/6按当前对手的[流血]层数计算伤害，扣血后施加[失温]", "进攻0先施加[失温]并获得[守护]，再造成不可防御伤害"] }
-  ],
+  "FrozenMammoth": [],
   "CastleGhost": [
     {
       "title": "出现条件",
       "lines": [
-        "仅从 Stage 2 开始有几率出现"
+        "仅从 Stage 2 开始出现"
       ]
     }
   ],
@@ -459,9 +573,9 @@
   "CastleBear": [],
   "CastleTiger": [
     {
-      "title": "先手攻击",
+      "title": "被动",
       "lines": [
-        "战斗开始时虎先手攻击"
+        "先手攻击：战斗开始时虎先行进攻，玩家不补起始手牌"
       ]
     }
   ],
@@ -471,7 +585,7 @@
     {
       "title": "出现条件",
       "lines": [
-        "仅在 **Stage 2/3/4** 刷出"
+        "仅从 Stage 2 开始出现"
       ]
     },
     {
@@ -522,16 +636,16 @@
     {
       "title": "出现条件",
       "lines": [
-        "仅在 **Stage 2/3/4** 刷出"
+        "仅从 Stage 2 开始出现"
       ]
     }
   ],
   "ForestMonkey": [],
   "ForestDeer": [
     {
-      "title": "先攻",
+      "title": "被动",
       "lines": [
-        "是（同城堡虎，玩家不补起始手牌，对手先行进攻）"
+        "先手攻击：战斗开始时先行进攻，玩家不补起始手牌"
       ]
     },
     {
@@ -579,7 +693,7 @@
     {
       "title": "出现条件",
       "lines": [
-        "仅在 **Stage 2/3/4** 刷出"
+        "仅从 Stage 2 开始出现"
       ]
     }
   ],
@@ -589,7 +703,7 @@
     {
       "title": "出现条件",
       "lines": [
-        "仅在 **Stage 2/3/4** 刷出"
+        "仅从 Stage 2 开始出现"
       ]
     }
   ],
@@ -605,20 +719,11 @@
     {
       "title": "出现条件",
       "lines": [
-        "仅从 Stage 2 开始有几率出现"
+        "仅从 Stage 2 开始出现"
       ]
     }
   ],
-  "FrozenWhale": [
-    {
-      "title": "被动",
-      "lines": [
-        "拥有[潜水]时免疫蓝色攻击的伤害，不阻止 buff 施加",
-        "进攻4/5/6时对场上所有其他角色（包括NPC队友）造成4点不可防御伤害",
-        "进攻4/5/6的[失温]在防御阶段结束后才施加"
-      ]
-    }
-  ],
+  "FrozenWhale": [],
   "FrozenOceanSeal": [
     {
       "title": "抽牌展示",
@@ -637,46 +742,28 @@
       ]
     }
   ],
-  "FrozenOrca": [
+  "FrozenOrca": [],
+  "DesertBison": [],
+  "DesertCamel": [
     {
-      "title": "出现条件",
+      "title": "被动",
       "lines": [
-        "**冻洋场景 Boss**，击败后掉落战利白卡"
-      ]
-    },
-    {
-      "title": "进攻时机",
-      "lines": [
-        "进攻 1/2/3 的[失温]在防御阶段结束后才施加"
-      ]
-    },
-    {
-      "title": "进攻 0",
-      "lines": [
-        "造成 2+2×玩家[流血]层数点伤害（Stage 3 起为 3+2×层数）",
-        "配合进攻 4/5/6 施加的[流血]叠层提高伤害"
+        "先手攻击：战斗开始时骆驼先行进攻，玩家不补起始手牌"
       ]
     }
   ],
-  "FrozenOceanSnowyOwl": [
-    {
-      "title": "进攻6弃道具",
-      "lines": [
-        "打出6时，若玩家有一次性道具，随机弃掉其中1个"
-      ]
-    }
-  ],
+  "DesertLizard": [],
+  "DesertSandworm": [],
+  "DesertScarab": [],
+  "DesertScorpion": [],
+  "DesertViper": [],
+  "DesertVulture": [],
+  "FrozenOceanSnowyOwl": [],
   "FrozenOceanSamoyed": [
     {
       "title": "被动",
       "lines": [
         "免疫[失温]与[冷冻]"
-      ]
-    },
-    {
-      "title": "进攻4/5/6弃牌",
-      "lines": [
-        "造成5点伤害前，玩家必须先选择1张手牌弃掉再进入防御；无手牌则跳过弃牌直接防御"
       ]
     }
   ],
@@ -684,19 +771,21 @@
     {
       "title": "出现条件",
       "lines": [
-        "仅从 Stage 2 开始有几率出现"
+        "仅从 Stage 2 开始出现"
       ]
     },
     {
-      "title": "手牌上限",
+      "title": "被动",
       "lines": [
         "手牌上限为 3 张"
       ]
-    },
+    }
+  ],
+  "FrozenKraken": [
     {
-      "title": "进攻4/5/6灼伤结算",
+      "title": "出现条件",
       "lines": [
-        "先施加灼伤，再立刻进行一次[灼伤]结算（无卡面伤害）"
+        "仅从 Stage 2 开始出现"
       ]
     }
   ]

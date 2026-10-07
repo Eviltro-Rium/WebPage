@@ -228,7 +228,7 @@
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
       if (card.value >= 1 && card.value <= 3) return 3;
-      if (card.value >= 4 && card.value <= 6) return 4;
+      if (card.value >= 4 && card.value <= 6) return 5;
       return 0;
     },
 
@@ -724,7 +724,6 @@
     },
 
     stageMods: {
-      2: orig => ({ hp: orig.hp + 10 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         defendHeal: (card) => {

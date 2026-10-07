@@ -58,21 +58,11 @@ test('FrozenKraken base stats, boss pool from stage 2', () => {
   }
 });
 
-test('FrozenKraken loot: 1-2 diving, 3-4 ice seal, 5-6 hypothermia', () => {
-  for (const roll of [1, 2]) {
+test('FrozenKraken loot: 1-6 zero trophy', () => {
+  for (const roll of [1, 2, 3, 4, 5, 6]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenKraken', () => (roll - 1) / 12);
     assert.equal(result.drops.length, 1);
-    assert.equal(result.drops[0], 'DivingTrophy');
-  }
-  for (const roll of [3, 4]) {
-    const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenKraken', () => (roll - 1) / 12);
-    assert.equal(result.drops.length, 1);
-    assert.equal(result.drops[0], 'IceSealTrophy');
-  }
-  for (const roll of [5, 6]) {
-    const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenKraken', () => (roll - 1) / 12);
-    assert.equal(result.drops.length, 1);
-    assert.equal(result.drops[0], 'HypothermiaTrophy');
+    assert.equal(result.drops[0], 'ZeroTrophy');
   }
   for (const roll of [7, 8, 9, 10, 11, 12]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenKraken', () => (roll - 1) / 12);
@@ -149,6 +139,17 @@ test('FrozenKraken 1/2/3: normal color deals value and returns card to deck', ()
 test('FrozenKraken 1/2/3: black card deals 0, discards, unblock, diving, ice seal', () => {
   const eng = judgedBattle(blackCard());
   const r = eng.effect('FrozenKraken', 1, numCard(1), eng.s.ai, eng.s.player);
+  assert.equal(r.d, 0);
+  assert.equal(r.unblock, true);
+  assert.equal(eng.piles.player.deck.length, 0);
+  assert.equal(eng.piles.player.discard.length, 1);
+  assert.equal(eng.s.ai.diving, true);
+  assert.ok(eng.s.player.iceSeal);
+});
+
+test('FrozenKraken 1/2/3: color zero card deals 0, discards, unblock, diving, ice seal', () => {
+  const eng = judgedBattle(numCard(0, 'RED'));
+  const r = eng.effect('FrozenKraken', 2, numCard(2), eng.s.ai, eng.s.player);
   assert.equal(r.d, 0);
   assert.equal(r.unblock, true);
   assert.equal(eng.piles.player.deck.length, 0);
