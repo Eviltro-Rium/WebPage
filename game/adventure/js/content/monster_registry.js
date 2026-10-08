@@ -1153,6 +1153,18 @@
       }
       return '无进攻效果';
     }
+    // Conditional quicksand attack must be stated explicitly, not rendered as
+    // unconditional damage by the generic description generator.
+    if (mod.name === 'DesertAntlion' && card.isNumberCard) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) {
+        return '造成' + mod.attackDamage(card, ctx) + '点[伤害]，目标有[流沙]时不可防御';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成' + mod.attackDamage(card, ctx) + '点[伤害]，施加1层[流沙]';
+      }
+      return '无进攻效果';
+    }
     // DesertVulture: yellow-conditional sandblind/fly on 1/2/3, clear positive on 4/5/6 (desert.md).
     if (mod.name === 'DesertVulture' && card.isNumberCard) {
       const v = card.value;

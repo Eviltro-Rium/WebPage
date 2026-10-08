@@ -491,18 +491,12 @@
     }
   ],
   "DesertViper": [
-    {
-      "stage": "2",
-      "text": "生命上限 +4（24）"
-    },
-    {
-      "stage": "3",
-      "text": "进攻 4/5/6 吸取 +1"
-    },
-    {
-      "stage": "4",
-      "text": "防御施加[中毒]层数 +1"
-    }
+    { "stage": "3", "text": "进攻 4/5/6 吸取 +1" },
+    { "stage": "4", "text": "防御施加[中毒]层数 +1" }
+  ],
+  "DesertAntlion": [
+    { "stage": "3", "text": "进攻伤害 +1" },
+    { "stage": "4", "text": "防御额外反击 1 点[伤害]" }
   ],
   "DesertVulture": [
     {
@@ -756,7 +750,8 @@
   "DesertSandworm": [],
   "DesertScarab": [],
   "DesertScorpion": [],
-  "DesertViper": [],
+  "DesertViper": [{ "title": "出现条件", "lines": ["仅从 Stage 2 开始出现"] }],
+  "DesertAntlion": [{ "title": "出现条件", "lines": ["仅从 Stage 2 开始出现"] }],
   "DesertVulture": [],
   "FrozenOceanSnowyOwl": [],
   "FrozenOceanSamoyed": [

@@ -17,7 +17,7 @@
   window.AdventureBossPool.desert = {};
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
-  window.AdventureMonsterPool.desert = { '*': ['DesertBison', 'DesertCamel', 'DesertLizard', 'DesertSandworm', 'DesertScarab', 'DesertScorpion', 'DesertViper', 'DesertVulture'] };
+  window.AdventureMonsterPool.desert = { '*': ['DesertBison', 'DesertCamel', 'DesertLizard', 'DesertSandworm', 'DesertScarab', 'DesertScorpion', 'DesertViper', 'DesertAntlion', 'DesertVulture'] };
 
   // ===== 沙漠野牛 =====
   // 进攻1/2/3：造成2×玩家[流血]层数伤害
@@ -301,14 +301,15 @@
     }
   });
 
-  // ===== 沙漠毒蛇 =====
+  // ===== 沙漠毒蛇（Stage 2 起，基础生命 27，不额外强化生命） =====
   // 进攻1/2/3：造成3点伤害，施加[中毒]
   // 进攻4/5/6：吸取 2+玩家[中毒]层数 生命（不可防御）
   // 防御1/2/3：格挡至多2点伤害，施加1层[中毒]
   R.registerMonster({
     name: 'DesertViper',
     kind: '沙漠毒蛇',
-    hp: 20,
+    hp: 27,
+    minStage: 2,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/desert_viper.webp',
@@ -334,7 +335,6 @@
       return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 4 }),
       3: orig => ({
         attackDrain(card, ctx) {
           const v = card && card.value;
@@ -345,6 +345,49 @@
       4: orig => ({
         defendPoison(card) {
           return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 2 : 0;
+        }
+      })
+    }
+  });
+
+  // ===== 沙漠蚁狮（Stage 2 起） =====
+  R.registerMonster({
+    name: 'DesertAntlion',
+    kind: '沙漠蚁狮',
+    hp: 24,
+    minStage: 2,
+    attack: 3,
+    defense: 2,
+    icon: '../icons/npc_icons/desert_antlion.webp',
+    attackDamage(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 3;
+      if (card.value >= 4 && card.value <= 6) return 5;
+      return 0;
+    },
+    attackUnblockableIfBuff(card, target) {
+      return !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3 && target && target.quicksand > 0);
+    },
+    attackQuicksand(card) {
+      return card && card.isNumberCard && card.value >= 4 && card.value <= 6 ? 1 : 0;
+    },
+    defendBlock(card, incoming) {
+      if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return 0;
+      return Math.ceil(Math.max(0, Number(incoming) || 0) / 2);
+    },
+    defendThorns(card) {
+      return card && card.isNumberCard && card.value >= 1 && card.value <= 3 ? 1 : 0;
+    },
+    stageMods: {
+      3: orig => ({
+        attackDamage(card, ctx) {
+          const damage = orig.attackDamage(card, ctx);
+          return damage > 0 ? damage + 1 : 0;
+        }
+      }),
+      4: () => ({
+        defendCounter(card) {
+          return card && card.isNumberCard && card.value >= 1 && card.value <= 3 ? 1 : 0;
         }
       })
     }

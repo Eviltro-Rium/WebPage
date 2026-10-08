@@ -80,6 +80,7 @@ const stableTests = [
   'card-style.test.js',
   'ui-feedback.test.js',
   'render-performance.test.js',
+  'home-loading-progress.test.js',
   'attack-timing.test.js',
   'defense-effects.test.js',
   'judgment-lifetime.test.js',

@@ -134,6 +134,10 @@
       Object.freeze({ threshold: 4, drops: Object.freeze(['ThornsTrophy']) })
     ]) }),
     DesertViper: Object.freeze({ threshold: 4, drops: Object.freeze(['PoisonTrophy']) }),
+    DesertAntlion: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 2, drops: Object.freeze(['QuicksandTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['ThornsTrophy']) })
+    ]) }),
     DesertVulture: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 2, drops: Object.freeze(['FlyTrophy']) }),
       Object.freeze({ threshold: 4, drops: Object.freeze(['SandblindTrophy']) })
