@@ -87,13 +87,28 @@ _renderControls() {
         html += `<span class="ctrl-hint">已确认 ${dmg} 点伤害，请点击道具栏中的攻击修正道具选择</span>`;
         html += `<button class="ctrl-btn btn-play" id="btn-attack-mod-confirm" ${!hasSelection ? 'disabled' : ''}>确认修正</button>`;
         html += `<button class="ctrl-btn btn-skip" id="btn-attack-mod-skip">不修正</button>`;
-    } else if (phase === 'CRIT_CHOICE' && canAct) {
-        const dmg = s.pendingCritChoice && s.pendingCritChoice.damage != null
-            ? s.pendingCritChoice.damage
+    } else if ((phase === 'CRIT_CHOICE' || phase === 'ATTACK_BUFF_CHOICE') && canAct) {
+        const pending = s.pendingAttackBuffChoice || s.pendingCritChoice || {};
+        const dmg = pending.damage != null
+            ? pending.damage
             : (s.pendingAttack && s.pendingAttack.damage) || 0;
-        const stacks = (s.player && s.player.crit) || 0;
-        html += `<span class="ctrl-hint">伤害 ${dmg} 点（>4），可消耗1层暴击变为不可防御（剩余 ${stacks}）</span>`;
-        html += `<button class="ctrl-btn btn-play" id="btn-crit-use">使用暴击</button>`;
+        const magmaStacks = pending.magmaStacks != null
+            ? Number(pending.magmaStacks) || 0
+            : ((s.player && s.player.magmaVein) || 0);
+        const critStacks = pending.critStacks != null
+            ? Number(pending.critStacks) || 0
+            : ((s.player && s.player.crit) || 0);
+        const canMagma = pending.canMagma != null ? !!pending.canMagma : magmaStacks > 0;
+        const canCrit = pending.canCrit != null ? !!pending.canCrit : (critStacks > 0 && dmg > 4 && !pending.unblock);
+        const magmaDmg = pending.magmaPreviewDamage != null
+            ? pending.magmaPreviewDamage
+            : Math.ceil(Number(dmg) * 1.5);
+        const bits = [];
+        if (canMagma) bits.push(`熔脉×1.5→${magmaDmg}🗡️（剩${magmaStacks}）`);
+        if (canCrit) bits.push(`暴击不可防御（剩${critStacks}）`);
+        html += `<span class="ctrl-hint">伤害 ${dmg} 点` + (bits.length ? '：' + bits.join(' / ') : '') + `；同一次只能选一种攻击修正</span>`;
+        if (canMagma) html += `<button class="ctrl-btn btn-play" id="btn-magma-use">使用熔脉</button>`;
+        if (canCrit) html += `<button class="ctrl-btn btn-play" id="btn-crit-use">使用暴击</button>`;
         html += `<button class="ctrl-btn btn-skip" id="btn-crit-skip">不使用</button>`;
     } else if (phase === 'PLAYER_FIVE_CHOICE' && canAct) {
         html += `<span class="ctrl-hint">请选择一张数字牌：恢复牌面生命，或造成1.5倍伤害</span>`;
@@ -152,8 +167,19 @@ async _bindControls() {
     bind('btn-skip', async () => { await this._apiAction('doSkipDefend'); });
     bind('btn-attack-mod-confirm', () => { this._confirmAttackMod(); });
     bind('btn-attack-mod-skip', () => { this._skipAttackMod(); });
-    bind('btn-crit-use', async () => { await this._apiAction('resolveCritChoice', { use: true }); });
-    bind('btn-crit-skip', async () => { await this._apiAction('resolveCritChoice', { use: false }); });
+    bind('btn-magma-use', async () => { await this._apiAction('resolveAttackBuffChoice', { buff: 'magmaVein' }); });
+    bind('btn-crit-use', async () => {
+        const s = this.state || {};
+        const api = (s.phase === 'ATTACK_BUFF_CHOICE' || s.pendingAttackBuffChoice)
+            ? 'resolveAttackBuffChoice' : 'resolveCritChoice';
+        await this._apiAction(api, api === 'resolveAttackBuffChoice' ? { buff: 'crit' } : { use: true });
+    });
+    bind('btn-crit-skip', async () => {
+        const s = this.state || {};
+        const api = (s.phase === 'ATTACK_BUFF_CHOICE' || s.pendingAttackBuffChoice)
+            ? 'resolveAttackBuffChoice' : 'resolveCritChoice';
+        await this._apiAction(api, api === 'resolveAttackBuffChoice' ? { buff: null } : { use: false });
+    });
     bind('btn-use-item', async () => { await this._useSelectedCombatItem(); });
     bind('btn-demon-pact', async () => { await this._apiAction('useDemonPact'); });
     bind('btn-confirm-discard', async () => { await this._apiAction('doConfirmDiscard'); });
@@ -301,7 +327,7 @@ _showSkillOverlay() {
     const stripPrefix = t => (t || '').replace(/^\d+\s*/, '');
     const tagifySkill = t => {
         let out = String(t || '');
-        const names = ['失温', '炙热', '冰封', '定时炸弹', '流沙', '沙盲', '荆棘', '催眠', '沉睡', '捆缚', '嗜血', '寄生', '茂盛', '潜水', '飞翔', '守护', '暴击', '致盲', '中毒', '流血', '冷冻', '灼伤'];
+        const names = ['熔脉', '丰饶', '嘲弄', '失温', '炙热', '冰封', '定时炸弹', '流沙', '沙盲', '荆棘', '催眠', '沉睡', '捆缚', '嗜血', '寄生', '茂盛', '潜水', '飞翔', '守护', '暴击', '致盲', '中毒', '流血', '冷冻', '灼伤'];
         for (const name of names) {
             out = out.replace(new RegExp('(?<!\\[)' + name + '(?!\\])', 'g'), '[' + name + ']');
         }
@@ -367,6 +393,7 @@ _showSkillOverlay() {
         }
         html += '</div>';
     }
+    html += '<div class="skill-footnote">🗡️伤害 ❤️生命 🛡️格挡 🃏卡牌 · 小数均向上取整</div>';
     html += '</div>';
     overlay.innerHTML = html;
     document.body.appendChild(overlay);
@@ -523,7 +550,7 @@ _isDecisionAction(method) {
         'doFiveHeal', 'doFiveDamage',
         'doChanSevenKeep', 'doChanSevenDiscard', 'doSaikiThreeKeep',
         'doSaikiThreeDiscard', 'doChanFourDiscard', 'doChanFourSwap',
-        'doSaikiSixConfirm', 'resolveAttackModChoice', 'resolveCritChoice', 'chooseTarget', 'chooseColor', 'choosePurify',
+        'doSaikiSixConfirm', 'resolveAttackModChoice', 'resolveCritChoice', 'resolveAttackBuffChoice', 'chooseTarget', 'chooseColor', 'choosePurify',
         'chooseSuperPurifyTarget', 'chooseGuard', 'chanFiveReorder', 'choosePurifyCrystal', 'chooseMozeSeven',
         'chooseAICard', 'doOpponentCardConfirm', 'chooseTrophyDisarm', 'chooseTrophyPurify', 'chooseDiceControl'
     ]).has(method);
@@ -532,7 +559,7 @@ _isDecisionAction(method) {
 _isInteractiveDecisionPhase(phase) {
     return new Set([
         'PLAYER_FIVE_CHOICE', 'PLAYER_SEVEN_CHOICE',
-        'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'ATTACK_MOD_CHOICE', 'CRIT_CHOICE', 'PLAYER_DISCARD',
+        'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'ATTACK_MOD_CHOICE', 'CRIT_CHOICE', 'ATTACK_BUFF_CHOICE', 'PLAYER_DISCARD',
         'CHAN_FIVE_REORDER', 'GUARD_CHOICE', 'TARGET_CHOICE', 'PURIFY_CRYSTAL_CHOICE', 'OPPONENT_CARD_CHOICE',
         'TROPHY_DISARM_CHOICE', 'TROPHY_PURIFY_CHOICE', 'DICE_CHOICE'
     ]).has(phase);
@@ -564,7 +591,7 @@ _showActionPending(method) {
         doChanSevenKeep: '正在加入手牌', doChanSevenDiscard: '正在弃掉卡牌',
         doSaikiThreeKeep: '正在加入手牌', doSaikiThreeDiscard: '正在弃掉卡牌',
         doChanFourSwap: '正在交换卡牌', doChanFourDiscard: '正在弃牌并结算伤害',
-        doSaikiSixConfirm: '正在结算数字判定', resolveAttackModChoice: '正在应用攻击修正', resolveCritChoice: '正在结算暴击选择', chooseTarget: '正在确认目标',
+        doSaikiSixConfirm: '正在结算数字判定', resolveAttackModChoice: '正在应用攻击修正', resolveCritChoice: '正在结算攻击修正选择', resolveAttackBuffChoice: '正在结算攻击修正选择', chooseTarget: '正在确认目标',
         chooseColor: '正在指定颜色', choosePurify: '正在执行净化', chooseSuperPurifyTarget: '正在执行超级净化', chooseMozeSeven: '正在结算 Moze 7牌',
         chooseGuard: '正在结算守护', chanFiveReorder: '正在确认牌库顺序',
         chooseAICard: '正在选择对手手牌', doOpponentCardConfirm: '正在处理对手手牌',

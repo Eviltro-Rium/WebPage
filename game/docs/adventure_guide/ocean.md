@@ -22,7 +22,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 冻洋猞猁（FrozenOceanLynx）
+## 霜爪猞猁（FrozenOceanLynx）
 
 ### 生命值：20
 
@@ -45,7 +45,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 冻洋蓝鲸（FrozenWhale）
+## 破冰蓝鲸（FrozenWhale）
 
 ### 生命值：25
 
@@ -75,7 +75,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 冻洋鲨（FrozenOceanShark）
+## 裂冰鲨（FrozenOceanShark）
 
 ### 生命值：27
 
@@ -99,7 +99,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 冻洋海豹（FrozenOceanSeal）
+## 冰原海豹（FrozenOceanSeal）
 
 ### 生命值：20
 
@@ -123,7 +123,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 冻洋北极熊（FrozenPolarBear）
+## 雪崩熊（FrozenPolarBear）
 
 ### 生命值：25
 
@@ -146,7 +146,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 冻洋雪鸮（FrozenOceanSnowyOwl）
+## 月影雪鸮（FrozenOceanSnowyOwl）
 
 ### 生命值：24
 
@@ -170,7 +170,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 冻洋萨摩耶（FrozenOceanSamoyed）
+## 暖绒萨摩（FrozenOceanSamoyed）
 
 ### 生命值：20
 
@@ -195,7 +195,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 冻洋管虫（FrozenOceanTubeWorm）
+## 热泉管虫（FrozenOceanTubeWorm）
 
 ### 生命值：25
 
@@ -221,7 +221,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 冻洋章鱼（FrozenOceanOctopus）
+## 墨潮章鱼（FrozenOceanOctopus）
 
 ### 生命值：24
 
@@ -244,7 +244,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 冻洋虎鲸（FrozenOrca）· Boss
+## 破浪虎鲸（FrozenOrca）· Boss
 
 ### 生命值：40
 
@@ -269,7 +269,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 冻洋猛犸（FrozenMammoth）· Boss
+## 长牙猛犸（FrozenMammoth）· Boss
 
 ### 生命值：45
 
@@ -319,5 +319,5 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-Boss 房从本场景 Boss 池 **等可能** 刷新一只（冻洋虎鲸 / 克拉肯 / 冻洋猛犸）。
+Boss 房从本场景 Boss 池 **等可能** 刷新一只（破浪虎鲸 / 克拉肯 / 长牙猛犸）。
 克拉肯仅从 **Stage 2** 起出现。

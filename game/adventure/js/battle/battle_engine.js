@@ -1110,6 +1110,7 @@
       super.hurt(x, n, kind, opts);
       this._tryFreezeLaserOnAttackDamage(x, n, kind);
       this._tryRevivalCross(x, beforeHp);
+      this._tryDesertSobekFertility(x, beforeHp);
     }
 
     _consumeAccessory(name) {
@@ -1143,6 +1144,28 @@
       this.heal(entity, healAmt, 'passive');
       entity.alive = entity.hp > 0;
       this.emit('desc', '复活十字：恢复' + healAmt + '点生命，配饰损坏消失');
+    }
+
+    // DesertSobek 被动[丰饶]：致死时若有[茂盛]，仅清正面 buff，血量回到 15（可多次）。
+    _tryDesertSobekFertility(entity, beforeHp) {
+      if (!this.s || !this.s.isAdventure) return;
+      if (!entity || (entity !== this.s.ai && entity !== this.s.ai2)) return;
+      if (!(beforeHp > 0) || entity.hp > 0) return;
+      if (this.name(entity) !== 'DesertSobek') return;
+      if (!((entity.lush || 0) > 0)) return;
+      if (typeof this.clearPositiveBuffs === 'function') this.clearPositiveBuffs(entity);
+      else {
+        entity.guard = 0; entity.fly = 0; entity.crit = 0; entity.lush = 0;
+        entity.parasite = 0; entity.diving = false;
+        entity.chaos_red = false; entity.chaos_yellow = false;
+        entity.chaos_blue = false; entity.chaos_green = false;
+      }
+      const reviveHp = Math.min(15, entity.maxHp || 15);
+      entity.hp = reviveHp;
+      entity.alive = true;
+      const who = this._who ? this._who(entity) : (entity === this.s.ai2 ? 'ai2' : 'ai');
+      this.emit('buff', '[丰饶]复活', null, { who, kind: 'fertility', stacks: 1 });
+      this.emit('desc', '[丰饶]：清除所有正面buff，恢复至15点生命');
     }
 
     afterAttack() {

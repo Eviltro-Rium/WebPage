@@ -25,10 +25,10 @@
     4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm', 'FrozenOceanOctopus']
   };
 
-  // ===== 冻洋猞猁 =====
+  // ===== 霜爪猞猁 =====
   R.registerMonster({
     name: 'FrozenOceanLynx',
-    kind: '冻洋猞猁',
+    kind: '霜爪猞猁',
     hp: 20,
     attack: 3,
     defense: 2,
@@ -75,10 +75,10 @@
     }
   });
 
-  // ===== 冻洋蓝鲸 =====
+  // ===== 破冰蓝鲸 =====
   R.registerMonster({
     name: 'FrozenWhale',
-    kind: '冻洋蓝鲸',
+    kind: '破冰蓝鲸',
     hp: 25,
     attack: 3,
     defense: 2,
@@ -126,10 +126,10 @@
     }
   });
 
-  // ===== 冻洋鲨 =====
+  // ===== 裂冰鲨 =====
   R.registerMonster({
     name: 'FrozenOceanShark',
-    kind: '冻洋鲨',
+    kind: '裂冰鲨',
     minStage: 2,
     hp: 27,
     attack: 3,
@@ -179,10 +179,10 @@
     }
   });
 
-  // ===== 冻洋海豹 =====
+  // ===== 冰原海豹 =====
   R.registerMonster({
     name: 'FrozenOceanSeal',
-    kind: '冻洋海豹',
+    kind: '冰原海豹',
     hp: 20,
     attack: 3,
     defense: 1,
@@ -226,10 +226,10 @@
     }
   });
 
-  // ===== 冻洋北极熊 =====
+  // ===== 雪崩熊 =====
   R.registerMonster({
     name: 'FrozenPolarBear',
-    kind: '冻洋北极熊',
+    kind: '雪崩熊',
     hp: 25,
     attack: 3,
     defense: 2,
@@ -295,7 +295,7 @@
     }
   });
 
-  // ===== 冻洋虎鲸（Boss） =====
+  // ===== 破浪虎鲸（Boss） =====
   // 进攻1/2/3：3伤害，获得潜水，防御结束后施加1层失温
   // 进攻4/5/6：5伤害，施加1层流血
   // 进攻0：2+2×对手[流血]层数伤害
@@ -303,7 +303,7 @@
   // 防御0：反击相同伤害，清除自身所有负面状态（stage4 起额外免疫所有伤害）
   R.registerBoss({
     name: 'FrozenOrca',
-    kind: '冻洋虎鲸',
+    kind: '破浪虎鲸',
     hp: 40,
     attack: 3,
     defense: 2,
@@ -358,10 +358,10 @@
     }
   });
 
-  // ===== 冻洋雪鸮 =====
+  // ===== 月影雪鸮 =====
   R.registerMonster({
     name: 'FrozenOceanSnowyOwl',
-    kind: '冻洋雪鸮',
+    kind: '月影雪鸮',
     hp: 24,
     attack: 3,
     defense: 2,
@@ -404,14 +404,14 @@
     }
   });
 
-  // ===== 冻洋萨摩耶 =====
+  // ===== 暖绒萨摩 =====
   // 被动：免疫失温与冷冻
   // 进攻1/2/3：造成对手手牌张数点伤害（Stage3 起不可防御）
   // 进攻4/5/6：5点伤害；玩家先弃1张手牌再防御（无手牌则不弃）
   // 防御1/2/3：反击 ceil(incoming/2)，恢复1点生命
   R.registerMonster({
     name: 'FrozenOceanSamoyed',
-    kind: '冻洋萨摩耶',
+    kind: '暖绒萨摩',
     hp: 20,
     attack: 3,
     defense: 2,
@@ -457,7 +457,7 @@
     }
   });
 
-  // ===== 冻洋管虫 =====
+  // ===== 热泉管虫 =====
   // Stage2+；手牌上限3
   // 进攻1/2/3：造成1/2/3点伤害，施加1层灼伤
   // 进攻4/5/6：先施加2层灼伤，再对玩家进行一次灼伤结算（无卡面伤害）
@@ -465,7 +465,7 @@
   // Stage3：进攻灼伤层数+1；Stage4：格挡+1
   R.registerMonster({
     name: 'FrozenOceanTubeWorm',
-    kind: '冻洋管虫',
+    kind: '热泉管虫',
     minStage: 2,
     hp: 25,
     handLimit: 3,
@@ -512,13 +512,13 @@
     }
   });
 
-  // ===== 冻洋章鱼 =====
+  // ===== 墨潮章鱼 =====
   // 进攻1/2/3：抽取玩家牌库1张牌判定；普通颜色3点伤害并放回玩家牌库底，黑/白牌（含战利白卡）5点伤害并置入玩家弃牌堆
   // 进攻4/5/6：4点伤害，获得潜水
   // 防御1/2/3：反击2点，恢复1点
   R.registerMonster({
     name: 'FrozenOceanOctopus',
-    kind: '冻洋章鱼',
+    kind: '墨潮章鱼',
     hp: 24,
     attack: 3,
     defense: 2,
@@ -640,11 +640,11 @@
       })
     }
   });
-  // ===== 冻洋猛犸（Boss） =====
+  // ===== 长牙猛犸（Boss） =====
   // 0 牌先施加失温/获得守护再结算伤害，其他进攻先伤害后施加效果。
   R.registerBoss({
     name: 'FrozenMammoth',
-    kind: '冻洋猛犸',
+    kind: '长牙猛犸',
     hp: 45,
     attack: 2,
     defense: 2,

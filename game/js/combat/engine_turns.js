@@ -26,6 +26,8 @@
     },
 
     startAITurn() {
+      // Hyenas leave defend phase when the player attack phase ends.
+      if (typeof this._clearAllAdventureDefendPhaseMocks === 'function') this._clearAllAdventureDefendPhaseMocks();
       this.s.pendingHypnosisPromote = 'player';
       this.fillHands(true);
       this.s.phase = 'AI_TURN';

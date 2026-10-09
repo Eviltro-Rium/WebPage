@@ -126,7 +126,7 @@ test('FrozenOceanTubeWorm effect: 4 settles burn with immediateBuffs', () => {
 test('FrozenOceanTubeWorm skill desc', () => {
   const { getAdventureNpcSkillDesc } = AdventureMonsterBridge;
   const atk2 = getAdventureNpcSkillDesc('FrozenOceanTubeWorm', numCard(2), false, { stage: 1 });
-  assert.ok(atk2.includes('2点伤害'));
+  assert.ok(atk2.includes('2🗡️'));
   assert.ok(atk2.includes('灼伤'));
 
   const atk5 = getAdventureNpcSkillDesc('FrozenOceanTubeWorm', numCard(5), false, { stage: 1 });

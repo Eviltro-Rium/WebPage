@@ -254,6 +254,7 @@
       return this.check()
     }
      if(this._onAttackSkillRelease(this.s.player))return this.gateAdventureAttackMod(c,0,true,false);
+     if(this._applyAdventureDefendPhaseMock(targetChar,c))return this.gateAdventureAttackMod(c,0,true,false);
      this._deferAttackBuffs(target,_buffBefore);
      if(who==='Moze'&&c.value===7){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc','Moze 7牌：请选择自己或一名对手作为清除目标',c);return this.state()}
      if(who==='Leon'&&c.value===0)return this.leonZero1v2(c);

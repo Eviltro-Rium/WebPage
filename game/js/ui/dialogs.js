@@ -1,5 +1,5 @@
 const statusIconPath = name => {
-    const folder = (name === 'blood_thirsty' || name === 'binding') ? 'items_icons' : 'buff_icons';
+    const folder = (name === 'blood_thirsty' || name === 'binding' || name === 'mock') ? 'items_icons' : 'buff_icons';
     return window.gameAssetUrl ? window.gameAssetUrl(`icons/${folder}/${name}.webp`) : `icons/${folder}/${name}.webp`;
 };
 const statusRegistry = window.FurryGame && (window.FurryGame.StatusService || window.FurryGame.StatusRegistry);
@@ -334,6 +334,11 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
             if (t.ch.diving) buffs.push(`<img src="${buffIcon('diving')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>潜水</span>`);
             if ((t.ch.parasite || 0) > 0) buffs.push(`<img src="${buffIcon('parasite')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>寄生×${t.ch.parasite}</span>`);
             if (t.ch.bloodthirst) buffs.push(`<img src="${buffIcon('blood_thirsty')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>嗜血</span>`);
+            if (t.ch.tauntMark) {
+                const mc = String(t.ch.mockAttackColor || '').toUpperCase();
+                const tip = ({ RED: '红', YELLOW: '黄', BLUE: '蓝', GREEN: '绿' })[mc] || '';
+                buffs.push(`<img src="${buffIcon('mock')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>嘲弄${tip ? '·' + tip : ''}</span>`);
+            }
             if (t.ch.bindMark) buffs.push(`<img src="${buffIcon('binding')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>捆缚</span>`);
             for (const [key, label] of [['chaos_red', '混沌·红'], ['chaos_yellow', '混沌·黄'], ['chaos_blue', '混沌·蓝'], ['chaos_green', '混沌·绿']]) {
                 if (t.ch[key]) buffs.push(`<img src="${buffIcon(key)}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>${label}</span>`);

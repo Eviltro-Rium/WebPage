@@ -1554,3 +1554,24 @@ test('adventure challenge promotes only the NPC whose attack ended', () => {
   engine.endAi1v2();
   assert.equal(engine.s.ai2.sleep, true);
 });
+
+test('challenge heals 3 only when the first enemy falls, not the second', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({
+    player: 'Leon',
+    opponent1: 'CastleWolf',
+    opponent2: 'CastleBear',
+    stage: 1,
+    playerPile: { deck: [1, 2, 3, 4, 5, 6].map(v => number(v)), hand: [number(2)], discard: [], handLimit: 5 }
+  });
+  engine.s.player.hp = 20;
+  engine.hurt(engine.s.ai, 999);
+  assert.equal(engine._checkDeath1v2(), false);
+  assert.equal(engine.s.player.hp, 23);
+  const handAfterFirst = engine.h.player.length;
+  engine.hurt(engine.s.ai2, 999);
+  assert.equal(engine._checkDeath1v2(), true);
+  assert.equal(engine.s.player.hp, 23);
+  assert.equal(engine.h.player.length, handAfterFirst);
+});

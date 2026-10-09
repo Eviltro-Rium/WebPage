@@ -102,7 +102,7 @@ test('LifeCore grants extra 3 HP after normal, challenge, and boss wins', () => 
   challengeEng.s.combat = { enemy: { name: 'CastleWolf' } };
   challengeEng.s.player.hp = 20;
   challengeEng.onCombatEnd('win');
-  assert.equal(challengeEng.s.player.hp, 26);
+  assert.equal(challengeEng.s.player.hp, 23, 'challenge wins skip the base heal; LifeCore still adds 3');
 
   const bossEng = startEngine([[0, 2]]);
   bossEng.addItem('LifeCore');
@@ -110,6 +110,22 @@ test('LifeCore grants extra 3 HP after normal, challenge, and boss wins', () => 
   bossEng.s.player.hp = 20;
   bossEng.onCombatEnd('win');
   assert.equal(bossEng.s.player.hp, 33);
+});
+
+test('challenge win has no base heal after the second enemy; normal wins still heal 3', () => {
+  const challengeEng = startEngine([[0, 6]]);
+  assert.ok(challengeEng.move(0, 1));
+  assert.equal(challengeEng.currentRoom().type, 'challenge');
+  challengeEng.s.combat = { enemy: { name: 'CastleWolf' } };
+  challengeEng.s.player.hp = 20;
+  challengeEng.onCombatEnd('win');
+  assert.equal(challengeEng.s.player.hp, 20);
+
+  const normalEng = startEngine();
+  enterNormalCombat(normalEng);
+  normalEng.s.player.hp = 10;
+  normalEng.onCombatEnd('win');
+  assert.equal(normalEng.s.player.hp, 13);
 });
 
 test('same beast token type can be selected twice when two are offered', () => {

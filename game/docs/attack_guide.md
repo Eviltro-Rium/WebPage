@@ -76,7 +76,7 @@ attackDamage(card, ctx) {
 ### 结算流程
 
 1. 桥接层调用 `attackDamage(card, ctx)` 得到基础伤害 `d`
-2. 进入攻击修正阶段（正义之锤 +1 / 攻击修正道具 / 暴击）
+2. 进入攻击修正阶段：先结算攻击修正类 buff（[熔脉] / [暴击]，玩家同弹窗、不可叠用，NPC 熔脉优先于暴击）→ 再结算攻击修正一次性道具（若本回合已用修正 buff 则不可再用）→ 正义之锤等其他修正按既有规则
 3. 玩家进入 AI_DEFEND 阶段选择防御牌
 4. 结算格挡：`defendBlock(card, incoming)` 返回格挡量
 5. 结算反击：`defendCounter(card, incoming, defender, opponent, eng)` 返回反击量
@@ -473,4 +473,4 @@ defendPlayerDiscard(card) {
 
 ### 飞翔、守护与伤害来源
 
-反击经 `counterAttack` 结算，可被飞翔和守护减免。灼伤、流血、中毒、定时炸弹、荆棘、寄生等 Buff 独立伤害均不能减免，也不消耗飞翔或守护。按 Buff 层数计算的攻击技能仍属于攻击伤害。统一由 `EngineDamage.canAvoid(options)` 判断；Buff 伤害使用 `damageSource: 'buff'` 或相应 `kind`，即使传入 `allowAvoidance: true` 也不能绕过此规则。扣血飘字使用 `-N🗡️`，恢复使用 `+N❤️`。
+反击经 `counterAttack` 结算，可被飞翔和守护减免。灼伤、流血、中毒、定时炸弹、荆棘、寄生等 Buff 独立伤害均不能减免，也不消耗飞翔或守护。按 Buff 层数计算的攻击技能仍属于攻击伤害。统一由 `EngineDamage.canAvoid(options)` 判断；Buff 伤害使用 `damageSource: 'buff'` 或相应 `kind`，即使传入 `allowAvoidance: true` 也不能绕过此规则。扣血飘字使用 `-N🗡️`，恢复使用 `+N❤️`；清除全部负面/正面状态时飘「清除负面状态」/「清除正面状态」（事件 `buff`，`kind` 为 `clearDebuffs` / `clearBuffs`）。

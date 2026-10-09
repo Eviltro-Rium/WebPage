@@ -247,7 +247,7 @@ test('FrozenKraken skill desc', () => {
   assert.ok(def2.includes('一半'));
   assert.ok(def2.includes('潜水'));
   const def2s4 = getAdventureNpcSkillDesc('FrozenKraken', numCard(2), true, { stage: 4 });
-  assert.ok(def2s4.includes('恢复1点生命'));
+  assert.ok(def2s4.includes('回1❤️'));
   const def0 = getAdventureNpcSkillDesc('FrozenKraken', numCard(0), true, { stage: 1 });
   assert.ok(def0.includes('相同点'));
   assert.ok(def0.includes('弃掉'));

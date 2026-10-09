@@ -21,6 +21,12 @@
     return result;
   }
 
+  // attackDrawSelf 兼容布尔与数字返回值：true → 1 张，数字 → 对应张数。
+  function attackDrawCount(result) {
+    if (result === true) return 1;
+    return Math.max(0, Math.floor(Number(result) || 0));
+  }
+
   function registerMonsterChar(mod) {
     CR.register({
       name: mod.name,
@@ -63,11 +69,16 @@
         const card = eng.s.atkCard;
         // Card/dice judgment damage is locked to its revealed result, not rolled again.
         if (!card || typeof active.attackDamage!=='function' ||
-            active.attackRevealDraw || active.attackOctopusJudge || active.attackKrakenJudge) return null;
+            active.attackRevealDraw || active.attackOctopusJudge || active.attackKrakenJudge || active.attackHyenaJudge) return null;
         const owner = eng._who(a), hand=eng.h[owner] || [];
         const total = window.FurryGame.StatusRegistry.all.reduce((sum,def) => sum+window.FurryGame.StatusRegistry.amount(t,def.id),0);
+        const positiveStacks = (ent) => !ent ? 0 :
+          (ent.guard || 0) + (ent.fly || 0) + (ent.crit || 0) + (ent.lush || 0) + (ent.parasite || 0) +
+          (ent.diving ? 1 : 0) + (ent.bloodthirst ? 1 : 0) +
+          (ent.chaos_red ? 1 : 0) + (ent.chaos_yellow ? 1 : 0) + (ent.chaos_blue ? 1 : 0) + (ent.chaos_green ? 1 : 0);
         const ctx = {playerHandSize:(eng.h.player||[]).length,attackerHandSize:hand.length,attackerHand:hand,
-          playerBleed:t.bleed||0,playerPoison:t.poison||0,attackerLush:a.lush||0,playerBuffTotal:total};
+          playerBleed:t.bleed||0,playerPoison:t.poison||0,attackerLush:a.lush||0,playerBuffTotal:total,
+          playerPositiveBuffStacks: positiveStacks(t)};
         const drain = typeof active.attackDrain==='function' ? Number(active.attackDrain(card,ctx)) || 0 : 0;
         const damage=Number(active.attackDamage(card,ctx)) || 0;
         return damage > 0 ? damage : drain > 0 ? drain : damage;
@@ -101,23 +112,51 @@
         }
 
         const attackerKey = a === eng.s.ai2 ? 'ai2' : (a === eng.s.ai ? 'ai' : 'player');
-        const buffTotal = (t) =>
-          (t.burn || 0) + (t.bleed || 0) + (t.poison || 0) + (t.blind || 0) + (t.iceSeal || 0) +
-          (t.guard || 0) + (t.fly || 0) + (t.parasite || 0) + (t.bomb || 0) + (t.hypothermia || 0) +
-          (t.crit || 0) + (t.lush || 0) + (t.frozen ? 1 : 0) + (t.diving ? 1 : 0) + (t.bloodthirst ? 1 : 0) +
-          (t.chaos_red ? 1 : 0) + (t.chaos_yellow ? 1 : 0) + (t.chaos_blue ? 1 : 0) + (t.chaos_green ? 1 : 0);
+        const buffTotal = (ent) =>
+          (ent.burn || 0) + (ent.bleed || 0) + (ent.poison || 0) + (ent.blind || 0) + (ent.iceSeal || 0) +
+          (ent.guard || 0) + (ent.fly || 0) + (ent.parasite || 0) + (ent.bomb || 0) + (ent.hypothermia || 0) +
+          (ent.crit || 0) + (ent.lush || 0) + (ent.frozen ? 1 : 0) + (ent.diving ? 1 : 0) + (ent.bloodthirst ? 1 : 0) +
+          (ent.chaos_red ? 1 : 0) + (ent.chaos_yellow ? 1 : 0) + (ent.chaos_blue ? 1 : 0) + (ent.chaos_green ? 1 : 0);
+        // Positive stacks only (match clearPositiveBuffs + bloodthirst). Used by DesertSobek 0.
+        const positiveBuffStacks = (ent) => {
+          if (!ent) return 0;
+          return (ent.guard || 0) + (ent.fly || 0) + (ent.crit || 0) + (ent.lush || 0) + (ent.parasite || 0) +
+            (ent.diving ? 1 : 0) + (ent.bloodthirst ? 1 : 0) +
+            (ent.chaos_red ? 1 : 0) + (ent.chaos_yellow ? 1 : 0) + (ent.chaos_blue ? 1 : 0) + (ent.chaos_green ? 1 : 0);
+        };
+        // DesertSobek 0: apply mutual lush BEFORE damage so the new lush counts.
+        let lushAppliedEarly = false;
+        if (typeof mod.attackLushTarget === 'function') {
+          const selfLush = typeof mod.attackLush === 'function' ? (Number(mod.attackLush(c)) || 0) : 0;
+          const targetLush = Number(mod.attackLushTarget(c)) || 0;
+          if (selfLush > 0) {
+            a.lush = Math.min(2, (a.lush || 0) + selfLush);
+            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+            eng.emit('buff', '+' + selfLush + '[茂盛]', null, { who, kind: 'lush', stacks: a.lush });
+            lushAppliedEarly = true;
+          }
+          if (targetLush > 0) {
+            t.lush = Math.min(2, (t.lush || 0) + targetLush);
+            const twho = t === eng.s.ai2 ? 'ai2' : (t === eng.s.ai ? 'ai' : 'player');
+            eng.emit('buff', '+' + targetLush + '[茂盛]', null, { who: twho, kind: 'lush', stacks: t.lush });
+            lushAppliedEarly = true;
+          }
+        }
         const ctx = {
           playerHandSize: eng.h.player ? eng.h.player.length : 0,
           attackerHandSize: eng.h[attackerKey] ? eng.h[attackerKey].length : 0,
           attackerHand: eng.h[attackerKey] || [],
           playerBleed: (t.bleed || 0), playerPoison: (t.poison || 0), attackerLush: (a.lush || 0),
-          playerBuffTotal: buffTotal(t)
+          playerBuffTotal: buffTotal(t),
+          playerPositiveBuffStacks: positiveBuffStacks(t)
         };
         if (typeof mod.attackDamage === 'function') {
           d = mod.attackDamage(c, ctx);
         } else {
           d = v;
         }
+        // Stash so late attackLush can skip if already applied early.
+        ctx._lushAppliedEarly = lushAppliedEarly;
         // 冻洋海豹专属：进攻1/2/3从牌堆抽一张牌展示，造成对应数字伤害
         if (typeof mod.attackRevealDraw === 'function' && mod.attackRevealDraw(c)) {
           const pile = eng.piles && eng.piles[attackerKey];
@@ -207,6 +246,36 @@
           if (typeof eng.clearDebuffs === 'function') eng.clearDebuffs(a);
           d = 3 + cleared;
           eng.emit('desc', a.name + '清除自身' + cleared + '层负面效果，造成' + d + '点伤害');
+        }
+        // 沙漠鬣狗专属0牌：翻开玩家牌库顶判定，始终置入玩家弃牌堆；
+        // 数字牌 value>0 → ceil(value×1.5) 伤害；否则施加2层流血+[荆棘]并抽1张（伤害0跳过防御）
+        if (typeof mod.attackHyenaJudge === 'function' && mod.attackHyenaJudge(c)) {
+          const pp = eng.piles && eng.piles.player;
+          if (pp) {
+            if (typeof eng._refillPile === 'function') eng._refillPile('player');
+            if (pp.deck.length) {
+              const drawn = pp.deck.pop();
+              eng.emit('reveal', a.name + '翻开玩家牌库' + eng.cardText(drawn) + '判定', drawn, { who: 'player', from: 'deck' });
+              pp.discard.push(drawn);
+              const numVal = (drawn.isNumberCard && !drawn.isItemCard) ? Math.max(0, Number(drawn.value) || 0) : 0;
+              if (drawn.isNumberCard && !drawn.isItemCard && numVal > 0) {
+                d = Math.ceil(numVal * 1.5);
+                eng.emit('desc', eng.cardText(drawn) + '为数字牌，造成' + d + '点伤害并置入玩家弃牌堆');
+              } else {
+                d = 0;
+                eng.emit('desc', eng.cardText(drawn) + '未造成伤害，置入玩家弃牌堆；施加2层[流血]、[荆棘]并抽1张牌');
+                if (typeof eng.bleed === 'function') eng.bleed(t, 2, { silent: true });
+                else t.bleed = Math.min(3, (t.bleed || 0) + 2);
+                if (typeof eng.thorns === 'function') eng.thorns(t, 1, { silent: true });
+                else t.thorns = Math.min(1, (t.thorns || 0) + 1);
+                if (draw) draw(owner, 1, true);
+                else eng.draw(owner, 1, true);
+              }
+            } else {
+              d = 0;
+              eng.emit('desc', a.name + '玩家牌库为空，判定未造成伤害');
+            }
+          }
         }
         if (typeof mod.attackUnblockable === 'function') {
           unblock = mod.attackUnblockable(c);
@@ -378,7 +447,7 @@
           const h = mod.attackHeal(c, ctx);
           if (h > 0) heal(a, h);
         }
-        if (typeof mod.attackLush === 'function') {
+        if (typeof mod.attackLush === 'function' && !(ctx && ctx._lushAppliedEarly)) {
           const l = mod.attackLush(c);
           if (l > 0) {
             a.lush = Math.min(2, (a.lush || 0) + l);
@@ -405,11 +474,20 @@
             eng.emit('buff', '[潜水]', null, { who, kind: 'diving', stacks: 1 });
           }
         }
-        // 蟒蛇专属：满足条件时抽一张牌（仅当玩家有 ≥2 层中毒时）
-        if (typeof mod.attackDrawSelf === 'function' && mod.attackDrawSelf(c, ctx)) {
-          if (draw) draw(owner, 1, true);
-          else eng.draw(owner, 1, true);
-          eng.emit('desc', a.name + '抽取1张牌');
+        // 进攻清除自身所有负面状态（法老0牌）
+        if (typeof mod.attackClearSelfDebuffs === 'function' && mod.attackClearSelfDebuffs(c)) {
+          if (typeof eng.clearDebuffs === 'function') eng.clearDebuffs(a);
+          else { a.burn = 0; a.bleed = 0; a.poison = 0; a.frozen = false; }
+          eng.emit('desc', a.name + '清除自身所有负面状态');
+        }
+        // 进攻抽牌：返回 true 视为1张，返回数字为抽取张数（蟒蛇条件抽1张、石像鬼0牌抽1张、法老0牌抽2张）
+        if (typeof mod.attackDrawSelf === 'function') {
+          const drawSelfAmt = attackDrawCount(mod.attackDrawSelf(c, ctx));
+          if (drawSelfAmt > 0) {
+            if (draw) draw(owner, drawSelfAmt, true);
+            else eng.draw(owner, drawSelfAmt, true);
+            eng.emit('desc', a.name + '抽取' + drawSelfAmt + '张牌');
+          }
         }
         if (typeof mod.attackStealItem === 'function' && mod.attackStealItem(c) && !(eng.s && eng.s.borrowedMonsterSkill)) {
           const advEng = eng._adventureEngine;
@@ -488,9 +566,9 @@
           && opponent && eng.s && opponent === eng.s.player) {
           if (opponent.alive && eng.h && (eng.h.player || []).length) {
             eng.s.pendingKrakenDefendDiscard = true;
-            eng.emit('desc', '克拉肯0牌：反击后请选择1张手牌弃掉');
+            eng.emit('desc', '防御0：反击后请选择1张手牌弃掉');
           } else {
-            eng.emit('desc', '克拉肯0牌：无手牌可弃');
+            eng.emit('desc', '防御0：无手牌可弃');
           }
         }
 
@@ -603,8 +681,17 @@
         };
         const divingDesc = gainDiving ? '，获得[潜水]' : '';
 
-        const applyAllExtras = () => { applyGuard(); applyAllLush(); applyAllHeal(); applyDiving(); };
-        const allExtrasDesc = guardDesc + allLushDesc + allHealDesc + divingDesc;
+        const gainCritAmt = typeof mod.defendGainCrit === 'function' ? Math.max(0, Number(mod.defendGainCrit(c)) || 0) : 0;
+        const applyGainCrit = () => {
+          if (gainCritAmt <= 0) return;
+          defender.crit = Math.min(2, (defender.crit || 0) + gainCritAmt);
+          const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+          eng.emit('buff', '+' + gainCritAmt + '[暴击]', null, { who, kind: 'crit', stacks: defender.crit });
+        };
+        const gainCritDesc = gainCritAmt > 0 ? '，获得' + gainCritAmt + '层[暴击]' : '';
+
+        const applyAllExtras = () => { applyGuard(); applyAllLush(); applyAllHeal(); applyDiving(); applyGainCrit(); };
+        const allExtrasDesc = guardDesc + allLushDesc + allHealDesc + divingDesc + gainCritDesc;
 
         if (typeof mod.defendImmune === 'function' && mod.defendImmune(c)) {
           if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c) && clearDebuffs) {
@@ -772,7 +859,30 @@
     registerMonsterAI(mod);
   });
 
+  // 技能面板/图鉴文案精简（与主角技能同一套写法）：伤害→🗡️、生命→❤️、格挡→🛡️、抽牌→🃏，
+  // 只施加/获得1层时省略「1层」，「（向上取整）」统一由面板底部图例说明。
+  // 规则词（不可防御、跳过防御、相同点伤害等）保持原样。
+  function compactSkillText(text) {
+    if (typeof text !== 'string' || !text) return text;
+    return text
+      .replace(/（向上取整）/g, '')
+      .replace(/向上取整\(([^)]*)\)/g, '($1)')
+      .replace(/格挡(至多)?([^，；：（]*?)点伤害/g, '格挡$1$2🛡️')
+      .replace(/额外格挡(\d+)点/g, '额外格挡$1🛡️')
+      .replace(/(?<!相同)点\[伤害\]/g, '🗡️')
+      .replace(/(?<!相同)点伤害/g, '🗡️')
+      .replace(/(^|[，；：、])造成([^，；：]*?🗡️)/g, '$1$2')
+      .replace(/吸取([^，；：（]*?)点\[?生命\]?/g, '吸$1❤️')
+      .replace(/恢复(\d+)点?\[?生命\]?/g, '回$1❤️')
+      .replace(/抽取?(\d+)张(?:牌|🃏)/g, '抽$1🃏')
+      .replace(/(施加|获得)1层/g, '$1');
+  }
+
   function getAdventureNpcSkillDesc(charName, card, isDefend, opts = {}) {
+    return compactSkillText(getAdventureNpcSkillDescRaw(charName, card, isDefend, opts));
+  }
+
+  function getAdventureNpcSkillDescRaw(charName, card, isDefend, opts = {}) {
     if (!card) return '';
     if (card.isItemCard) {
       if (card.magic || card.greenMagic || card.magicColor) {
@@ -814,6 +924,40 @@
           ? '免疫所有伤害，反击相同点伤害（守护/飞翔结算前），清除自身所有负面状态'
           : '反击相同点伤害（守护/飞翔结算前），清除自身所有负面状态';
       }
+      return '无防御效果';
+    }
+    // DesertHyena defend: half counter 1/2/3; 0 counters 6 + crit + player discard (desert.md).
+    if (mod.name === 'DesertHyena' && card.isNumberCard) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) {
+        const heal = typeof mod.defendHeal === 'function' ? (mod.defendHeal(card) || 0) : 0;
+        return '反击一半伤害（向上取整）' + (heal > 0 ? '，恢复' + heal + '点生命' : '');
+      }
+      if (v === 0) {
+        const heal = typeof mod.defendHeal === 'function' ? (mod.defendHeal(card) || 0) : 0;
+        return '反击6点伤害，获得[暴击]，玩家弃1🃏'
+          + (heal > 0 ? '，恢复' + heal + '点生命' : '');
+      }
+      return '无防御效果';
+    }
+    // Pharaoh defend copy (desert.md): keep doc order (clear first, then counter on 0).
+    if (mod.name === 'Pharaoh' && card.isNumberCard) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) {
+        const heal = typeof mod.defendHeal === 'function' ? mod.defendHeal(card) : 0;
+        return '反击3点伤害，恢复' + heal + '点生命';
+      }
+      if (v === 0) return '清除自身所有负面状态，反击相同点伤害';
+      return '无防御效果';
+    }
+    // DesertSobek defend (desert.md): heal 1/2/3; immune 0 + conditional lush counter.
+    if (mod.name === 'DesertSobek' && card.isNumberCard) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) {
+        const heal = typeof mod.defendHeal === 'function' ? (mod.defendHeal(card) || 0) : 3;
+        return '恢复' + heal + '点生命';
+      }
+      if (v === 0) return '免疫所有伤害；有[茂盛]则消耗1层反击3点伤害';
       return '无防御效果';
     }
     // DesertBison defend: counter card value + bleed (desert.md).
@@ -949,6 +1093,10 @@
       if (typeof mod.defendGainDiving === 'function' && mod.defendGainDiving(card)) {
         parts.push('获得[潜水]');
       }
+      if (typeof mod.defendGainCrit === 'function') {
+        const gc = Math.max(0, Number(mod.defendGainCrit(card)) || 0);
+        if (gc > 0) parts.push('获得' + gc + '层[暴击]');
+      }
       if (typeof mod.defendSplit === 'function' && mod.defendSplit(card)) {
         parts.push('与玩家均摊伤害（向上取整）');
       }
@@ -1000,7 +1148,7 @@
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
       if (v >= 1 && v <= 3) {
-        return '造成' + (v + stageBonus) + '点[伤害]；玩家有≥2层[中毒]时额外抽取1张牌';
+        return '造成' + (v + stageBonus) + '点[伤害]；玩家有=2层[中毒]时额外抽取1张牌';
       }
       if (v >= 4 && v <= 6) {
         return '先施加1层[中毒]，造成' + (3 + stageBonus) + '×玩家[中毒]层数点[伤害]';
@@ -1165,6 +1313,58 @@
       }
       return '无进攻效果';
     }
+    // DesertHyena: bleed-scaled 1/2/3, hand-size+bleed+crit 4/5/6, deck judge 0 (desert.md).
+    if (mod.name === 'DesertHyena' && card.isNumberCard) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) {
+        return '造成2+玩家[流血]层数×2点[伤害]';
+      }
+      if (v >= 4 && v <= 6) {
+        let line = '施加1层[流血]，获得[暴击]，造成玩家手牌数点[伤害]';
+        if (typeof mod.attackUnblockable === 'function') {
+          const yellow = Object.assign({}, card, { color: 'YELLOW', chosenColor: 'YELLOW' });
+          if (mod.attackUnblockable(yellow)) line += '（🟡不可防御）';
+        }
+        return line;
+      }
+      if (v === 0) {
+        // 面板定稿（游戏ui）：翻开牌库顶1🃏：数字牌（非0）→点数×1.5🗡️；否则2层[流血]+[荆棘]，抽1🃏
+        return '翻开牌库顶1🃏：数字牌（非0）→点数×1.5点[伤害]；否则2层[流血]+[荆棘]，抽1🃏';
+      }
+      return '无进攻效果';
+    }
+    // Pharaoh: color-based effect on 1/2/3, yellow-unblockable 4/5/6, self-restore 0 (desert.md).
+    if (mod.name === 'Pharaoh' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成' + (3 + stageBonus) + '点[伤害]，按技能牌颜色：🔴施加2层[灼伤]、🟡施加[流沙]、🔵施加[失温]、🟢获得[茂盛]';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成' + (6 + stageBonus) + '点[伤害]，若技能牌为🟡则不可防御';
+      }
+      if (v === 0) {
+        return '恢复3点[生命]，清除自身所有负面状态，抽取2张牌';
+      }
+      return '无进攻效果';
+    }
+    // DesertSobek: bleed 1/2/3, color lush/crit 4/5/6, mutual lush + positive-scaled 0 (desert.md).
+    if (mod.name === 'DesertSobek' && card.isNumberCard) {
+      const v = card.value;
+      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
+      if (v >= 1 && v <= 3) {
+        return '造成' + (3 + stageBonus) + '点[伤害]，施加1层[流血]';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成' + (5 + stageBonus) + '点[伤害]；🟢获得[茂盛]、🟡获得[暴击]';
+      }
+      if (v === 0) {
+        // After compact: 双方获得[茂盛]，对手每层正面buff→3🗡️（≤3不可防御）
+        // Stage3 +1 is applied to the computed damage, not restated here.
+        return '双方获得[茂盛]，对手每层正面buff→3点[伤害]（≤3不可防御）';
+      }
+      return '无进攻效果';
+    }
     // DesertVulture: yellow-conditional sandblind/fly on 1/2/3, clear positive on 4/5/6 (desert.md).
     if (mod.name === 'DesertVulture' && card.isNumberCard) {
       const v = card.value;
@@ -1291,14 +1491,18 @@
     if (typeof mod.attackStealItem === 'function' && mod.attackStealItem(card)) {
       parts.push('玩家随机丢失1个道具');
     }
+    if (typeof mod.attackClearSelfDebuffs === 'function' && mod.attackClearSelfDebuffs(card)) {
+      parts.push('清除自身所有负面状态');
+    }
     if (typeof mod.attackDrawSelf === 'function') {
       // Describe conditional draws as a formula when they depend on poison stacks.
-      const draw0 = mod.attackDrawSelf(card, Object.assign({}, ctx, { playerPoison: 0 }));
-      const draw2 = mod.attackDrawSelf(card, Object.assign({}, ctx, { playerPoison: 2 }));
+      const draw0 = attackDrawCount(mod.attackDrawSelf(card, Object.assign({}, ctx, { playerPoison: 0 })));
+      const draw2 = attackDrawCount(mod.attackDrawSelf(card, Object.assign({}, ctx, { playerPoison: 2 })));
+      const drawNow = attackDrawCount(mod.attackDrawSelf(card, ctx));
       if (draw2 && !draw0) {
-        parts.push('玩家有≥2层[中毒]时额外抽取1张牌');
-      } else if (mod.attackDrawSelf(card, ctx)) {
-        parts.push('抽取1张牌');
+        parts.push('玩家有=2层[中毒]时额外抽取' + draw2 + '张牌');
+      } else if (drawNow > 0) {
+        parts.push('抽取' + drawNow + '张牌');
       }
     }
     if (typeof mod.attackTransferDebuff === 'function' && mod.attackTransferDebuff(card)) {
@@ -1314,6 +1518,7 @@
     registerMonsterChar,
     registerMonsterAI,
     applyStageMods,
-    getAdventureNpcSkillDesc
+    getAdventureNpcSkillDesc,
+    compactSkillText
   };
 })();

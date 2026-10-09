@@ -30,7 +30,8 @@
     { key: 'fly', name: '飞翔', type: '正面状态', icon: 'icons/buff_icons/fly.webp', desc: '堆叠上限：2\n维持效果：持续\n受到攻击或反击伤害时可消耗1层投掷12面骰，1~6成功躲避、7~12失败；失败后可继续尝试或使用守护。不能减免Buff伤害，也不能躲避攻击附带的状态。' },
     { key: 'lush', name: '茂盛', type: '正面状态', icon: 'icons/buff_icons/lush.webp', desc: '堆叠上限：2\n维持效果：持续\n每有1层，在自己进攻开始前恢复1点生命；可被净化移除。' },
     { key: 'parasite', name: '寄生', type: '正面状态', icon: 'icons/buff_icons/parasite.webp', desc: '堆叠上限：1\n维持效果：持续\n在自己进攻开始前，吸取对手1点生命（不可用守护/飞翔/道具减免）；可被净化移除。' },
-    { key: 'crit', name: '暴击', type: '正面状态', icon: 'icons/buff_icons/crit.webp', desc: '堆叠上限：3\n维持效果：持续\n进攻时若伤害超过4点（防御前，不含流血；含攻击修正后），可在攻击修正/破防选择之后消耗1层，使该攻击变为不可防御；若攻击本身已不可防御则不能再使用。可被净化移除。' },
+    { key: 'crit', name: '暴击', type: '正面状态', icon: 'icons/buff_icons/crit.webp', desc: '堆叠上限：3\n维持效果：持续\n攻击修正类。进攻伤害>4（防御前）时可在攻击修正阶段消耗1层使本次攻击不可防御；与[熔脉]、攻击修正道具互斥不可叠用；本身不可防御的技能不能使用。可被净化。' },
+    { key: 'magmaVein', name: '熔脉', type: '正面状态', icon: 'icons/buff_icons/magma_vein.webp', desc: '堆叠上限：1\n维持效果：持续至触发\n攻击修正类。在攻击修正阶段主动消耗1层，使本次进攻伤害×1.5（向上取整）；只放大技能伤害。与[暴击]、攻击修正道具互斥不可叠用；不作用于防御/反击。可被净化。' },
     { key: 'chaos_red', name: '混沌·红', type: '正面状态', icon: 'icons/buff_icons/chaos_red.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出红色数字牌/指定为红的黑白牌，或指定为红的白色道具牌后获得，进攻回合开始前清除。' },
     { key: 'chaos_yellow', name: '混沌·黄', type: '正面状态', icon: 'icons/buff_icons/chaos_yellow.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出黄色数字牌/指定为黄的黑白牌，或指定为黄的白色道具牌后获得，进攻回合开始前清除。' },
     { key: 'chaos_blue', name: '混沌·蓝', type: '正面状态', icon: 'icons/buff_icons/chaos_blue.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出蓝色数字牌/指定为蓝的黑白牌，或指定为蓝的白色道具牌后获得，进攻回合开始前清除。' },
@@ -44,7 +45,8 @@
     { key: 'thorns', name: '荆棘', type: '负面状态', icon: 'icons/buff_icons/thorns.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有荆棘的角色在进攻阶段每释放一次技能，立即受到1点独立伤害（不可用守护/飞翔减免）；可被净化。' },
     { key: 'quicksand', name: '流沙', type: '负面状态', icon: 'icons/buff_icons/quicksand.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有流沙的角色手牌上限减少1张；回合结束时按降低后的上限弃牌和补牌。不会立即弃掉现有手牌；可被普通净化、超级净化清除，清除后恢复原上限。' },
     { key: 'sandblind', name: '沙盲', type: '负面状态', icon: 'icons/buff_icons/sandblind.webp', desc: '堆叠上限：6\n维持效果：持续\n进攻触发技能时立刻投掷12面骰：若结果≤2×层数则本次技能落空（对手跳过防御）；每次判定后层数-1。6层时必定失败；可被净化（每次净化减1层）。' },
-    { key: 'bloodthirst', name: '嗜血', type: '印记', icon: 'icons/items_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：永久\nSerenity专属嗜血印记。生命低于30时获得；获得后即使恢复到30以上也不会移除，且不能被净化或超级净化清除。未获得印记时，正常恢复额外+1生命；嗜血后技能按嗜血规则结算。' }
+    { key: 'bloodthirst', name: '嗜血', type: '印记', icon: 'icons/items_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：永久\nSerenity专属嗜血印记。生命低于30时获得；获得后即使恢复到30以上也不会移除，且不能被净化或超级净化清除。未获得印记时，正常恢复额外+1生命；嗜血后技能按嗜血规则结算。' },
+    { key: 'taunt', name: '嘲弄', type: '印记', icon: 'icons/items_icons/mock.webp', desc: '堆叠上限：1\n维持效果：整段防御阶段\n嘲风鬣狗印记。进入防御阶段获得并用12面骰选色（1–3红/4–6黄/7–9蓝/10–12绿），卡片底色标出本阶段失效进攻色；该色进攻全空，鬣狗无需防御。鬣狗进入进攻阶段时清除。不可被净化。' }
   ];
 
   // 主角图鉴：仅展示玩家可选择的角色（排除冒险 NPC、领主专属和测试用角色）。
@@ -58,7 +60,7 @@
     { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免攻击和反击伤害，不能减免Buff伤害', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
     { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出数字牌或白色道具牌获得对应颜色混沌（含指定颜色）', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
     { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层[暴击]使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
-    { name: 'Vixraps', hp: 85, type: '灼热', passive: '打出黑牌后弃1张牌，恢复2点生命并施加1层灼伤', avatar: 'avatars/Vixraps.webp', color: '#c0392b' }
+    { name: 'Vixraps', hp: 85, type: '灼热', passive: '打出黑牌后弃1张牌（无手牌则免），回2❤️并施加1层灼伤', avatar: 'avatars/Vixraps.webp', color: '#c0392b' }
   ];
 
   const PLAYER_SKILL_GRID = [
@@ -225,7 +227,9 @@
       }
       html += '</div>';
     }
-    html += '</div></div>';
+    html += '</div>';
+    html += '<div class="skill-footnote">🗡️伤害 ❤️生命 🛡️格挡 🃏卡牌 · 小数均向上取整</div>';
+    html += '</div>';
     return html;
   }
 
@@ -288,7 +292,10 @@
     if (entity.canDefendHigh && !hasTitle(/高牌|4\/5\/6/)) {
       pushAuto('被动', '可用高牌（4/5/6/7）防御');
     }
-    if (entity.handLimit && entity.handLimit < 4 && !hasTitle(/手牌/)) {
+    // Boss 手牌上限是牌库注册配置，不是被动（desert.md：鬣狗/法老等）
+    const isBoss = !!(window.AdventureRegistry && typeof window.AdventureRegistry.getBoss === 'function'
+      && window.AdventureRegistry.getBoss(name));
+    if (!isBoss && entity.handLimit && entity.handLimit < 4 && !hasTitle(/手牌/)) {
       pushAuto('被动', '手牌上限 ' + entity.handLimit + ' 张');
     }
     if (window.AdventureLoot && typeof window.AdventureLoot.describeMonsterDrop === 'function' && !hasTitle(/掉落/)) {
@@ -480,7 +487,7 @@
       html += '<div class="codex-empty">暂无数据</div>';
     } else {
       html += '<div class="codex-all-list">';
-      const effectMap = { burn: '灼伤', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', crit: '暴击', lush: '茂盛', poison: '中毒', parasite: '寄生', thorns: '荆棘', sandblind: '沙盲', quicksand: '流沙', diving: '潜水', scorch: '炙热', iceSeal: '冰封', hypothermia: '失温', zero: '零技能' };
+      const effectMap = { burn: '灼伤', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', crit: '暴击', magmaVein: '熔脉', lush: '茂盛', poison: '中毒', parasite: '寄生', thorns: '荆棘', sandblind: '沙盲', quicksand: '流沙', diving: '潜水', scorch: '炙热', iceSeal: '冰封', hypothermia: '失温', zero: '零技能' };
       for (const it of items) {
         const icon = resolveIcon(it.icon);
         const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-avatar codex-no-icon">${it.displayName[0]}</div>`;
@@ -517,7 +524,7 @@
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">Buff图鉴</h1></div>';
     html += '<div class="codex-all-list">';
     for (const buff of BUFF_DATA) {
-      if (buff.key === 'bloodthirst' || buff.key === 'bind') continue;
+      if (buff.key === 'bloodthirst' || buff.key === 'bind' || buff.key === 'taunt') continue;
       const icon = resolveIcon(buff.icon);
       const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${buff.name}">` : `<div class="char-detail-avatar codex-no-icon">${buff.name[0]}</div>`;
       const typeColor = buff.type === '正面状态' ? '#4ade80' : buff.type === '负面状态' ? '#f87171' : '#94a3b8';
@@ -532,7 +539,7 @@
     html += '<div class="special-marks-section">';
     html += '<div class="special-marks-title">印记（不可净化）</div>';
     html += '<div class="codex-all-list">';
-    const specialMarks = BUFF_DATA.filter(b => b.key === 'bloodthirst' || b.key === 'bind');
+    const specialMarks = BUFF_DATA.filter(b => b.key === 'bloodthirst' || b.key === 'bind' || b.key === 'taunt');
     for (const buff of specialMarks) {
       const icon = resolveIcon(buff.icon);
       const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${buff.name}">` : `<div class="char-detail-avatar codex-no-icon">${buff.name[0]}</div>`;
@@ -565,6 +572,7 @@
       html += '</div>';
     }
     html += '</div>';
+    html += '<div class="skill-footnote">🗡️伤害 ❤️生命 🛡️格挡 🃏卡牌 · 小数均向上取整</div>';
     return html;
   }
 

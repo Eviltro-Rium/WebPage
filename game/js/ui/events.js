@@ -475,9 +475,12 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const colors = {
                 burn: '#ff8800', bleed: '#cc2222', freeze: '#44aaff', guard: '#00bcd4',
-                poison: '#84cc16', thorns: '#facc15', sandblind: '#d6b07c', quicksand: '#d6b07c', crit: '#fbbf24', fly: '#a5b4fc', lush: '#4ade80',
+                poison: '#84cc16', thorns: '#facc15', sandblind: '#d6b07c', quicksand: '#d6b07c', crit: '#fbbf24', magmaVein: '#f97316', fly: '#a5b4fc', lush: '#4ade80',
                 parasite: '#86efac', blind: '#c4b5fd', bomb: '#fb923c', iceSeal: '#7dd3fc',
                 scorch: '#ff4d00',
+                clearDebuffs: '#5eead4', clearBuffs: '#94a3b8',
+                taunt: '#f59e0b',
+                fertility: '#86efac',
                 chaos_reset: '#c084fc',
                 chaos_red: '#f87171', chaos_yellow: '#fde047', chaos_blue: '#60a5fa', chaos_green: '#4ade80'
             };
@@ -489,6 +492,11 @@ async _playEvents(events, fast = false) {
                     if (evt.kind === 'freeze') preview.frozen = evt.stacks > 0;
                     else if (evt.kind === 'guard') preview.guard = evt.stacks;
                     else if (evt.kind === 'crit') preview.crit = evt.stacks;
+                    else if (evt.kind === 'magmaVein') preview.magmaVein = evt.stacks;
+                    else if (evt.kind === 'taunt') {
+                        preview.tauntMark = evt.stacks > 0;
+                        if (!(evt.stacks > 0)) preview.mockAttackColor = null;
+                    }
                     else if (evt.kind === 'chaos_reset') {
                         preview.chaos_red = false;
                         preview.chaos_yellow = false;

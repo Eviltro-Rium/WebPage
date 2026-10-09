@@ -133,13 +133,13 @@ test('DesertCamel 4/5/6: damage 5 and thorns on target', () => {
 test('DesertCamel skill desc', () => {
   const { getAdventureNpcSkillDesc } = AdventureMonsterBridge;
   const atk2 = getAdventureNpcSkillDesc('DesertCamel', numCard(2), false, { stage: 1 });
-  assert.ok(atk2.includes('3点'));
+  assert.ok(atk2.includes('3🗡️'));
   assert.ok(atk2.includes('沙盲'));
   const atk5 = getAdventureNpcSkillDesc('DesertCamel', numCard(5), false, { stage: 1 });
-  assert.ok(atk5.includes('5点'));
+  assert.ok(atk5.includes('5🗡️'));
   assert.ok(atk5.includes('荆棘'));
   const atk2s3 = getAdventureNpcSkillDesc('DesertCamel', numCard(2), false, { stage: 3 });
-  assert.ok(atk2s3.includes('4点'));
+  assert.ok(atk2s3.includes('4🗡️'));
   const def2 = getAdventureNpcSkillDesc('DesertCamel', numCard(2), true, { stage: 1 });
   assert.ok(def2.includes('半数'));
   const def2s4 = getAdventureNpcSkillDesc('DesertCamel', numCard(2), true, { stage: 4 });

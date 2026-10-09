@@ -4,7 +4,7 @@
     name: 'Vixraps',
     hp: 85,
     type: '灼热',
-    passive: '打出黑牌后，在搭桥出牌之前，必须弃掉1张牌，然后恢复2点生命并对对手施加1层灼伤。如果打出黑牌后没有手牌，则不需要弃牌，仍可恢复2点生命并施加1层灼伤',
+    passive: '打出黑牌后弃1张牌（无手牌则免），回2❤️并对对手施加1层灼伤',
     init() { return {}; },
     turnStart(eng, ch) {},
     damageAtSettlement(eng, v, a, t) { return v === 7 ? (t.burn || 0) * 2 : null; },
@@ -46,8 +46,7 @@
         }
       }
       if (v === 6) {
-        // 先施加1层灼伤，再按对手当前灼伤层数恢复等量生命并造成等额伤害。
-        burn(1);
+        // 按对手当前灼伤层数恢复等量生命并造成等额伤害（不再额外施加灼伤）。
         const stacks = t.burn || 0;
         if (stacks > 0) heal(a, stacks);
         d = stacks;

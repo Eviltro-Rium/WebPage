@@ -1070,6 +1070,7 @@ body {
     animation: bloodthirstPulse 1.2s ease-in-out infinite;
 }
 .buff-icon-wrap.bloodthirst-buff img { width: 28px; height: 28px; }
+.buff-icon-wrap.bloodthirst-buff .buff-name { color: #fff4f6; text-shadow: 0 1px 3px #3b0010; }
 .buff-icon-wrap.bind-mark {
     width: 54px;
     border-color: rgba(74, 222, 128, 0.9);
@@ -1078,6 +1079,45 @@ body {
     animation: bindMarkPulse 1.45s ease-in-out infinite;
 }
 .buff-icon-wrap.bind-mark img { width: 28px; height: 28px; }
+.buff-icon-wrap.bind-mark .buff-name { color: #ecfdf5; text-shadow: 0 1px 3px #052e16; }
+.buff-icon-wrap.mock-mark {
+    width: 64px;
+    border-color: rgba(245, 158, 11, 0.92);
+    background: linear-gradient(135deg, rgba(90, 50, 0, 0.9), rgba(245, 158, 11, 0.55));
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.45);
+    animation: mockMarkPulse 1.4s ease-in-out infinite;
+}
+.buff-icon-wrap.mock-mark img { width: 28px; height: 28px; }
+.buff-icon-wrap.mock-mark .buff-name {
+    color: #fff7ed;
+    text-shadow: 0 1px 3px #4a2000;
+    font-size: 0.58rem;
+    letter-spacing: -0.02em;
+}
+.buff-icon-wrap.mock-mark-red {
+    border-color: rgba(248, 113, 113, 0.95);
+    background: linear-gradient(135deg, rgba(110, 10, 10, 0.92), rgba(239, 68, 68, 0.58));
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+}
+.buff-icon-wrap.mock-mark-yellow {
+    border-color: rgba(250, 204, 21, 0.95);
+    background: linear-gradient(135deg, rgba(110, 85, 0, 0.92), rgba(250, 204, 21, 0.58));
+    box-shadow: 0 0 12px rgba(250, 204, 21, 0.5);
+}
+.buff-icon-wrap.mock-mark-blue {
+    border-color: rgba(96, 165, 250, 0.95);
+    background: linear-gradient(135deg, rgba(10, 50, 110, 0.92), rgba(59, 130, 246, 0.58));
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+}
+.buff-icon-wrap.mock-mark-green {
+    border-color: rgba(74, 222, 128, 0.95);
+    background: linear-gradient(135deg, rgba(10, 80, 40, 0.92), rgba(34, 197, 94, 0.58));
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+}
+@keyframes mockMarkPulse {
+    0%, 100% { filter: brightness(0.96); transform: scale(1); }
+    50% { filter: brightness(1.16); transform: scale(1.025); }
+}
 .buff-icon-wrap.bomb-mark {
     width: 28px; height: 28px;
     border-color: rgba(251, 146, 60, 0.92);
@@ -2460,6 +2500,13 @@ body {
 .codex-stat-key { color: #94a3b8; }
 .codex-stat-val { color: #2ecc71; font-weight: 600; }
 
+.skill-footnote {
+    margin: 8px 2px 0;
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    text-align: right;
+}
+
 .skill-grid {
     display: flex;
     flex-direction: column;
@@ -2857,6 +2904,16 @@ body {
     32% { filter: brightness(1.9) saturate(1.35); transform: scale(1.16); box-shadow: 0 0 18px rgba(125,211,252,0.95), 0 0 7px rgba(255,255,255,0.9); }
     68% { filter: brightness(1.35) saturate(1.15); transform: scale(1.06); box-shadow: 0 0 11px rgba(125,211,252,0.7); }
     100% { filter: brightness(1); transform: scale(1); box-shadow: 0 0 0 rgba(255,255,255,0); }
+}
+.buff-icon-wrap.magma-vein-buff {
+    border-color: rgba(249, 115, 22, 0.92);
+    background: linear-gradient(135deg, rgba(120, 40, 0, 0.9), rgba(249, 115, 22, 0.55));
+    box-shadow: 0 0 10px rgba(249, 115, 22, 0.45);
+    animation: magmaVeinPulse 1.35s ease-in-out infinite;
+}
+@keyframes magmaVeinPulse {
+    0%, 100% { filter: brightness(0.96); transform: scale(1); }
+    50% { filter: brightness(1.18); transform: scale(1.03); }
 }
 .buff-icon-wrap.buff-trigger-flash { animation: buffTriggerFlash 0.58s ease-out; z-index: 2; }
 

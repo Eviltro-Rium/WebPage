@@ -17,13 +17,17 @@ test('status registry describes and clears every current status', () => {
   const registry = context.FurryGame.StatusRegistry;
   const entity = {
     burn: 2, bleed: 2, poison: 1, frozen: true, blind: 1, bomb: 3, iceSeal: 1,
-    hypothermia: 2, bindMark: true, guard: 2, fly: 1, crit: 1, lush: 1,
-    parasite: 1, diving: true, scorch: true, bloodthirst: true, hypnosis: true, sleep: true, thorns: 1, sandblind: 3, quicksand: 1,
+    hypothermia: 2, bindMark: true, tauntMark: true, guard: 2, fly: 1, crit: 1, lush: 1,
+    parasite: 1, diving: true, scorch: true, magmaVein: true, bloodthirst: true, hypnosis: true, sleep: true, thorns: 1, sandblind: 3, quicksand: 1,
     chaos_red: true, chaos_yellow: true, chaos_blue: true, chaos_green: true
   };
 
   assert.ok(registry.get('hypothermia'));
   assert.equal(registry.get('bind').property, 'bindMark');
+  assert.equal(registry.get('taunt').property, 'tauntMark');
+  assert.equal(registry.get('taunt').mark, true);
+  assert.equal(registry.get('magmaVein').label, '熔脉');
+  assert.equal(registry.get('magmaVein').max, 1);
   assert.equal(registry.get('diving').trigger, 'onBlueAttack');
   assert.equal(registry.get('scorch').polarity, 'debuff');
   assert.equal(registry.get('scorch').max, 1);
@@ -44,10 +48,12 @@ test('status registry describes and clears every current status', () => {
   assert.equal(entity.burn, 1);
   registry.clearGroup(entity, 'debuff', 'all');
   registry.clearGroup(entity, 'buff', 'all');
-  assert.equal(registry.list(entity).length, 2);
+  assert.equal(registry.list(entity).length, 3);
   assert.equal(entity.bindMark, true);
+  assert.equal(entity.tauntMark, true);
   assert.equal(entity.bloodthirst, true);
   assert.equal(registry.clear(entity, 'bind'), false);
+  assert.equal(registry.clear(entity, 'taunt'), false);
   assert.equal(registry.clear(entity, 'bloodthirst'), false);
 });
 

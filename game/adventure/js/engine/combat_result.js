@@ -33,9 +33,16 @@
       if (result === 'win') {
         this._log('战斗胜利');
         const isBoss = room && room.type === window.RoomType.BOSS;
-        const healAmount = isBoss ? 10 : 3;
-        this.s.player.hp = Math.min(this.s.player.maxHp, this.s.player.hp + healAmount);
-        this._log('恢复' + healAmount + '点生命（当前' + this.s.player.hp + '/' + this.s.player.maxHp + '）');
+        const isChallenge = room && room.type === window.RoomType.CHALLENGE;
+        if (isChallenge) {
+          // 挑战房只在击败第一个敌人时（战斗内）恢复一次并照常补牌；
+          // 击败第二个敌人结束战斗时不再有基础胜利恢复。
+          this._log('挑战房：击败第二个敌人不再恢复生命');
+        } else {
+          const healAmount = isBoss ? 10 : 3;
+          this.s.player.hp = Math.min(this.s.player.maxHp, this.s.player.hp + healAmount);
+          this._log('恢复' + healAmount + '点生命（当前' + this.s.player.hp + '/' + this.s.player.maxHp + '）');
+        }
 
         if (this.hasAccessory('LifeCore')) {
           const def = window.AdventureRegistry.getItem('LifeCore');

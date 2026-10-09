@@ -25,10 +25,10 @@
     4: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha', 'ForestLeech']
   };
 
-  // ===== 丛林猴 =====
+  // ===== 藤噪顽猴 =====
   R.registerMonster({
     name: 'ForestMonkey',
-    kind: '丛林猴',
+    kind: '藤噪顽猴',
     hp: 18,
     attack: 4,
     defense: 1,
@@ -56,10 +56,10 @@
     }
   });
 
-  // ===== 丛林鹿 =====
+  // ===== 翠影鹿 =====
   R.registerMonster({
     name: 'ForestDeer',
-    kind: '丛林鹿',
+    kind: '翠影鹿',
     hp: 20,
     attack: 3,
     defense: 2,
@@ -93,10 +93,10 @@
     }
   });
 
-  // ===== 丛林水蛭 =====
+  // ===== 血沼蛭 =====
   R.registerMonster({
     name: 'ForestLeech',
-    kind: '丛林水蛭',
+    kind: '血沼蛭',
     hp: 18,
     attack: 3,
     defense: 2,
@@ -147,10 +147,10 @@
     }
   });
 
-  // ===== 丛林鳄 =====
+  // ===== 暗潭鳄 =====
   R.registerMonster({
     name: 'ForestCrocodile',
-    kind: '丛林鳄',
+    kind: '暗潭鳄',
     hp: 20,
     attack: 3,
     defense: 1,
@@ -216,10 +216,10 @@
     }
   });
 
-  // ===== 丛林瓢虫 =====
+  // ===== 斑甲瓢虫 =====
   R.registerMonster({
     name: 'ForestLadybug',
-    kind: '丛林瓢虫',
+    kind: '斑甲瓢虫',
     hp: 18,
     attack: 3,
     defense: 1,
@@ -260,10 +260,10 @@
     }
   });
 
-  // ===== 森林水豚 =====
+  // ===== 静河水豚 =====
   R.registerMonster({
     name: 'ForestCapybara',
-    kind: '森林水豚',
+    kind: '静河水豚',
     hp: 20,
     attack: 3,
     defense: 1,
@@ -384,10 +384,10 @@
     }
   });
 
-  // ===== 丛林熊猫（Boss） =====
+  // ===== 竹坞熊猫（Boss） =====
   R.registerBoss({
     name: 'ForestPanda',
-    kind: '丛林熊猫',
+    kind: '竹坞熊猫',
     hp: 45,
     attack: 3,
     defense: 2,
@@ -442,10 +442,10 @@
     }
   });
 
-  // ===== 蟒蛇（Boss） =====
+  // ===== 缠枝巨蟒（Boss） =====
   R.registerBoss({
     name: 'ForestPython',
-    kind: '蟒蛇',
+    kind: '缠枝巨蟒',
     hp: 35,
     attack: 3,
     defense: 1,

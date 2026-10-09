@@ -22,7 +22,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 城堡幽灵（CastleGhost）
+## 夜巡幽魂（CastleGhost）
 
 ### 出现条件：仅从 Stage 2 开始有几率出现
 
@@ -46,7 +46,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 萤火虫（CastleFirefly）
+## 廊灯萤（CastleFirefly）
 
 ### 生命值：18
 
@@ -69,7 +69,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 狼（CastleWolf）
+## 城壕饿狼（CastleWolf）
 
 ### 生命值：20
 
@@ -94,7 +94,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 狐（CastleFox）
+## 廊影狐（CastleFox）
 
 ### 生命值：18
 
@@ -117,7 +117,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 熊（CastleBear）
+## 石庭巨熊（CastleBear）
 
 ### 生命值：25
 
@@ -140,7 +140,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 虎（CastleTiger）
+## 禁苑猛虎（CastleTiger）
 
 ### 生命值：20
 
@@ -167,7 +167,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 鸦（CastleCrow）
+## 报丧鸦（CastleCrow）
 
 ### 生命值：20
 
@@ -191,7 +191,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 蝠（CastleBat）
+## 钟楼蝠（CastleBat）
 
 ### 生命值：15
 
@@ -214,7 +214,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 哥布林（DungeonGoblin）
+## 盗宝哥布林（DungeonGoblin）
 
 ### 生命值：27
 

@@ -143,7 +143,7 @@ test('Mammoth skill descriptions include scaling, hypothermia, guard, immunity a
   assert.match(desc(0,false),/不可防御/); assert.match(desc(0,false),/4层\[守护\]/);
   assert.match(desc(0,true),/免疫所有伤害/);assert.match(desc(0,true),/2层\[守护\]/);
   assert.match(desc(1,true,4),/2层\[流血\]/);assert.match(desc(0,true,4),/3层\[流血\]/);
-  assert.match(desc(1,true),/半数伤害（向上取整）/);
+  assert.match(desc(1,true),/半数伤害/);
 });
 
 for(const testMode of [false,true])test('Mammoth starts in '+(testMode?'test':'normal')+' adventure boss battle with stage modifiers',()=>{

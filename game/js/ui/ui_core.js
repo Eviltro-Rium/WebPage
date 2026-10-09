@@ -68,12 +68,15 @@ const TAG_COLORS = {
     '[混沌-红]': '#f87171', '[混沌-黄]': '#fde047', '[混沌-蓝]': '#60a5fa', '[混沌-绿]': '#4ade80',
     '[混沌红]': '#f87171', '[混沌黄]': '#fde047', '[混沌蓝]': '#60a5fa', '[混沌绿]': '#4ade80',
     '[清除混沌红]': '#fca5a5', '[清除混沌黄]': '#fef08a', '[清除混沌蓝]': '#93c5fd', '[清除混沌绿]': '#86efac',
-    '[混沌重制]': '#c084fc'
+    '[混沌重制]': '#c084fc',
+    '[嘲弄]': '#f59e0b',      // 沙漠鬣狗被动
+    '[丰饶]': '#86efac',      // 沙漠索贝克被动
+    '[熔脉]': '#f97316'       // 攻击修正类：消耗后本次进攻伤害×1.5
 };
 
 const PHASE_NAMES = {
     PLAYER_PLAY: '出牌阶段', PLAYER_DISCARD: '弃牌阶段',
-    PLAYER_DEFEND: '防御阶段', ATTACK_MOD_CHOICE: '攻击修正', CRIT_CHOICE: '暴击选择', PLAYER_FIVE_CHOICE: '选择5效果',
+    PLAYER_DEFEND: '防御阶段', ATTACK_MOD_CHOICE: '攻击修正', CRIT_CHOICE: '攻击修正选择', ATTACK_BUFF_CHOICE: '攻击修正选择', PLAYER_FIVE_CHOICE: '选择5效果',
     PLAYER_SEVEN_CHOICE: '处理抽取牌', SAIKI_THREE_CHOICE: '处理抽取牌', OPPONENT_CARD_CHOICE: '选择对手手牌',
     SAIKI_SIX_JUDGE: '判定选择', AI_TURN: 'AI回合', AI2_TURN: 'AI2回合',
     AI_DEFEND: 'AI防御中', CHAN_FIVE_REORDER: '排列牌库顶', GUARD_CHOICE: '选择守护', TARGET_CHOICE: '选择目标', PURIFY_CRYSTAL_CHOICE: '净化水晶', TROPHY_DISARM_CHOICE: '缴械选择', TROPHY_PURIFY_CHOICE: '净化选择', DICE_CHOICE: '选择骰面', GAME_OVER: '游戏结束'

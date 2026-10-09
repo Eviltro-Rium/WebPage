@@ -603,11 +603,11 @@ test('Viper/Antlion combat and codex descriptions match Stage2/3/4 rules', () =>
   const describe=AdventureMonsterBridge.getAdventureNpcSkillDesc;
   for(const stage of [2,3,4]) {
     assert.match(describe('DesertAntlion',numCard(2),false,{stage}),/流沙.*不可防御/);
-    assert.match(describe('DesertAntlion',numCard(5),false,{stage}),new RegExp((stage>=3 ? 6:5)+'点.*流沙'));
-    assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/半数伤害.*向上取整/);
+    assert.match(describe('DesertAntlion',numCard(5),false,{stage}),new RegExp((stage>=3 ? 6:5)+'🗡️.*流沙'));
+    assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/半数伤害/);
     assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/荆棘/);
-    if(stage>=4)assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/反击1点/);
-    assert.match(describe('DesertViper',numCard(5),false,{stage}),new RegExp('吸取'+(stage>=3 ? 3:2)+'\\+玩家.*中毒'));
-    assert.match(describe('DesertViper',numCard(2),true,{stage}),new RegExp('施加'+(stage>=4 ? 2:1)+'层.*中毒'));
+    if(stage>=4)assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/反击1🗡️/);
+    assert.match(describe('DesertViper',numCard(5),false,{stage}),new RegExp('吸'+(stage>=3 ? 3:2)+'\\+玩家.*中毒'));
+    assert.match(describe('DesertViper',numCard(2),true,{stage}),new RegExp(stage>=4 ? '施加2层.*中毒' : '施加\\[中毒\\]'));
   }
 });

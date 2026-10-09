@@ -309,11 +309,11 @@
     },
     {
       "stage": "3",
-      "text": "进攻伤害 +1"
+      "text": "进攻 1/2/3/0 伤害 +1（4/5/6 倍率不变）"
     },
     {
       "stage": "4",
-      "text": "防御反击 +1"
+      "text": "防御反击 +1；防御 0 均摊后额外反击 1🗡️"
     }
   ],
   "ForestDryad": [
@@ -510,6 +510,44 @@
     {
       "stage": "4",
       "text": "防御反击 +1"
+    }
+  ],
+  "Pharaoh": [
+    {
+      "stage": "3",
+      "text": "进攻技能伤害 +1"
+    },
+    {
+      "stage": "4",
+      "text": "防御恢复 +1"
+    }
+  ],
+  "DesertHyena": [
+    {
+      "stage": "2",
+      "text": "生命上限 +10（50）"
+    },
+    {
+      "stage": "3",
+      "text": "进攻技能牌为🟡时不可防御（不消耗暴击）"
+    },
+    {
+      "stage": "4",
+      "text": "防御恢复 1❤️"
+    }
+  ],
+  "DesertSobek": [
+    {
+      "stage": "2",
+      "text": "生命上限 +7（42）"
+    },
+    {
+      "stage": "3",
+      "text": "所有进攻伤害 +1"
+    },
+    {
+      "stage": "4",
+      "text": "防御恢复 +1❤️"
     }
   ],
   "FrozenOceanSnowyOwl": [
@@ -753,6 +791,30 @@
   "DesertViper": [{ "title": "出现条件", "lines": ["仅从 Stage 2 开始出现"] }],
   "DesertAntlion": [{ "title": "出现条件", "lines": ["仅从 Stage 2 开始出现"] }],
   "DesertVulture": [],
+  "Pharaoh": [
+    {
+      "title": "出现条件",
+      "lines": [
+        "仅从 Stage 2 开始出现"
+      ]
+    }
+  ],
+  "DesertHyena": [
+    {
+      "title": "被动",
+      "lines": [
+        "[嘲弄]印记：进入整段防御阶段掷一次选色（1–3🔴/4–6🟡/7–9🔵/10–12🟢）并挂印记，卡片底色标出失效进攻色；本阶段该色进攻全空；进入进攻阶段清除"
+      ]
+    }
+  ],
+  "DesertSobek": [
+    {
+      "title": "被动",
+      "lines": [
+        "[丰饶]：被击败时若持有[茂盛]，清除自身所有正面 buff，生命恢复至 15（复活）"
+      ]
+    }
+  ],
   "FrozenOceanSnowyOwl": [],
   "FrozenOceanSamoyed": [
     {

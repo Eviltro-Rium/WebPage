@@ -187,11 +187,18 @@
       if (b.guard > 0)     items.push('<span class="adv-buff adv-buff-guard" title="守护">' + icon('guard', '守护') + '×' + b.guard + '</span>');
       if (b.fly > 0)       items.push('<span class="adv-buff adv-buff-fly" title="飞翔">' + icon('fly', '飞翔') + '×' + b.fly + '</span>');
       if (b.crit > 0)      items.push('<span class="adv-buff" title="暴击">' + icon('crit', '暴击') + '×' + b.crit + '</span>');
+      if (b.magmaVein > 0) items.push('<span class="adv-buff adv-buff-magma" title="熔脉">' + icon('magma_vein', '熔脉') + (b.magmaVein > 1 ? '×' + b.magmaVein : '') + '</span>');
       if (b.chaos_red)     items.push('<span class="adv-buff adv-buff-chaos-red" title="混沌·红">' + icon('chaos_red', '混沌·红') + '</span>');
       if (b.chaos_yellow)  items.push('<span class="adv-buff adv-buff-chaos-yellow" title="混沌·黄">' + icon('chaos_yellow', '混沌·黄') + '</span>');
       if (b.chaos_blue)    items.push('<span class="adv-buff adv-buff-chaos-blue" title="混沌·蓝">' + icon('chaos_blue', '混沌·蓝') + '</span>');
       if (b.chaos_green)   items.push('<span class="adv-buff adv-buff-chaos-green" title="混沌·绿">' + icon('chaos_green', '混沌·绿') + '</span>');
       if (b.bloodthirst)   items.push('<span class="adv-buff adv-buff-bloodthirst" title="嗜血">嗜血</span>');
+      if (b.tauntMark || b.taunt) {
+        const mc = String(b.mockAttackColor || b.tauntColor || '').toUpperCase();
+        const colorTip = ({ RED: '红', YELLOW: '黄', BLUE: '蓝', GREEN: '绿' })[mc] || '';
+        const cls = 'adv-buff adv-buff-taunt' + (mc ? ' adv-buff-taunt-' + mc.toLowerCase() : '');
+        items.push('<span class="' + cls + '" title="嘲弄' + (colorTip ? '·' + colorTip : '') + '"><img class="adv-buff-icon" src="../icons/items_icons/mock.webp" alt="嘲弄">嘲弄' + (colorTip ? colorTip : '') + '</span>');
+      }
       if (!items.length) return '';
       return '<div class="adv-buff-bar">' + items.join('') + '</div>';
     }

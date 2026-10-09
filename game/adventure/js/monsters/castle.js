@@ -32,7 +32,7 @@
    */
   R.registerMonster({
     name: 'CastleGhost',
-    kind: '城堡幽灵',
+    kind: '夜巡幽魂',
     minStage: 2,
     hp: 24,
     attack: 3,
@@ -60,7 +60,7 @@
       // UI/AI capability checks call this without an engine; the real defense
       // path supplies the engine and records the D12 roll in the判定区.
       if (!eng || typeof eng.rollD12 !== 'function') return true;
-      const roll = eng.rollD12('城堡幽灵防御判定', { who: 'ai' });
+      const roll = eng.rollD12('夜巡幽魂防御判定', { who: 'ai' });
       return roll <= 4;
     },
 
@@ -73,18 +73,18 @@
         defendRollImmune(card, eng) {
           if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return false;
           if (!eng || typeof eng.rollD12 !== 'function') return true;
-          return eng.rollD12('城堡幽灵防御判定', { who: 'ai' }) <= 6;
+          return eng.rollD12('夜巡幽魂防御判定', { who: 'ai' }) <= 6;
         }
       })
     }
   });
 
-  /** 城堡幽灵（CastleGhost）
+  /** 夜巡幽魂（CastleGhost）
    * Stage 2 起出现；4/5/6 技能会根据打出后剩余手牌决定是否造成伤害。
    */
   R.registerMonster({
     name: 'CastleFirefly',
-    kind: '城堡萤火虫',
+    kind: '廊灯萤',
     hp: 18,
     attack: 3,
     defense: 1,
@@ -134,7 +134,7 @@
    */
   R.registerMonster({
     name: 'CastleWolf',
-    kind: '城堡之狼',
+    kind: '城壕饿狼',
     hp: 20,
     attack: 4,
     defense: 1,
@@ -168,7 +168,7 @@
    */
   R.registerMonster({
     name: 'CastleFox',
-    kind: '城堡之狐',
+    kind: '廊影狐',
     hp: 18,
     attack: 3,
     defense: 0,
@@ -219,7 +219,7 @@
    */
   R.registerMonster({
     name: 'CastleBear',
-    kind: '城堡之熊',
+    kind: '石庭巨熊',
     hp: 25,
     attack: 3,
     defense: 1,
@@ -279,7 +279,7 @@
    */
   R.registerMonster({
     name: 'CastleTiger',
-    kind: '城堡之虎',
+    kind: '禁苑猛虎',
     hp: 20,
     attack: 3,
     defense: 1,
@@ -468,7 +468,7 @@
   });
 
    /**
-    * 城堡哥布林（DungeonGoblin）
+    * 盗宝哥布林（DungeonGoblin）
     * 仅在 Stage 2/3/4 刷出
     * 被动：哥布林进攻打出数字1时触发（stage2:损失1金币, stage3/4:损失1随机道具）
     * 进攻：1/2/3牌造成2点不可防御伤害，4/5/6牌造成5点伤害并获得1/2/3层守护
@@ -477,7 +477,7 @@
     */
    R.registerMonster({
      name: 'DungeonGoblin',
-     kind: '城堡哥布林',
+     kind: '盗宝哥布林',
      minStage: 2,
      hp: 27,
      attack: 4,
@@ -528,7 +528,7 @@
    */
   R.registerMonster({
     name: 'CastleCrow',
-    kind: '城堡之鸦',
+    kind: '报丧鸦',
     hp: 20,
     attack: 3,
     defense: 1,
@@ -583,7 +583,7 @@
    */
   R.registerMonster({
     name: 'CastleBat',
-    kind: '城堡之蝠',
+    kind: '钟楼蝠',
     hp: 15,
     attack: 3,
     defense: 1,

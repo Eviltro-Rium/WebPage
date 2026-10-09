@@ -218,27 +218,46 @@
                 });
             }
         },
-        clearDebuffs(entity) {
-            if (!entity) return;
+        // engine is optional for older direct callers; when given, a single
+        // floating text is emitted only if at least one status was removed.
+        clearDebuffs(entity, engine) {
+            if (!entity) return [];
+            let removed;
             if (service) {
-                service.clearGroup(entity, 'debuff', 'all');
-                return;
+                removed = service.clearGroup(entity, 'debuff', 'all') || [];
+            } else {
+                removed = ['burn', 'bleed', 'poison', 'frozen', 'bomb', 'blind', 'iceSeal', 'hypothermia', 'thorns', 'sandblind', 'scorch']
+                    .filter(key => entity[key]);
+                entity.burn = 0; entity.bleed = 0; entity.poison = 0;
+                entity.frozen = false; entity.bomb = 0; entity.blind = 0; entity.iceSeal = 0;
+                entity.hypothermia = 0; entity.thorns = 0; entity.sandblind = 0; entity.scorch = false;
             }
-            entity.burn = 0; entity.bleed = 0; entity.poison = 0;
-            entity.frozen = false; entity.bomb = 0; entity.blind = 0; entity.iceSeal = 0;
-            entity.hypothermia = 0; entity.thorns = 0; entity.sandblind = 0; entity.scorch = false;
+            EngineStatus._emitGroupClear(engine, entity, removed, 'clearDebuffs', '清除负面状态');
+            return removed;
         },
-        clearPositiveBuffs(entity) {
-            if (!entity) return;
+        clearPositiveBuffs(entity, engine) {
+            if (!entity) return [];
+            let removed;
             if (service) {
-                service.clearGroup(entity, 'buff', 'all');
-                return;
+                removed = service.clearGroup(entity, 'buff', 'all') || [];
+            } else {
+                removed = ['guard', 'fly', 'crit', 'lush', 'parasite', 'diving', 'chaos_red', 'chaos_yellow', 'chaos_blue', 'chaos_green']
+                    .filter(key => entity[key]);
+                entity.guard = 0; entity.fly = 0; entity.crit = 0; entity.lush = 0;
+                entity.parasite = 0;
+                entity.diving = false;
+                entity.chaos_red = false; entity.chaos_yellow = false;
+                entity.chaos_blue = false; entity.chaos_green = false;
             }
-            entity.guard = 0; entity.fly = 0; entity.crit = 0; entity.lush = 0;
-            entity.parasite = 0;
-            entity.diving = false;
-            entity.chaos_red = false; entity.chaos_yellow = false;
-            entity.chaos_blue = false; entity.chaos_green = false;
+            EngineStatus._emitGroupClear(engine, entity, removed, 'clearBuffs', '清除正面状态');
+            return removed;
+        },
+        _emitGroupClear(engine, entity, removed, kind, text) {
+            if (!engine || typeof engine.emit !== 'function' || !engine.s || !removed || !removed.length) return;
+            const target = targetKey(engine, entity);
+            engine.emit(eventTypes.BUFF || 'buff', text, null, {
+                who: target, target, kind, removed: removed.slice()
+            });
         },
         clean(entity, all = false, kind = null) {
             if (!entity) return;

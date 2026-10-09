@@ -141,6 +141,13 @@
     DesertVulture: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 2, drops: Object.freeze(['FlyTrophy']) }),
       Object.freeze({ threshold: 4, drops: Object.freeze(['SandblindTrophy']) })
+    ]) }),
+    Pharaoh: Object.freeze({ threshold: 6, drops: Object.freeze(['ZeroTrophy']) }),
+    DesertHyena: Object.freeze({ threshold: 6, drops: Object.freeze(['ZeroTrophy']) }),
+    DesertSobek: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 4, drops: Object.freeze(['LushTrophy']) }),
+      Object.freeze({ threshold: 5, drops: Object.freeze(['CritTrophy']) }),
+      Object.freeze({ threshold: 6, drops: Object.freeze(['PiercingTrophy']) })
     ]) })
   });
 

@@ -22,7 +22,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 丛林猴（ForestMonkey）
+## 藤噪顽猴（ForestMonkey）
 
 ### 生命值：18
 
@@ -47,7 +47,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 丛林鹿（ForestDeer）
+## 翠影鹿（ForestDeer）
 
 ### 生命值：20
 
@@ -72,7 +72,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 丛林水蛭（ForestLeech）
+## 血沼蛭（ForestLeech）
 
 ### 生命值：18
 
@@ -95,7 +95,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 丛林鳄（ForestCrocodile）
+## 暗潭鳄（ForestCrocodile）
 
 ### 生命值：20
 
@@ -143,7 +143,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 丛林瓢虫（ForestLadybug）
+## 斑甲瓢虫（ForestLadybug）
 
 ### 生命值：18
 
@@ -168,7 +168,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 森林水豚（ForestCapybara）
+## 静河水豚（ForestCapybara）
 
 ### 生命值：20
 
@@ -239,7 +239,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 丛林熊猫（ForestPanda）· Boss
+## 竹坞熊猫（ForestPanda）· Boss
 
 ### 生命值：45
 
@@ -264,28 +264,26 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 蟒蛇（ForestPython）· Boss
+## 缠枝巨蟒（ForestPython）· Boss
 
-### 生命值：35　
+### 生命值：35
 
 ### 进攻：
 
-- 出 1/2/3 牌：造成 **1/2/3🗡️**；当玩家有 **≥ 2 层[中毒]** 时，蟒蛇额外抽取 1 张牌
+- 出 1/2/3 牌：造成 **2/3/4🗡️**，施加 1 层[中毒]；当玩家有 **≥ 2 层[中毒]** 时，额外抽取 1🃏
 - 出 4/5/6 牌：先施加 1 层[中毒]，造成 **3 × 玩家[中毒]层数🗡️**
-- 出 0 牌：先施加 1 层[中毒]，造成 **2 × 玩家[中毒]层数🗡️**（不可防御）
+- 出 0 牌：先施加 1 层[中毒]，造成 **3 × 玩家[中毒]层数🗡️**（不可防御）
 
 ### 防御：
 
-- 出 1 牌：反击 1🗡️
-- 出 2 牌：反击 2🗡️
-- 出 3 牌：反击 3🗡️
-- 出 0 牌：与玩家均摊伤害（向上取整）🗡️，不影响 buff 施加
+- 出 1/2/3 牌：反击 **1/2/3🗡️**，施加 1 层[中毒]
+- 出 0 牌：与玩家均摊伤害（向上取整）🗡️，并施加 1 层[中毒]（不影响其他 buff 施加）
 
 ### Stage 强化：
 
 - **Stage 2**：生命上限 +10（45）
-- **Stage 3**：进攻伤害 +1
-- **Stage 4**：防御反击 +1
+- **Stage 3**：进攻 1/2/3/0 伤害 **+1**（4/5/6 倍率不变）
+- **Stage 4**：防御反击 **+1**；防御 0 均摊后额外反击 **1🗡️**
 
 ### 掉落：投出1-6，掉落[中毒]战利白卡
 
@@ -319,7 +317,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-Boss 房从本场景 Boss 池 **等可能** 刷新一只（丛林熊猫 / 蟒蛇 / 树精）。
+Boss 房从本场景 Boss 池 **等可能** 刷新一只（竹坞熊猫 / 缠枝巨蟒 / 树精）。
 树精仅在 **Stage 2/3/4** 出现。
 
 每一层场景随机等可能刷新。

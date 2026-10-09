@@ -82,7 +82,7 @@ test('DesertBison loot: roll 5-12 drops nothing', () => {
 test('DesertBison base stats', () => {
   const m = getMonster('DesertBison');
   assert.equal(m.name, 'DesertBison');
-  assert.equal(m.kind, '沙漠野牛');
+  assert.equal(m.kind, '沙暴蛮牛');
   assert.equal(m.hp, 24);
   assert.equal(m.attack, 3);
   assert.equal(m.defense, 2);
@@ -198,7 +198,7 @@ test('DesertBison skill desc: attack and defend match desert.md', () => {
   assert.ok(atk123s3.includes('玩家[流血]层数×3'), 'stage3 attack scales with bleed x3');
 
   const atk456 = getAdventureNpcSkillDesc('DesertBison', numCard(5), false, { stage: 1 });
-  assert.ok(atk456.includes('2点伤害'), 'attack 4/5/6 deals 2');
+  assert.ok(atk456.includes('2🗡️'), 'attack 4/5/6 deals 2');
   assert.ok(atk456.includes('不可防御'), 'attack 4/5/6 should be unblockable');
   assert.ok(atk456.includes('流血'), 'attack 4/5/6 should apply bleed');
   assert.ok(atk456.includes('暴击'), 'attack 4/5/6 should gain crit');
