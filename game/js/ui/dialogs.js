@@ -36,12 +36,13 @@ class DialogManager {
             guard: 'guard-choice-dialog',
             flyRetry: 'fly-retry-choice-dialog',
             trophyDisarm: 'opponent-card-choice-dialog',
-            trophyPurify: 'purify-choice-dialog'
+            trophyPurify: 'purify-choice-dialog',
+            attackBuff: 'attack-buff-choice-dialog'
         }[pendingDialog] || (phase === 'CHAN_FIVE_REORDER' ? 'chan-five-dialog' : null);
         const ids = [
             'purify-choice-dialog', 'super-purify-choice-dialog',
             'guard-choice-dialog', 'fly-retry-choice-dialog',
-            'opponent-card-choice-dialog', 'chan-five-dialog'
+            'opponent-card-choice-dialog', 'chan-five-dialog', 'attack-buff-choice-dialog'
         ];
         ids.forEach(id => {
             const el = document.getElementById(id);
@@ -56,6 +57,31 @@ class DialogManager {
             }
             if (!canAct || id !== desired) el.remove();
         });
+    }
+
+    showAttackBuffChoice(pending, onChoose) {
+        const id='attack-buff-choice-dialog';
+        if(document.getElementById(id)) return;
+        const overlay=document.createElement('div');overlay.id=id;overlay.className='dialog-overlay';
+        const box=document.createElement('div');box.className='dialog-box';
+        const heading=document.createElement('h3');heading.textContent='攻击修正';box.appendChild(heading);
+        const note=document.createElement('p');note.textContent='同一次进攻只能选择一种修正Buff；使用后不能再使用攻击修正道具。';box.appendChild(note);
+        const list=document.createElement('div');list.className='choice-list';
+        let submitted=false;
+        const add=(kind,label,icon)=>{
+            const button=document.createElement('button');button.type='button';button.className=kind?'choice-row':'choice-row choice-secondary';button.dataset.attackBuff=kind||'none';
+            if(icon){const image=document.createElement('img');image.src=statusIconPath(icon);image.alt='';image.style.cssText='width:28px;height:28px;vertical-align:middle;margin-right:8px';button.appendChild(image);}
+            button.appendChild(document.createTextNode(label));
+            button.addEventListener('click',async()=>{
+                if(submitted)return;submitted=true;list.querySelectorAll('button').forEach(b=>b.disabled=true);
+                try {await onChoose(kind);} finally {
+                    if(overlay.isConnected){submitted=false;list.querySelectorAll('button').forEach(b=>b.disabled=false);}
+                }
+            });list.appendChild(button);
+        };
+        if(pending.canMagma)add('magmaVein','消耗熔脉 · 伤害 '+pending.damage+' → '+pending.magmaPreviewDamage+' 🗡️','magma_vein');
+        if(pending.canCrit)add('crit','消耗暴击 · '+pending.damage+' 🗡️变为不可防御','crit');
+        add(null,'不使用修正Buff',null);box.appendChild(list);overlay.appendChild(box);document.body.appendChild(overlay);
     }
 
     showChanFiveDialog(s) {

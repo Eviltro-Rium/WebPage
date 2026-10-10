@@ -897,50 +897,19 @@ test('ArmorBreakSpear makes defensible attack unblockable via attack mod choice'
   assert.equal(engine.s.pendingAttack, null);
 });
 
-test('Otto crit is optional after attack mod and blocked by ArmorBreakSpear', () => {
-  const engine = new AdventureBattleEngine();
-  engine.later = () => {};
-  engine.startAdventure({
-    player: 'Otto',
-    opponent: 'CastleWolf',
-    playerState: { hp: 100, maxHp: 100, crit: 1 },
-    playerPile: { deck: [], hand: [number(1, 'RED')], discard: [], handLimit: 5 },
-    discardTop: number(1, 'RED'),
-    discardTopOwner: 'player'
-  });
-  engine.s.player.crit = 1;
-  engine.s.pendingAttack = { damage: 5, unblock: false };
-  engine.s.pendingAttackMod = { card: number(1, 'RED'), skip: false, unblock: false, delay: 0 };
-  engine.s.phase = 'ATTACK_MOD_CHOICE';
-  engine.s.busy = false;
-
-  engine.dispatch('resolveAttackModChoice', { bonus: 0 });
-  assert.equal(engine.s.phase, 'CRIT_CHOICE');
-  assert.equal(engine.s.player.crit, 1);
-
-  engine.dispatch('resolveCritChoice', { use: false });
-  assert.equal(engine.s.phase, 'AI_DEFEND');
-  assert.equal(engine.s.player.crit, 1);
-  assert.equal(engine.s.pendingAttack.unblock, false);
-
-  engine.s.player.crit = 1;
-  engine.s.pendingAttack = { damage: 5, unblock: false };
-  engine.s.pendingAttackMod = { card: number(1, 'RED'), skip: false, unblock: false, delay: 0 };
-  engine.s.phase = 'ATTACK_MOD_CHOICE';
-  engine.dispatch('resolveAttackModChoice', { bonus: 0 });
-  engine.dispatch('resolveCritChoice', { use: true });
-  assert.equal(engine.s.player.crit, 0);
-  assert.equal(engine.s.pendingAttack.unblock, true);
-  assert.equal(engine.s.defenseSkipped, true);
-
-  engine.s.player.crit = 1;
-  engine.s.pendingAttack = { damage: 5, unblock: false };
-  engine.s.pendingAttackMod = { card: number(1, 'RED'), skip: false, unblock: false, delay: 0 };
-  engine.s.phase = 'ATTACK_MOD_CHOICE';
-  engine.dispatch('resolveAttackModChoice', { bonus: 0, unblock: true });
-  assert.equal(engine.s.phase, 'AI_DEFEND');
-  assert.equal(engine.s.player.crit, 1);
-  assert.equal(engine.s.pendingAttack.unblock, true);
+test('attack modifier buffs are chosen before items and remain mutually exclusive', () => {
+  const engine=start({deck:[],hand:[number(3)],discard:[]});engine.later=()=>{};
+  engine.s.player.crit=1;engine.s.atkCard=number(3);
+  engine.gateAdventureAttackMod(number(3),5,false,false);
+  assert.equal(engine.s.phase,'CRIT_CHOICE');
+  engine.dispatch('resolveAttackBuffChoice',{buff:null});
+  assert.equal(engine.s.phase,'ATTACK_MOD_CHOICE');
+  engine.dispatch('resolveAttackModChoice',{bonus:0,unblock:true});
+  assert.equal(engine.s.phase,'AI_DEFEND');assert.equal(engine.s.player.crit,1);
+  engine.s.atkCard=number(3);engine.gateAdventureAttackMod(number(3),5,false,false);
+  engine.dispatch('resolveAttackBuffChoice',{buff:'crit'});
+  assert.equal(engine.s.player.crit,0);assert.equal(engine.s.pendingAttack.unblock,true);
+  assert.throws(()=>engine.dispatch('resolveAttackModChoice',{bonus:1}),/当前没有/);
 });
 
 function startVs(opponent, pileOverrides = {}, top = number(2), topOwner = 'player') {

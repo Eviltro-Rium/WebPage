@@ -89,6 +89,9 @@ _renderControls() {
         html += `<button class="ctrl-btn btn-skip" id="btn-attack-mod-skip">不修正</button>`;
     } else if ((phase === 'CRIT_CHOICE' || phase === 'ATTACK_BUFF_CHOICE') && canAct) {
         const pending = s.pendingAttackBuffChoice || s.pendingCritChoice || {};
+        if(s.pendingAttackBuffChoice && this.dialogs && this.dialogs.showAttackBuffChoice){
+            this.dialogs.showAttackBuffChoice(pending,buff=>this._apiAction('resolveAttackBuffChoice',{buff}));
+        }
         const dmg = pending.damage != null
             ? pending.damage
             : (s.pendingAttack && s.pendingAttack.damage) || 0;
@@ -107,9 +110,9 @@ _renderControls() {
         if (canMagma) bits.push(`熔脉×1.5→${magmaDmg}🗡️（剩${magmaStacks}）`);
         if (canCrit) bits.push(`暴击不可防御（剩${critStacks}）`);
         html += `<span class="ctrl-hint">伤害 ${dmg} 点` + (bits.length ? '：' + bits.join(' / ') : '') + `；同一次只能选一种攻击修正</span>`;
-        if (canMagma) html += `<button class="ctrl-btn btn-play" id="btn-magma-use">使用熔脉</button>`;
-        if (canCrit) html += `<button class="ctrl-btn btn-play" id="btn-crit-use">使用暴击</button>`;
-        html += `<button class="ctrl-btn btn-skip" id="btn-crit-skip">不使用</button>`;
+        if (canMagma && !s.pendingAttackBuffChoice) html += `<button class="ctrl-btn btn-play" id="btn-magma-use">使用熔脉</button>`;
+        if (canCrit && !s.pendingAttackBuffChoice) html += `<button class="ctrl-btn btn-play" id="btn-crit-use">使用暴击</button>`;
+        if(!s.pendingAttackBuffChoice) html += `<button class="ctrl-btn btn-skip" id="btn-crit-skip">不使用</button>`;
     } else if (phase === 'PLAYER_FIVE_CHOICE' && canAct) {
         html += `<span class="ctrl-hint">请选择一张数字牌：恢复牌面生命，或造成1.5倍伤害</span>`;
         html += `<button class="ctrl-btn btn-play" id="btn-five-heal" ${!hasNumberCard ? 'disabled' : ''}>恢复${hasNumberCard ? ` ${selectedCard.value}` : ''}</button>`;

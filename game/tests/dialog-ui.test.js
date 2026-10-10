@@ -58,3 +58,12 @@ test('game-over control bar has no replay button and retains working exit choice
   dom.window.close();
  }
 });
+
+test('magma and crit share one dialog and submit one exclusive choice',async()=>{
+ const {dom,w,dialogs}=setup();let calls=0,payload;
+ const pending={damage:5,canMagma:true,canCrit:true,magmaPreviewDamage:8};
+ dialogs.showAttackBuffChoice(pending,buff=>{calls++;payload=buff;});dialogs.showAttackBuffChoice(pending,()=>calls++);
+ assert.equal(w.document.querySelectorAll('#attack-buff-choice-dialog').length,1);assert.equal(w.document.querySelectorAll('#attack-buff-choice-dialog button').length,3);
+ const magma=w.document.querySelector('[data-attack-buff="magmaVein"]'),crit=w.document.querySelector('[data-attack-buff="crit"]');magma.click();crit.click();await Promise.resolve();assert.equal(calls,1);assert.equal(payload,'magmaVein');
+ dialogs.syncCombatDialog('attackBuff',false,'ATTACK_BUFF_CHOICE');assert.equal(w.document.querySelector('#attack-buff-choice-dialog'),null);dom.window.close();
+});

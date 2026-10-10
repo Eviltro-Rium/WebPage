@@ -25,7 +25,9 @@
       const live = character.damageAtSettlement(this, formula.value, attacker, target);
       if (live == null) return this.prepareDivingMitigation(remaining, defenderKey);
       const preview = Math.max(0, Number(attack.damage) || 0);
-      const final = Math.max(0, preview + (Number(live) - formula.preview) * (attack.damageMultiplier == null ? 1 : attack.damageMultiplier));
+      const final = attack.attackModifier === 'magmaVein'
+        ? Math.max(0, Math.ceil(Number(live) * 1.5) + (attack.magmaFlatBonus || 0))
+        : Math.max(0, preview + (Number(live) - formula.preview) * (attack.damageMultiplier == null ? 1 : attack.damageMultiplier));
       const defense = this.s.defCard, defenseCharacter = global.CharacterRegistry.get(this.name(target));
       const mitigation = defense && defenseCharacter && typeof defenseCharacter.damageAfterDefense === 'function'
         ? defenseCharacter.damageAfterDefense(defense.value, final, defenseSnapshot, this) : null;
@@ -74,7 +76,7 @@
       const keys = ['player','ai','ai2'].filter(key => this.s[key]);
       const snapshots = keys.map(key => ({key, entity:this.s[key], values:registry.all.map(def => registry.amount(this.s[key],def.id))}));
       const firstEvent = this.ver;
-      const methods = {burn:'burn',bleed:'bleed',poison:'poison',freeze:'freeze',blind:'blind',iceSeal:'iceSeal',applyHypnosis:'hypnosis',hypothermia:'hypothermia',thorns:'thorns',sandblind:'sandblind',quicksand:'quicksand',addGuard:'guard',parasite:'parasite',settleBurn:'burn',clearDebuffs:'debuffs',clearPositiveBuffs:'buffs'};
+      const methods = {burn:'burn',bleed:'bleed',poison:'poison',freeze:'freeze',blind:'blind',iceSeal:'iceSeal',applyHypnosis:'hypnosis',hypothermia:'hypothermia',thorns:'thorns',sandblind:'sandblind',quicksand:'quicksand',magmaVein:'magmaVein',addGuard:'guard',parasite:'parasite',settleBurn:'burn',clearDebuffs:'debuffs',clearPositiveBuffs:'buffs'};
       const operations = [], originals = {};
       for (const [method,id] of Object.entries(methods)) {
         if (typeof this[method] !== 'function') continue;

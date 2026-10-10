@@ -203,7 +203,7 @@
     let r=this._swapAIContext(key,()=>this.aiSpecialEffect(this.name(ch),c.value,c))||this.effect(this.name(ch),c.value,c,ch,this.s.player);
     this._deferAttackBuffs('player',_buffBefore);
     if(r.immediateBuffs)this._restoreAttackBuffs();
-    this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage,hypothermiaTarget:r.hypothermiaTarget,hypothermiaAmount:r.hypothermiaAmount};
+    this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage,hypothermiaTarget:r.hypothermiaTarget,hypothermiaAmount:r.hypothermiaAmount};if(window.FurryGame.AttackBuffs)window.FurryGame.AttackBuffs.applyAI(this,r,key,c);
     {let freezeBlock=this._freezeBlocksDefend(this.s.player,this.s.atkCard);
     if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){if(this.s.player.sleep)return this.defend1v2(true);if(this._beginPlayerDefendFlow(r.d,{unblock:false,freezeBlock:false}))return;return}
      if(r.d&&(r.unblock||freezeBlock)&&!(r.isDrain||r.drain)){if(this._beginPlayerDefendFlow(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}

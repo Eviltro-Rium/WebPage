@@ -14,7 +14,7 @@
         'selectCard', 'playCard', 'defendCard', 'doPlay', 'doDefend', 'doSkipDefend', 'doEndTurn',
         'doEnterDiscard', 'doCancelDiscard', 'doConfirmDiscard',
         'doFiveHeal', 'doFiveDamage', 'doSaikiSixConfirm',
-        'resolveAttackModChoice', 'resolveCritChoice', 'chooseTarget',
+        'resolveAttackModChoice', 'resolveCritChoice', 'resolveAttackBuffChoice', 'chooseTarget',
         'chooseColor', 'choosePurify', 'choosePurifyCrystal',
         'chooseSuperPurifyTarget', 'chooseMozeSeven', 'chooseGuard',
         'chooseFly', 'chooseFlyContinue', 'chooseTrophyDisarm', 'chooseTrophyPurify',
@@ -63,6 +63,7 @@
 
     function swapParticipants(engine) {
         const state = engine.s;
+        if(state.attackBuffAtRelease)state.attackBuffAtRelease.owner=swapKey(state.attackBuffAtRelease.owner);
         [state.player, state.ai] = [state.ai, state.player];
         [engine.h.player, engine.h.ai] = [engine.h.ai, engine.h.player];
         for (const key of ['activeAttacker', 'atkOwner', 'defOwner', 'attackTarget', 'discardTopOwner']) {
@@ -411,6 +412,10 @@
                 if (!Number.isInteger(bonus) || bonus < 0 || bonus > 10) return '无效的攻击修正';
                 if (params.unblock != null && typeof params.unblock !== 'boolean') return '无效的攻击修正';
                 if (params.evilRoulette != null && typeof params.evilRoulette !== 'boolean') return '无效的攻击修正';
+            }
+            if (method === 'resolveAttackBuffChoice') {
+                if (!['CRIT_CHOICE','ATTACK_BUFF_CHOICE'].includes(s.phase) || !s.pendingAttackBuffChoice) return '当前没有攻击修正Buff选择';
+                if (params.buff != null && !['magmaVein','crit'].includes(params.buff)) return '无效的攻击修正Buff';
             }
             if (method === 'resolveCritChoice') {
                 if (s.phase !== 'CRIT_CHOICE') return '当前没有暴击选择';

@@ -48,7 +48,7 @@ function rollDrop(scene, name, roll) {
 test('DesertLizard base stats and pool', () => {
   const m = getMonster('DesertLizard');
   assert.ok(m);
-  assert.equal(m.kind, '沙漠蜥蜴');
+  assert.equal(m.kind, '日光鬣蜥');
   assert.equal(m.hp, 20);
   assert.equal(m.icon, '../icons/npc_icons/desert_lizard.webp');
   assert.ok(context.AdventureMonsterPool.desert['*'].includes('DesertLizard'));
@@ -131,7 +131,7 @@ test('DesertLizard effect: 4/5/6 deals 5 + 1 quicksand', () => {
 test('DesertSandworm base stats', () => {
   const m = getMonster('DesertSandworm');
   assert.ok(m);
-  assert.equal(m.kind, '沙漠沙虫');
+  assert.equal(m.kind, '噬沙巨虫');
   assert.equal(m.hp, 25);
 });
 
@@ -189,7 +189,7 @@ test('DesertSandworm effect: 4/5/6 grants parasite', () => {
 test('DesertScarab base stats', () => {
   const m = getMonster('DesertScarab');
   assert.ok(m);
-  assert.equal(m.kind, '沙漠圣甲虫');
+  assert.equal(m.kind, '日轮圣甲');
   assert.equal(m.hp, 20);
 });
 
@@ -262,7 +262,7 @@ test('DesertScarab effect: 4/5/6 grants fly', () => {
 test('DesertScorpion base stats', () => {
   const m = getMonster('DesertScorpion');
   assert.ok(m);
-  assert.equal(m.kind, '沙漠蝎子');
+  assert.equal(m.kind, '赤砂蝎');
   assert.equal(m.hp, 18);
 });
 
@@ -325,7 +325,7 @@ test('DesertScorpion effect: 4/5/6 unblockable + thorns + poison', () => {
 test('DesertViper base stats', () => {
   const m = getMonster('DesertViper');
   assert.ok(m);
-  assert.equal(m.kind, '沙漠毒蛇');
+  assert.equal(m.kind, '热砂蝰');
   assert.equal(m.hp, 27);
   assert.equal(m.minStage, 2);
 });
@@ -382,7 +382,7 @@ test('DesertViper effect: 1/2/3 deals 3 + 1 poison', () => {
 test('DesertVulture base stats', () => {
   const m = getMonster('DesertVulture');
   assert.ok(m);
-  assert.equal(m.kind, '沙漠秃鹫');
+  assert.equal(m.kind, '腐风鹫');
   assert.equal(m.hp, 24);
 });
 
@@ -469,7 +469,7 @@ test('DesertVulture effect: 4/5/6 clears positive buffs', () => {
 // ===== Stage-2 desert updates: Antlion and Viper =====
 test('DesertAntlion base stats, Stage gate, and WebP asset', () => {
   const m = getMonster('DesertAntlion');
-  assert.equal(m.kind, '沙漠蚁狮');
+  assert.equal(m.kind, '漏斗蚁狮');
   assert.equal(m.hp, 24);
   assert.equal(m.minStage, 2);
   assert.ok(context.AdventureMonsterPool.desert['*'].includes(m.name));

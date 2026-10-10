@@ -430,3 +430,7 @@ node game/scripts/check.js --all
 `StatusRegistry.handLimitDelta` 定义持续状态对手牌上限的修正；`StatusService.handLimit(entity, base)` 纯计算有效上限，`EngineModes.handLimit()` / `Engine.getHandLimit(owner)` 统一用于补牌、AI 弃牌和玩家回合结束检查。流沙（`quicksand`）上限为 1，修正为 -1。牌堆和存档里的 `handLimit` 始终保存基础上限，避免刷新、净化和配饰同步造成重复扣减。
 
 铁匠铺成本中的 `wuneng` 是必须预留并扣除的万能兽元；剩余万能兽元才可替代普通兽元不足部分。
+
+### 攻击修正 Buff
+
+`combat/attack_buffs.js` 统一负责熔脉/暴击可用性、单次攻击互斥、状态消耗与 NPC 优先级。UI 仅提交 `resolveAttackBuffChoice({buff})`（magmaVein / crit / null），不能自行改伤害。先选择 Buff，选择消耗后跳过攻击修正道具；不使用时才进入道具阶段。`pendingAttack.attackModifier` 随快照保存，阻止重复消耗和客户端绕过互斥。熔脉只乘技能基础伤害（含技能 AoE），不乘正义之锤等额外固定修正、独立 Buff 伤害或反击；实时伤害公式重新计算后仍按 ×1.5 向上取整。新技能当次获得的熔脉不立即消耗，留给后续数字牌进攻。

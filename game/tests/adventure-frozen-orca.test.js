@@ -84,7 +84,7 @@ test('FrozenOrca base stats', () => {
   const boss = getBoss('FrozenOrca');
   assert.ok(boss, 'FrozenOrca should be registered as a boss');
   assert.equal(boss.name, 'FrozenOrca');
-  assert.equal(boss.kind, '冻洋虎鲸');
+  assert.equal(boss.kind, '破浪虎鲸');
   assert.equal(boss.hp, 40);
   assert.equal(boss.attack, 3);
   assert.equal(boss.defense, 2);

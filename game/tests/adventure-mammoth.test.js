@@ -72,7 +72,7 @@ function defend(e,value,damage) {
 
 test('Mammoth is available in every ocean boss pool, with an existing icon',()=>{
   const m=staged(1); assert.equal(m.hp,45); assert.equal(m.handLimit,3); assert.equal(m.whiteZeros,2);
-  assert.equal(m.kind,'冻洋猛犸');
+  assert.equal(m.kind,'长牙猛犸');
   assert.ok(fs.existsSync(path.resolve(gameRoot,'adventure',m.icon)));
   for(const stage of ['*',2,3,4]) assert.ok(context.AdventureBossPool.ocean[stage].includes(bossName));
 });

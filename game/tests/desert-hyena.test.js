@@ -62,7 +62,7 @@ function defendWith(eng, card, incoming) {
 test('DesertHyena base stats, boss pool, icon, whiteZeros', () => {
   const m = getBoss('DesertHyena');
   assert.ok(m);
-  assert.equal(m.kind, '沙漠鬣狗');
+  assert.equal(m.kind, '嘲风鬣狗');
   assert.equal(m.hp, 40);
   assert.equal(m.minStage, 2);
   assert.equal(m.whiteZeros, 2);

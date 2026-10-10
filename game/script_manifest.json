@@ -43,6 +43,7 @@
     "js/combat/dice.js",
     "js/combat/card_effects.js",
     "js/combat/opponent_hand_policy.js",
+    "js/combat/attack_buffs.js",
     "js/combat/engine.js",
     "js/combat/engine_1v2.js",
     "js/combat/engine_1v2_adapter.js",

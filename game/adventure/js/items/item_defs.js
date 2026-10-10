@@ -194,6 +194,19 @@
   });
 
   R.registerItem({
+    name: 'MagmaVeinTrophy',
+    displayName: '熔脉战利白卡',
+    kind: 'trophyWhite',
+    description: '白色战利卡：获得1层[熔脉]（上限1层），打出后抽1张牌，可搭桥。后续数字牌进攻可主动消耗，使技能伤害×1.5（向上取整）；与[暴击]和攻击修正道具互斥，不放大Buff伤害或反击',
+    icon: '../icons/buff_icons/magma_vein.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyMagmaVein',
+    trophyEffect: 'magmaVein',
+    beastTradeCost: ['huo', 'huo']
+  });
+
+  R.registerItem({
     name: 'DivingTrophy',
     displayName: '潜水战利白卡',
     kind: 'trophyWhite',

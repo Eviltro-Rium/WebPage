@@ -63,14 +63,14 @@ function defendWith(eng, card, incoming) {
 test('DesertSobek base stats, boss pool, icon, whiteZeros', () => {
   const m = getBoss('DesertSobek');
   assert.ok(m);
-  assert.equal(m.kind, '索贝克');
+  assert.equal(m.kind, '鳄神索贝克');
   assert.equal(m.hp, 35);
   assert.equal(m.minStage, 2);
   assert.equal(m.whiteZeros, 2);
   assert.equal(m.handLimit, 3);
   assert.equal(m.icon, '../icons/npc_icons/desert_sobek.webp');
   assert.ok(fs.existsSync(path.join(gameRoot, 'icons/npc_icons/desert_sobek.webp')));
-  assert.ok(fs.existsSync(path.join(gameRoot, 'icons/npc_icons/desert_sobek.png')));
+  assert.ok(fs.existsSync(path.join(gameRoot, 'icons/npc_icons/desert_sobek.webp')));
   const pool = context.AdventureBossPool.desert;
   for (const stage of [2, 3, 4]) {
     assert.ok(pool[stage].includes('DesertSobek'), 'stage ' + stage);

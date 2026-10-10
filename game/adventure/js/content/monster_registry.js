@@ -516,7 +516,7 @@
           eng.emit('desc', '清除双方所有buff');
         }
         // 冻洋北极熊：进攻1/2/3 伤害>4且有暴击时消耗1层使攻击不可防御（暴击通用设定）
-        if (typeof mod.attackUseCrit === 'function' && mod.attackUseCrit(c) && (a.crit || 0) > 0 && d > 4) {
+        if (typeof mod.attackUseCrit === 'function' && mod.attackUseCrit(c) && !(eng.s.attackBuffAtRelease && eng.s.attackBuffAtRelease.magma > 0) && (a.crit || 0) > 0 && d > 4) {
           a.crit--;
           unblock = true;
           const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');

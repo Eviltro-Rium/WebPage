@@ -43,7 +43,7 @@ function numCard(value, color = 'RED') {
 test('DesertCamel base stats and pool', () => {
   const m = getMonster('DesertCamel');
   assert.ok(m);
-  assert.equal(m.kind, '沙漠骆驼');
+  assert.equal(m.kind, '旱海驼');
   assert.equal(m.hp, 20);
   assert.equal(m.firstStrike, true);
   assert.equal(m.icon, '../icons/npc_icons/desert_camel.webp');

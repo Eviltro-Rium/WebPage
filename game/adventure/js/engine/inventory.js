@@ -150,6 +150,7 @@
         guard: p.guard || 0,
         fly: p.fly || 0,
         crit: p.crit || 0,
+        magmaVein: p.magmaVein || 0,
         lush: p.lush || 0,
         parasite: p.parasite || 0,
         thorns: p.thorns || 0,

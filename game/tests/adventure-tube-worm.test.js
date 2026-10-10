@@ -43,7 +43,7 @@ function numCard(value) {
 test('FrozenOceanTubeWorm base stats and pool', () => {
   const m = getMonster('FrozenOceanTubeWorm');
   assert.ok(m);
-  assert.equal(m.kind, '冻洋管虫');
+  assert.equal(m.kind, '热泉管虫');
   assert.equal(m.hp, 25);
   assert.equal(m.handLimit, 3);
   assert.equal(m.minStage, 2);

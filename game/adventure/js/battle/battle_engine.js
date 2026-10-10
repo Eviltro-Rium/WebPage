@@ -1238,28 +1238,18 @@
     }
 
     gateAdventureAttackMod(card, damage, skip = false, unblock = false, delay = 0, opts = {}) {
+      const skillDamage=damage;
       if (this.s && this.s.isAdventure && damage > 0 && this._hasAccessory('JusticeHammer')) {
         const bonus = this._accessoryCount('JusticeHammer');
         damage += bonus;
         this._flashAccessory('JusticeHammer');
         this.emit('desc', '正义之锤：伤害+' + bonus);
       }
-      return super.gateAdventureAttackMod(card, damage, skip, unblock, delay, opts);
+      return super.gateAdventureAttackMod(card, damage, skip, unblock, delay, Object.assign({},opts,{skillDamage}));
     }
 
     continueAfterAttackMod() {
-      let p = this.s.pendingAttackMod || {};
-      let skip = !!p.skip, unblock = !!p.unblock, card = p.card || this.s.atkCard, delay = p.delay || 0;
-      let d = (this.s.pendingAttack && this.s.pendingAttack.damage) || 0;
-      if (this.s.attackModBonus && d > 0) {
-        d += this.s.attackModBonus;
-        this.s.pendingAttack.damage = d;
-        this.emit('desc', '攻击修正+' + this.s.attackModBonus + '点伤害');
-        this.s.attackModBonus = 0;
-      }
-      this.s.pendingAttackMod = null;
-      if (this._canOfferOttoCrit(d, unblock)) return this._enterCritChoice(d, skip, unblock, card, delay);
-      return this._finishAfterCritChoice(d, skip, unblock, card, delay);
+      return super.continueAfterAttackMod();
     }
 
     _finishAfterCritChoice(d, skip, unblock, card, delay) {

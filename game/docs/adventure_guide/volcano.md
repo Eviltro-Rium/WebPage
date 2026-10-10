@@ -223,4 +223,4 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 - 怪物池与 Boss 池计划注册在 `adventure/js/monsters/volcano.js`（尚未实现）。
 - 战利白卡掉落规则计划挂到 `adventure/js/engine/loot.js` 的 `SCENE_RULES.volcano`。
-- 新状态 **[熔脉]** 需同步写入 [buff_guide.md](../buff_guide.md)，并补图标与引擎结算。
+- **[熔脉]** 的图标、统一修正弹窗、引擎结算与战利白卡已接入，规则见 [buff_guide.md](../buff_guide.md)。火山怪物与场景掉落仍待接入。

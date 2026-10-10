@@ -48,7 +48,7 @@ function blackCard() {
 test('FrozenOceanOctopus base stats and pool', () => {
   const m = getMonster('FrozenOceanOctopus');
   assert.ok(m);
-  assert.equal(m.kind, '冻洋章鱼');
+  assert.equal(m.kind, '墨潮章鱼');
   assert.equal(m.hp, 24);
   const pool = context.AdventureMonsterPool.ocean;
   for (const stage of ['*', 2, 3, 4]) {

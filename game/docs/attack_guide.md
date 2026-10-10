@@ -76,7 +76,7 @@ attackDamage(card, ctx) {
 ### 结算流程
 
 1. 桥接层调用 `attackDamage(card, ctx)` 得到基础伤害 `d`
-2. 进入攻击修正阶段：先结算攻击修正类 buff（[熔脉] / [暴击]，玩家同弹窗、不可叠用，NPC 熔脉优先于暴击）→ 再结算攻击修正一次性道具（若本回合已用修正 buff 则不可再用）→ 正义之锤等其他修正按既有规则
+2. 进入攻击修正阶段：先结算攻击修正类 buff（[熔脉] / [暴击]，玩家同弹窗、不可叠用，NPC 熔脉优先于暴击）→ 再结算攻击修正一次性道具（若本次攻击已用修正 buff 则不可再用）→ 正义之锤等其他修正按既有规则
 3. 玩家进入 AI_DEFEND 阶段选择防御牌
 4. 结算格挡：`defendBlock(card, incoming)` 返回格挡量
 5. 结算反击：`defendCounter(card, incoming, defender, opponent, eng)` 返回反击量

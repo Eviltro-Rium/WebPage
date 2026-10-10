@@ -477,13 +477,14 @@
       damage=Number(damage)||0;skip=!!skip;unblock=!!unblock;
       const isDrain=!!(opts&&(opts.isDrain||(opts.drain>0)));
       if(isDrain)unblock=true;
-      this.s.pendingAttack={damage,unblock,isDrain};
+      this.s.pendingAttack={damage,unblock,isDrain,skillDamage:opts.skillDamage==null?damage:opts.skillDamage};
       if(opts&&opts.aoeTargets)this.s.pendingAttack.aoeTargets=opts.aoeTargets;
       if(opts&&opts.aoeDamage)this.s.pendingAttack.aoeDamage=opts.aoeDamage;
       if(opts&&opts.hypothermiaTarget)this.s.pendingAttack.hypothermiaTarget=opts.hypothermiaTarget;
       if(opts&&opts.hypothermiaAmount)this.s.pendingAttack.hypothermiaAmount=opts.hypothermiaAmount;
       this.s.defenseSkipped=!!(skip||unblock||damage<=0);
       this.s.pendingAttackMod={card:cp(card),skip,unblock,delay:delay||0,isDrain};
+      if(Combat.AttackBuffs)return Combat.AttackBuffs.begin(this);
       if(this.s.isAdventure&&damage>0){
         this.s.phase='ATTACK_MOD_CHOICE';
         this.s.busy=false;
@@ -514,6 +515,7 @@
       let p=this.s.pendingAttackMod||{};
       let skip=!!p.skip,unblock=!!p.unblock,card=p.card||this.s.atkCard,delay=p.delay||0;
       let d=(this.s.pendingAttack&&this.s.pendingAttack.damage)||0;
+      if(this.s.pendingAttack&&this.s.pendingAttack.attackModifier)this.s.attackModBonus=0;
       if(this.s.attackModBonus&&d>0){
         d+=this.s.attackModBonus;
         this.s.pendingAttack.damage=d;
@@ -521,10 +523,12 @@
         this.s.attackModBonus=0;
       }
       this.s.pendingAttackMod=null;
-      if(this._canOfferOttoCrit(d,unblock))return this._enterCritChoice(d,skip,unblock,card,delay);
+      if(!p.buffChoiceDone&&!Combat.AttackBuffs&&this._canOfferOttoCrit(d,unblock))return this._enterCritChoice(d,skip,unblock,card,delay);
       return this._finishAfterCritChoice(d,skip,unblock,card,delay);
     }
+    resolveAttackBuffChoice(params={}){return Combat.AttackBuffs.resolve(this,params)}
     resolveCritChoice(params={}){
+      if(this.s.pendingAttackBuffChoice)return this.resolveAttackBuffChoice({buff:params.use?'crit':null});
       if(this.s.phase!=='CRIT_CHOICE'||!this.s.pendingCritChoice)throw Error('当前没有待处理的暴击选择');
       let p=this.s.pendingCritChoice;
       let d=p.damage,skip=!!p.skip,unblock=!!p.unblock,card=p.card||this.s.atkCard,delay=p.delay||0;
@@ -552,6 +556,7 @@
     }
     resolveAttackModChoice(params={}){
       if(this.s.phase!=='ATTACK_MOD_CHOICE'||!this.s.pendingAttackMod)throw Error('当前没有待处理的攻击修正');
+      if(this.s.pendingAttack&&this.s.pendingAttack.attackModifier&&(params.bonus||params.unblock||params.evilRoulette))throw Error('使用攻击修正Buff后不能再使用攻击修正道具');
       this.s.attackModBonus=params.bonus||0;
       if(params.evilRoulette){
         const roll=this.rollD12('邪恶赌盘判定',{who:'player'});
@@ -622,11 +627,13 @@
     poison(x,n,opts){const S=this._status();if(S&&S.poison){S.poison(this,x,n,opts);return}if(n>0){x.poison=Math.min(2,(x.poison||0)+n);if(!opts||opts.silent!==true){let w=x===this.s.player?'player':(x===this.s.ai2?'ai2':'ai');this.emit('buff',`+${n}[中毒]`,null,{who:w,kind:'poison',stacks:x.poison})}}}
     thorns(x,n,opts){const S=this._status();if(S&&S.thorns){S.thorns(this,x,n,opts);return}if(!x||n<=0)return;const before=x.thorns||0;x.thorns=Math.min(1,before+n);const added=x.thorns-before;if(added>0&&(!opts||opts.silent!==true))this.emit('buff',`+${added}[荆棘]`,null,{who:this._who(x),kind:'thorns',stacks:x.thorns})}
     getHandLimit(owner='player'){const adapter=this._adapter();if(adapter&&adapter.handLimit)return adapter.handLimit(this,owner);const base=owner==='player'?(this.s.handLimit||5):5;return window.StatusService?window.StatusService.handLimit(this.s[owner],base):base}
+    magmaVein(x,n=1,opts){const service=window.StatusService;if(!x||n<=0||!service)return;const before=service.amount(x,'magmaVein');service.add(x,'magmaVein',n);if(service.amount(x,'magmaVein')>before&&(!opts||!opts.silent)){const who=this._who(x);this.emit('buff','+1[熔脉]',null,{who,target:who,kind:'magmaVein',stacks:service.amount(x,'magmaVein')})}}
     quicksand(x,n=1,opts){const service=window.StatusService;if(!x||n<=0||!service)return;const before=service.amount(x,'quicksand');service.add(x,'quicksand',n);if(service.amount(x,'quicksand')>before&&(!opts||!opts.silent)){const who=this._who(x);this.emit('buff','+1[流沙]',null,{who,target:who,kind:'quicksand',stacks:service.amount(x,'quicksand')})}}
     sandblind(x,n,opts){const S=this._status();if(S&&S.sandblind){S.sandblind(this,x,n,opts);return}if(!x||n<=0)return;const before=x.sandblind||0;x.sandblind=Math.min(6,before+n);const added=x.sandblind-before;if(added>0&&(!opts||opts.silent!==true))this.emit('buff',`+${added}[沙盲]`,null,{who:this._who(x),kind:'sandblind',stacks:x.sandblind})}
     _applyAttackSkillThorns(x){const S=this._status();if(S&&S.applyAttackSkillThorns){S.applyAttackSkillThorns(this,x);return}if(!x||!x.alive||!(x.thorns>0))return;this.hurt(x,1,'thorns')}
     /** Attack-skill release hooks: thorns damage, then sandblind miss check. Returns true if skill misses. */
     _onAttackSkillRelease(x){
+      this.s.attackBuffAtRelease={owner:this.s.atkOwner||this._who(x),magma:x&&x.magmaVein||0};
       this._applyAttackSkillThorns(x);
       const S=this._status();
       if(S&&S.resolveSandblindOnAttackSkill)return !!S.resolveSandblindOnAttackSkill(this,x);
@@ -841,7 +848,7 @@
     }
     itemKind(c){if(c.trophyWhite)return'trophyWhite';if(c.swapHand)return'swap';if(c.drawThree)return'drawThree';if(c.drawTwo)return'drawTwo';if(c.potion)return'potion';if(c.greenMagic||c.magicColor==='green')return'greenMagic';if(c.magic||c.magicColor==='purple')return'magic';if(c.superPurify)return'superPurify';if(c.purify)return'purify';if(c.shuffleToDeck)return'shuffle';return'wild'}
     _isAdventureBoss(x){if(!this.s.isAdventure||!window.AdventureRegistry)return false;return!!window.AdventureRegistry.getBoss(this.name(x))}
-    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}let label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='iceSeal'?'施加[冰封]':effect==='hypothermia'?'施加1层[失温]':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='purify'?'清除自身或对手至多1个buff':effect==='fly'?'获得1层飞翔':effect==='crit'?'获得1层暴击':effect==='diving'?'获得[潜水]':effect==='scorch'?'施加[炙热]':effect==='lush'?'获得1层茂盛':effect==='parasite'?'获得1层寄生':effect==='poison'?'施加1层中毒':effect==='thorns'?'施加1层荆棘':effect==='sandblind'?'施加2层沙盲':effect==='quicksand'?'施加1层[流沙]，手牌上限-1':effect==='smallPotion'?'恢复2点生命':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部可净化状态（印记保留），然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
+    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}let label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='iceSeal'?'施加[冰封]':effect==='hypothermia'?'施加1层[失温]':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='purify'?'清除自身或对手至多1个buff':effect==='fly'?'获得1层飞翔':effect==='crit'?'获得1层暴击':effect==='magmaVein'?'获得1层[熔脉]':effect==='diving'?'获得[潜水]':effect==='scorch'?'施加[炙热]':effect==='lush'?'获得1层茂盛':effect==='parasite'?'获得1层寄生':effect==='poison'?'施加1层中毒':effect==='thorns'?'施加1层荆棘':effect==='sandblind'?'施加2层沙盲':effect==='quicksand'?'施加1层[流沙]，手牌上限-1':effect==='smallPotion'?'恢复2点生命':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部可净化状态（印记保留），然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
     useTrophyWhite(c, target, w='player'){
       if (!c || !c.trophyWhite) return false;
       // The caller resolves the target for the current card before entering
@@ -909,6 +916,8 @@
       } else if (effect === 'fly') {
         this.s.player.fly = Math.min(2, (this.s.player.fly || 0) + 1);
         this.emit('buff', '+1[飞翔]', null, { who: 'player', target: 'player', kind: 'fly', stacks: this.s.player.fly });
+      } else if (effect === 'magmaVein') {
+        this.magmaVein(this.s[w]||this.s.player,1);
       } else if (effect === 'crit') {
         const status = window.FurryGame && window.FurryGame.StatusService;
         if (status) status.add(this.s.player, 'crit', 1);
@@ -1130,7 +1139,7 @@
     effect(n,v,c,a,t){
       let d=0,skip=false,unblock=false,owner=a===this.s.player?'player':(this.s.is1v2&&a===this.s.ai2?'ai2':'ai'),target=owner==='player'?this._who(t):'player';
       const silent={silent:true},burn=q=>this.burn(t,q,silent),burnSelf=q=>this.burn(a,q),burnTarget=(x,q)=>this.burn(x||t,q,silent),bleed=q=>this.bleed(t,q,silent),poison=q=>this.poison(t,q,silent),guard=q=>this.addGuard(a,q),fly=q=>{const before=a.fly||0;const S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.add(a,'fly',q);else a.fly=Math.min(2,before+(Number(q)||0));const added=(a.fly||0)-before;if(added>0)this.emit('buff','+'+added+'[飞翔]',null,{who:owner,kind:'fly',stacks:a.fly})},takeReveal=label=>{let r=this.reveal(label,owner);if(r)this.h[owner].push(r);return r};
-      let helpers={burn, burnSelf, burnTarget, bleed,poison,guard,fly,takeReveal,heal:(x,n,k)=>this.heal(x,n,k),draw:(w,n,an)=>this.draw(w,n,an),clearDebuffs:x=>this.clearDebuffs(x),clearPositiveBuffs:x=>this.clearPositiveBuffs(x),hurt:(x,n,k)=>this.hurt(x,n,k),blind:(x,o)=>this.blind(x,o),thorns:(x,n,o)=>this.thorns(x,n,o),sandblind:(x,n,o)=>this.sandblind(x,n,o),quicksand:(x,n,o)=>this.quicksand(x,n,o),iceSeal:(x,o)=>this.iceSeal(x,o)};
+      let helpers={burn, burnSelf, burnTarget, bleed,poison,guard,fly,takeReveal,heal:(x,n,k)=>this.heal(x,n,k),draw:(w,n,an)=>this.draw(w,n,an),clearDebuffs:x=>this.clearDebuffs(x),clearPositiveBuffs:x=>this.clearPositiveBuffs(x),hurt:(x,n,k)=>this.hurt(x,n,k),blind:(x,o)=>this.blind(x,o),thorns:(x,n,o)=>this.thorns(x,n,o),sandblind:(x,n,o)=>this.sandblind(x,n,o),quicksand:(x,n,o)=>this.quicksand(x,n,o),magmaVein:(x,n,o)=>this.magmaVein(x,n,o),iceSeal:(x,o)=>this.iceSeal(x,o)};
       let m=CharacterRegistry.get(n);
       if(m){let r=this.captureAttackSkill(()=>m.effect(this,v,c,a,t,owner,helpers),n,v,a,t);if(r)return r}
       return{d,skip,unblock}
@@ -1242,7 +1251,7 @@
       if((isTargetChoice&&targetKey!=='player')||selected==='opponentBuff'){
         if(!target||!target.alive)throw Error('选择的对手已出局');
         const lushStacks=Math.max(0,Number(target.lush)||0);
-        cleared=(target.guard||0)+(target.fly||0)+(target.crit||0)+lushStacks+(target.parasite||0)+
+        cleared=(target.guard||0)+(target.fly||0)+(target.crit||0)+(target.magmaVein||0)+lushStacks+(target.parasite||0)+
           (target.diving?1:0)+(target.bloodthirst?1:0)+
           ['chaos_red','chaos_yellow','chaos_blue','chaos_green'].filter(k=>target[k]).length;
         this.clearPositiveBuffs(target);
@@ -1550,6 +1559,7 @@
       if(m==='doFiveDamage')return this.finishRyanFive(true);
       if(m==='doSaikiSixConfirm')return this.finishNumberJudge();
       if(m==='resolveAttackModChoice')return this.resolveAttackModChoice(p);
+      if(m==='resolveAttackBuffChoice')return this.resolveAttackBuffChoice(p);
       if(m==='resolveCritChoice')return this.resolveCritChoice(p);
       if(m==='doDefend')return this.defend();
       if(m==='doSkipDefend')return this.defend(true);
