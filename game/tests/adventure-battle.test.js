@@ -1544,3 +1544,38 @@ test('challenge heals 3 only when the first enemy falls, not the second', () => 
   assert.equal(engine.s.player.hp, 23);
   assert.equal(engine.h.player.length, handAfterFirst);
 });
+
+
+test('lush heals player and both challenge NPCs exactly once with one lush event', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure1v2({
+    player: 'Leon', opponent1: 'ForestLadybug', opponent2: 'CastleWolf', testMode: true,
+    playerPile: { deck: [number(4)], hand: [number(2)], discard: [], handLimit: 5 }
+  });
+  engine.later = () => {};
+  for (const who of ['player', 'ai', 'ai2']) {
+    const entity = engine.s[who];
+    for (const stacks of [1, 2]) {
+      entity.hp = entity.maxHp - 10;
+      entity.lush = stacks;
+      engine.events = [];
+      const before = entity.hp;
+      engine.turnStart(who);
+      assert.equal(entity.hp, before + stacks, who + ' heals once');
+      const heals = engine.events.filter(e => e.type === 'heal' && e.who === who);
+      assert.equal(heals.length, 1, who + ' emits one heal');
+      assert.equal(heals[0].kind, 'lush');
+      assert.equal(heals[0].amount, stacks);
+      assert.equal(heals[0].desc, '+' + stacks + '[茂盛]');
+      assert.equal(entity.lush, stacks, 'persistent lush is not consumed');
+    }
+    entity.hp = entity.maxHp - 1;
+    entity.lush = 2;
+    engine.events = [];
+    engine.turnStart(who);
+    assert.equal(entity.hp, entity.maxHp);
+    const heals = engine.events.filter(e => e.type === 'heal' && e.who === who);
+    assert.equal(heals.length, 1);
+    assert.equal(heals[0].amount, 1, 'heal reports actual HP restored');
+  }
+});

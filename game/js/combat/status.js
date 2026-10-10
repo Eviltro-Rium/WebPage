@@ -77,7 +77,7 @@
             const target = targetKey(engine, entity);
             const desc = kind === 'wake'
                 ? `[苏醒]+${actual}❤️`
-                : `+${actual}[${kind === 'drain' ? '吸血' : kind === 'passive' ? '被动' : '生命'}]`;
+                : `+${actual}[${kind === 'drain' ? '吸血' : kind === 'passive' ? '被动' : kind === 'lush' ? '茂盛' : '生命'}]`;
             engine.emit(eventTypes.HEAL || 'heal', desc, null, { who: target, target, amount: actual, hpBefore: before, hpAfter: entity.hp, kind });
             if (kind !== 'drain' && kind !== 'wake' && engine.name(entity) === 'Serenity' && !entity.bloodthirst && entity.hp >= 30) {
                 const passiveBefore = entity.hp;

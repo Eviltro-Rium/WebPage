@@ -44,10 +44,7 @@
       },
       turnStart(eng, x, w) {
         if (w !== 'ai' && w !== 'ai2') return;
-        if ((x.lush || 0) > 0) {
-          const amt = Math.min(x.lush, 2);
-          eng.heal(x, amt, 'passive');
-        }
+        // Shared Engine.turnStart settles lush once for every participant.
         if (typeof mod.attackTurnStart === 'function') mod.attackTurnStart(eng, x, w);
       },
       attackEffectTiming(v, eng) {
