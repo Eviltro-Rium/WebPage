@@ -107,6 +107,8 @@
       const definition = global.CharacterRegistry.get(name);
       const rule = definition && definition.attackEffectTiming;
       const timing = (typeof rule === 'function' ? rule(value, this) : rule && rule[value]) || 'beforeDamage';
+      // 'immediate': statuses land before damage settles and before attack-buff choices.
+      if (timing === 'immediate') return result;
       for (const operation of operations) operation.timing = timing;
       queued.push(...operations);
       if (name === 'Vixraps' && value === 5) queued.push({target:this._who(target),id:'burn',factor:2,timing});
@@ -259,7 +261,12 @@
   Engine.prototype.askGuard = function(damage, bleed) {
     const previousBleed = bleed == null ? this.s.player.bleed || 0 : bleed;
     const prepared = this.prepareAttackSettlement(damage, 'player');
-    if (prepared <= 0) return this._settleAvoidedAttack(0);
+    if (prepared <= 0) {
+      // Diving (or another full block) skips the guard dialog, but a defense skill's
+      // bleed settlement must still use the bleed captured for this defense.
+      this.s.pendingGuardBleed = previousBleed;
+      return this._settleAvoidedAttack(0);
+    }
     return ask.call(this, prepared, previousBleed);
   };
   const guard = Engine.prototype.chooseGuard;

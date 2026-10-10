@@ -455,12 +455,12 @@
       return (names || []).filter(name => this._isAvailableAtStage(registry[getter](name), stage));
     }
 
-    _pickMonsterName(room) {
+    _pickMonsterName(room, opts = {}) {
       const scene = this.s.scene || 'castle';
       const stage = this.s.stage || 1;
       const pool = window.AdventureMonsterPool || {};
       const registry = window.AdventureRegistry;
-      if (room && room.monsterName) {
+      if (room && room.monsterName && !opts.ignoreRoom) {
         const explicit = registry && registry.getMonster(room.monsterName);
         if (this._isAvailableAtStage(explicit, stage)) return room.monsterName;
       }
@@ -468,7 +468,10 @@
       const configured = (pool[scene] && (pool[scene][stage] || pool[scene]['*'])) || fallback;
       const list = this._availableNames(configured, stage, 'monster');
       if (!list.length) return fallback[0] || 'CastleWolf';
-      return list[Math.floor(random() * list.length)];
+      const exclude = opts.exclude;
+      const distinct = exclude ? list.filter(name => name !== exclude) : list;
+      const choices = distinct.length ? distinct : list;
+      return choices[Math.floor(random() * choices.length)];
     }
 
     _pickBossName(room) {
@@ -643,8 +646,10 @@
         return;
       }
       const lock = this.s.activeCombat;
-      const name1 = (lock && lock.enemy) || this._pickMonsterName(room);
-      const name2 = (lock && lock.enemy2) || this._pickMonsterName(room);
+      // Challenge rooms draw both monsters at random from the scene/stage pool,
+      // ignoring the room's preset monster, and avoid a duplicate when possible.
+      const name1 = (lock && lock.enemy) || this._pickMonsterName(room, { ignoreRoom: true });
+      const name2 = (lock && lock.enemy2) || this._pickMonsterName(room, { ignoreRoom: true, exclude: name1 });
       const monster1 = window.Monster.fromRegistry(name1);
       const monster2 = window.Monster.fromRegistry(name2);
       if (!monster1 || !monster2) {

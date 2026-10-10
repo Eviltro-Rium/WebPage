@@ -1183,15 +1183,15 @@
       if(!this.legal(c))throw Error('颜色或数字不匹配');
       let who=this.name(this.s.player);
       const needsNumberFollowup = !c.borrowedMonster && ((who==='Ryan'&&c.value===5)||(who==='Saiki'&&c.value===6)||(who==='Moze'&&c.value===4)||(who==='Otto'&&c.value===5));
+      if(c.isBlack&&!c.chosenColor)return this._stagePendingBlackCard(i,c,'attack');
+      if(c.isWhite)c.chosenColor=this.effective(this.s.discardTop);
       if(needsNumberFollowup&&!this.h.player.some((x,j)=>j!==i&&x.isNumberCard)){
-        this.emit('desc',`${who} ${c.value}牌：没有可用的追加数字牌，自动判定为0点`,c);
         this.h.player.splice(i,1); this.s.selectedCard=-1; this.s.atkCard=cp(c); this.s.atkOwner='player';
         this.setDiscardTop(c); this.s.hasPlayedThisTurn=true; this._markBombPlay('player'); this._tickBomb('player');
+        this.emit('desc',`${who} ${c.value}牌：没有可用的追加数字牌，自动判定为0点`,c);
         this._onAttackSkillRelease(this.s.player);
         return this.gateAdventureAttackMod(c,0,true,false);
       }
-      if(c.isBlack&&!c.chosenColor)return this._stagePendingBlackCard(i,c,'attack');
-      if(c.isWhite)c.chosenColor=this.effective(this.s.discardTop);
       this.h.player.splice(i,1);
       this.s.selectedCard=-1;
       this.s.atkCard=cp(c);
@@ -1223,7 +1223,7 @@
       if(who==='Saiki'&&c.value===6)return this.startNumberJudge('Saiki',c);
       if(who==='Moze'&&c.value===4)return this.startNumberJudge('Moze',c);
       if(who==='Chan'&&c.value===5)return this.startChanFive();
-      if(who==='Otto'&&c.value===4)return this.startOttoFour(c);
+      if(who==='Otto'&&c.value===6)return this.startOttoFour(c);
       if(who==='Otto'&&c.value===5)return this.startNumberJudge('Otto',c);
       if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===5&&this.s.player.hp<=40)){let p={name:who,value:c.value,owner:'player',attackCard:cp(c)};return this.resolveOpponentHandSkill(p)}
       let r=this.effect(who,c.value,c,this.s.player,this.s.ai);
@@ -1374,18 +1374,18 @@
       this.refillDeckIfNeeded();let c1=this.deck.length?this.deck.pop():null;
       this.refillDeckIfNeeded();let c2=this.deck.length?this.deck.pop():null;
       this.s.revealCards=[];if(c1)this.s.revealCards.push(cp(c1));if(c2)this.s.revealCards.push(cp(c2));
-      this.emit('reveal',`Otto 4牌：翻开牌库顶${this.s.revealCards.length}张牌判定`,c1||c2||null,{who:'player',from:'deck',cards:cp(this.s.revealCards)});
+      this.emit('reveal',`Otto 6牌：翻开牌库顶${this.s.revealCards.length}张牌判定`,c1||c2||null,{who:'player',from:'deck',cards:cp(this.s.revealCards)});
       let d=0,skip=false,unblock=false;
       if(c1&&c2){
-        if(c1.isItemCard&&c2.isItemCard){d=3;skip=true;unblock=true;this.emit('desc','Otto 4牌：两张道具牌，吸取3点生命（不可防御）')}
-        else if(c1.isItemCard||c2.isItemCard){let nc=c1.isItemCard?c2:c1;d=Math.ceil(nc.value/2);unblock=true;this.emit('desc',`Otto 4牌：1张道具牌，造成${d}点伤害（不可防御）`)}
-        else{d=c1.value+c2.value;this.emit('desc',`Otto 4牌：两张数字牌，造成${d}点伤害`)}
+        if(c1.isItemCard&&c2.isItemCard){d=3;skip=true;unblock=true;this.emit('desc','Otto 6牌：两张道具牌，吸取3点生命（不可防御）')}
+        else if(c1.isItemCard||c2.isItemCard){let nc=c1.isItemCard?c2:c1;d=nc.value;unblock=true;this.emit('desc',`Otto 6牌：1张道具牌，造成${d}点伤害（不可防御）`)}
+        else{d=c1.value+c2.value;this.emit('desc',`Otto 6牌：两张数字牌，造成${d}点伤害`)}
       }else if(c1){
-        if(c1.isItemCard){d=3;skip=true;unblock=true;this.emit('desc','Otto 4牌：仅1张道具牌，吸取3点生命（不可防御）')}
-        else{d=c1.value;this.emit('desc',`Otto 4牌：仅1张数字牌，造成${d}点伤害`)}
+        if(c1.isItemCard){d=3;skip=true;unblock=true;this.emit('desc','Otto 6牌：仅1张道具牌，吸取3点生命（不可防御）')}
+        else{d=c1.value;this.emit('desc',`Otto 6牌：仅1张数字牌，造成${d}点伤害`)}
       }
       if(c2)this.deck.push(c2);if(c1)this.deck.push(c1);
-      this.emit('desc','Otto 4牌：判定完毕，两张牌放回牌库顶');
+      this.emit('desc','Otto 6牌：判定完毕，两张牌放回牌库顶');
       return this.gateAdventureAttackMod(card,d,skip,unblock,0,{isDrain:!!skip})
     }
     resolveRandomOpponentCard(){return this.resolveOpponentHandCard()}

@@ -53,6 +53,12 @@
         if(dom)dom.preserveImages(ui.container,wrap);
         ui.container.replaceChildren(wrap);
       }
+      if (snap.phase === Phase.MAP && ui._pendingMapHeals && ui._pendingMapHeals.length) {
+        const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
+        const playHeals = () => ui._playPendingMapHeals();
+        if (runtime) runtime.schedule(null, playHeals, 60);
+        else global.setTimeout(playHeals, 60);
+      }
       if (snap.phase === Phase.MAP && ui._pendingMapReturnEffect) {
         const effect = ui._pendingMapReturnEffect;
         ui._pendingMapReturnEffect = null;

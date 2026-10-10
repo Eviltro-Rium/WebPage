@@ -1063,3 +1063,17 @@
 .adv-buff-taunt-green { color: #86efac; background: rgba(34,197,94,0.18); border-color: rgba(34,197,94,0.5); }
 
 .adv-buff-magma { color: #fb923c; background: rgba(249,115,22,0.18); border-color: rgba(249,115,22,0.5); }
+
+.adv-trophy-pack-thumb { position: relative; display: inline-block; flex: 0 0 auto; }
+.adv-trophy-pack-count { position: absolute; right: -6px; bottom: -4px; min-width: 20px; padding: 1px 4px; border-radius: 9px; background: #d4a72c; color: #1f1608; font-size: .68rem; font-weight: 800; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+
+.adv-hp-bar { position: relative; }
+.adv-hp-heal-flash { animation: advHpHealFlash .9s ease-out; }
+@keyframes advHpHealFlash { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,.9); filter: brightness(1.6); } 100% { box-shadow: 0 0 0 10px rgba(74,222,128,0); filter: brightness(1); } }
+.adv-map-heal-float { position: absolute; left: 50%; top: -4px; transform: translateX(-50%); white-space: nowrap; pointer-events: none; z-index: 30; color: #4ade80; font-weight: 800; font-size: .9rem; text-shadow: 0 1px 3px rgba(0,0,0,.9); animation: advMapHealFloat 1.5s ease-out forwards; }
+@keyframes advMapHealFloat { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.9); } 15% { opacity: 1; transform: translate(-50%, -6px) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -34px) scale(1); } }
+
+.adv-trophy-forge-fly { position: fixed; z-index: 9999; width: 54px !important; height: 78px !important; pointer-events: none; border-radius: 5px; }
+div.adv-trophy-forge-fly { display: grid; place-items: center; background: #f8f4e6; color: #b8860b; font-size: 1.6rem; }
+.adv-trophy-pack-bump { animation: advTrophyPackBump .7s ease-out; }
+@keyframes advTrophyPackBump { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,184,77,.9); } 35% { transform: scale(1.12); } 100% { transform: scale(1); box-shadow: 0 0 0 12px rgba(255,184,77,0); } }

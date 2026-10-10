@@ -453,7 +453,7 @@ test('1v2 skip-defense kill with empty event queue settles without freezing', ()
   assert.ok(engine.s.busy);
 });
 
-test('Otto 4 two-number branch enters NPC defense in challenge room', () => {
+test('Otto 6 two-number branch enters NPC defense in challenge room', () => {
   const engine = new AdventureBattleEngine();
   engine.startAdventure1v2({
     player: 'Otto',
@@ -462,9 +462,9 @@ test('Otto 4 two-number branch enters NPC defense in challenge room', () => {
     stage: 1,
     discardTop: number(1, 'RED'),
     playerPile: {
-      // Otto 4 reveals the two cards at the end of the player deck.
+      // Otto 6 reveals the two cards at the end of the player deck.
       deck: [number(2, 'BLUE'), number(3, 'GREEN')],
-      hand: [number(4, 'RED')],
+      hand: [number(6, 'RED')],
       discard: [],
       handLimit: 5
     }
@@ -486,7 +486,7 @@ test('Otto 4 two-number branch enters NPC defense in challenge room', () => {
   assert.ok(engine.events.some(event => event.type === 'aiDefend'));
 });
 
-test('Otto 4 challenge defense continues after an NPC magic bridge without replacing the defense timer', () => {
+test('Otto 6 challenge defense continues after an NPC magic bridge without replacing the defense timer', () => {
   const engine = new AdventureBattleEngine();
   engine.startAdventure1v2({
     player: 'Otto',
@@ -496,7 +496,7 @@ test('Otto 4 challenge defense continues after an NPC magic bridge without repla
     discardTop: number(1, 'RED'),
     playerPile: {
       deck: [number(2, 'BLUE'), number(3, 'GREEN')],
-      hand: [number(4, 'RED')],
+      hand: [number(6, 'RED')],
       discard: [],
       handLimit: 5
     }
@@ -1578,4 +1578,60 @@ test('lush heals player and both challenge NPCs exactly once with one lush event
     assert.equal(heals.length, 1);
     assert.equal(heals[0].amount, 1, 'heal reports actual HP restored');
   }
+});
+
+test('Otto white 5 with no follow-up number card keeps chosen color, animates, and deals 0', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure({
+    player: 'Otto',
+    opponent: 'CastleWolf',
+    playerState: { hp: 80, maxHp: 100 },
+    playerPile: { deck: [number(4, 'BLUE')], hand: [number(5, 'WHITE', true)], discard: [], handLimit: 5 },
+    discardTop: number(2, 'GREEN'),
+    discardTopOwner: 'player'
+  });
+  engine.h.player = [number(5, 'WHITE', true)];
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.busy = false;
+  const aiHp = engine.s.ai.hp;
+  const before = engine.events.length;
+  engine.s.selectedCard = 0;
+  engine.play();
+  assert.equal(engine.s.discardTop.chosenColor, 'GREEN');
+  assert.ok(engine.events.slice(before).some(e => e.type === 'playerPlay'), 'player play animation event emitted');
+  assert.equal(engine.s.ai.hp, aiHp);
+});
+
+test('Otto 4 gains crit first and can spend it on its own 5 damage hit', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure({
+    player: 'Otto', opponent: 'CastleWolf',
+    playerState: { hp: 80, maxHp: 100 },
+    playerPile: { deck: [number(4, 'BLUE')], hand: [number(4, 'RED')], discard: [], handLimit: 5 },
+    discardTop: number(2, 'RED'), discardTopOwner: 'player'
+  });
+  engine.h.player = [number(4, 'RED')];
+  engine.s.player.crit = 0;
+  engine.s.phase = 'PLAYER_PLAY'; engine.s.busy = false;
+  const hp = engine.s.player.hp;
+  engine.s.selectedCard = 0;
+  engine.play();
+  assert.equal(engine.s.player.hp, hp, 'no self damage');
+  assert.equal(engine.s.pendingAttack.damage, 5);
+  assert.ok(engine.s.pendingAttackBuffChoice && engine.s.pendingAttackBuffChoice.canCrit, 'fresh crit offered');
+  engine.resolveAttackBuffChoice({ buff: 'crit' });
+  assert.equal(engine.s.player.crit, 0);
+  assert.equal(engine.s.pendingAttack.unblock, true);
+});
+
+test('challenge room second kill gives no passive +3 heal', () => {
+  const engine = new AdventureBattleEngine();
+  engine.s = { is1v2: true, isAdventure: true, player: { name: 'Ryan', hp: 50, maxHp: 100, alive: true }, ai: { name: 'CastleWolf', alive: false }, ai2: { name: 'CastleWolf', alive: true }, eliminatedHandled: { ai: false, ai2: false } };
+  engine.events = [];
+  const proto = Object.getPrototypeOf(Object.getPrototypeOf(engine));
+  proto._on1v2OpponentEliminated.call(engine, 'ai');
+  assert.equal(engine.s.player.hp, 53);
+  engine.s.ai2.alive = false;
+  proto._on1v2OpponentEliminated.call(engine, 'ai2');
+  assert.equal(engine.s.player.hp, 53);
 });

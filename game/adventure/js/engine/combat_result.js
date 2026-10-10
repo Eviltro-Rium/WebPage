@@ -38,8 +38,10 @@
           // 挑战房只在击败第一个敌人时（战斗内）恢复一次并照常补牌；
           // 击败第二个敌人结束战斗时不再有基础胜利恢复。
           this._log('挑战房：击败第二个敌人不再恢复生命');
+        } else if (isBoss) {
+          // Boss 胜利不再当场回血；改为进入下一 stage 时恢复 10 点（见 continueTo）。
         } else {
-          const healAmount = isBoss ? 10 : 3;
+          const healAmount = 3;
           this.s.player.hp = Math.min(this.s.player.maxHp, this.s.player.hp + healAmount);
           this._log('恢复' + healAmount + '点生命（当前' + this.s.player.hp + '/' + this.s.player.maxHp + '）');
         }

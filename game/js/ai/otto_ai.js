@@ -9,7 +9,7 @@
         if (crit === 0) return x.opponent.hp <= 4 ? 90 : 62;
         return 58 + crit * 8;
       }
-      if (v === 6) return x.opponent.hp <= 6 ? 88 : 68;
+      if (v === 4) return x.opponent.hp <= 5 ? 88 : 68;
       if (v === 7) {
         let divisor = eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10;
         let dmg = Math.ceil(x.self.hp / divisor);
@@ -22,7 +22,7 @@
         const damage = Math.ceil(max * 1.5);
         return damage >= x.opponent.hp ? 90 : 55 + damage * 3;
       }
-      if (v === 4) return 58;
+      if (v === 6) return 58;
       if (v === 3) return 52;
       if (v === 2) return 48;
       if (v === 1) return 62;
@@ -41,9 +41,9 @@
       if (!c.isNumberCard) return null;
       if (c.value === 0) return 78;
       if (c.value === 7) return 55 + Math.ceil(x.self.hp / (eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10)) * 3;
-      if (c.value === 6) return 66;
+      if (c.value === 4) return 66;
       if (c.value === 5) return x.hand.filter(card => card !== c && card.isNumberCard).length ? 60 : 20;
-      if (c.value === 4) return 48;
+      if (c.value === 6) return 48;
       return 28 + c.value * 5;
     },
 
@@ -74,6 +74,12 @@
       }
 
       if (v === 4) {
+        if (a.crit < 3) a.crit++;
+        eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
+        return { d: 5, skip: false, unblock: false };
+      }
+
+      if (v === 6) {
         eng.refillDeckIfNeeded();
         let c1 = eng.deck.length ? eng.deck.pop() : null;
         eng.refillDeckIfNeeded();
@@ -81,34 +87,34 @@
         eng.s.revealCards = [];
         if (c1) eng.s.revealCards.push(helpers.copy(c1));
         if (c2) eng.s.revealCards.push(helpers.copy(c2));
-        eng.emit('reveal', `Otto 4牌：翻开牌库顶${eng.s.revealCards.length}张牌判定`, c1 || c2 || null, {
+        eng.emit('reveal', `Otto 6牌：翻开牌库顶${eng.s.revealCards.length}张牌判定`, c1 || c2 || null, {
           who: owner, from: 'deck', cards: eng.s.revealCards.map(helpers.copy)
         });
         let d = 0, skip = false, unblock = false, isDrain = false;
         if (c1 && c2) {
           if (c1.isItemCard && c2.isItemCard) {
             d = 3; skip = true; unblock = true; isDrain = true;
-            eng.emit('desc', 'Otto 4牌：两张道具牌，吸取3点生命（不可防御）');
+            eng.emit('desc', 'Otto 6牌：两张道具牌，吸取3点生命（不可防御）');
           } else if (c1.isItemCard || c2.isItemCard) {
             let nc = c1.isItemCard ? c2 : c1;
-            d = Math.ceil(nc.value / 2); unblock = true;
-            eng.emit('desc', `Otto 4牌：1张道具牌，造成${d}点伤害（不可防御）`);
+            d = nc.value; unblock = true;
+            eng.emit('desc', `Otto 6牌：1张道具牌，造成${d}点伤害（不可防御）`);
           } else {
             d = c1.value + c2.value;
-            eng.emit('desc', `Otto 4牌：两张数字牌，造成${d}点伤害`);
+            eng.emit('desc', `Otto 6牌：两张数字牌，造成${d}点伤害`);
           }
         } else if (c1) {
           if (c1.isItemCard) {
             d = 3; skip = true; unblock = true; isDrain = true;
-            eng.emit('desc', 'Otto 4牌：仅1张道具牌，吸取3点生命（不可防御）');
+            eng.emit('desc', 'Otto 6牌：仅1张道具牌，吸取3点生命（不可防御）');
           } else {
             d = c1.value;
-            eng.emit('desc', `Otto 4牌：仅1张数字牌，造成${d}点伤害`);
+            eng.emit('desc', `Otto 6牌：仅1张数字牌，造成${d}点伤害`);
           }
         }
         if (c2) eng.deck.push(c2);
         if (c1) eng.deck.push(c1);
-        eng.emit('desc', 'Otto 4牌：判定完毕，两张牌放回牌库顶');
+        eng.emit('desc', 'Otto 6牌：判定完毕，两张牌放回牌库顶');
         return { d, skip, unblock, isDrain };
       }
 
@@ -136,12 +142,7 @@
         return { d: amount, skip: false, unblock: false };
       }
 
-      if (v === 6) {
-        eng.hurt(a, 1);
-        if (a.crit < 3) a.crit++;
-        eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
-        return { d: 6, skip: false, unblock: false };
-      }
+
 
       if (v === 7) {
         let divisor = eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10;

@@ -8,7 +8,7 @@
     init() { return { crit: 0 }; },
     turnStart(eng, ch) {},
     damageAtSettlement(eng, v, a, t) { return v === 7 ? Math.ceil(a.hp / (eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10)) : null; },
-    attackEffectTiming: {1: 'afterDamage', 2: 'afterDamage', 6: 'afterDamage'},
+    attackEffectTiming: {1: 'afterDamage', 2: 'afterDamage', 4: 'immediate'},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, heal, draw, clearDebuffs, hurt } = helpers;
       let d = 0, skip = false, unblock = false;
@@ -23,14 +23,14 @@
       } else if (v === 3) {
         d = 4;
       } else if (v === 4) {
-        return null;
+        // Gain crit first so the new stack can be spent on this same 5-damage hit.
+        if (a.crit < 3) a.crit++;
+        eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
+        d = 5;
       } else if (v === 5) {
         return null;
       } else if (v === 6) {
-        d = 6;
-        hurt(a, 1);
-        if (a.crit < 3) a.crit++;
-        eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
+        return null;
       } else if (v === 7) {
         // Classic 1v2 doubles the starting HP, so it scales by /20. Adventure
         // challenge rooms keep the normal 100 HP pool and therefore use /10.

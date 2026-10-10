@@ -61,6 +61,88 @@
 
     _bindEngine() {
       this.eng.on('*', (ev) => this._appendLog(ev.desc));
+      // Heals that should be shown on the map: queue them, play once the map renders.
+      this._pendingMapHeals = [];
+      this.eng.on('stageHeal', (ev) => {
+        const amount = Number(ev && ev.amount) || 0;
+        if (amount > 0) this._pendingMapHeals.push({ amount, label: '进入新层' });
+      });
+      this.eng.on('buy', (ev) => {
+        if (!ev || ev.kind !== 'trophyWhite' || !ev.itemName) return;
+        const slot = this.container.querySelector('.adv-shop-slot-trophy');
+        const rect = slot ? slot.getBoundingClientRect() : null;
+        // The shop re-renders right after the buy; fly once the new DOM is in place.
+        schedule(() => this._playTrophyForgeAnimation(ev.itemName, rect), 60);
+      });
+      this.eng.on('accessory', (ev) => {
+        if (!ev || ev.itemName !== 'LifeCore') return;
+        const amount = Number(ev.amount) || 0;
+        if (amount > 0) this._pendingMapHeals.push({ amount, label: '生命核心', itemName: 'LifeCore' });
+      });
+    }
+
+    _playTrophyForgeAnimation(name, fromRect) {
+      let node = null;
+      try {
+        const card = window.AdventureDeck && window.AdventureDeck.trophyWhite(name);
+        if (card && typeof window.renderCard === 'function') node = window.renderCard(card, 54, 78, false);
+      } catch (_) { node = null; }
+      if (!node) { node = document.createElement('div'); node.textContent = '◇'; }
+      node.classList.add('adv-trophy-forge-fly');
+      const target = this.container.querySelector('#adv-trophy-pack');
+      const fr = fromRect || { left: window.innerWidth / 2 - 27, top: window.innerHeight / 2 - 39, width: 54, height: 78 };
+      const tr = target ? target.getBoundingClientRect() : { left: window.innerWidth - 80, top: 20, width: 54, height: 30 };
+      const sx = fr.left + fr.width / 2 - 27, sy = fr.top + fr.height / 2 - 39;
+      const ex = tr.left + tr.width / 2 - 27, ey = tr.top + tr.height / 2 - 39;
+      node.style.left = sx + 'px'; node.style.top = sy + 'px';
+      document.body.appendChild(node);
+      const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const done = () => {
+        node.remove();
+        if (target && target.isConnected) {
+          target.classList.remove('adv-trophy-pack-bump'); void target.offsetWidth; target.classList.add('adv-trophy-pack-bump');
+          schedule(() => target.classList.remove('adv-trophy-pack-bump'), 700);
+        }
+      };
+      if (reduce || !node.animate) { schedule(done, 250); return; }
+      const anim = node.animate([
+        { transform: 'scale(1)', opacity: 1, filter: 'brightness(1)' },
+        { transform: 'translateY(-14px) scale(1.25) rotate(-6deg)', filter: 'brightness(2) drop-shadow(0 0 16px #ffb84d)', offset: 0.3 },
+        { transform: 'translateY(-14px) scale(1.2) rotate(6deg)', filter: 'brightness(1.5) drop-shadow(0 0 12px #ffb84d)', offset: 0.5 },
+        { transform: 'translate(' + (ex - sx) + 'px,' + (ey - sy) + 'px) scale(0.35)', opacity: 0.6, filter: 'brightness(1)' }
+      ], { duration: 1000, easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'forwards' });
+      anim.onfinish = done; anim.oncancel = done;
+    }
+
+    _playPendingMapHeals() {
+      const heals = this._pendingMapHeals || [];
+      if (!heals.length) return;
+      this._pendingMapHeals = [];
+      const bar = this.container.querySelector('.adv-hp-bar');
+      if (!bar) return;
+      heals.forEach((heal, i) => {
+        schedule(() => {
+          if (!bar.isConnected) return;
+          bar.classList.remove('adv-hp-heal-flash');
+          void bar.offsetWidth;
+          bar.classList.add('adv-hp-heal-flash');
+          schedule(() => bar.classList.remove('adv-hp-heal-flash'), 900);
+          if (heal.itemName) {
+            const slot = this.container.querySelector('[data-accessory-name="' + heal.itemName + '"]');
+            if (slot) {
+              slot.classList.remove('adv-accessory-trigger');
+              void slot.offsetWidth;
+              slot.classList.add('adv-accessory-trigger');
+              schedule(() => slot.classList.remove('adv-accessory-trigger'), 1000);
+            }
+          }
+          const float = document.createElement('div');
+          float.className = 'adv-map-heal-float';
+          float.textContent = heal.label + ' +' + heal.amount + '❤️';
+          bar.appendChild(float);
+          schedule(() => float.remove(), 1500);
+        }, i * 650);
+      });
     }
 
     async start(mapUrl, characterName) {
@@ -1133,8 +1215,17 @@
       const overlay = document.createElement('div');
       overlay.id = 'adv-trophy-backpack-dialog';
       overlay.className = 'dialog-overlay';
-      const rows = cards.length ? cards.map((card, index) =>
-        '<div class="adv-trophy-pack-row"><div class="adv-trophy-pack-card">' + this._trophyCardMarkup(card.name, 46, 68) + '<div><b>' + card.displayName + '</b><small>' + (card.description || '') + '</small></div></div><button class="adv-btn adv-trophy-pack-discard" data-trophy-discard="' + index + '">丢弃</button></div>'
+      // Stack identical trophy cards into one row with a count; discard removes one copy.
+      const groups = [];
+      const byName = new Map();
+      cards.forEach((card, index) => {
+        const g = byName.get(card.name);
+        if (g) { g.count++; return; }
+        const ng = { card, index, count: 1 };
+        byName.set(card.name, ng); groups.push(ng);
+      });
+      const rows = groups.length ? groups.map(({ card, index, count }) =>
+        '<div class="adv-trophy-pack-row"><div class="adv-trophy-pack-card"><span class="adv-trophy-pack-thumb">' + this._trophyCardMarkup(card.name, 46, 68) + (count > 1 ? '<span class="adv-trophy-pack-count">×' + count + '</span>' : '') + '</span><div><b>' + card.displayName + (count > 1 ? ' ×' + count : '') + '</b><small>' + (card.description || '') + '</small></div></div><button class="adv-btn adv-trophy-pack-discard" data-trophy-discard="' + index + '">丢弃1张</button></div>'
       ).join('') : '<div class="adv-trophy-pack-empty">尚未获得战利白卡</div>';
       overlay.innerHTML = '<div class="dialog-box adv-trophy-pack-dialog"><div class="dialog-title">战利白卡背包</div><div class="dialog-body adv-trophy-pack-list">' + rows + '</div><div class="dialog-buttons"><button class="adv-btn adv-btn-primary" id="adv-trophy-pack-close">关闭</button></div></div>';
       document.body.appendChild(overlay);

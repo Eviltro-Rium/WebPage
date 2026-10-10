@@ -89,7 +89,9 @@ _renderControls() {
         html += `<button class="ctrl-btn btn-skip" id="btn-attack-mod-skip">不修正</button>`;
     } else if ((phase === 'CRIT_CHOICE' || phase === 'ATTACK_BUFF_CHOICE') && canAct) {
         const pending = s.pendingAttackBuffChoice || s.pendingCritChoice || {};
-        if(s.pendingAttackBuffChoice && this.dialogs && this.dialogs.showAttackBuffChoice){
+        // Wait for the skill judgment / sandblind d12 animations of this attack
+        // to finish playing before opening the modifier dialog.
+        if(s.pendingAttackBuffChoice && !this._isConsumingEvents && this.dialogs && this.dialogs.showAttackBuffChoice){
             this.dialogs.showAttackBuffChoice(pending,buff=>this._apiAction('resolveAttackBuffChoice',{buff}));
         }
         const dmg = pending.damage != null

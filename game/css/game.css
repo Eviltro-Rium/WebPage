@@ -2969,3 +2969,47 @@ body {
 .dice-control-active .d12-result strong { font-size:1.4rem; line-height:1.1; }
 .dice-control-active .d12-result .d12-label { font-size:.5rem; }
 .dice-control-active .reveal-desc { max-height:28px; }
+
+/* Attack/defend zones: card on the left, description on the right. */
+.attack-zone, .defend-zone {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 6px;
+    align-items: center;
+}
+.attack-zone > .zone-title, .defend-zone > .zone-title { grid-column: 1 / -1; grid-row: 1; }
+.attack-zone > .zone-cards, .defend-zone > .zone-cards {
+    grid-column: 1; grid-row: 2;
+    height: auto; min-height: 100px; max-height: none;
+    min-width: 70px; flex-wrap: nowrap; justify-content: flex-start;
+}
+.attack-zone > .zone-desc, .defend-zone > .zone-desc {
+    grid-column: 2; grid-row: 2;
+    height: auto; min-height: 0; max-height: 100%;
+    text-align: left; font-size: 0.8rem;
+    padding: 3px 22px 3px 2px;
+    align-self: center;
+}
+.attack-zone > .zone-desc .desc-text, .defend-zone > .zone-desc .desc-text {
+    -webkit-line-clamp: 5; text-align: left;
+}
+/* Side-layout expand/collapse: toggle sits bottom-right; expanded text drops down over the right column. */
+.attack-zone > .zone-desc .zone-desc-toggle, .defend-zone > .zone-desc .zone-desc-toggle {
+    top: auto; bottom: 0; right: 0; transform: none;
+    width: 22px; height: 18px; border-radius: 6px 2px 6px 2px; font-size: 12px;
+}
+.attack-zone > .zone-desc.is-expanded, .defend-zone > .zone-desc.is-expanded {
+    position: absolute;
+    left: 82px; right: 4px; top: 22px; bottom: auto;
+    max-height: 220px; padding: 6px 24px 22px 8px;
+    text-align: left; font-size: 0.8rem;
+    animation: zoneDescDrop 0.18s ease-out;
+    transform-origin: top;
+}
+@keyframes zoneDescDrop { from { opacity: 0; transform: scaleY(0.85); } to { opacity: 1; transform: scaleY(1); } }
+
+.trophy-fly-card { position: fixed; z-index: 9999; width: 70px !important; height: 100px !important; pointer-events: none; border-radius: 6px; }
+div.trophy-fly-card { display: grid; place-items: center; background: #f8f4e6; color: #b8860b; font-size: 2rem; }
+.trophy-hand-glow { animation: trophyHandGlow .8s ease-out; }
+@keyframes trophyHandGlow { 0% { box-shadow: 0 0 0 0 rgba(255,226,122,.9); } 100% { box-shadow: 0 0 0 14px rgba(255,226,122,0); } }

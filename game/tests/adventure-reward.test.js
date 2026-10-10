@@ -79,12 +79,19 @@ test('combat victory heals 3 HP in normal rooms', () => {
   assert.equal(eng.s.player.hp, 13);
 });
 
-test('boss victory heals 10 HP', () => {
+test('boss victory no longer heals; entering the next stage heals 10 HP', () => {
   const eng = startEngine([[0, 2]]);
   enterBossCombat(eng);
   eng.s.player.hp = 20;
   eng.onCombatEnd('win');
+  assert.equal(eng.s.player.hp, 20);
+  eng.s.phase = AdventurePhase.MAP;
+  const map = eng.s.map;
+  const before = eng.events ? eng.events.length : 0;
+  eng.continueTo(map, { stage: (eng.s.stage || 1) + 1 });
   assert.equal(eng.s.player.hp, 30);
+  eng.continueTo(map, { stage: eng.s.stage });
+  assert.equal(eng.s.player.hp, 30, 'same stage reload does not heal');
 });
 
 test('LifeCore grants extra 3 HP after normal, challenge, and boss wins', () => {
@@ -109,7 +116,7 @@ test('LifeCore grants extra 3 HP after normal, challenge, and boss wins', () => 
   enterBossCombat(bossEng);
   bossEng.s.player.hp = 20;
   bossEng.onCombatEnd('win');
-  assert.equal(bossEng.s.player.hp, 33);
+  assert.equal(bossEng.s.player.hp, 23, 'boss wins only get LifeCore; the 10 HP moves to the next stage');
 });
 
 test('challenge win has no base heal after the second enemy; normal wins still heal 3', () => {

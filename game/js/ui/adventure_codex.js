@@ -487,11 +487,9 @@
       html += '<div class="codex-empty">暂无数据</div>';
     } else {
       html += '<div class="codex-all-list">';
-      const effectMap = { burn: '灼伤', bleed: '流血', freeze: '冷冻', bomb: '定时炸弹', roulette: '俄罗斯赌盘', guard: '守护', disarm: '缴械', fly: '飞翔', crit: '暴击', magmaVein: '熔脉', lush: '茂盛', poison: '中毒', parasite: '寄生', thorns: '荆棘', sandblind: '沙盲', quicksand: '流沙', diving: '潜水', scorch: '炙热', iceSeal: '冰封', hypothermia: '失温', zero: '零技能' };
       for (const it of items) {
         const icon = resolveIcon(it.icon);
         const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-avatar codex-no-icon">${it.displayName[0]}</div>`;
-        const shortName = (it.displayName || it.name || '').replace(/战利白卡/g, '').trim();
         html += `<div class="codex-all-item">`;
         html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${it.displayName}</span><span class="codex-all-item-meta">战利白卡</span></div></div>`;
         const descText = window.descToEmoji ? window.descToEmoji(it.description || '') : (it.description || '无描述');

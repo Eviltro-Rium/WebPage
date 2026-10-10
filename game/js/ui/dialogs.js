@@ -73,10 +73,11 @@ class DialogManager {
             if(icon){const image=document.createElement('img');image.src=statusIconPath(icon);image.alt='';image.style.cssText='width:28px;height:28px;vertical-align:middle;margin-right:8px';button.appendChild(image);}
             button.appendChild(document.createTextNode(label));
             button.addEventListener('click',async()=>{
-                if(submitted)return;submitted=true;list.querySelectorAll('button').forEach(b=>b.disabled=true);
-                try {await onChoose(kind);} finally {
-                    if(overlay.isConnected){submitted=false;list.querySelectorAll('button').forEach(b=>b.disabled=false);}
-                }
+                if(submitted)return;submitted=true;
+                // Close immediately so the click feels instant; if the action is
+                // rejected the controls re-render and reopen the dialog.
+                overlay.remove();
+                await onChoose(kind);
             });list.appendChild(button);
         };
         if(pending.canMagma)add('magmaVein','消耗熔脉 · 伤害 '+pending.damage+' → '+pending.magmaPreviewDamage+' 🗡️','magma_vein');

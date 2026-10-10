@@ -231,10 +231,6 @@ attackSelfHurt(card, ctx) {
   return enemyCount * 2;
 }
 
-// Otto 6️⃣：固定自伤 1 点
-attackSelfHurt(card) {
-  return card.value === 6 ? 1 : 0;
-}
 ```
 
 ### 结算流程

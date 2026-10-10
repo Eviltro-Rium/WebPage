@@ -115,6 +115,9 @@ async _consumeEvents(events, options = {}) {
         this._drawAnimationRemaining = null;
         this._isConsumingEvents = wasConsumingEvents;
         if (hasEvents && typeof this._endHandAnimation === 'function') this._endHandAnimation();
+        // The attack-modifier dialog is held back while events play; open it now.
+        if (hasEvents && !this._isConsumingEvents && this.state && this.state.pendingAttackBuffChoice
+            && typeof this._renderControls === 'function') this._renderControls();
     }
 },
 
@@ -165,6 +168,41 @@ _animationOrder(events) {
     return ordered;
 },
 
+
+async _playTrophyDropAnimation(names) {
+    const deckApi = window.AdventureDeck;
+    const from = document.querySelector('.ai-area') || document.body;
+    const to = document.getElementById('player-hand') || document.body;
+    const fr = from.getBoundingClientRect(), tr = to.getBoundingClientRect();
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.playFloatingText('获得战利白卡 ×' + names.length, '#f8e7a8', 'player');
+    const flights = names.map((name, i) => new Promise(resolve => {
+        let node = null;
+        try {
+            const card = deckApi && deckApi.trophyWhite ? deckApi.trophyWhite(name) : null;
+            if (card && typeof window.renderCard === 'function') node = window.renderCard(card, 70, 100, false);
+        } catch (_) { node = null; }
+        if (!node) { node = document.createElement('div'); node.textContent = '◇'; }
+        node.classList.add('trophy-fly-card');
+        const sx = fr.left + fr.width / 2 - 35 + (i - (names.length - 1) / 2) * 24;
+        const sy = fr.top + fr.height / 2 - 50;
+        const ex = tr.left + tr.width / 2 - 35, ey = tr.top + tr.height / 2 - 50;
+        node.style.left = sx + 'px'; node.style.top = sy + 'px';
+        document.body.appendChild(node);
+        if (reduce || !node.animate) { setTimeout(() => { node.remove(); resolve(); }, 300); return; }
+        const anim = node.animate([
+            { transform: 'translate(0,0) scale(0.3) rotate(-20deg)', opacity: 0, filter: 'brightness(2.2)' },
+            { transform: 'translate(0,-30px) scale(1.25) rotate(0deg)', opacity: 1, filter: 'brightness(1.5) drop-shadow(0 0 18px #ffe27a)', offset: 0.35 },
+            { transform: 'translate(0,-30px) scale(1.2)', opacity: 1, filter: 'brightness(1.2) drop-shadow(0 0 14px #ffe27a)', offset: 0.55 },
+            { transform: 'translate(' + (ex - sx) + 'px,' + (ey - sy) + 'px) scale(0.75)', opacity: 0.9, filter: 'brightness(1) drop-shadow(0 0 6px #ffe27a)' }
+        ], { duration: 1150, delay: i * 180, easing: 'cubic-bezier(.25,.8,.3,1)', fill: 'forwards' });
+        anim.onfinish = () => { node.remove(); resolve(); };
+        anim.oncancel = () => { node.remove(); resolve(); };
+    }));
+    await Promise.all(flights);
+    to.classList.remove('trophy-hand-glow'); void to.offsetWidth; to.classList.add('trophy-hand-glow');
+    setTimeout(() => to.classList.remove('trophy-hand-glow'), 800);
+},
 
 async _playEvents(events, fast = false) {
     const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
@@ -520,6 +558,8 @@ async _playEvents(events, fast = false) {
         } else if (evt.type === 'gameOver') {
             this.playFloatingText(evt.desc || '游戏结束', '#ffd700', 'player');
             await wait(1500);
+        } else if (evt.type === 'trophyDrop' && Array.isArray(evt.drops) && evt.drops.length) {
+            await this._playTrophyDropAnimation(evt.drops);
         } else if (evt.type === 'dualDice') {
             if (typeof this._playDualDiceAnimation === 'function') {
                 await this._playDualDiceAnimation(evt.roll, evt.target);

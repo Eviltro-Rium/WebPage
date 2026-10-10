@@ -749,6 +749,7 @@
     continueTo(map, opts = {}) {
       if (!this.s) return null;
       if (this.s.phase === Phase.CLEAR && this.s.stage >= 4) return this.s;
+      const prevStage = this.s.stage || 1;
       this.s.map = map;
       if (opts.mapName) this.mapName = opts.mapName;
       this.s.activeCombat = null;
@@ -771,6 +772,14 @@
       this._initItemDoorCosts(map);
       this._log('进入新地图：' + (opts.scene || this.s.scene) + ' 第' + (opts.stage || this.s.stage) + '层');
       this.emit('continue', '进入新地图', { stage: this.s.stage, scene: this.s.scene });
+      // 进入下一 stage 时恢复 10 点生命（取代原来 Boss 胜利后的回血）；地图界面据此播放特效和飘字。
+      if ((this.s.stage || 1) > prevStage && this.s.player) {
+        const before = this.s.player.hp;
+        this.s.player.hp = Math.min(this.s.player.maxHp, this.s.player.hp + 10);
+        const healed = this.s.player.hp - before;
+        this._log('进入第' + this.s.stage + '层：恢复' + healed + '点生命（当前' + this.s.player.hp + '/' + this.s.player.maxHp + '）');
+        this.emit('stageHeal', '进入新层恢复生命', { amount: healed, stage: this.s.stage, hp: this.s.player.hp, maxHp: this.s.player.maxHp });
+      }
       return this.s;
     },
     _defaultReward(room) {

@@ -57,3 +57,12 @@ test('incidental item AOE cannot prematurely flush a queued attack status',()=>{
  e.performAttack({type:'aoe',target:'ai',aoeTargets:['ai'],aoeDamage:1,skipTarget:false});assert.equal(t.burn,0);assert.ok(e.s.pendingSkillStatuses.length);
  e.settlePreparedHit(e.s.player,t,{damage:r.d,bleed:0});assert.equal(t.burn,2);
 });
+test('diving full block still settles bleed after a defense skill (card <=3)',()=>{
+ const {e}=setup();e.s.atkOwner='ai';e.s.atkCard=card(5,'BLUE');e.s.pendingAttack={damage:5};e.s.pendingDamageFormula=null;e.s.pendingSkillStatuses=[];
+ e.s.player.diving=true;e.s.player.guard=2;e.s.player.bleed=2;e.s.defCard=card(2,'BLUE');e.events=[];
+ const hp=e.s.player.hp;
+ e.askGuard(5,e.s.player.bleed);
+ assert.equal(e.pendingSettlement&&e.pendingSettlement.bleed,2,'bleed carried into settlement');
+ e.settlePreparedHit(e.s.ai,e.s.player,e.pendingSettlement);
+ assert.equal(e.s.player.hp,hp-2);assert.equal(e.s.player.bleed,1);assert.equal(e.s.player.guard,2);
+});

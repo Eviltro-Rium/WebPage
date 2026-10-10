@@ -47,7 +47,9 @@
     if(!this.s.eliminatedHandled)this.s.eliminatedHandled={ai:false,ai2:false};
     if(this.s.eliminatedHandled[defeatedKey])return;
     this.s.eliminatedHandled[defeatedKey]=true;
-    if(this.s.isAdventure&&this.s.player&&this.s.player.alive){
+    // Adventure challenge rooms heal only for the first kill; the second kill ends the fight with no heal.
+    const otherKey=defeatedKey==='ai'?'ai2':'ai',otherAlive=!!(this.s[otherKey]&&this.s[otherKey].alive);
+    if(this.s.isAdventure&&otherAlive&&this.s.player&&this.s.player.alive){
       this.heal(this.s.player,3,'passive');
       const name=(this.s[defeatedKey]&&this.s[defeatedKey].name)||defeatedKey;
       this.emit('desc','击败'+name+'，恢复3点生命');
@@ -218,15 +220,15 @@
     if(!this.legal(c))throw Error('该牌不能用于进攻');
     let who=this.name(this.s.player);
     const needsNumberFollowup = !c.borrowedMonster && ((who==='Ryan'&&c.value===5)||(who==='Saiki'&&c.value===6)||(who==='Moze'&&c.value===4)||(who==='Otto'&&c.value===5));
+    if(c.isBlack&&!c.chosenColor)return this._stagePendingBlackCard(i,c,'attack');
+    if(c.isWhite)c.chosenColor=this.effective(this.s.discardTop);
     if(needsNumberFollowup&&!this.h.player.some((x,j)=>j!==i&&x.isNumberCard)){
-      this.emit('desc',who+' '+c.value+'牌：没有可用的追加数字牌，自动判定为0点',c);
       this.h.player.splice(i,1); this.s.selectedCard=-1; this.s.atkCard=cp(c); this.s.atkOwner='player';
       this.setDiscardTop(c,'player'); this.s.hasPlayedThisTurn=true; this._markBombPlay('player'); this._tickBomb('player');
+      this.emit('desc',who+' '+c.value+'牌：没有可用的追加数字牌，自动判定为0点',c);
       this._onAttackSkillRelease(this.s.player);
       return this.gateAdventureAttackMod(c,0,true,false);
     }
-    if(c.isBlack&&!c.chosenColor)return this._stagePendingBlackCard(i,c,'attack');
-    if(c.isWhite)c.chosenColor=this.effective(this.s.discardTop);
     let target=this.s.attackTarget||(this.s.ai.alive?'ai':(this.s.ai2&&this.s.ai2.alive?'ai2':'ai')),targetChar=this.s[target];
     if(!targetChar||!targetChar.alive)throw Error('所选目标已经出局，请重新选择目标');
     this.h.player.splice(i,1);this.s.selectedCard=-1;
@@ -262,7 +264,7 @@
     if(who==='Saiki'&&c.value===6)return this.startNumberJudge('Saiki',c);
     if(who==='Moze'&&c.value===4)return this.startNumberJudge('Moze',c);
     if(who==='Chan'&&c.value===5)return this.startChanFive();
-    if(who==='Otto'&&c.value===4)return this.startOttoFour(c);
+    if(who==='Otto'&&c.value===6)return this.startOttoFour(c);
     if(who==='Otto'&&c.value===5)return this.startNumberJudge('Otto',c);
      if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===5&&this.s.player.hp<=40)){
       let p={name:who,value:c.value,owner:'player',attackCard:cp(c)};
