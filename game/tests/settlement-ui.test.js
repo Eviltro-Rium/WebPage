@@ -155,3 +155,54 @@ test('repeated beast clicks retain live icons and do not multiply listeners', ()
   observer.disconnect();
  } finally {dom.window.close();}
 });
+
+
+test('map return heal events flash LifeCore and the HP bar with separate floating labels', () => {
+ const dom=new JSDOM('<div id="map"><div class="adv-hp-bar"></div><div class="adv-acc-col-slot" data-accessory-name="LifeCore"></div></div>',{runScripts:'outside-only'});
+ const w=dom.window,tasks=[],listeners={};
+ try {
+  w.AdventurePhase={MAP:'ADVENTURE_MAP'};
+  w.FurryGame={CombatRuntime:{random:()=>0,schedule:(owner,fn,ms)=>{tasks.push({fn,ms});}}};
+  w.eval(fs.readFileSync(path.join(root,'adventure/js/ui/adventure_ui.js'),'utf8'));
+  const ui=Object.create(w.AdventureUI.prototype);
+  ui.container=w.document.getElementById('map');
+  ui.eng={s:{phase:w.AdventurePhase.MAP},on:(type,fn)=>{listeners[type]=fn;}};
+  ui._appendLog=()=>{};ui._bindEngine();
+  listeners.accessory({type:'accessory',extra:{itemName:'LifeCore',amount:3}});
+  listeners.stageHeal({type:'stageHeal',extra:{amount:10,stage:2}});
+  assert.equal(ui._pendingMapHeals.length,2);
+  ui._playPendingMapHeals();
+  tasks.find(t=>t.ms===0).fn();
+  assert.ok(ui.container.querySelector('[data-accessory-name="LifeCore"]').classList.contains('adv-accessory-trigger'));
+  assert.ok(ui.container.querySelector('.adv-hp-bar').classList.contains('adv-hp-heal-flash'));
+  assert.match(ui.container.querySelector('.adv-map-heal-float').textContent,/\+3/);
+  const next=tasks.find(t=>t.ms===1600);assert.ok(next,'separate heals wait for the first float');
+  next.fn();
+  assert.equal(ui.container.querySelectorAll('.adv-map-heal-float').length,2);
+  assert.match(ui.container.querySelectorAll('.adv-map-heal-float')[1].textContent,/\+10/);
+  assert.equal(ui._pendingMapHeals.length,0);
+ } finally {dom.window.close();}
+});
+
+
+test('map trophy acquisition reads the engine payload and plays a single short card animation', () => {
+ const dom=new JSDOM('<div id="map"><button id="adv-trophy-pack"></button></div>',{runScripts:'outside-only'});
+ const w=dom.window,tasks=[],listeners={};
+ try {
+  w.FurryGame={CombatRuntime:{random:()=>0,schedule:(owner,fn,ms)=>{tasks.push({fn,ms});}}};
+  w.AdventureDeck={trophyWhite:name=>({trophyName:name})};
+  w.renderCard=card=>{const node=w.document.createElement('div');node.dataset.trophy=card.trophyName;return node;};
+  let animation;
+  w.HTMLElement.prototype.animate=function(frames,options){animation={frames,options};return animation;};
+  w.eval(fs.readFileSync(path.join(root,'adventure/js/ui/adventure_ui.js'),'utf8'));
+  const ui=Object.create(w.AdventureUI.prototype);ui.container=w.document.getElementById('map');
+  ui.eng={s:{},on:(type,fn)=>{listeners[type]=fn;}};ui._appendLog=()=>{};ui._bindEngine();
+  listeners.itemAcquired({extra:{itemName:'GuardTrophy',kind:'trophyWhite'}});
+  const pending=tasks.filter(t=>t.ms===60);assert.equal(pending.length,1);pending[0].fn();
+  assert.equal(w.document.querySelectorAll('.adv-trophy-forge-fly').length,1);
+  assert.equal(w.document.querySelector('.adv-trophy-forge-fly').dataset.trophy,'GuardTrophy');
+  assert.ok(animation.options.duration<=700,'small animation');animation.onfinish();
+  assert.equal(w.document.querySelector('.adv-trophy-forge-fly'),null);
+  assert.ok(ui.container.querySelector('#adv-trophy-pack').classList.contains('adv-trophy-pack-bump'));
+ } finally {dom.window.close();}
+});

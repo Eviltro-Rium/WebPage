@@ -131,7 +131,9 @@
         log: [],
         turn: 0,
         stage: opts.stage || 1,
-        scene: opts.scene || 'castle'
+        scene: opts.scene || 'castle',
+        usedScenes: [opts.scene || 'castle'],
+        pendingMapReturnEffects: null
       };
 
       if (opts.gold) this.s.currency.addGold(opts.gold);
@@ -212,7 +214,9 @@
         log: (save.log || []).slice(),
         turn: save.turn || 0,
         stage: save.stage || 1,
-        scene: save.scene || 'castle'
+        scene: save.scene || 'castle',
+        usedScenes: Array.from(new Set([...(save.usedScenes || []), save.scene || 'castle'])),
+        pendingMapReturnEffects: clone(save.pendingMapReturnEffects) || null
       };
 
       this.s.currency.gold = save.currency.gold || 0;
@@ -391,7 +395,7 @@
       this.s.activeCombat = null;
       this.s.combat = null;
       this.s.pendingCombatReward = null;
-      this._wisdomNecklacePending = false;
+      this.s.pendingMapReturnEffects = null;
       const room = this.currentRoom();
       if (room) {
         room.monsterName = null;
@@ -900,6 +904,7 @@
             ? this._snapshotLoot(this.s.pendingCombatReward.bonus)
             : null,
           beast: this.s.pendingCombatReward.beast || null,
+          trophyRolls: JSON.parse(JSON.stringify(this.s.pendingCombatReward.trophyRolls || [])),
           applied: !!this.s.pendingCombatReward.applied
         } : null,
         pendingRoomReward: this._snapshotLoot(this.s.pendingRoomReward),

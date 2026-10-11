@@ -174,3 +174,57 @@ test('judgment UI uses inline buttons, preserves expanded choice on updates and 
   panel.querySelector('[data-face="7"]').click();await Promise.resolve();assert.equal(calls.length,1);assert.equal(calls[0][0],'chooseDiceControl');assert.equal(calls[0][1].value,7);
   ui.state={};ui._renderDiceControl();assert.equal(w.document.querySelector('.dice-control-panel'),null);dom.window.close();
 });
+
+test('Boss uses exactly three independent D12 loot rolls, preserving empty and repeated results', () => {
+  const e=battle([], 'CastleChameleon');
+  const faces=[2,10,6]; let index=0;
+  runtime.setRandomSource(()=> (faces[index++]-1)/12);
+  const hand=e.h.player.length; e.s.ai.alive=false; e.s.ai.hp=0; e.check();
+  assert.equal(index,3);
+  assert.deepEqual(Array.from(e.s.trophyRolls, r=>r.roll),faces);
+  assert.deepEqual(Array.from(e.s.trophyDrops),['PoisonTrophy','GuardTrophy']);
+  assert.equal(e.h.player.length,hand+2);
+  const dice=e.events.filter(evt=>evt.type==='diceRoll'&&evt.purpose==='trophyDrop');
+  assert.deepEqual(Array.from(dice,evt=>evt.rollIndex),[1,2,3]);
+  assert.ok(dice.every(evt=>evt.rollCount===3));
+  e.check();assert.equal(index,3);runtime.setRandomSource(()=>.5);e.finishAdventureBattle();
+  assert.equal(e.s.trophyRolls.length,3,'no fourth roll on completion');
+  runtime.resetRandomSource();
+});
+
+test('Boss three loot rolls support remote dice and page restore without duplicating white cards', () => {
+  let e=battle(['DiceController','DiceController','DiceController'], 'CastleChameleon');
+  runtime.setRandomSource(()=>.9);const hand=e.h.player.length;
+  e.s.ai.alive=false;e.s.ai.hp=0;e.check();
+  assert.equal(e.s.phase,'DICE_CHOICE');
+  choose(e,true,1);assert.equal(e.s.phase,'DICE_CHOICE');assert.equal(e.h.player.length,hand+1);
+  const saved=JSON.parse(JSON.stringify({s:e.s,piles:e.piles,events:e.events,ver:e.ver,testMode:e.testMode,pendingSettlement:e.pendingSettlement}));
+  const adventure=e._adventureEngine;e=new context.AdventureBattleEngine();e.restoreSession(saved,adventure);e.later=()=>{};
+  choose(e,true,6);assert.equal(e.s.phase,'DICE_CHOICE');
+  choose(e,true,1);
+  assert.ok(!e.s.pendingDiceControl);assert.equal(itemCount(e),0);
+  assert.deepEqual(Array.from(e.s.trophyRolls,r=>r.roll),[1,6,1]);
+  assert.deepEqual(Array.from(e.s.trophyDrops),['PoisonTrophy','GuardTrophy','PoisonTrophy']);
+  assert.equal(e.h.player.length,hand+3);
+  e.check();assert.equal(e.h.player.length,hand+3);
+  runtime.resetRandomSource();
+});
+
+test('Boss three misses grant nothing; normal monsters still roll only once', () => {
+  for(const [opponent, count] of [['CastleChameleon',3],['CastleWolf',1]]) {
+    const e=battle([],opponent);runtime.setRandomSource(()=>.99);const hand=e.h.player.length;
+    e.s.ai.alive=false;e.s.ai.hp=0;e.check();
+    assert.equal(e.s.trophyRolls.length,count);assert.equal(e.s.trophyDrops.length,0);
+    assert.equal(e.h.player.length,hand);
+  }
+  runtime.resetRandomSource();
+});
+
+test('Boss can award the same trophy on each of its three rolls', () => {
+  const e=battle([], 'CastleGargoyle');runtime.setRandomSource(()=>0);const hand=e.h.player.length;
+  e.s.stage=4;e.s.ai.alive=false;e.s.ai.hp=0;e.check();
+  assert.equal(e.s.phase,'GAME_OVER');assert.equal(e.s.trophyRolls.length,3);
+  assert.deepEqual(Array.from(e.s.trophyDrops),['ZeroTrophy','ZeroTrophy','ZeroTrophy']);
+  assert.equal(e.h.player.length,hand+3);
+  runtime.resetRandomSource();
+});

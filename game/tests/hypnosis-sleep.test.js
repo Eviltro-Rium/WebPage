@@ -56,6 +56,7 @@ test('sleeping characters are immune to hypnosis', () => {
 test('AI hypnosis does not promote on the defense right after application', () => {
   const eng = new Engine();
   eng.start('Vixraps', 'Saiki');
+  eng.h.ai = []; // Isolate phase timing from randomly dealt purification cards.
   eng.s.phase = 'AI_DEFEND';
   eng.s.pendingAttack = { damage: 3, unblock: false, isDrain: false };
   eng.applyHypnosis(eng.s.ai);

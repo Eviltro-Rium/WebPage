@@ -140,6 +140,7 @@
     _initTrophyLootState() {
       if (!this.s) return;
       if (!Array.isArray(this.s.trophyDrops)) this.s.trophyDrops = [];
+      if (!Array.isArray(this.s.trophyRolls)) this.s.trophyRolls = [];
       if (!this.s.trophyDropHandled || typeof this.s.trophyDropHandled !== 'object') {
         this.s.trophyDropHandled = {};
       }
@@ -164,35 +165,38 @@
       if (!found) return null;
       const dropSummary = lootService.formatDropSummary(found.rule);
       const label = monsterName || defeatedKey;
-      // All D12 outcomes go through one engine boundary, including loot.
-      const roll = this.rollD12(dropSummary, {
-        who: 'player', purpose: 'trophyDrop', monsterName: label, dropSummary
-      });
-      const loot = lootService.rollMonsterDrop(this.s.adventureScene || found.scene, monsterName, null, roll);
-      if (!loot || loot.roll == null) return loot;
-      const drops = Array.isArray(loot.drops) ? loot.drops.slice() : [];
-      if (drops.length && this.piles && this.piles.player && window.AdventureDeck) {
-        for (const itemName of drops) {
-          this.piles.player.hand.push(window.AdventureDeck.trophyWhite(itemName));
-          this.s.trophyDrops.push(itemName);
+      const boss = window.AdventureRegistry && window.AdventureRegistry.getBoss(monsterName);
+      const rollCount = boss ? 3 : 1;
+      let lastLoot = null;
+      for (let rollIndex = 1; rollIndex <= rollCount; rollIndex++) {
+        // All rolls use the shared D12 boundary, including remote-dice replay.
+        const roll = this.rollD12(dropSummary, {
+          who: 'player', purpose: 'trophyDrop', monsterName: label, dropSummary, rollIndex, rollCount
+        });
+        const loot = lootService.rollMonsterDrop(this.s.adventureScene || found.scene, monsterName, null, roll);
+        if (!loot || loot.roll == null) continue;
+        lastLoot = loot;
+        const drops = Array.isArray(loot.drops) ? loot.drops.slice() : [];
+        if (drops.length && this.piles && this.piles.player && window.AdventureDeck) {
+          for (const itemName of drops) {
+            this.piles.player.hand.push(window.AdventureDeck.trophyWhite(itemName));
+            this.s.trophyDrops.push(itemName);
+          }
+        }
+        this.s.trophyRolls.push({ monsterName: label, roll: loot.roll, rollIndex, rollCount, drops: drops.slice() });
+        const diceEvent = [...this.events].reverse().find(evt => evt.type === 'diceRoll');
+        if (diceEvent) { diceEvent.desc = dropSummary; diceEvent.outcome = drops.length ? 'success' : 'fail'; }
+        this.emit('desc', dropSummary);
+        this.emit('trophyDrop', '战利白卡掉落结算', {
+          who: 'player', monsterName: label, roll: loot.roll, drops: drops.slice(), rollIndex, rollCount
+        });
+        if (drops.length) {
+          // Each successful roll legitimately creates new player-owned cards.
+          this._invariantBaseline = null;
+          this._checkInvariants('trophyDrop');
         }
       }
-      const diceEvent = [...this.events].reverse().find(evt => evt.type === 'diceRoll');
-      if (diceEvent) { diceEvent.desc = dropSummary; diceEvent.outcome = drops.length ? 'success' : 'fail'; }
-      // Keep the drop table beneath the die after the result lands.
-      this.emit("desc", dropSummary);
-      this.emit('trophyDrop', '战利白卡掉落结算', {
-        monsterName: label,
-        roll: loot.roll,
-        drops: drops.slice()
-      });
-      if (drops.length) {
-        // 战利白卡是规则允许的新实体，更新不变量基线后继续检查
-        // 牌库隔离和重复牌，避免把合法掉落误报为凭空增加。
-        this._invariantBaseline = null;
-        this._checkInvariants('trophyDrop');
-      }
-      return loot;
+      return lastLoot;
     }
 
     check() {
@@ -900,7 +904,8 @@
         discardTop: null,
         discardTopOwner: null,
         npcResetCount: this.piles.ai.deck.length,
-        trophyDrops: Array.isArray(this.s.trophyDrops) ? this.s.trophyDrops.slice() : []
+        trophyDrops: Array.isArray(this.s.trophyDrops) ? this.s.trophyDrops.slice() : [],
+        trophyRolls: clone(this.s.trophyRolls) || []
       };
     }
 

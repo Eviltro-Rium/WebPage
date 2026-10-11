@@ -56,27 +56,18 @@
       return { kind: 'items', items };
     },
     _beginBossReward(room) {
-      const accessory = this._rollAccessoryDrop();
-      const basic = accessory
-        ? { kind: 'accessory', accessory }
-        : { kind: 'none' };
-      this.s.pendingCombatReward = {
-        stage: 'basic',
-        roomType: window.RoomType.BOSS,
-        basic,
-        beast: null,
-        applied: false
-      };
-      this.s.phase = Phase.COMBAT_SETTLE;
-      this._log('Boss奖励：' + this._roomLootText(basic));
-      this.emit('basicReward', 'Boss奖励', { basic });
-      return true;
+      // Boss loot is already rolled three times in the battle engine and added to the hand.
+      room.stashedLoot = null;
+      room.rewardClaimed = true;
+      this._log('Boss战利品骰已结算3次，不再奖励随机配饰');
+      return this._finishBossRewardSettlement(room);
     },
     _finishBossRewardSettlement(room) {
       this.s.pendingRoomReward = null;
       this.s.pendingCombatReward = {
         stage: 'boss-exit',
         roomType: window.RoomType.BOSS,
+        trophyRolls: clone(this.s.lastTrophyRolls) || [],
         applied: true
       };
       this.s.beastReward = null;
@@ -503,6 +494,7 @@
       // Older battle results could contain the physical table-top card twice.
       // Reuse the adventure-engine migration guard before exposing the map.
       if (typeof this._normalizePlayerPileCount === 'function') this._normalizePlayerPileCount();
+      this.s.lastTrophyRolls = clone(result.trophyRolls) || [];
       this.emit('combatResourcesSaved', '玩家手牌、牌库与弃牌库状态已保存', {
         deck: this.s.playerPile ? this.s.playerPile.deck.length : 0,
         hand: this.s.playerPile ? this.s.playerPile.hand.length : 0,
@@ -765,6 +757,7 @@
       this.s.phase = Phase.MAP;
       if (opts.stage) this.s.stage = opts.stage;
       if (opts.scene) this.s.scene = opts.scene;
+      this.s.usedScenes = Array.from(new Set([...(this.s.usedScenes || []), this.s.scene]));
       if (this.s.pos) {
         const room = map.get(this.s.pos.r, this.s.pos.c);
         if (room) room.visited = true;
@@ -772,13 +765,9 @@
       this._initItemDoorCosts(map);
       this._log('进入新地图：' + (opts.scene || this.s.scene) + ' 第' + (opts.stage || this.s.stage) + '层');
       this.emit('continue', '进入新地图', { stage: this.s.stage, scene: this.s.scene });
-      // 进入下一 stage 时恢复 10 点生命（取代原来 Boss 胜利后的回血）；地图界面据此播放特效和飘字。
+      // Settle on the map, together with deferred accessories.
       if ((this.s.stage || 1) > prevStage && this.s.player) {
-        const before = this.s.player.hp;
-        this.s.player.hp = Math.min(this.s.player.maxHp, this.s.player.hp + 10);
-        const healed = this.s.player.hp - before;
-        this._log('进入第' + this.s.stage + '层：恢复' + healed + '点生命（当前' + this.s.player.hp + '/' + this.s.player.maxHp + '）');
-        this.emit('stageHeal', '进入新层恢复生命', { amount: healed, stage: this.s.stage, hp: this.s.player.hp, maxHp: this.s.player.maxHp });
+        this.s.pendingMapReturnEffects = Object.assign({}, this.s.pendingMapReturnEffects, { stageHeal: 10 });
       }
       return this.s;
     },

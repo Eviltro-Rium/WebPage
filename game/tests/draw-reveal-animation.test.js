@@ -318,3 +318,34 @@ test('exact identity match still consumes the source element', async () => {
 
   assert.equal(doc.getElementById('reveal-cards').children.length, 1);
 });
+test('trophy gains stay hidden until each independent flight lands, including empty rolls', async () => {
+  const {ui, doc} = harness();
+  const first = Object.assign(card('trophy-a', 'WHITE', -1), {trophyWhite:true,trophyName:'GuardTrophy'});
+  const second = Object.assign(card('trophy-b', 'WHITE', -1), {trophyWhite:true,trophyName:'GuardTrophy'});
+  ui.state.playerHand = [card('existing', 'RED', 2), first, second];
+  const events = [
+    {id:21,type:'trophyDrop',who:'player',drops:['GuardTrophy'],rollIndex:1,rollCount:3},
+    {id:22,type:'trophyDrop',who:'player',drops:[],rollIndex:2,rollCount:3},
+    {id:23,type:'trophyDrop',who:'player',drops:['GuardTrophy'],rollIndex:3,rollCount:3}
+  ];
+  ui.state.events = events;
+  ui._renderPlayerHand();
+  const hidden = () => ui.state.playerHand.length - doc.getElementById('player-hand').children.length;
+  assert.equal(hidden(), 2, 'initial snapshot cannot reveal future trophies');
+  const masked = [];
+  ui._playTrophyDropAnimation = async names => {masked.push(hidden());assert.equal(names.length,1);};
+  await ui._playEvents(events, true);
+  assert.deepEqual(masked,[2,1]);
+  assert.equal(hidden(),0,'each obtained card becomes visible after its own flight');
+});
+
+test('Boss D12 animation displays the independent roll index without dropping its loot rule', async () => {
+  const {ui} = harness();
+  const desc = 'drop rule 1-4';
+  let shown;
+  ui._playD12Animation = async (value,options) => {shown={value,options};};
+  await ui._playEvents([{id:24,type:'diceRoll',value:8,desc,who:'player',rollIndex:2,rollCount:3}],true);
+  assert.equal(shown.value,8);
+  assert.ok(shown.options.desc.startsWith(desc));
+  assert.ok(shown.options.desc.includes('2/3'));
+});

@@ -631,7 +631,7 @@
     name: 'LifeCore',
     displayName: '生命核心',
     kind: 'accessory',
-    description: '战斗胜利后额外恢复3点生命（可叠加，最多3个）',
+    description: '战斗胜利返回地图时恢复3点生命（可叠加，最多3个）',
     icon: ICON + 'core_of_life.webp',
     beastTradeCost: ['cao', 'cao', 'cao', 'shui', 'ben'],
     onCombatWinHeal: 3,

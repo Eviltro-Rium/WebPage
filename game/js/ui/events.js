@@ -15,6 +15,12 @@
     };
 
     Object.assign(GameUI.prototype, {
+_handAdditionCount(evt, who) {
+    if (!evt) return 0;
+    if (evt.type === 'draw' && evt.who === who) return Math.max(0, Number(evt.count) || 1);
+    if (evt.type === 'trophyDrop' && who === 'player' && Array.isArray(evt.drops)) return evt.drops.length;
+    return 0;
+},
 _missingAIPlay(previous, current) {
     if (!previous || !current || current.events && current.events.length) return null;
     const owner = current.atkOwner === 'ai2' ? 'ai2' : current.atkOwner === 'ai' ? 'ai' : null;
@@ -42,9 +48,7 @@ _prepareHandAnimation(events) {
     const list = Array.isArray(events) ? events : [];
     const counts = { player: 0, ai: 0, ai2: 0 };
     for (const evt of list) {
-        if (!evt || evt.type !== 'draw') continue;
-        const owner = evt.who === 'ai2' ? 'ai2' : evt.who === 'ai' ? 'ai' : evt.who === 'player' ? 'player' : null;
-        if (owner) counts[owner] += Math.max(0, Number(evt.count) || 1);
+        for (const owner of ['player', 'ai', 'ai2']) counts[owner] += this._handAdditionCount(evt, owner);
     }
     // A state packet can be painted by a remote/session adapter just before
     // its event queue starts. Mask the new trailing cards once more so the
@@ -189,17 +193,21 @@ async _playTrophyDropAnimation(names) {
         const ex = tr.left + tr.width / 2 - 35, ey = tr.top + tr.height / 2 - 50;
         node.style.left = sx + 'px'; node.style.top = sy + 'px';
         document.body.appendChild(node);
-        if (reduce || !node.animate) { setTimeout(() => { node.remove(); resolve(); }, 300); return; }
-        const anim = node.animate([
-            { transform: 'translate(0,0) scale(0.3) rotate(-20deg)', opacity: 0, filter: 'brightness(2.2)' },
-            { transform: 'translate(0,-30px) scale(1.25) rotate(0deg)', opacity: 1, filter: 'brightness(1.5) drop-shadow(0 0 18px #ffe27a)', offset: 0.35 },
-            { transform: 'translate(0,-30px) scale(1.2)', opacity: 1, filter: 'brightness(1.2) drop-shadow(0 0 14px #ffe27a)', offset: 0.55 },
-            { transform: 'translate(' + (ex - sx) + 'px,' + (ey - sy) + 'px) scale(0.75)', opacity: 0.9, filter: 'brightness(1) drop-shadow(0 0 6px #ffe27a)' }
-        ], { duration: 1150, delay: i * 180, easing: 'cubic-bezier(.25,.8,.3,1)', fill: 'forwards' });
-        anim.onfinish = () => { node.remove(); resolve(); };
-        anim.oncancel = () => { node.remove(); resolve(); };
+        const done = () => { node.remove(); resolve(); };
+        if (reduce || !node.animate) { setTimeout(done, 150); return; }
+        try {
+            const anim = node.animate([
+                { transform: 'scale(0.85)', opacity: 0 },
+                { transform: 'translateY(-10px) scale(1)', opacity: 1, offset: 0.28 },
+                { transform: 'translateY(-10px) scale(1)', opacity: 1, offset: 0.48 },
+                { transform: 'translate(' + (ex - sx) + 'px,' + (ey - sy) + 'px) scale(0.75)', opacity: 0.8 }
+            ], { duration: 600, delay: i * 90, easing: 'cubic-bezier(.25,.8,.3,1)', fill: 'forwards' });
+            anim.onfinish = done;
+            anim.oncancel = done;
+        } catch (_) { done(); }
     }));
     await Promise.all(flights);
+    if (reduce) return;
     to.classList.remove('trophy-hand-glow'); void to.offsetWidth; to.classList.add('trophy-hand-glow');
     setTimeout(() => to.classList.remove('trophy-hand-glow'), 800);
 },
@@ -213,9 +221,7 @@ async _playEvents(events, fast = false) {
     const drawRemaining = { player: 0, ai: 0, ai2: 0 };
     this._drawAnimationRemaining = drawRemaining;
     for (const event of orderedEvents) {
-        if (!event || event.type !== 'draw') continue;
-        const owner = event.who === 'ai2' ? 'ai2' : event.who === 'ai' ? 'ai' : event.who === 'player' ? 'player' : null;
-        if (owner) drawRemaining[owner] += Math.max(0, Number(event.count) || 1);
+        for (const owner of ['player', 'ai', 'ai2']) drawRemaining[owner] += this._handAdditionCount(event, owner);
     }
     const previousOnlineFast = this._onlineAnimationFast;
     // Online batches that already contain many authoritative events are in a
@@ -355,8 +361,11 @@ async _playEvents(events, fast = false) {
             await wait(1200);
         } else if (evt.type === 'diceRoll' && Number.isFinite(Number(evt.value))) {
             const value = Number(evt.value);
-            const desc = evt.desc || ('12面骰：' + value);
-            this._showZoneDesc('reveal-desc', '12面骰投掷中…');
+            const rollCount = Math.max(0, Number(evt.rollCount) || 0);
+            const rollIndex = Math.max(0, Number(evt.rollIndex) || 0);
+            const rollLabel = rollCount > 1 && rollIndex > 0 ? ' · 第' + rollIndex + '/' + rollCount + '次' : '';
+            const desc = (evt.desc || ('12面骰：' + value)) + rollLabel;
+            this._showZoneDesc('reveal-desc', '12面骰投掷中…' + rollLabel);
             if (typeof this._playD12Animation === 'function') {
                 await this._playD12Animation(value, { desc, who: evt.who, outcome: evt.outcome });
             } else {
@@ -559,7 +568,12 @@ async _playEvents(events, fast = false) {
             this.playFloatingText(evt.desc || '游戏结束', '#ffd700', 'player');
             await wait(1500);
         } else if (evt.type === 'trophyDrop' && Array.isArray(evt.drops) && evt.drops.length) {
-            await this._playTrophyDropAnimation(evt.drops);
+            this._renderPlayerHand({ hideTrailing: drawRemaining.player });
+            try { await this._playTrophyDropAnimation(evt.drops); }
+            finally {
+                drawRemaining.player = Math.max(0, drawRemaining.player - evt.drops.length);
+                this._renderPlayerHand({ hideTrailing: drawRemaining.player });
+            }
         } else if (evt.type === 'dualDice') {
             if (typeof this._playDualDiceAnimation === 'function') {
                 await this._playDualDiceAnimation(evt.roll, evt.target);

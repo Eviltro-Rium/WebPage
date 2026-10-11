@@ -21,9 +21,10 @@
   ];
 
   class AdventureUI {
-    static selectStageMap(stage) {
+    static selectStageMap(stage, usedScenes = []) {
       if (!Number.isInteger(stage) || stage < 1 || stage > 4) throw new Error('冒险层数必须为1–4');
-      const scenes = ['castle', 'forest', 'ocean', 'desert'];
+      const scenes = ['castle', 'forest', 'ocean', 'desert'].filter(scene => !usedScenes.includes(scene));
+      if (!scenes.length) throw new Error('本局没有尚未探索的场景');
       const scene = scenes[Math.floor(random() * scenes.length)];
       const variant = 1 + Math.floor(random() * 3);
       const mapName = 'stage_' + String(stage).padStart(2, '0') + '_' + scene + '_' + variant;
@@ -64,20 +65,21 @@
       // Heals that should be shown on the map: queue them, play once the map renders.
       this._pendingMapHeals = [];
       this.eng.on('stageHeal', (ev) => {
-        const amount = Number(ev && ev.amount) || 0;
-        if (amount > 0) this._pendingMapHeals.push({ amount, label: '进入新层' });
+        const amount = Number(ev && ev.extra && ev.extra.amount) || 0;
+        this._pendingMapHeals.push({ amount, label: '进入新层' });
       });
-      this.eng.on('buy', (ev) => {
-        if (!ev || ev.kind !== 'trophyWhite' || !ev.itemName) return;
-        const slot = this.container.querySelector('.adv-shop-slot-trophy');
-        const rect = slot ? slot.getBoundingClientRect() : null;
-        // The shop re-renders right after the buy; fly once the new DOM is in place.
-        schedule(() => this._playTrophyForgeAnimation(ev.itemName, rect), 60);
+      this.eng.on('itemAcquired', (ev) => {
+        const effect = ev && ev.extra;
+        if (!effect || effect.kind !== 'trophyWhite' || !effect.itemName) return;
+        const origin = this.container.querySelector('.adv-blacksmith-trophy-stall');
+        const rect = origin ? origin.getBoundingClientRect() : null;
+        schedule(() => this._playTrophyForgeAnimation(effect.itemName, rect), 60);
       });
       this.eng.on('accessory', (ev) => {
-        if (!ev || ev.itemName !== 'LifeCore') return;
-        const amount = Number(ev.amount) || 0;
-        if (amount > 0) this._pendingMapHeals.push({ amount, label: '生命核心', itemName: 'LifeCore' });
+        const effect = ev && ev.extra;
+        if (!effect || effect.itemName !== 'LifeCore') return;
+        const amount = Number(effect.amount) || 0;
+        this._pendingMapHeals.push({ amount, label: '生命核心', itemName: 'LifeCore' });
       });
     }
 
@@ -106,11 +108,10 @@
       };
       if (reduce || !node.animate) { schedule(done, 250); return; }
       const anim = node.animate([
-        { transform: 'scale(1)', opacity: 1, filter: 'brightness(1)' },
-        { transform: 'translateY(-14px) scale(1.25) rotate(-6deg)', filter: 'brightness(2) drop-shadow(0 0 16px #ffb84d)', offset: 0.3 },
-        { transform: 'translateY(-14px) scale(1.2) rotate(6deg)', filter: 'brightness(1.5) drop-shadow(0 0 12px #ffb84d)', offset: 0.5 },
-        { transform: 'translate(' + (ex - sx) + 'px,' + (ey - sy) + 'px) scale(0.35)', opacity: 0.6, filter: 'brightness(1)' }
-      ], { duration: 1000, easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'forwards' });
+        { transform: 'scale(.85)', opacity: 0, filter: 'brightness(1.1)' },
+        { transform: 'translateY(-8px) scale(1)', opacity: 1, offset: .35 },
+        { transform: 'translate(' + (ex - sx) + 'px,' + (ey - sy) + 'px) scale(.35)', opacity: .2 }
+      ], { duration: 550, easing: 'ease-out', fill: 'forwards' });
       anim.onfinish = done; anim.oncancel = done;
     }
 
@@ -118,11 +119,10 @@
       const heals = this._pendingMapHeals || [];
       if (!heals.length) return;
       this._pendingMapHeals = [];
-      const bar = this.container.querySelector('.adv-hp-bar');
-      if (!bar) return;
       heals.forEach((heal, i) => {
         schedule(() => {
-          if (!bar.isConnected) return;
+          const bar = this.container.querySelector('.adv-hp-bar');
+          if (!bar || !bar.isConnected || this.eng.s.phase !== window.AdventurePhase.MAP) return;
           bar.classList.remove('adv-hp-heal-flash');
           void bar.offsetWidth;
           bar.classList.add('adv-hp-heal-flash');
@@ -136,12 +136,13 @@
               schedule(() => slot.classList.remove('adv-accessory-trigger'), 1000);
             }
           }
+          if (heal.amount <= 0) return;
           const float = document.createElement('div');
           float.className = 'adv-map-heal-float';
           float.textContent = heal.label + ' +' + heal.amount + '❤️';
           bar.appendChild(float);
           schedule(() => float.remove(), 1500);
-        }, i * 650);
+        }, i * 1600);
       });
     }
 
@@ -328,6 +329,10 @@
     render() {
       this._clearMapClickTimer();
       this._stopTipsRotation();
+      if (this.eng.s && this.eng.s.phase === window.AdventurePhase.MAP && !this._test) {
+        const effect = this.eng.onCombatReturnToMap();
+        if (effect) this._pendingMapReturnEffect = effect;
+      }
       const snap = this.eng.snapshot();
       if (!snap) return;
 
@@ -930,12 +935,6 @@
         else if (state && state.player) this.eng.s.player.hp = Math.max(0, state.player.hp);
         this.eng.onCombatEnd(result);
       }
-      let returnEffect = null;
-      if (result === 'win' && (!meta || !meta.test) && this.eng.s.phase === window.AdventurePhase.MAP &&
-          typeof this.eng.onCombatReturnToMap === 'function') {
-        returnEffect = this.eng.onCombatReturnToMap();
-      }
-      if (returnEffect) this._pendingMapReturnEffect = returnEffect;
       this.render();
     }
 
@@ -1185,7 +1184,7 @@
           this.render();
           return;
         }
-        const { stage, scene, mapName, mapUrl } = AdventureUI.selectStageMap((this.eng.s.stage || 1) + 1);
+        const { stage, scene, mapName, mapUrl } = AdventureUI.selectStageMap((this.eng.s.stage || 1) + 1, this.eng.s.usedScenes || [this.eng.s.scene]);
         let map;
         if (window.AdventureMapData && window.AdventureMapData[mapName]) {
           map = window.AdventureMap.fromCsvText(window.AdventureMapData[mapName]);
@@ -1196,10 +1195,6 @@
         this.eng.continueTo(map, { stage: stage, scene: scene, mapName });
         if (window.AdventureBattleController && window.AdventureBattleController.clearCombatSession) {
           window.AdventureBattleController.clearCombatSession();
-        }
-        if (typeof this.eng.onCombatReturnToMap === 'function') {
-          const returnEffect = this.eng.onCombatReturnToMap();
-          if (returnEffect) this._pendingMapReturnEffect = returnEffect;
         }
         this.render();
       } catch (e) {

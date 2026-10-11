@@ -287,7 +287,7 @@
         const nextStage = (eng.s.stage || 1) + 1;
         if (nextStage <= 4 && window.AdventureUI && typeof window.AdventureUI.selectStageMap === 'function' && window.AdventureMap) {
           try {
-            const chosen = window.AdventureUI.selectStageMap(nextStage);
+            const chosen = window.AdventureUI.selectStageMap(nextStage, eng.s.usedScenes || [eng.s.scene]);
             const map = (window.AdventureMapData && window.AdventureMapData[chosen.mapName])
               ? window.AdventureMap.fromCsvText(window.AdventureMapData[chosen.mapName])
               : await window.AdventureMap.fromCsvUrl(chosen.mapUrl);
@@ -483,7 +483,7 @@
           '</div>';
       } else if (snap.phase === Phase.COMBAT_SETTLE && pending && pending.stage === 'boss-exit') {
         html += '<div class="adv-settle-section-title">Boss已战胜</div>';
-        html += '<div class="adv-settle-row">选择返回地图，或进入下一层。</div>';
+        html += '<div class="adv-settle-row">已按Boss掉落规则独立投掷3次战利品骰，所得白卡已加入手牌。选择返回地图，或进入下一层。</div>';
         html += '</div>';
         html += '<div class="adv-settle-actions">' +
           '<button id="adv-settle-map">返回地图</button>' +

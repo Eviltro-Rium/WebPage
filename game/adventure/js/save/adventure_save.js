@@ -100,6 +100,8 @@
       explorationVersion: 1,
       stage: s.stage || 1,
       scene: s.scene || 'castle',
+      usedScenes: (s.usedScenes || [s.scene || 'castle']).slice(),
+      pendingMapReturnEffects: CLONE(s.pendingMapReturnEffects) || null,
       pos: CLONE(s.pos),
       phase: s.phase,
       turn: s.turn || 0,

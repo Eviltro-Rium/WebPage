@@ -313,6 +313,7 @@
     }
     if (Array.isArray(eng.s.trophyDrops)) eng.s.trophyDrops.push(trophyName);
     else eng.s.trophyDrops = [trophyName];
+    eng.emit('trophyDrop', '获得战利白卡', { who: 'player', drops: [trophyName], source: 'furnace' });
     eng._invariantBaseline = null;
     if (typeof eng._checkInvariants === 'function') eng._checkInvariants('furnace');
     const trophyDef = window.AdventureRegistry && window.AdventureRegistry.getItem(trophyName);

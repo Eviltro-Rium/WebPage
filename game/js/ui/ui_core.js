@@ -592,15 +592,18 @@ class GameUI {
     _pendingDrawCount(who) {
         const events = (this.state && this.state.events) || [];
         return events
-            .filter(evt => evt && evt.type === 'draw' && evt.who === who)
-            .reduce((sum, evt) => sum + (Number(evt.count) || 1), 0);
+            .filter(evt => !this._consumedEventIds || !this._consumedEventIds.has(`id:${evt && evt.id}`))
+            .reduce((sum, evt) => sum + this._handAdditionCount(evt, who), 0);
     }
 
     _hideTrailingCount(options, who) {
         if (options && Object.prototype.hasOwnProperty.call(options, 'hideTrailing')) {
             return Math.max(0, Number(options.hideTrailing) || 0);
         }
-        return 0;
+        // Final snapshots can be painted before their event playback starts.
+        // Keep not-yet-flown additions hidden until the associated event lands.
+        if (this._drawAnimationRemaining) return Math.max(0, Number(this._drawAnimationRemaining[who]) || 0);
+        return this._pendingDrawCount(who);
     }
 
     _hidePendingDraws() {

@@ -434,3 +434,15 @@ node game/scripts/check.js --all
 ### 攻击修正 Buff
 
 `combat/attack_buffs.js` 统一负责熔脉/暴击可用性、单次攻击互斥、状态消耗与 NPC 优先级。UI 仅提交 `resolveAttackBuffChoice({buff})`（magmaVein / crit / null），不能自行改伤害。先选择 Buff，选择消耗后跳过攻击修正道具；不使用时才进入道具阶段。`pendingAttack.attackModifier` 随快照保存，阻止重复消耗和客户端绕过互斥。熔脉只乘技能基础伤害（含技能 AoE），不乘正义之锤等额外固定修正、独立 Buff 伤害或反击；实时伤害公式重新计算后仍按 ×1.5 向上取整。新技能当次获得的熔脉不立即消耗，留给后续数字牌进攻。
+
+### 冒险地图返回结算与场景历史
+
+- s.pendingMapReturnEffects 保存生命核心、智慧项链和新层回血的待结算标记；onCombatReturnToMap() 仅在 MAP 阶段消费一次。UI render() 在投影与存档前结算，奖励/溢出弹窗不消费，恢复存档后沿用同一入口。
+- 地图回血事件携带 extra.amount/hpBefore/hpAfter/timing，UI 从 extra 读取并依次播放饰品闪烁、血条发光和回复飘字；满血仍闪烁但不显示 +0。
+- s.usedScenes 记录本局场景历史；地图入口和战斗结算入口均传给 selectStageMap(stage, usedScenes)。只有成功载入下一层才追加历史，四层从四场景无放回抽取，Stage 4 胜利终止冒险。
+
+### Boss 战利品骰
+
+- Boss 出局统一由 AdventureBattleEngine._resolveAdventureTrophyDrop() 按其 AdventureLoot 掉落表独立投掷 3 次 D12；普通怪物仍投 1 次。每次中签即时创建玩家战利白卡并排入 trophyDrop 动画，落空不补偿，不增加第四次普通掉落。
+- 每颗骰子仍通过 rollD12() 的遥控骰子边界；trophyDropHandled、trophyRolls 与录像随机带支持中途存档恢复、避免重复发牌。Stage 4 同样先播放三次骰子和获取动画，再展示通关。
+- 冒险奖励层不再滚动 Boss 饰品。Boss 结算直接进入 boss-exit，白卡已入手，无需领取/暂存。战斗 trophyDrop 和地图 itemAcquired(kind=trophyWhite) 统一负责各自的小动画，不二次创建实体牌。

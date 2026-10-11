@@ -330,7 +330,7 @@ function mapUI(ctx, eng) {
   const ui=Object.create(ctx.AdventureUI.prototype);
   ui.eng=eng;ui._test=null;ui.container={innerHTML:'',replaceChildren(){}};
   ui._patchMapPosition=()=>ui._persistAdventure(eng.snapshot());ui._toast=()=>{};
-  ui.render=()=>ui._persistAdventure(eng.snapshot());
+  ui.render=()=>{ if(eng.s.phase===ctx.AdventurePhase.MAP)eng.onCombatReturnToMap();ui._persistAdventure(eng.snapshot()); };
   return ui;
 }
 function mapRun(ctx, grid) {
@@ -415,7 +415,7 @@ test('failed next-floor loading and failed restore keep the previous checkpoint'
 });
 
 
-test('each stage independently selects a supported scene and map variant', () => {
+test('stage selection supports all scenes and map variants before exclusions', () => {
  const ctx=createContext();loadSources(ctx);mapUI(ctx,mapRun(ctx,[[0,2]]));
  for(const stage of [1,2,3,4])for(const [roll,scene] of [[0,'castle'],[0.4,'forest'],[0.6,'ocean'],[0.8,'desert']]) {
   ctx.FurryGame.CombatRuntime.setRandomSource(()=>roll);
@@ -465,4 +465,69 @@ test('stage 4 non-Boss victories still use normal rewards', () => {
  eng.onCombatEnd('win');
  assert.equal(eng.s.phase,ctx.AdventurePhase.COMBAT_SETTLE);
  assert.equal(eng.events.filter(e=>e.type==='adventureVictory').length,0);
+});
+
+
+test('map-return accessories and stage healing survive saves and resolve only once', () => {
+ const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]);
+ eng.s.accessories=['LifeCore','LifeCore','WisdomNecklace'];
+ eng.move(0,1);eng.s.player.hp=20;eng.s.combat={enemy:'CastleChameleon',kind:'boss'};
+ const handBefore=eng.s.playerPile.hand.length;
+ eng.onCombatEnd('win');
+ assert.equal(eng.s.player.hp,20);
+ eng.onCombatReturnToMap();
+ assert.equal(eng.s.player.hp,20,'reward phase cannot heal');
+ ctx.AdventureSave.save(eng);
+ const save=ctx.AdventureSave.load(),restored=new ctx.AdventureEngine();
+ restored.restoreFromSave(save,ctx.AdventureMap.fromGrid(save.mapLayout));
+ restored.continueTo(new ctx.AdventureMap([[0,2]]),{stage:2,scene:'forest'});
+ assert.equal(restored.s.player.hp,20,'new map effects are pending');
+ const checkpoint=ctx.AdventureSave.serialize(restored),resumed=new ctx.AdventureEngine();
+ resumed.restoreFromSave(checkpoint,ctx.AdventureMap.fromGrid(checkpoint.mapLayout));
+ resumed.onCombatReturnToMap();
+ assert.equal(resumed.s.player.hp,36,'two LifeCores + stage heal');
+ assert.equal(resumed.s.playerPile.hand.length,handBefore+2);
+ const events=resumed.events.filter(e=>e.type==='stageHeal'||e.type==='accessory');
+ assert.equal(events.length,3);
+ assert.equal(events[0].extra.amount,6);
+ assert.equal(events[1].extra.amount,10);
+ assert.equal(events[2].extra.drawn,2);
+ resumed.onCombatReturnToMap();
+ assert.equal(resumed.s.player.hp,36);
+ const after=ctx.AdventureSave.serialize(resumed),again=new ctx.AdventureEngine();
+ again.restoreFromSave(after,ctx.AdventureMap.fromGrid(after.mapLayout));again.onCombatReturnToMap();
+ assert.equal(again.s.player.hp,36);assert.equal(again.s.playerPile.hand.length,handBefore+2);
+ assert.deepEqual(Array.from(again.s.usedScenes),['castle','forest']);
+});
+
+test('all four stages select different scenes even after refreshing between every stage', () => {
+ const ctx=createContext();loadSources(ctx);mapUI(ctx,mapRun(ctx,[[0,2]]));
+ for(const roll of [0,0.25,0.5,0.99]){
+  ctx.FurryGame.CombatRuntime.setRandomSource(()=>roll);
+  const first=ctx.AdventureUI.selectStageMap(1);
+  let eng=new ctx.AdventureEngine();eng.start(new ctx.AdventureMap([[0,2]]),'Ryan',{scene:first.scene});
+  const seen=[first.scene];
+  for(let stage=2;stage<=4;stage++){
+   const chosen=ctx.AdventureUI.selectStageMap(stage,eng.s.usedScenes);
+   assert.ok(!seen.includes(chosen.scene));seen.push(chosen.scene);
+   eng.continueTo(new ctx.AdventureMap([[0,2]]),chosen);eng.onCombatReturnToMap();
+   const saved=ctx.AdventureSave.serialize(eng);
+   eng=new ctx.AdventureEngine();eng.restoreFromSave(saved,ctx.AdventureMap.fromGrid(saved.mapLayout));
+  }
+  assert.equal(new Set(seen).size,4);
+  assert.equal(eng.s.usedScenes.length,4);
+ }
+});
+
+test('map healing is capped, and visiting the old Boss map never grants the stage bonus', () => {
+ const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]);
+ eng.s.accessories=['LifeCore'];eng.s.player.hp=eng.s.player.maxHp-2;
+ eng.move(0,1);eng.s.combat={enemy:'CastleChameleon',kind:'boss'};eng.onCombatEnd('win');
+ eng.returnToMap();eng.onCombatReturnToMap();
+ assert.equal(eng.s.player.hp,eng.s.player.maxHp);
+ assert.equal(eng.events.filter(e=>e.type==='stageHeal').length,0);
+ assert.equal(eng.events.find(e=>e.type==='accessory').extra.amount,2);
+ eng.continueTo(new ctx.AdventureMap([[0,2]]),{stage:2,scene:'forest'});eng.onCombatReturnToMap();
+ assert.equal(eng.events.find(e=>e.type==='stageHeal').extra.amount,0);
+ assert.equal(eng.events.filter(e=>e.type==='accessory').length,1,'LifeCore does not repeat on stage change');
 });

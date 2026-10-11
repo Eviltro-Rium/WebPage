@@ -46,35 +46,24 @@
           this._log('恢复' + healAmount + '点生命（当前' + this.s.player.hp + '/' + this.s.player.maxHp + '）');
         }
 
-        if (this.hasAccessory('LifeCore')) {
-          const def = window.AdventureRegistry.getItem('LifeCore');
-          const perCore = (def && def.onCombatWinHeal) || 3;
-          const count = this.accessoryCount('LifeCore');
-          const before = this.s.player.hp;
-          this.s.player.hp = Math.min(this.s.player.maxHp, this.s.player.hp + perCore * count);
-          const healed = this.s.player.hp - before;
-          if (healed > 0) {
-            this._log('生命核心：额外恢复' + healed + '点生命');
-            this.emit('accessory', '生命核心回复', { itemName: 'LifeCore', amount: healed });
-          }
-        }
-
         if (room) {
           room.cleared = true;
           room.visited = true;
-          // Wisdom Necklace is intentionally deferred until the settlement
-          // flow has actually returned to the map.  Keeping the pending flag
-          // here means reward/overflow dialogs cannot consume the draw early.
-          this._wisdomNecklacePending = this.hasAccessory('WisdomNecklace');
+          // Accessories wait for the map; this serialized marker survives
+          // reward/overflow dialogs and page refreshes.
+          this.s.pendingMapReturnEffects = {
+            lifeCore: this.hasAccessory('LifeCore'),
+            wisdomNecklace: this.hasAccessory('WisdomNecklace')
+          };
           this.emit('combatEnd', '战斗胜利', { result: 'win' });
           if (!isBoss || !this.completeAdventure()) this._prepareCombatSettlement(room);
         } else {
-          this._wisdomNecklacePending = false;
+          this.s.pendingMapReturnEffects = null;
           this.emit('combatEnd', '战斗胜利', { result: 'win' });
           this.s.phase = Phase.MAP || 'ADVENTURE_MAP';
         }
       } else {
-        this._wisdomNecklacePending = false;
+        this.s.pendingMapReturnEffects = null;
         this._log('战斗失败');
         this.emit('combatEnd', '战斗失败', { result: 'lose' });
         this.s.pendingCombatReward = null;
@@ -90,7 +79,7 @@
       const room = this.s && this.currentRoom();
       if (!room || room.type !== window.RoomType.BOSS || !room.cleared || this.s.stage < 4) return false;
       if (this.s.phase === Phase.CLEAR) return true;
-      this._wisdomNecklacePending = false;
+      this.s.pendingMapReturnEffects = null;
       this.s.activeCombat = null;
       this.s.combat = null;
       this.s.pendingCombatReward = null;
@@ -112,19 +101,40 @@
      * player can claim/defer rewards without silently drawing cards early.
      */
     onCombatReturnToMap() {
-      if (!this._wisdomNecklacePending) return null;
-      this._wisdomNecklacePending = false;
-      if (!this.hasAccessory('WisdomNecklace') || !this.s.playerPile) return null;
-
+      if (!this.s || this.s.phase !== Phase.MAP) return null;
+      const pending = this.s.pendingMapReturnEffects;
+      if (!pending) return null;
+      // Consume before emitting events; a second render or restored save cannot repeat it.
+      this.s.pendingMapReturnEffects = null;
+      if (pending.lifeCore && this.hasAccessory('LifeCore')) {
+        const def = window.AdventureRegistry.getItem('LifeCore');
+        const amount = ((def && def.onCombatWinHeal) || 3) * this.accessoryCount('LifeCore');
+        const before = this.s.player.hp;
+        this.s.player.hp = Math.min(this.s.player.maxHp, before + amount);
+        const healed = this.s.player.hp - before;
+        this._log('生命核心：返回地图恢复' + healed + '点生命');
+        this.emit('accessory', '生命核心回复', {
+          itemName: 'LifeCore', amount: healed, target: 'player', timing: 'returnToMap',
+          hpBefore: before, hpAfter: this.s.player.hp
+        });
+      }
+      if (pending.stageHeal > 0) {
+        const before = this.s.player.hp;
+        this.s.player.hp = Math.min(this.s.player.maxHp, before + pending.stageHeal);
+        const healed = this.s.player.hp - before;
+        this._log('进入第' + this.s.stage + '层：恢复' + healed + '点生命');
+        this.emit('stageHeal', '进入新层恢复生命', {
+          amount: healed, stage: this.s.stage, hpBefore: before, hpAfter: this.s.player.hp,
+          target: 'player', timing: 'returnToMap'
+        });
+      }
+      if (!pending.wisdomNecklace || !this.hasAccessory('WisdomNecklace') || !this.s.playerPile) return null;
       const def = window.AdventureRegistry.getItem('WisdomNecklace');
       const count = (def && def.onCombatWinDraw) || 2;
       const drawn = this.s.playerPile.draw(count);
       this._log('智慧项链：返回地图时抽取' + drawn.length + '张牌');
       this.emit('accessory', '智慧项链触发：返回地图时抽取' + drawn.length + '张牌', {
-        itemName: 'WisdomNecklace',
-        target: 'player',
-        drawn: drawn.length,
-        timing: 'returnToMap'
+        itemName: 'WisdomNecklace', target: 'player', drawn: drawn.length, timing: 'returnToMap'
       });
       return { itemName: 'WisdomNecklace', drawn: drawn.length };
     }

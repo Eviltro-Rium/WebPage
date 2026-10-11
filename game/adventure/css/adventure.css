@@ -1067,7 +1067,8 @@
 .adv-trophy-pack-thumb { position: relative; display: inline-block; flex: 0 0 auto; }
 .adv-trophy-pack-count { position: absolute; right: -6px; bottom: -4px; min-width: 20px; padding: 1px 4px; border-radius: 9px; background: #d4a72c; color: #1f1608; font-size: .68rem; font-weight: 800; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
 
-.adv-hp-bar { position: relative; }
+.adv-hp-bar { position: relative; overflow: visible; }
+.adv-hp-fill { border-radius: inherit; }
 .adv-hp-heal-flash { animation: advHpHealFlash .9s ease-out; }
 @keyframes advHpHealFlash { 0% { box-shadow: 0 0 0 0 rgba(74,222,128,.9); filter: brightness(1.6); } 100% { box-shadow: 0 0 0 10px rgba(74,222,128,0); filter: brightness(1); } }
 .adv-map-heal-float { position: absolute; left: 50%; top: -4px; transform: translateX(-50%); white-space: nowrap; pointer-events: none; z-index: 30; color: #4ade80; font-weight: 800; font-size: .9rem; text-shadow: 0 1px 3px rgba(0,0,0,.9); animation: advMapHealFloat 1.5s ease-out forwards; }

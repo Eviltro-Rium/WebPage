@@ -88,19 +88,28 @@ test('boss victory no longer heals; entering the next stage heals 10 HP', () => 
   eng.s.phase = AdventurePhase.MAP;
   const map = eng.s.map;
   const before = eng.events ? eng.events.length : 0;
-  eng.continueTo(map, { stage: (eng.s.stage || 1) + 1 });
+  eng.continueTo(map, { stage: (eng.s.stage || 1) + 1, scene: 'forest' });
+  assert.equal(eng.s.player.hp, 20, 'wait for map settlement');
+  eng.onCombatReturnToMap();
   assert.equal(eng.s.player.hp, 30);
+  assert.equal(eng.events.filter(e => e.type === 'stageHeal').length, 1);
   eng.continueTo(map, { stage: eng.s.stage });
+  eng.onCombatReturnToMap();
   assert.equal(eng.s.player.hp, 30, 'same stage reload does not heal');
 });
 
-test('LifeCore grants extra 3 HP after normal, challenge, and boss wins', () => {
+test('LifeCore defers extra 3 HP until map return after normal, challenge, and boss wins', () => {
   const normalEng = startEngine();
   normalEng.addItem('LifeCore');
   enterNormalCombat(normalEng);
   normalEng.s.player.hp = 10;
   normalEng.onCombatEnd('win');
+  assert.equal(normalEng.s.player.hp, 13, 'only base heal during settlement');
+  normalEng.onCombatReturnToMap();
+  assert.equal(normalEng.s.player.hp, 13, 'settlement phase cannot consume LifeCore');
+  normalEng.returnToMap(); normalEng.onCombatReturnToMap();
   assert.equal(normalEng.s.player.hp, 16);
+  normalEng.onCombatReturnToMap(); assert.equal(normalEng.s.player.hp, 16);
 
   const challengeEng = startEngine([[0, 6]]);
   challengeEng.addItem('LifeCore');
@@ -109,6 +118,8 @@ test('LifeCore grants extra 3 HP after normal, challenge, and boss wins', () => 
   challengeEng.s.combat = { enemy: { name: 'CastleWolf' } };
   challengeEng.s.player.hp = 20;
   challengeEng.onCombatEnd('win');
+  assert.equal(challengeEng.s.player.hp, 20);
+  challengeEng.returnToMap(); challengeEng.onCombatReturnToMap();
   assert.equal(challengeEng.s.player.hp, 23, 'challenge wins skip the base heal; LifeCore still adds 3');
 
   const bossEng = startEngine([[0, 2]]);
@@ -116,6 +127,8 @@ test('LifeCore grants extra 3 HP after normal, challenge, and boss wins', () => 
   enterBossCombat(bossEng);
   bossEng.s.player.hp = 20;
   bossEng.onCombatEnd('win');
+  assert.equal(bossEng.s.player.hp, 20);
+  bossEng.returnToMap(); bossEng.onCombatReturnToMap();
   assert.equal(bossEng.s.player.hp, 23, 'boss wins only get LifeCore; the 10 HP moves to the next stage');
 });
 
@@ -526,6 +539,7 @@ test('wisdom necklace draws 2 when returning to map and accessories have beast t
   eng.s.combat = { enemy: { name: 'x' }, kind: 'normal' };
   eng.onCombatEnd('win');
   assert.equal(pile.hand.length, before, 'the draw is deferred while the settlement is open');
+  eng.returnToMap();
   const effect = eng.onCombatReturnToMap();
   assert.equal(pile.hand.length, before + 2);
   assert.equal(effect && effect.itemName, 'WisdomNecklace');
@@ -873,62 +887,31 @@ test('challenge room bonus reward uses separate gold and item weights', () => {
   }
 });
 
-test('boss victory offers accessory reward and boss-exit stage after defer', () => {
-  const eng = startEngine([[0, 2]]);
-  enterBossCombat(eng);
-  const origRandom = Math.random;
-  Math.random = () => 0;
-  try {
-    eng.onCombatEnd('win');
-    assert.equal(eng.s.phase, AdventurePhase.COMBAT_SETTLE);
-    assert.equal(eng.s.pendingCombatReward.stage, 'basic');
-    assert.equal(eng.s.pendingCombatReward.roomType, 'boss');
-    assert.equal(eng.s.pendingCombatReward.basic.kind, 'accessory');
-    assert.ok(eng.s.pendingCombatReward.basic.accessory);
-    assert.equal(eng.deferCombatReward(), true);
-    assert.equal(eng.s.pendingCombatReward.stage, 'boss-exit');
-    assert.ok(eng.currentRoom().stashedLoot);
-    assert.equal(eng.s.phase, AdventurePhase.COMBAT_SETTLE);
-  } finally {
-    Math.random = origRandom;
-  }
+test('boss victory enters boss-exit without another reward roll or random accessory', () => {
+  const eng = startEngine([[0, 2]]); enterBossCombat(eng);
+  eng._rollAccessoryDrop = () => { throw Error('Boss must not roll an accessory'); };
+  eng.onCombatEnd('win');
+  assert.equal(eng.s.pendingCombatReward.stage, 'boss-exit');
+  assert.equal(eng.s.pendingCombatReward.roomType, 'boss');
+  assert.equal(eng.s.pendingCombatReward.basic, undefined);
+  assert.equal(eng.s.accessories.length, 0);
+  assert.equal(eng.currentRoom().stashedLoot, null);
+  assert.equal(eng.claimCombatReward(), false, 'dice drops are already in the hand');
+  assert.equal(eng.deferCombatReward(), false);
 });
 
-test('boss accessory claim moves to boss-exit without beast settlement', () => {
-  const eng = startEngine([[0, 2]]);
-  enterBossCombat(eng);
-  const origRandom = Math.random;
-  Math.random = () => 0;
-  try {
-    eng.onCombatEnd('win');
-    const name = eng.s.pendingCombatReward.basic.accessory;
-    assert.equal(eng.claimCombatReward(), true);
-    assert.ok(eng.s.accessories.includes(name));
-    assert.equal(eng.s.pendingCombatReward.stage, 'boss-exit');
-    assert.equal(eng.s.phase, AdventurePhase.COMBAT_SETTLE);
-    eng.enterNextStage();
-    assert.equal(eng.s.phase, AdventurePhase.CLEAR);
-  } finally {
-    Math.random = origRandom;
-  }
+test('boss-exit retains battle dice results for snapshots without another beast settlement', () => {
+  const eng = startEngine([[0, 2]]); enterBossCombat(eng);
+  eng.s.lastTrophyRolls = [
+    { monsterName: 'CastleChameleon', roll: 2, drops: ['PoisonTrophy'] },
+    { monsterName: 'CastleChameleon', roll: 8, drops: [] },
+    { monsterName: 'CastleChameleon', roll: 6, drops: ['GuardTrophy'] }
+  ];
+  eng.onCombatEnd('win');
+  assert.equal(eng.snapshot().pendingCombatReward.trophyRolls.length, 3);
+  assert.equal(eng.s.beastReward, null);
+  eng.enterNextStage(); assert.equal(eng.s.phase, AdventurePhase.CLEAR);
 });
-
-test('boss reward snapshot preserves accessory name for settlement UI', () => {
-  const eng = startEngine([[0, 2]]);
-  enterBossCombat(eng);
-  const origRandom = Math.random;
-  Math.random = () => 0;
-  try {
-    eng.onCombatEnd('win');
-    const snap = eng.snapshot();
-    assert.equal(snap.pendingCombatReward.basic.kind, 'accessory');
-    assert.ok(snap.pendingCombatReward.basic.accessory);
-    assert.equal(snap.pendingCombatReward.basic.accessory, eng.s.pendingCombatReward.basic.accessory);
-  } finally {
-    Math.random = origRandom;
-  }
-});
-
 test('returnToMap exits boss-exit settlement to MAP phase', () => {
   const eng = startEngine([[0, 2]]);
   enterBossCombat(eng);
