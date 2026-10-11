@@ -609,10 +609,20 @@
 
     gameUI._showGameOver = function () {
       if (completing || !battleEngine) return;
+      // A refreshed GAME_OVER snapshot may still contain unplayed dice/loot events.
+      if (this._isConsumingEvents || battleEngine.s.pendingDiceControl || battleEngine.events.length) return;
       completing = true;
       const finalState = this.state;
       const playerWon = !!(finalState.player && finalState.player.alive);
       const persistentState = battleEngine.finishAdventureBattle();
+      // Old sessions can generate their missing loot during the finish fallback.
+      // Present that queue before saving resources or opening the settlement.
+      if (battleEngine.events.length) {
+        completing = false;
+        this.state = battleEngine.state();
+        saveCombatSession(battleEngine);
+        return;
+      }
       const advEng = battleEngine._adventureEngine;
       if (this._pollInterval) {
         clearInterval(this._pollInterval);

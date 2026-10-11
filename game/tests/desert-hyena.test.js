@@ -64,7 +64,7 @@ test('DesertHyena base stats, boss pool, icon, whiteZeros', () => {
   assert.ok(m);
   assert.equal(m.kind, '嘲风鬣狗');
   assert.equal(m.hp, 40);
-  assert.equal(m.minStage, 2);
+  assert.equal(m.minStage, 1);
   assert.equal(m.whiteZeros, 2);
   assert.equal(m.handLimit, 3);
   assert.equal(m.icon, '../icons/npc_icons/desert_hyena.webp');

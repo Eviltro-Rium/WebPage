@@ -1635,3 +1635,31 @@ test('challenge room second kill gives no passive +3 heal', () => {
   proto._on1v2OpponentEliminated.call(engine, 'ai2');
   assert.equal(engine.s.player.hp, 53);
 });
+test('a won Boss drop is distributed to the hand, collection and restored map save exactly once', t => {
+  const oldLoot=context.AdventureLoot,oldSave=context.AdventureSave;
+  for (const source of ['adventure/js/engine/loot.js','adventure/js/save/adventure_save.js']) {
+    vm.runInContext(fs.readFileSync(path.join(gameRoot,source),'utf8'),context,{filename:source});
+  }
+  const runtime=context.FurryGame.CombatRuntime;
+  t.after(()=>{context.AdventureLoot=oldLoot;context.AdventureSave=oldSave;runtime.resetRandomSource();});
+  const map=new context.AdventureMap([[0,2]]),adv=new AdventureEngine();
+  adv.start(map,'Ryan',{scene:'desert',stage:1});adv.move(0,1);
+  const baseTotal=adv.s.playerPile.deck.length+adv.s.playerPile.hand.length+adv.s.playerPile.discard.length;
+  adv.s.combat={enemy:'ForestPanda',kind:'boss'};
+  const engine=new AdventureBattleEngine();engine._adventureEngine=adv;
+  engine.startAdventure({player:'Ryan',opponent:'ForestPanda',scene:'desert',stage:1,
+    playerState:adv.s.player,playerPile:adv.s.playerPile});
+  engine.later=()=>{};runtime.setRandomSource(()=>0);
+  const hand=engine.h.player.length;engine.s.ai.hp=0;engine.s.ai.alive=false;engine.check();
+  assert.equal(engine.h.player.length,hand+3);
+  const result=engine.finishAdventureBattle();
+  adv.applyBattleResult(result);adv.applyBattleResult(result);
+  assert.equal(adv.s.trophyWhiteCards.filter(name=>name==='LushTrophy').length,3);
+  assert.equal(adv.s.playerPile.hand.filter(c=>c.trophyName==='LushTrophy').length,3);
+  assert.equal(adv.s.playerPile.deck.length+adv.s.playerPile.hand.length+adv.s.playerPile.discard.length,baseTotal+3);
+  adv.onCombatEnd('win');
+  const save=context.AdventureSave.serialize(adv),restored=new AdventureEngine();
+  restored.restoreFromSave(save,context.AdventureMap.fromGrid(save.mapLayout));
+  assert.equal(restored.s.playerPile.hand.filter(c=>c.trophyName==='LushTrophy').length,3);
+  assert.equal(restored.s.trophyWhiteCards.filter(name=>name==='LushTrophy').length,3);
+});

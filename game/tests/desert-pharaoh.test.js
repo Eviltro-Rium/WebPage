@@ -69,7 +69,7 @@ test('Pharaoh only appears from Stage 2 in desert boss picks', () => {
   vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
   const eng = new context.AdventureEngine();
   eng.s = { scene: 'desert', stage: 1 };
-  for (let i = 0; i < 50; i++) assert.notEqual(eng._pickBossName({ bossName: 'Pharaoh' }), 'Pharaoh');
+  for (let i = 0; i < 50; i++) assert.ok(['DesertHyena','DesertSobek'].includes(eng._pickBossName({ bossName: 'Pharaoh' })));
   eng.s.stage = 2;
   const desertBosses = new Set();
   for (let i = 0; i < 80; i++) desertBosses.add(eng._pickBossName({}));

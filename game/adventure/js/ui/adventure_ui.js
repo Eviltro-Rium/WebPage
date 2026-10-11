@@ -23,7 +23,7 @@
   class AdventureUI {
     static selectStageMap(stage, usedScenes = []) {
       if (!Number.isInteger(stage) || stage < 1 || stage > 4) throw new Error('冒险层数必须为1–4');
-      const scenes = ['castle', 'forest', 'ocean', 'desert'].filter(scene => !usedScenes.includes(scene));
+      const scenes = window.AdventureEngine.availableScenes(stage).filter(scene => !usedScenes.includes(scene));
       if (!scenes.length) throw new Error('本局没有尚未探索的场景');
       const scene = scenes[Math.floor(random() * scenes.length)];
       const variant = 1 + Math.floor(random() * 3);

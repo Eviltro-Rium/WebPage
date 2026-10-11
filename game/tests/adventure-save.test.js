@@ -52,6 +52,7 @@ const SOURCES = [
   'adventure/js/monsters/castle.js',
   'adventure/js/monsters/forest.js',
   'adventure/js/monsters/ocean.js',
+  'adventure/js/monsters/desert.js',
   'adventure/js/content/boss.js',
   'adventure/js/content/monster_registry.js',
   'adventure/js/items/item_defs.js',
@@ -530,4 +531,44 @@ test('map healing is capped, and visiting the old Boss map never grants the stag
  eng.continueTo(new ctx.AdventureMap([[0,2]]),{stage:2,scene:'forest'});eng.onCombatReturnToMap();
  assert.equal(eng.events.find(e=>e.type==='stageHeal').extra.amount,0);
  assert.equal(eng.events.filter(e=>e.type==='accessory').length,1,'LifeCore does not repeat on stage change');
+});
+test('encounter pools never accept another scene or fall back to all registered bosses', () => {
+ const ctx=createContext();loadSources(ctx);
+ const eng=mapRun(ctx,[[0,2]]);
+ for(const scene of ['castle','forest','ocean','desert']) for(const stage of [1,2,3,4]) {
+  eng.s.scene=scene;eng.s.stage=stage;
+  const candidates=eng._encounterNames('boss');
+  for(const roll of [0,.49,.99]){
+   ctx.FurryGame.CombatRuntime.setRandomSource(()=>roll);
+   const boss=eng._pickBossName({bossName: scene==='forest'?'CastleChameleon':'ForestPanda'});
+   if(!candidates.length) assert.equal(boss,null);
+   else assert.ok(candidates.includes(boss),scene+' stage '+stage+' stays in its own pool');
+  }
+ }
+ eng.s.scene='desert';eng.s.stage=1;
+ assert.ok(['DesertHyena','DesertSobek'].includes(eng._pickBossName({bossName:'ForestPanda'})));
+ assert.ok(ctx.AdventureEngine.availableScenes(1).includes('desert'));
+ assert.ok(ctx.AdventureEngine.availableScenes(2).includes('desert'));
+ eng.s.scene='unknown';assert.equal(eng._pickBossName({}),null);assert.equal(eng._pickMonsterName({}),null);
+});
+
+test('entering a restored room repairs its cross-scene Boss assignment', () => {
+ const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]);
+ eng.s.scene='desert';eng.s.stage=2;eng.mapName='stage_02_desert_1';
+ eng.move(0,1);eng.currentRoom().bossName='ForestPanda';
+ const save=ctx.AdventureSave.serialize(eng),restored=new ctx.AdventureEngine();
+ restored.restoreFromSave(save,ctx.AdventureMap.fromGrid(save.mapLayout));
+ restored.enterCurrent();
+ assert.ok(['Pharaoh','DesertHyena','DesertSobek'].includes(restored.currentRoom().bossName));
+ assert.equal(restored.s.combat.enemy.name,restored.currentRoom().bossName);
+});
+
+test('a Stage 1 desert room repairs a foreign Boss without blocking the run', () => {
+ const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]);
+ eng.s.scene='desert';eng.s.stage=1;eng.move(0,1);eng.currentRoom().bossName='ForestPanda';
+ const result=eng.enterCurrent();
+ assert.ok(!result || result.ok!==false);assert.equal(eng.currentRoom().cleared,false);
+ assert.ok(['DesertHyena','DesertSobek'].includes(eng.currentRoom().bossName));
+ assert.equal(eng.s.combat.enemy.name,eng.currentRoom().bossName);
+ assert.equal(eng.s.phase,ctx.AdventurePhase.PLAYER_PLAY);
 });

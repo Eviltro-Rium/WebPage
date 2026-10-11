@@ -5,7 +5,7 @@
  *   Stage 3：增加伤害 / 技能强化
  *   Stage 4：加强防御
  *
- * 怪物池为空时，引擎按全局已注册怪物兜底（adventure_engine.js _pickMonsterName/_pickBossName）；
+ * 怪物与 Boss 只从当前场景池抽取，空池不会跨场景兜底；
  * 添加专属怪物后自动切换。怪物用 R.registerMonster / R.registerBoss 注册，
  * 战利白卡掉落规则注册到 adventure/js/engine/loot.js 的 SCENE_RULES.desert。
  */
@@ -14,8 +14,9 @@
   if (!R) return;
 
   window.AdventureBossPool = window.AdventureBossPool || {};
-  // 法老仅从 Stage 2 起出现；Stage 1 无沙漠专属 Boss，沿用引擎全局兜底。
+  // 鬣狗和索贝克从 Stage 1 出现，只有法老从 Stage 2 起出现。
   window.AdventureBossPool.desert = {
+    1: ['DesertHyena', 'DesertSobek'],
     2: ['Pharaoh', 'DesertHyena', 'DesertSobek'],
     3: ['Pharaoh', 'DesertHyena', 'DesertSobek'],
     4: ['Pharaoh', 'DesertHyena', 'DesertSobek']
@@ -557,7 +558,7 @@
   R.registerBoss({
     name: 'DesertHyena',
     kind: '嘲风鬣狗',
-    minStage: 2,
+    minStage: 1,
     hp: 40,
     attack: 3,
     defense: 2,
@@ -669,7 +670,7 @@
   R.registerBoss({
     name: 'DesertSobek',
     kind: '鳄神索贝克',
-    minStage: 2,
+    minStage: 1,
     hp: 35,
     attack: 3,
     defense: 2,

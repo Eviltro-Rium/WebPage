@@ -206,3 +206,52 @@ test('map trophy acquisition reads the engine payload and plays a single short c
   assert.ok(ui.container.querySelector('#adv-trophy-pack').classList.contains('adv-trophy-pack-bump'));
  } finally {dom.window.close();}
 });
+test('restored victory waits for pending or finish-generated loot before saving rewards', async () => {
+ for (const queuedInitially of [true,false]) {
+  const {dom,w,document,engine:adventure}=setup(),order=[];
+  try {
+   for(const id of ['adventure-container','game-container','game-screen']){
+    const el=document.createElement('div');el.id=id;document.body.appendChild(el);
+   }
+   w.AnimLayer=function(){};
+   w.Bridge={};
+   w.AdventureBattleSession={save:active=>{if(active.events.length)order.push('checkpoint-loot');},clear:()=>{}};
+   w.AdventureSave={save:()=>{},isSafePhase:()=>true};
+   adventure.s.beastReward=null;adventure.s.pendingCombatReward={stage:'boss-exit',roomType:'boss',applied:true};
+   adventure.applyBattleResult=()=>order.push('save-rewards');
+   adventure.onCombatEnd=()=>{order.push('end');adventure.s.phase=w.AdventurePhase.COMBAT_SETTLE;};
+   const loot=[{id:1,type:'diceRoll',purpose:'trophyDrop',value:1},{id:2,type:'trophyDrop',drops:['GuardTrophy']}];
+   let finishCalls=0;
+   w.AdventureBattleEngine=class {
+    constructor(){this.s={phase:'GAME_OVER',player:{alive:true}};this.events=queuedInitially?loot.slice():[];this.later=()=>{};}
+    state(){return {...this.s,events:this.events};}
+    restoreSession(){return this.state();}
+    finishAdventureBattle(){
+     order.push('finish');finishCalls++;
+     if(!queuedInitially&&finishCalls===1)this.events=loot.slice();
+     return {playerPile:{hand:[]}};
+    }
+   };
+   w.GameUI=class {
+    _initParticles(){}
+    _buildGameScreen(){}
+    _hideTooltip(){}
+    _startPolling(){}
+    updateDisplay(){if(this.state.phase==='GAME_OVER')this._showGameOver();}
+    async _consumeEvents(events){
+     assert.equal(events.length,2);order.push('play-loot');
+     const active=w.AdventureBattleController.activeEngine();active.events=[];
+    }
+   };
+   await w.AdventureBattleController.startCombat('Ryan','CastleChameleon',()=>{},{
+    resumeBattle:{s:{}},adventureEngine:adventure
+   });
+   assert.ok(order.indexOf('play-loot')<order.indexOf('save-rewards'));
+   assert.ok(order.indexOf('checkpoint-loot')>=0 && order.indexOf('checkpoint-loot')<order.indexOf('play-loot'),
+     'new loot is checkpointed before its animation so a refresh cannot reroll it');
+   assert.equal(order.filter(x=>x==='save-rewards').length,1);
+   assert.equal(order.filter(x=>x==='end').length,1);
+   assert.ok(document.getElementById('adv-settle-overlay'),'settlement opens only after playback');
+  } finally {dom.window.close();}
+ }
+});

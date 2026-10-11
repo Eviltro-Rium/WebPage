@@ -21,6 +21,17 @@ _handAdditionCount(evt, who) {
     if (evt.type === 'trophyDrop' && who === 'player' && Array.isArray(evt.drops)) return evt.drops.length;
     return 0;
 },
+_trophyResultText(evt) {
+    const drops = Array.isArray(evt.drops) ? evt.drops : [];
+    const registry = global.AdventureRegistry;
+    const names = drops.map(name => {
+        const def = registry && registry.getItem(name);
+        return '[' + String(def && def.displayName || name).replace(/战利白卡$/, '') + ']';
+    });
+    const progress = evt.rollCount > 1 ? '第' + evt.rollIndex + '/' + evt.rollCount + '次 · ' : '';
+    const face = Number.isFinite(Number(evt.roll)) ? '投出' + evt.roll + '，' : '';
+    return progress + face + (names.length ? '获得' + names.join('、') : Array.isArray(evt.drops) ? '无收获' : '等待确认骰面');
+},
 _missingAIPlay(previous, current) {
     if (!previous || !current || current.events && current.events.length) return null;
     const owner = current.atkOwner === 'ai2' ? 'ai2' : current.atkOwner === 'ai' ? 'ai' : null;
@@ -169,13 +180,17 @@ _animationOrder(events) {
         ordered.splice(i, 0, defenseEvent);
         i++;
     }
+    // Victory feedback follows the visible loot rolls and their hand arrivals.
+    if (ordered.some(evt => evt.type === 'diceRoll' && evt.purpose === 'trophyDrop')) {
+        return [...ordered.filter(evt => evt.type !== 'gameOver'), ...ordered.filter(evt => evt.type === 'gameOver')];
+    }
     return ordered;
 },
 
 
 async _playTrophyDropAnimation(names) {
     const deckApi = window.AdventureDeck;
-    const from = document.querySelector('.ai-area') || document.body;
+    const from = document.getElementById('reveal-cards') || document.querySelector('.ai-area') || document.body;
     const to = document.getElementById('player-hand') || document.body;
     const fr = from.getBoundingClientRect(), tr = to.getBoundingClientRect();
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -214,10 +229,22 @@ async _playTrophyDropAnimation(names) {
 
 async _playEvents(events, fast = false) {
     const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
+    // Loot must remain readable even when an action resumes in fast mode.
+    const waitReadable = ms => runtime ? runtime.wait(ms) : new Promise(resolve => setTimeout(resolve, ms));
     const wait = ms => runtime
         ? runtime.wait((fast || this._onlineAnimationFast) ? Math.max(60, Math.round(ms * 0.22)) : ms)
         : new Promise(resolve => setTimeout(resolve, (fast || this._onlineAnimationFast) ? Math.max(60, Math.round(ms * 0.22)) : ms));
     const orderedEvents = this._animationOrder(events);
+    // Older saves omit drops on dice events; pair them with their result without rerolling.
+    const lootResults = new Map();
+    let pendingLootDie = null;
+    for (const evt of orderedEvents) {
+        if (evt.type === 'diceRoll' && evt.purpose === 'trophyDrop') pendingLootDie = evt;
+        else if (evt.type === 'trophyDrop' && pendingLootDie) {
+            lootResults.set(pendingLootDie, evt.drops);
+            pendingLootDie = null;
+        }
+    }
     const drawRemaining = { player: 0, ai: 0, ai2: 0 };
     this._drawAnimationRemaining = drawRemaining;
     for (const event of orderedEvents) {
@@ -361,6 +388,7 @@ async _playEvents(events, fast = false) {
             await wait(1200);
         } else if (evt.type === 'diceRoll' && Number.isFinite(Number(evt.value))) {
             const value = Number(evt.value);
+            const isLoot = evt.purpose === 'trophyDrop';
             const rollCount = Math.max(0, Number(evt.rollCount) || 0);
             const rollIndex = Math.max(0, Number(evt.rollIndex) || 0);
             const rollLabel = rollCount > 1 && rollIndex > 0 ? ' · 第' + rollIndex + '/' + rollCount + '次' : '';
@@ -373,9 +401,17 @@ async _playEvents(events, fast = false) {
             }
             // Fly can fail and lead to another guard choice. Restore the
             // skill's card reference after the transient die animation.
-            if((this._judgmentCards||[]).length)this._paintJudgmentCards(this._judgmentCards);
-            this._showZoneDesc('reveal-desc', desc);
-            await wait(220);
+            if(!isLoot && (this._judgmentCards||[]).length)this._paintJudgmentCards(this._judgmentCards);
+            if (isLoot) {
+                this._judgmentCards = [];
+                const drops = Array.isArray(evt.drops) ? evt.drops : lootResults.get(evt) || (evt.outcome === 'fail' ? [] : undefined);
+                const result = this._trophyResultText(Object.assign({}, evt, { roll: value, drops }));
+                this._showZoneDesc('reveal-desc', result + '\n' + (evt.dropSummary || evt.desc || ''));
+                await waitReadable(1100);
+            } else {
+                this._showZoneDesc('reveal-desc', desc);
+                await wait(220);
+            }
         } else if (evt.type === 'lordDice' && Number.isFinite(Number(evt.roll))) {
             if (typeof this._playDiceAnimation === 'function') {
                 await this._playDiceAnimation(Number(evt.roll), evt.target);
@@ -567,13 +603,17 @@ async _playEvents(events, fast = false) {
         } else if (evt.type === 'gameOver') {
             this.playFloatingText(evt.desc || '游戏结束', '#ffd700', 'player');
             await wait(1500);
-        } else if (evt.type === 'trophyDrop' && Array.isArray(evt.drops) && evt.drops.length) {
+        } else if (evt.type === 'trophyDrop' && Array.isArray(evt.drops)) {
+            const result = this._trophyResultText(evt);
+            this._showZoneDesc('reveal-desc', result + (evt.dropSummary ? '\n' + evt.dropSummary : ''));
+            if (!evt.drops.length) { await waitReadable(500); continue; }
             this._renderPlayerHand({ hideTrailing: drawRemaining.player });
             try { await this._playTrophyDropAnimation(evt.drops); }
             finally {
                 drawRemaining.player = Math.max(0, drawRemaining.player - evt.drops.length);
                 this._renderPlayerHand({ hideTrailing: drawRemaining.player });
             }
+            await waitReadable(500);
         } else if (evt.type === 'dualDice') {
             if (typeof this._playDualDiceAnimation === 'function') {
                 await this._playDualDiceAnimation(evt.roll, evt.target);

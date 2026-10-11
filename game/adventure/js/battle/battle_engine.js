@@ -173,7 +173,8 @@
         const roll = this.rollD12(dropSummary, {
           who: 'player', purpose: 'trophyDrop', monsterName: label, dropSummary, rollIndex, rollCount
         });
-        const loot = lootService.rollMonsterDrop(this.s.adventureScene || found.scene, monsterName, null, roll);
+        // Rules belong to the defeated NPC, not the map (legacy/test encounters can differ).
+        const loot = lootService.rollMonsterDrop(found.scene, monsterName, null, roll);
         if (!loot || loot.roll == null) continue;
         lastLoot = loot;
         const drops = Array.isArray(loot.drops) ? loot.drops.slice() : [];
@@ -185,10 +186,14 @@
         }
         this.s.trophyRolls.push({ monsterName: label, roll: loot.roll, rollIndex, rollCount, drops: drops.slice() });
         const diceEvent = [...this.events].reverse().find(evt => evt.type === 'diceRoll');
-        if (diceEvent) { diceEvent.desc = dropSummary; diceEvent.outcome = drops.length ? 'success' : 'fail'; }
+        if (diceEvent) {
+          diceEvent.desc = dropSummary;
+          diceEvent.outcome = drops.length ? 'success' : 'fail';
+          diceEvent.drops = drops.slice();
+        }
         this.emit('desc', dropSummary);
         this.emit('trophyDrop', '战利白卡掉落结算', {
-          who: 'player', monsterName: label, roll: loot.roll, drops: drops.slice(), rollIndex, rollCount
+          who: 'player', monsterName: label, roll: loot.roll, drops: drops.slice(), rollIndex, rollCount, dropSummary
         });
         if (drops.length) {
           // Each successful roll legitimately creates new player-owned cards.

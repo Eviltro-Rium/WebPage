@@ -349,3 +349,68 @@ test('Boss D12 animation displays the independent roll index without dropping it
   assert.ok(shown.options.desc.startsWith(desc));
   assert.ok(shown.options.desc.includes('2/3'));
 });
+test('Boss rewards keep each landed result readable and play card arrival before victory', async () => {
+  const {ui, doc} = harness();
+  const sequence=[],descriptions=[],pauses=[];
+  const originalTimeout=context.setTimeout;
+  context.setTimeout=(fn,ms)=>{pauses.push(ms);fn();return 1;};
+  try {
+    const a=Object.assign(card('drop-a','WHITE',-1),{trophyWhite:true,trophyName:'GuardTrophy'});
+    const b=Object.assign(card('drop-b','WHITE',-1),{trophyWhite:true,trophyName:'GuardTrophy'});
+    ui.state.playerHand=[card('kept','RED',1),a,b];
+    ui._judgmentCards=[card('old-judgment','BLUE',3)];
+    let staleJudgments=0;ui._paintJudgmentCards=()=>staleJudgments++;
+    ui._showZoneDesc=(id,text)=>descriptions.push(text);
+    ui._playD12Animation=async value=>sequence.push('die:'+value);
+    ui._playTrophyDropAnimation=async names=>sequence.push('gain:'+names[0]);
+    ui.playFloatingText=text=>sequence.push(text);
+    const events=[{id:30,type:'gameOver',desc:'victory'}];
+    for(const [index,value,drops] of [[1,2,['GuardTrophy']],[2,10,[]],[3,3,['GuardTrophy']]]) {
+      events.push({id:30+index*2,type:'diceRoll',purpose:'trophyDrop',value,drops,rollIndex:index,rollCount:3,desc:'drop-table'});
+      events.push({id:31+index*2,type:'trophyDrop',roll:value,drops,rollIndex:index,rollCount:3,dropSummary:'drop-table'});
+    }
+    await ui._playEvents(events,true);
+    assert.deepEqual(sequence,['die:2','gain:GuardTrophy','die:10','die:3','gain:GuardTrophy','victory']);
+    assert.equal(pauses.filter(ms=>ms===1100).length,3,'loot holds bypass fast-mode shortening');
+    assert.equal(pauses.filter(ms=>ms===500).length,3,'each result gets a clear gap before next roll');
+    assert.equal(staleJudgments,0,'old judgment cards must not replace landed loot dice');
+    assert.ok(descriptions.some(text=>text.includes('无收获')&&text.includes('2/3')));
+    assert.ok(descriptions.some(text=>text.includes('获得')&&text.includes('GuardTrophy')));
+    assert.equal(doc.getElementById('player-hand').children.length,3);
+  } finally {context.setTimeout=originalTimeout;}
+});
+
+test('actual trophy animation creates a temporary card at the judgment zone and removes it after arrival', async () => {
+  const {ui,doc}=harness(),animations=[];
+  const oldDeck=context.AdventureDeck;
+  const oldAnimate=FakeEl.prototype.animate;
+  context.AdventureDeck={trophyWhite:name=>Object.assign(card('flight-'+name,'WHITE',-1),{trophyWhite:true,trophyName:name})};
+  FakeEl.prototype.animate=function(frames,options){const anim={frames,options};animations.push(anim);return anim;};
+  ui.playFloatingText=()=>{};
+  try {
+    const flight=ui._playTrophyDropAnimation(['GuardTrophy']);
+    const node=doc.body.children.find(el=>el.classList.contains('trophy-fly-card'));
+    assert.ok(node,'a real temporary card is attached during the flight');
+    assert.ok(node.dataset.cardId.startsWith('flight-GuardTrophy'));
+    assert.equal(animations.length,1);assert.ok(animations[0].options.duration>=500);
+    animations[0].onfinish();await flight;
+    assert.ok(!doc.body.children.includes(node),'arrival removes the temporary card');
+  } finally {context.AdventureDeck=oldDeck;FakeEl.prototype.animate=oldAnimate;}
+});
+test('legacy loot dice show their paired reward, while a controllable unresolved die does not claim a miss', async () => {
+  const {ui}=harness(),labels=[];
+  ui._showZoneDesc=(id,text)=>labels.push(text);
+  ui._playD12Animation=async()=>{};
+  ui._playTrophyDropAnimation=async()=>{};
+  ui.state.playerHand=[Object.assign(card('legacy-drop','WHITE',-1),{trophyWhite:true,trophyName:'GuardTrophy'})];
+  await ui._playEvents([
+    {id:40,type:'diceRoll',purpose:'trophyDrop',value:1,rollIndex:1,rollCount:3,desc:'table'},
+    {id:41,type:'trophyDrop',roll:1,drops:['GuardTrophy'],rollIndex:1,rollCount:3}
+  ],true);
+  assert.ok(labels.some(text=>text.includes('获得')&&text.includes('GuardTrophy')));
+  assert.ok(!labels.some(text=>text.includes('无收获')));
+  labels.length=0;
+  await ui._playEvents([{id:42,type:'diceRoll',purpose:'trophyDrop',value:10,rollIndex:2,rollCount:3,desc:'table'}],true);
+  assert.ok(labels.some(text=>text.includes('等待确认')));
+  assert.ok(!labels.some(text=>text.includes('无收获')));
+});

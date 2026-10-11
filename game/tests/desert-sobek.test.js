@@ -65,7 +65,7 @@ test('DesertSobek base stats, boss pool, icon, whiteZeros', () => {
   assert.ok(m);
   assert.equal(m.kind, '鳄神索贝克');
   assert.equal(m.hp, 35);
-  assert.equal(m.minStage, 2);
+  assert.equal(m.minStage, 1);
   assert.equal(m.whiteZeros, 2);
   assert.equal(m.handLimit, 3);
   assert.equal(m.icon, '../icons/npc_icons/desert_sobek.webp');

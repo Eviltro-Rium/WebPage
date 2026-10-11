@@ -446,3 +446,15 @@ node game/scripts/check.js --all
 - Boss 出局统一由 AdventureBattleEngine._resolveAdventureTrophyDrop() 按其 AdventureLoot 掉落表独立投掷 3 次 D12；普通怪物仍投 1 次。每次中签即时创建玩家战利白卡并排入 trophyDrop 动画，落空不补偿，不增加第四次普通掉落。
 - 每颗骰子仍通过 rollD12() 的遥控骰子边界；trophyDropHandled、trophyRolls 与录像随机带支持中途存档恢复、避免重复发牌。Stage 4 同样先播放三次骰子和获取动画，再展示通关。
 - 冒险奖励层不再滚动 Boss 饰品。Boss 结算直接进入 boss-exit，白卡已入手，无需领取/暂存。战斗 trophyDrop 和地图 itemAcquired(kind=trophyWhite) 统一负责各自的小动画，不二次创建实体牌。
+
+### 冒险场景与遭遇池边界
+
+- AdventureEngine.availableScenes(stage) 使用与遭遇选择相同的场景池和 minStage 条件，第一层可抽城堡、丛林、冻洋或沙漠；沙漠第一层仅鬣狗、索贝克，法老从第二层起加入。
+- 普通怪物与 Boss 仅从当前场景池选取；缺少该层配置时仅查看本场景其他层的名字，再过滤出现条件。禁止全局怪物/Boss 池兜底。
+- 房间预设或存档缓存的敌人须属于当前场景的可用池；不合法时进入前重选。无可用敌人时拒绝进入并保留未清除状态，不能自动通关。已开始战斗的会话仍保留其原始敌人以确保可恢复。
+
+### 掉落结算与播放顺序
+
+- 掉落表以被击败 NPC 的 AdventureLoot.getDropRule() 返回场景为准，显示与发牌始终查同一张表；地图场景只负责选择遭遇，旧跨场景会话及冒险测试仍可正确发放对应掉落。
+- 骰子事件携带 drops 结果，trophyDrop 同时携带 dropSummary。每次显示骰面与获得内容/无收获，保持可读停留后播放白卡入手动画，再进入下一次投掷；快进模式不压缩掉落结果停留时间。
+- 胜利事件在掉落播放之后呈现，控制器在待播放事件或遥控骰子决定未结束前不保存最终奖励、不打开结算页。结束兜底新生成的掉落队列也必须先播放，防止刷新跳过动画。

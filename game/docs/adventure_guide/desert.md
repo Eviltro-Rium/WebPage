@@ -319,5 +319,5 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 ## 怪物池
 
 - 怪物池与 Boss 池在 `adventure/js/monsters/desert.js` 中注册。
-- 池为空时，引擎按全局已注册怪物兜底（`adventure_engine.js` 的 `_pickMonsterName` / `_pickBossName`）。
+- 只从当前场景池抽取，不再跨场景兜底；房间缓存中的跨场景怪物/Boss 也会在进入前重新选择。鬣狗和索贝克从 Stage 1 出现，只有法老从 Stage 2 起出现；第一层可以抽到沙漠。
 - 战利白卡掉落规则注册在 `adventure/js/engine/loot.js` 的 `SCENE_RULES.desert`。

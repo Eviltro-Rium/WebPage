@@ -56,7 +56,26 @@
     ADVENTURE_GAME_OVER:   '游戏结束'
   };
 
+  function availableAtStage(def, stage) {
+    return !!def && (!Number.isFinite(Number(def.minStage)) || stage >= Number(def.minStage));
+  }
+
+  function sceneEncounterNames(scene, stage, kind) {
+    const pools = kind === 'boss' ? window.AdventureBossPool : window.AdventureMonsterPool;
+    const pool = pools && pools[scene];
+    if (!pool) return [];
+    if (Array.isArray(pool)) return pool;
+    const configured = pool[stage] || pool['*'];
+    // Missing stage entries may only use registered names from this same scene.
+    return Array.isArray(configured) ? configured : [...new Set(Object.values(pool).flat())];
+  }
+
   class AdventureEngine {
+    static availableScenes(stage) {
+      const registry = window.AdventureRegistry;
+      return ['castle', 'forest', 'ocean', 'desert'].filter(scene => registry &&
+        sceneEncounterNames(scene, stage, 'boss').some(name => availableAtStage(registry.getBoss(name), stage)));
+    }
     constructor() {
       this.s = null;
       this.events = [];
@@ -449,7 +468,7 @@
     }
 
     _isAvailableAtStage(def, stage) {
-      return !!def && (!Number.isFinite(Number(def.minStage)) || stage >= Number(def.minStage));
+      return availableAtStage(def, stage);
     }
 
     _availableNames(names, stage, kind) {
@@ -459,44 +478,32 @@
       return (names || []).filter(name => this._isAvailableAtStage(registry[getter](name), stage));
     }
 
+    _encounterNames(kind) {
+      const scene = this.s.scene || 'castle', stage = this.s.stage || 1;
+      return this._availableNames(sceneEncounterNames(scene, stage, kind), stage, kind);
+    }
+
     _pickMonsterName(room, opts = {}) {
-      const scene = this.s.scene || 'castle';
-      const stage = this.s.stage || 1;
-      const pool = window.AdventureMonsterPool || {};
-      const registry = window.AdventureRegistry;
-      if (room && room.monsterName && !opts.ignoreRoom) {
-        const explicit = registry && registry.getMonster(room.monsterName);
-        if (this._isAvailableAtStage(explicit, stage)) return room.monsterName;
-      }
-      const fallback = (registry && this._availableNames(registry.monsterNames(), stage, 'monster')) || ['CastleWolf'];
-      const configured = (pool[scene] && (pool[scene][stage] || pool[scene]['*'])) || fallback;
-      const list = this._availableNames(configured, stage, 'monster');
-      if (!list.length) return fallback[0] || 'CastleWolf';
-      const exclude = opts.exclude;
-      const distinct = exclude ? list.filter(name => name !== exclude) : list;
+      const list = this._encounterNames('monster');
+      if (room && !opts.ignoreRoom && list.includes(room.monsterName)) return room.monsterName;
+      const distinct = opts.exclude ? list.filter(name => name !== opts.exclude) : list;
       const choices = distinct.length ? distinct : list;
-      return choices[Math.floor(random() * choices.length)];
+      return choices.length ? choices[Math.floor(random() * choices.length)] : null;
     }
 
     _pickBossName(room) {
-      const scene = this.s.scene || 'castle';
-      const stage = this.s.stage || 1;
-      const pool = window.AdventureBossPool || {};
-      const registry = window.AdventureRegistry;
-      if (room && room.bossName) {
-        const explicit = registry && registry.getBoss(room.bossName);
-        if (this._isAvailableAtStage(explicit, stage)) return room.bossName;
-      }
-      const fallback = (registry && this._availableNames(registry.bossNames(), stage, 'boss')) || ['CastleChameleon'];
-      const scenePool = pool[scene];
-      const configured = Array.isArray(scenePool)
-        ? scenePool
-        : ((scenePool && (scenePool[stage] || scenePool['*'])) || fallback);
-      const list = this._availableNames(configured, stage, 'boss');
-      if (!list.length) return fallback[0] || 'CastleChameleon';
-      return list[Math.floor(random() * list.length)] || 'CastleChameleon';
+      const list = this._encounterNames('boss');
+      if (room && list.includes(room.bossName)) return room.bossName;
+      return list.length ? list[Math.floor(random() * list.length)] : null;
     }
 
+    _encounterUnavailable(kind) {
+      const message = '当前场景第' + (this.s.stage || 1) + '层暂无符合出现条件的' + kind + '，无法进入此房间';
+      this.s.phase = Phase.MAP;
+      this._log(message);
+      this.emit('encounterUnavailable', message, { scene: this.s.scene, stage: this.s.stage, kind });
+      return { ok: false, message };
+    }
     /**
      * Flip a fresh number card into the player's discard pile and expose that
      * same physical card as the current table top. The top is deliberately not
@@ -584,15 +591,10 @@
         }
         return;
       }
-      const currentMonster = window.AdventureRegistry && window.AdventureRegistry.getMonster(room.monsterName);
-      if (!this._isAvailableAtStage(currentMonster, this.s.stage || 1)) room.monsterName = this._pickMonsterName(room);
+      room.monsterName = this._pickMonsterName(room);
       const monster = window.Monster.fromRegistry(room.monsterName);
       if (!monster) {
-        this._log('普通房间未配置怪物，直接通过');
-        room.cleared = true;
-        this.s.phase = Phase.REWARD;
-        this.emit('roomCleared', '房间已清空', { roomType: room.type });
-        return;
+        return this._encounterUnavailable('怪物');
       }
       monster.init(this);
       this._initializeDiscardTop();
@@ -620,15 +622,10 @@
         });
         return;
       }
-      const currentBoss = window.AdventureRegistry && window.AdventureRegistry.getBoss(room.bossName);
-      if (!this._isAvailableAtStage(currentBoss, this.s.stage || 1)) room.bossName = this._pickBossName(room);
+      room.bossName = this._pickBossName(room);
       const boss = window.Boss.fromRegistry(room.bossName);
       if (!boss) {
-        this._log('Boss 房间未配置 Boss，直接通过');
-        room.cleared = true;
-        this.s.phase = Phase.REWARD;
-        this.emit('roomCleared', '房间已清空', { roomType: room.type });
-        return;
+        return this._encounterUnavailable('Boss');
       }
       boss.init(this);
 
@@ -657,11 +654,7 @@
       const monster1 = window.Monster.fromRegistry(name1);
       const monster2 = window.Monster.fromRegistry(name2);
       if (!monster1 || !monster2) {
-        this._log('挑战房未配置怪物，直接通过');
-        room.cleared = true;
-        this.s.phase = Phase.REWARD;
-        this.emit('roomCleared', '房间已清空', { roomType: room.type });
-        return;
+        return this._encounterUnavailable('怪物');
       }
       if (room) room.monsterName = name1;
       monster1.init(this);

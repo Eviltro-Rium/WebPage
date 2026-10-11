@@ -228,3 +228,14 @@ test('Boss can award the same trophy on each of its three rolls', () => {
   assert.equal(e.h.player.length,hand+3);
   runtime.resetRandomSource();
 });
+test('loot uses the defeated Boss rule even when a legacy/test map has a different scene', () => {
+  const e=battle([], 'ForestPanda'); // battle() uses the castle scene, like older/test encounters.
+  runtime.setRandomSource(()=>0);
+  const before=e.h.player.length;e.s.ai.alive=false;e.s.ai.hp=0;e.check();
+  assert.equal(e.s.trophyRolls.length,3);
+  assert.deepEqual(Array.from(e.s.trophyDrops),['LushTrophy','LushTrophy','LushTrophy']);
+  assert.equal(e.h.player.length,before+3);
+  const result=e.finishAdventureBattle();
+  assert.equal(result.playerPile.hand.filter(c=>c.trophyName==='LushTrophy').length,3);
+  runtime.resetRandomSource();
+});
