@@ -91,7 +91,9 @@ _renderControls() {
         const pending = s.pendingAttackBuffChoice || s.pendingCritChoice || {};
         // Wait for the skill judgment / sandblind d12 animations of this attack
         // to finish playing before opening the modifier dialog.
-        if(s.pendingAttackBuffChoice && !this._isConsumingEvents && this.dialogs && this.dialogs.showAttackBuffChoice){
+        // Also skip while settling (_deferAttackBuffDialog): _showAcceptedControls(true)
+        // may run before _consumeEvents sets _isConsumingEvents.
+        if(s.pendingAttackBuffChoice && !this._isConsumingEvents && !this._deferAttackBuffDialog && this.dialogs && this.dialogs.showAttackBuffChoice){
             this.dialogs.showAttackBuffChoice(pending,buff=>this._apiAction('resolveAttackBuffChoice',{buff}));
         }
         const dmg = pending.damage != null
@@ -490,9 +492,10 @@ _skipAttackMod() {
 },
 
 async _apiAction(method, params) {
-    if (this._isHandlingAction || this._isSelectingCard || this._isConsumingEvents) return;
+    if (this._isHandlingAction || this._isSelectingCard || this._isConsumingEvents) return false;
     this._isHandlingAction = true;
     let shouldPollAI = false;
+    let ok = false;
     const quickDecision = this._isDecisionAction(method);
     this._showActionPending(method);
     try {
@@ -521,6 +524,7 @@ async _apiAction(method, params) {
             const hasEvents = result.events && result.events.length > 0;
             const entersDecision = this._isInteractiveDecisionPhase(result.phase);
             this._showAcceptedControls(hasEvents);
+            ok = true;
             if (typeof this._onlineResultSink === 'function' && this.state.isOnline) {
                 // OnlineUI is the sole owner of authoritative snapshot
                 // application and event playback. This prevents a local
@@ -547,6 +551,7 @@ async _apiAction(method, params) {
         this._isHandlingAction = false;
     }
     if (shouldPollAI) this._pollAI();
+    return ok;
 },
 
 _isDecisionAction(method) {
@@ -577,6 +582,9 @@ _showAcceptedControls(settling) {
             ? '跳过防御'
             : (PHASE_NAMES[this.state.phase] || this.state.phase);
     }
+    // While events are about to play, hold the attack-buff dialog so it does not
+    // open before _isConsumingEvents flips true (and so clicks cannot race).
+    this._deferAttackBuffDialog = !!settling;
     this._renderControls();
     if (!settling) return;
     const container = document.getElementById('controls');

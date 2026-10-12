@@ -32,16 +32,14 @@ _showZoneDesc(id, desc) {
         const toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'zone-desc-toggle';
-        const sideLayout = !!(el.parentElement && el.parentElement.matches('.attack-zone, .defend-zone'));
-        const arrows = sideLayout ? ['▾', '▴'] : ['‹', '›'];
-        toggle.textContent = arrows[0];
+        toggle.textContent = '‹';
         toggle.title = '展开完整说明';
         toggle.setAttribute('aria-label', '展开完整说明');
         toggle.setAttribute('aria-expanded', 'false');
         toggle.addEventListener('click', (event) => {
             event.stopPropagation();
             const expanded = el.classList.toggle('is-expanded');
-            toggle.textContent = expanded ? arrows[1] : arrows[0];
+            toggle.textContent = expanded ? '›' : '‹';
             toggle.title = expanded ? '收起说明' : '展开完整说明';
             toggle.setAttribute('aria-label', toggle.title);
             toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');

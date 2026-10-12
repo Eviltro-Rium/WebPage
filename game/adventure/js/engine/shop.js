@@ -54,7 +54,7 @@
         ];
       }
       if (room.blacksmithTrophySlot === undefined) {
-        room.blacksmithTrophySlot = this._rollTrophyWhiteSlot();
+        room.blacksmithTrophySlot = 'BurnTrophy';
       }
     },
     _rollTrophyWhiteSlot() {

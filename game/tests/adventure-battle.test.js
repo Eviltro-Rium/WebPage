@@ -897,19 +897,45 @@ test('ArmorBreakSpear makes defensible attack unblockable via attack mod choice'
   assert.equal(engine.s.pendingAttack, null);
 });
 
-test('attack modifier buffs are chosen before items and remain mutually exclusive', () => {
-  const engine=start({deck:[],hand:[number(3)],discard:[]});engine.later=()=>{};
-  engine.s.player.crit=1;engine.s.atkCard=number(3);
-  engine.gateAdventureAttackMod(number(3),5,false,false);
-  assert.equal(engine.s.phase,'CRIT_CHOICE');
-  engine.dispatch('resolveAttackBuffChoice',{buff:null});
-  assert.equal(engine.s.phase,'ATTACK_MOD_CHOICE');
-  engine.dispatch('resolveAttackModChoice',{bonus:0,unblock:true});
-  assert.equal(engine.s.phase,'AI_DEFEND');assert.equal(engine.s.player.crit,1);
-  engine.s.atkCard=number(3);engine.gateAdventureAttackMod(number(3),5,false,false);
-  engine.dispatch('resolveAttackBuffChoice',{buff:'crit'});
-  assert.equal(engine.s.player.crit,0);assert.equal(engine.s.pendingAttack.unblock,true);
-  assert.throws(()=>engine.dispatch('resolveAttackModChoice',{bonus:1}),/当前没有/);
+test('Otto crit is optional via shared attack-buff dialog and skipped when already unblockable', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure({
+    player: 'Otto',
+    opponent: 'CastleWolf',
+    playerState: { hp: 100, maxHp: 100, crit: 1 },
+    playerPile: { deck: [], hand: [number(1, 'RED')], discard: [], handLimit: 5 },
+    discardTop: number(1, 'RED'),
+    discardTopOwner: 'player'
+  });
+  // AttackBuffs offers crit before adventure item mods.
+  engine.s.player.crit = 1;
+  engine.gateAdventureAttackMod(number(1, 'RED'), 5, false, false);
+  assert.ok(['CRIT_CHOICE', 'ATTACK_BUFF_CHOICE'].includes(engine.s.phase));
+  assert.equal(engine.s.player.crit, 1);
+
+  engine.dispatch('resolveAttackBuffChoice', { buff: null });
+  assert.equal(engine.s.phase, 'ATTACK_MOD_CHOICE');
+  assert.equal(engine.s.player.crit, 1);
+  assert.equal(engine.s.pendingAttack.unblock, false);
+  engine.dispatch('resolveAttackModChoice', { bonus: 0 });
+  assert.equal(engine.s.phase, 'AI_DEFEND');
+
+  engine.s.player.crit = 1;
+  engine.gateAdventureAttackMod(number(1, 'RED'), 5, false, false);
+  engine.dispatch('resolveAttackBuffChoice', { buff: 'crit' });
+  assert.equal(engine.s.player.crit, 0);
+  assert.equal(engine.s.pendingAttack.unblock, true);
+  assert.equal(engine.s.defenseSkipped, true);
+  assert.equal(engine.s.phase, 'AI_DEFEND');
+
+  // Already unblockable attacks cannot spend crit.
+  engine.s.player.crit = 1;
+  engine.gateAdventureAttackMod(number(1, 'RED'), 5, false, true);
+  assert.notEqual(engine.s.phase, 'CRIT_CHOICE');
+  assert.notEqual(engine.s.phase, 'ATTACK_BUFF_CHOICE');
+  assert.equal(engine.s.player.crit, 1);
+  assert.equal(engine.s.pendingAttack.unblock, true);
 });
 
 function startVs(opponent, pileOverrides = {}, top = number(2), topOwner = 'player') {

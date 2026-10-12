@@ -24,9 +24,16 @@
             const s = this.state || {};
             const is1v2 = !!s.is1v2;
             const attacker = this._stateAttackerKey(s, who);
-            const defender = attacker === 'player'
-                ? (is1v2 ? (s.attackTarget || (s.ai && s.ai.alive ? 'ai' : 'ai2')) : 'ai')
-                : 'player';
+            // In 1v2/challenge rooms, only highlight a defender when a target
+            // is actually selected. Falling back to NPC1 made the badge jump
+            // upward after attackTarget was cleared.
+            let defender = null;
+            if (attacker === 'player') {
+                if (is1v2) defender = (s.attackTarget === 'ai' || s.attackTarget === 'ai2') ? s.attackTarget : null;
+                else defender = 'ai';
+            } else if (attacker === 'ai' || attacker === 'ai2') {
+                defender = 'player';
+            }
             const sections = {
                 player: document.getElementById('player-hp-section'),
                 ai: document.getElementById('ai-hp-section'),
@@ -94,9 +101,9 @@
                 bomb: { colorClass: 'bomb-mark' }, hypothermia: { colorClass: 'hypothermia-buff' },
                 guard: { colorClass: 'guard-buff' }, fly: { colorClass: 'fly-buff' },
                 lush: { colorClass: 'lush-buff' }, parasite: { colorClass: 'parasite-buff' },
-                crit: { colorClass: 'crit-buff' }, magmaVein: { colorClass: 'magma-vein-buff' },
+                crit: { colorClass: 'crit-buff' },
                 diving: { colorClass: 'diving-buff' }, scorch: { colorClass: 'scorch-buff' }, bloodthirst: { colorClass: 'bloodthirst-buff' },
-                bind: { colorClass: 'bind-mark' }, taunt: { colorClass: 'mock-mark' }, chaos_red: { colorClass: 'chaos-red-buff' },
+                bind: { colorClass: 'bind-mark' }, chaos_red: { colorClass: 'chaos-red-buff' },
                 chaos_yellow: { colorClass: 'chaos-yellow-buff' }, chaos_blue: { colorClass: 'chaos-blue-buff' },
                 chaos_green: { colorClass: 'chaos-green-buff' }
             };
@@ -120,23 +127,8 @@
                     const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.webp`);
                     const title = b.label || b.key;
                     const animCls = !prevSet.has(b.key) ? ' icon-appear' : '';
-                    let specialClass = b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.key === 'bind' ? 'bind-mark' : b.key === 'bomb' ? 'bomb-mark' : b.key === 'taunt' ? 'mock-mark' : b.colorClass || '';
-                    let markName = '';
-                    if (b.key === 'bloodthirst') markName = '嗜血';
-                    else if (b.key === 'bind') markName = '捆缚';
-                    else if (b.key === 'taunt') {
-                        const mc = String(ch && (ch.mockAttackColor || ch.tauntColor) || '').toUpperCase();
-                        if (mc === 'RED') specialClass += ' mock-mark-red';
-                        else if (mc === 'YELLOW') specialClass += ' mock-mark-yellow';
-                        else if (mc === 'BLUE') specialClass += ' mock-mark-blue';
-                        else if (mc === 'GREEN') specialClass += ' mock-mark-green';
-                        const colorTip = ({ RED: '红', YELLOW: '黄', BLUE: '蓝', GREEN: '绿' })[mc] || '';
-                        markName = colorTip ? ('嘲弄' + colorTip) : '嘲弄';
-                    }
-                    const trailing = markName
-                        ? `<span class="buff-name">${markName}</span>`
-                        : (b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`);
-                    html += `<div class="buff-icon-wrap ${specialClass}${animCls}" data-buff-key="${b.key}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${trailing}</div>`;
+                    const specialClass = b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.key === 'bind' ? 'bind-mark' : b.key === 'bomb' ? 'bomb-mark' : b.colorClass || '';
+                    html += `<div class="buff-icon-wrap ${specialClass}${animCls}" data-buff-key="${b.key}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}</div>`;
                 }
             }
             prevKeys[prefix] = currentKeys;

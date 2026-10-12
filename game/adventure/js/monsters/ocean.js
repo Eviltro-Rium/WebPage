@@ -315,7 +315,8 @@
       const v = card.value;
       if (v >= 1 && v <= 3) return 3;
       if (v >= 4 && v <= 6) return 5;
-      if (v === 0) return 2 + 2 * ((ctx && ctx.playerBleed) || 0);
+      // ctx.playerBleed 须为 beforeDamage 施加后的实际层数（上限 3）；不再 +1
+      if (v === 0) return 2 + 2 * Math.min(3, Number(ctx && ctx.playerBleed) || 0);
       return 0;
     },
     // 进攻1/2/3：获得潜水（上限1）
@@ -326,9 +327,11 @@
     attackHypothermia(card) {
       return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
     },
-    // 进攻4/5/6：施加1层流血
+    // 进攻0/4/5/6：施加1层流血（0 牌 beforeDamage，结算按施加后层数）
     attackBleed(card) {
-      return (card && card.isNumberCard && card.value >= 4 && card.value <= 6) ? 1 : 0;
+      if (!card || !card.isNumberCard) return 0;
+      const v = card.value;
+      return (v === 0 || (v >= 4 && v <= 6)) ? 1 : 0;
     },
     // 防御1/2/3：施加1层流血
     defendBleed(card) {

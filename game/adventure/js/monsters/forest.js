@@ -454,11 +454,10 @@
     whiteZeros: 2,
     attackDamage(card, ctx) {
       const v = card.value;
-      const poison = (ctx && ctx.playerPoison) || 0;
+      const poison = Number(ctx && ctx.playerPoison) || 0;
       if (v >= 1 && v <= 3) return v;
-      // 先施加 1 层中毒后再按层数结算，等价于用施加前层数 +1
-      if (v >= 4 && v <= 6) return 3 * (poison + 1);
-      if (v === 0) return 2 * (poison + 1);
+      // ctx.playerPoison 须为 beforeDamage 施加后的实际层数（上限 2）；不再 +1
+      if (v >= 4 && v <= 6 || v === 0) return 3 * Math.min(2, poison);
       return 0;
     },
     attackUnblockable(card) {
@@ -466,6 +465,7 @@
     },
     attackPoison(card) {
       const v = card.value;
+      if (v >= 1 && v <= 3) return 1;
       if (v >= 4 && v <= 6) return 1;
       if (v === 0) return 1;
       return 0;
@@ -481,12 +481,27 @@
       if (v >= 1 && v <= 3) return v;
       return 0;
     },
+    defendPoison(card) {
+      const v = card.value;
+      if (v >= 1 && v <= 3) return 1;
+      if (v === 0) return 1;
+      return 0;
+    },
     defendSplit(card) {
       return card.value === 0;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 10 }),
-      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
+      // Stage3：仅 1/2/3/0 伤害 +1；4/5/6 倍率不变
+      3: orig => ({
+        attackDamage: (card, ctx) => {
+          const v = card.value;
+          const base = orig.attackDamage(card, ctx);
+          if (v === 0 || (v >= 1 && v <= 3)) return base + 1;
+          return base;
+        }
+      }),
+      // Stage4：1/2/3 反击 +1；0 均摊后额外反击 1（defendSplit 分支会读 defendCounter）
       4: orig => ({ defendCounter: (card) => orig.defendCounter(card) + 1 })
     }
   });

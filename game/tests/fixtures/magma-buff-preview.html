@@ -71,5 +71,6 @@ engine.gateAdventureAttackMod(engine.s.atkCard,5,false,false);
 const dialogs=new DialogManager();dialogs.showAttackBuffChoice(engine.s.pendingAttackBuffChoice,async buff=>{
 engine.dispatch('resolveAttackBuffChoice',{buff});document.getElementById('preview-result').textContent='选择：'+(buff||'不使用')+'；伤害：'+engine.s.pendingAttack.damage+'；熔脉：'+engine.s.player.magmaVein+'；暴击：'+engine.s.player.crit;
 dialogs.syncCombatDialog(engine.s.pendingDialog,true,engine.s.phase);
+return true;
 });
 </script></body></html>

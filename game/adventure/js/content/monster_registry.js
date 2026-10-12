@@ -55,6 +55,7 @@
         const before = mod.name === 'ForestLadybug' && v >= 4 && v <= 6 ||
           mod.name === 'FrozenKraken' && v === 0 ||
           mod.name === 'ForestPython' && (v === 0 || v >= 4 && v <= 6) ||
+          mod.name === 'FrozenOrca' && v === 0 ||
           mod.name === 'ForestPanda' && v === 0 ||
           mod.name === 'ForestDryad' && (v === 0 || v >= 1 && v <= 3) ||
           mod.name === 'CastleEagle' && (v === 0 || v >= 4 && v <= 6) ||
@@ -137,6 +138,41 @@
             const twho = t === eng.s.ai2 ? 'ai2' : (t === eng.s.ai ? 'ai' : 'player');
             eng.emit('buff', '+' + targetLush + '[茂盛]', null, { who: twho, kind: 'lush', stacks: t.lush });
             lushAppliedEarly = true;
+          }
+        }
+        // beforeDamage poison/bleed: apply onto target BEFORE damage so preview matches settlement
+        // (captureAttackSkill queues + rolls back; commit beforeDamage then live recalc).
+        let poisonAppliedEarly = false;
+        let bleedAppliedEarly = false;
+        const effectTiming = (typeof mod.attackEffectTiming === 'function')
+          ? mod.attackEffectTiming(v)
+          : ((mod.name === 'ForestLadybug' && v >= 4 && v <= 6 ||
+            mod.name === 'FrozenKraken' && v === 0 ||
+            mod.name === 'ForestPython' && (v === 0 || v >= 4 && v <= 6) ||
+            mod.name === 'FrozenOrca' && v === 0 ||
+            mod.name === 'ForestPanda' && v === 0 ||
+            mod.name === 'ForestDryad' && (v === 0 || v >= 1 && v <= 3) ||
+            mod.name === 'CastleEagle' && (v === 0 || v >= 4 && v <= 6) ||
+            mod.name === 'CastleGargoyle' && v >= 1 && v <= 6)
+            ? 'beforeDamage' : 'afterDamage');
+        if (effectTiming === 'beforeDamage') {
+          if (typeof mod.attackPoison === 'function') {
+            const p = Math.max(0, Number(mod.attackPoison(c)) || 0);
+            if (p > 0) {
+              if (typeof eng.poison === 'function') eng.poison(t, p, { silent: true });
+              else if (poison) poison(p);
+              else t.poison = Math.min(2, (t.poison || 0) + p);
+              poisonAppliedEarly = true;
+            }
+          }
+          if (typeof mod.attackBleed === 'function') {
+            const b = Math.max(0, Number(mod.attackBleed(c)) || 0);
+            if (b > 0) {
+              if (typeof eng.bleed === 'function') eng.bleed(t, b, { silent: true });
+              else if (bleed) bleed(b);
+              else t.bleed = Math.min(3, (t.bleed || 0) + b);
+              bleedAppliedEarly = true;
+            }
           }
         }
         const ctx = {
@@ -360,7 +396,7 @@
             t.chaos_green = false;
           }
         }
-        if (typeof mod.attackBleed === 'function') {
+        if (typeof mod.attackBleed === 'function' && !bleedAppliedEarly) {
           const b = mod.attackBleed(c);
           if (b > 0 && bleed) bleed(b);
         }
@@ -375,7 +411,7 @@
         if (typeof mod.attackBurnSettle === 'function' && mod.attackBurnSettle(c) && (t.burn || 0) > 0) {
           if (typeof eng.settleBurn === 'function') eng.settleBurn(t);
         }
-        if (typeof mod.attackPoison === 'function') {
+        if (typeof mod.attackPoison === 'function' && !poisonAppliedEarly) {
           const p = mod.attackPoison(c);
           if (p > 0 && poison) poison(p);
         }
@@ -1145,13 +1181,15 @@
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
       if (v >= 1 && v <= 3) {
-        return '造成' + (v + stageBonus) + '点[伤害]；玩家有=2层[中毒]时额外抽取1张牌';
+        return '造成' + (v + 1 + stageBonus) + '🗡️，施加[中毒]；玩家[中毒]≥2时额外抽1🃏';
       }
       if (v >= 4 && v <= 6) {
-        return '先施加1层[中毒]，造成' + (3 + stageBonus) + '×玩家[中毒]层数点[伤害]';
+        return '先施加[中毒]，再按施加后层数×3🗡️（上限2，最多6）';
       }
       if (v === 0) {
-        return '先施加1层[中毒]，造成' + (2 + stageBonus) + '×玩家[中毒]层数点[伤害]（不可防御）';
+        return stageBonus
+          ? '先施加[中毒]，再按施加后层数×3🗡️（上限2，最多6）+1（不可防御）'
+          : '先施加[中毒]，再按施加后层数×3🗡️（上限2，最多6；不可防御）';
       }
       return '无进攻效果';
     }
@@ -1205,7 +1243,9 @@
         return '造成' + (5 + stageBonus) + '点[伤害]，施加1层[流血]';
       }
       if (v === 0) {
-        return '造成' + (2 + stageBonus) + '+玩家[流血]层数×2点[伤害]';
+        const base = 2 + stageBonus;
+        const cap = base + 2 * 3;
+        return '先施加[流血]，再按施加后层数造成' + base + '+2×层数🗡️（上限3，最多' + cap + '）';
       }
       return '无进攻效果';
     }

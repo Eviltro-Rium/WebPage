@@ -186,32 +186,29 @@ test('Vixraps attack 0 applies hypnosis to the main target only', () => {
   assert.ok(r.d === 0);
 });
 
-test('Vixraps attack 6 heals by existing burn stacks and deals equal damage without adding burn', () => {
+test('Vixraps attack 6 applies burn first then heals and deals by current stacks', () => {
   const eng = new Engine();
   eng.start('Vixraps', 'Saiki');
   eng.s.ai.burn = 2;
   eng.s.player.hp = 50;
   const r = eng.effect('Vixraps', 6, number(6), eng.s.player, eng.s.ai);
-  assert.equal(r.d, 2, 'damage equals the existing burn stacks');
-  assert.equal(eng.s.player.hp, 52, 'Vixraps heals by opponent burn stacks');
+  assert.equal(eng.s.ai.burn, 3, 'attack 6 applies 1 burn before scaling');
+  assert.equal(r.d, 3, 'damage equals burn stacks after the new layer');
+  assert.equal(eng.s.player.hp, 53, 'Vixraps heals by burn stacks after applying');
   assert.equal(eng.s.pendingVixrapsBurnSettle, null, 'no deferred settlement anymore');
   const recovery = [...eng.events].reverse().find(event => event.type === 'heal');
   assert.equal(recovery && recovery.kind, 'heal', 'Vixraps 6 uses ordinary recovery floating text');
-  eng.s.atkOwner = 'player'; eng.s.atkCard = number(6); eng.s.pendingAttack = { damage: r.d };
-  assert.equal(eng.prepareAttackSettlement(r.d, 'ai'), 2);
-  eng.settlePreparedHit(eng.s.player, eng.s.ai, { damage: 2, bleed: 0 });
-  assert.equal(eng.s.ai.burn, 2, 'attack 6 no longer adds a burn layer');
 });
 
-test('Vixraps attack 6 does nothing when the opponent has no burn', () => {
+test('Vixraps attack 6 still burns and hits when the opponent starts with no burn', () => {
   const eng = new Engine();
   eng.start('Vixraps', 'Saiki');
   eng.s.ai.burn = 0;
   eng.s.player.hp = 50;
   const r = eng.effect('Vixraps', 6, number(6), eng.s.player, eng.s.ai);
-  assert.equal(r.d, 0);
-  assert.equal(eng.s.player.hp, 50);
-  assert.equal(eng.s.ai.burn || 0, 0);
+  assert.equal(eng.s.ai.burn, 1);
+  assert.equal(r.d, 1);
+  assert.equal(eng.s.player.hp, 51);
 });
 
 test('Vixraps attack 5 doubles burn after defense without pre-defense feedback', () => {

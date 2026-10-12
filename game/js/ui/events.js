@@ -132,7 +132,10 @@ async _consumeEvents(events, options = {}) {
         if (hasEvents && typeof this._endHandAnimation === 'function') this._endHandAnimation();
         // The attack-modifier dialog is held back while events play; open it now.
         if (hasEvents && !this._isConsumingEvents && this.state && this.state.pendingAttackBuffChoice
-            && typeof this._renderControls === 'function') this._renderControls();
+            && typeof this._renderControls === 'function') {
+            this._deferAttackBuffDialog = false;
+            this._renderControls();
+        }
     }
 },
 
@@ -206,7 +209,8 @@ async _playTrophyDropAnimation(names) {
         const sx = fr.left + fr.width / 2 - 35 + (i - (names.length - 1) / 2) * 24;
         const sy = fr.top + fr.height / 2 - 50;
         const ex = tr.left + tr.width / 2 - 35, ey = tr.top + tr.height / 2 - 50;
-        node.style.left = sx + 'px'; node.style.top = sy + 'px';
+        // Inline fixed positioning so the flight stays visible even if CSS is cached.
+        node.style.cssText = 'position:fixed;z-index:9999;left:' + sx + 'px;top:' + sy + 'px;width:70px;height:100px;pointer-events:none;margin:0;';
         document.body.appendChild(node);
         const done = () => { node.remove(); resolve(); };
         if (reduce || !node.animate) { setTimeout(done, 150); return; }

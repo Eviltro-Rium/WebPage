@@ -32,12 +32,23 @@ for (const relative of sources) {
   vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
 }
 
-const { AdventureRegistry, AdventureLoot, AdventureMonsterBridge } = context;
+const { AdventureRegistry, AdventureLoot, AdventureMonsterBridge, Engine } = context;
 const { getBoss, applyStageMods } = (function () {
   const R = AdventureRegistry;
   const bridge = AdventureMonsterBridge;
   return { getBoss: name => R.getBoss(name), applyStageMods: bridge.applyStageMods };
 })();
+
+function stagedEngine(t, stage = 1) {
+  const base = getBoss('FrozenOrca');
+  AdventureMonsterBridge.registerMonsterChar(applyStageMods(base, stage));
+  t.after(() => AdventureMonsterBridge.registerMonsterChar(base));
+  const eng = new Engine();
+  eng.start('Ryan', 'FrozenOrca');
+  eng.later = () => {};
+  eng.s.isAdventure = true;
+  return eng;
+}
 
 function numCard(value) {
   return { value, isNumberCard: true, isItemCard: false, color: 'RED', isBlack: false, isWhite: false };
@@ -108,11 +119,14 @@ test('FrozenOrca attackDamage: 4/5/6 deals 5', () => {
   }
 });
 
-test('FrozenOrca attackDamage: 0 deals 2 + 2*playerBleed', () => {
+test('FrozenOrca attackDamage: 0 uses current (after-apply) bleed stacks, cap 3', () => {
   const boss = getBoss('FrozenOrca');
+  // after-apply stacks: 0/1/2/3 → 2/4/6/8
   assert.equal(boss.attackDamage(numCard(0), { playerBleed: 0 }), 2);
   assert.equal(boss.attackDamage(numCard(0), { playerBleed: 1 }), 4);
+  assert.equal(boss.attackDamage(numCard(0), { playerBleed: 2 }), 6);
   assert.equal(boss.attackDamage(numCard(0), { playerBleed: 3 }), 8);
+  assert.equal(boss.attackDamage(numCard(0), { playerBleed: 4 }), 8, 'bleed cap 3');
   assert.equal(boss.attackDamage(numCard(0), {}), 2);
 });
 
@@ -136,12 +150,12 @@ test('FrozenOrca attackHypothermia: 1/2/3 applies 1 stack', () => {
   }
 });
 
-test('FrozenOrca attackBleed: 4/5/6 applies 1 stack', () => {
+test('FrozenOrca attackBleed: 0/4/5/6 applies 1 stack', () => {
   const boss = getBoss('FrozenOrca');
-  for (const v of [4, 5, 6]) {
+  for (const v of [0, 4, 5, 6]) {
     assert.equal(boss.attackBleed(numCard(v)), 1);
   }
-  for (const v of [0, 1, 2, 3]) {
+  for (const v of [1, 2, 3]) {
     assert.equal(boss.attackBleed(numCard(v)), 0);
   }
 });
@@ -191,13 +205,16 @@ test('FrozenOrca stage2: hp +10 = 50', () => {
   assert.equal(s2.hp, 50);
 });
 
-test('FrozenOrca stage3: attackDamage +1', () => {
+test('FrozenOrca stage3: attackDamage +1 (0 card → 3+2×stacks, max 9)', () => {
   const boss = getBoss('FrozenOrca');
   const s3 = applyStageMods(boss, 3);
   assert.equal(s3.hp, 50, 'stage3 should include stage2 hp bonus');
   assert.equal(s3.attackDamage(numCard(1), {}), 4, '1/2/3 base 3 +1 = 4');
   assert.equal(s3.attackDamage(numCard(4), {}), 6, '4/5/6 base 5 +1 = 6');
-  assert.equal(s3.attackDamage(numCard(0), { playerBleed: 2 }), 7, '0 base 2+4 +1 = 7');
+  assert.equal(s3.attackDamage(numCard(0), { playerBleed: 0 }), 3, '0: 2+0 +1 = 3');
+  assert.equal(s3.attackDamage(numCard(0), { playerBleed: 1 }), 5, '0: 2+2 +1 = 5');
+  assert.equal(s3.attackDamage(numCard(0), { playerBleed: 2 }), 7, '0: 2+4 +1 = 7');
+  assert.equal(s3.attackDamage(numCard(0), { playerBleed: 3 }), 9, '0: 2+6 +1 = 9 max');
 });
 
 test('FrozenOrca stage4: defendImmune on 0', () => {
@@ -209,4 +226,41 @@ test('FrozenOrca stage4: defendImmune on 0', () => {
   assert.equal(s4.defendImmune(numCard(1)), false, 'stage4 defendImmune only on 0');
   assert.equal(s4.defendCounter(numCard(0), 6), 6, 'stage4 still counters on 0');
   assert.equal(s4.defendClearDebuffs(numCard(0)), true, 'stage4 still clears debuffs');
+});
+
+test('FrozenOrca 0 via effect: bleed applied early then 2+2×stacks', (t) => {
+  const eng = stagedEngine(t, 1);
+  eng.s.player.bleed = 0;
+  const card = numCard(0);
+  eng.s.atkCard = card;
+  eng.s.atkOwner = 'ai';
+  const r = eng.effect('FrozenOrca', 0, card, eng.s.ai, eng.s.player);
+  // Early apply bleed 0→1 → damage 2+2×1 = 4
+  assert.equal(r.d, 4, 'preview uses after-apply bleed=1');
+  const pending = eng.s.pendingSkillStatuses || [];
+  assert.ok(pending.some(e => e.id === 'bleed' && e.target === 'player'), 'bleed queued beforeDamage');
+  eng.s.pendingAttack = { damage: r.d };
+  const amount = eng.prepareAttackSettlement(r.d, 'player');
+  assert.equal(eng.s.player.bleed, 1);
+  assert.equal(amount, 4, 'settlement matches preview (no double-count)');
+});
+
+test('FrozenOrca 0 via effect at bleed 2→3: damage 8', (t) => {
+  const eng = stagedEngine(t, 1);
+  eng.s.player.bleed = 2;
+  const card = numCard(0);
+  eng.s.atkCard = card;
+  eng.s.atkOwner = 'ai';
+  const r = eng.effect('FrozenOrca', 0, card, eng.s.ai, eng.s.player);
+  assert.equal(r.d, 8);
+  eng.s.pendingAttack = { damage: r.d };
+  assert.equal(eng.prepareAttackSettlement(r.d, 'player'), 8);
+  assert.equal(eng.s.player.bleed, 3);
+});
+
+test('FrozenOrca attackEffectTiming: 0 is beforeDamage', () => {
+  const char = context.CharacterRegistry.get('FrozenOrca');
+  assert.ok(char);
+  assert.equal(char.attackEffectTiming(0), 'beforeDamage');
+  assert.equal(char.attackEffectTiming(5), 'afterDamage');
 });

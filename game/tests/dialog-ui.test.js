@@ -62,8 +62,53 @@ test('game-over control bar has no replay button and retains working exit choice
 test('magma and crit share one dialog and submit one exclusive choice',async()=>{
  const {dom,w,dialogs}=setup();let calls=0,payload;
  const pending={damage:5,canMagma:true,canCrit:true,magmaPreviewDamage:8};
- dialogs.showAttackBuffChoice(pending,buff=>{calls++;payload=buff;});dialogs.showAttackBuffChoice(pending,()=>calls++);
+ dialogs.showAttackBuffChoice(pending,buff=>{calls++;payload=buff;return true;});dialogs.showAttackBuffChoice(pending,()=>{calls++;return true;});
  assert.equal(w.document.querySelectorAll('#attack-buff-choice-dialog').length,1);assert.equal(w.document.querySelectorAll('#attack-buff-choice-dialog button').length,3);
  const magma=w.document.querySelector('[data-attack-buff="magmaVein"]'),crit=w.document.querySelector('[data-attack-buff="crit"]');magma.click();crit.click();await Promise.resolve();assert.equal(calls,1);assert.equal(payload,'magmaVein');
- dialogs.syncCombatDialog('attackBuff',false,'ATTACK_BUFF_CHOICE');assert.equal(w.document.querySelector('#attack-buff-choice-dialog'),null);dom.window.close();
+ assert.equal(w.document.querySelector('#attack-buff-choice-dialog'),null);dom.window.close();
+});
+
+test('attack-buff dialog stays open when choose early-returns false',async()=>{
+ const {dom,w,dialogs}=setup();let calls=0;
+ const pending={damage:5,canMagma:true,canCrit:false,magmaPreviewDamage:8};
+ dialogs.showAttackBuffChoice(pending,()=>{calls++;return false;});
+ const magma=w.document.querySelector('[data-attack-buff="magmaVein"]');
+ magma.click();await Promise.resolve();
+ assert.equal(calls,1);
+ assert.ok(w.document.querySelector('#attack-buff-choice-dialog'),'overlay kept after blocked resolve');
+ magma.click();await Promise.resolve();
+ assert.equal(calls,2,'retry allowed after false');
+ dialogs.syncCombatDialog('attackBuff',false,'ATTACK_BUFF_CHOICE');
+ assert.equal(w.document.querySelector('#attack-buff-choice-dialog'),null);dom.window.close();
+});
+
+test('deferred attack-buff flag blocks dialog until cleared after events',async()=>{
+ const {dom,w}=setup();
+ const fs=require('node:fs'),path=require('node:path');
+ w.eval('window.GameUI=class {};window.PHASE_NAMES={};');
+ w.eval(fs.readFileSync(path.join(__dirname,'../js/ui/controls.js'),'utf8'));
+ const controls=w.document.createElement('div');controls.id='controls';w.document.body.appendChild(controls);
+ const ui=new w.GameUI();
+ let opened=0;
+ Object.assign(ui,{
+  state:{phase:'ATTACK_BUFF_CHOICE',onlineCanAct:true,playerHand:[],selectedCard:-1,pendingAttackBuffChoice:{damage:5,canMagma:true,canCrit:false,magmaPreviewDamage:8,magmaStacks:1,critStacks:0}},
+  dialogs:{showAttackBuffChoice(){opened++;}},
+  _updateUseItemButton(){},
+  _isConsumingEvents:false,
+  _deferAttackBuffDialog:false
+ });
+ ui._deferAttackBuffDialog=true;
+ ui._renderControls();
+ assert.equal(opened,0,'settling/defer holds dialog');
+ ui._deferAttackBuffDialog=false;
+ ui._renderControls();
+ assert.equal(opened,1,'opens after defer cleared');
+ // _showAcceptedControls(true) sets defer again
+ ui._showAcceptedControls(true);
+ assert.equal(opened,1,'settling path does not open again');
+ assert.equal(ui._deferAttackBuffDialog,true);
+ ui._deferAttackBuffDialog=false;
+ ui._renderControls();
+ assert.equal(opened,2);
+ dom.window.close();
 });

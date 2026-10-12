@@ -1070,7 +1070,6 @@ body {
     animation: bloodthirstPulse 1.2s ease-in-out infinite;
 }
 .buff-icon-wrap.bloodthirst-buff img { width: 28px; height: 28px; }
-.buff-icon-wrap.bloodthirst-buff .buff-name { color: #fff4f6; text-shadow: 0 1px 3px #3b0010; }
 .buff-icon-wrap.bind-mark {
     width: 54px;
     border-color: rgba(74, 222, 128, 0.9);
@@ -1079,45 +1078,6 @@ body {
     animation: bindMarkPulse 1.45s ease-in-out infinite;
 }
 .buff-icon-wrap.bind-mark img { width: 28px; height: 28px; }
-.buff-icon-wrap.bind-mark .buff-name { color: #ecfdf5; text-shadow: 0 1px 3px #052e16; }
-.buff-icon-wrap.mock-mark {
-    width: 64px;
-    border-color: rgba(245, 158, 11, 0.92);
-    background: linear-gradient(135deg, rgba(90, 50, 0, 0.9), rgba(245, 158, 11, 0.55));
-    box-shadow: 0 0 12px rgba(245, 158, 11, 0.45);
-    animation: mockMarkPulse 1.4s ease-in-out infinite;
-}
-.buff-icon-wrap.mock-mark img { width: 28px; height: 28px; }
-.buff-icon-wrap.mock-mark .buff-name {
-    color: #fff7ed;
-    text-shadow: 0 1px 3px #4a2000;
-    font-size: 0.58rem;
-    letter-spacing: -0.02em;
-}
-.buff-icon-wrap.mock-mark-red {
-    border-color: rgba(248, 113, 113, 0.95);
-    background: linear-gradient(135deg, rgba(110, 10, 10, 0.92), rgba(239, 68, 68, 0.58));
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
-}
-.buff-icon-wrap.mock-mark-yellow {
-    border-color: rgba(250, 204, 21, 0.95);
-    background: linear-gradient(135deg, rgba(110, 85, 0, 0.92), rgba(250, 204, 21, 0.58));
-    box-shadow: 0 0 12px rgba(250, 204, 21, 0.5);
-}
-.buff-icon-wrap.mock-mark-blue {
-    border-color: rgba(96, 165, 250, 0.95);
-    background: linear-gradient(135deg, rgba(10, 50, 110, 0.92), rgba(59, 130, 246, 0.58));
-    box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
-}
-.buff-icon-wrap.mock-mark-green {
-    border-color: rgba(74, 222, 128, 0.95);
-    background: linear-gradient(135deg, rgba(10, 80, 40, 0.92), rgba(34, 197, 94, 0.58));
-    box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
-}
-@keyframes mockMarkPulse {
-    0%, 100% { filter: brightness(0.96); transform: scale(1); }
-    50% { filter: brightness(1.16); transform: scale(1.025); }
-}
 .buff-icon-wrap.bomb-mark {
     width: 28px; height: 28px;
     border-color: rgba(251, 146, 60, 0.92);
@@ -2500,13 +2460,6 @@ body {
 .codex-stat-key { color: #94a3b8; }
 .codex-stat-val { color: #2ecc71; font-weight: 600; }
 
-.skill-footnote {
-    margin: 8px 2px 0;
-    font-size: 12px;
-    color: rgba(255,255,255,0.5);
-    text-align: right;
-}
-
 .skill-grid {
     display: flex;
     flex-direction: column;
@@ -2905,16 +2858,6 @@ body {
     68% { filter: brightness(1.35) saturate(1.15); transform: scale(1.06); box-shadow: 0 0 11px rgba(125,211,252,0.7); }
     100% { filter: brightness(1); transform: scale(1); box-shadow: 0 0 0 rgba(255,255,255,0); }
 }
-.buff-icon-wrap.magma-vein-buff {
-    border-color: rgba(249, 115, 22, 0.92);
-    background: linear-gradient(135deg, rgba(120, 40, 0, 0.9), rgba(249, 115, 22, 0.55));
-    box-shadow: 0 0 10px rgba(249, 115, 22, 0.45);
-    animation: magmaVeinPulse 1.35s ease-in-out infinite;
-}
-@keyframes magmaVeinPulse {
-    0%, 100% { filter: brightness(0.96); transform: scale(1); }
-    50% { filter: brightness(1.18); transform: scale(1.03); }
-}
 .buff-icon-wrap.buff-trigger-flash { animation: buffTriggerFlash 0.58s ease-out; z-index: 2; }
 
 /* Lightweight transparent glass surfaces.
@@ -2970,46 +2913,25 @@ body {
 .dice-control-active .d12-result .d12-label { font-size:.5rem; }
 .dice-control-active .reveal-desc { max-height:28px; }
 
-/* Attack/defend zones: card on the left, description on the right. */
-.attack-zone, .defend-zone {
+.trophy-fly-card {
+    position: fixed !important;
+    z-index: 9999;
+    width: 70px !important;
+    height: 100px !important;
+    pointer-events: none;
+    border-radius: 6px;
+    margin: 0;
+}
+div.trophy-fly-card {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
-    column-gap: 6px;
-    align-items: center;
+    place-items: center;
+    background: #f8f4e6;
+    color: #b8860b;
+    font-size: 2rem;
+    box-shadow: 0 0 18px rgba(255, 226, 122, 0.7);
 }
-.attack-zone > .zone-title, .defend-zone > .zone-title { grid-column: 1 / -1; grid-row: 1; }
-.attack-zone > .zone-cards, .defend-zone > .zone-cards {
-    grid-column: 1; grid-row: 2;
-    height: auto; min-height: 100px; max-height: none;
-    min-width: 70px; flex-wrap: nowrap; justify-content: flex-start;
-}
-.attack-zone > .zone-desc, .defend-zone > .zone-desc {
-    grid-column: 2; grid-row: 2;
-    height: auto; min-height: 0; max-height: 100%;
-    text-align: left; font-size: 0.8rem;
-    padding: 3px 22px 3px 2px;
-    align-self: center;
-}
-.attack-zone > .zone-desc .desc-text, .defend-zone > .zone-desc .desc-text {
-    -webkit-line-clamp: 5; text-align: left;
-}
-/* Side-layout expand/collapse: toggle sits bottom-right; expanded text drops down over the right column. */
-.attack-zone > .zone-desc .zone-desc-toggle, .defend-zone > .zone-desc .zone-desc-toggle {
-    top: auto; bottom: 0; right: 0; transform: none;
-    width: 22px; height: 18px; border-radius: 6px 2px 6px 2px; font-size: 12px;
-}
-.attack-zone > .zone-desc.is-expanded, .defend-zone > .zone-desc.is-expanded {
-    position: absolute;
-    left: 82px; right: 4px; top: 22px; bottom: auto;
-    max-height: 220px; padding: 6px 24px 22px 8px;
-    text-align: left; font-size: 0.8rem;
-    animation: zoneDescDrop 0.18s ease-out;
-    transform-origin: top;
-}
-@keyframes zoneDescDrop { from { opacity: 0; transform: scaleY(0.85); } to { opacity: 1; transform: scaleY(1); } }
-
-.trophy-fly-card { position: fixed; z-index: 9999; width: 70px !important; height: 100px !important; pointer-events: none; border-radius: 6px; }
-div.trophy-fly-card { display: grid; place-items: center; background: #f8f4e6; color: #b8860b; font-size: 2rem; }
 .trophy-hand-glow { animation: trophyHandGlow .8s ease-out; }
-@keyframes trophyHandGlow { 0% { box-shadow: 0 0 0 0 rgba(255,226,122,.9); } 100% { box-shadow: 0 0 0 14px rgba(255,226,122,0); } }
+@keyframes trophyHandGlow {
+    0% { box-shadow: 0 0 0 0 rgba(255, 226, 122, 0.9); }
+    100% { box-shadow: 0 0 0 14px rgba(255, 226, 122, 0); }
+}

@@ -74,10 +74,13 @@ class DialogManager {
             button.appendChild(document.createTextNode(label));
             button.addEventListener('click',async()=>{
                 if(submitted)return;submitted=true;
-                // Close immediately so the click feels instant; if the action is
-                // rejected the controls re-render and reopen the dialog.
-                overlay.remove();
-                await onChoose(kind);
+                // Keep the overlay until resolve actually runs. Early returns
+                // (e.g. while events are still consuming) must not dismiss it,
+                // or the post-events _renderControls would look like a second popup.
+                let ok=false;
+                try{ok=!!(await onChoose(kind));}catch(_){ok=false;}
+                if(ok)overlay.remove();
+                else submitted=false;
             });list.appendChild(button);
         };
         if(pending.canMagma)add('magmaVein','消耗熔脉 · 伤害 '+pending.damage+' → '+pending.magmaPreviewDamage+' 🗡️','magma_vein');

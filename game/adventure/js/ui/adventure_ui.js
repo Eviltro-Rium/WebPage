@@ -11,7 +11,7 @@
   const schedule = (fn, ms) => runtime ? runtime.schedule(null, fn, ms) : setTimeout(fn, ms);
   const GAME_TIPS = [
     '房间清理完后不会自动补牌，也不会清除身上的 Buff。',
-    '挑战房只在击败第一个敌人时回3❤️并补牌一次，击败第二个敌人不再恢复；其他房间战斗结束不会自动补牌。',
+    '挑战房击败第一个敌人后补牌一次，其他房间战斗结束不会自动补牌。',
     '有些怪物会清除道具，请及时使用手上的道具。',
     '怪物手牌全是白卡，优先使用魔法牌，其次按点数从大到小出牌。',
     '战利品白卡是一种特殊白卡，打出后可以再抽一张牌。',
@@ -1210,17 +1210,8 @@
       const overlay = document.createElement('div');
       overlay.id = 'adv-trophy-backpack-dialog';
       overlay.className = 'dialog-overlay';
-      // Stack identical trophy cards into one row with a count; discard removes one copy.
-      const groups = [];
-      const byName = new Map();
-      cards.forEach((card, index) => {
-        const g = byName.get(card.name);
-        if (g) { g.count++; return; }
-        const ng = { card, index, count: 1 };
-        byName.set(card.name, ng); groups.push(ng);
-      });
-      const rows = groups.length ? groups.map(({ card, index, count }) =>
-        '<div class="adv-trophy-pack-row"><div class="adv-trophy-pack-card"><span class="adv-trophy-pack-thumb">' + this._trophyCardMarkup(card.name, 46, 68) + (count > 1 ? '<span class="adv-trophy-pack-count">×' + count + '</span>' : '') + '</span><div><b>' + card.displayName + (count > 1 ? ' ×' + count : '') + '</b><small>' + (card.description || '') + '</small></div></div><button class="adv-btn adv-trophy-pack-discard" data-trophy-discard="' + index + '">丢弃1张</button></div>'
+      const rows = cards.length ? cards.map((card, index) =>
+        '<div class="adv-trophy-pack-row"><div class="adv-trophy-pack-card">' + this._trophyCardMarkup(card.name, 46, 68) + '<div><b>' + card.displayName + '</b><small>' + (card.description || '') + '</small></div></div><button class="adv-btn adv-trophy-pack-discard" data-trophy-discard="' + index + '">丢弃</button></div>'
       ).join('') : '<div class="adv-trophy-pack-empty">尚未获得战利白卡</div>';
       overlay.innerHTML = '<div class="dialog-box adv-trophy-pack-dialog"><div class="dialog-title">战利白卡背包</div><div class="dialog-body adv-trophy-pack-list">' + rows + '</div><div class="dialog-buttons"><button class="adv-btn adv-btn-primary" id="adv-trophy-pack-close">关闭</button></div></div>';
       document.body.appendChild(overlay);

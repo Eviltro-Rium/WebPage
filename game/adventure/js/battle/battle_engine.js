@@ -431,7 +431,8 @@
         player: this.character(playerName),
         ai: this.character(opponent1Name, true),
         ai2: this.character(opponent2Name, true),
-        currentAITarget: 0, attackTarget: 'ai', eliminatedHandled: { ai: false, ai2: false },
+        // attackTarget stays null until a real target roll; UI must not invent a default NPC1 defender.
+        currentAITarget: 0, attackTarget: null, eliminatedHandled: { ai: false, ai2: false },
         atkCard: null, atkOwner: null, defCard: null, defOwner: null, revealCards: [], diceRoll: null,
         lordPlayerTargetIdx: 0,
         revealAIHand: true
