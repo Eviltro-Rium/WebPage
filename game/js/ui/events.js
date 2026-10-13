@@ -184,7 +184,7 @@ _animationOrder(events) {
         i++;
     }
     // Victory feedback follows the visible loot rolls and their hand arrivals.
-    if (ordered.some(evt => evt.type === 'diceRoll' && evt.purpose === 'trophyDrop')) {
+    if (ordered.some(evt => evt.type === 'trophyDrop' || evt.type === 'diceRoll' && evt.purpose === 'trophyDrop')) {
         return [...ordered.filter(evt => evt.type !== 'gameOver'), ...ordered.filter(evt => evt.type === 'gameOver')];
     }
     return ordered;
@@ -228,7 +228,10 @@ async _playTrophyDropAnimation(names) {
     await Promise.all(flights);
     if (reduce) return;
     to.classList.remove('trophy-hand-glow'); void to.offsetWidth; to.classList.add('trophy-hand-glow');
-    setTimeout(() => to.classList.remove('trophy-hand-glow'), 800);
+    // The hand highlight is part of the arrival, not detached decoration:
+    // settlement must not cover it before the acquisition has finished.
+    await new Promise(resolve => setTimeout(resolve, 800));
+    to.classList.remove('trophy-hand-glow');
 },
 
 async _playEvents(events, fast = false) {
@@ -264,6 +267,7 @@ async _playEvents(events, fast = false) {
         // state snapshot before the defense animation begins.
         this._resetRevealBeforeDefenseJudgment();
     }
+    this._eventPlaybackDepth = (this._eventPlaybackDepth || 0) + 1;
     try { for (const evt of orderedEvents) {
         try {
           if (evt.type === 'aiPlay') {
@@ -629,6 +633,7 @@ async _playEvents(events, fast = false) {
         }
     } } finally {
         this._onlineAnimationFast = previousOnlineFast;
+        this._eventPlaybackDepth = Math.max(0, (this._eventPlaybackDepth || 1) - 1);
     }
 }
     });

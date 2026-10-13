@@ -5,6 +5,26 @@
  */
 (function () {
   window.AdventureStageGuide = {
+  "VolcanoSalamander": [
+    { "stage": "2", "text": "生命上限 +5（25）" },
+    { "stage": "3", "text": "进攻技能伤害 +1" },
+    { "stage": "4", "text": "防御格挡 +1" }
+  ],
+  "VolcanoCrab": [
+    { "stage": "2", "text": "生命上限 +6（30）" },
+    { "stage": "3", "text": "进攻技能伤害 +1" },
+    { "stage": "4", "text": "防御格挡 +1" }
+  ],
+  "VolcanoAshWolf": [
+    { "stage": "2", "text": "生命上限 +5（25）" },
+    { "stage": "3", "text": "进攻技能伤害 +1" },
+    { "stage": "4", "text": "防御额外施加[炙热]" }
+  ],
+  "VolcanoObsidianBoar": [
+    { "stage": "2", "text": "生命上限 +6（32）" },
+    { "stage": "3", "text": "进攻伤害<3时变为不可防御" },
+    { "stage": "4", "text": "防御格挡 +1" }
+  ],
   "FrozenMammoth": [
     { "stage": "2", "text": "生命上限 +10（55）" },
     { "stage": "3", "text": "所有进攻伤害 +1" },

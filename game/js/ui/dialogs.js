@@ -18,6 +18,7 @@ class DialogManager {
     constructor(apiActionFn) {
         this._apiAction = apiActionFn;
         this._chanFiveOrder = null;
+        this._attackBuffSubmission = null;
     }
 
     /**
@@ -39,6 +40,10 @@ class DialogManager {
             trophyPurify: 'purify-choice-dialog',
             attackBuff: 'attack-buff-choice-dialog'
         }[pendingDialog] || (phase === 'CHAN_FIVE_REORDER' ? 'chan-five-dialog' : null);
+        if (this._attackBuffSubmission && (!canAct || desired !== 'attack-buff-choice-dialog')) {
+            this._attackBuffSubmission.cancelled = true;
+            this._attackBuffSubmission = null;
+        }
         const ids = [
             'purify-choice-dialog', 'super-purify-choice-dialog',
             'guard-choice-dialog', 'fly-retry-choice-dialog',
@@ -61,7 +66,7 @@ class DialogManager {
 
     showAttackBuffChoice(pending, onChoose) {
         const id='attack-buff-choice-dialog';
-        if(document.getElementById(id)) return;
+        if(document.getElementById(id) || this._attackBuffSubmission) return;
         const overlay=document.createElement('div');overlay.id=id;overlay.className='dialog-overlay';
         const box=document.createElement('div');box.className='dialog-box';
         const heading=document.createElement('h3');heading.textContent='攻击修正';box.appendChild(heading);
@@ -74,13 +79,21 @@ class DialogManager {
             button.appendChild(document.createTextNode(label));
             button.addEventListener('click',async()=>{
                 if(submitted)return;submitted=true;
-                // Keep the overlay until resolve actually runs. Early returns
-                // (e.g. while events are still consuming) must not dismiss it,
-                // or the post-events _renderControls would look like a second popup.
+                // Submission and animation completion are different boundaries.
+                // Close now, but keep a latch so snapshots cannot reopen this
+                // decision while the action / feedback is still in flight.
+                const submission = { cancelled: false };
+                this._attackBuffSubmission = submission;
+                overlay.remove();
                 let ok=false;
                 try{ok=!!(await onChoose(kind));}catch(_){ok=false;}
-                if(ok)overlay.remove();
-                else submitted=false;
+                if(this._attackBuffSubmission === submission) this._attackBuffSubmission = null;
+                // A rejected command can be retried, but never restore an old
+                // choice after the phase or local decision owner has changed.
+                if(!ok && !submission.cancelled && !document.getElementById(id)) {
+                    submitted=false;
+                    document.body.appendChild(overlay);
+                }
             });list.appendChild(button);
         };
         if(pending.canMagma)add('magmaVein','消耗熔脉 · 伤害 '+pending.damage+' → '+pending.magmaPreviewDamage+' 🗡️','magma_vein');

@@ -210,6 +210,7 @@ test('restored victory waits for pending or finish-generated loot before saving 
  for (const queuedInitially of [true,false]) {
   const {dom,w,document,engine:adventure}=setup(),order=[];
   try {
+   document.getElementById('adv-settle-overlay')?.remove();
    for(const id of ['adventure-container','game-container','game-screen']){
     const el=document.createElement('div');el.id=id;document.body.appendChild(el);
    }
@@ -241,6 +242,14 @@ test('restored victory waits for pending or finish-generated loot before saving 
     async _consumeEvents(events){
      assert.equal(events.length,2);order.push('play-loot');
      const active=w.AdventureBattleController.activeEngine();active.events=[];
+     // Acknowledged engine events can be empty while their visual playback
+     // still runs; even a concurrent render must not settle at this point.
+     this._eventPlaybackDepth=1;
+     this._showGameOver();
+     assert.equal(document.getElementById('adv-settle-overlay'),null);
+     assert.ok(!order.includes('save-rewards'));
+     await Promise.resolve();
+     this._eventPlaybackDepth=0;
     }
    };
    await w.AdventureBattleController.startCombat('Ryan','CastleChameleon',()=>{},{

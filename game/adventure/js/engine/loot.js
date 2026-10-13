@@ -151,7 +151,22 @@
     ]) })
   });
 
-  const SCENE_RULES = Object.freeze({ castle: CASTLE_RULES, forest: FOREST_RULES, ocean: OCEAN_RULES, desert: DESERT_RULES });
+  const VOLCANO_RULES = Object.freeze({
+    VolcanoSalamander: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 3, drops: Object.freeze(['BurnTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['ScorchTrophy']) })
+    ]) }),
+    VolcanoCrab: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 2, drops: Object.freeze(['MagmaVeinTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['GuardTrophy']) })
+    ]) }),
+    VolcanoAshWolf: Object.freeze({ threshold: 4, drops: Object.freeze(['BurnTrophy']) }),
+    VolcanoObsidianBoar: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 3, drops: Object.freeze(['BurnTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) })
+    ]) })
+  });
+  const SCENE_RULES = Object.freeze({ castle: CASTLE_RULES, forest: FOREST_RULES, ocean: OCEAN_RULES, desert: DESERT_RULES, volcano: VOLCANO_RULES });
 
   const TROPHY_TAGS = Object.freeze({
     BurnTrophy: "灼伤", PiercingTrophy: "流血", FreezeTrophy: "冰冻",
@@ -159,7 +174,7 @@
     DivingTrophy: "潜水", ScorchTrophy: "炙热", LushTrophy: "茂盛",
     PoisonTrophy: "中毒", ParasiteTrophy: "寄生", ThornsTrophy: "荆棘", SandblindTrophy: "沙盲", QuicksandTrophy: "流沙", GuardTrophy: "守护",
     DisarmTrophy: "缴械", ZeroTrophy: "0技能", TimeBombTrophy: "定时炸弹",
-    SmallPotionTrophy: "小药剂", CritTrophy: "暴击",
+    SmallPotionTrophy: "小药剂", CritTrophy: "暴击", MagmaVeinTrophy: "熔脉",
     FlyTrophy: "飞翔", RussianRouletteTrophy: "俄罗斯赌盘"
   });
 
@@ -210,6 +225,7 @@
     if (value === 'forest' || value === '森林' || value === 'forest_scene') return 'forest';
     if (value === 'ocean' || value === '冻洋' || value === 'ocean_scene') return 'ocean';
     if (value === 'desert' || value === '沙漠' || value === 'desert_scene') return 'desert';
+    if (value === 'volcano' || value === '火山' || value === 'volcano_scene') return 'volcano';
     return value;
   }
 

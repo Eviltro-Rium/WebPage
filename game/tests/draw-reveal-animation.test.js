@@ -397,6 +397,32 @@ test('actual trophy animation creates a temporary card at the judgment zone and 
     assert.ok(!doc.body.children.includes(node),'arrival removes the temporary card');
   } finally {context.AdventureDeck=oldDeck;FakeEl.prototype.animate=oldAnimate;}
 });
+test('challenge first elimination visibly flies its trophy into the hand while the survivor remains active', async () => {
+  const {ui,doc}=harness(),animations=[];
+  const oldDeck=context.AdventureDeck,oldAnimate=FakeEl.prototype.animate;
+  context.AdventureDeck={trophyWhite:name=>Object.assign(card('challenge-'+name,'WHITE',-1),{trophyWhite:true,trophyName:name})};
+  FakeEl.prototype.animate=function(frames,options){const anim={frames,options};animations.push(anim);return anim;};
+  Object.assign(ui.state,{isAdventure:true,is1v2:true,phase:'PLAYER_PLAY',ai:{alive:false},ai2:{alive:true}});
+  ui.state.playerHand=[card('kept','RED',2),context.AdventureDeck.trophyWhite('GuardTrophy')];
+  ui.playFloatingText=()=>{};ui._playD12Animation=async()=>{};
+  const events=[{id:51,type:'diceRoll',purpose:'trophyDrop',value:1,drops:['GuardTrophy']},
+    {id:52,type:'trophyDrop',who:'player',roll:1,drops:['GuardTrophy']}];
+  ui.state.events=events;ui._renderPlayerHand();
+  try {
+    const playback=ui._playEvents(events,true);
+    for(let i=0;i<10&&!animations.length;i++)await Promise.resolve();
+    assert.equal(animations.length,1,'mid-fight drop runs the actual card flight');
+    assert.equal(ui._eventPlaybackDepth,1,'feedback remains locked during flight');
+    assert.equal(doc.getElementById('player-hand').children.length,1,'drop is not painted before arrival');
+    assert.ok(doc.body.children.some(el=>el.classList.contains('trophy-fly-card')));
+    animations[0].onfinish();await playback;
+    assert.equal(ui._eventPlaybackDepth,0);
+    assert.equal(doc.getElementById('player-hand').children.length,2);
+    assert.equal(ui.state.phase,'PLAYER_PLAY');assert.equal(ui.state.ai2.alive,true);
+    assert.ok(!doc.getElementById('player-hand').classList.contains('trophy-hand-glow'));
+  } finally {context.AdventureDeck=oldDeck;FakeEl.prototype.animate=oldAnimate;}
+});
+
 test('legacy loot dice show their paired reward, while a controllable unresolved die does not claim a miss', async () => {
   const {ui}=harness(),labels=[];
   ui._showZoneDesc=(id,text)=>labels.push(text);

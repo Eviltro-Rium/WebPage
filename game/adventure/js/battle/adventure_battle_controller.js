@@ -610,7 +610,8 @@
     gameUI._showGameOver = function () {
       if (completing || !battleEngine) return;
       // A refreshed GAME_OVER snapshot may still contain unplayed dice/loot events.
-      if (this._isConsumingEvents || battleEngine.s.pendingDiceControl || battleEngine.events.length) return;
+      if (this._isConsumingEvents || this._eventPlaybackDepth > 0 ||
+          battleEngine.s.pendingDiceControl || battleEngine.events.length) return;
       completing = true;
       const finalState = this.state;
       const playerWon = !!(finalState.player && finalState.player.alive);

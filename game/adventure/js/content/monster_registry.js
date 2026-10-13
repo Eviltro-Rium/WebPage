@@ -75,7 +75,7 @@
           (ent.diving ? 1 : 0) + (ent.bloodthirst ? 1 : 0) +
           (ent.chaos_red ? 1 : 0) + (ent.chaos_yellow ? 1 : 0) + (ent.chaos_blue ? 1 : 0) + (ent.chaos_green ? 1 : 0);
         const ctx = {playerHandSize:(eng.h.player||[]).length,attackerHandSize:hand.length,attackerHand:hand,
-          playerBleed:t.bleed||0,playerPoison:t.poison||0,attackerLush:a.lush||0,playerBuffTotal:total,
+          playerBleed:t.bleed||0,playerPoison:t.poison||0,playerBurn:t.burn||0,attackerLush:a.lush||0,playerBuffTotal:total,
           playerPositiveBuffStacks: positiveStacks(t)};
         const drain = typeof active.attackDrain==='function' ? Number(active.attackDrain(card,ctx)) || 0 : 0;
         const damage=Number(active.attackDamage(card,ctx)) || 0;
@@ -179,7 +179,7 @@
           playerHandSize: eng.h.player ? eng.h.player.length : 0,
           attackerHandSize: eng.h[attackerKey] ? eng.h[attackerKey].length : 0,
           attackerHand: eng.h[attackerKey] || [],
-          playerBleed: (t.bleed || 0), playerPoison: (t.poison || 0), attackerLush: (a.lush || 0),
+          playerBleed: (t.bleed || 0), playerPoison: (t.poison || 0), playerBurn: (t.burn || 0), attackerLush: (a.lush || 0),
           playerBuffTotal: buffTotal(t),
           playerPositiveBuffStacks: positiveBuffStacks(t)
         };
@@ -566,6 +566,10 @@
           }
         }
 
+        if (typeof mod.attackGainMagma === 'function') {
+          const amount = Math.max(0, Number(mod.attackGainMagma(c)) || 0);
+          if (amount > 0) eng.magmaVein(a, amount);
+        }
         const settleTargetBurn = typeof mod.attackBurnSettle === 'function' && !!mod.attackBurnSettle(c);
         return {
           d, skip, unblock, drain, isDrain: drain > 0, aoeTargets, aoeDamage,
@@ -723,7 +727,21 @@
         };
         const gainCritDesc = gainCritAmt > 0 ? '，获得' + gainCritAmt + '层[暴击]' : '';
 
-        const applyAllExtras = () => { applyGuard(); applyAllLush(); applyAllHeal(); applyDiving(); applyGainCrit(); };
+        const applyFireEffects = () => {
+          const amount = typeof mod.defendBurn === 'function' ? Math.max(0, Number(mod.defendBurn(c)) || 0) : 0;
+          if (amount > 0) eng.burn(opponent, amount);
+          if (typeof mod.defendBurnSettle === 'function' && mod.defendBurnSettle(c)) eng.settleBurn(opponent);
+          if (typeof mod.defendScorch === 'function' && mod.defendScorch(c)) {
+            const service = window.FurryGame.StatusService;
+            const before = service.amount(opponent, 'scorch');
+            service.set(opponent, 'scorch', 1);
+            if (!before) {
+              const who = eng._who(opponent);
+              eng.emit('buff', '[炙热]', null, { who, target: who, kind: 'scorch', stacks: 1 });
+            }
+          }
+        };
+        const applyAllExtras = () => { applyGuard(); applyAllLush(); applyAllHeal(); applyDiving(); applyGainCrit(); applyFireEffects(); };
         const allExtrasDesc = guardDesc + allLushDesc + allHealDesc + divingDesc + gainCritDesc;
 
         if (typeof mod.defendImmune === 'function' && mod.defendImmune(c)) {
@@ -844,6 +862,7 @@
 
         applyClearSelfDebuffs();
         applyPoison(); applyBleed(); applyHypothermia(); applyThorns(); applySandblind(); applyPoisonDrain();applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
+        if (typeof mod.defendBurnSettle === 'function' && mod.defendBurnSettle(c)) return { remaining: d, desc: '施加灼伤并结算' + allExtrasDesc };
         if (v === 1) return { remaining: Math.max(0, d - Math.ceil(d / 2)), desc: '1牌防御' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
         if (v === 3) return { remaining: Math.max(0, d - Math.floor(d / 2)), desc: '3牌防御' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
         return { remaining: d, desc: '直接承受' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
@@ -937,6 +956,7 @@
         : '';
     }
     if (opts.stage) mod = applyStageMods(mod, opts.stage);
+    if (typeof mod.skillDescription === 'function') return mod.skillDescription(card, isDefend, opts);
 
     // 白7：全怪物通用轮空牌
     if (card.isNumberCard && card.value === 7) {

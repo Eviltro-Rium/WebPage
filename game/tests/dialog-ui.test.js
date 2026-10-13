@@ -68,7 +68,7 @@ test('magma and crit share one dialog and submit one exclusive choice',async()=>
  assert.equal(w.document.querySelector('#attack-buff-choice-dialog'),null);dom.window.close();
 });
 
-test('attack-buff dialog stays open when choose early-returns false',async()=>{
+test('attack-buff dialog restores retry when choose early-returns false',async()=>{
  const {dom,w,dialogs}=setup();let calls=0;
  const pending={damage:5,canMagma:true,canCrit:false,magmaPreviewDamage:8};
  dialogs.showAttackBuffChoice(pending,()=>{calls++;return false;});
@@ -80,6 +80,40 @@ test('attack-buff dialog stays open when choose early-returns false',async()=>{
  assert.equal(calls,2,'retry allowed after false');
  dialogs.syncCombatDialog('attackBuff',false,'ATTACK_BUFF_CHOICE');
  assert.equal(w.document.querySelector('#attack-buff-choice-dialog'),null);dom.window.close();
+});
+
+test('attack-buff dialog closes before async action finishes and cannot reopen in flight',async()=>{
+ for(const kind of ['magmaVein','crit','none']) {
+  const {dom,w,dialogs}=setup();let finish,calls=0;
+  const pending={damage:5,canMagma:true,canCrit:true,magmaPreviewDamage:8};
+  dialogs.showAttackBuffChoice(pending,()=>{calls++;return new Promise(resolve=>{finish=resolve;});});
+  const buttons=[...w.document.querySelectorAll('#attack-buff-choice-dialog button')];
+  buttons.find(button=>button.dataset.attackBuff===kind).click();
+  assert.equal(w.document.getElementById('attack-buff-choice-dialog'),null,'closes synchronously');
+  buttons.forEach(button=>button.click());
+  dialogs.syncCombatDialog('attackBuff',true,'ATTACK_BUFF_CHOICE');
+  dialogs.showAttackBuffChoice(pending,()=>{calls++;return true;});
+  assert.equal(calls,1);
+  assert.equal(w.document.getElementById('attack-buff-choice-dialog'),null,'stale snapshot cannot reopen');
+  finish(true);await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(dialogs._attackBuffSubmission,null);
+  dom.window.close();
+ }
+});
+
+test('rejected async attack-buff choice restores only a still-owned decision',async()=>{
+ for(const cancel of [null,'phase','owner']) {
+  const {dom,w,dialogs}=setup();let reject,calls=0;
+  const pending={damage:5,canMagma:true,canCrit:false,magmaPreviewDamage:8};
+  dialogs.showAttackBuffChoice(pending,()=>{calls++;return calls===1?new Promise((_,fail)=>{reject=fail;}):true;});
+  const button=w.document.querySelector('[data-attack-buff="magmaVein"]');button.click();
+  if(cancel==='phase') dialogs.syncCombatDialog('guard',true,'GUARD_CHOICE');
+  if(cancel==='owner') dialogs.syncCombatDialog('attackBuff',false,'ATTACK_BUFF_CHOICE');
+  reject(new Error('command rejected'));await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(!!w.document.getElementById('attack-buff-choice-dialog'),!cancel);
+  if(!cancel) {button.click();await Promise.resolve();assert.equal(calls,2);assert.equal(w.document.getElementById('attack-buff-choice-dialog'),null);}
+  dom.window.close();
+ }
 });
 
 test('deferred attack-buff flag blocks dialog until cleared after events',async()=>{
