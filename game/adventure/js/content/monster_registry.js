@@ -322,6 +322,9 @@
         if (!unblock && typeof mod.attackUnblockableIfBuff === 'function' && mod.attackUnblockableIfBuff(c, t)) {
           unblock = true;
         }
+        if (!unblock && typeof mod.attackUnblockableIfSelfBuff === 'function' && mod.attackUnblockableIfSelfBuff(c, a)) {
+          unblock = true;
+        }
         let aoeTargets = null;
         let aoeDamage = 0;
         let hypothermiaTarget = null;
@@ -410,6 +413,14 @@
         // 冻洋管虫 4/5/6：施加灼伤后立刻结算一次（配合 immediateBuffs，避免 defer 回滚剩余层数）
         if (typeof mod.attackBurnSettle === 'function' && mod.attackBurnSettle(c) && (t.burn || 0) > 0) {
           if (typeof eng.settleBurn === 'function') eng.settleBurn(t);
+        }
+        if (typeof mod.attackScorch === 'function' && mod.attackScorch(c)) {
+          if (typeof eng.setScorch === 'function') eng.setScorch(t, true, { silent: true });
+          else {
+            const service = window.FurryGame && window.FurryGame.StatusService;
+            if (service) service.set(t, 'scorch', 1);
+            else t.scorch = true;
+          }
         }
         if (typeof mod.attackPoison === 'function' && !poisonAppliedEarly) {
           const p = mod.attackPoison(c);
@@ -727,6 +738,28 @@
         };
         const gainCritDesc = gainCritAmt > 0 ? '，获得' + gainCritAmt + '层[暴击]' : '';
 
+        const flyAmt = typeof mod.defendFly === 'function' ? Math.max(0, Number(mod.defendFly(c)) || 0) : 0;
+        const applyFly = () => {
+          if (flyAmt <= 0) return;
+          defender.fly = Math.min(2, (defender.fly || 0) + flyAmt);
+          const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+          eng.emit('buff', '+' + flyAmt + '[飞翔]', null, { who, kind: 'fly', stacks: defender.fly });
+        };
+        const flyDesc = flyAmt > 0 ? '，获得' + flyAmt + '层[飞翔]' : '';
+
+        const magmaAmt = typeof mod.defendGainMagma === 'function' ? Math.max(0, Number(mod.defendGainMagma(c)) || 0) : 0;
+        const applyDefendMagma = () => {
+          if (magmaAmt <= 0) return;
+          if (typeof eng.magmaVein === 'function') eng.magmaVein(defender, magmaAmt);
+        };
+        const magmaDesc = magmaAmt > 0 ? '，获得[熔脉]' : '';
+
+        const immuneHealAmt = typeof mod.defendHeal === 'function' ? Math.max(0, Number(mod.defendHeal(c)) || 0) : 0;
+        const applyImmuneHeal = () => {
+          if (immuneHealAmt > 0) heal(defender, immuneHealAmt);
+        };
+        const immuneHealDesc = immuneHealAmt > 0 ? '，恢复' + immuneHealAmt + '点生命' : '';
+
         const applyFireEffects = () => {
           const amount = typeof mod.defendBurn === 'function' ? Math.max(0, Number(mod.defendBurn(c)) || 0) : 0;
           if (amount > 0) eng.burn(opponent, amount);
@@ -741,8 +774,8 @@
             }
           }
         };
-        const applyAllExtras = () => { applyGuard(); applyAllLush(); applyAllHeal(); applyDiving(); applyGainCrit(); applyFireEffects(); };
-        const allExtrasDesc = guardDesc + allLushDesc + allHealDesc + divingDesc + gainCritDesc;
+        const applyAllExtras = () => { applyGuard(); applyFly(); applyDefendMagma(); applyAllLush(); applyAllHeal(); applyDiving(); applyGainCrit(); applyFireEffects(); };
+        const allExtrasDesc = guardDesc + flyDesc + magmaDesc + allLushDesc + allHealDesc + divingDesc + gainCritDesc;
 
         if (typeof mod.defendImmune === 'function' && mod.defendImmune(c)) {
           if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c) && clearDebuffs) {
@@ -757,11 +790,12 @@
             }
           }
           applyClearSelfDebuffs();
+          applyImmuneHeal();
           applyPoison(); applyBleed(); applyHypothermia(); applyThorns(); applySandblind(); applyPoisonDrain();applyDrawSelf(); applyAllExtras();
           const clearText = (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c))
             ? '，免疫buff，清除自身所有debuff'
             : '';
-          return { remaining: 0, desc: '免疫所有伤害' + counterDesc + clearText + suffix() + clearSelfDebuffsDesc + drawSelfDesc + allExtrasDesc };
+          return { remaining: 0, desc: '免疫所有伤害' + counterDesc + clearText + immuneHealDesc + suffix() + clearSelfDebuffsDesc + drawSelfDesc + allExtrasDesc };
         }
 
         const lushAmt = typeof mod.defendLush === 'function' ? (mod.defendLush(c) || 0) : 0;
@@ -1150,6 +1184,21 @@
         const gc = Math.max(0, Number(mod.defendGainCrit(card)) || 0);
         if (gc > 0) parts.push('获得' + gc + '层[暴击]');
       }
+      if (typeof mod.defendFly === 'function') {
+        const f = Math.max(0, Number(mod.defendFly(card)) || 0);
+        if (f > 0) parts.push('获得' + f + '层[飞翔]');
+      }
+      if (typeof mod.defendGainMagma === 'function') {
+        const mAmt = Math.max(0, Number(mod.defendGainMagma(card)) || 0);
+        if (mAmt > 0) parts.push('获得[熔脉]');
+      }
+      if (typeof mod.defendBurn === 'function') {
+        const db = Math.max(0, Number(mod.defendBurn(card)) || 0);
+        if (db > 0) parts.push('施加' + db + '层[灼伤]');
+      }
+      if (typeof mod.defendScorch === 'function' && mod.defendScorch(card)) {
+        parts.push('施加[炙热]');
+      }
       if (typeof mod.defendSplit === 'function' && mod.defendSplit(card)) {
         parts.push('与玩家均摊伤害（向上取整）');
       }
@@ -1465,11 +1514,14 @@
     if (scaleDmgDesc) {
       let line = scaleDmgDesc;
       if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) line += '（不可防御）';
+      else if (typeof mod.attackUnblockableIfSelfBuff === 'function' && mod.attackUnblockableIfSelfBuff(card, { magmaVein: 1 })) line += '（自身有[熔脉]时不可防御）';
       parts.push(line);
     } else if (dmg > 0 && !drainAmount) {
       let line = '造成' + dmg + '点伤害';
       if (typeof mod.attackUnblockable === 'function' && mod.attackUnblockable(card)) {
         line += '（不可防御）';
+      } else if (typeof mod.attackUnblockableIfSelfBuff === 'function' && mod.attackUnblockableIfSelfBuff(card, { magmaVein: 1 })) {
+        line += '（自身有[熔脉]时不可防御）';
       }
       parts.push(line);
     }
@@ -1514,6 +1566,13 @@
     }
     if (typeof mod.attackBurnSettle === 'function' && mod.attackBurnSettle(card)) {
       parts.push('进行一次[灼伤]结算');
+    }
+    if (typeof mod.attackScorch === 'function' && mod.attackScorch(card)) {
+      parts.push('施加[炙热]');
+    }
+    if (typeof mod.attackGainMagma === 'function') {
+      const magma = Math.max(0, Number(mod.attackGainMagma(card)) || 0);
+      if (magma > 0) parts.push('获得[熔脉]');
     }
     if (typeof mod.attackPoison === 'function') {
       const p = mod.attackPoison(card);

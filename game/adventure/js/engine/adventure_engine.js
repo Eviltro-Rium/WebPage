@@ -73,7 +73,7 @@
   class AdventureEngine {
     static availableScenes(stage) {
       const registry = window.AdventureRegistry;
-      return ['castle', 'forest', 'ocean', 'desert'].filter(scene => registry &&
+      return ['castle', 'forest', 'ocean', 'desert', 'volcano'].filter(scene => registry &&
         sceneEncounterNames(scene, stage, 'boss').some(name => availableAtStage(registry.getBoss(name), stage)));
     }
     constructor() {

@@ -25,6 +25,20 @@
     { "stage": "3", "text": "进攻伤害<3时变为不可防御" },
     { "stage": "4", "text": "防御格挡 +1" }
   ],
+  "VolcanoFlameLion": [
+    { "stage": "2", "text": "生命上限 +10（50）" },
+    { "stage": "3", "text": "进攻卡面伤害 +1（0 牌仍无卡面伤害）" },
+    { "stage": "4", "text": "防御格挡 +1；防御 0 额外清除自身所有负面状态" }
+  ],
+  "VolcanoMagmaRhino": [
+    { "stage": "2", "text": "生命上限 +10（55）" },
+    { "stage": "3", "text": "进攻卡面伤害 +1" },
+    { "stage": "4", "text": "防御 1/2/3 额外格挡 1 点；防御 0 额外获得 1 层[守护]" }
+  ],
+  "VolcanoCinderPhoenix": [
+    { "stage": "3", "text": "进攻卡面伤害 +1" },
+    { "stage": "4", "text": "防御反击 +1；防御 0 额外恢复 2 点生命" }
+  ],
   "FrozenMammoth": [
     { "stage": "2", "text": "生命上限 +10（55）" },
     { "stage": "3", "text": "所有进攻伤害 +1" },
@@ -610,6 +624,22 @@
   ]
 };
   window.AdventureMonsterNotes = {
+  "VolcanoFlameLion": [],
+  "VolcanoMagmaRhino": [],
+  "VolcanoCinderPhoenix": [
+    {
+      "title": "出现条件",
+      "lines": [
+        "仅从 Stage 2 开始出现"
+      ]
+    },
+    {
+      "title": "被动",
+      "lines": [
+        "进攻开始之前，若自身没有任何[飞翔]，获得 1 层[飞翔]"
+      ]
+    }
+  ],
   "FrozenMammoth": [],
   "CastleGhost": [
     {

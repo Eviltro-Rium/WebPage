@@ -53,6 +53,7 @@ const SOURCES = [
   'adventure/js/monsters/forest.js',
   'adventure/js/monsters/ocean.js',
   'adventure/js/monsters/desert.js',
+  'adventure/js/monsters/volcano.js',
   'adventure/js/content/boss.js',
   'adventure/js/content/monster_registry.js',
   'adventure/js/items/item_defs.js',
@@ -393,8 +394,8 @@ test('next-floor transition saves matching map identity/layout and restores with
  const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]),ui=mapUI(ctx,eng);
  eng.move(0,1);eng.currentRoom().cleared=true;
  ctx.FurryGame.CombatRuntime.setRandomSource(()=>0.5);
- ctx.AdventureMapData={};for(const scene of ['castle','forest','ocean','desert'])for(let i=1;i<=3;i++)ctx.AdventureMapData['stage_02_'+scene+'_'+i]='0,1,-1\n-1,1,2';
- await ui._advanceStage();assert.equal(eng.s.stage,2);assert.match(eng.mapName,/^stage_02_ocean_[123]$/);assert.equal(eng.s.scene,'ocean');
+ ctx.AdventureMapData={};for(const scene of ['castle','forest','ocean','desert','volcano'])for(let i=1;i<=3;i++)ctx.AdventureMapData['stage_02_'+scene+'_'+i]='0,1,-1\n-1,1,2';
+ await ui._advanceStage();assert.equal(eng.s.stage,2);assert.match(eng.mapName,/^stage_02_desert_[123]$/);assert.equal(eng.s.scene,'desert');
  const save=ctx.AdventureSave.load();assert.equal(save.mapName,eng.mapName);assert.equal(save.stage,2);assert.equal(save.mapLayout.length,2);
  const restored=new ctx.AdventureEngine(),ui2=mapUI(ctx,restored);
  ctx.AdventureMap.fromCsvUrl=()=>{throw Error('restore must use saved layout');};ctx.AdventureMapData={};
@@ -418,7 +419,7 @@ test('failed next-floor loading and failed restore keep the previous checkpoint'
 
 test('stage selection supports all scenes and map variants before exclusions', () => {
  const ctx=createContext();loadSources(ctx);mapUI(ctx,mapRun(ctx,[[0,2]]));
- for(const stage of [1,2,3,4])for(const [roll,scene] of [[0,'castle'],[0.4,'forest'],[0.6,'ocean'],[0.8,'desert']]) {
+ for(const stage of [1,2,3,4])for(const [roll,scene] of [[0,'castle'],[0.25,'forest'],[0.45,'ocean'],[0.65,'desert'],[0.85,'volcano']]) {
   ctx.FurryGame.CombatRuntime.setRandomSource(()=>roll);
   const selected=ctx.AdventureUI.selectStageMap(stage);
   assert.equal(selected.stage,stage);assert.equal(selected.scene,scene);
@@ -535,7 +536,7 @@ test('map healing is capped, and visiting the old Boss map never grants the stag
 test('encounter pools never accept another scene or fall back to all registered bosses', () => {
  const ctx=createContext();loadSources(ctx);
  const eng=mapRun(ctx,[[0,2]]);
- for(const scene of ['castle','forest','ocean','desert']) for(const stage of [1,2,3,4]) {
+ for(const scene of ['castle','forest','ocean','desert','volcano']) for(const stage of [1,2,3,4]) {
   eng.s.scene=scene;eng.s.stage=stage;
   const candidates=eng._encounterNames('boss');
   for(const roll of [0,.49,.99]){
@@ -549,6 +550,8 @@ test('encounter pools never accept another scene or fall back to all registered 
  assert.ok(['DesertHyena','DesertSobek'].includes(eng._pickBossName({bossName:'ForestPanda'})));
  assert.ok(ctx.AdventureEngine.availableScenes(1).includes('desert'));
  assert.ok(ctx.AdventureEngine.availableScenes(2).includes('desert'));
+ assert.ok(ctx.AdventureEngine.availableScenes(1).includes('volcano'));
+ assert.ok(ctx.AdventureEngine.availableScenes(2).includes('volcano'));
  eng.s.scene='unknown';assert.equal(eng._pickBossName({}),null);assert.equal(eng._pickMonsterName({}),null);
 });
 

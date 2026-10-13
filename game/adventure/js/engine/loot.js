@@ -164,6 +164,19 @@
     VolcanoObsidianBoar: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 3, drops: Object.freeze(['BurnTrophy']) }),
       Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) })
+    ]) }),
+    VolcanoFlameLion: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 4, drops: Object.freeze(['BurnTrophy']) }),
+      Object.freeze({ threshold: 6, drops: Object.freeze(['ScorchTrophy']) })
+    ]) }),
+    VolcanoMagmaRhino: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 3, drops: Object.freeze(['MagmaVeinTrophy']) }),
+      Object.freeze({ threshold: 6, drops: Object.freeze(['GuardTrophy']) })
+    ]) }),
+    VolcanoCinderPhoenix: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 3, drops: Object.freeze(['FlyTrophy']) }),
+      Object.freeze({ threshold: 5, drops: Object.freeze(['ScorchTrophy']) }),
+      Object.freeze({ threshold: 6, drops: Object.freeze(['BurnTrophy']) })
     ]) })
   });
   const SCENE_RULES = Object.freeze({ castle: CASTLE_RULES, forest: FOREST_RULES, ocean: OCEAN_RULES, desert: DESERT_RULES, volcano: VOLCANO_RULES });
