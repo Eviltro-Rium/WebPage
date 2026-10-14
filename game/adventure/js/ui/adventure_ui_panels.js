@@ -186,6 +186,7 @@
       if (b.iceSeal > 0)   items.push('<span class="adv-buff" title="冰封">' + icon('ice_seal', '冰封') + '×' + b.iceSeal + '</span>');
       if (b.guard > 0)     items.push('<span class="adv-buff adv-buff-guard" title="守护">' + icon('guard', '守护') + '×' + b.guard + '</span>');
       if (b.fly > 0)       items.push('<span class="adv-buff adv-buff-fly" title="飞翔">' + icon('fly', '飞翔') + '×' + b.fly + '</span>');
+      if (b.harden > 0)    items.push('<span class="adv-buff adv-buff-guard" title="硬化：每层减免1点不可防御伤害">' + icon('harden', '硬化') + '×' + b.harden + '</span>');
       if (b.crit > 0)      items.push('<span class="adv-buff" title="暴击">' + icon('crit', '暴击') + '×' + b.crit + '</span>');
       if (b.magmaVein > 0) items.push('<span class="adv-buff adv-buff-magma" title="熔脉">' + icon('magma_vein', '熔脉') + (b.magmaVein > 1 ? '×' + b.magmaVein : '') + '</span>');
       if (b.chaos_red)     items.push('<span class="adv-buff adv-buff-chaos-red" title="混沌·红">' + icon('chaos_red', '混沌·红') + '</span>');

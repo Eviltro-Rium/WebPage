@@ -470,3 +470,5 @@ defendPlayerDiscard(card) {
 ### 飞翔、守护与伤害来源
 
 反击经 `counterAttack` 结算，可被飞翔和守护减免。灼伤、流血、中毒、定时炸弹、荆棘、寄生等 Buff 独立伤害均不能减免，也不消耗飞翔或守护。按 Buff 层数计算的攻击技能仍属于攻击伤害。统一由 `EngineDamage.canAvoid(options)` 判断；Buff 伤害使用 `damageSource: 'buff'` 或相应 `kind`，即使传入 `allowAvoidance: true` 也不能绕过此规则。扣血飘字使用 `-N🗡️`，恢复使用 `+N❤️`；清除全部负面/正面状态时飘「清除负面状态」/「清除正面状态」（事件 `buff`，`kind` 为 `clearDebuffs` / `clearBuffs`）。
+
+拥有[硬化]时，明确标记为不可防御的攻击、反击和吸血伤害，在守护、飞翔之前按层数减伤（每层 1 点，最多减至 0）；硬化层数不消耗。仅跳过防御阶段（例如无手牌或被沉睡影响）不自动视作不可防御攻击。Buff 独立伤害不触发硬化。`EngineDamage.reduceUnblockable()` 负责统一减免并记录单次命中，避免延迟结算或防御弹窗重复扣减。

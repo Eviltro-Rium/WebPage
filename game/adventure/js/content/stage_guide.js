@@ -25,15 +25,39 @@
     { "stage": "3", "text": "进攻伤害<3时变为不可防御" },
     { "stage": "4", "text": "防御格挡 +1" }
   ],
+  "VolcanoCinderBadger": [
+    { "stage": "2", "text": "生命上限 +5（25）" },
+    { "stage": "3", "text": "进攻技能伤害 +1" },
+    { "stage": "4", "text": "防御格挡 +1" }
+  ],
+  "VolcanoObsidianArmadillo": [
+    { "stage": "3", "text": "进攻伤害 +1；4/5/6 额外获得1层[守护]" },
+    { "stage": "4", "text": "防御改为格挡对手攻击牌点数" }
+  ],
+  "VolcanoBasaltCentipede": [
+    { "stage": "2", "text": "生命上限 +5（25）" },
+    { "stage": "3", "text": "进攻 1/2/3 伤害 +1" },
+    { "stage": "4", "text": "防御格挡 +1、反击 +1" }
+  ],
+  "VolcanoMagmaSlug": [
+    { "stage": "2", "text": "生命上限 +5（30）" },
+    { "stage": "3", "text": "进攻技能伤害 +1" },
+    { "stage": "4", "text": "牌库顶判定由怪物点数 > 玩家改为 ≥ 玩家" }
+  ],
+  "VolcanoSulfurWeasel": [
+    { "stage": "2", "text": "生命上限 +6（30）" },
+    { "stage": "3", "text": "自身有[硬化]时，进攻 1/2/3 变为不可防御" },
+    { "stage": "4", "text": "防御额外施加1层[灼伤]" }
+  ],
   "VolcanoFlameLion": [
     { "stage": "2", "text": "生命上限 +10（50）" },
     { "stage": "3", "text": "进攻卡面伤害 +1（0 牌仍无卡面伤害）" },
-    { "stage": "4", "text": "防御格挡 +1；防御 0 额外清除自身所有负面状态" }
+    { "stage": "4", "text": "防御格挡 +1；防御 0 额外施加2层[灼伤]" }
   ],
   "VolcanoMagmaRhino": [
     { "stage": "2", "text": "生命上限 +10（55）" },
     { "stage": "3", "text": "进攻卡面伤害 +1" },
-    { "stage": "4", "text": "防御 1/2/3 额外格挡 1 点；防御 0 额外获得 1 层[守护]" }
+    { "stage": "4", "text": "防御 0 的反击固定为2🗡️" }
   ],
   "VolcanoCinderPhoenix": [
     { "stage": "3", "text": "进攻卡面伤害 +1" },
@@ -626,6 +650,19 @@
   window.AdventureMonsterNotes = {
   "VolcanoFlameLion": [],
   "VolcanoMagmaRhino": [],
+  "VolcanoCinderBadger": [
+    { "title": "被动", "lines": ["免疫[中毒]造成的伤害，但仍可被施加并保留[中毒]标记"] }
+  ],
+  "VolcanoObsidianArmadillo": [
+    { "title": "出现条件", "lines": ["从 Stage 2 开始有几率出现"] }
+  ],
+  "VolcanoBasaltCentipede": [],
+  "VolcanoMagmaSlug": [
+    { "title": "防御判定", "lines": ["怪物和玩家分别翻开各自牌库顶1张牌；仅显示点数进行判定，判定后卡牌放回各自牌库顶。无点数牌按0点。"] }
+  ],
+  "VolcanoSulfurWeasel": [
+    { "title": "出现条件", "lines": ["从 Stage 2 开始有几率出现"] }
+  ],
   "VolcanoCinderPhoenix": [
     {
       "title": "出现条件",
@@ -636,7 +673,8 @@
     {
       "title": "被动",
       "lines": [
-        "进攻开始之前，若自身没有任何[飞翔]，获得 1 层[飞翔]"
+        "进攻开始之前，若自身没有任何[飞翔]，获得 1 层[飞翔]",
+        "第一次生命值降至0时，恢复至15❤️，手牌补至4张；手牌上限仍为3"
       ]
     }
   ],

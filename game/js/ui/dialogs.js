@@ -313,6 +313,7 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
                     if (snap.bomb > 0) legacy.push(['bomb', `炸弹 ×${snap.bomb}`, 'poison']);
                     if (snap.guard > 0) legacy.push(['guard', `守护 ×${snap.guard}`, 'guard']);
                     if (snap.fly > 0) legacy.push(['fly', `飞翔 ×${snap.fly}`, 'guard']);
+                    if (snap.harden > 0) legacy.push(['harden', `硬化 ×${snap.harden}`, 'harden']);
                     if (snap.crit > 0) legacy.push(['crit', `暴击 ×${snap.crit}`, 'crit']);
                     if (snap.lush > 0) legacy.push(['lush', `茂盛 ×${snap.lush}`, 'lush']);
                     if (snap.parasite > 0) legacy.push(['parasite', `寄生 ×${snap.parasite}`, 'parasite']);

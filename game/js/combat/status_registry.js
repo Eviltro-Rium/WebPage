@@ -25,6 +25,7 @@
 
     { id: 'guard',       property: 'guard',       label: '守护', icon: 'buff_icons/guard.webp',        polarity: 'buff',   stack: true, max: 5, cleanse: 'decrement', trigger: 'onDamage', transferable: true },
     { id: 'fly',         property: 'fly',         label: '飞翔', icon: 'buff_icons/fly.webp',          polarity: 'buff',   stack: true, max: 2, cleanse: 'decrement', trigger: 'onDamage', transferable: true },
+    { id: 'harden',      property: 'harden',      label: '硬化', icon: 'buff_icons/harden.webp',       polarity: 'buff',   stack: true, max: 2, cleanse: 'decrement', trigger: 'onUnblockableDamage', unblockableReductionPerStack: 1, transferable: true },
     { id: 'crit',        property: 'crit',        label: '暴击', icon: 'buff_icons/crit.webp',         polarity: 'buff',   stack: true, max: 3, cleanse: 'decrement', trigger: 'onAttack', transferable: true },
     { id: 'magmaVein',   property: 'magmaVein',   label: '熔脉', icon: 'buff_icons/magma_vein.webp', polarity: 'buff',   stack: true, max: 1, cleanse: 'reset',     trigger: 'attackMod', transferable: true },
     { id: 'lush',        property: 'lush',        label: '茂盛', icon: 'buff_icons/lush.webp',         polarity: 'buff',   stack: true, max: 2, cleanse: 'decrement', trigger: 'attackStart', transferable: true },

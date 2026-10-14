@@ -12,6 +12,37 @@
         canAvoid(options = {}) {
             return options.allowAvoidance !== false && !this.isBuffDamage(options);
         },
+        isUnblockable(options = {}) {
+            return !this.isBuffDamage(options) && (
+                options.unblockable === true || options.unblock === true || options.isDrain === true ||
+                options.type === 'unblockable' || options.type === 'drain' || options.damageSource === 'counter'
+            );
+        },
+        reduceUnblockable(engine, target, amount, options = {}) {
+            const damage = Math.max(0, Number(amount) || 0);
+            if (damage <= 0 || options.hardenHandled || !target || !this.isUnblockable(options)) return damage;
+            const registry = root.StatusRegistry;
+            const definition = registry && registry.get('harden');
+            const stacks = registry ? registry.amount(target, 'harden') : Math.max(0, Number(target.harden) || 0);
+            if (stacks <= 0) return damage;
+            const attack = options.pendingAttack;
+            const key = root.EngineStatus && root.EngineStatus.targetKey
+                ? root.EngineStatus.targetKey(engine, target)
+                : engine && engine._who ? engine._who(target) : 'player';
+            if (attack) {
+                attack.hardenedTargets = attack.hardenedTargets || {};
+                if (attack.hardenedTargets[key]) return damage;
+                attack.hardenedTargets[key] = true;
+            }
+            const reductionPerStack = Number(definition && definition.unblockableReductionPerStack) || 1;
+            const reduced = Math.min(damage, stacks * reductionPerStack);
+            if (reduced > 0 && engine && typeof engine.emit === 'function') {
+                engine.emit(eventTypes.BUFF_TRIGGER || 'buffTrigger', '硬化减免' + reduced + '点伤害', null, {
+                    who: key, target: key, kind: 'harden', amount: reduced, stacks
+                });
+            }
+            return Math.max(0, damage - reduced);
+        },
         apply(engine, target, amount, kind = false, opts = {}) {
             if (!root.EngineStatus || typeof root.EngineStatus.hurt !== 'function') {
                 throw new Error('EngineStatus must be loaded before EngineDamage');

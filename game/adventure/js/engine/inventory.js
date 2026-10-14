@@ -96,6 +96,7 @@
       else {
       p.guard = 0;
       p.fly = 0;
+      p.harden = 0;
       p.crit = 0;
       p.lush = 0;
       p.parasite = 0;
@@ -149,6 +150,7 @@
         frozen: !!p.frozen,
         guard: p.guard || 0,
         fly: p.fly || 0,
+        harden: p.harden || 0,
         crit: p.crit || 0,
         magmaVein: p.magmaVein || 0,
         lush: p.lush || 0,

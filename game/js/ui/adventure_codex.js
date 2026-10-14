@@ -28,6 +28,7 @@
     { key: 'bomb', name: '定时炸弹', type: '负面状态', icon: 'icons/buff_icons/time_bomb.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n初始倒计时为5。被施加者每打出1张牌倒计时减少1，归零时爆炸并受到5点伤害；可被净化。' },
     { key: 'guard', name: '守护', type: '正面状态', icon: 'icons/buff_icons/guard.webp', desc: '堆叠上限：5\n维持效果：持续\n受到攻击或反击伤害时可消耗守护层数等额减免；不能减免灼伤、流血、中毒、炸弹、荆棘、寄生等Buff伤害。' },
     { key: 'fly', name: '飞翔', type: '正面状态', icon: 'icons/buff_icons/fly.webp', desc: '堆叠上限：2\n维持效果：持续\n受到攻击或反击伤害时可消耗1层投掷12面骰，1~6成功躲避、7~12失败；失败后可继续尝试或使用守护。不能减免Buff伤害，也不能躲避攻击附带的状态。' },
+    { key: 'harden', name: '硬化', type: '正面状态', icon: 'icons/buff_icons/harden.webp', desc: '堆叠上限：2\n维持效果：持续\n每层使真正标记为不可防御的攻击伤害减免1点，最多减至0；层数不消耗。该减免先于守护和飞翔结算，不减免灼伤、流血、中毒、炸弹等Buff独立伤害，可被净化。' },
     { key: 'lush', name: '茂盛', type: '正面状态', icon: 'icons/buff_icons/lush.webp', desc: '堆叠上限：2\n维持效果：持续\n每有1层，在自己进攻开始前恢复1点生命；可被净化移除。' },
     { key: 'parasite', name: '寄生', type: '正面状态', icon: 'icons/buff_icons/parasite.webp', desc: '堆叠上限：1\n维持效果：持续\n在自己进攻开始前，吸取对手1点生命（不可用守护/飞翔/道具减免）；可被净化移除。' },
     { key: 'crit', name: '暴击', type: '正面状态', icon: 'icons/buff_icons/crit.webp', desc: '堆叠上限：3\n维持效果：持续\n攻击修正类。进攻伤害>4（防御前）时可在攻击修正阶段消耗1层使本次攻击不可防御；与[熔脉]、攻击修正道具互斥不可叠用；本身不可防御的技能不能使用。可被净化。' },

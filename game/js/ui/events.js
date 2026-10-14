@@ -566,7 +566,7 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const colors = {
                 burn: '#ff8800', bleed: '#cc2222', freeze: '#44aaff', guard: '#00bcd4',
-                poison: '#84cc16', thorns: '#facc15', sandblind: '#d6b07c', quicksand: '#d6b07c', crit: '#fbbf24', magmaVein: '#f97316', fly: '#a5b4fc', lush: '#4ade80',
+                poison: '#84cc16', thorns: '#facc15', sandblind: '#d6b07c', quicksand: '#d6b07c', crit: '#fbbf24', magmaVein: '#f97316', fly: '#a5b4fc', harden: '#cbd5e1', lush: '#4ade80',
                 parasite: '#86efac', blind: '#c4b5fd', bomb: '#fb923c', iceSeal: '#7dd3fc',
                 scorch: '#ff4d00',
                 clearDebuffs: '#5eead4', clearBuffs: '#94a3b8',
@@ -582,6 +582,7 @@ async _playEvents(events, fast = false) {
                     const preview = Object.assign({}, ch);
                     if (evt.kind === 'freeze') preview.frozen = evt.stacks > 0;
                     else if (evt.kind === 'guard') preview.guard = evt.stacks;
+                    else if (evt.kind === 'harden') preview.harden = evt.stacks;
                     else if (evt.kind === 'crit') preview.crit = evt.stacks;
                     else if (evt.kind === 'magmaVein') preview.magmaVein = evt.stacks;
                     else if (evt.kind === 'taunt') {

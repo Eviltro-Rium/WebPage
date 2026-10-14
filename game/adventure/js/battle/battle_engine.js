@@ -1116,12 +1116,41 @@
     }
 
     hurt(x, n, kind = false, opts = {}) {
+      if (kind === 'poison' && x && this.s && this.s.isAdventure) {
+        const registry = window.AdventureRegistry;
+        const mod = registry && (registry.getMonster(this.name(x)) || registry.getBoss(this.name(x)));
+        if (mod && mod.poisonImmune) {
+          const last = this.events && this.events[this.events.length - 1];
+          if (last && last.type === 'poisonSettle' && last.who === this._who(x)) {
+            last.desc = '[中毒]免疫';
+            last.amount = 0;
+            last.hpAfter = last.hpBefore;
+          }
+          this.emit('desc', x.name + '免疫[中毒]伤害，中毒标记保留');
+          return 0;
+        }
+      }
       // 保留 silent 等选项，避免流血结算在合并飘字之外又产生一条重复伤害事件。
       const beforeHp = x && Number(x.hp);
       super.hurt(x, n, kind, opts);
       this._tryFreezeLaserOnAttackDamage(x, n, kind);
       this._tryRevivalCross(x, beforeHp);
       this._tryDesertSobekFertility(x, beforeHp);
+      this._tryCinderPhoenixRevival(x, beforeHp);
+    }
+
+    _tryCinderPhoenixRevival(entity, beforeHp) {
+      if (!this.s || !this.s.isAdventure || !entity || (entity !== this.s.ai && entity !== this.s.ai2)) return;
+      if (this.name(entity) !== 'VolcanoCinderPhoenix' || !(beforeHp > 0) || entity.hp > 0 || entity.cinderPhoenixRevived) return;
+      entity.cinderPhoenixRevived = true;
+      const heal = Math.min(15, Number(entity.maxHp) || 15);
+      this.heal(entity, heal, 'passive');
+      entity.alive = entity.hp > 0;
+      const owner = entity === this.s.ai2 ? 'ai2' : 'ai';
+      const hand = this.h && this.h[owner] || [];
+      const refill = Math.max(0, 4 - hand.length);
+      if (refill) this.draw(owner, refill, true);
+      this.emit('desc', '余烬凤凰第一次被击败后重燃：恢复至15❤️，手牌补至4张（手牌上限仍为3）');
     }
 
     _consumeAccessory(name) {
@@ -1166,7 +1195,7 @@
       if (!((entity.lush || 0) > 0)) return;
       if (typeof this.clearPositiveBuffs === 'function') this.clearPositiveBuffs(entity);
       else {
-        entity.guard = 0; entity.fly = 0; entity.crit = 0; entity.lush = 0;
+        entity.guard = 0; entity.fly = 0; entity.harden = 0; entity.crit = 0; entity.lush = 0;
         entity.parasite = 0; entity.diving = false;
         entity.chaos_red = false; entity.chaos_yellow = false;
         entity.chaos_blue = false; entity.chaos_green = false;
@@ -1343,7 +1372,7 @@
       const opponentKey = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
       const target = who === 'opp' ? this.s[opponentKey] : this.s.player;
       const targetLabel = who === 'opp' ? (this.s.is1v2 && opponentKey === 'ai2' ? 'AI2' : '对手') : '玩家';
-      const kindLabel = { burn: '灼伤', freeze: '冷冻', bleed: '流血', poison: '中毒', thorns: '荆棘', sandblind: '沙盲', quicksand: '流沙', iceSeal: '冰封', bomb: '定时炸弹', blind: '致盲', hypothermia: '失温', guard: '守护', fly: '飞翔', crit: '暴击', lush: '茂盛', parasite: '寄生', diving: '潜水', scorch: '炙热', bloodthirst: '嗜血', bind: '捆缚', chaos_red: '混沌·红', chaos_yellow: '混沌·黄', chaos_blue: '混沌·蓝', chaos_green: '混沌·绿' }[kind] || 'buff';
+      const kindLabel = { burn: '灼伤', freeze: '冷冻', bleed: '流血', poison: '中毒', thorns: '荆棘', sandblind: '沙盲', quicksand: '流沙', iceSeal: '冰封', bomb: '定时炸弹', blind: '致盲', hypothermia: '失温', guard: '守护', fly: '飞翔', harden: '硬化', crit: '暴击', lush: '茂盛', parasite: '寄生', diving: '潜水', scorch: '炙热', bloodthirst: '嗜血', bind: '捆缚', chaos_red: '混沌·红', chaos_yellow: '混沌·黄', chaos_blue: '混沌·蓝', chaos_green: '混沌·绿' }[kind] || 'buff';
       this._flashAccessory('PurifyCrystal');
       this.clean(target, false, kind);
       this.emit('desc', '净化水晶：清除' + targetLabel + '一层' + kindLabel);

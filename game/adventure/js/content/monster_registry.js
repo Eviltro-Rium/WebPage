@@ -581,6 +581,10 @@
           const amount = Math.max(0, Number(mod.attackGainMagma(c)) || 0);
           if (amount > 0) eng.magmaVein(a, amount);
         }
+        if (typeof mod.attackHarden === 'function') {
+          const amount = Math.max(0, Number(mod.attackHarden(c)) || 0);
+          if (amount > 0 && typeof eng.harden === 'function') eng.harden(a, amount);
+        }
         const settleTargetBurn = typeof mod.attackBurnSettle === 'function' && !!mod.attackBurnSettle(c);
         return {
           d, skip, unblock, drain, isDrain: drain > 0, aoeTargets, aoeDamage,
@@ -796,6 +800,35 @@
             ? '，免疫buff，清除自身所有debuff'
             : '';
           return { remaining: 0, desc: '免疫所有伤害' + counterDesc + clearText + immuneHealDesc + suffix() + clearSelfDebuffsDesc + drawSelfDesc + allExtrasDesc };
+        }
+
+        const deckCompare = typeof mod.defendDeckCompare === 'function' ? mod.defendDeckCompare(c) : null;
+        if (deckCompare && eng.piles && typeof eng._refillPile === 'function') {
+          const npcOwner = owner === 'ai2' ? 'ai2' : 'ai';
+          const npcPile = eng.piles[npcOwner] || eng.piles.ai;
+          const playerPile = eng.piles.player;
+          eng._refillPile(npcOwner);
+          eng._refillPile('player');
+          if (typeof applySandblind === 'function') applySandblind();
+          const npcCard = npcPile && npcPile.deck.length ? npcPile.deck[npcPile.deck.length - 1] : null;
+          const playerCard = playerPile && playerPile.deck.length ? playerPile.deck[playerPile.deck.length - 1] : null;
+          const face = card => card && card.isNumberCard ? Math.max(0, Number(card.value) || 0) : 0;
+          const npcValue = face(npcCard);
+          const playerValue = face(playerCard);
+          const succeeds = deckCompare.operator === '>=' ? npcValue >= playerValue : npcValue > playerValue;
+          const label = card => card ? eng.cardText(card) : '无牌（按0点）';
+          if (typeof eng.emit === 'function') {
+            eng.emit('reveal',
+              '熔岩蛞蝓牌库判定：怪物 ' + label(npcCard) + '（' + npcValue + '） / 玩家 ' + label(playerCard) + '（' + playerValue + '）；牌留在各自牌库顶',
+              npcCard || playerCard,
+              { who: npcOwner, from: 'deck', cards: [npcCard, playerCard].filter(Boolean), revealOwners: [npcOwner, 'player'] });
+          }
+          const operation = deckCompare.operator === '>=' ? '≥' : '>';
+          return {
+            remaining: succeeds ? 0 : d,
+            desc: '牌库顶判定：怪物' + npcValue + operation + '玩家' + playerValue
+              + (succeeds ? '，免疫本次伤害' : '，不减免伤害') + '；两张判定牌放回各自牌库'
+          };
         }
 
         const lushAmt = typeof mod.defendLush === 'function' ? (mod.defendLush(c) || 0) : 0;
@@ -1573,6 +1606,10 @@
     if (typeof mod.attackGainMagma === 'function') {
       const magma = Math.max(0, Number(mod.attackGainMagma(card)) || 0);
       if (magma > 0) parts.push('获得[熔脉]');
+    }
+    if (typeof mod.attackHarden === 'function') {
+      const harden = Math.max(0, Number(mod.attackHarden(card)) || 0);
+      if (harden > 0) parts.push('获得' + harden + '层[硬化]');
     }
     if (typeof mod.attackPoison === 'function') {
       const p = mod.attackPoison(card);

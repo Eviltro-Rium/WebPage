@@ -1,7 +1,4 @@
-/**
- * Volcano scene: first four regular monsters plus three bosses.
- * Extra documented regulars remain unimplemented.
- */
+/** Volcano scene monsters and bosses. Rules mirror docs/adventure_guide/volcano.md. */
 (function () {
   const R = window.AdventureRegistry;
   if (!R) return;
@@ -84,6 +81,131 @@
         (this.attackUnblockableBelow ? '；伤害<3时不可防御' : '');
     }
   });
+  R.registerMonster({
+    name: 'VolcanoCinderBadger', kind: '熔渣獾', hp: 20, attack: 3, defense: 2,
+    icon: '../icons/npc_icons/volcano_badger.webp', poisonImmune: true,
+    attackDamage: c => low(c) ? 3 : high(c) ? 4 : 0,
+    attackPoison: low,
+    attackGuard: c => high(c) ? 2 : 0,
+    defendBlock: block(2),
+    defendGuard: c => low(c) ? 1 : 0,
+    defendBurn: c => low(c) ? 1 : 0,
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 5 }),
+      3: orig => ({ stageDamageBonus: true, attackDamage(c, ctx) { const d = orig.attackDamage(c, ctx); return d > 0 ? d + 1 : 0; } }),
+      4: orig => ({ defendBlock(c, incoming) { return low(c) ? Math.min((incoming || 0), orig.defendBlock(c, incoming) + 1) : 0; } })
+    },
+    skillDescription(c, defend) {
+      if (defend) return low(c) ? '格挡至多' + this.defendBlock(c, 99) + '🛡️，获得[守护]，施加[灼伤]' : '无防御效果';
+      if (low(c)) return this.attackDamage(c) + '🗡️，施加[中毒]（自身免疫中毒伤害）';
+      if (high(c)) return this.attackDamage(c) + '🗡️，获得2层[守护]';
+      return '无进攻效果';
+    }
+  });
+  R.registerMonster({
+    name: 'VolcanoObsidianArmadillo', kind: '黑曜犰狳', hp: 32, attack: 3, defense: 2,
+    minStage: 2, icon: '../icons/npc_icons/volcano_armadillo.webp',
+    attackDamage: c => low(c) ? 3 : high(c) ? 4 : 0,
+    attackBurn: low,
+    attackScorch: low,
+    attackGuard: c => high(c) ? 2 : 0,
+    defendBlock(c, incoming, defender, eng) {
+      if (!low(c)) return 0;
+      const face = Number(eng && eng.s && eng.s.atkCard && eng.s.atkCard.value) || 0;
+      return Math.min(Math.max(0, incoming || 0), Math.ceil(face / 2));
+    },
+    stageMods: {
+      3: orig => ({
+        stageDamageBonus: true,
+        attackDamage(c, ctx) { const d = orig.attackDamage(c, ctx); return d > 0 ? d + 1 : 0; },
+        attackGuard(c) { return (orig.attackGuard(c) || 0) + (high(c) ? 1 : 0); }
+      }),
+      4: () => ({
+        defendFullFace: true,
+        defendBlock(c, incoming, defender, eng) {
+          if (!low(c)) return 0;
+          const face = Number(eng && eng.s && eng.s.atkCard && eng.s.atkCard.value) || 0;
+          return Math.min(Math.max(0, incoming || 0), face);
+        }
+      })
+    },
+    skillDescription(c, defend) {
+      if (defend) return low(c) ? '格挡对手攻击牌点数' + (this.defendFullFace ? '全额' : '的一半（向上取整）') + '🛡️' : '无防御效果';
+      if (low(c)) return this.attackDamage(c) + '🗡️，施加[炙热]和[灼伤]';
+      if (high(c)) return this.attackDamage(c) + '🗡️，获得' + this.attackGuard(c) + '层[守护]';
+      return '无进攻效果';
+    }
+  });
+  R.registerMonster({
+    name: 'VolcanoBasaltCentipede', kind: '玄岩蜈蚣', hp: 20, attack: 1, defense: 1,
+    icon: '../icons/npc_icons/volcano_centipede.webp',
+    attackDamage: (c, ctx) => low(c) ? Math.max(0, Number(ctx && ctx.playerBurn) || 0) : 0,
+    attackScorch: low,
+    attackBurn: c => high(c) ? 3 : 0,
+    attackPoison: c => high(c) ? 1 : 0,
+    defendBlock: block(1),
+    defendCounter: c => low(c) ? 1 : 0,
+    defendBurn: c => low(c) ? 1 : 0,
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 5 }),
+      3: orig => ({ stageDamageBonus: true, attackDamage(c, ctx) { return low(c) ? orig.attackDamage(c, ctx) + 1 : 0; } }),
+      4: orig => ({
+        defendBlock(c, incoming) { return low(c) ? Math.min((incoming || 0), orig.defendBlock(c, incoming) + 1) : 0; },
+        defendCounter(c, incoming, defender, opponent, eng) { return (orig.defendCounter(c, incoming, defender, opponent, eng) || 0) + (low(c) ? 1 : 0); }
+      })
+    },
+    skillDescription(c, defend) {
+      if (defend) return low(c) ? '格挡' + this.defendBlock(c, 99) + '🛡️，反击' + this.defendCounter(c) + '🗡️，施加[灼伤]' : '无防御效果';
+      if (low(c)) return '施加[炙热]，对手[灼伤]层数' + (this.stageDamageBonus ? '+1' : '') + '🗡️';
+      if (high(c)) return '施加3层[灼伤]和[中毒]';
+      return '无进攻效果';
+    }
+  });
+  R.registerMonster({
+    name: 'VolcanoMagmaSlug', kind: '熔岩蛞蝓', hp: 25, attack: 2, defense: 2,
+    icon: '../icons/npc_icons/volcano_slug.webp',
+    attackDamage: c => low(c) ? 2 : high(c) ? 4 : 0,
+    attackGuard: c => low(c) ? 2 : 0,
+    attackSandblind: c => high(c) ? 2 : 0,
+    defendSandblind: c => low(c) ? 1 : 0,
+    defendDeckCompare: c => low(c) ? { operator: '>' } : null,
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 5 }),
+      3: orig => ({ stageDamageBonus: true, attackDamage(c, ctx) { const d = orig.attackDamage(c, ctx); return d > 0 ? d + 1 : 0; } }),
+      4: () => ({ defendDeckCompare: c => low(c) ? { operator: '>=' } : null })
+    },
+    skillDescription(c, defend) {
+      if (defend) return low(c) ? '施加[沙盲]，双方各翻开自己牌库顶1🃏；怪物点数' + (this.defendDeckCompare(c).operator === '>=' ? '≥' : '>') + '玩家点数时免疫本次伤害（判定牌放回原牌库）' : '无防御效果';
+      if (low(c)) return this.attackDamage(c) + '🗡️，获得2层[守护]';
+      if (high(c)) return this.attackDamage(c) + '🗡️，施加2层[沙盲]';
+      return '无进攻效果';
+    }
+  });
+  R.registerMonster({
+    name: 'VolcanoSulfurWeasel', kind: '硫晶鼬', hp: 24, attack: 3, defense: 2,
+    minStage: 2, icon: '../icons/npc_icons/volcano_weasel.webp',
+    attackDamage: c => low(c) ? Number(c.value) || 0 : high(c) ? 5 : 0,
+    attackBurn: c => low(c) ? Number(c.value) || 0 : 0,
+    attackHarden: c => high(c) ? 1 : 0,
+    defendBlock: (c, incoming) => low(c) ? Math.min(Math.max(0, incoming || 0), Math.ceil(Math.max(0, incoming || 0) / 2)) : 0,
+    defendBurn: c => low(c) ? 1 : 0,
+    stageMods: {
+      2: orig => ({ hp: orig.hp + 6 }),
+      3: () => ({
+        attackUnblockableIfSelfBuff: (c, self) => low(c) && (Number(self && self.harden) || 0) > 0
+      }),
+      4: orig => ({
+        defendBlock(c, incoming) { return low(c) ? Math.min(Math.max(0, incoming || 0), Math.ceil(Math.max(0, incoming || 0) / 2)) : 0; },
+        defendBurn: c => low(c) ? 2 : 0
+      })
+    },
+    skillDescription(c, defend) {
+      if (defend) return low(c) ? '施加' + this.defendBurn(c) + '层[灼伤]，格挡进攻伤害的一半（向上取整）' : '无防御效果';
+      if (low(c)) return this.attackDamage(c) + '🗡️，施加' + c.value + '层[灼伤]' + (this.attackUnblockableIfSelfBuff && this.attackUnblockableIfSelfBuff(c, { harden: 1 }) ? '（自身有[硬化]时不可防御）' : '');
+      if (high(c)) return this.attackDamage(c) + '🗡️，获得1层[硬化]';
+      return '无进攻效果';
+    }
+  });
   R.registerBoss({
     name: 'VolcanoFlameLion', kind: '炎鬃狮', hp: 40, attack: 3, defense: 2,
     handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_lion.webp',
@@ -109,13 +231,13 @@
         defendBlock(c, incoming) {
           return low(c) ? Math.min(orig.defendBlock(c, incoming) + 1, incoming || 0) : 0;
         },
-        defendClearDebuffs: zero
+        defendBurn(c) { return zero(c) ? 2 : orig.defendBurn(c); }
       })
     },
     skillDescription(c, defend) {
       if (defend) {
         if (low(c)) return defenseText(this, c) + '，施加[灼伤]';
-        if (zero(c)) return '免疫所有伤害' + (this.defendClearDebuffs ? '，清除自身所有负面状态' : '') + '，施加[炙热]';
+        if (zero(c)) return '免疫所有伤害，施加[炙热]' + (this.defendBurn(c) > 0 ? '和2层[灼伤]' : '');
         return '无防御效果';
       }
       if (low(c)) return damageText(this, c) + '，施加[灼伤]';
@@ -127,17 +249,20 @@
   R.registerBoss({
     name: 'VolcanoMagmaRhino', kind: '熔核犀', hp: 45, attack: 3, defense: 2,
     handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_rhino.webp',
-    attackDamage: c => low(c) ? 3 : high(c) ? 5 : zero(c) ? 4 : 0,
-    attackGuard: c => low(c) ? 2 : 0,
-    attackGainMagma: c => high(c) ? 1 : 0,
+    attackDamage: c => low(c) ? 3 : high(c) ? 5 : zero(c) ? 6 : 0,
+    attackGuard: c => low(c) ? 1 : 0,
+    attackBleed: low,
+    attackGainMagma: c => high(c) && (c.chosenColor || c.color) !== 'RED' ? 1 : 0,
+    attackUnblockable: c => high(c) && (c.chosenColor || c.color) === 'RED',
     attackUnblockableIfSelfBuff: (c, self) => zero(c) && (Number(self && self.magmaVein) || 0) > 0,
     defendBlock(c, incoming) {
-      if (zero(c)) return Math.max(0, incoming || 0);
+      if (zero(c)) return 0;
       if (low(c)) return Math.ceil(Math.max(0, incoming || 0) / 2);
       return 0;
     },
-    defendGuard: c => low(c) ? 1 : 0,
-    defendGainMagma: c => zero(c) ? 1 : 0,
+    defendGainMagma: c => low(c) ? 1 : 0,
+    defendBleed: c => zero(c) ? 2 : 0,
+    defendCounter: (c, incoming) => zero(c) ? Math.max(0, Number(incoming) || 0) : 0,
     stageMods: {
       2: orig => ({ hp: orig.hp + 10 }),
       3: orig => ({
@@ -146,30 +271,22 @@
           return (numeric(c) || zero(c)) ? base + 1 : base;
         }
       }),
-      4: orig => ({
-        defendBlock(c, incoming) {
-          if (zero(c)) return orig.defendBlock(c, incoming);
-          return low(c) ? Math.min((incoming || 0), orig.defendBlock(c, incoming) + 1) : 0;
-        },
-        defendGuard(c) {
-          return (orig.defendGuard(c) || 0) + (zero(c) ? 1 : 0);
-        }
-      })
+      4: () => ({ fixedCounter: true, defendCounter: c => zero(c) ? 2 : 0 })
     },
     skillDescription(c, defend) {
       if (defend) {
-        if (low(c)) return '格挡半数伤害（向上取整），获得[守护]';
-        if (zero(c)) return '格挡所有伤害，获得[熔脉]' + ((this.defendGuard(c) || 0) > 0 ? '，获得[守护]' : '');
+        if (low(c)) return '格挡半数伤害（向上取整），获得[熔脉]';
+        if (zero(c)) return (this.fixedCounter ? '反击2🗡️' : '反击相同点伤害') + '，施加2层[流血]';
         return '无防御效果';
       }
-      if (low(c)) return damageText(this, c) + '，获得2层[守护]';
-      if (high(c)) return damageText(this, c) + '，获得[熔脉]';
+        if (low(c)) return damageText(this, c) + '，获得[守护]，施加[流血]';
+        if (high(c)) return damageText(this, c) + (this.attackUnblockable(c) ? '（红色不可防御）' : '，获得[熔脉]');
       if (zero(c)) return damageText(this, c) + '；自身已有[熔脉]时不可防御';
       return '无进攻效果';
     }
   });
   R.registerBoss({
-    name: 'VolcanoCinderPhoenix', kind: '余烬凤凰', hp: 50, attack: 3, defense: 2,
+    name: 'VolcanoCinderPhoenix', kind: '余烬凤凰', hp: 35, attack: 3, defense: 2,
     minStage: 2, handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_phoenix.webp',
     attackTurnStart(eng, x) {
       if (!x || (Number(x.fly) || 0) > 0) return;
@@ -222,7 +339,14 @@
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.volcano = {
-    '*': ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar']
+    1: ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar',
+      'VolcanoCinderBadger', 'VolcanoBasaltCentipede', 'VolcanoMagmaSlug'],
+    2: ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar',
+      'VolcanoCinderBadger', 'VolcanoObsidianArmadillo', 'VolcanoBasaltCentipede', 'VolcanoMagmaSlug', 'VolcanoSulfurWeasel'],
+    3: ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar',
+      'VolcanoCinderBadger', 'VolcanoObsidianArmadillo', 'VolcanoBasaltCentipede', 'VolcanoMagmaSlug', 'VolcanoSulfurWeasel'],
+    4: ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar',
+      'VolcanoCinderBadger', 'VolcanoObsidianArmadillo', 'VolcanoBasaltCentipede', 'VolcanoMagmaSlug', 'VolcanoSulfurWeasel']
   };
   window.AdventureBossPool = window.AdventureBossPool || {};
   window.AdventureBossPool.volcano = {

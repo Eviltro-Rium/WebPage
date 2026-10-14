@@ -44,7 +44,10 @@
       if (attack && attack.divingHandled) return attack.divingBlocked ? 0 : amount;
       const blocked = amount > 0 && this.divingBlocksDamage(this.s[defenderKey], this.s.atkCard);
       if (attack) { attack.divingHandled = true; attack.divingBlocked = blocked; }
-      return blocked ? 0 : amount;
+      if (blocked) return 0;
+      const target=this.s[defenderKey];
+      const options=this._incomingDamageOptions(target,{unblockable:!!(attack&&(attack.unblock||attack.isDrain)),isDrain:!!(attack&&attack.isDrain),pendingAttack:attack});
+      return this._prepareHardenedHit(target,amount,options);
     },
 
     commitAttackStatuses(timing, targetKey) {
@@ -76,7 +79,7 @@
       const keys = ['player','ai','ai2'].filter(key => this.s[key]);
       const snapshots = keys.map(key => ({key, entity:this.s[key], values:registry.all.map(def => registry.amount(this.s[key],def.id))}));
       const firstEvent = this.ver;
-      const methods = {burn:'burn',bleed:'bleed',poison:'poison',freeze:'freeze',blind:'blind',iceSeal:'iceSeal',applyHypnosis:'hypnosis',hypothermia:'hypothermia',thorns:'thorns',sandblind:'sandblind',quicksand:'quicksand',magmaVein:'magmaVein',addGuard:'guard',parasite:'parasite',settleBurn:'burn',clearDebuffs:'debuffs',clearPositiveBuffs:'buffs'};
+      const methods = {burn:'burn',bleed:'bleed',poison:'poison',freeze:'freeze',blind:'blind',iceSeal:'iceSeal',applyHypnosis:'hypnosis',hypothermia:'hypothermia',thorns:'thorns',sandblind:'sandblind',quicksand:'quicksand',magmaVein:'magmaVein',harden:'harden',addGuard:'guard',parasite:'parasite',settleBurn:'burn',clearDebuffs:'debuffs',clearPositiveBuffs:'buffs'};
       const operations = [], originals = {};
       for (const [method,id] of Object.entries(methods)) {
         if (typeof this[method] !== 'function') continue;

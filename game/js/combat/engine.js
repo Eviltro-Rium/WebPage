@@ -585,6 +585,16 @@
 
     _status(){return window.FurryGame&&window.FurryGame.EngineStatus}
     _damage(){return window.FurryGame&&window.FurryGame.EngineDamage}
+    _incomingDamageOptions(target,options={}){
+      const inferAttack=options.allowPendingAttack===true||options.damageSource==null;
+      const attack=options.pendingAttack||(inferAttack&&this.s&&this.s.pendingAttack),key=this._who(target);
+      const owner=this.s&&this.s.atkOwner||(key==='player'?'ai':'player');
+      const attackTarget=owner==='player'?(this.s.attackTarget||'ai'):'player';
+      const matches=!!attack&&key===attackTarget;
+      const isDrain=!!options.isDrain||(matches&&!!attack.isDrain);
+      return Object.assign({},options,{isDrain,unblockable:!!(options.unblockable||options.unblock||options.type==='unblockable'||isDrain||(matches&&attack.unblock)),pendingAttack:options.pendingAttack||(matches?attack:null)});
+    }
+    _prepareHardenedHit(target,damage,options={}){const policy=this._damage();return policy&&policy.reduceUnblockable?policy.reduceUnblockable(this,target,damage,options):Math.max(0,Number(damage)||0)}
     heal(x,n,kind='heal'){const S=this._status();if(S&&S.heal){S.heal(this,x,n,kind);return}if(n<=0)return;let _before=x.hp;x.hp=Math.min(x.maxHp,x.hp+n);let _actual=x.hp-_before;if(this.name(x)==='Serenity'&&(_before<30||x.hp<30))x.bloodthirst=true;let w=x===this.s.player?'player':'ai';this.emit('heal',kind==='wake'?`[苏醒]+${_actual}❤️`:`+${_actual}[${kind==='drain'?'吸血':kind==='passive'?'被动':kind==='lush'?'茂盛':'生命'}]`,null,{who:w,amount:_actual,kind});if(kind!=='drain'&&kind!=='wake'&&this.name(x)==='Serenity'&&!x.bloodthirst&&x.hp>=30){x.hp=Math.min(x.maxHp,x.hp+1);this.emit('heal','+1[被动]',null,{who:w,amount:1,kind:'passive'})}}
     freeze(x,opts){const S=this._status();if(S&&S.freeze){S.freeze(this,x,opts);return}if(this.name(x)==='Serenity')return;const mod=this._getAdventureMod(this.name(x));if(mod&&mod.immuneFreeze)return;x.frozen=true;if(!opts||opts.silent!==true){let w=x===this.s.player?'player':'ai';this.emit('buff','[冷冻]',null,{who:w,kind:'freeze',stacks:1})}}
     blind(x,opts){const S=this._status();if(S&&S.blind){S.blind(this,x,opts);return}if(!x)return;x.blind=1;if(!opts||opts.silent!==true){let w=x===this.s.player?'player':(x===this.s.ai2?'ai2':'ai');this.emit('buff','[致盲]',null,{who:w,kind:'blind',stacks:1})}}
@@ -618,7 +628,7 @@
       if(!ch)return false;
       const registry=window.FurryGame&&window.FurryGame.StatusRegistry;
       if(registry&&typeof registry.list==='function')return registry.list(ch).some(def=>def&&def.cleanse!=='never');
-      return !!(ch.burn||ch.bleed||ch.frozen||ch.poison||ch.blind||ch.iceSeal||ch.bomb||ch.guard||ch.fly||ch.crit||ch.lush||ch.parasite||ch.diving||ch.scorch||(ch.hypothermia&&ch.hypothermia>0)||ch.hypnosis||ch.sleep||ch.thorns||ch.sandblind||ch.chaos_red||ch.chaos_yellow||ch.chaos_blue||ch.chaos_green)
+      return !!(ch.burn||ch.bleed||ch.frozen||ch.poison||ch.blind||ch.iceSeal||ch.bomb||ch.guard||ch.fly||ch.harden||ch.crit||ch.lush||ch.parasite||ch.diving||ch.scorch||(ch.hypothermia&&ch.hypothermia>0)||ch.hypnosis||ch.sleep||ch.thorns||ch.sandblind||ch.chaos_red||ch.chaos_yellow||ch.chaos_blue||ch.chaos_green)
     }
     addGuard(x,n,opts){const S=this._status();if(S&&S.addGuard)return S.addGuard(this,x,n,opts);if(!x||n<=0)return 0;let before=x.guard||0;x.guard=Math.min(5,before+n);let added=x.guard-before;if(added>0&&(!opts||opts.silent!==true)){this.emit('buff',`+${added}[守护]`,null,{who:this._who(x),kind:'guard',stacks:x.guard})}return added}
     settleBleed(target,stacks){const S=this._status();if(S&&S.settleBleed){S.settleBleed(this,target,stacks);return}if((target.bleed||0)<=0||stacks<=0)return;this.hurt(target,stacks,true,{silent:true});target.bleed--;let w=target===this.s.player?'player':(target===this.s.ai2?'ai2':'ai');this.emit('bleedSettle',`-${stacks}❤️[流血]，-1[流血层数]`,null,{who:w,amount:stacks})}
@@ -629,6 +639,7 @@
     getHandLimit(owner='player'){const adapter=this._adapter();if(adapter&&adapter.handLimit)return adapter.handLimit(this,owner);const base=owner==='player'?(this.s.handLimit||5):5;return window.StatusService?window.StatusService.handLimit(this.s[owner],base):base}
     magmaVein(x,n=1,opts){const service=window.StatusService;if(!x||n<=0||!service)return;const before=service.amount(x,'magmaVein');service.add(x,'magmaVein',n);if(service.amount(x,'magmaVein')>before&&(!opts||!opts.silent)){const who=this._who(x);this.emit('buff','+1[熔脉]',null,{who,target:who,kind:'magmaVein',stacks:service.amount(x,'magmaVein')})}}
     quicksand(x,n=1,opts){const service=window.StatusService;if(!x||n<=0||!service)return;const before=service.amount(x,'quicksand');service.add(x,'quicksand',n);if(service.amount(x,'quicksand')>before&&(!opts||!opts.silent)){const who=this._who(x);this.emit('buff','+1[流沙]',null,{who,target:who,kind:'quicksand',stacks:service.amount(x,'quicksand')})}}
+    harden(x,n=1,opts){const S=this._status();if(S&&S.harden)return S.harden(this,x,n,opts);if(!x||n<=0)return 0;const before=x.harden||0;x.harden=Math.min(2,before+n);const added=x.harden-before;if(added>0&&(!opts||opts.silent!==true))this.emit('buff','+'+added+'[硬化]',null,{who:this._who(x),target:this._who(x),kind:'harden',stacks:x.harden});return added}
     sandblind(x,n,opts){const S=this._status();if(S&&S.sandblind){S.sandblind(this,x,n,opts);return}if(!x||n<=0)return;const before=x.sandblind||0;x.sandblind=Math.min(6,before+n);const added=x.sandblind-before;if(added>0&&(!opts||opts.silent!==true))this.emit('buff',`+${added}[沙盲]`,null,{who:this._who(x),kind:'sandblind',stacks:x.sandblind})}
     _applyAttackSkillThorns(x){const S=this._status();if(S&&S.applyAttackSkillThorns){S.applyAttackSkillThorns(this,x);return}if(!x||!x.alive||!(x.thorns>0))return;this.hurt(x,1,'thorns')}
     /** Attack-skill release hooks: thorns damage, then sandblind miss check. Returns true if skill misses. */
@@ -710,7 +721,7 @@
     cancelAttackDebuffs(owner,reflect=false){let snap=this.s.attackDebuffSnapshot;if(!snap||snap.owner!==owner)return;let x=this.s[owner],attackerKey=owner==='player'?(this.s.is1v2&&this.s.atkOwner&&this.s.atkOwner!=='player'?this.s.atkOwner:'ai'):'player',attacker=this.s[attackerKey],burn=Math.max(0,x.burn-snap.burn),bleed=Math.max(0,x.bleed-snap.bleed),poison=Math.max(0,(x.poison||0)-(snap.poison||0)),froze=!snap.frozen&&x.frozen,blinded=!(snap.blind||0)&&!!(x.blind||0),sealed=((x.iceSeal||0)>(snap.iceSeal||0)),sandblindAmt=Math.max(0,(x.sandblind||0)-(snap.sandblind||0)),thornsAmt=Math.max(0,(x.thorns||0)-(snap.thorns||0)),quicksandAmt=Math.max(0,(x.quicksand||0)-(snap.quicksand||0));let pending=this.s.pendingBuffRestore;if(pending&&pending.target===owner){bleed+=Math.max(0,pending.after.bleed-pending.before.bleed);burn+=Math.max(0,pending.after.burn-pending.before.burn);poison+=Math.max(0,pending.after.poison-pending.before.poison);if(pending.after.frozen&&!pending.before.frozen)froze=true;if(pending.after.blind&&!pending.before.blind)blinded=true;if((pending.after.iceSeal||0)>(pending.before.iceSeal||0))sealed=true;sandblindAmt+=Math.max(0,(pending.after.sandblind||0)-(pending.before.sandblind||0));thornsAmt+=Math.max(0,(pending.after.thorns||0)-(pending.before.thorns||0));quicksandAmt+=Math.max(0,(pending.after.quicksand||0)-(pending.before.quicksand||0));this.s.pendingBuffRestore=null}x.burn=snap.burn;x.bleed=snap.bleed;x.poison=snap.poison||0;x.frozen=snap.frozen;x.blind=snap.blind||0;x.iceSeal=snap.iceSeal||0;x.sandblind=snap.sandblind||0;x.thorns=snap.thorns||0;x.quicksand=snap.quicksand||0;if(reflect){this.burn(attacker,burn);this.bleed(attacker,bleed);this.poison(attacker,poison);if(froze)this.freeze(attacker);if(blinded)this.blind(attacker);if(sealed)this.iceSeal(attacker);if(sandblindAmt>0)this.sandblind(attacker,sandblindAmt);if(thornsAmt>0)this.thorns(attacker,Math.min(1,thornsAmt));if(quicksandAmt>0)this.quicksand(attacker,Math.min(1,quicksandAmt))}}
     hurt(x,n,kind=false,opts={}){const S=this._status();if(S&&S.hurt){S.hurt(this,x,n,kind,opts);return}n=Math.max(0,Number(n)||0);x.hp=Math.max(0,x.hp-n);x.alive=x.hp>0;if(this.name(x)==='Serenity'&&x.hp<30)x.bloodthirst=true;if(n>0&&!opts.silent){let w=x===this.s.player?'player':(x===this.s.ai2?'ai2':'ai');let tag=kind==='drain'?'吸血':kind==='bleed'||kind===true?'流血':kind==='poison'?'中毒':kind==='thorns'?'荆棘':'伤害';this.emit('hurt',kind&&kind!==false?`-${n}❤️[${tag}]`:`-${n}[${tag}]`,null,{who:w,amount:n,bleed:kind==='bleed'||kind===true,drain:kind==='drain',poison:kind==='poison',thorns:kind==='thorns',suppressFloat:!!opts.suppressFloat})}}
     drainAttack(attacker,target,amount,opts={}){const S=this._status();if(S&&S.drainAttack)return S.drainAttack(this,attacker,target,amount,opts);let remaining=Math.max(0,Number(amount)||0);if(remaining<=0||!attacker||!target)return 0;if(opts.allowAvoidance!==false)remaining=this.applyDefenderAvoidance(target,remaining);const before=target.hp;this.hurt(target,remaining,'drain',opts);const taken=Math.max(0,before-target.hp);if(taken>0)this.heal(attacker,taken,'drain');return taken}
-    dealAttackHit(attacker,target,amount,isDrain=false,opts={}){if(isDrain)return this.drainAttack(attacker,target,amount,Object.assign({forceDrainAvoidance:true},opts));this.hurt(target,amount,false,opts);return Math.max(0,Number(amount)||0)}
+    dealAttackHit(attacker,target,amount,isDrain=false,opts={}){const incoming=this._incomingDamageOptions(target,Object.assign({},opts,{isDrain:!!isDrain||!!opts.isDrain}));const prepared=this._prepareHardenedHit(target,amount,incoming);const hitOpts=Object.assign({},incoming,{hardenHandled:true});if(isDrain)return this.drainAttack(attacker,target,prepared,Object.assign({forceDrainAvoidance:true},hitOpts));this.hurt(target,prepared,false,hitOpts);return prepared}
     applyIncomingDamage(attacker,target,damage,opts={}){
       const isDrain=!!opts.isDrain;let dmg=Math.max(0,Number(damage)||0);
       if(!attacker||!target)return 0;
@@ -736,7 +747,7 @@
       const policy=this._damage(),isBuff=policy&&policy.isBuffDamage(cfg);
       const canAvoid=policy?policy.canAvoid(cfg):allowAvoidance!==false;
       const avoidOpts={forceSpend:true};
-      const hitOpts={silent,suppressFloat,damageSource:isBuff?'buff':(cfg.damageSource||'attack')};
+      const hitOpts={silent,suppressFloat,damageSource:isBuff?'buff':(cfg.damageSource||'attack'),hardenHandled:true};
       if(type==='aoe'){
         if(aoeTargets&&aoeDamage>0){
           for(const vk of aoeTargets){
@@ -745,7 +756,9 @@
             if(!vc||!vc.alive)continue;
             if(!direct&&!isBuff&&this.divingBlocksDamage(vc,card))continue;
             let admg=Math.max(0,Number(aoeDamage)||0);
-            if(canAvoid)admg=this.applyDefenderAvoidance(vc,admg,avoidOpts);
+            const incoming=this._incomingDamageOptions(vc,cfg);
+            admg=this._prepareHardenedHit(vc,admg,incoming);
+            if(canAvoid)admg=this.applyDefenderAvoidance(vc,admg,Object.assign({},incoming,avoidOpts,{hardenHandled:true}));
             if(admg<=0)continue;
             this.hurt(vc,admg,false,direct?hitOpts:{silent:true});
             if(!direct)this.emit('hurt','受到'+admg+'点伤害',null,{who:vk,target:vk,amount:admg});
@@ -755,7 +768,7 @@
       }else{
         let dmg=Math.max(0,Number(damage)||0);
         if(!direct&&!isBuff&&this.divingBlocksDamage(target,card)){this.emit('desc',target.name+'有[潜水]，免疫蓝色攻击伤害');dmg=0}
-        else if(canAvoid){dmg=this.applyDefenderAvoidance(target,dmg,avoidOpts)}
+        else {const incoming=this._incomingDamageOptions(target,cfg);dmg=this._prepareHardenedHit(target,dmg,incoming);if(canAvoid)dmg=this.applyDefenderAvoidance(target,dmg,Object.assign({},incoming,avoidOpts,{hardenHandled:true}))}
         if(type==='drain'){
           const before=target.hp;this.hurt(target,dmg,'drain',hitOpts);
           const taken=Math.max(0,before-target.hp);
@@ -781,7 +794,7 @@
     chooseDefenderGuardUse(defender,damage){let guard=defender.guard||0;if(damage<=0||guard<=0)return 0;if(this.s.isAdventure)return Math.min(guard,damage);return this.chooseMozeGuardUse(guard,damage,defender.hp)}
     applyDefenderGuard(defender,damage,opts={}){if(!defender||damage<=0)return Math.max(0,damage);let use=opts.forceSpend?Math.min(defender.guard||0,damage):this.chooseDefenderGuardUse(defender,damage);if(use<=0)return Math.max(0,damage);let S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.remove(defender,'guard',use);else defender.guard-=use;let remaining=Math.max(0,damage-use);this.emit('desc',defender.name+'消耗'+use+'层[守护]，减免'+use+'点伤害');return remaining}
     applyDefenderFly(defender,damage){if(!defender||damage<=0)return Math.max(0,damage);let stacks=Math.max(0,Number(defender.fly)||0);if(stacks<=0)return Math.max(0,damage);let S=window.FurryGame&&window.FurryGame.StatusService;while(stacks>0&&damage>0){if(S)S.remove(defender,'fly',1);else defender.fly=stacks-1;stacks=Math.max(0,Number(defender.fly)||0);this.emit('desc',defender.name+'消耗1层[飞翔]尝试躲避');const roll=this.rollD12('飞翔判定',{who:this._who(defender)});if(roll<=6){this.emit('desc',defender.name+'飞翔躲避成功（'+roll+'，1-6成功）');return 0}this.emit('desc',defender.name+'飞翔躲避失败（'+roll+'，7-12失败）')}return Math.max(0,damage)}
-    applyDefenderAvoidance(defender,damage,opts={}){const policy=this._damage();if(policy&&!policy.canAvoid(opts))return Math.max(0,damage);let remaining=this.applyDefenderFly(defender,damage);if(remaining>0)remaining=this.applyDefenderGuard(defender,remaining,opts);return remaining}
+    applyDefenderAvoidance(defender,damage,opts={}){const incoming=this._incomingDamageOptions(defender,opts);const policy=this._damage();if(policy&&!policy.canAvoid(incoming))return Math.max(0,damage);let remaining=this._prepareHardenedHit(defender,damage,incoming);let avoidOpts=Object.assign({},incoming,{hardenHandled:true});remaining=this.applyDefenderFly(defender,remaining);if(remaining>0)remaining=this.applyDefenderGuard(defender,remaining,avoidOpts);return remaining}
     counterAttack(attacker,target,damage,opts={}){const attackerKey=typeof attacker==='string'?attacker:this._who(attacker),targetKey=typeof target==='string'?target:this._who(target);if(!attackerKey||!targetKey||!damage)return 0;return this.performAttack(Object.assign({type:'normal',attacker:attackerKey,target:targetKey,damage:Number(damage)||0,damageSource:'counter',allowAvoidance:true,direct:true},opts))}
     applyDrainAvoidance(defender,damage){
       let remaining=this.applyDefenderFly(defender,damage);
@@ -798,7 +811,7 @@
     _settleAvoidedAttack(remaining){const defenseBleed=this._pendingBleedActive();this.s.pendingDialog=null;this.s.pendingGuardDamage=0;this.s.pendingGuardBleed=0;this.s.phase='AI_TURN';this.deferSettlement('AI_ATTACK',Math.max(0,remaining),defenseBleed);return this.check()}
     chooseFly(){let incoming=this.s.pendingGuardDamage||0,p=this.s.player;if((p.fly||0)<=0)return this._settleAvoidedAttack(incoming);p.fly--;this.emit('desc','消耗1层[飞翔]尝试躲避');const roll=this.rollD12('飞翔判定',{who:'player'});if(roll<=6){this.emit('desc','飞翔躲避成功（'+roll+'，1-6成功）');return this._settleAvoidedAttack(0)}this.emit('desc','飞翔躲避失败（'+roll+'，7-12失败）');this.s.pendingDialog='flyRetry';this.s.phase='GUARD_CHOICE';this.s.busy=false;return this.state()}
     chooseFlyContinue(again){if(again)return this.chooseFly();this.askGuard(this.s.pendingGuardDamage||0,this.s.pendingGuardBleed||0);return this.state()}
-    clearPositiveBuffs(x){const S=this._status();if(S&&S.clearPositiveBuffs){S.clearPositiveBuffs(x,this);return}if(!x)return;x.guard=0;x.fly=0;x.crit=0;x.lush=0;x.parasite=0;x.diving=false;x.chaos_red=false;x.chaos_yellow=false;x.chaos_blue=false;x.chaos_green=false}
+    clearPositiveBuffs(x){const S=this._status();if(S&&S.clearPositiveBuffs){S.clearPositiveBuffs(x,this);return}if(!x)return;x.guard=0;x.fly=0;x.harden=0;x.crit=0;x.lush=0;x.parasite=0;x.diving=false;x.chaos_red=false;x.chaos_yellow=false;x.chaos_blue=false;x.chaos_green=false}
     _markBombPlay(owner){if(!this.s||!this.s[owner]||!(this.s[owner].bomb||0))return;this.s.bombPlayTokens=this.s.bombPlayTokens||{};this.s.bombPlayTokens[owner]=(this.s.bombPlayTokens[owner]||0)+1}
     _tickBomb(owner='ai'){const D=this._damage();if(D&&D.tickBomb){D.tickBomb(this,owner);return}let target=this.s&&this.s[owner],tokens=this.s&&this.s.bombPlayTokens;if(!target||!target.alive||(target.bomb||0)<=0||!tokens||!tokens[owner])return;if(--tokens[owner]<=0)delete tokens[owner];target.bomb--;const who=owner==='player'?'player':(owner==='ai2'?'ai2':'ai');if(target.bomb<=0){this.hurt(target,5,false,{silent:true});this.emit('bombExplode','-5❤️[定时炸弹]',null,{who,amount:5})}else{this.emit('buff','炸弹倒计时：'+target.bomb,null,{who,kind:'bomb',stacks:target.bomb})}}
     deferSettlement(kind,damage,bleed=0){const T=this._turnMachine();if(T&&T.deferSettlement){T.deferSettlement(this,kind,damage,bleed);return}damage=Math.max(0,Number(damage)||0);bleed=Math.max(0,Number(bleed)||0);this.s.pendingDefenseDamage=damage;this.s.busy=true;this.pendingSettlement={kind,damage,bleed,isDrain:!!(this.s.pendingAttack&&this.s.pendingAttack.isDrain),afterEventId:this.ver};if(!this.events.length)this.acknowledgeEvents(this.ver)}
@@ -1251,7 +1264,7 @@
       if((isTargetChoice&&targetKey!=='player')||selected==='opponentBuff'){
         if(!target||!target.alive)throw Error('选择的对手已出局');
         const lushStacks=Math.max(0,Number(target.lush)||0);
-        cleared=(target.guard||0)+(target.fly||0)+(target.crit||0)+(target.magmaVein||0)+lushStacks+(target.parasite||0)+
+        cleared=(target.guard||0)+(target.fly||0)+(target.harden||0)+(target.crit||0)+(target.magmaVein||0)+lushStacks+(target.parasite||0)+
           (target.diving?1:0)+(target.bloodthirst?1:0)+
           ['chaos_red','chaos_yellow','chaos_blue','chaos_green'].filter(k=>target[k]).length;
         this.clearPositiveBuffs(target);

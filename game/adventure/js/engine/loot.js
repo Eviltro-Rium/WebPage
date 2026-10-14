@@ -165,6 +165,21 @@
       Object.freeze({ threshold: 3, drops: Object.freeze(['BurnTrophy']) }),
       Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) })
     ]) }),
+    VolcanoCinderBadger: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 1, drops: Object.freeze(['GuardTrophy']) }),
+      Object.freeze({ threshold: 2, drops: Object.freeze(['BurnTrophy']) }),
+      Object.freeze({ threshold: 3, drops: Object.freeze(['PoisonTrophy']) })
+    ]) }),
+    VolcanoObsidianArmadillo: Object.freeze({ threshold: 4, drops: Object.freeze(['GuardTrophy']) }),
+    VolcanoBasaltCentipede: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 2, drops: Object.freeze(['BurnTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['PoisonTrophy']) })
+    ]) }),
+    VolcanoMagmaSlug: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 2, drops: Object.freeze(['GuardTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['SandblindTrophy']) })
+    ]) }),
+    VolcanoSulfurWeasel: Object.freeze({ threshold: 4, drops: Object.freeze(['BurnTrophy']) }),
     VolcanoFlameLion: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 4, drops: Object.freeze(['BurnTrophy']) }),
       Object.freeze({ threshold: 6, drops: Object.freeze(['ScorchTrophy']) })

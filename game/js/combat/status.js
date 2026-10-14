@@ -21,7 +21,9 @@
         targetKey,
 
         hurt(engine, entity, amount, kind = false, opts = {}) {
-            const damage = Math.max(0, Number(amount) || 0);
+            const damage = root.EngineDamage && root.EngineDamage.reduceUnblockable
+                ? root.EngineDamage.reduceUnblockable(engine, entity, amount, opts)
+                : Math.max(0, Number(amount) || 0);
             const hpBefore = entity.hp;
             entity.hp = Math.max(0, entity.hp - damage);
             entity.alive = entity.hp > 0;
@@ -139,6 +141,22 @@
             return added;
         },
 
+        harden(engine, entity, amount, opts = {}) {
+            opts = opts || {};
+            if (!entity || amount <= 0) return 0;
+            const before = service ? registry.amount(entity, 'harden') : (Number(entity.harden) || 0);
+            if (service) addStatus(entity, 'harden', amount);
+            else entity.harden = Math.min(2, before + amount);
+            const added = (Number(entity.harden) || 0) - before;
+            if (added > 0 && opts.silent !== true) {
+                const target = targetKey(engine, entity);
+                engine.emit(eventTypes.BUFF || 'buff', '+' + added + '[硬化]', null, {
+                    who: target, target, kind: 'harden', stacks: entity.harden
+                });
+            }
+            return added;
+        },
+
         poison(engine, entity, amount, opts) {
             if (amount <= 0) return;
             if (service) addStatus(entity, 'poison', amount); else entity.poison = Math.min(2, (entity.poison || 0) + amount);
@@ -241,10 +259,10 @@
             if (service) {
                 removed = service.clearGroup(entity, 'buff', 'all') || [];
             } else {
-                removed = ['guard', 'fly', 'crit', 'lush', 'parasite', 'diving', 'chaos_red', 'chaos_yellow', 'chaos_blue', 'chaos_green']
+                removed = ['guard', 'fly', 'harden', 'crit', 'lush', 'parasite', 'diving', 'chaos_red', 'chaos_yellow', 'chaos_blue', 'chaos_green']
                     .filter(key => entity[key]);
                 entity.guard = 0; entity.fly = 0; entity.crit = 0; entity.lush = 0;
-                entity.parasite = 0;
+                entity.harden = 0; entity.parasite = 0;
                 entity.diving = false;
                 entity.chaos_red = false; entity.chaos_yellow = false;
                 entity.chaos_blue = false; entity.chaos_green = false;
@@ -314,6 +332,10 @@
             if (!attacker || !target) return 0;
             let remaining = Math.max(0, Number(amount) || 0);
             if (remaining <= 0) return 0;
+            const hitOptions = Object.assign({type: 'drain', isDrain: true}, opts);
+            remaining = root.EngineDamage && root.EngineDamage.reduceUnblockable
+                ? root.EngineDamage.reduceUnblockable(engine, target, remaining, hitOptions) : remaining;
+            hitOptions.hardenHandled = true;
             if (root.EngineDamage ? root.EngineDamage.canAvoid(opts) : opts.allowAvoidance !== false) {
                 if (opts.forceDrainAvoidance && typeof engine.applyDrainAvoidance === 'function') {
                     remaining = engine.applyDrainAvoidance(target, remaining);
@@ -322,7 +344,7 @@
                 }
             }
             const before = target.hp;
-            this.hurt(engine, target, remaining, 'drain', opts);
+            this.hurt(engine, target, remaining, 'drain', hitOptions);
             const taken = Math.max(0, before - target.hp);
             if (taken > 0) this.heal(engine, attacker, taken, 'drain');
             return taken;
