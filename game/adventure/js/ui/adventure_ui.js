@@ -1278,8 +1278,15 @@
       const overlay = document.createElement('div');
       overlay.id = 'adv-trophy-backpack-dialog';
       overlay.className = 'dialog-overlay';
-      const rows = cards.length ? cards.map((card, index) =>
-        '<div class="adv-trophy-pack-row"><div class="adv-trophy-pack-card">' + this._trophyCardMarkup(card.name, 46, 68) + '<div><b>' + card.displayName + '</b><small>' + (card.description || '') + '</small></div></div><button class="adv-btn adv-trophy-pack-discard" data-trophy-discard="' + index + '">丢弃</button></div>'
+      const groups = [];
+      const byName = {};
+      cards.forEach((card, index) => {
+        const key = card.name;
+        if (!byName[key]) { byName[key] = { card, firstIndex: index, count: 0 }; groups.push(byName[key]); }
+        byName[key].count++;
+      });
+      const rows = groups.length ? groups.map(g =>
+        '<div class="adv-trophy-pack-row"><div class="adv-trophy-pack-card"><span class="adv-trophy-pack-thumb">' + this._trophyCardMarkup(g.card.name, 46, 68) + (g.count > 1 ? '<span class="adv-trophy-pack-count">×' + g.count + '</span>' : '') + '</span><div><b>' + g.card.displayName + (g.count > 1 ? ' ×' + g.count : '') + '</b><small>' + (g.card.description || '') + '</small></div></div><button class="adv-btn adv-trophy-pack-discard" data-trophy-discard="' + g.firstIndex + '">' + (g.count > 1 ? '丢弃1张' : '丢弃') + '</button></div>'
       ).join('') : '<div class="adv-trophy-pack-empty">尚未获得战利白卡</div>';
       overlay.innerHTML = '<div class="dialog-box adv-trophy-pack-dialog"><div class="dialog-title">战利白卡背包</div><div class="dialog-body adv-trophy-pack-list">' + rows + '</div><div class="dialog-buttons"><button class="adv-btn adv-btn-primary" id="adv-trophy-pack-close">关闭</button></div></div>';
       document.body.appendChild(overlay);
