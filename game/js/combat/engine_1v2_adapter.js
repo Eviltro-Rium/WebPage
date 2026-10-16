@@ -81,7 +81,7 @@
     const adapter=this._adapter();
     const participants=adapter&&adapter.participants||['player','ai','ai2'];
     for(const k of participants){if(this.s[k])this.s[k].alive=this.s[k].hp>0}
-    if(this._checkDeath1v2()){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer)}
+    if(this._checkDeath1v2()&&!(typeof this._shouldDeferGameOver==='function'&&this._shouldDeferGameOver())){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer)}
     const result=this._state1v2();
     this._checkInvariants('phase');
     return result

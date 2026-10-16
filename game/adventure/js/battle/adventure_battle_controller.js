@@ -117,6 +117,17 @@
     if (window.Bridge) Bridge._mode = 'local';
   }
 
+  function setAdventureMapMenuVisible(visible) {
+    const bar = document.getElementById('adv-menu-bar');
+    if (bar) {
+      bar.hidden = !visible;
+      bar.style.display = '';
+    }
+    const home = document.getElementById('adv-home-btn');
+    if (home && visible) home.hidden = true;
+    if (!visible && window.GameSideMenu) window.GameSideMenu.close(document.getElementById('game-menu-overlay'));
+  }
+
   function leaveBattleToMap(finalState, persistentState, playerWon) {
     if (gameUI) {
       if (typeof gameUI._hideTooltip === 'function') gameUI._hideTooltip();
@@ -128,8 +139,7 @@
     }
     const gc = document.getElementById('game-container');
     if (gc) gc.style.display = 'none';
-    const menuBtn = document.getElementById('menu-btn');
-    if (menuBtn) menuBtn.style.display = '';
+    setAdventureMapMenuVisible(true);
     restoreNormalBattleApi();
 
     const callback = onComplete;
@@ -164,8 +174,7 @@
     document.querySelectorAll('.dialog-overlay').forEach(node => node.remove());
     const gc = document.getElementById('game-container');
     if (gc) gc.style.display = 'none';
-    const menuBtn = document.getElementById('menu-btn');
-    if (menuBtn) menuBtn.style.display = '';
+    setAdventureMapMenuVisible(true);
     restoreNormalBattleApi();
 
     const adventureContainer = document.getElementById('adventure-container');
@@ -214,8 +223,7 @@
     }
     const gc = document.getElementById('game-container');
     if (gc) gc.style.display = 'none';
-    const menuBtn = document.getElementById('menu-btn');
-    if (menuBtn) menuBtn.style.display = '';
+    setAdventureMapMenuVisible(true);
     restoreNormalBattleApi();
     const adventureContainer = document.getElementById('adventure-container');
     if (adventureContainer && prevDisplay !== null) adventureContainer.style.display = prevDisplay;
@@ -622,12 +630,25 @@
     gameUI._initParticles();
     gameUI._floatingTextLanes = { player: [], ai: [], ai2: [] };
     gameUI.anim = new AnimLayer();
+    gameUI.onBattleExit = async function () {
+      abandonAdventure();
+      goToGameHome();
+    };
+    gameUI.getBattleMenuExtraItems = function () {
+      if (window.AdventureMenuActions && typeof window.AdventureMenuActions.extraItems === 'function') {
+        return window.AdventureMenuActions.extraItems() || [];
+      }
+      return [];
+    };
 
     gameUI._showGameOver = function () {
       if (completing || !battleEngine) return;
       // A refreshed GAME_OVER snapshot may still contain unplayed dice/loot events.
       if (this._isConsumingEvents || this._eventPlaybackDepth > 0 ||
-          battleEngine.s.pendingDiceControl || battleEngine.events.length) return;
+          (typeof this._hasPendingLootPresentation === 'function' && this._hasPendingLootPresentation()) ||
+          battleEngine.s.pendingDiceControl || battleEngine.events.length ||
+          battleEngine.pendingSettlement ||
+          (battleEngine.s.queuedCounterHits && battleEngine.s.queuedCounterHits.length)) return;
       completing = true;
       const finalState = this.state;
       const playerWon = !!(finalState.player && finalState.player.alive);
@@ -679,6 +700,7 @@
     prevDisplay = adventureContainer.style.display;
     adventureContainer.style.display = 'none';
     document.getElementById('game-container').style.display = '';
+    setAdventureMapMenuVisible(false);
 
     const ui = ensureGameUI();
     battleEngine = new window.AdventureBattleEngine();
@@ -709,6 +731,7 @@
       battleEngine = null;
       document.getElementById('game-container').style.display = 'none';
       adventureContainer.style.display = prevDisplay;
+      setAdventureMapMenuVisible(true);
       onComplete = null;
       throw error;
     }
@@ -719,9 +742,6 @@
     ui._animatedPlayerDraws = 0;
     ui.gameScreen.classList.add('active');
     ui._buildGameScreen();
-
-    const menuBtn = document.getElementById('menu-btn');
-    if (menuBtn) menuBtn.style.display = 'none';
 
     battleEngine.s.revealAIHand = true;
     ui.state = battleEngine.state();
@@ -752,6 +772,7 @@
     prevDisplay = adventureContainer.style.display;
     adventureContainer.style.display = 'none';
     document.getElementById('game-container').style.display = '';
+    setAdventureMapMenuVisible(false);
 
     const ui = ensureGameUI();
     battleEngine = new window.AdventureBattleEngine();
@@ -784,6 +805,7 @@
       battleEngine = null;
       document.getElementById('game-container').style.display = 'none';
       adventureContainer.style.display = prevDisplay;
+      setAdventureMapMenuVisible(true);
       onComplete = null;
       throw error;
     }
@@ -795,9 +817,6 @@
     ui._is1v2 = true;
     ui.gameScreen.classList.add('active');
     ui._buildGameScreen1v2();
-
-    const menuBtn = document.getElementById('menu-btn');
-    if (menuBtn) menuBtn.style.display = 'none';
 
     battleEngine.s.revealAIHand = true;
     ui.state = battleEngine.state();

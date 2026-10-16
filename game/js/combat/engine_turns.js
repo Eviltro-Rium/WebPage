@@ -156,7 +156,7 @@
 
     check() {
       for (const key of ['player', 'ai']) this.s[key].alive = this.s[key].hp > 0;
-      if (!this.s.player.alive || !this.s.ai.alive) {
+      if ((!this.s.player.alive || !this.s.ai.alive) && !this._shouldDeferGameOver()) {
         this.s.phase = 'GAME_OVER';
         this.s.busy = false;
         clearTimeout(this.timer);

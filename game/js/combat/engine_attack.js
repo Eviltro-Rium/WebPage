@@ -145,8 +145,16 @@
       const attack = this.s.pendingAttack;
       if (attack && attack.divingHandled ? attack.divingBlocked : this.divingBlocksDamage(target, this.s.atkCard)) damage = 0;
       else if (!pending.avoidanceHandled && !isDrain && target !== this.s.player) damage = this.applyDefenderAvoidance(target, damage);
+      const counters = (this.s.queuedCounterHits || []).slice();
+      this.s.queuedCounterHits = [];
       const result = this.dealAttackHit(attacker, target, damage, isDrain,
         {allowAvoidance: !pending.avoidanceHandled});
+      for (const hit of counters) {
+        const counterTarget = this.s[hit.targetKey];
+        if (!counterTarget) continue;
+        this.dealAttackHit(this.s[hit.attackerKey], counterTarget, hit.damage, !!hit.isDrain,
+          {allowAvoidance: false, damageSource: 'counter', hardenHandled: !!hit.hardenHandled});
+      }
       this.commitAttackStatuses('afterDamage', this._who(target));
       this.settleBleed(target, pending.bleed);
       return result;
@@ -226,6 +234,55 @@
       const remaining = this.resolveDefense(defender, amount, opts);
       this.resolveAttack(attacker, defender, remaining, Object.assign({}, opts, {allowAvoidance:false}));
       return remaining;
+    },
+
+    _queuedPlayerCounterDamage() {
+      return (this.s.queuedCounterHits || []).reduce((sum, hit) => {
+        return hit.targetKey === 'player' ? sum + Math.max(0, Number(hit.damage) || 0) : sum;
+      }, 0);
+    },
+
+    _needsCounterAvoidChoice() {
+      return !!(this.s && this.playerNeedsAvoidChoice() && this._queuedPlayerCounterDamage() > 0 &&
+        (this.s.queuedCounterHits || []).some(hit => hit.targetKey === 'player' && !hit.avoidanceHandled));
+    },
+
+    _askCounterAvoidance() {
+      const damage = this._queuedPlayerCounterDamage();
+      if (damage <= 0) return false;
+      this.s.counterAvoidance = true;
+      this.s.pendingGuardDamage = damage;
+      this.s.pendingGuardBleed = 0;
+      this.s.pendingDefenseDamage = damage;
+      this.s.pendingDialog = 'guard';
+      this.s.phase = 'GUARD_CHOICE';
+      this.s.busy = false;
+      this.emit('desc', '受到反击' + damage + '点，可消耗[飞翔]或[守护]');
+      return true;
+    },
+
+    _applyCounterAvoidanceRemaining(remaining) {
+      remaining = Math.max(0, Number(remaining) || 0);
+      const hits = this.s.queuedCounterHits || [];
+      let leftover = remaining;
+      for (const hit of hits) {
+        if (hit.targetKey !== 'player') continue;
+        const take = Math.min(Math.max(0, Number(hit.damage) || 0), leftover);
+        hit.damage = take;
+        hit.avoidanceHandled = true;
+        leftover -= take;
+      }
+      this.s.queuedCounterHits = hits.filter(hit => hit.targetKey !== 'player' || hit.damage > 0);
+      this.s.counterAvoidance = false;
+      this.s.pendingDialog = null;
+      this.s.pendingGuardDamage = 0;
+      this.s.pendingGuardBleed = 0;
+      const stored = this.s.pendingPlayerAttackRemaining;
+      const bleed = this.s.pendingPlayerAttackBleed || 0;
+      this.s.pendingPlayerAttackRemaining = null;
+      this.s.pendingPlayerAttackBleed = 0;
+      if (stored != null) this.deferSettlement('PLAYER_ATTACK', stored, bleed);
+      return this.check();
     }
   };
 
@@ -238,6 +295,38 @@
     const result=perform.call(this,options);
     if(options.commitAttackEffects)this.finishJudgmentPresentation();
     return result;
+  };
+  const counter = Engine.prototype.counterAttack;
+  Engine.prototype.counterAttack = function(attacker, target, damage, opts) {
+    if (this.s && this.s.pendingAttack) {
+      const attackerKey = typeof attacker === 'string' ? attacker : this._who(attacker);
+      const targetKey = typeof target === 'string' ? target : this._who(target);
+      const amount = Number(damage) || 0;
+      if (!attackerKey || !targetKey || !amount) return 0;
+      const cfg = opts || {};
+      let remaining = amount;
+      const targetChar = this.s[targetKey];
+      const avoidOpts = Object.assign({ forceSpend: true, damageSource: 'counter' }, cfg);
+      const playerChoice = targetKey === 'player' && cfg.allowAvoidance !== false && this.playerNeedsAvoidChoice();
+      if (playerChoice && targetChar && typeof this._prepareHardenedHit === 'function') {
+        const incoming = this._incomingDamageOptions(targetChar, avoidOpts);
+        remaining = this._prepareHardenedHit(targetChar, remaining, incoming);
+      } else if (cfg.allowAvoidance !== false && targetChar && typeof this.applyDefenderAvoidance === 'function') {
+        remaining = this.applyDefenderAvoidance(targetChar, remaining, avoidOpts);
+      }
+      remaining = Math.max(0, Number(remaining) || 0);
+      if (remaining > 0) {
+        const queued = this.s.queuedCounterHits || (this.s.queuedCounterHits = []);
+        queued.push({
+          attackerKey, targetKey, damage: remaining,
+          isDrain: !!(cfg.isDrain || cfg.type === 'drain'),
+          hardenHandled: playerChoice,
+          avoidanceHandled: !playerChoice
+        });
+      }
+      return remaining;
+    }
+    return counter.call(this, attacker, target, damage, opts);
   };
   // Pure-effect/zero-damage branches can skip the main settlement path.
   for(const method of ['afterAttack','continueAIAttack','endAi','endAi1v2']) {
@@ -252,6 +341,12 @@
   Engine.prototype.deferSettlement = function(kind, damage, bleed) {
     const target = kind === 'PLAYER_ATTACK' ? (this.s.attackTarget || 'ai') : 'player';
     const prepared = this.prepareAttackSettlement(damage, target);
+    if (kind === 'PLAYER_ATTACK' && this._needsCounterAvoidChoice()) {
+      this.s.pendingPlayerAttackRemaining = prepared;
+      this.s.pendingPlayerAttackBleed = bleed;
+      this._askCounterAvoidance();
+      return this.check();
+    }
     if (kind === 'AI_ATTACK' && prepared > 0 && !(this.s.pendingAttack && this.s.pendingAttack.avoidanceHandled) && this.playerNeedsAvoidChoice()) {
       this.askGuard(prepared, bleed);
       return this.check();
@@ -262,6 +357,15 @@
   };
   const ask = Engine.prototype.askGuard;
   Engine.prototype.askGuard = function(damage, bleed) {
+    if (this.s && this.s.counterAvoidance) {
+      this.s.pendingGuardDamage = Math.max(0, Number(damage) || 0);
+      this.s.pendingGuardBleed = 0;
+      this.s.pendingDefenseDamage = this.s.pendingGuardDamage;
+      this.s.pendingDialog = 'guard';
+      this.s.phase = 'GUARD_CHOICE';
+      this.s.busy = false;
+      return this.check();
+    }
     const previousBleed = bleed == null ? this.s.player.bleed || 0 : bleed;
     const prepared = this.prepareAttackSettlement(damage, 'player');
     if (prepared <= 0) {
@@ -274,11 +378,50 @@
   };
   const guard = Engine.prototype.chooseGuard;
   Engine.prototype.chooseGuard = function(stacks) {
+    if (this.s && this.s.counterAvoidance) {
+      const incoming = this.s.pendingGuardDamage || 0;
+      const use = Math.max(0, Math.min(stacks || 0, this.s.player.guard, incoming));
+      const remaining = Math.max(0, incoming - use);
+      const S = window.FurryGame && window.FurryGame.StatusService;
+      if (S) S.remove(this.s.player, 'guard', use); else this.s.player.guard -= use;
+      this.emit('desc', use
+        ? '消耗' + use + '层[守护]，减免' + use + '点反击伤害，剩余' + remaining + '点待结算'
+        : '不消耗[守护]，反击' + remaining + '点待结算');
+      return this._applyCounterAvoidanceRemaining(remaining);
+    }
     if (this.s.pendingAttack) this.s.pendingAttack.avoidanceHandled = true;
     return guard.call(this, stacks);
   };
+  const fly = Engine.prototype.chooseFly;
+  Engine.prototype.chooseFly = function() {
+    if (!(this.s && this.s.counterAvoidance)) return fly.call(this);
+    const incoming = this.s.pendingGuardDamage || 0;
+    const p = this.s.player;
+    if ((p.fly || 0) <= 0) return this._applyCounterAvoidanceRemaining(incoming);
+    p.fly--;
+    this.emit('desc', '消耗1层[飞翔]尝试躲避反击');
+    const roll = this.rollD12('飞翔判定', { who: 'player' });
+    if (roll <= 6) {
+      this.emit('desc', '飞翔躲避成功（' + roll + '，1-6成功）');
+      return this._applyCounterAvoidanceRemaining(0);
+    }
+    this.emit('desc', '飞翔躲避失败（' + roll + '，7-12失败）');
+    this.s.pendingDialog = 'flyRetry';
+    this.s.phase = 'GUARD_CHOICE';
+    this.s.busy = false;
+    return this.state();
+  };
+  const flyContinue = Engine.prototype.chooseFlyContinue;
+  Engine.prototype.chooseFlyContinue = function(again) {
+    if (this.s && this.s.counterAvoidance) {
+      if (again) return this.chooseFly();
+      return this.askGuard(this.s.pendingGuardDamage || 0, 0);
+    }
+    return flyContinue.call(this, again);
+  };
   const avoided = Engine.prototype._settleAvoidedAttack;
   Engine.prototype._settleAvoidedAttack = function(damage) {
+    if (this.s && this.s.counterAvoidance) return this._applyCounterAvoidanceRemaining(damage);
     if (this.s.pendingAttack) this.s.pendingAttack.avoidanceHandled = true;
     return avoided.call(this, damage);
   };

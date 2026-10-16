@@ -146,3 +146,56 @@ test('deferred attack-buff flag blocks dialog until cleared after events',async(
  assert.equal(opened,2);
  dom.window.close();
 });
+
+test('battle menu mounts a body overlay without adding combat-screen children', () => {
+ const {dom,w}=setup();
+ w.eval('window.GameUI=class {};');
+ w.eval(fs.readFileSync(path.join(__dirname,'../js/ui/controls.js'),'utf8'));
+ const screen=w.document.createElement('div');
+ screen.id='game-screen';
+ w.document.body.appendChild(screen);
+ const before=screen.childElementCount;
+ w.GameSideMenu.open({
+  title:'菜单',
+  items:[{id:'gm-cancel',className:'game-menu-cancel',label:'继续游戏'}]
+ });
+ const overlay=w.document.getElementById('game-menu-overlay');
+ assert.ok(overlay);
+ assert.equal(overlay.parentNode,w.document.body);
+ assert.equal(screen.childElementCount,before);
+ assert.ok(overlay.querySelector('.game-menu-box'));
+ assert.equal(overlay.querySelectorAll('.game-menu-btn').length,1);
+ w.GameSideMenu.close(overlay);
+ dom.window.close();
+});
+
+test('skill book body is a dedicated scroll area in CSS', () => {
+ const css=fs.readFileSync(path.join(__dirname,'../css/game.css'),'utf8');
+ assert.match(css,/\.game-menu-body[\s\S]*?overflow-y:\s*auto/);
+ assert.match(css,/\.game-menu-body\s+\.skill-grid\s*\{\s*overflow:\s*visible/);
+});
+
+test('skill book opens a full-height side card on a separate panel', () => {
+ const {dom,w}=setup();
+ w.eval('window.GameUI=class {};');
+ w.eval(fs.readFileSync(path.join(__dirname,'../js/ui/controls.js'),'utf8'));
+ w.GameSideMenu.open({
+  panel:'skills',
+  title:'角色技能',
+  boxClass:'game-menu-box-book',
+  html:'<div class="skill-grid"></div>'
+ });
+ const overlay=w.document.getElementById('game-menu-overlay');
+ assert.equal(overlay.dataset.panel,'skills');
+ assert.ok(overlay.querySelector('.game-menu-box-book'));
+ assert.ok(overlay.querySelector('.game-menu-body'));
+ w.GameSideMenu.open({
+  panel:'menu',
+  title:'菜单',
+  items:[{id:'gm-cancel',className:'game-menu-cancel',label:'继续游戏'}]
+ });
+ const swapped=w.document.getElementById('game-menu-overlay');
+ assert.equal(swapped.dataset.panel,'menu');
+ assert.equal(w.document.querySelectorAll('#game-menu-overlay').length,1);
+ dom.window.close();
+});

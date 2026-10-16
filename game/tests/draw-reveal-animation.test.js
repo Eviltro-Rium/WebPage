@@ -349,6 +349,19 @@ test('Boss D12 animation displays the independent roll index without dropping it
   assert.ok(shown.options.desc.startsWith(desc));
   assert.ok(shown.options.desc.includes('2/3'));
 });
+test('loot dice flies obtained trophies once before victory and does not replay the paired trophyDrop', async () => {
+  const {ui} = harness();
+  const sequence = [];
+  ui._playD12Animation = async value => sequence.push('die:' + value);
+  ui._playTrophyDropAnimation = async names => sequence.push('gain:' + names.join(','));
+  await ui._playEvents([
+    {id:60, type:'diceRoll', purpose:'trophyDrop', value:2, drops:['GuardTrophy'], rollIndex:1, rollCount:1, desc:'drop-table'},
+    {id:61, type:'trophyDrop', roll:2, drops:['GuardTrophy'], rollIndex:1, rollCount:1, dropSummary:'drop-table'},
+    {id:62, type:'gameOver', desc:'victory'}
+  ], true);
+  assert.deepEqual(sequence, ['die:2', 'gain:GuardTrophy']);
+});
+
 test('Boss rewards keep each landed result readable and play card arrival before victory', async () => {
   const {ui, doc} = harness();
   const sequence=[],descriptions=[],pauses=[];
@@ -393,7 +406,9 @@ test('actual trophy animation creates a temporary card at the judgment zone and 
     const node=doc.body.children.find(el=>el.classList.contains('trophy-fly-card'));
     assert.ok(node,'a real temporary card is attached during the flight');
     assert.ok(node.dataset.cardId.startsWith('flight-GuardTrophy'));
-    assert.equal(animations.length,1);assert.ok(animations[0].options.duration>=500);
+    assert.ok(node.children.some(el=>el.classList.contains('trophy-loot-caption')));
+    assert.equal(animations.length,1);assert.ok(animations[0].options.duration>=900);
+    assert.ok(animations[0].frames.length>=4,'pop to center, hold, then fly into the hand');
     assert.equal(arrivals,0);
     animations[0].onfinish();await flight;
     assert.equal(arrivals,1,'actual hand cards are revealed at arrival before the hand glow completes');

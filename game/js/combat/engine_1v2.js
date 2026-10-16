@@ -62,9 +62,10 @@
     }
   };
   Engine.prototype._checkDeath1v2=function(){
-    if(!this.s.player.alive){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer);return true}
+    const defer=typeof this._shouldDeferGameOver==='function'&&this._shouldDeferGameOver();
+    if(!this.s.player.alive){if(!defer){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer)}return !defer}
     let allDead=!this.s.ai.alive&&(!this.s.ai2||!this.s.ai2.alive);
-    if(allDead){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer);return true}
+    if(allDead){if(!defer){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer)}return !defer}
     let defeatedKey=!this.s.ai.alive?'ai':(!this.s.ai2||!this.s.ai2.alive?'ai2':null);
     if(defeatedKey&&!this.s.eliminatedHandled[defeatedKey]){
       this._on1v2OpponentEliminated(defeatedKey);

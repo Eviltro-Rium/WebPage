@@ -191,52 +191,113 @@ _animationOrder(events) {
 },
 
 
+_trophyDisplayName(name) {
+    const def = global.AdventureRegistry && global.AdventureRegistry.getItem(name);
+    return String(def && def.displayName || name || '战利白卡').replace(/战利白卡$/, '') || '战利白卡';
+},
+
+_hasPendingLootPresentation() {
+    if (this._trophyGainPlaying) return true;
+    if (this._lootPresentationActive) return true;
+    const doc = global.document;
+    return !!(doc && typeof doc.querySelector === 'function' && doc.querySelector('.trophy-fly-card'));
+},
+
+_createTrophyFlyCard(name) {
+    const wrap = document.createElement('div');
+    wrap.className = 'trophy-fly-card';
+    let face = null;
+    try {
+        const card = window.AdventureDeck && window.AdventureDeck.trophyWhite ? window.AdventureDeck.trophyWhite(name) : null;
+        if (card && typeof window.renderCard === 'function') face = window.renderCard(card, 80, 114, false);
+    } catch (_) { face = null; }
+    if (!face) {
+        face = document.createElement('div');
+        face.className = 'trophy-fly-fallback';
+        face.textContent = '◇';
+    }
+    if (face.dataset && face.dataset.cardId) wrap.dataset.cardId = face.dataset.cardId;
+    else wrap.dataset.cardId = 'flight-' + String(name || 'trophy');
+    wrap.appendChild(face);
+    const caption = document.createElement('span');
+    caption.className = 'trophy-loot-caption';
+    caption.textContent = '获得[' + this._trophyDisplayName(name) + ']';
+    wrap.appendChild(caption);
+    return wrap;
+},
+
 async _playTrophyDropAnimation(names, onArrive) {
-    const deckApi = window.AdventureDeck;
-    const from = document.getElementById('reveal-cards') || document.querySelector('.ai-area') || document.body;
-    const to = document.getElementById('player-hand') || document.body;
-    if (typeof to.scrollIntoView === 'function') to.scrollIntoView({ block: 'nearest', behavior: 'instant' });
-    const source = from.getBoundingClientRect(), tr = to.getBoundingClientRect();
-    const fr = source.bottom < 0 || source.top > window.innerHeight
-        ? { left: tr.left, top: Math.max(12, tr.top - 140), width: tr.width, height: 100 }
-        : source;
-    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    this.playFloatingText('获得战利白卡 ×' + names.length, '#f8e7a8', 'player');
-    const flights = names.map((name, i) => new Promise(resolve => {
-        let node = null;
-        try {
-            const card = deckApi && deckApi.trophyWhite ? deckApi.trophyWhite(name) : null;
-            if (card && typeof window.renderCard === 'function') node = window.renderCard(card, 70, 100, false);
-        } catch (_) { node = null; }
-        if (!node) { node = document.createElement('div'); node.textContent = '◇'; }
-        node.classList.add('trophy-fly-card');
-        const sx = fr.left + fr.width / 2 - 35 + (i - (names.length - 1) / 2) * 24;
-        const sy = fr.top + fr.height / 2 - 50;
-        const ex = tr.left + tr.width / 2 - 35, ey = tr.top + tr.height / 2 - 50;
-        // Inline fixed positioning so the flight stays visible even if CSS is cached.
-        node.style.cssText = 'position:fixed;z-index:9999;left:' + sx + 'px;top:' + sy + 'px;width:70px;height:100px;pointer-events:none;margin:0;';
-        document.body.appendChild(node);
-        const done = () => { node.remove(); resolve(); };
-        if (reduce || !node.animate) { setTimeout(done, 150); return; }
-        try {
-            const anim = node.animate([
-                { transform: 'scale(0.85)', opacity: 0 },
-                { transform: 'translateY(-10px) scale(1)', opacity: 1, offset: 0.28 },
-                { transform: 'translateY(-10px) scale(1)', opacity: 1, offset: 0.48 },
-                { transform: 'translate(' + (ex - sx) + 'px,' + (ey - sy) + 'px) scale(0.75)', opacity: 0.8 }
-            ], { duration: 600, delay: i * 90, easing: 'cubic-bezier(.25,.8,.3,1)', fill: 'forwards' });
-            anim.onfinish = done;
-            anim.oncancel = done;
-        } catch (_) { done(); }
-    }));
-    await Promise.all(flights);
-    if (typeof onArrive === 'function') onArrive();
-    if (reduce) return;
-    to.classList.remove('trophy-hand-glow'); void to.offsetWidth; to.classList.add('trophy-hand-glow');
-    // The hand highlight is part of the arrival, not detached decoration:
-    // settlement must not cover it before the acquisition has finished.
-    await new Promise(resolve => setTimeout(resolve, 800));
-    to.classList.remove('trophy-hand-glow');
+    this._trophyGainPlaying = (this._trophyGainPlaying || 0) + 1;
+    try {
+        const from = document.getElementById('reveal-cards') || document.querySelector('.ai-area') || document.body;
+        const to = document.getElementById('player-hand') || document.body;
+        const stage = document.getElementById('game-screen') || document.body;
+        if (typeof to.scrollIntoView === 'function') to.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+        const source = from.getBoundingClientRect();
+        const hand = to.getBoundingClientRect();
+        const board = typeof stage.getBoundingClientRect === 'function'
+            ? stage.getBoundingClientRect()
+            : { left: 0, top: 0, width: Number(global.innerWidth) || 800, height: Number(global.innerHeight) || 600 };
+        const vh = Number(global.innerHeight) || board.height || 600;
+        const dieVisible = source.bottom > 0 && source.top < vh;
+        const start = dieVisible ? source : {
+            left: board.left + board.width / 2 - 40,
+            top: Math.max(24, board.top + board.height * 0.22),
+            width: 80,
+            height: 80
+        };
+        const cx = board.left + board.width / 2;
+        const cy = board.top + Math.max(120, Math.min(board.height * 0.4, vh * 0.38));
+        const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const labels = names.map(name => this._trophyDisplayName(name));
+        this.playFloatingText(labels.length ? '获得[' + labels.join(']、[') + ']' : '获得战利白卡', '#f8e7a8', 'player');
+        if (!reduce && typeof this.burstParticles === 'function') {
+            this.burstParticles(cx, cy, 'rgba(252, 211, 77, 0.9)', 18);
+        }
+        const flights = names.map((name, i) => new Promise(resolve => {
+            const node = this._createTrophyFlyCard(name);
+            const sx = start.left + start.width / 2 - 40 + (i - (names.length - 1) / 2) * 28;
+            const sy = start.top + start.height / 2 - 57;
+            const mx = cx - 40 - sx;
+            const my = cy - 57 - sy;
+            const ex = hand.left + hand.width / 2 - 40 - sx;
+            const ey = hand.top + hand.height / 2 - 57 - sy;
+            node.style.cssText = 'position:fixed;z-index:10050;left:' + sx + 'px;top:' + sy + 'px;width:80px;pointer-events:none;margin:0;';
+            document.body.appendChild(node);
+            let settled = false;
+            const done = () => {
+                if (settled) return;
+                settled = true;
+                node.remove();
+                resolve();
+            };
+            if (reduce || !node.animate) { setTimeout(done, 160); return; }
+            try {
+                const duration = 980;
+                const delay = i * 120;
+                const anim = node.animate([
+                    { transform: 'scale(0.45) rotate(-8deg)', opacity: 0, filter: 'brightness(1.8)' },
+                    { transform: 'translate(' + mx + 'px,' + my + 'px) scale(1.12)', opacity: 1, filter: 'brightness(1.15)', offset: 0.28 },
+                    { transform: 'translate(' + mx + 'px,' + my + 'px) scale(1)', opacity: 1, filter: 'brightness(1)', offset: 0.58 },
+                    { transform: 'translate(' + ex + 'px,' + ey + 'px) scale(0.62)', opacity: 0.78, filter: 'brightness(1.05)' }
+                ], { duration, delay, easing: 'cubic-bezier(.22,.82,.28,1)', fill: 'forwards' });
+                let timersAreSync = true;
+                const fallback = setTimeout(() => { if (!timersAreSync) done(); }, duration + delay + 80);
+                timersAreSync = false;
+                const finish = () => { clearTimeout(fallback); done(); };
+                anim.onfinish = finish;
+                anim.oncancel = finish;
+            } catch (_) { done(); }
+        }));
+        await Promise.all(flights);
+        if (typeof onArrive === 'function') onArrive();
+        if (reduce) return;
+        to.classList.remove('trophy-hand-glow'); void to.offsetWidth; to.classList.add('trophy-hand-glow');
+        await new Promise(resolve => setTimeout(resolve, 720));
+        to.classList.remove('trophy-hand-glow');
+    } finally {
+        this._trophyGainPlaying = Math.max(0, (this._trophyGainPlaying || 1) - 1);
+    }
 },
 
 async _playEvents(events, fast = false) {
@@ -249,11 +310,14 @@ async _playEvents(events, fast = false) {
     const orderedEvents = this._animationOrder(events);
     // Older saves omit drops on dice events; pair them with their result without rerolling.
     const lootResults = new Map();
+    const lootTrophyByDie = new Map();
+    const flownTrophyIds = new Set();
     let pendingLootDie = null;
     for (const evt of orderedEvents) {
         if (evt.type === 'diceRoll' && evt.purpose === 'trophyDrop') pendingLootDie = evt;
         else if (evt.type === 'trophyDrop' && pendingLootDie) {
             lootResults.set(pendingLootDie, evt.drops);
+            lootTrophyByDie.set(pendingLootDie, evt);
             pendingLootDie = null;
         }
     }
@@ -416,11 +480,31 @@ async _playEvents(events, fast = false) {
             // skill's card reference after the transient die animation.
             if(!isLoot && (this._judgmentCards||[]).length)this._paintJudgmentCards(this._judgmentCards);
             if (isLoot) {
-                this._judgmentCards = [];
-                const drops = Array.isArray(evt.drops) ? evt.drops : lootResults.get(evt) || (evt.outcome === 'fail' ? [] : undefined);
-                const result = this._trophyResultText(Object.assign({}, evt, { roll: value, drops }));
-                this._showZoneDesc('reveal-desc', result + '\n' + (evt.dropSummary || evt.desc || ''));
-                await waitReadable(1100);
+                this._lootPresentationActive = (this._lootPresentationActive || 0) + 1;
+                try {
+                    this._judgmentCards = [];
+                    const drops = Array.isArray(evt.drops) ? evt.drops : lootResults.get(evt) || (evt.outcome === 'fail' ? [] : undefined);
+                    const result = this._trophyResultText(Object.assign({}, evt, { roll: value, drops }));
+                    this._showZoneDesc('reveal-desc', result + '\n' + (evt.dropSummary || evt.desc || ''));
+                    await waitReadable(1100);
+                    const dropNames = Array.isArray(drops) ? drops.filter(Boolean) : [];
+                    if (dropNames.length) {
+                        this._renderPlayerHand({ hideTrailing: drawRemaining.player });
+                        let arrived = false;
+                        const revealArrival = () => {
+                            if (arrived) return;
+                            arrived = true;
+                            drawRemaining.player = Math.max(0, drawRemaining.player - dropNames.length);
+                            this._renderPlayerHand({ hideTrailing: drawRemaining.player });
+                        };
+                        try { await this._playTrophyDropAnimation(dropNames, revealArrival); }
+                        finally { revealArrival(); }
+                        const paired = lootTrophyByDie.get(evt);
+                        if (paired && Number.isFinite(Number(paired.id))) flownTrophyIds.add(Number(paired.id));
+                    }
+                } finally {
+                    this._lootPresentationActive = Math.max(0, (this._lootPresentationActive || 1) - 1);
+                }
             } else {
                 this._showZoneDesc('reveal-desc', desc);
                 await wait(220);
@@ -620,7 +704,9 @@ async _playEvents(events, fast = false) {
         } else if (evt.type === 'trophyDrop' && Array.isArray(evt.drops)) {
             const result = this._trophyResultText(evt);
             this._showZoneDesc('reveal-desc', result + (evt.dropSummary ? '\n' + evt.dropSummary : ''));
+            if (flownTrophyIds.has(Number(evt.id))) { await waitReadable(500); continue; }
             if (!evt.drops.length) { await waitReadable(500); continue; }
+            this._lootPresentationActive = (this._lootPresentationActive || 0) + 1;
             this._renderPlayerHand({ hideTrailing: drawRemaining.player });
             let arrived = false;
             const revealArrival = () => {
@@ -630,7 +716,10 @@ async _playEvents(events, fast = false) {
                 this._renderPlayerHand({ hideTrailing: drawRemaining.player });
             };
             try { await this._playTrophyDropAnimation(evt.drops, revealArrival); }
-            finally { revealArrival(); }
+            finally {
+                revealArrival();
+                this._lootPresentationActive = Math.max(0, (this._lootPresentationActive || 1) - 1);
+            }
             await waitReadable(500);
         } else if (evt.type === 'dualDice') {
             if (typeof this._playDualDiceAnimation === 'function') {

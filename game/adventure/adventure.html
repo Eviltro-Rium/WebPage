@@ -7,8 +7,8 @@
     <title>地牢冒险 · Furry Trial</title>
     <link rel="icon" href="../../favicon-ryan.webp" type="image/webp">
     <link rel="apple-touch-icon" href="../../favicon-ryan.webp">
-    <link rel="stylesheet" href="../css/game.css?v=20261016-return-feedback">
-    <link rel="stylesheet" href="css/adventure.css?v=20261016-return-feedback">
+    <link rel="stylesheet" href="../css/game.css?v=20261016-skill-scroll">
+    <link rel="stylesheet" href="css/adventure.css?v=20261016-skill-book">
     <style>
         /* Keep the initial/test screens on the shared game-home background.
            Adventure scene artwork is assigned only when a real map starts. */
@@ -19,12 +19,11 @@
 </head>
 <body>
     <div id="castle-bg"></div>
-    <div class="adv-menu-bar" id="adv-menu-bar">
-        <button class="adv-menu-btn" id="adv-menu-toggle">菜单</button>
-        <div class="adv-menu-dropdown" id="adv-menu-dropdown">
-            <button class="adv-menu-item" id="adv-menu-exit">退出游戏</button>
-            <button class="adv-menu-item" id="adv-menu-skills">查看角色技能</button>
-            <button class="adv-menu-item" id="adv-menu-log">打开日志</button>
+    <a class="game-home-link" id="adv-home-btn" href="../index.html">← 返回主页</a>
+    <div class="adv-menu-bar" id="adv-menu-bar" hidden>
+        <div class="hud-side-tools">
+            <button class="menu-btn" id="adv-menu-toggle" type="button" aria-label="菜单">☰</button>
+            <button class="skill-book-btn" id="adv-skill-book" type="button" aria-label="角色技能" title="角色技能">📖</button>
         </div>
     </div>
     <div id="adventure-container"></div>
@@ -92,16 +91,16 @@
       <script src="../js/ui/render/runtime.js?v=20261004-stable-panels"></script>
 <script src="../js/ui/render/particles.js"></script>
     <script src="../js/ui/render/home_screen.js"></script>
-    <script src="../js/ui/render/combat_screen.js?v=20261003-dice-control"></script>
+    <script src="../js/ui/render/combat_screen.js?v=20261016-skill-book"></script>
     <script src="../js/ui/render/status_render.js?v=20261004-quicksand"></script>
     <script src="../js/ui/render/hand_render.js?v=20261002-render1"></script>
     <script src="../js/ui/render/adventure_bar.js?v=20261003-dice-control"></script>
     <script src="../js/ui/render/zone_render.js?v=20261016-ui-cards"></script>
     <script src="../js/ui/feedback.js"></script>
     <script src="../js/ui/renderer.js?v=20261015-zone-side-layout"></script>
-    <script src="../js/ui/events.js?v=20261016-return-feedback"></script>
-    <script src="../js/ui/controls.js?v=20261015-battle-sheets"></script>
-    <script src="../js/ui/mode_1v2.js?v=20261003-dice-control"></script>
+    <script src="../js/ui/events.js?v=20261016-trophy-loot"></script>
+    <script src="../js/ui/controls.js?v=20261016-skill-book"></script>
+    <script src="../js/ui/mode_1v2.js?v=20261016-skill-book"></script>
     <script src="../js/ui/mode_lord.js"></script>
 
     <script src="js/content/registry.js"></script>
@@ -129,13 +128,13 @@
     <script src="js/engine/rewards.js?v=20261011-boss-loot"></script>
     <script src="js/engine/inventory.js?v=20261014-harden"></script>
     <script src="js/engine/combat_result.js?v=20261011-map-effects"></script>
-    <script src="js/battle/battle_engine.js?v=20261014-volcano-remake"></script>
+    <script src="js/battle/battle_engine.js?v=20261016-trophy-loot"></script>
     <script src="js/battle/adventure_battle_items.js?v=20261003-dice-control"></script>
     <script src="js/battle/dice_controller.js?v=20261003-dice-control"></script>
     <script src="js/save/adventure_save.js?v=20261016-defeat-save-reset"></script>
     <script src="js/ui/card_render.js"></script>
     <script src="js/battle/adventure_battle_session.js?v=20261016-defeat-save-reset"></script>
-    <script src="js/battle/adventure_battle_controller.js?v=20261016-defeat-save-reset"></script>
+    <script src="js/battle/adventure_battle_controller.js?v=20261016-skill-book"></script>
     <script src="js/ui/adventure_ui.js?v=20261016-trophy-pack-count"></script>
     <script src="js/ui/adventure_ui_map_view.js"></script>
     <script src="js/ui/adventure_ui_panels.js?v=20261014-harden"></script>
@@ -151,34 +150,84 @@
             let currentChar = null;
 
             const menuToggle = document.getElementById('adv-menu-toggle');
-            const menuDropdown = document.getElementById('adv-menu-dropdown');
-            const menuExit = document.getElementById('adv-menu-exit');
-            const menuSkills = document.getElementById('adv-menu-skills');
-            const menuLog = document.getElementById('adv-menu-log');
+            const skillBookBtn = document.getElementById('adv-skill-book');
+            const homeBtn = document.getElementById('adv-home-btn');
+            const menuBar = document.getElementById('adv-menu-bar');
+            let logVisible = false;
 
-            menuToggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menuDropdown.classList.toggle('open');
-            });
-            document.addEventListener('click', () => menuDropdown.classList.remove('open'));
+            function setAdventureSelectChrome(isSelect) {
+                if (homeBtn) homeBtn.hidden = !isSelect;
+                if (menuBar) menuBar.hidden = !!isSelect;
+            }
+            setAdventureSelectChrome(true);
 
-            menuExit.addEventListener('click', () => {
+            function abandonAndLeave() {
                 // “退出游戏” means abandoning the current run.  Clear both
                 // the safe map save and any in-tab combat snapshot before
                 // navigating, otherwise the next visit with the same
                 // character restores the previous adventure progress.
-                menuDropdown.classList.remove('open');
                 if (window.AdventureBattleController && typeof window.AdventureBattleController.abandonAdventure === 'function') {
                     window.AdventureBattleController.abandonAdventure();
                 } else if (window.AdventureSave && typeof window.AdventureSave.clear === 'function') {
                     window.AdventureSave.clear();
                 }
                 window.location.href = '../index.html';
+            }
+
+            function toggleAdventureLog() {
+                logVisible = !logVisible;
+                ui.logVisible = logVisible;
+                const logBox = document.getElementById('adventure-log-box');
+                if (!logBox) return;
+                if (logVisible) {
+                    logBox.style.display = '';
+                    const gc = document.getElementById('game-container');
+                    if (gc && gc.style.display !== 'none') {
+                        logBox.classList.add('adventure-log-float');
+                        document.body.appendChild(logBox);
+                    }
+                } else {
+                    logBox.style.display = 'none';
+                    logBox.classList.remove('adventure-log-float');
+                }
+            }
+
+            function openAdventureMenu() {
+                if (!window.GameSideMenu) return;
+                window.GameSideMenu.open({
+                    panel: 'menu',
+                    title: '⛭ 菜单',
+                    items: [
+                        { id: 'gm-log', className: 'game-menu-log', label: logVisible ? '📒 关闭日志' : '📒 打开日志', onClick: toggleAdventureLog },
+                        { id: 'gm-quit', className: 'game-menu-quit', label: '🚪 退出游戏', onClick: abandonAndLeave },
+                        { id: 'gm-cancel', className: 'game-menu-cancel', label: '✕ 继续游戏' }
+                    ]
+                });
+            }
+
+            window.AdventureMenuActions = {
+                extraItems() {
+                    return [{
+                        id: 'gm-log',
+                        className: 'game-menu-log',
+                        label: logVisible ? '📒 关闭日志' : '📒 打开日志',
+                        onClick: toggleAdventureLog
+                    }];
+                }
+            };
+
+            menuToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openAdventureMenu();
             });
+            if (skillBookBtn) {
+                skillBookBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openAdventureSkills();
+                });
+            }
 
-            menuSkills.addEventListener('click', () => {
-                menuDropdown.classList.remove('open');
-
+            function openAdventureSkills() {
                 const playerName = (currentChar
                     || (ui.eng && ui.eng.s && ui.eng.s.player && ui.eng.s.player.name)
                     || '').replace(/^AI\d*\s+/, '');
@@ -190,9 +239,6 @@
                     setTimeout(() => tip.remove(), 1500);
                     return;
                 }
-
-                const existing = document.getElementById('skill-overlay');
-                if (existing) { existing.remove(); return; }
 
                 const skillData = window.SKILL_DATA || (typeof SKILL_DATA !== 'undefined' ? SKILL_DATA : null);
                 if (!skillData) return;
@@ -254,11 +300,7 @@
                     return segs.map(sg => sg.color ? '<span style="color:' + sg.color + '">' + sg.text + '</span>' : sg.text).join('');
                 };
 
-                const overlay = document.createElement('div');
-                overlay.id = 'skill-overlay';
-                overlay.className = 'skill-overlay';
-                let html = '<div class="skill-overlay-inner">';
-                html += '<div class="skill-overlay-header"><button class="rules-back-btn" id="skill-back">&larr; 返回</button><h1 class="rules-title">角色技能</h1></div>';
+                let html = '';
 
                 for (const ch of chars) {
                     let atk = (skillData.attack && skillData.attack[ch.name]) || [];
@@ -317,23 +359,15 @@
                     html += '</div>';
                 }
 
-                html += '</div>';
-                overlay.innerHTML = html;
-                document.body.appendChild(overlay);
-                document.getElementById('skill-back').addEventListener('click', () => overlay.remove());
-                overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-            });
-
-            let logVisible = false;
-            menuLog.textContent = '打开日志';
-            menuLog.addEventListener('click', () => {
-                menuDropdown.classList.remove('open');
-                logVisible = !logVisible;
-                ui.logVisible = logVisible;
-                const logBox = document.getElementById('adventure-log-box');
-                if (logBox) logBox.style.display = logVisible ? '' : 'none';
-                menuLog.textContent = logVisible ? '关闭日志' : '打开日志';
-            });
+                html += '<div class="skill-footnote">🗡️伤害 ❤️生命 🛡️格挡 🃏卡牌 · 小数均向上取整</div>';
+                if (!window.GameSideMenu) return;
+                window.GameSideMenu.open({
+                    panel: 'skills',
+                    title: '📖 角色技能',
+                    boxClass: 'game-menu-box-book',
+                    html: html
+                });
+            }
 
             const params = new URLSearchParams(window.location.search);
             const testMode = params.get('test') === '1';
@@ -344,6 +378,7 @@
 
             if (presetChar) {
                 currentChar = presetChar;
+                setAdventureSelectChrome(false);
                 const bg = document.getElementById('castle-bg'); if (bg) bg.style.display = 'block';
                 if (testMode) ui.startTest(presetChar);
                 else ui.restoreOrStart(pickStartMap, presetChar);
@@ -389,6 +424,7 @@
             startBtn.addEventListener('click', () => {
                 if (!picked) return;
                 currentChar = picked;
+                setAdventureSelectChrome(false);
                 container.innerHTML = '';
                 const bg = document.getElementById('castle-bg'); if (bg) bg.style.display = 'block';
                 ui.restoreOrStart(pickStartMap, picked);

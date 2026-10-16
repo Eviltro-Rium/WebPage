@@ -79,8 +79,8 @@ attackDamage(card, ctx) {
 2. 进入攻击修正阶段：先结算攻击修正类 buff（[熔脉] / [暴击]，玩家同弹窗、不可叠用，NPC 熔脉优先于暴击）→ 再结算攻击修正一次性道具（若本次攻击已用修正 buff 则不可再用）→ 正义之锤等其他修正按既有规则
 3. 玩家进入 AI_DEFEND 阶段选择防御牌
 4. 结算格挡：`defendBlock(card, incoming)` 返回格挡量
-5. 结算反击：`defendCounter(card, incoming, defender, opponent, eng)` 返回反击量
-6. 结算余下伤害
+5. 结算反击：`defendCounter(card, incoming, defender, opponent, eng)` 返回反击量（先扣飞翔/守护，伤害与余下进攻同时结算）
+6. 结算余下伤害（与反击同时扣血，一方出局不会取消另一次命中）
 
 ---
 
@@ -287,7 +287,7 @@ defendCounter(card, incoming, defender, opponent) {
 1. bridge 在 `defend()` 中调用 `defendCounter(card, incoming, defender, opponent, eng)` 得到反击数字 `n`
 2. 调用 `eng.counterAttack(defender, opponent, n)` 对进攻方造成 `n🗡️`
 3. 描述追加：`'反击' + n + '🗡️'`
-4. 反击**不**产生新的防御出牌阶段，但会经过统一的[飞翔]/[守护]减免；实际伤害由引擎结算并生成一次反馈事件
+4. 反击**不**产生新的防御出牌阶段，但会经过统一的[飞翔]/[守护]减免：NPC自动消耗，玩家被反击时与受到进攻一样打开飞翔/守护选择；实际伤害与剩余进攻伤害同时结算
 
 ---
 
@@ -449,7 +449,7 @@ defendPlayerDiscard(card) {
 | 流血 DoT | `attackBleed` / `defendBleed` | ❌ | ❌ | ❌ | 攻击方回合结束结算 |
 | 中毒 DoT | `attackPoison` | ❌ | ❌ | ❌ | 回合开始结算 |
 | 灼伤 DoT | 火焰之拳配饰 | ❌ | ❌ | ❌ | 攻击方回合结束结算 |
-| 反击 | `defendCounter` | ❌（直接命中） | — | ✅（守护减免） | 不经过玩家防御；bridge 调用 `hurt(opponent, n)` |
+| 反击 | `defendCounter` | ❌（直接命中） | — | ✅（守护减免） | 不经过玩家防御；与剩余进攻伤害同时结算 |
 | 牌库判定 | `attackKrakenJudge` / `attackOctopusJudge` | ✅ | ✅ | ✅ | 判定牌决定伤害与去向（放回牌库底 / 置入弃牌堆） |
 | 净化爆发 | `attackKrakenPurge` | ✅（伤害<5时不可防御） | ✅ | ✅ | 先施加失温再清除自身负面，伤害 3+清除层数 |
 | 防御后弃牌 | `defendPlayerDiscard` | — | — | — | 防御结算后玩家强制弃 1 张（不可取消，无手牌跳过） |

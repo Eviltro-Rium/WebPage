@@ -191,7 +191,6 @@
           diceEvent.outcome = drops.length ? 'success' : 'fail';
           diceEvent.drops = drops.slice();
         }
-        this.emit('desc', dropSummary);
         this.emit('trophyDrop', '战利白卡掉落结算', {
           who: 'player', monsterName: label, roll: loot.roll, drops: drops.slice(), rollIndex, rollCount, dropSummary
         });

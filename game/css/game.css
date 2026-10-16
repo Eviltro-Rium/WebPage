@@ -2679,6 +2679,12 @@ body.combat-sheet-open::after {
     border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .skill-row:last-child { border-bottom: none; }
+.skill-footnote {
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    line-height: 1.5;
+}
 
 .skill-num {
     width: 36px; min-width: 36px;
@@ -2731,7 +2737,17 @@ body.combat-sheet-open::after {
     box-shadow: 0 10px 24px rgba(20,184,166,0.2) !important;
 }
 
-.menu-btn {
+.hud-side-tools {
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    z-index: 20;
+}
+.menu-btn,
+.skill-book-btn {
     background: rgba(255,255,255,0.08);
     border: 1px solid rgba(255,255,255,0.15);
     border-radius: 8px;
@@ -2740,27 +2756,35 @@ body.combat-sheet-open::after {
     line-height: 1;
     padding: 4px 10px 6px;
     cursor: pointer;
-    margin-left: auto;
+    flex-shrink: 0;
     transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s;
     box-shadow: 0 0 0 0 rgba(255,255,255,0);
 }
-.menu-btn:hover {
+.menu-btn { margin-left: auto; }
+.hud-side-tools .menu-btn { margin-left: 0; }
+.skill-book-btn {
+    margin-left: 0;
+    font-size: 1.05rem;
+    padding: 5px 9px 6px;
+}
+.menu-btn:hover,
+.skill-book-btn:hover {
     background: rgba(255,255,255,0.18);
     border-color: rgba(255,255,255,0.35);
     transform: scale(1.08);
     box-shadow: 0 0 14px rgba(255,255,255,0.12);
 }
-.menu-btn:active {
+.menu-btn:active,
+.skill-book-btn:active {
     transform: scale(0.94);
 }
 
 .game-menu-overlay {
-    position: fixed; inset: 0;
+    position: fixed;
+    inset: 0;
     background: transparent;
-    display: flex; align-items: stretch; justify-content: flex-end;
-    padding: 12px;
-    box-sizing: border-box;
     z-index: 3000;
+    pointer-events: auto;
     animation: menuOverlayIn .2s ease-out;
 }
 @keyframes menuOverlayIn {
@@ -2768,22 +2792,76 @@ body.combat-sheet-open::after {
     to { opacity: 1; }
 }
 .game-menu-box {
-    background: linear-gradient(145deg, rgba(20,30,50,.84), rgba(10,18,35,.88));
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(320px, 86vw);
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    background: linear-gradient(145deg, rgba(22, 32, 54, 0.72), rgba(10, 18, 36, 0.78));
     border: 1px solid rgba(255,255,255,.22);
-    border-radius: 20px;
-    padding: max(28px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+    border-right: none;
+    border-radius: 20px 0 0 20px;
+    padding: max(22px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom)) 20px;
     display: flex; flex-direction: column; align-items: stretch;
     gap: 12px;
-    width: min(320px, 100%);
-    min-width: 0;
-    overflow-y: auto;
+    overflow: hidden;
     overscroll-behavior: contain;
     box-sizing: border-box;
-    box-shadow: -12px 0 40px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.1);
+    box-shadow: -16px 0 40px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.12);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
     animation: menuBoxIn .26s cubic-bezier(.22,.7,.25,1);
 }
+.game-menu-box-book { width: min(480px, 92vw); }
+.game-menu-title-row { flex-shrink: 0; }
+.game-menu-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    display: block;
+    padding-right: 6px;
+    scrollbar-gutter: stable;
+}
+.game-menu-body .skill-overlay-char,
+.game-menu-body .skill-grid,
+.game-menu-body .skill-footnote {
+    flex-shrink: 0;
+}
+.game-menu-body .skill-overlay-char + .skill-grid { margin-bottom: 14px; }
+.game-menu-body .skill-grid { overflow: visible; }
+.game-menu-body::-webkit-scrollbar { width: 8px; }
+.game-menu-body::-webkit-scrollbar-track { background: rgba(255,255,255,0.06); border-radius: 99px; }
+.game-menu-body::-webkit-scrollbar-thumb {
+    background: rgba(251, 191, 36, 0.45);
+    border-radius: 99px;
+}
+.game-menu-body::-webkit-scrollbar-thumb:hover { background: rgba(251, 191, 36, 0.7); }
 .game-menu-box .game-menu-btn { width: 100%; min-height: 46px; }
 .game-menu-box .game-menu-cancel { margin-top: auto; }
+.game-menu-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.game-menu-close {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.08);
+    color: #e2e8f0;
+    font-size: 0.95rem;
+    cursor: pointer;
+}
+.game-menu-close:hover { background: rgba(255,255,255,0.16); }
 @keyframes menuBoxIn {
     from { opacity: 0; transform: translateX(calc(100% + 16px)); }
     to { opacity: 1; transform: translateX(0); }
@@ -2821,6 +2899,16 @@ body.combat-sheet-open::after {
 }
 .game-menu-btn:active {
     transform: translateY(0) scale(0.97);
+}
+
+.game-menu-log {
+    background: linear-gradient(135deg, rgba(139,92,246,0.7), rgba(109,40,217,0.7));
+    border-color: rgba(196,181,253,0.45);
+    color: #fff;
+}
+.game-menu-log:hover {
+    background: linear-gradient(135deg, rgba(139,92,246,0.88), rgba(109,40,217,0.88));
+    border-color: rgba(196,181,253,0.7);
 }
 
 .game-menu-skills {
@@ -3128,23 +3216,45 @@ body.combat-sheet-open::after {
 
 .trophy-fly-card {
     position: fixed !important;
-    z-index: 9999;
-    width: 70px !important;
-    height: 100px !important;
+    z-index: 10050;
+    width: 80px !important;
     pointer-events: none;
-    border-radius: 6px;
     margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 16px rgba(252, 211, 77, 0.8));
 }
-div.trophy-fly-card {
+.trophy-fly-card canvas,
+.trophy-fly-card .card-canvas {
+    width: 80px !important;
+    height: 114px !important;
+    border-radius: 8px;
+    display: block;
+}
+.trophy-fly-fallback {
+    width: 80px;
+    height: 114px;
     display: grid;
     place-items: center;
+    border-radius: 8px;
     background: #f8f4e6;
     color: #b8860b;
     font-size: 2rem;
-    box-shadow: 0 0 18px rgba(255, 226, 122, 0.7);
 }
-.trophy-hand-glow { animation: trophyHandGlow .8s ease-out; }
+.trophy-loot-caption {
+    margin-top: 8px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(28, 18, 6, 0.82);
+    color: #fde68a;
+    font: 800 12px/1.2 var(--font-body, system-ui);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px #000;
+}
+.trophy-hand-glow { animation: trophyHandGlow .72s ease-out; }
 @keyframes trophyHandGlow {
-    0% { box-shadow: 0 0 0 0 rgba(255, 226, 122, 0.9); }
-    100% { box-shadow: 0 0 0 14px rgba(255, 226, 122, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(255, 226, 122, 0.95); }
+    100% { box-shadow: 0 0 0 16px rgba(255, 226, 122, 0); }
 }

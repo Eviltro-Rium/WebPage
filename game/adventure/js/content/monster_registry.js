@@ -596,6 +596,7 @@
 
       defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
         const { heal, hurt, poison, bleed, clearDebuffs, draw } = helpers;
+        const counterHit = helpers.counter || ((target, amount) => { if (hurt) hurt(target, amount); });
 
         if (c && (c.magic || c.greenMagic || c.magicColor)) {
           const magicHp = AdvR.getBoss(mod.name) ? 5 : 3;
@@ -788,8 +789,8 @@
           let counterDesc = '';
           if (typeof mod.defendCounter === 'function') {
             const counter = mod.defendCounter(c, d, defender, opponent, eng);
-            if (counter > 0 && hurt) {
-              hurt(opponent, counter);
+            if (counter > 0) {
+              counterHit(opponent, counter);
               counterDesc = '，反击' + counter + '点伤害';
             }
           }
@@ -886,8 +887,8 @@
             const descParts = ['恢复' + healAmt + '生命'];
             if (typeof mod.defendCounter === 'function') {
               const counter = mod.defendCounter(c, d, defender, opponent, eng);
-              if (counter > 0 && hurt) {
-                hurt(opponent, counter);
+              if (counter > 0) {
+                counterHit(opponent, counter);
                 descParts.push('反击' + counter + '点伤害');
               }
             }
@@ -912,8 +913,8 @@
           }
           if (hasCounter) {
             const counter = mod.defendCounter(c, d, defender, opponent, eng);
-            if (counter > 0 && hurt) {
-              hurt(opponent, counter);
+            if (counter > 0) {
+              counterHit(opponent, counter);
               descParts.push('反击' + counter + '点伤害');
             }
           }

@@ -9,6 +9,75 @@
         const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
         return runtime ? runtime.schedule(owner, fn, ms, channel) : setTimeout(fn, ms);
     };
+    const escapeMenuText = (text) => String(text == null ? '' : text)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const GameSideMenu = {
+        dismiss(overlay) {
+            if (!overlay) return;
+            if (overlay._escapeHandler) document.removeEventListener('keydown', overlay._escapeHandler);
+            overlay.remove();
+        },
+        open(config) {
+            const panel = (config && config.panel) || 'menu';
+            const existing = document.getElementById('game-menu-overlay');
+            if (existing) {
+                const same = existing.dataset.panel === panel;
+                this.dismiss(existing);
+                if (same) return null;
+            }
+            const overlay = document.createElement('div');
+            overlay.id = 'game-menu-overlay';
+            overlay.className = 'game-menu-overlay';
+            overlay.dataset.panel = panel;
+            const items = (config && config.items) || [];
+            const title = (config && config.title) || '⛭ 菜单';
+            const boxClass = 'game-menu-box' + ((config && config.boxClass) ? ' ' + config.boxClass : '');
+            const body = (config && config.html)
+                ? `<div class="game-menu-body">${config.html}</div>`
+                : items.map(item => `<button type="button" class="game-menu-btn ${escapeMenuText(item.className || '')}" data-menu-id="${escapeMenuText(item.id)}">${escapeMenuText(item.label || '')}</button>`).join('');
+            overlay.innerHTML = `
+        <div class="${boxClass}" role="dialog" aria-modal="true" aria-label="${escapeMenuText(title)}">
+            <div class="game-menu-title-row">
+                <div class="game-menu-title">${escapeMenuText(title)}</div>
+                <button type="button" class="game-menu-close" data-menu-id="gm-close" aria-label="关闭">✕</button>
+            </div>
+            ${body}
+        </div>`;
+            document.body.appendChild(overlay);
+            const doClose = (after) => this.close(overlay, after);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) doClose(); });
+            const escHandler = (e) => {
+                if (e.key === 'Escape') {
+                    doClose();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            overlay._escapeHandler = escHandler;
+            document.addEventListener('keydown', escHandler);
+            overlay.querySelectorAll('[data-menu-id]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-menu-id');
+                    if (id === 'gm-close') { doClose(); return; }
+                    const item = items.find(entry => entry.id === id);
+                    doClose(() => { if (item && typeof item.onClick === 'function') item.onClick(); });
+                });
+            });
+            if (config && typeof config.onMount === 'function') config.onMount(overlay);
+            return overlay;
+        },
+        close(overlay, after) {
+            if (!overlay || overlay.classList.contains('is-closing')) return;
+            if (overlay._escapeHandler) document.removeEventListener('keydown', overlay._escapeHandler);
+            overlay.classList.add('is-closing');
+            schedule(() => {
+                overlay.remove();
+                if (typeof after === 'function') after();
+            }, 180, null, 'error-overlay');
+        }
+    };
+    global.GameSideMenu = GameSideMenu;
     Object.assign(GameUI.prototype, {
 _renderControls() {
     const s = this.state;
@@ -231,64 +300,50 @@ async _bindControls() {
     bind('btn-online-room', () => onlineGameOverFn('room'));
     bind('btn-online-home', () => onlineGameOverFn('home'));
 
+    this._bindMenuButton();
+},
+
+_bindMenuButton() {
     const menuBtn = document.getElementById('menu-btn');
-    if (menuBtn && !menuBtn._menuBound) { menuBtn._menuBound = true; menuBtn.addEventListener('click', () => this._showGameMenu()); }
+    if (menuBtn && !menuBtn._menuBound) {
+        menuBtn._menuBound = true;
+        menuBtn.addEventListener('click', () => this._showGameMenu());
+    }
+    const bookBtn = document.getElementById('skill-book-btn');
+    if (bookBtn && !bookBtn._bookBound) {
+        bookBtn._bookBound = true;
+        bookBtn.addEventListener('click', () => this._showSkillOverlay());
+    }
 },
 
 _showGameMenu() {
-    const existing = document.getElementById('game-menu-overlay');
-    if (existing) { this._closeGameMenu(existing); return; }
-    const overlay = document.createElement('div');
-    overlay.id = 'game-menu-overlay';
-    overlay.className = 'game-menu-overlay';
-    overlay.innerHTML = `
-        <div class="game-menu-box" role="dialog" aria-modal="true" aria-label="战斗菜单">
-            <div class="game-menu-title">⛭ 菜单</div>
-            <button class="game-menu-btn game-menu-skills" id="gm-skills">📖 查看角色技能</button>
-            <button class="game-menu-btn game-menu-quit" id="gm-quit">🚪 退出游戏</button>
-            <button class="game-menu-btn game-menu-cancel" id="gm-cancel">✕ 继续游戏</button>
-        </div>`;
-    document.body.appendChild(overlay);
-
-    const doClose = () => this._closeGameMenu(overlay);
-
-    document.getElementById('gm-cancel').addEventListener('click', doClose);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) doClose(); });
-
-    const escHandler = (e) => { if (e.key === 'Escape') { doClose(); document.removeEventListener('keydown', escHandler); } };
-    overlay._escapeHandler = escHandler;
-    document.addEventListener('keydown', escHandler);
-
-    document.getElementById('gm-skills').addEventListener('click', () => {
-        this._closeGameMenu(overlay);
-        this._showSkillOverlay();
-    });
-    document.getElementById('gm-quit').addEventListener('click', async () => {
-        this._closeGameMenu(overlay);
-        if (typeof this.onBattleExit === 'function') {
-            await this.onBattleExit();
-            return;
-        }
-        await this._sessionDispatch('restart');
-        this.state = null; this._prevState = null;
-        if (this._pollInterval) clearInterval(this._pollInterval);
-        this.gameScreen.classList.remove('active');
-        this.selectScreen.classList.add('active');
-        this._selectedPlayerChar = null; this._selectedAIChar = null;
-        this._buildSelectScreen();
-    });
+    const extra = (typeof this.getBattleMenuExtraItems === 'function' && this.getBattleMenuExtraItems()) || [];
+    const extraItems = Array.isArray(extra) ? extra : [];
+    const items = [
+        ...extraItems,
+        { id: 'gm-quit', className: 'game-menu-quit', label: '🚪 退出游戏', onClick: async () => {
+            if (typeof this.onBattleExit === 'function') {
+                await this.onBattleExit();
+                return;
+            }
+            await this._sessionDispatch('restart');
+            this.state = null; this._prevState = null;
+            if (this._pollInterval) clearInterval(this._pollInterval);
+            this.gameScreen.classList.remove('active');
+            this.selectScreen.classList.add('active');
+            this._selectedPlayerChar = null; this._selectedAIChar = null;
+            this._buildSelectScreen();
+        } },
+        { id: 'gm-cancel', className: 'game-menu-cancel', label: '✕ 继续游戏' }
+    ];
+    GameSideMenu.open({ title: '⛭ 菜单', items });
 },
 
 _closeGameMenu(overlay) {
-    if (!overlay || overlay.classList.contains('is-closing')) return;
-    if (overlay._escapeHandler) document.removeEventListener('keydown', overlay._escapeHandler);
-    overlay.classList.add('is-closing');
-    schedule(() => overlay.remove(), 180, this, 'error-overlay');
+    GameSideMenu.close(overlay || document.getElementById('game-menu-overlay'));
 },
 
 _showSkillOverlay() {
-    const existing = document.getElementById('skill-overlay');
-    if (existing) { existing.remove(); return; }
     const s = this.state;
     if (!s || !s.player) return;
     const advEngine = window.AdventureBattleController && window.AdventureBattleController.activeEngine &&
@@ -313,11 +368,7 @@ _showSkillOverlay() {
         });
     }
 
-    const overlay = document.createElement('div');
-    overlay.id = 'skill-overlay';
-    overlay.className = 'skill-overlay';
-    let html = '<div class="skill-overlay-inner">';
-    html += '<div class="skill-overlay-header"><button class="rules-back-btn" id="skill-back">&larr; 返回</button><h1 class="rules-title">角色技能</h1></div>';
+    let html = '';
     const PLAYER_SKILL_GRID = [
         { atkKey: 0, defKey: 0, label: '1' }, { atkKey: 1, defKey: 1, label: '2' },
         { atkKey: 2, defKey: 2, label: '3' }, { atkKey: 7, defKey: 3, label: '0' },
@@ -400,11 +451,12 @@ _showSkillOverlay() {
         html += '</div>';
     }
     html += '<div class="skill-footnote">🗡️伤害 ❤️生命 🛡️格挡 🃏卡牌 · 小数均向上取整</div>';
-    html += '</div>';
-    overlay.innerHTML = html;
-    document.body.appendChild(overlay);
-    document.getElementById('skill-back').addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    GameSideMenu.open({
+        panel: 'skills',
+        title: '📖 角色技能',
+        boxClass: 'game-menu-box-book',
+        html
+    });
 },
 
 _getAvailableAttackMods(s) {

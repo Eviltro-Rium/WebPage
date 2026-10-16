@@ -287,7 +287,7 @@
     for(const k of participants){
       if(this.s[k])this.s[k].alive=this.s[k].hp>0
     }
-    if(!this.s.player.alive||(!this.s.ai.alive&&(!this.s.ai2||!this.s.ai2.alive))){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer)}
+    if((!this.s.player.alive||(!this.s.ai.alive&&(!this.s.ai2||!this.s.ai2.alive)))&&!(typeof this._shouldDeferGameOver==='function'&&this._shouldDeferGameOver())){this.s.phase='GAME_OVER';this.s.busy=false;clearTimeout(this.timer)}
     return this.state()
   };
 

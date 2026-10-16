@@ -1,26 +1,17 @@
 /* 冒险模式样式 —— 与主游戏 game.css 风格保持一致（玻璃拟态 + 紫色高亮） */
 #adventure-container { min-height: 100vh; overflow-x: hidden; }
 .adv-menu-bar { position: fixed; top: 16px; right: 20px; z-index: 100; }
-.adv-menu-btn {
-  padding: 6px 18px; font-size: 0.9rem; font-weight: 600;
-  color: #c4b5fd; background: rgba(30, 25, 50, 0.8);
-  border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 8px;
-  cursor: pointer; transition: background 0.15s;
+.adv-menu-bar .hud-side-tools { margin-left: 0; }
+.adv-menu-bar[hidden] { display: none !important; }
+.adventure-log-float {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 2500;
+  width: min(360px, calc(100vw - 32px));
+  grid-column: auto;
+  background: rgba(20, 18, 34, 0.86);
 }
-.adv-menu-btn:hover { background: rgba(168, 85, 247, 0.25); }
-.adv-menu-dropdown {
-  display: none; position: absolute; top: 100%; right: 0; margin-top: 4px;
-  background: rgba(25, 20, 45, 0.97); border: 1px solid rgba(168, 85, 247, 0.3);
-  border-radius: 10px; padding: 4px; min-width: 140px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-}
-.adv-menu-dropdown.open { display: block; }
-.adv-menu-item {
-  display: block; width: 100%; padding: 8px 14px; font-size: 0.85rem;
-  color: #d1d5db; background: transparent; border: none; border-radius: 6px;
-  cursor: pointer; text-align: left; transition: background 0.12s;
-}
-.adv-menu-item:hover { background: rgba(168, 85, 247, 0.2); color: #c4b5fd; }
 .adv-modal-close:hover { background: rgba(168, 85, 247, 0.3); }
 
 .adv-loading {
