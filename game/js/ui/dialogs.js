@@ -198,7 +198,7 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
         box.className = 'dialog-box';
         box.innerHTML = `<h3>${title}</h3>`;
         const list = document.createElement('div');
-        list.style.display = 'flex'; list.style.flexDirection = 'column'; list.style.gap = '14px'; list.style.marginTop = '12px';
+        list.className = 'opponent-card-groups';
         let count = 0;
         for (const group of (groups || [])) {
             if (!group || !Array.isArray(group.cards) || !group.cards.length) continue;
@@ -513,7 +513,7 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
         title.textContent = retry ? '飞翔失败 · 选择下一步' : '选择伤害减免';
         box.appendChild(title);
         const summary = document.createElement('p'); summary.className = 'dialog-summary';
-        summary.innerHTML = '剩余伤害 <strong>' + damage + '</strong><span>守护 ' + (ch.guard || 0) + ' · 飞翔 ' + (ch.fly || 0) + '</span>';
+        summary.innerHTML = '剩余伤害 <strong>' + damage + '🗡️</strong>';
         box.appendChild(summary);
         const list = document.createElement('div'); list.className = 'choice-list';
         let submitted = false;
@@ -531,7 +531,10 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
         };
         if ((ch.fly || 0) > 0) addButton(retry ? '再次尝试飞翔 · 1–6成功' : '使用飞翔 · 1–6成功', () => submit({action:'fly'}), 'fly');
         const max = Math.min(Math.floor(ch.guard || 0), Math.ceil(Math.max(0, damage)));
-        if (max > 0) {
+        if (max === 1) {
+            addButton('使用守护 · 剩余 ' + Math.max(0, damage - 1) + '🗡️',
+                () => submit({action:'guard', stacks:1}), 'guard', 'choice-primary');
+        } else if (max > 1) {
             const panel = document.createElement('section'); panel.className = 'guard-layer-control';
             const label = document.createElement('label'); label.htmlFor = id + '-layers'; label.textContent = '消耗守护层数';
             const value = document.createElement('output'); value.htmlFor = label.htmlFor;
@@ -541,7 +544,7 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
             const update = () => { value.textContent = input.value + ' 层'; preview.textContent = '减免后伤害：' + Math.max(0, damage - Number(input.value)); };
             input.addEventListener('input', update); update();
             panel.append(label, value, input, preview); list.appendChild(panel);
-            addButton('确认使用守护', () => submit({action:'guard', stacks:Number(input.value)}), 'guard', 'choice-primary');
+            addButton('使用守护', () => submit({action:'guard', stacks:Number(input.value)}), 'guard', 'choice-primary');
         }
         addButton(retry ? '不再躲避，承受伤害' : '不使用减免', () => submit({action:'none'}), null, 'choice-secondary');
         box.appendChild(list); overlay.appendChild(box); document.body.appendChild(overlay);
@@ -549,119 +552,74 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
 
 }
 
-/**
- * Make a combat / adventure .dialog-box movable by its title so players can
- * peek at HP, hands, and the board underneath the lighter overlay.
- */
-function makeDialogDraggable(box) {
-    if (!box || box.nodeType !== 1 || box.dataset.dragBound === '1') return box;
-    if (!box.classList.contains('dialog-box') && !box.classList.contains('game-over-box')) return box;
-    box.dataset.dragBound = '1';
-    box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+/** Present combat choices as bottom sheets; map dialogs retain their layout. */
+function prepareDialogCard(box) {
+    if (!box || box.nodeType !== 1 || !box.isConnected) return;
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
     const title = box.querySelector('.dialog-title, h3, h2');
     if (title) {
         if (!title.id) title.id = 'dialog-heading-' + (window.__dialogHeadingId = (window.__dialogHeadingId || 0) + 1);
         box.setAttribute('aria-labelledby', title.id);
     }
-    box.classList.add('dialog-draggable');
-
-    const handle = box.querySelector('.dialog-title, h3') || box;
-    handle.classList.add('dialog-drag-handle');
-    if (!handle.getAttribute('title')) handle.setAttribute('title', '拖动可移动弹窗');
-
-    let dragging = false;
-    let startX = 0;
-    let startY = 0;
-    let originLeft = 0;
-    let originTop = 0;
-    let pointerId = null;
-    let dragWidth = 0, dragHeight = 0;
-
-    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-
-    const pinFixed = () => {
-        const rect = box.getBoundingClientRect();
-        box.style.position = 'fixed';
-        box.style.left = rect.left + 'px';
-        box.style.top = rect.top + 'px';
-        box.style.right = 'auto';
-        box.style.bottom = 'auto';
-        box.style.margin = '0';
-        box.style.transform = 'none';
-        return rect;
-    };
-
-    const onPointerDown = (event) => {
-        if (event.button != null && event.button !== 0) return;
-        if (event.target.closest('button, input, select, textarea, a, label, .chan-five-row, .crystal-ball-row, [draggable="true"]')) return;
-        if (handle !== box && !handle.contains(event.target)) return;
-        const rect = pinFixed();
-        dragging = true;
-        pointerId = event.pointerId;
-        startX = event.clientX;
-        startY = event.clientY;
-        originLeft = rect.left;
-        originTop = rect.top;
-        dragWidth = rect.width; dragHeight = rect.height;
-        box.classList.add('dialog-dragging');
-        handle.classList.add('dialog-dragging');
-        try { handle.setPointerCapture(event.pointerId); } catch (_) {}
-        event.preventDefault();
-    };
-
-    const onPointerMove = (event) => {
-        if (!dragging || (pointerId != null && event.pointerId !== pointerId)) return;
-        const dx = event.clientX - startX;
-        const dy = event.clientY - startY;
-        const width = dragWidth;
-        const height = dragHeight;
-        const left = clamp(originLeft + dx, 8 - Math.min(80, width * 0.4), window.innerWidth - Math.min(width, 80) - 8);
-        const top = clamp(originTop + dy, 8, window.innerHeight - Math.min(height, 48) - 8);
-        box.style.left = left + 'px';
-        box.style.top = top + 'px';
-    };
-
-    const onPointerUp = (event) => {
-        if (!dragging || (pointerId != null && event.pointerId !== pointerId)) return;
-        dragging = false;
-        pointerId = null;
-        box.classList.remove('dialog-dragging');
-        handle.classList.remove('dialog-dragging');
-        try { handle.releasePointerCapture(event.pointerId); } catch (_) {}
-    };
-
-    handle.addEventListener('pointerdown', onPointerDown);
-    handle.addEventListener('pointermove', onPointerMove);
-    handle.addEventListener('pointerup', onPointerUp);
-    handle.addEventListener('pointercancel', onPointerUp);
-    return box;
+    const battle = box.ownerDocument.getElementById('game-screen');
+    if (!battle || !battle.classList.contains('active') || !box.parentElement) return;
+    box.classList.add('dialog-bottom-sheet');
+    box.parentElement.classList.add('dialog-sheet-overlay');
 }
 
-function bindDialogDragOnNode(node) {
+function prepareDialogCards(node) {
     if (!node || node.nodeType !== 1) return;
-    if (node.classList.contains('dialog-box') || node.classList.contains('game-over-box')) {
-        makeDialogDraggable(node);
-    }
-    if (typeof node.querySelectorAll === 'function') {
-        node.querySelectorAll('.dialog-box, .game-over-box').forEach(makeDialogDraggable);
-    }
+    if (node.matches('.dialog-box, .game-over-box')) prepareDialogCard(node);
+    node.querySelectorAll('.dialog-box, .game-over-box').forEach(prepareDialogCard);
 }
 
-(function installDialogDragObserver() {
+(function installDialogCardObserver() {
     if (typeof document === 'undefined') return;
     const boot = () => {
-        document.querySelectorAll('.dialog-box, .game-over-box').forEach(makeDialogDraggable);
-        if (window.__dialogDragObserver) return;
-        const observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                mutation.addedNodes.forEach(bindDialogDragOnNode);
+        prepareDialogCards(document.documentElement);
+        if (window.__dialogCardObserver) return;
+        const tracked = new Set();
+        const syncDock = () => {
+            if (!window.document || !document.body) return;
+            const battle = document.getElementById('game-screen');
+            const sheets = battle && battle.classList.contains('active')
+                ? Array.from(document.querySelectorAll('.dialog-sheet-overlay > .dialog-bottom-sheet'))
+                    .filter(box => box.isConnected && !box.hidden)
+                : [];
+            for (const box of tracked) {
+                if (!sheets.includes(box)) {
+                    if (resizeObserver) resizeObserver.unobserve(box);
+                    tracked.delete(box);
+                }
             }
+            for (const box of sheets) {
+                if (!tracked.has(box)) {
+                    tracked.add(box);
+                    if (resizeObserver) resizeObserver.observe(box);
+                }
+            }
+            const height = sheets.reduce((max, box) => Math.max(max, box.offsetHeight), 0);
+            const wasOpen = document.body.classList.contains('combat-sheet-open');
+            document.documentElement.style.setProperty('--combat-sheet-height', height + 'px');
+            document.body.classList.toggle('combat-sheet-open', sheets.length > 0);
+            if (battle && sheets.length && !wasOpen) {
+                const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+                const covered = Math.max(0, battle.getBoundingClientRect().bottom - (viewportHeight - height));
+                const scroller = document.scrollingElement || document.documentElement;
+                scroller.scrollTop += covered;
+            }
+        };
+        const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(syncDock) : null;
+        const observer = new MutationObserver(mutations => {
+            for (const mutation of mutations) mutation.addedNodes.forEach(prepareDialogCards);
+            syncDock();
         });
         observer.observe(document.documentElement, { childList: true, subtree: true });
-        window.__dialogDragObserver = observer;
+        window.__dialogCardObserver = observer;
+        window.addEventListener('resize', syncDock);
+        syncDock();
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
     else boot();
 })();
-
-window.makeDialogDraggable = makeDialogDraggable;

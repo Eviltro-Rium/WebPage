@@ -16,6 +16,51 @@ function setup() {
   return { dom, w, document: w.document, engine: w.previewEngine };
 }
 
+test('defeat settlement clears the run before navigation and pagehide cannot save it again', async () => {
+  const {dom,w,document,engine:adventure}=setup();
+  dom.reconfigure({url:'https://example.test/game/adventure/'});
+  let writes=0;
+  try {
+    document.getElementById('adv-settle-overlay')?.remove();
+    for(const id of ['adventure-container','game-container','game-screen']){
+      const node=document.createElement('div');node.id=id;document.body.appendChild(node);
+    }
+    w.localStorage.setItem('furryAdventureSave','old-map');
+    w.localStorage.setItem('furryAdventureCombatSessionV1','old-battle');
+    w.AdventureSave={save:()=>writes++,isSafePhase:()=>true,clear:()=>w.localStorage.removeItem('furryAdventureSave')};
+    w.AdventureBattleSession={save:()=>writes++,load:()=>w.localStorage.getItem('furryAdventureCombatSessionV1'),clear:()=>w.localStorage.removeItem('furryAdventureCombatSessionV1')};
+    w.Bridge={};w.AnimLayer=function(){};
+    adventure.applyBattleResult=()=>{};
+    adventure.onCombatEnd=()=>{
+      adventure.s.phase=w.AdventurePhase.GAME_OVER;
+      adventure.s.player={name:'Ryan',hp:0,alive:false};
+    };
+    w.AdventureBattleEngine=class {
+      constructor(){this.s={phase:'GAME_OVER',player:{name:'Ryan',hp:0,alive:false}};this.events=[];this.later=()=>{};}
+      state(){return {...this.s,events:this.events};}
+      restoreSession(){return this.state();}
+      finishAdventureBattle(){return {};}
+      dispatch(){return this.state();}
+    };
+    w.GameUI=class {
+      _initParticles(){}
+      _buildGameScreen(){}
+      _hideTooltip(){}
+      _startPolling(){}
+      updateDisplay(){this._showGameOver();}
+    };
+    await w.AdventureBattleController.startCombat('Ryan','CastleWolf',()=>{},{
+      resumeBattle:{s:{}},adventureEngine:adventure
+    });
+    assert(document.getElementById('adv-settle-return'));
+    assert.equal(w.localStorage.getItem('furryAdventureSave'),null);
+    assert.equal(w.AdventureBattleController.loadCombatSession(),null);
+    w.dispatchEvent(new w.Event('pagehide'));
+    w.furryBattle.dispatch('noop');
+    assert.equal(writes,0,'late persistence must not recreate the defeated checkpoint');
+  } finally {dom.window.close();}
+});
+
 function assertSingleCard(document) {
   const overlay = document.getElementById('adv-settle-overlay');
   assert.equal(overlay.querySelectorAll('.game-over-box').length, 1);

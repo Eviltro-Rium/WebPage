@@ -163,16 +163,18 @@ test('two simultaneous enemy defeats produce two separate controllable loot deci
   assert.equal(e.h.player.length,hand+1);choose(e,true,1);assert.equal(itemCount(e),0);assert.equal(e.h.player.length,hand+2);
   assert.deepEqual(Array.from(e.s.trophyDrops),['GuardTrophy','PiercingTrophy']);e.check();assert.equal(e.h.player.length,hand+2);runtime.resetRandomSource();
 });
-test('judgment UI uses inline buttons, preserves expanded choice on updates and sends one command',async()=>{
+test('judgment UI uses a bottom-sheet decision, keeps one dialog and sends one command',async()=>{
   const {JSDOM}=require('jsdom');const dom=new JSDOM('<div class="reveal-zone"><div id="reveal-cards"></div></div>',{runScripts:'outside-only'});
   const w=dom.window;w.GameUI=function(){};w.eval(fs.readFileSync(path.join(gameRoot,'js/ui/render/zone_render.js'),'utf8'));
   const ui=new w.GameUI(),calls=[];ui.state={pendingDiceControl:{value:11,diceIndex:0,presentedThrough:5}};
   ui._apiAction=async(method,params)=>{calls.push([method,params]);};ui._renderDiceControl();
-  assert.equal(w.document.querySelector('.dialog-overlay'),null);const panel=w.document.querySelector('.dice-control-panel');
-  panel.querySelector('[data-edit]').click();assert.equal(panel.querySelector('.dice-face-grid').hidden,false);
-  ui._renderDiceControl();assert.equal(w.document.querySelector('.dice-control-panel'),panel);assert.equal(panel.querySelector('.dice-face-grid').hidden,false);
-  panel.querySelector('[data-face="7"]').click();await Promise.resolve();assert.equal(calls.length,1);assert.equal(calls[0][0],'chooseDiceControl');assert.equal(calls[0][1].value,7);
-  ui.state={};ui._renderDiceControl();assert.equal(w.document.querySelector('.dice-control-panel'),null);dom.window.close();
+  const panel=w.document.getElementById('dice-control-dialog');
+  assert(panel.classList.contains('dialog-sheet-overlay'));
+  assert(panel.querySelector('.dialog-bottom-sheet'));assert.equal(panel.querySelectorAll('[data-face]').length,12);
+  ui._renderDiceControl();assert.equal(w.document.getElementById('dice-control-dialog'),panel);
+  panel.querySelector('[data-face="7"]').click();panel.querySelector('[data-face="8"]').click();await Promise.resolve();
+  assert.equal(calls.length,1);assert.equal(calls[0][0],'chooseDiceControl');assert.equal(calls[0][1].value,7);
+  ui.state={};ui._renderDiceControl();assert.equal(w.document.getElementById('dice-control-dialog'),null);dom.window.close();
 });
 
 test('Boss uses exactly three independent D12 loot rolls, preserving empty and repeated results', () => {

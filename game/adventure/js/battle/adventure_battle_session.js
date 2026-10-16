@@ -48,6 +48,11 @@
       if (options.abandon || !engine || !engine.s || engine.testMode) return false;
       if (engine.s.phase === 'GAME_OVER') {
         this.clear();
+        const player = engine.s.player;
+        if (player && (player.alive === false || Number(player.hp) <= 0) &&
+            global.AdventureSave && typeof global.AdventureSave.clear === 'function') {
+          global.AdventureSave.clear();
+        }
         return false;
       }
       const target = storage();

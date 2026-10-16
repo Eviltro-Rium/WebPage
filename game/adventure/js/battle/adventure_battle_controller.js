@@ -25,6 +25,12 @@
 
   function saveCombatSession(engine) {
     if (abandonRequested) return false;
+    const player = engine && engine.s && engine.s.player;
+    if (engine && !engine.testMode && engine.s && engine.s.phase === 'GAME_OVER' &&
+        player && (player.alive === false || Number(player.hp) <= 0)) {
+      invalidateAdventureProgress();
+      return false;
+    }
     const session = window.AdventureBattleSession;
     const saved = session && typeof session.save === 'function' ? session.save(engine) : false;
     // Combat item/gold/HP changes live on the adventure engine. Persist them
@@ -38,6 +44,10 @@
   // to a free rematch on the same room.
   function saveAdventureProgress(engine) {
     if (abandonRequested || !engine || engine.testMode || !engine.s) return false;
+    if (engine.s.phase === 'ADVENTURE_GAME_OVER') {
+      invalidateAdventureProgress();
+      return false;
+    }
     const save = window.AdventureSave;
     if (!save || typeof save.save !== 'function') return false;
     if (typeof save.isSafePhase === 'function' && !save.isSafePhase(engine.s.phase)) return false;
@@ -55,7 +65,7 @@
     if (session && typeof session.clear === 'function') session.clear();
   }
 
-  function abandonAdventure() {
+  function invalidateAdventureProgress() {
     abandonRequested = true;
     clearCombatSession();
     try {
@@ -63,6 +73,10 @@
         window.AdventureSave.clear();
       }
     } catch (_) { /* ignore storage errors while leaving */ }
+  }
+
+  function abandonAdventure() {
+    invalidateAdventureProgress();
     battleEngine = null;
     completing = false;
   }
@@ -309,6 +323,7 @@
         abandonAdventure();
         goToGameHome();
       } else if (button.id === 'adv-settle-return') {
+        abandonAdventure();
         goToGameHome();
       }
     });
@@ -451,7 +466,7 @@
     const adventureWon = snap.phase === Phase.CLEAR && snap.stage >= 4;
     const pending = snap.pendingCombatReward;
 
-    let html = '<div class="game-over-box adv-settle-wrapper">';
+    let html = '<div class="game-over-box adv-settle-wrapper dialog-bottom-sheet">';
     html += '<h2>' + (adventureWon ? '冒险胜利!' : playerWon ? '胜利!' : '败北...') + '</h2>';
     html += '<div class="adv-settle-content"><div class="adv-settle-box">';
     if (adventureWon) {
@@ -560,6 +575,7 @@
 
 
   function showAdventureSettlement(eng, finalState, persistentState, playerWon) {
+    if (playerWon === false) invalidateAdventureProgress();
     if (gameUI && typeof gameUI._hideTooltip === 'function') gameUI._hideTooltip();
     else {
       const tip = document.getElementById('card-tooltip');
@@ -569,7 +585,7 @@
     if (existing) existing.remove();
     const overlay = document.createElement('div');
     overlay.id = 'adv-settle-overlay';
-    overlay.className = 'game-over-overlay';
+    overlay.className = 'game-over-overlay dialog-sheet-overlay';
     document.body.appendChild(overlay);
 
     const leave = () => {

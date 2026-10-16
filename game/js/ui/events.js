@@ -191,11 +191,15 @@ _animationOrder(events) {
 },
 
 
-async _playTrophyDropAnimation(names) {
+async _playTrophyDropAnimation(names, onArrive) {
     const deckApi = window.AdventureDeck;
     const from = document.getElementById('reveal-cards') || document.querySelector('.ai-area') || document.body;
     const to = document.getElementById('player-hand') || document.body;
-    const fr = from.getBoundingClientRect(), tr = to.getBoundingClientRect();
+    if (typeof to.scrollIntoView === 'function') to.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    const source = from.getBoundingClientRect(), tr = to.getBoundingClientRect();
+    const fr = source.bottom < 0 || source.top > window.innerHeight
+        ? { left: tr.left, top: Math.max(12, tr.top - 140), width: tr.width, height: 100 }
+        : source;
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.playFloatingText('获得战利白卡 ×' + names.length, '#f8e7a8', 'player');
     const flights = names.map((name, i) => new Promise(resolve => {
@@ -226,6 +230,7 @@ async _playTrophyDropAnimation(names) {
         } catch (_) { done(); }
     }));
     await Promise.all(flights);
+    if (typeof onArrive === 'function') onArrive();
     if (reduce) return;
     to.classList.remove('trophy-hand-glow'); void to.offsetWidth; to.classList.add('trophy-hand-glow');
     // The hand highlight is part of the arrival, not detached decoration:
@@ -617,11 +622,15 @@ async _playEvents(events, fast = false) {
             this._showZoneDesc('reveal-desc', result + (evt.dropSummary ? '\n' + evt.dropSummary : ''));
             if (!evt.drops.length) { await waitReadable(500); continue; }
             this._renderPlayerHand({ hideTrailing: drawRemaining.player });
-            try { await this._playTrophyDropAnimation(evt.drops); }
-            finally {
+            let arrived = false;
+            const revealArrival = () => {
+                if (arrived) return;
+                arrived = true;
                 drawRemaining.player = Math.max(0, drawRemaining.player - evt.drops.length);
                 this._renderPlayerHand({ hideTrailing: drawRemaining.player });
-            }
+            };
+            try { await this._playTrophyDropAnimation(evt.drops, revealArrival); }
+            finally { revealArrival(); }
             await waitReadable(500);
         } else if (evt.type === 'dualDice') {
             if (typeof this._playDualDiceAnimation === 'function') {

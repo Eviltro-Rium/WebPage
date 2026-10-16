@@ -104,43 +104,43 @@
             box.dataset.cardKey = key;
         },
 
-        // Inline D12 decisions, no modal and no inventory-slot activation.
+        // Use the same full-width combat sheet as other player decisions.
         _renderDiceControl() {
             const zone = document.getElementById('reveal-cards')?.closest('.reveal-zone');
-            if (!zone) return;
-            let panel = zone.querySelector('.dice-control-panel');
+            let panel = document.getElementById('dice-control-dialog');
             const pending = this.state && this.state.pendingDiceControl;
-            zone.classList.toggle('dice-control-active', !!pending);
-            if (!pending) { if (panel) panel.remove(); return; }
+            if (!pending || !zone) { if (panel) panel.remove(); return; }
             if (!panel) {
                 panel = document.createElement('div');
-                panel.className = 'dice-control-panel';
-                zone.appendChild(panel);
+                panel.id = 'dice-control-dialog';
+                panel.className = 'dialog-overlay dialog-sheet-overlay';
+                document.body.appendChild(panel);
             }
             const key = pending.presentedThrough + ':' + pending.diceIndex;
             if (panel.dataset.key === key) return;
             panel.dataset.key = key;
-            panel.innerHTML = '<div class="dice-control-actions"><button type="button" data-keep>保留 ' + pending.value + '</button>' +
-                '<button type="button" data-edit aria-expanded="false">遥控骰子</button></div>' +
-                '<div class="dice-face-grid" hidden aria-label="选择骰面">' +
-                Array.from({length:12},(_,i)=>'<button type="button" data-face="'+(i+1)+'">'+(i+1)+'</button>').join('') + '</div>';
-            const submit = (use,value) => {
-                if (this._isHandlingAction || this._isConsumingEvents) return;
+            panel.innerHTML = '<div class="dialog-box dialog-bottom-sheet dice-choice-box"><h3>遥控骰子</h3>' +
+                '<p>当前骰面：' + pending.value + '。选择新骰面会消耗 1 个遥控骰子。</p>' +
+                '<div class="dice-face-grid" aria-label="选择骰面">' +
+                Array.from({length:12},(_,i)=>'<button type="button" data-face="'+(i+1)+'" aria-label="改为 '+(i+1)+'">'+(i+1)+'</button>').join('') +
+                '</div><button type="button" class="choice-row choice-secondary" data-keep>保留 ' + pending.value + ' · 不使用</button></div>';
+            let submitting = false;
+            const submit = async (use,value) => {
+                if (submitting || this._isHandlingAction || this._isConsumingEvents) return;
+                submitting = true;
                 if (use) {
                     const face = zone.querySelector('.d12-result strong, .d12-die-face');
                     if (face) face.textContent = String(value);
                 }
                 panel.querySelectorAll('button').forEach(button => button.disabled = true);
-                this._apiAction('chooseDiceControl',{use,value}).finally(() => {
+                try {
+                    await this._apiAction('chooseDiceControl',{use,value});
+                } finally {
+                    submitting = false;
                     if (panel.isConnected) panel.querySelectorAll('button').forEach(button => button.disabled = false);
-                });
+                }
             };
             panel.querySelector('[data-keep]').onclick = () => submit(false);
-            panel.querySelector('[data-edit]').onclick = event => {
-                const grid = panel.querySelector('.dice-face-grid');
-                grid.hidden = !grid.hidden;
-                event.currentTarget.setAttribute('aria-expanded',String(!grid.hidden));
-            };
             panel.querySelectorAll('[data-face]').forEach(button => {
                 button.onclick = () => submit(true,Number(button.dataset.face));
             });

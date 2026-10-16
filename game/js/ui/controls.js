@@ -242,7 +242,7 @@ _showGameMenu() {
     overlay.id = 'game-menu-overlay';
     overlay.className = 'game-menu-overlay';
     overlay.innerHTML = `
-        <div class="game-menu-box">
+        <div class="game-menu-box" role="dialog" aria-modal="true" aria-label="战斗菜单">
             <div class="game-menu-title">⛭ 菜单</div>
             <button class="game-menu-btn game-menu-skills" id="gm-skills">📖 查看角色技能</button>
             <button class="game-menu-btn game-menu-quit" id="gm-quit">🚪 退出游戏</button>
@@ -256,14 +256,15 @@ _showGameMenu() {
     overlay.addEventListener('click', (e) => { if (e.target === overlay) doClose(); });
 
     const escHandler = (e) => { if (e.key === 'Escape') { doClose(); document.removeEventListener('keydown', escHandler); } };
+    overlay._escapeHandler = escHandler;
     document.addEventListener('keydown', escHandler);
 
     document.getElementById('gm-skills').addEventListener('click', () => {
-        overlay.remove();
+        this._closeGameMenu(overlay);
         this._showSkillOverlay();
     });
     document.getElementById('gm-quit').addEventListener('click', async () => {
-        overlay.remove();
+        this._closeGameMenu(overlay);
         if (typeof this.onBattleExit === 'function') {
             await this.onBattleExit();
             return;
@@ -279,12 +280,10 @@ _showGameMenu() {
 },
 
 _closeGameMenu(overlay) {
-    if (!overlay) return;
-    overlay.style.opacity = '0';
-    overlay.style.transition = 'opacity 0.15s ease';
-    const box = overlay.querySelector('.game-menu-box');
-    if (box) { box.style.transform = 'scale(0.92) translateY(8px)'; box.style.opacity = '0'; box.style.transition = 'all 0.15s ease'; }
-    schedule(() => overlay.remove(), 150, this, 'error-overlay');
+    if (!overlay || overlay.classList.contains('is-closing')) return;
+    if (overlay._escapeHandler) document.removeEventListener('keydown', overlay._escapeHandler);
+    overlay.classList.add('is-closing');
+    schedule(() => overlay.remove(), 180, this, 'error-overlay');
 },
 
 _showSkillOverlay() {

@@ -115,6 +115,20 @@
       anim.onfinish = done; anim.oncancel = done;
     }
 
+    _queueMapReturnFeedback() {
+      const effect = this._pendingMapReturnEffect;
+      const healCount = (this._pendingMapHeals || []).length;
+      if (!effect && !healCount) return;
+      this._pendingMapReturnEffect = null;
+      // Keep the mounted cards/icons alive through redraws caused by map clicks
+      // or late icon decoding. Effects do not run gameplay settlement twice.
+      this._mapFeedbackUntil = Date.now() + Math.max(2200, healCount * 1600 + 200);
+      const side = this.container.querySelector('.adventure-sidebar');
+      if (side && typeof side.scrollIntoView === 'function') side.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      if (effect) this._animateMapReturnEffects(effect);
+      if (healCount) this._playPendingMapHeals();
+    }
+
     _playPendingMapHeals() {
       const heals = this._pendingMapHeals || [];
       if (!heals.length) return;
@@ -173,9 +187,18 @@
 
     /** 优先恢复本地存档；无存档或角色不匹配时用默认地图开始新冒险 */
     async restoreOrStart(defaultMapFn, characterName) {
-      const save = window.AdventureSave ? window.AdventureSave.load() : null;
-      const combatSession = window.AdventureBattleController && typeof window.AdventureBattleController.loadCombatSession === 'function'
+      let save = window.AdventureSave ? window.AdventureSave.load() : null;
+      let combatSession = window.AdventureBattleController && typeof window.AdventureBattleController.loadCombatSession === 'function'
         ? window.AdventureBattleController.loadCombatSession() : null;
+      const battleState = combatSession && combatSession.battle && combatSession.battle.s;
+      const lostPlayer = battleState && battleState.player;
+      if (save && save.characterName === characterName && combatSession &&
+          combatSession.characterName === characterName && combatSession.mapName === save.mapName &&
+          battleState && battleState.phase === 'GAME_OVER' && lostPlayer &&
+          (lostPlayer.alive === false || Number(lostPlayer.hp) <= 0)) {
+        if (window.AdventureBattleController && typeof window.AdventureBattleController.abandonAdventure === 'function') window.AdventureBattleController.abandonAdventure();
+        save = null; combatSession = null;
+      }
       if (save && save.characterName === characterName) {
         try {
           await this.restoreFromSave(save);
@@ -327,6 +350,15 @@
     }
 
     render() {
+      if (this.eng.s && this.eng.s.phase === window.AdventurePhase.MAP && this._mapFeedbackUntil > Date.now()) {
+        const delay = this._mapFeedbackUntil - Date.now() + 20;
+        if (runtime) runtime.schedule(this, () => this.render(), delay, 'map-feedback-render');
+        else {
+          clearTimeout(this._mapFeedbackRenderTimer);
+          this._mapFeedbackRenderTimer = setTimeout(() => this.render(), delay);
+        }
+        return;
+      }
       this._clearMapClickTimer();
       this._stopTipsRotation();
       if (this.eng.s && this.eng.s.phase === window.AdventurePhase.MAP && !this._test) {
@@ -927,6 +959,7 @@
         return;
       }
       if (result === 'lose' || this.eng.s.phase === window.AdventurePhase.GAME_OVER) {
+        if (window.AdventureBattleController) window.AdventureBattleController.abandonAdventure();
         window.location.href = '../index.html';
         return;
       }
@@ -952,13 +985,48 @@
       if (!zone) return;
       const cards = Array.from(zone.children);
       const count = Math.min(Math.max(0, Number(effect.drawn) || 0), cards.length);
-      cards.slice(cards.length - count).forEach((card, index) => {
-        card.classList.add('adv-wisdom-draw-card');
-        card.style.animationDelay = (420 + index * 120) + 'ms';
+      const snapshot = this.eng.snapshot();
+      const hand = snapshot.playerPile && snapshot.playerPile.hand || [];
+      const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      cards.slice(cards.length - count).forEach((target, index) => {
+        target.style.visibility = 'hidden';
         schedule(() => {
-          card.classList.remove('adv-wisdom-draw-card');
-          card.style.animationDelay = '';
-        }, 1800 + index * 120);
+          if (!target.isConnected || this.eng.s.phase !== window.AdventurePhase.MAP) {
+            target.style.visibility = '';
+            return;
+          }
+          const origin = this.container.querySelector('.adv-deck-info') || slot || zone;
+          const from = origin.getBoundingClientRect(), to = target.getBoundingClientRect();
+          const width = to.width || 70, height = to.height || 100;
+          const model = hand[hand.length - count + index];
+          const fly = model && window.renderCard ? window.renderCard(model, width, height, false) : target.cloneNode(true);
+          fly.classList.add('adv-wisdom-fly-card');
+          fly.style.visibility = '';
+          const x = from.left + from.width / 2 - width / 2, y = from.top + from.height / 2 - height / 2;
+          Object.assign(fly.style, { left: x + 'px', top: y + 'px', width: width + 'px', height: height + 'px' });
+          document.body.appendChild(fly);
+          let finished = false;
+          const done = () => {
+            if (finished) return;
+            finished = true;
+            fly.remove();
+            target.style.visibility = '';
+            if (target.isConnected) {
+              target.classList.add('adv-wisdom-draw-card');
+              schedule(() => target.classList.remove('adv-wisdom-draw-card'), 700);
+            }
+          };
+          if (reduce || !fly.animate) { done(); return; }
+          try {
+            const animation = fly.animate([
+              { transform: 'scale(.65)', opacity: 0 },
+              { transform: 'translateY(-12px) scale(1)', opacity: 1, offset: .25 },
+              { transform: 'translate(' + (to.left - x) + 'px,' + (to.top - y) + 'px)', opacity: 1 }
+            ], { duration: 550, easing: 'cubic-bezier(.2,.75,.35,1)', fill: 'forwards' });
+            animation.onfinish = done; animation.oncancel = done;
+            schedule(done, 1000);
+          } catch (_) { done(); }
+        }, 360 + index * 140);
       });
     }
 

@@ -303,13 +303,11 @@
 }
 @keyframes adv-wisdom-draw {
   0% {
-    opacity: 0;
-    transform: translateY(-24px) scale(.78);
     filter: brightness(1.7) drop-shadow(0 0 10px rgba(167, 139, 250, .9));
   }
-  65% { opacity: 1; transform: translateY(4px) scale(1.03); }
-  100% { opacity: 1; transform: translateY(0) scale(1); filter: none; }
+  100% { filter: none; }
 }
+.adv-wisdom-fly-card { position: fixed !important; z-index: 9999; pointer-events: none; margin: 0; }
 .adv-hand-zone .adv-wisdom-draw-card {
   animation: adv-wisdom-draw .62s cubic-bezier(.2, .75, .35, 1) both;
 }
@@ -683,6 +681,16 @@
   padding: 24px;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+.game-over-box.adv-settle-wrapper.dialog-bottom-sheet {
+  width: 100%;
+  padding: 16px 20px max(16px, env(safe-area-inset-bottom));
+  max-height: min(76vh, calc(100vh - 24px));
+  max-height: min(76dvh, calc(100dvh - 24px));
+}
+.adv-settle-wrapper.dialog-bottom-sheet h2 { font-size: 1.3rem; margin-bottom: 12px; }
+.adv-settle-wrapper.dialog-bottom-sheet .adv-beast-grid {
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
 }
 .adv-settle-content {
   display: grid;

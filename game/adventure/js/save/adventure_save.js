@@ -29,6 +29,11 @@
 
   function save(eng) {
     try {
+      if (eng && !eng.testMode && eng.s && (eng.s.phase === 'ADVENTURE_GAME_OVER' ||
+          eng.s.player && (eng.s.player.alive === false || Number(eng.s.player.hp) <= 0))) {
+        clear();
+        return false;
+      }
       const data = serialize(eng);
       if (!data) return false;
       const {savedAt, ...state} = data;
@@ -51,6 +56,11 @@
       const data = JSON.parse(raw);
       if (!data || data.version !== VERSION) return null;
       if (!data.characterName || !data.mapName) return null;
+      if (data.phase === 'ADVENTURE_GAME_OVER' ||
+          data.player && (data.player.alive === false || Number(data.player.hp) <= 0)) {
+        clear();
+        return null;
+      }
       return data;
     } catch (e) {
       return null;

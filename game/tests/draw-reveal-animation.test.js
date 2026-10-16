@@ -388,12 +388,15 @@ test('actual trophy animation creates a temporary card at the judgment zone and 
   FakeEl.prototype.animate=function(frames,options){const anim={frames,options};animations.push(anim);return anim;};
   ui.playFloatingText=()=>{};
   try {
-    const flight=ui._playTrophyDropAnimation(['GuardTrophy']);
+    let arrivals=0;
+    const flight=ui._playTrophyDropAnimation(['GuardTrophy'],()=>arrivals++);
     const node=doc.body.children.find(el=>el.classList.contains('trophy-fly-card'));
     assert.ok(node,'a real temporary card is attached during the flight');
     assert.ok(node.dataset.cardId.startsWith('flight-GuardTrophy'));
     assert.equal(animations.length,1);assert.ok(animations[0].options.duration>=500);
+    assert.equal(arrivals,0);
     animations[0].onfinish();await flight;
+    assert.equal(arrivals,1,'actual hand cards are revealed at arrival before the hand glow completes');
     assert.ok(!doc.body.children.includes(node),'arrival removes the temporary card');
   } finally {context.AdventureDeck=oldDeck;FakeEl.prototype.animate=oldAnimate;}
 });

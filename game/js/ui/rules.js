@@ -111,7 +111,23 @@
     { title: '搭桥机制', desc: '打出道具牌或1~3点数字牌时，如果是在防御阶段，该牌只发挥道具效果/搭桥作用，然后继续选择下一张牌防御，直到打出4~7或0点数字牌触发防御技能。' },
     { title: '进攻与防御', desc: '进攻方出牌后，防御方可以选择手牌进行防御。防御牌只能是1~3点数字牌或道具牌。防御成功可减免伤害或触发防御技能。也可以选择跳过防御，承受全部伤害。' },
     { title: '回合流程', desc: '玩家回合：出牌进攻 → AI防御 → 结算伤害 → 回合结束补牌。AI回合：AI出牌进攻 → 玩家防御 → 结算伤害 → 回合结束补牌。' },
-    { title: '弃牌库', desc: '打出的牌会进入弃牌库。弃牌库顶的牌决定了下一张牌的匹配条件。当牌库耗尽时，弃牌库会被洗回牌堆继续使用。' }
+    { title: '弃牌库', desc: '打出的牌会进入弃牌库，弃牌库顶决定下一张牌的匹配条件。单机对战共用牌堆与弃牌库；冒险中玩家与怪物各自回收自己的牌，不会混洗。' }
+  ];
+
+  const DECK_COMPARISON = [
+    ['初始牌组总数', '101 张，所有参战角色共用', '93 张，独立于怪物牌组'],
+    ['四色数字牌 0~7', '68 张', '68 张，与单机配置相同'],
+    ['白色数字牌', '白 1~7 各 1 张，共 7 张', '白 1~7 各 1 张，共 7 张'],
+    ['普通黑牌 / 黑色 +2', '各 2 张', '各 2 张'],
+    ['黑色洗入', '4 张', '2 张'],
+    ['白色药水 / 白色 +3', '药水 4 张；+3 共 2 张', '药水 4 张；+3 共 2 张'],
+    ['白色净化', '6 张', '4 张'],
+    ['白色超级净化', '4 张', '2 张'],
+    ['白色交换手牌', '2 张', '无，避免玩家与怪物牌库混淆'],
+    ['战利白卡', '无', '初始不含；冒险获得后加入手牌，进入玩家牌组循环，不占一次性道具槽。打出后搭桥并抽 1 张牌'],
+    ['牌库与弃牌库归属', '所有角色共用一套牌库与弃牌库', '只从玩家牌库抽牌，只回收玩家弃牌'],
+    ['洗牌补充', '牌库耗尽时，保留弃牌库顶，将其余弃牌洗回牌库', '按玩家牌库规则回收玩家弃牌，不混入怪物牌'],
+    ['进入 / 结束房间', '每局重新初始化牌组', '进入战斗房间后翻开新牌初始化弃牌库顶；战斗结束保留手牌、牌库、弃牌库']
   ];
 
   let _thumbId = 0;
@@ -132,7 +148,37 @@
     }
     html += '</div></div>';
 
+    html += '<section class="rules-section"><h2 class="rules-section-title">单机对战与冒险牌库对比</h2>';
+    html += '<p class="rules-table-note">牌组总数包含手牌、待抽牌和弃牌；弃牌库顶属于弃牌库，不额外占一张。冒险中的战利白卡会改变玩家牌组总数。</p>';
+    html += '<div class="rules-table-wrap" role="region" aria-label="两种模式牌库对照表" tabindex="0"><table class="rules-deck-table">';
+    html += '<caption>玩家牌组配置与循环规则</caption><thead><tr><th scope="col">对比项目</th><th scope="col">单机对战</th><th scope="col">冒险 · 玩家</th></tr></thead><tbody>';
+    for (const [label, classic, player] of DECK_COMPARISON) {
+      html += '<tr><th scope="row">' + label + '</th><td>' + classic + '</td><td>' + player + '</td></tr>';
+    }
+    html += '</tbody></table></div><p class="rules-table-note">窄屏可在表格内左右滑动。以下卡牌示例展示通用效果，数量以对应模式的配置为准；战利白卡与怪物技能详见冒险图鉴。</p></section>';
+
     let thumbSlots = [];
+    const npcCard = card => Object.assign(card, { npcCard: true });
+    const npcRows = [
+      ['白 1 / 2 / 3', '各 4 张', '各 4 张', '触发怪物对应的进攻、防御技能。', [1,2,3].map(v => npcCard(num('WHITE',v,true)))],
+      ['白 4 / 5 / 6', '各 2 张', '各 2 张', '一般用于进攻；特殊怪物可用高点数牌防御，以怪物技能为准。', [4,5,6].map(v => npcCard(num('WHITE',v,true)))],
+      ['白 7', '2 张', '2 张', '轮空牌，没有进攻或防御效果。', [npcCard(num('WHITE',7,true))]],
+      ['白 0', '无', '2 张', 'Boss 专属数字牌，触发对应的 0 技能。', [npcCard(num('WHITE',0,true))]],
+      ['紫魔法', '1 张', '1 张', '恢复 3 点生命（Boss 为 5 点），清除对手可清除的正面状态。', [npcCard(item('WHITE','magic'))]],
+      ['绿魔法', '1 张', '1 张', '恢复 3 点生命（Boss 为 5 点），清除自身可清除的负面状态。', [npcCard(item('WHITE','greenMagic'))]]
+    ];
+    html += '<section class="rules-section"><h2 class="rules-section-title">冒险怪物卡牌</h2><p class="rules-table-note">普通怪物牌组共 22 张，Boss 共 24 张。怪物牌面带紫色角标与骷髅标识。挑战房两个怪物共享怪物牌库与弃牌库，与玩家牌库完全隔离。</p>';
+    html += '<div class="rules-table-wrap" role="region" aria-label="怪物卡牌介绍" tabindex="0"><table class="rules-deck-table rules-npc-table"><thead><tr><th scope="col">卡牌</th><th scope="col">普通怪物</th><th scope="col">Boss</th><th scope="col">效果</th></tr></thead><tbody>';
+    for (const [label, normal, boss, effect, samples] of npcRows) {
+      let thumbs = '<div class="rule-card-row">';
+      for (const card of samples) {
+        const id = thumbPlaceholder();
+        thumbs += '<span id="' + id + '"></span>';
+        thumbSlots.push({ id, card });
+      }
+      html += '<tr><th scope="row">' + label + thumbs + '</div></th><td>' + normal + '</td><td>' + boss + '</td><td>' + effect + '</td></tr>';
+    }
+    html += '</tbody></table></div><p class="rules-table-note">怪物牌库少于3张时回收怪物弃牌；战斗结束后全部怪物手牌与弃牌回收。挑战房一个怪物倒下时，其手牌进入怪物弃牌库，不改变当前弃牌库顶。</p></section>';
     for (const cat of CARD_DATA) {
       html += `<div class="rules-section"><h2 class="rules-section-title" style="border-left:4px solid ${cat.color}">${cat.category}</h2><div class="rules-list">`;
       for (const card of cat.cards) {
@@ -146,7 +192,7 @@
           }
           thumbs += '</div>';
         }
-        html += `<div class="rule-item">${thumbs}<div class="rule-item-title">${card.name}</div><div class="rule-item-desc">${window.descToEmoji ? window.descToEmoji(card.desc) : card.desc}</div><div class="rule-item-count">牌库数量：${card.count}</div></div>`;
+        html += `<div class="rule-item">${thumbs}<div class="rule-item-title">${card.name}</div><div class="rule-item-desc">${window.descToEmoji ? window.descToEmoji(card.desc) : card.desc}</div><div class="rule-item-count">单机对战数量：${card.count}</div></div>`;
       }
       html += '</div></div>';
     }

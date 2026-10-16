@@ -300,6 +300,41 @@ test('battle session persists in localStorage across simulated refresh', () => {
   assert.equal(AdventureBattleSession.matches(loaded, 'Ryan', 'stage_01_castle_1'), true);
 });
 
+test('defeat clears both adventure and battle saves and cannot write terminal progress back', () => {
+  const ctx=createContext();loadSources(ctx);
+  const eng=mapRun(ctx,[[0,1]]);
+  assert.equal(ctx.AdventureSave.save(eng),true);
+  const battle={_adventureEngine:eng,s:{phase:'PLAYER_PLAY',player:{name:'Ryan',hp:20,alive:true}},h:{player:[],ai:[]},piles:{},events:[]};
+  assert.equal(ctx.AdventureBattleSession.save(battle),true);
+  battle.s.phase='GAME_OVER';battle.s.player.hp=0;battle.s.player.alive=false;
+  assert.equal(ctx.AdventureBattleSession.save(battle),false);
+  assert.equal(ctx.AdventureSave.load(),null);
+  assert.equal(ctx.AdventureBattleSession.load(),null);
+  eng.s.phase=ctx.AdventurePhase.GAME_OVER;eng.s.player.hp=0;
+  assert.equal(ctx.AdventureSave.save(eng),false);
+  assert.equal(ctx.AdventureSave.load(),null);
+});
+
+test('victory and test-mode defeat preserve the real adventure checkpoint', () => {
+  for(const testMode of [false,true]){
+    const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,1]]);
+    ctx.AdventureSave.save(eng);
+    const before=ctx.localStorage.getItem('furryAdventureSave');
+    const battle={testMode,s:{phase:'GAME_OVER',player:{name:'Ryan',hp:testMode?0:20,alive:!testMode}}};
+    ctx.AdventureBattleSession.save(battle);
+    assert.equal(ctx.localStorage.getItem('furryAdventureSave'),before);
+  }
+});
+
+test('legacy terminal adventure save is discarded instead of restoring a defeated room', () => {
+  const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,1]]);
+  const data=ctx.AdventureSave.serialize(eng);
+  data.phase=ctx.AdventurePhase.GAME_OVER;data.player.hp=0;
+  ctx.localStorage.setItem('furryAdventureSave',JSON.stringify(data));
+  assert.equal(ctx.AdventureSave.load(),null);
+  assert.equal(ctx.localStorage.getItem('furryAdventureSave'),null);
+});
+
 test('using a map item is kept after save/load', () => {
   const ctx = createContext();
   loadSources(ctx);

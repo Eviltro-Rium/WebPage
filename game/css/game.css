@@ -762,6 +762,10 @@ body {
 
 .attack-zone, .defend-zone {
     position: relative;
+    display: grid;
+    grid-template-columns: 70px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 8px;
     flex: 1 1 0;
     width: auto;
     min-width: 120px;
@@ -789,6 +793,45 @@ body {
 .zone-title { font-size: 0.7rem; font-weight: 700; text-align: center; margin-bottom: 3px; }
 .attack-zone .zone-title { color: #fecdd3; }
 .defend-zone .zone-title { color: #bfdbfe; }
+.attack-zone .zone-title, .defend-zone .zone-title { grid-column: 1 / -1; }
+.attack-zone .zone-cards, .defend-zone .zone-cards {
+    grid-column: 1;
+    grid-row: 2;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    justify-content: flex-start;
+    align-content: center;
+}
+.attack-zone .zone-desc, .defend-zone .zone-desc {
+    grid-column: 2;
+    grid-row: 2;
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    min-width: 0;
+    padding: 4px 2px;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+    text-align: left;
+    scrollbar-width: thin;
+}
+.attack-zone .zone-desc .desc-text, .defend-zone .zone-desc .desc-text {
+    display: block;
+    flex: 0 0 auto;
+    text-align: left;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+    margin: auto 0;
+}
 
 .zone-cards {
     display: flex; gap: 3px; justify-content: center; flex-wrap: wrap;
@@ -1584,18 +1627,55 @@ body {
     max-height: calc(100dvh - 24px);
     overflow: auto;
 }
-.dialog-box.dialog-draggable {
-    z-index: 1;
-    will-change: left, top;
+.dialog-sheet-overlay {
+    background: transparent;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    box-sizing: border-box;
+    overflow: visible;
+    touch-action: pan-y;
 }
-.dialog-drag-handle {
-    cursor: grab;
-    user-select: none;
-    touch-action: none;
+.dialog-bottom-sheet {
+    position: relative;
+    flex-shrink: 0;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    max-height: min(76vh, calc(100vh - 24px));
+    max-height: min(76dvh, calc(100dvh - 24px));
+    margin: 0;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    border-radius: 22px 22px 0 0 !important;
+    background: linear-gradient(145deg, rgba(8,22,38,.94), rgba(12,39,49,.92));
+    overflow: auto;
+    overscroll-behavior: contain;
+    box-sizing: border-box;
+    animation: dialogSheetIn .26s cubic-bezier(.22,.7,.25,1);
 }
-.dialog-box.dialog-dragging .dialog-drag-handle,
-.dialog-drag-handle.dialog-dragging {
-    cursor: grabbing;
+.dialog-bottom-sheet::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: -8px auto 16px;
+    border-radius: 4px;
+    background: rgba(203,213,225,.4);
+}
+@keyframes dialogSheetIn {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+/* Reserve normal document space beneath the battle, allowing the whole page
+   to scroll until its bottom clears the fixed sheet without scaling anything. */
+body.combat-sheet-open::after {
+    content: '';
+    display: block;
+    height: var(--combat-sheet-height, 0px);
+    pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+    .dialog-bottom-sheet { animation: none; }
 }
 .dialog-box h3 { font-size: 1rem; margin-bottom: 14px; }
 .dialog-title { font-size: 1rem; font-weight: 700; margin-bottom: 12px; }
@@ -1617,6 +1697,41 @@ body {
 .guard-layer-control input, .guard-damage-preview { grid-column: 1 / -1; width: 100%; }
 .guard-layer-control input { accent-color: #a78bfa; cursor: pointer; margin: 0; min-height: 24px; }
 .guard-damage-preview { margin: 0; color: #86efac; font-size: .85rem; }
+.avoidance-choice-box.dialog-bottom-sheet {
+    padding: 14px 20px max(16px, env(safe-area-inset-bottom));
+}
+.avoidance-choice-box.dialog-bottom-sheet::before { margin: 0 auto 10px; }
+.avoidance-choice-box h3 { margin-bottom: 6px; }
+.avoidance-choice-box .dialog-summary {
+    padding: 0;
+    margin: 0 0 12px;
+    text-align: center;
+    background: none;
+}
+.avoidance-choice-box .dialog-summary strong { font-size: 1.15rem; }
+.avoidance-choice-box .choice-list {
+    max-width: 680px;
+    margin: 0 auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.avoidance-choice-box .choice-row { flex: 1 1 180px; justify-content: center; }
+.avoidance-choice-box .guard-layer-control {
+    flex: 0 0 100%;
+    grid-template-columns: auto auto 1fr auto;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    padding: 0 0 4px;
+}
+.avoidance-choice-box .guard-layer-control input,
+.avoidance-choice-box .guard-damage-preview { grid-column: auto; }
+@media (max-width: 480px) {
+    .avoidance-choice-box .guard-layer-control { grid-template-columns: auto auto 1fr; }
+    .avoidance-choice-box .guard-damage-preview { grid-column: 1 / -1; text-align: center; }
+    .avoidance-choice-box .choice-row { flex-basis: 140px; }
+}
 .dialog-box .choice-primary { justify-content: center; background: linear-gradient(135deg, #613bac, #3f4b9f); border-color: #a78bfa; }
 .dialog-box .choice-secondary { justify-content: center; background: transparent; color: #aebcd1; }
 @media (max-width: 480px) {
@@ -1660,6 +1775,79 @@ body {
 .card-choice:hover { transform:translateY(-3px); border-color:rgba(120,210,190,.85); }
 .card-choice canvas { display:block; }
 .choice-done-btn { justify-content:center; border-color:rgba(120,200,120,.4); background:rgba(40,60,40,.72); color:rgba(180,230,180,.9); margin-top:6px; }
+
+/* Full-width combat sheets read from left to right and wrap only as needed. */
+.dialog-box.dialog-bottom-sheet {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 18px;
+    padding: 14px 20px max(16px, env(safe-area-inset-bottom));
+    text-align: left;
+}
+.dialog-box.dialog-bottom-sheet::before {
+    flex: 0 0 100%;
+    width: auto;
+    margin: 0;
+    background: linear-gradient(rgba(203,213,225,.4), rgba(203,213,225,.4)) center / 36px 4px no-repeat;
+}
+.dialog-box.dialog-bottom-sheet > h3,
+.dialog-box.dialog-bottom-sheet > .dialog-title {
+    flex: 0 1 190px;
+    margin: 0;
+}
+.dialog-box.dialog-bottom-sheet > p,
+.dialog-box.dialog-bottom-sheet > .dialog-body {
+    flex: 0 1 260px;
+    margin: 0;
+}
+.dialog-box.dialog-bottom-sheet .choice-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 8px;
+}
+.dialog-box.dialog-bottom-sheet > .choice-list {
+    flex: 1 1 440px;
+    max-width: none;
+    margin: 0;
+}
+.dialog-box.dialog-bottom-sheet .choice-list > .choice-row {
+    flex: 1 1 160px;
+    width: auto;
+    min-width: 0;
+    max-width: 360px;
+    margin-top: 0;
+    overflow-wrap: anywhere;
+}
+.dialog-box.dialog-bottom-sheet .guard-layer-control { flex: 1 1 320px; }
+.dialog-box.dialog-bottom-sheet > .dialog-summary {
+    flex: 0 0 auto;
+    padding: 0;
+    margin: 0;
+}
+.dialog-box.dialog-bottom-sheet .dialog-buttons {
+    display: flex;
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+.dialog-box.dialog-bottom-sheet > .chan-five-row { flex: 1 1 340px; margin: 0; }
+.dialog-box.dialog-bottom-sheet > .buff-transfer-columns {
+    flex: 1 1 640px;
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+}
+.dialog-box.dialog-bottom-sheet .buff-transfer-col { min-width: 0; }
+.opponent-card-groups { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.dialog-box.dialog-bottom-sheet > .opponent-card-groups {
+    flex: 1 1 440px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin: 0;
+}
+.dialog-box.dialog-bottom-sheet .opponent-card-groups > div { flex: 1 1 220px; min-width: 0; }
 .color-btn {
     width: 44px; height: 44px; border-radius: 12px;
     border: 2px solid rgba(255,255,255,0.45); cursor: pointer;
@@ -1933,13 +2121,15 @@ body {
     }
     .attack-zone, .defend-zone {
         padding: 6px 8px;
+        grid-template-columns: 52px minmax(0, 1fr);
+        column-gap: 6px;
     }
     .attack-zone .zone-cards,
     .defend-zone .zone-cards {
-        height: 86px;
-        min-height: 86px;
-        max-height: 86px;
-        margin-bottom: 4px;
+        height: 100%;
+        min-height: 0;
+        max-height: none;
+        margin-bottom: 0;
     }
     .zone-desc {
         flex: 0 0 auto;
@@ -2043,6 +2233,20 @@ body {
     margin-bottom: 10px;
 }
 
+.rules-table-wrap { overflow-x: auto; border: 1px solid var(--glass-border); border-radius: 12px; overscroll-behavior-x: contain; }
+.rules-table-wrap:focus-visible { outline: 2px solid #c4b5fd; outline-offset: 3px; }
+.rules-deck-table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: .84rem; line-height: 1.6; }
+.rules-deck-table caption { text-align: left; padding: 12px 14px; color: var(--text-muted); font-weight: 700; background: rgba(15,23,42,.5); }
+.rules-deck-table th, .rules-deck-table td { padding: 10px 14px; text-align: left; vertical-align: top; border-top: 1px solid rgba(186,230,253,.16); }
+.rules-deck-table thead th { background: rgba(76,55,117,.4); color: #ede9fe; }
+.rules-deck-table tbody th { width: 16%; color: #c4b5fd; font-weight: 700; }
+.rules-deck-table td { width: 28%; }
+.rules-deck-table tbody tr:nth-child(even) { background: rgba(186,230,253,.035); }
+.rules-table-note { margin: 10px 0; font-size: .8rem; line-height: 1.65; color: var(--text-muted); }
+.rules-npc-table tbody th { width: 30%; }
+.rules-npc-table td { width: auto; }
+.rules-npc-table td:last-child { width: 40%; }
+.rules-npc-table .rule-card-row { justify-content: flex-start; margin-top: 8px; }
 .rules-list {
     display: flex;
     flex-direction: column;
@@ -2551,33 +2755,46 @@ body {
 }
 
 .game-menu-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.65);
-    display: flex; align-items: center; justify-content: center;
+    position: fixed; inset: 0;
+    background: transparent;
+    display: flex; align-items: stretch; justify-content: flex-end;
+    padding: 12px;
+    box-sizing: border-box;
     z-index: 3000;
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    animation: menuOverlayIn 0.2s ease-out;
+    animation: menuOverlayIn .2s ease-out;
 }
 @keyframes menuOverlayIn {
     from { opacity: 0; }
-    to   { opacity: 1; }
+    to { opacity: 1; }
 }
-
 .game-menu-box {
-    background: linear-gradient(145deg, rgba(20,30,50,0.96), rgba(10,18,35,0.98));
-    border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 18px;
-    padding: 28px 36px;
-    display: flex; flex-direction: column; align-items: center;
-    gap: 10px;
-    box-shadow: 0 12px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
-    animation: menuBoxIn 0.25s cubic-bezier(0.18, 0.89, 0.25, 1.15);
-    min-width: 200px;
+    background: linear-gradient(145deg, rgba(20,30,50,.84), rgba(10,18,35,.88));
+    border: 1px solid rgba(255,255,255,.22);
+    border-radius: 20px;
+    padding: max(28px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; align-items: stretch;
+    gap: 12px;
+    width: min(320px, 100%);
+    min-width: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-sizing: border-box;
+    box-shadow: -12px 0 40px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.1);
+    animation: menuBoxIn .26s cubic-bezier(.22,.7,.25,1);
 }
+.game-menu-box .game-menu-btn { width: 100%; min-height: 46px; }
+.game-menu-box .game-menu-cancel { margin-top: auto; }
 @keyframes menuBoxIn {
-    from { opacity: 0; transform: scale(0.92) translateY(12px); }
-    to   { opacity: 1; transform: scale(1) translateY(0); }
+    from { opacity: 0; transform: translateX(calc(100% + 16px)); }
+    to { opacity: 1; transform: translateX(0); }
+}
+.game-menu-overlay.is-closing { animation: menuOverlayOut .18s ease-in forwards; pointer-events: none; }
+.game-menu-overlay.is-closing .game-menu-box { animation: menuBoxOut .18s ease-in forwards; }
+@keyframes menuOverlayOut { to { opacity: 0; } }
+@keyframes menuBoxOut { to { transform: translateX(calc(100% + 16px)); } }
+@media (prefers-reduced-motion: reduce) {
+    .game-menu-overlay, .game-menu-box,
+    .game-menu-overlay.is-closing, .game-menu-overlay.is-closing .game-menu-box { animation-duration: .01ms; }
 }
 
 .game-menu-title {
@@ -2629,7 +2846,7 @@ body {
 
 .skill-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.8);
+    background: transparent;
     z-index: 3500;
     overflow-y: auto;
     backdrop-filter: blur(6px);
@@ -2897,21 +3114,17 @@ body {
 .crystal-ball-sort-card.dragging { opacity: .45; transform: translateY(-6px) scale(.97); }
 .crystal-ball-sort-card.drag-target { filter: drop-shadow(0 0 8px #c4b5fd); transform: translateY(-6px); }
 
-/* The controller lives inside the existing fixed-height judgment area. */
-.dice-control-panel { position:absolute; inset:auto 5px 4px; z-index:4; }
-.dice-control-actions { display:flex; gap:4px; justify-content:center; }
-.dice-control-panel button { min-width:0; border:1px solid rgba(192,132,252,.6); border-radius:6px; padding:3px 5px; color:#f5f3ff; background:rgba(57,37,87,.97); font:600 10px var(--font-body); cursor:pointer; }
-.dice-control-panel button:hover { background:#6544a5; border-color:#e9d5ff; }
-.dice-control-panel button:focus-visible { outline:2px solid #e9d5ff; outline-offset:1px; }
-.dice-control-panel button:disabled { opacity:.5; cursor:wait; }
-.dice-face-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; margin-top:3px; padding:4px; border:1px solid rgba(192,132,252,.5); border-radius:8px; background:rgba(13,20,35,.98); }
-.dice-face-grid[hidden] { display:none; }
-.dice-face-grid button { padding:3px 0; }
-.dice-control-active .reveal-card-area { height:54px; min-height:54px; max-height:54px; flex-basis:54px; }
-.dice-control-active .d12-result { width:48px; height:48px; padding:2px; }
-.dice-control-active .d12-result strong { font-size:1.4rem; line-height:1.1; }
-.dice-control-active .d12-result .d12-label { font-size:.5rem; }
-.dice-control-active .reveal-desc { max-height:28px; }
+/* D12 face selection shares the horizontal combat sheet. */
+.dice-choice-box .dice-face-grid { display:flex; flex:1 1 540px; flex-wrap:wrap; gap:6px; }
+.dice-choice-box .dice-face-grid button {
+    flex:0 0 44px; min-height:44px; border:1px solid rgba(192,132,252,.6);
+    border-radius:8px; color:#f5f3ff; background:rgba(57,37,87,.9);
+    font:700 .95rem var(--font-body); cursor:pointer;
+}
+.dice-choice-box button:hover { background:#6544a5; border-color:#e9d5ff; }
+.dice-choice-box button:focus-visible { outline:2px solid #e9d5ff; outline-offset:2px; }
+.dice-choice-box button:disabled { opacity:.5; cursor:wait; }
+.dice-choice-box > .choice-row { flex:0 1 200px; width:auto; justify-content:center; }
 
 .trophy-fly-card {
     position: fixed !important;
