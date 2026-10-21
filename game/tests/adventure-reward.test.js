@@ -289,13 +289,13 @@ test('auto universal beast token is granted after basic reward claim', () => {
     scenario: 7, auto: true, offered: { wuneng: 1 }, pickCount: 0
   });
   const origRandom = Math.random;
-  Math.random = () => 0.01; // none
+  Math.random = () => 0.01; // merchant (skip = leave)
 
   try {
     enterNormalCombat(eng);
     eng.onCombatEnd('win');
     assert.equal(eng.s.phase, AdventurePhase.COMBAT_SETTLE);
-    assert.equal(eng.s.pendingCombatReward.basic.kind, 'none');
+    assert.equal(eng.s.pendingCombatReward.basic.kind, 'merchant');
     assert.equal(eng.claimCombatReward(), true);
     assert.equal(eng.s.phase, AdventurePhase.COMBAT_SETTLE);
     assert.equal(eng.s.pendingCombatReward.stage, 'beast');
@@ -633,7 +633,14 @@ test('blacksmith entry gold by stage and beast trade with wuneng', () => {
 
   room.blacksmithSlots = ['WisdomNecklace', null, null];
   eng.s.currency.addTokens({ shui: 2, ben: 1, cao: 1, wuneng: 1 });
-  const buy = eng.buyBlacksmithSlot(0);
+  // Needs wuneng substitute → pending choice, not silent auto-pay
+  const pending = eng.buyBlacksmithSlot(0);
+  assert.equal(pending.ok, false);
+  assert.equal(pending.needBeastChoice, true);
+  assert.ok(eng.s.pendingBeastPayment);
+  assert.ok(pending.plans.some(p => p.usesWild));
+  const plan = pending.plans.find(p => p.usesWild) || pending.plans[0];
+  const buy = eng.confirmBeastPayment(plan);
   assert.equal(buy.ok, true);
   assert.equal(eng.s.currency.tokens.shui, 0);
   assert.equal(eng.s.currency.tokens.wuneng, 0);
@@ -641,6 +648,7 @@ test('blacksmith entry gold by stage and beast trade with wuneng', () => {
   assert.equal(eng.s.currency.tokens.cao, 0);
   assert.ok(eng.s.accessories.includes('WisdomNecklace'));
   assert.equal(room.blacksmithSlots[0], null);
+  assert.equal(eng.s.pendingBeastPayment, null);
 });
 
 test('blacksmith refresh costs 2 gold including empty slots', () => {
@@ -732,7 +740,14 @@ test('reward room door costs two random normal beasts and accepts wuneng wildcar
   room.doorCost = ['ben', 'ben'];
   eng.s.currency.tokens.ben = 1;
   eng.s.currency.tokens.wuneng = 1;
-  const opened = eng.enterCurrent();
+  // Shortfall filled by wuneng → must choose, not auto-pay
+  const pending = eng.enterCurrent();
+  assert.equal(pending.ok, false);
+  assert.equal(pending.needBeastChoice, true);
+  assert.equal(room.doorUnlocked, false);
+  assert.ok(eng.s.pendingBeastPayment);
+  const plan = pending.plans.find(p => p.usesWild) || pending.plans[0];
+  const opened = eng.confirmBeastPayment(plan);
   assert.equal(opened.ok, true);
   assert.equal(room.doorUnlocked, true);
   assert.equal(eng.s.currency.tokens.ben, 0);
@@ -999,5 +1014,28 @@ test('reward rooms are not on a shortest start-to-boss path in CSV maps', () => 
     const item = find(grid, 3);
     assert.ok(start && boss && item, file);
     assert.equal(onSomeShortest(grid, start, boss, item), false, file + ' reward on shortest path');
+  }
+});
+
+test('basic reward 1/12 is wandering merchant selling one accessory', () => {
+  const eng = startEngine();
+  const origRandom = Math.random;
+  try {
+    Math.random = () => 0;
+    const loot = eng._rollBasicCombatReward();
+    assert.equal(loot.kind, 'merchant');
+    assert.equal(context.AdventureRegistry.getItem(loot.accessory).kind, 'accessory');
+    eng.s.phase = AdventurePhase.COMBAT_SETTLE;
+    eng.s.pendingCombatReward = { stage: 'basic', basic: loot, applied: false };
+    eng.s.currency.gold = 0;
+    assert.equal(eng.buyMerchantAccessory().ok, false);
+    eng.s.currency.gold = 20;
+    const r = eng.buyMerchantAccessory();
+    assert.equal(r.ok, true);
+    assert.equal(eng.s.currency.gold, 20 - r.price);
+    assert.ok(eng.s.accessories.includes(loot.accessory));
+    assert.equal(eng.buyMerchantAccessory().ok, false);
+  } finally {
+    Math.random = origRandom;
   }
 });

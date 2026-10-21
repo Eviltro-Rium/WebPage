@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../../adventure/"><title>故障房预览</title>
+<link rel="stylesheet" href="../css/game.css?v=glitch-preview"><link rel="stylesheet" href="css/adventure.css?v=glitch-preview">
+</head><body><div id="castle-bg"></div><main id="adventure-container"></main>
+<script>
+(async () => {
+  const manifest = await (await fetch('../script_manifest.json')).json();
+  for (const file of ['characters', 'ai', 'combat', 'ui_shell', 'adventure_content', 'adventure_runtime'].flatMap(key => manifest[key])) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script'); script.src = '../' + file + '?v=20261021-glitch-preview';
+      script.onload = resolve; script.onerror = reject; document.head.appendChild(script);
+    });
+  }
+  const ui = window.glitchPreview = new AdventureUI(document.getElementById('adventure-container'));
+  ui.eng.testMode = true;
+  ui.eng.start(new AdventureMap([[0,7,1],[1,1,2]]), 'Ryan', {
+    scene: 'ocean', stage: 3, accessories: ['Magician'], consumables: ['FirstAidKit', 'GhostFire']
+  });
+  ui.eng.s.player.hp = 22;
+  const face = Number(new URLSearchParams(location.search).get('face')) || 9;
+  const original = ui.eng.rollGlitchEvent;
+  ui.eng.rollGlitchEvent = function () {
+    FurryGame.CombatRuntime.setRandomSource(() => (face - .5) / 12);
+    try { return original.call(this); } finally { FurryGame.CombatRuntime.resetRandomSource(); }
+  };
+  ui.eng.move(0,1); ui.eng.enterCurrent(); ui.bindActions(); ui.render();
+})().catch(error => { document.body.textContent = error.stack || String(error); });
+</script></body></html>

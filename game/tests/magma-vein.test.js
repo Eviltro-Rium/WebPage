@@ -14,7 +14,7 @@ test('magma is capped at one, pure positive status and all cleanse methods remov
 test('magma trophy gains self buff, bridges and draws; never targets the enemy',()=>{
  const e=setup(),c=ctx.AdventureDeck.trophyWhite('MagmaVeinTrophy'),n=e.h.player.length;
  assert.equal(c.trophyEffect,'magmaVein');e.useTrophyWhite(c,e.s.ai);assert.equal(e.s.player.magmaVein,1);assert.equal(e.s.ai.magmaVein,0);assert.equal(e.h.player.length,n+1);
- const def=ctx.AdventureRegistry.getItem('MagmaVeinTrophy');assert.equal(def.price,5);assert.deepEqual(Array.from(def.beastTradeCost),['huo','huo']);assert.match(def.icon,/magma_vein.webp$/);
+ const def=ctx.AdventureRegistry.getItem('MagmaVeinTrophy');assert.equal(def.price,5);assert.equal(def.trophyKind,'drop');assert.equal(def.beastTradeCost,undefined);assert.match(def.icon,/buff_icons\/magma_vein\.webp$/);
 });
 test('magma and crit appear together; magma rounds up, consumes only one, skips items',()=>{
  const e=setup();e.s.isAdventure=true;e.magmaVein(e.s.player);e.s.player.crit=2;gate(e,5);

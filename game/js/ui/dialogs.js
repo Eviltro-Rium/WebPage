@@ -1,5 +1,5 @@
 const statusIconPath = name => {
-    const folder = (name === 'blood_thirsty' || name === 'binding' || name === 'mock') ? 'items_icons' : 'buff_icons';
+    const folder = 'buff_icons';
     return window.gameAssetUrl ? window.gameAssetUrl(`icons/${folder}/${name}.webp`) : `icons/${folder}/${name}.webp`;
 };
 const statusRegistry = window.FurryGame && (window.FurryGame.StatusService || window.FurryGame.StatusRegistry);
@@ -380,7 +380,7 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
             if (t.ch.bloodthirst) buffs.push(`<img src="${buffIcon('blood_thirsty')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>嗜血</span>`);
             if (t.ch.tauntMark) {
                 const mc = String(t.ch.mockAttackColor || '').toUpperCase();
-                const tip = ({ RED: '红', YELLOW: '黄', BLUE: '蓝', GREEN: '绿' })[mc] || '';
+                const tip = ({ RED: '🔴', YELLOW: '🟡', BLUE: '🔵', GREEN: '🟢' })[mc] || '';
                 buffs.push(`<img src="${buffIcon('mock')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>嘲弄${tip ? '·' + tip : ''}</span>`);
             }
             if (t.ch.bindMark) buffs.push(`<img src="${buffIcon('binding')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>捆缚</span>`);
@@ -565,8 +565,32 @@ function prepareDialogCard(box) {
     const battle = box.ownerDocument.getElementById('game-screen');
     if (!battle || !battle.classList.contains('active') || !box.parentElement) return;
     box.classList.add('dialog-bottom-sheet');
+    box.setAttribute('aria-modal', 'false');
     box.parentElement.classList.add('dialog-sheet-overlay');
 }
+
+/* Bottom sheets leave the board interactive (hover card skills, menu buttons),
+   but block clicks that would take a combat action while a choice is pending. */
+(function installSheetActionGuard() {
+    if (typeof document === 'undefined') return;
+    const guard = (event) => {
+        if (!document.body || !document.body.classList.contains('combat-sheet-open')) return;
+        const target = event.target;
+        if (!target || !target.closest) return;
+        if (target.closest('.dialog-bottom-sheet')) return;
+        if (event.type === 'click') {
+            // Overlays that close on an outside click (item menus) still get that click.
+            document.querySelectorAll('.dialog-overlay.dialog-sheet-overlay').forEach(overlay => {
+                if (overlay.isConnected && overlay !== target) overlay.dispatchEvent(new MouseEvent('click', { bubbles: false }));
+            });
+        }
+        if (target.closest('#controls, #player-hand')) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    };
+    ['click', 'pointerdown', 'dblclick'].forEach(type => document.addEventListener(type, guard, true));
+})();
 
 function prepareDialogCards(node) {
     if (!node || node.nodeType !== 1) return;

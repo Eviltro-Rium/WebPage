@@ -65,7 +65,7 @@ test('DesertHyena base stats, boss pool, icon, whiteZeros', () => {
   assert.equal(m.kind, '嘲风鬣狗');
   assert.equal(m.hp, 40);
   assert.equal(m.minStage, 1);
-  assert.equal(m.whiteZeros, 2);
+  assert.equal(m.whiteZeros, 1);
   assert.equal(m.handLimit, 3);
   assert.equal(m.icon, '../icons/npc_icons/desert_hyena.webp');
   assert.ok(fs.existsSync(path.join(gameRoot, 'icons/npc_icons/desert_hyena.webp')));
@@ -76,14 +76,18 @@ test('DesertHyena base stats, boss pool, icon, whiteZeros', () => {
   }
 });
 
-test('DesertHyena loot: rolls 1-6 drop ZeroTrophy', () => {
-  for (const roll of [1, 2, 3, 4, 5, 6]) {
-    const r = AdventureLoot.rollMonsterDrop('desert', 'DesertHyena', () => (roll - 1) / 12);
-    assert.deepEqual(Array.from(r.drops), ['ZeroTrophy']);
+test('DesertHyena loot: 1-4 piercing, 5 crit, 6 thorns', () => {
+  for (const roll of [1, 2, 3, 4]) {
+    const r = AdventureLoot.rollMonsterDrop('desert', 'DesertHyena', null, roll);
+    assert.deepEqual(Array.from(r.drops), ['PiercingTrophy']);
   }
-  for (const roll of [7, 12]) {
-    assert.equal(AdventureLoot.rollMonsterDrop('desert', 'DesertHyena', () => (roll - 1) / 12).drops.length, 0);
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertHyena', null, 5).drops), ['CritTrophy']);
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertHyena', null, 6).drops), ['ThornsTrophy']);
+  for (const roll of [7, 8, 9, 10]) {
+    assert.equal(AdventureLoot.rollMonsterDrop('desert', 'DesertHyena', null, roll).drops.length, 0);
   }
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertHyena', null, 11).drops), ['SmallPotionTrophy']);
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertHyena', null, 12).drops), ['PurifyWaterTrophy']);
 });
 
 test('DesertHyena attack 1/2/3 scales with bleed (base 2)', () => {

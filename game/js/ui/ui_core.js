@@ -140,6 +140,13 @@ function parseSegments(text, defaultColor) {
     const HP_GAIN = '#86efac';
     while (i < text.length) {
         // Buff / heal floats: keep the numeric HP delta as a dedicated colored segment.
+        // Unified HP floats: 🗡️n = HP loss, ❤️n = HP gain (e.g. [灼伤]🗡️3, [吸血]❤️3).
+        const unified = text.slice(i).match(/^(🗡️|❤️)\d+(?:\.\d+)?/);
+        if (unified) {
+            segs.push({ text: unified[0], color: unified[1] === '🗡️' ? HP_LOSS : HP_GAIN });
+            i += unified[0].length;
+            continue;
+        }
         const hp = text.slice(i).match(/^([+-]\d+)(?:❤️|🗡️)/);
         if (hp) {
             segs.push({ text: hp[0], color: hp[1][0] === '-' ? HP_LOSS : HP_GAIN });
@@ -159,6 +166,7 @@ function parseSegments(text, defaultColor) {
         while (j < text.length) {
             if (text[j] === '[') break;
             if ((text[j] === '+' || text[j] === '-') && /^\d+❤️/.test(text.slice(j + 1))) break;
+            if (/^(?:🗡️|❤️)\d/.test(text.slice(j))) break;
             j++;
         }
         segs.push({ text: text.slice(i, j), color: defaultColor });
@@ -562,12 +570,12 @@ class GameUI {
                 { name: 'Ryan', hp: 70, type: '战士', passive: '进攻回合开始前恢复1点生命' },
                 { name: 'Leon', hp: 90, type: '骑士', passive: '免疫灼伤' },
                 { name: 'Chan', hp: 80, type: '谋士', passive: '进攻回合开始前抽1张牌' },
-                { name: 'Saiki', hp: 80, type: '猎手', passive: '有效黄色牌在防御结算后施加1层流血' },
+                { name: 'Saiki', hp: 80, type: '猎手', passive: '进攻打出有效黄色牌时，防御结算后施加1层流血' },
                 { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼伤时1至7牌攻击伤害+1' },
-                { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；低于30生命获得嗜血印记，印记永久且不可净化；未获得印记时恢复+1' },
-                { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免非流血伤害' },
-                { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出数字牌或白色道具牌获得对应颜色混沌（含指定颜色）' },
-                { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层[暴击]使攻击不可防御' },
+                { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；生命低于30获得嗜血印记（永久、不可净化）；无印记时恢复额外+1' },
+                { name: 'Moze', hp: 100, type: '守护', passive: '可消耗守护减免攻击与反击伤害（不含Buff伤害）' },
+                { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出数字/白道具牌获得对应颜色混沌' },
+                { name: 'Otto', hp: 100, type: '战士', passive: '进攻伤害>4时可消耗1层[暴击]使攻击不可防御' },
             ];
         }
         this._buildSelectScreen();

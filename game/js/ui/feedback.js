@@ -154,7 +154,9 @@
         const face = die.querySelector('.d12-die-face');
 
         return new Promise(resolve => {
-            const ticks = 16;
+            const fast = !!options.fast;
+            const ticks = fast ? 5 : 16;
+            const landHold = fast ? 80 : 480;
             let i = 0;
             let last = 0;
             const tick = () => {
@@ -177,13 +179,13 @@
                     face.textContent = String(finalValue);
                     die.setAttribute('aria-label', '12面骰结果 ' + finalValue);
                     box.dataset.cardKey = 'd12-landed:' + finalValue;
-                    schedule(resolve, 480);
+                    schedule(resolve, landHold);
                     return;
                 }
                 const t = i / ticks;
-                    schedule(tick, 36 + t * t * 100);
+                    schedule(tick, fast ? (24 + t * 40) : (36 + t * t * 100));
             };
-                schedule(tick, 40);
+                schedule(tick, fast ? 16 : 40);
         });
     };
 

@@ -69,6 +69,10 @@
     if ((id === 'hypnosis' || id === 'sleep') && !registry.has(entity, 'hypnosis')) {
       entity.hypnosisArmed = false;
     }
+    // Runtime attack-turn counter for thorns (not a registered status).
+    if ((id === 'thorns' || !registry.has(entity, 'thorns')) && !(entity.thorns > 0)) {
+      entity.thornsTriggersLeft = 0;
+    }
     return result;
   }
 
@@ -76,6 +80,9 @@
     const removed = registry.clearGroup(entity, polarity, mode);
     if (polarity === 'debuff' && !registry.has(entity, 'hypnosis')) {
       entity.hypnosisArmed = false;
+    }
+    if (polarity === 'debuff' && !(entity.thorns > 0)) {
+      entity.thornsTriggersLeft = 0;
     }
     return removed;
   }

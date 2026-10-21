@@ -161,7 +161,7 @@
         const playerBleed = (ctx && ctx.playerBleed) || 0;
         return 1 + playerBleed * 2;
       }
-      if (v >= 4 && v <= 6) return 2;
+      if (v >= 4 && v <= 6) return 4;
       return 0;
     },
     attackUnblockable(card) {

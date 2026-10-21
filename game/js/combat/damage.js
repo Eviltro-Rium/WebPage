@@ -63,7 +63,7 @@
             if (entity.bomb <= 0) {
                 const hpBefore = entity.hp;
                 this.apply(engine, entity, 5, 'bomb', { silent: true, damageSource: 'buff' });
-                engine.emit(eventTypes.BOMB_EXPLODE || 'bombExplode', `-${5}❤️[定时炸弹]`, null, {
+                engine.emit(eventTypes.BOMB_EXPLODE || 'bombExplode', '[定时炸弹]🗡️5', null, {
                     who: target, target, amount: 5, hpBefore, hpAfter: entity.hp, kind: 'bomb'
                 });
             } else {

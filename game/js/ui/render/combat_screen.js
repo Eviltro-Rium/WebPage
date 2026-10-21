@@ -130,6 +130,7 @@
             this._renderReveal();
             this._renderDiceControl();
             this._renderControls();
+            if (typeof this._syncPendingHandDiscard === 'function') this._syncPendingHandDiscard();
             this._updateAdventureInfo(s);
             this._renderAdventureItemBar(s);
             this._updateAdventureNpcLabels(s);

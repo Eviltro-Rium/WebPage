@@ -18,7 +18,7 @@
     name: 'DiceController',
     displayName: '遥控骰子',
     kind: 'consumable',
-    description: '每次12面骰判定时，可在底部弹出卡片中保留结果，或消耗此道具指定1–12的骰面（含敌方及掉落判定；致盲时不能使用）',
+    description: '每次12面骰判定时，可在底部弹出卡片中保留结果，或消耗此道具指定1–12的骰面（含敌方及掉落判定；致盲时不能使用；与魔术师配饰互斥）',
     icon: ICON + 'dice_controller.webp',
     useScene: 'combat',
     price: 4,
@@ -80,71 +80,72 @@
     name: 'BurnTrophy',
     displayName: '灼伤战利白卡',
     kind: 'trophyWhite',
-    description: '指定当前颜色，对手+1层[灼伤]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '对手获得1层[灼伤]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/burn.webp',
     price: 5,
     combatUse: 'trophyBurn',
-    trophyEffect: 'burn',
-    beastTradeCost: ['huo', 'huo']
+    trophyEffect: 'burn'
   });
 
   R.registerItem({
     name: 'PiercingTrophy',
     displayName: '流血战利白卡',
     kind: 'trophyWhite',
-    description: '指定当前颜色，对手+1层[流血]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '对手获得1层[流血]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/bleed.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyBleed',
-    trophyEffect: 'bleed',
-    beastTradeCost: ['ben', 'ben']
+    trophyEffect: 'bleed'
   });
 
   R.registerItem({
     name: 'FreezeTrophy',
     displayName: '冰冻战利白卡',
     kind: 'trophyWhite',
-    description: '指定当前颜色，对手获得[冷冻]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '对手获得[冷冻]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/freeze.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyFreeze',
-    trophyEffect: 'freeze',
-    beastTradeCost: ['shui', 'shui']
+    trophyEffect: 'freeze'
   });
 
   R.registerItem({
     name: 'IceSealTrophy',
     displayName: '冰封战利白卡',
     kind: 'trophyWhite',
-    description: '对手获得[冰封]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '对手获得[冰封]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/ice_seal.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyIceSeal',
-    trophyEffect: 'iceSeal',
-    beastTradeCost: ['shui', 'ben']
+    trophyEffect: 'iceSeal'
   });
 
   R.registerItem({
     name: 'HypothermiaTrophy',
     displayName: '失温战利白卡',
     kind: 'trophyWhite',
-    description: '对手+1层[失温]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '对手获得1层[失温]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/hypothermia.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyHypothermia',
-    trophyEffect: 'hypothermia',
-    beastTradeCost: ['shui', 'huo']
+    trophyEffect: 'hypothermia'
   });
 
   R.registerItem({
     name: 'RussianRouletteTrophy',
     displayName: '俄罗斯赌盘',
     kind: 'trophyWhite',
-    description: '投12面骰：1–5自己受10点伤害，6–12对手受10点伤害。抽1张牌，可搭桥',
+    trophyKind: 'forge',
+    description: '投掷12面骰：1–5，自身受到10点伤害；6–12，对手受到10点伤害。抽1张牌，可继续搭桥。',
     icon: '../icons/card_icons/Russian_roulette.webp',
     useScene: 'combat',
     price: 5,
@@ -157,155 +158,156 @@
     name: 'FlyTrophy',
     displayName: '飞翔战利白卡',
     kind: 'trophyWhite',
-    description: '获得1层[飞翔]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '自身获得1层[飞翔]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/fly.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyFly',
-    trophyEffect: 'fly',
-    beastTradeCost: ['shui', 'cao']
+    trophyEffect: 'fly'
   });
 
   R.registerItem({
     name: 'SmallPotionTrophy',
     displayName: '小药剂战利白卡',
     kind: 'trophyWhite',
-    description: '恢复2点生命。抽1张牌，可搭桥',
-    icon: ICON + 'small_potion.webp',
+    trophyKind: 'both',
+    description: '自身恢复3点生命。抽1张牌，可继续搭桥。',
+    icon: '../icons/buff_icons/small_potion.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophySmallPotion',
     trophyEffect: 'smallPotion',
-    healAmount: 2,
-    beastTradeCost: ['cao', 'shui']
+    healAmount: 3,
+    beastTradeCost: ['cao', 'huo']
   });
 
   R.registerItem({
     name: 'CritTrophy',
     displayName: '暴击战利白卡',
     kind: 'trophyWhite',
-    description: '获得1层[暴击]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '自身获得1层[暴击]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/crit.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyCrit',
-    trophyEffect: 'crit',
-    beastTradeCost: ['huo', 'ben']
+    trophyEffect: 'crit'
   });
 
   R.registerItem({
     name: 'MagmaVeinTrophy',
     displayName: '熔脉战利白卡',
     kind: 'trophyWhite',
-    description: '白色战利卡：获得1层[熔脉]（上限1层），打出后抽1张牌，可搭桥。后续数字牌进攻可主动消耗，使技能伤害×1.5（向上取整）；与[暴击]和攻击修正道具互斥，不放大Buff伤害或反击',
+    trophyKind: 'drop',
+    description: '自身获得1层[熔脉]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/magma_vein.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyMagmaVein',
-    trophyEffect: 'magmaVein',
-    beastTradeCost: ['huo', 'huo']
+    trophyEffect: 'magmaVein'
   });
 
   R.registerItem({
     name: 'DivingTrophy',
     displayName: '潜水战利白卡',
     kind: 'trophyWhite',
-    description: '获得[潜水]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '自身获得[潜水]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/diving.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyDiving',
-    trophyEffect: 'diving',
-    beastTradeCost: ['shui', 'shui']
+    trophyEffect: 'diving'
   });
 
   R.registerItem({
     name: 'ScorchTrophy',
     displayName: '炙热战利白卡',
     kind: 'trophyWhite',
-    description: '对手获得[炙热]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '对手获得[炙热]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/scorch.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyScorch',
-    trophyEffect: 'scorch',
-    beastTradeCost: ['huo', 'huo']
+    trophyEffect: 'scorch'
   });
 
   R.registerItem({
     name: 'LushTrophy',
     displayName: '茂盛战利白卡',
     kind: 'trophyWhite',
-    description: '获得1层[茂盛]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '自身获得1层[茂盛]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/lush.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyLush',
-    trophyEffect: 'lush',
-    beastTradeCost: ['cao', 'cao']
+    trophyEffect: 'lush'
   });
 
   R.registerItem({
     name: 'PoisonTrophy',
     displayName: '中毒战利白卡',
     kind: 'trophyWhite',
-    description: '对手+1层[中毒]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '对手获得1层[中毒]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/poison.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyPoison',
-    trophyEffect: 'poison',
-    beastTradeCost: ['cao', 'cao']
+    trophyEffect: 'poison'
   });
 
   R.registerItem({
     name: 'ParasiteTrophy',
     displayName: '寄生战利白卡',
     kind: 'trophyWhite',
-    description: '获得1层[寄生]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '自身获得1层[寄生]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/parasite.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyParasite',
-    trophyEffect: 'parasite',
-    beastTradeCost: ['ben', 'cao']
+    trophyEffect: 'parasite'
   });
   R.registerItem({
     name: 'ThornsTrophy',
     displayName: '荆棘战利白卡',
     kind: 'trophyWhite',
-    description: '对手+1层[荆棘]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '对手获得[荆棘]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/thorns.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyThorns',
-    trophyEffect: 'thorns',
-    beastTradeCost: ['ben', 'cao']
+    trophyEffect: 'thorns'
   });
   R.registerItem({
     name: 'QuicksandTrophy',
     displayName: '流沙战利白卡',
     kind: 'trophyWhite',
-    description: '对手+1层[流沙]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '对手获得[流沙]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/quicksand.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyQuicksand',
-    trophyEffect: 'quicksand',
-    beastTradeCost: ['ben', 'wuneng']
+    trophyEffect: 'quicksand'
   });
   R.registerItem({
     name: 'SandblindTrophy',
     displayName: '沙盲战利白卡',
     kind: 'trophyWhite',
-    description: '对手+2层[沙盲]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '对手获得2层[沙盲]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/sandblind.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophySandblind',
     trophyEffect: 'sandblind',
-    trophyStacks: 2,
-    beastTradeCost: ['ben', 'huo']
+    trophyStacks: 2
   });
   R.registerItem({
     name: 'AttackMod1',
@@ -341,6 +343,18 @@
     price: 3,
     combatUse: 'attackMod',
     attackModBonus: 3
+  });
+
+  R.registerItem({
+    name: 'GarbageRecycle',
+    displayName: '垃圾回收',
+    kind: 'consumable',
+    description: '技能结算完成后收回本次打出的进攻牌（可在无数值伤害的技能上使用；与攻击修正Ⅰ/Ⅱ/Ⅲ等共用选择）',
+    icon: ICON + 'garbage_collection.webp',
+    useScene: 'combat',
+    price: 6,
+    combatUse: 'attackMod',
+    attackModRecycle: true
   });
 
   R.registerItem({
@@ -472,7 +486,7 @@
     name: 'RewindHourglass',
     displayName: '回溯沙漏',
     kind: 'consumable',
-    description: '战斗中使用：立即退出当前房间，手牌补至5张；该房间遭遇重置，下次进入重新抽取怪物',
+    description: '战斗中使用：立即退出当前房间，手牌补至上限；下次进入重新抽取怪物（故障房事件不重置）',
     icon: ICON + 'hourglass.webp',
     useScene: 'combat',
     price: 8,
@@ -496,20 +510,21 @@
     name: 'GuardTrophy',
     displayName: '守护战利白卡',
     kind: 'trophyWhite',
-    description: '进攻获得1层[守护]；防御格挡至多5点。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '获得[守护]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/guard.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyGuard',
-    trophyEffect: 'guard',
-    beastTradeCost: ['ben', 'cao']
+    trophyEffect: 'guard'
   });
 
   R.registerItem({
     name: 'DisarmTrophy',
     displayName: '缴械战利白卡',
     kind: 'trophyWhite',
-    description: '弃掉对手1张手牌。抽1张牌，可搭桥',
+    trophyKind: 'forge',
+    description: '选择对手1张手牌，将其弃掉。抽1张牌，可继续搭桥。',
     icon: '../icons/card_icons/disarm.webp',
     useScene: 'combat',
     price: 5,
@@ -519,24 +534,40 @@
   });
 
   R.registerItem({
+    name: 'RiotTrophy',
+    displayName: '暴乱战利白卡',
+    kind: 'trophyWhite',
+    trophyKind: 'forge',
+    description: '对手所有负面状态层数翻倍；若其持有[定时炸弹]，立即引爆。抽1张牌，可继续搭桥。',
+    icon: '../icons/card_icons/riot.png',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyRiot',
+    trophyEffect: 'riot',
+    beastTradeCost: ['huo', 'shui']
+  });
+
+  R.registerItem({
     name: 'PurifyWaterTrophy',
     displayName: '净化之水战利白卡',
     kind: 'trophyWhite',
-    description: '清除自身1个负面，或清除对手1个buff。抽1张牌，可搭桥',
-    icon: ICON + 'purify_water.webp',
+    trophyKind: 'both',
+    description: '选择自身或对手，清除至多1个可净化状态（含正面状态）。抽1张牌，可继续搭桥。',
+    icon: '../icons/buff_icons/purify_water.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyPurify',
     trophyEffect: 'purify',
     purifyCount: 1,
-    beastTradeCost: ['shui', 'shui']
+    beastTradeCost: ['shui', 'ben']
   });
 
   R.registerItem({
     name: 'ZeroTrophy',
     displayName: '零技能战利白卡',
     kind: 'trophyWhite',
-    description: '指定当前颜色，释放角色对应阶段的0技能。不抽牌、不搭桥',
+    trophyKind: 'both',
+    description: '释放角色当前阶段的0技能。不抽牌，不继续搭桥。',
     icon: '../icons/card_icons/zero.webp',
     useScene: 'combat',
     price: 6,
@@ -729,11 +760,36 @@
     statBonus: { handLimitBonus: 1 }
   });
 
+
+  R.registerItem({
+    name: 'Magician',
+    displayName: '魔术师',
+    kind: 'accessory',
+    description: '每次12面骰判定出结果后可将骰面±1（夹在1–12），每次调整消耗3点生命；与遥控骰子互斥，先遥控再魔术师（最多1个）',
+    icon: ICON + 'magician.png',
+    beastTradeCost: ['shui', 'shui', 'ben', 'wuneng'],
+    price: 15,
+    maxStacks: 1,
+    exclusiveWith: ['DiceController'],
+    diceFaceAdjust: 1
+  });
+
+  R.registerItem({
+    name: 'Magnet',
+    displayName: '磁铁',
+    kind: 'accessory',
+    description: '普通房兽元结算出现4种各1枚的选项时，可从中选择3枚',
+    icon: ICON + 'magnet.webp',
+    beastTradeCost: ['cao', 'huo', 'huo', 'shui', 'shui'],
+    price: 15,
+    maxStacks: 1
+  });
+
   R.registerItem({
     name: 'Bind',
     displayName: '捆缚',
     kind: 'consumable',
-    description: '进攻回合使用，回合结束后跳过对手进攻，再进行一次进攻',
+    description: '进攻回合使用，仅捆缚当前对手；跳过其下一次进攻，玩家再进攻一次并清除标记',
     icon: ICON + 'binding.webp',
     useScene: 'combat',
     price: 8,
@@ -744,12 +800,12 @@
     name: 'TimeBombTrophy',
     displayName: '定时炸弹战利白卡',
     kind: 'trophyWhite',
-    description: '对手获得[定时炸弹]。抽1张牌，可搭桥',
+    trophyKind: 'drop',
+    description: '对手获得[定时炸弹]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/time_bomb.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyBomb',
-    trophyEffect: 'bomb',
-    beastTradeCost: ['ben', 'huo']
+    trophyEffect: 'bomb'
   });
 })();

@@ -48,7 +48,7 @@ test('ForestPython base stats', () => {
   assert.ok(m);
   assert.equal(m.kind, '缠枝巨蟒');
   assert.equal(m.hp, 35);
-  assert.equal(m.whiteZeros, 2);
+  assert.equal(m.whiteZeros, 1);
   assert.equal(m.handLimit, 3);
   assert.equal(m.icon, '../icons/npc_icons/forest_python.webp');
 });

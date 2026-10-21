@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const mapsDir = path.join(__dirname, 'maps');
-const outFile = path.join(__dirname, 'js', 'map_data.js');
+const outFile = path.join(__dirname, 'js', 'map', 'map_data.js');
 
 const files = fs.readdirSync(mapsDir).filter(f => f.endsWith('.csv')).sort();
 const entries = [];

@@ -427,9 +427,11 @@ node game/scripts/check.js --all
 
 ### 持续状态与手牌上限
 
+手牌弃牌交互统一见 `docs/small_rules.md`「统一手牌弃牌交互」：`pendingHandDiscard` + 战斗 `confirmDiscard`/`cancelDiscard`、地图 `selectHandDiscardIndex`→`confirmHandDiscard`/`cancelHandDiscard`；弃牌符/熔炉无 index 自动 `beginHandDiscard`。
+
 `StatusRegistry.handLimitDelta` 定义持续状态对手牌上限的修正；`StatusService.handLimit(entity, base)` 纯计算有效上限，`EngineModes.handLimit()` / `Engine.getHandLimit(owner)` 统一用于补牌、AI 弃牌和玩家回合结束检查。流沙（`quicksand`）上限为 1，修正为 -1。牌堆和存档里的 `handLimit` 始终保存基础上限，避免刷新、净化和配饰同步造成重复扣减。
 
-铁匠铺成本中的 `wuneng` 是必须预留并扣除的万能兽元；剩余万能兽元才可替代普通兽元不足部分。
+铁匠铺成本中的 `wuneng` 是必须预留并扣除的万能兽元；剩余万能兽元才可替代普通兽元不足部分。支付抉择：`pendingBeastPayment.plans`；`usesWild` 仅指标替普通的万能。方案按扣款组合去重（不按 `wildSub` 合并；本+火+万2 → 4 条）。`plans.length > 1` 或任一 `usesWild` → 弹窗；唯一且无顶替 → 直接扣。见 `docs/adventure_guide/rooms.md`。
 
 ### 攻击修正 Buff
 

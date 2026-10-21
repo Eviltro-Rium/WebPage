@@ -105,6 +105,52 @@ test('Knight white item play grants chaos immediately', () => {
   assert.equal(!!eng.s.player.chaos_blue, true);
 });
 
+test('Knight white purify grants chaos after the purify choice, not before', () => {
+  const eng = new Engine();
+  eng.start('Knight', 'Ryan');
+  eng.later = () => {};
+  eng.s.player.burn = 2;
+  const purify = {
+    value: -1, color: 'WHITE', chosenColor: 'GREEN', isWhite: true,
+    isItemCard: true, isNumberCard: false, purify: true, uid: 'pu1'
+  };
+  eng.h.player = [purify];
+  eng.s.discardTop = number(1, 'GREEN');
+  eng.s.phase = 'PLAYER_PLAY';
+  eng.s.busy = false;
+  eng.s.selectedCard = 0;
+  eng.play();
+  assert.equal(eng.s.pendingDialog, 'purify');
+  assert.equal(!!eng.s.player.chaos_green, false);
+  assert.equal(eng.s.player.burn, 2);
+  eng.choosePurify({ kind: 'burn' });
+  assert.equal(eng.s.pendingDialog, null);
+  assert.equal(eng.s.player.burn, 1);
+  assert.equal(!!eng.s.player.chaos_green, true);
+});
+
+test('Knight white super-purify grants chaos after the target is cleansed', () => {
+  const eng = new Engine();
+  eng.start('Knight', 'Ryan');
+  eng.later = () => {};
+  eng.s.player.burn = 2;
+  const superPurify = {
+    value: -1, color: 'WHITE', chosenColor: 'YELLOW', isWhite: true,
+    isItemCard: true, isNumberCard: false, superPurify: true, uid: 'sp1'
+  };
+  eng.h.player = [superPurify];
+  eng.s.discardTop = number(2, 'YELLOW');
+  eng.s.phase = 'PLAYER_PLAY';
+  eng.s.busy = false;
+  eng.s.selectedCard = 0;
+  eng.play();
+  assert.equal(eng.s.pendingDialog, 'superPurify');
+  assert.equal(!!eng.s.player.chaos_yellow, false);
+  eng.chooseSuperPurifyTarget('player');
+  assert.equal(eng.s.player.burn, 0);
+  assert.equal(!!eng.s.player.chaos_yellow, true);
+});
+
 test('Knight still gains chaos from base-color number cards', () => {
   const eng = new Engine();
   eng.start('Knight', 'Ryan');

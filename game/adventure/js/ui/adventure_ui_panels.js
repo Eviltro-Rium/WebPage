@@ -7,6 +7,7 @@
   class AdventureUIPanelViewMethods {
     _stashedLootIconSrc(loot) {
       if (!loot) return null;
+      if (loot.kind === 'merchant') return loot.sold ? null : '../icons/adventure_ui_icons/wandering_merchant.webp';
       if (loot.kind === 'gold') return AC.GOLD_ICON;
       if (loot.kind === 'beast') return AC.BEAST_ICON[loot.beastType] || null;
       if (loot.kind === 'accessory') {
@@ -27,6 +28,7 @@
     
     _stashedLootLabel(loot) {
       if (!loot) return '';
+      if (loot.kind === 'merchant') return '流浪商人 · ' + (loot.sold ? '已售出' : '可交易');
       if (loot.kind === 'gold') return loot.gold + ' 金币';
       if (loot.kind === 'beast') return (AC.BEAST_LABEL[loot.beastType] || loot.beastType) + ' ×1';
       if (loot.kind === 'accessory') {
@@ -88,6 +90,24 @@
       return '<div class="adv-settle-row">' + this._stashedLootLabel(loot) + '</div>';
     }
     
+    _buildMerchantPage(snap) {
+      const page = document.createElement('section');
+      page.className = 'adv-reward-page adv-merchant-page';
+      const offer = snap.roomInfo.stashedLoot;
+      const def = window.AdventureRegistry.getItem(offer.accessory || offer.item);
+      const price = Number.isFinite(offer.price) ? offer.price : 15;
+      const check = def ? this.eng._canAddItem(def.name) : { ok: false, message: '商品暂不可用' };
+      const canBuy = !!def && !offer.sold && check.ok && snap.currency.gold >= price;
+      const hint = offer.sold ? '商品已售出' : !check.ok ? check.message
+        : snap.currency.gold < price ? '金币不足，稍后可以再来。' : '商人会在本房间等候，离开后仍可返回交易。';
+      page.innerHTML = '<div class="adv-merchant-heading"><img src="../icons/adventure_ui_icons/wandering_merchant.webp" alt="流浪商人" width="64" height="64"><div><h2>流浪商人</h2><p>出售一件配饰</p></div></div>' +
+        (def ? '<div class="adv-merchant-product"><img src="' + def.icon + '" alt=""><div><h3>' + def.displayName + '</h3><p>' + def.description + '</p><strong>' + price + ' 金币</strong></div></div>' : '') +
+        '<p class="adv-merchant-hint" role="status">' + hint + '</p>' +
+        '<div class="adv-shop-page-actions"><button class="adv-btn adv-btn-primary" id="adv-merchant-buy"' + (canBuy ? '' : ' disabled') + '>购买（' + price + ' 金币）</button>' +
+        '<button class="adv-btn" id="adv-merchant-leave">稍后再来</button></div>';
+      return page;
+    }
+
     _buildRewardPage(snap) {
       const page = document.createElement('div');
       page.className = 'adv-reward-page';
@@ -108,15 +128,16 @@
     _roomStatusMarkup(snap) {
       if (!snap || !snap.roomInfo) return '';
       const ri = snap.roomInfo;
+      const merchant = !!(ri.stashedLoot && ri.stashedLoot.kind === 'merchant');
       let roomStatus = '';
       if (ri.cleared) roomStatus += '已清除 ';
-      if (ri.stashedLoot) roomStatus += '有待领奖励 ';
+      if (ri.stashedLoot) roomStatus += merchant ? '商人可交易 ' : '有待领奖励 ';
       else if (ri.rewardClaimed) roomStatus += '奖励已领 ';
       if (ri.beastTokenClaimed) roomStatus += '兽元已领';
       let html = '';
       if (roomStatus) html += '<div class="adv-room-status">' + roomStatus + '</div>';
       if (ri.stashedLoot && snap.phase === window.AdventurePhase.REWARD && !snap.pendingRoomReward) {
-        html += '<div class="adv-stashed-loot">待领：' + this._stashedLootLabel(ri.stashedLoot) + '</div>';
+        html += '<div class="adv-stashed-loot">' + (merchant ? '' : '待领：') + this._stashedLootLabel(ri.stashedLoot) + '</div>';
       }
       return html;
     }
@@ -162,9 +183,13 @@
         snap.playerPile.hand.forEach((card, index) => {
           const cv = window.renderCard(card, cw, ch, false);
           cv.classList.add('disabled');
+          cv.dataset.index = String(index);
           cv.dataset.renderKey = ['map-hand', index, JSON.stringify(card), cw, ch, revision].join(':');
           handZone.appendChild(cv);
         });
+        if (this._handDiscardPickerInst && this._handDiscardPickerInst.isActive()) {
+          this._handDiscardPickerInst.bindHand(handZone);
+        }
       }
     
       return side;
@@ -196,9 +221,9 @@
       if (b.bloodthirst)   items.push('<span class="adv-buff adv-buff-bloodthirst" title="嗜血">嗜血</span>');
       if (b.tauntMark || b.taunt) {
         const mc = String(b.mockAttackColor || b.tauntColor || '').toUpperCase();
-        const colorTip = ({ RED: '红', YELLOW: '黄', BLUE: '蓝', GREEN: '绿' })[mc] || '';
+        const colorTip = ({ RED: '🔴', YELLOW: '🟡', BLUE: '🔵', GREEN: '🟢' })[mc] || '';
         const cls = 'adv-buff adv-buff-taunt' + (mc ? ' adv-buff-taunt-' + mc.toLowerCase() : '');
-        items.push('<span class="' + cls + '" title="嘲弄' + (colorTip ? '·' + colorTip : '') + '"><img class="adv-buff-icon" src="../icons/items_icons/mock.webp" alt="嘲弄">嘲弄' + (colorTip ? colorTip : '') + '</span>');
+        items.push('<span class="' + cls + '" title="嘲弄' + (colorTip ? '·' + colorTip : '') + '"><img class="adv-buff-icon" src="../icons/buff_icons/mock.webp" alt="嘲弄">嘲弄' + (colorTip ? colorTip : '') + '</span>');
       }
       if (!items.length) return '';
       return '<div class="adv-buff-bar">' + items.join('') + '</div>';
@@ -231,12 +256,12 @@
         const item = consumables[i];
         if (item) {
           const scene = item.useScene || 'combat';
-          const canUse = onMap
+          const canUse = snap.phase !== window.AdventurePhase.GLITCH && (onMap
             ? (scene === 'map' || scene === 'both')
-            : (scene === 'combat' || scene === 'both');
+            : (scene === 'combat' || scene === 'both'));
           const useBtn = canUse
             ? '<button class="adv-item-use-btn" data-use-index="' + i + '">使用</button>'
-            : '<div class="adv-item-scene-hint">' + (scene === 'combat' ? '仅对战可用' : '仅地图可用') + '</div>';
+            : '<div class="adv-item-scene-hint">' + (snap.phase === window.AdventurePhase.GLITCH ? '事件结束后使用' : scene === 'combat' ? '仅对战可用' : '仅地图可用') + '</div>';
           const tip = item.displayName + ' — ' + item.description;
           const icon = item.icon
             ? '<img class="adv-item-icon" src="' + item.icon + '" alt="' + item.displayName + '">'
@@ -431,16 +456,17 @@
       const trophySelected = selected === 'trophy';
       const trophyHtml = trophy
         ? '<button type="button" class="adv-shop-slot filled adv-shop-slot-trophy' + (trophySelected ? ' selected' : '') + '" data-blacksmith-trophy="1" title="' + (trophy.description || '') + '">' +
-          '<div class="adv-shop-slot-tag">战利白卡</div>' +
+          '<div class="adv-shop-slot-tag">锻造白卡</div>' +
           this._trophyCardMarkup(trophy.name, 54, 78) +
           '<div class="adv-shop-slot-name">' + trophy.displayName + '</div>' +
           '<div class="adv-shop-slot-desc">' + (trophy.description || '') + '</div>' +
           '<div class="adv-shop-slot-trade">' + this._beastCostIconsHtml(trophy.beastCost) + '<span class="adv-shop-slot-trade-text">' + (trophy.beastCostText || '') + '</span></div></button>'
-        : '<button type="button" class="adv-shop-slot empty adv-shop-slot-trophy" data-blacksmith-trophy="1"><div class="adv-shop-slot-tag">战利白卡</div><div class="adv-shop-slot-empty-label">sold-out</div><div class="adv-shop-slot-trade adv-shop-slot-trade-empty">刷新可补货</div></button>';
+        : '<button type="button" class="adv-shop-slot empty adv-shop-slot-trophy" data-blacksmith-trophy="1"><div class="adv-shop-slot-tag">锻造白卡</div><div class="adv-shop-slot-empty-label">sold-out</div><div class="adv-shop-slot-trade adv-shop-slot-trade-empty">刷新可补货</div></button>';
     
       const canTrade = Number.isInteger(selected) && !!slots[selected];
       const canPayTrade = canTrade && !!(snap.blacksmithCanPay && snap.blacksmithCanPay.slots[selected]);
-      const canRefresh = Number.isInteger(selected);
+      // Trophy stall uses selected === 'trophy' (string); same 2-gold refresh as accessories.
+      const canRefresh = Number.isInteger(selected) || selected === 'trophy';
       const refreshCost = 2;
     
       const beastSummary = ['ben', 'cao', 'shui', 'huo', 'wuneng'].map(k =>
@@ -482,7 +508,7 @@
         '<div class="adv-shop-page-gold"><img src="' + AC.GOLD_ICON + '" class="adv-gold-icon" alt="金币"><b>' + gold + '</b></div>' +
         '<div class="adv-blacksmith-tokens">兽元：' + beastSummary + ' <span class="adv-bs-hint">（万能可替代）</span></div>' +
         '<div class="adv-shop-slots adv-blacksmith-slots">' + slotsHtml + '</div>' +
-        '<div class="adv-blacksmith-trophy-stall"><div class="adv-blacksmith-stall-title">战利白卡摊位</div>' + trophyHtml + '</div>' +
+        '<div class="adv-blacksmith-trophy-stall"><div class="adv-blacksmith-stall-title">锻造白卡摊位</div>' + trophyHtml + '</div>' +
         recycleHtml +
         '<div class="adv-shop-page-actions">' +
           '<button class="adv-btn adv-btn-primary" id="adv-blacksmith-trade"' + (tradeEnabled ? '' : ' disabled') + '>' + tradeLabel + '</button>' +
@@ -503,11 +529,12 @@
         const needItemDoor = ri && ri.type === T.ITEM && !ri.doorUnlocked;
         const itemClaimed = ri && ri.type === T.ITEM && ri.rewardClaimed && !ri.stashedLoot;
         const needBlacksmithDoor = ri && ri.type === T.BLACKSMITH && !ri.doorUnlocked && (ri.entryGold || 0) > 0;
+        const hasMerchant = ri && ri.stashedLoot && ri.stashedLoot.kind === 'merchant' && !ri.stashedLoot.sold;
         if (itemClaimed) {
           btns += '<button class="adv-btn" id="adv-enter" disabled>本层奖励已领</button>';
         } else {
           btns += '<button class="adv-btn adv-btn-primary" id="adv-enter">' +
-            (needItemDoor ? '开启房门' : needBlacksmithDoor ? ('支付' + ri.entryGold + '金币进入') : '进入房间') + '</button>';
+            (hasMerchant ? '与商人交易' : needItemDoor ? '开启房门' : needBlacksmithDoor ? ('支付' + ri.entryGold + '金币进入') : '进入房间') + '</button>';
         }
         if (needItemDoor && ri.doorCost && ri.doorCost.length) {
           const icons = ri.doorCost.map(k =>
@@ -519,7 +546,9 @@
         }
       } else if (snap.phase === Phase.REWARD) {
         const ri = snap.roomInfo;
-        if (snap.pendingRoomReward) {
+        if (ri && ri.stashedLoot && ri.stashedLoot.kind === 'merchant') {
+          btns += '<div class="adv-action-hint">请在流浪商人处交易</div>';
+        } else if (snap.pendingRoomReward) {
           btns += '<div class="adv-action-hint">请在奖励页操作</div>';
         } else if (ri && ri.stashedLoot && ri.type !== T.BOSS) {
           btns += '<button class="adv-btn adv-btn-primary" id="adv-reward">领取保留奖励</button>';
@@ -529,6 +558,8 @@
         btns += '<div class="adv-action-hint">请在商店页操作</div>';
       } else if (snap.phase === Phase.BLACKSMITH) {
         btns += '<div class="adv-action-hint">请在铁匠铺页操作</div>';
+      } else if (snap.phase === Phase.GLITCH) {
+        btns += '<div class="adv-action-hint">请在故障事件页操作</div>';
       } else if (snap.phase === Phase.CLEAR) {
         btns += '<div class="adv-clear-hint">' + (snap.stage >= 4 ? '冒险胜利！' : '本层通关！') + '</div>';
         if (snap.stage < 4) btns += '<button class="adv-btn adv-btn-primary" id="adv-next-stage">进入下一层</button>';

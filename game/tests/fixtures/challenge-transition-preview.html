@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>挑战房衔接回归预览</title>
+  <link rel="stylesheet" href="../../css/game.css">
+  <link rel="stylesheet" href="../../adventure/css/adventure.css">
+</head>
+<body>
+  <div id="adventure-container"></div>
+  <div id="game-container"><div id="select-screen"></div><div id="game-screen" class="screen"></div></div>
+  <script>
+    (async () => {
+      // This fixture uses the real engine, session controller and battle UI;
+      // all setup is in-memory test mode and does not touch adventure saves.
+      const assetRoot = new URL('../../', location.href);
+      const manifest = await fetch(new URL('script_manifest.json', assetRoot)).then(response => response.json());
+      const files = ['characters', 'ai', 'combat', 'adventure_content', 'ui_shell'].flatMap(group => manifest[group]);
+      files.push('adventure/js/deck/adventure_deck.js', 'adventure/js/engine/loot.js',
+        'adventure/js/battle/battle_engine.js', 'adventure/js/battle/adventure_battle_items.js',
+        'adventure/js/battle/dice_controller.js', 'adventure/js/battle/adventure_battle_controller.js');
+      for (const file of files) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = new URL(file, assetRoot); script.onload = resolve; script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      }
+      const number = (value, white = false) => FurryGame.Card.number(white ? 'WHITE' : 'BLUE', value, white);
+      const engine = new AdventureBattleEngine();
+      engine.startAdventure1v2({player:'Knight',opponent1:'FrozenOceanSnowyOwl',opponent2:'FrozenOceanOctopus',
+        stage:1,scene:'ocean',testMode:true,discardTop:number(2),
+        playerState:{hp:73,maxHp:80},playerPile:{deck:[number(3),number(4)],hand:[number(2),number(5)],discard:[],handLimit:5}});
+      engine.events = [];
+      FurryGame.CombatRuntime.setRandomSource(() => .1);
+      engine.s.ai2.hp = 0; engine.check();
+      FurryGame.CombatRuntime.resetRandomSource();
+      engine.s.ai.hp = 16;
+      engine.h.ai.splice(0,engine.h.ai.length,number(5,true),number(1,true));
+      if (new URLSearchParams(location.search).has('resume')) {
+        Object.assign(engine.s, {phase:'AI_DEFEND',busy:true,attackTarget:'ai',atkOwner:'player',
+          atkCard:number(2),pendingAttack:{damage:3},defCard:null,defOwner:null});
+        delete engine.s.pendingAIDefense;
+        engine.pendingSettlement = null; engine.events = [];
+      }
+      const snapshot = JSON.parse(JSON.stringify({s:engine.s,piles:engine.piles,events:engine.events,
+        ver:engine.ver,tableTopOwner:engine.tableTopOwner,testMode:true}));
+      await AdventureBattleController.startCombat1v2('Knight','FrozenOceanSnowyOwl','FrozenOceanOctopus',()=>{}, {resumeBattle:snapshot});
+    })().catch(error => {
+      console.error(error);
+      document.getElementById('adventure-container').textContent = String(error);
+    });
+  </script>
+</body>
+</html>

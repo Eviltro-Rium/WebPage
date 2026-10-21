@@ -1,0 +1,28 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../../adventure/"><title>流浪商人回房预览</title>
+<link rel="stylesheet" href="../css/game.css?v=merchant-return"><link rel="stylesheet" href="css/adventure.css?v=merchant-return">
+</head><body><div id="castle-bg"></div><main id="adventure-container"></main>
+<script>
+(async () => {
+  const manifest = await (await fetch('../script_manifest.json')).json();
+  for (const file of ['characters','ai','combat','ui_shell','adventure_content','adventure_runtime'].flatMap(key => manifest[key])) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script'); script.src = '../' + file + '?v=20261021-merchant-return';
+      script.onload = resolve; script.onerror = reject; document.head.appendChild(script);
+    });
+  }
+  const ui = window.merchantPreview = new AdventureUI(document.getElementById('adventure-container'));
+  ui.eng.testMode = true;
+  ui.eng.start(new AdventureMap([[0,1,1],[1,1,1],[1,1,2]]), 'Ryan', { scene:'castle', stage:3, gold:20 });
+  ui.eng.move(0,1);
+  ui.eng.s.combat = { enemy: { name:'CastleWolf' } };
+  ui.eng._rollBasicCombatReward = () => ({ kind:'merchant', accessory:'Magnet', sold:false });
+  const rollBeast = AdventureCurrency.rollBeastReward;
+  AdventureCurrency.rollBeastReward = () => ({ scenario:7, auto:true, offered:{wuneng:1}, pickCount:0 });
+  ui.eng.onCombatEnd('win'); ui.eng.claimCombatReward(); ui.eng.claimCombatReward();
+  AdventureCurrency.rollBeastReward = rollBeast;
+  const checkpoint = AdventureSave.serialize(ui.eng);
+  ui.eng.restoreFromSave(checkpoint, new AdventureMap(checkpoint.mapLayout));
+  ui.bindActions(); ui.render();
+})().catch(error => { document.body.textContent = error.stack || String(error); });
+</script></body></html>

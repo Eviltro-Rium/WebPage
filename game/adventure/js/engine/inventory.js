@@ -118,7 +118,7 @@
         }
         target.hp = Math.max(0, target.hp - dmg);
         this._log(who + '灼伤结算：-' + dmg + '生命' + (keep ? '（炙热不消退）' : '，灼伤层数-1'));
-        this.emit('buffSettle', '-' + dmg + '❤️[灼伤]' + (keep ? '（[炙热]不消退）' : ''), null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
+        this.emit('buffSettle', '[灼伤]🗡️' + dmg + (keep ? '（[炙热]不消退）' : '，层数-1'), null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
       }
       if (target.bleed > 0) {
         const dmg = target.bleed;
@@ -126,7 +126,7 @@
         else target.bleed--;
         target.hp = Math.max(0, target.hp - dmg);
         this._log(who + '流血结算：-' + dmg + '生命，流血层数-1');
-        this.emit('bleedSettle', '-' + dmg + '❤️[流血]，-1[流血层数]', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
+        this.emit('bleedSettle', '[流血]🗡️' + dmg + '，层数-1', null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
       }
       if (target.frozen) {
         if (statusRegistry && statusRegistry.clear) statusRegistry.clear(target, 'freeze', 'all');
@@ -169,10 +169,38 @@
         bloodthirst: !!p.bloodthirst
       };
     },
+    _hasExclusiveConflict(def) {
+      if (!def || !Array.isArray(def.exclusiveWith) || !def.exclusiveWith.length) return null;
+      for (const other of def.exclusiveWith) {
+        if (def.kind === 'accessory' && (this.s.consumables || []).includes(other)) {
+          const o = window.AdventureRegistry.getItem(other);
+          return (o && o.displayName) || other;
+        }
+        if (def.kind === 'consumable' && this.hasAccessory && this.hasAccessory(other)) {
+          const o = window.AdventureRegistry.getItem(other);
+          return (o && o.displayName) || other;
+        }
+        // Also: Magician exclusiveWith DiceController; DiceController should list Magician
+        if (other === 'Magician' && this.hasAccessory && this.hasAccessory('Magician')) {
+          return '魔术师';
+        }
+        if (other === 'DiceController' && (this.s.consumables || []).includes('DiceController')) {
+          return '遥控骰子';
+        }
+      }
+      return null;
+    },
     _canAddItem(itemName) {
       const def = window.AdventureRegistry.getItem(itemName);
       if (!def) return { ok: false, reason: 'unknown', message: '未知道具' };
       if (def.kind === 'trophyWhite') return { ok: true };
+      // Magician ↔ DiceController mutual exclusion (docs: cannot hold both)
+      if (itemName === 'Magician' && (this.s.consumables || []).includes('DiceController')) {
+        return { ok: false, reason: 'exclusive', message: '已持有遥控骰子，不能同时持有魔术师' };
+      }
+      if (itemName === 'DiceController' && this.hasAccessory && this.hasAccessory('Magician')) {
+        return { ok: false, reason: 'exclusive', message: '已持有魔术师，不能同时持有遥控骰子' };
+      }
       if (def.kind === 'consumable') {
         if (this.s.consumables.length >= CONSUMABLE_SLOT_COUNT) return { ok: false, reason: 'full', message: '道具槽已满' };
         return { ok: true };
@@ -194,6 +222,11 @@
         this.s.trophyWhiteCards.push(itemName);
         if (this.s.playerPile) this.s.playerPile.hand.push(window.AdventureDeck.trophyWhite(itemName));
       } else if (def.kind === 'consumable') {
+        if (itemName === 'DiceController' && this.hasAccessory && this.hasAccessory('Magician')) {
+          this._log('已持有魔术师，不能同时持有遥控骰子');
+          this.emit('itemFail', '互斥', { itemName, reason: 'exclusive' });
+          return false;
+        }
         if (this.s.consumables.length >= CONSUMABLE_SLOT_COUNT && !opts.allowConsumableOverflow) {
           this._log('一次性道具槽已满（' + CONSUMABLE_SLOT_COUNT + '/' + CONSUMABLE_SLOT_COUNT + '），无法获取 ' + def.displayName);
           this.emit('itemFail', '道具槽已满', { itemName, reason: 'full' });
@@ -201,6 +234,11 @@
         }
         this.s.consumables.push(itemName);
       } else {
+        if (itemName === 'Magician' && (this.s.consumables || []).includes('DiceController')) {
+          this._log('已持有遥控骰子，不能同时持有魔术师');
+          this.emit('itemFail', '互斥', { itemName, reason: 'exclusive' });
+          return false;
+        }
         if (def.maxStacks) {
           const current = this.s.accessories.filter(a => a === itemName).length;
           if (current >= def.maxStacks) {
@@ -279,6 +317,21 @@
       this.s.playerPile.handLimit = base + (bonus.handLimitBonus || 0);
     },
     useConsumable(index, ctx = {}) {
+      if (this.s.phase === Phase.GLITCH) return { ok: false, message: '请先完成故障房事件' };
+      ctx = ctx || {};
+      // Crystal ball confirm/cancel after consumeNow: item already removed.
+      if (this.s.pendingCrystalBall && (Array.isArray(ctx.reorderOrder) || ctx.cancel)) {
+        const effects = window.AdventureMapEffects;
+        const def = window.AdventureRegistry.getItem('CrystalBall') || { name: 'CrystalBall', displayName: '水晶球' };
+        const result = effects && typeof effects.apply === 'function'
+          ? effects.apply(this, def, Object.assign({}, ctx, { reorderOrder: ctx.reorderOrder, cancel: ctx.cancel }))
+          : { ok: false, message: '水晶球效果不可用' };
+        if (result && result.ok) {
+          this._log('使用 水晶球：' + result.message);
+          this.emit('itemUsed', '使用道具', { itemName: 'CrystalBall', message: result.message });
+        }
+        return result;
+      }
       if (index < 0 || index >= this.s.consumables.length) return { ok: false, message: '无效道具' };
       const itemName = this.s.consumables[index];
       const def = window.AdventureRegistry.getItem(itemName);
@@ -300,6 +353,23 @@
         inCombat
       }, ctx);
 
+      // Unified hand-discard pending (Vixraps-style). Confirm via confirmHandDiscard.
+      const combatUse = def.combatUse || def.mapUse || null;
+      const hasIndex = useCtx.discardIndex != null || (useCtx.choice && useCtx.choice.index != null);
+      if ((combatUse === 'discardTalisman' || combatUse === 'furnace') && !hasIndex && !this.s.pendingHandDiscard) {
+        return this.beginHandDiscard({
+          kind: combatUse,
+          itemIndex: index,
+          itemName: def.name,
+          count: 1,
+          filter: combatUse === 'furnace' ? 'colorNumber' : null,
+          cancelable: true,
+          hint: combatUse === 'furnace'
+            ? '熔炉：请选择1张红/黄/蓝/绿点数牌弃掉'
+            : '弃牌符：请选择1张手牌弃掉（然后抽2张）'
+        });
+      }
+
       let result;
       if (typeof def.use === 'function') {
         result = def.use(useCtx);
@@ -307,12 +377,106 @@
         result = this._applyConsumableEffect(def, useCtx);
       }
 
-      if (result && result.ok) {
+      if (result && (result.ok || result.consumeNow)) {
         this.s.consumables.splice(index, 1);
-        this._log('使用 ' + def.displayName + '：' + result.message);
-        this.emit('itemUsed', '使用道具', { itemName, message: result.message });
+        if (result.ok) {
+          this._log('使用 ' + def.displayName + '：' + result.message);
+          this.emit('itemUsed', '使用道具', { itemName, message: result.message });
+        } else if (result.consumeNow) {
+          this._log('使用 ' + def.displayName + '（已消耗，等待确认）');
+        }
+        if (this.s.pendingHandDiscard && this.s.pendingHandDiscard.itemIndex === index) {
+          this.s.pendingHandDiscard = null;
+        }
       }
       return result;
+    },
+
+    beginHandDiscard(opts) {
+      opts = opts || {};
+      const pile = this.s.playerPile;
+      const hand = (pile && pile.hand) || [];
+      const count = Math.max(1, Number(opts.count) || 1);
+      let legalIndices = null;
+      if (opts.filter === 'colorNumber') {
+        legalIndices = [];
+        hand.forEach((c, i) => {
+          if (c && c.isNumberCard && !c.isItemCard && !c.isBlack && !c.isWhite &&
+              ['RED', 'YELLOW', 'BLUE', 'GREEN'].includes(c.color)) legalIndices.push(i);
+        });
+        if (legalIndices.length < count) {
+          return { ok: false, message: opts.emptyMessage || '没有可弃的手牌' };
+        }
+      } else if (!hand.length) {
+        return { ok: false, message: opts.emptyMessage || '手牌为空，无法弃牌' };
+      }
+      this.s.pendingHandDiscard = {
+        kind: opts.kind || 'handDiscard',
+        count: count,
+        itemIndex: opts.itemIndex != null ? Number(opts.itemIndex) : null,
+        itemName: opts.itemName || null,
+        filter: opts.filter || null,
+        legalIndices: legalIndices,
+        cancelable: opts.cancelable !== false,
+        selected: [],
+        hint: opts.hint || ('请选择' + count + '张手牌弃掉')
+      };
+      this._log(this.s.pendingHandDiscard.hint);
+      return {
+        ok: false,
+        pending: true,
+        needsChoice: true,
+        needsHandDiscard: true,
+        pendingHandDiscard: this.s.pendingHandDiscard,
+        message: this.s.pendingHandDiscard.hint
+      };
+    },
+
+    selectHandDiscardIndex(index) {
+      const pending = this.s.pendingHandDiscard;
+      if (!pending) return { ok: false, message: '当前没有待选的弃牌' };
+      const pile = this.s.playerPile;
+      const hand = (pile && pile.hand) || [];
+      const i = Number(index);
+      if (!Number.isInteger(i) || i < 0 || i >= hand.length) {
+        return { ok: false, message: '无效手牌' };
+      }
+      if (Array.isArray(pending.legalIndices) && pending.legalIndices.indexOf(i) < 0) {
+        return { ok: false, message: pending.hint || '该牌不可选' };
+      }
+      // Single-pick (count===1) toggles like Vixraps.
+      if (pending.count === 1) {
+        pending.selected = pending.selected && pending.selected[0] === i ? [] : [i];
+      } else {
+        const pos = (pending.selected || []).indexOf(i);
+        if (pos >= 0) pending.selected.splice(pos, 1);
+        else if ((pending.selected || []).length < pending.count) pending.selected.push(i);
+      }
+      return { ok: true, pendingHandDiscard: pending };
+    },
+
+    confirmHandDiscard() {
+      const pending = this.s.pendingHandDiscard;
+      if (!pending) return { ok: false, message: '当前没有待确认的弃牌' };
+      const selected = pending.selected || [];
+      if (selected.length !== pending.count) {
+        return { ok: false, message: pending.hint || ('请选择' + pending.count + '张手牌') };
+      }
+      const itemIndex = pending.itemIndex;
+      const kind = pending.kind;
+      this.s.pendingHandDiscard = null;
+      if ((kind === 'discardTalisman' || kind === 'furnace') && itemIndex != null) {
+        return this.useConsumable(itemIndex, { discardIndex: selected[0] });
+      }
+      return { ok: false, message: '未知弃牌类型' };
+    },
+
+    cancelHandDiscard() {
+      const pending = this.s.pendingHandDiscard;
+      if (!pending) return { ok: false, message: '当前没有待取消的弃牌' };
+      if (!pending.cancelable) return { ok: false, message: pending.hint || '必须弃牌，不能取消' };
+      this.s.pendingHandDiscard = null;
+      return { ok: true, message: '已取消弃牌' };
     },
     _isCombatPhase(phase) {
       return phase === Phase.COMBAT || phase === Phase.PLAYER_PLAY ||

@@ -71,6 +71,169 @@ function assertSingleCard(document) {
   assert.equal(card.querySelectorAll('.adv-sidebar-title').length, 1);
 }
 
+test('loot sheet shows numeric conditions with card faces and becomes the reward sheet in place', () => {
+  const {dom,w,document,engine}=setup();
+  try {
+    document.getElementById('adv-settle-overlay').remove();
+    w.GameUI=class {};
+    w.AdventureDeck={trophyWhite:name=>({trophyName:name})};
+    w.renderCard=card=>{
+      const face=document.createElement('canvas');face.dataset.trophy=card.trophyName;return face;
+    };
+    for(const file of ['adventure/js/engine/loot.js','js/ui/events.js']) w.eval(fs.readFileSync(path.join(root,file),'utf8'));
+    const ui=new w.GameUI();
+    const evt={monsterName:'FrozenMammoth',roll:4,drops:['GuardTrophy'],rollIndex:2,rollCount:3};
+    const overlay=ui._showTrophySettlement(evt);
+    assert.deepEqual([...overlay.querySelectorAll('.trophy-settle-condition')].map(el=>el.textContent),['1–3：','4–5：','6：','7–10：','11：','12：']);
+    assert.equal(overlay.querySelectorAll('canvas').length,5);
+    assert.equal(overlay.querySelectorAll('.trophy-loot-caption').length,0);
+    assert.equal(overlay.querySelectorAll('.is-hit').length,0);
+    assert.equal(ui._showTrophySettlement(evt,true),overlay);
+    assert.match(overlay.querySelector('.trophy-settle-status').textContent,/第 2 \/ 3 次 · 投出 4 · 获得白卡/);
+    assert.equal(overlay.querySelector('.is-hit canvas').dataset.trophy,'GuardTrophy');
+    engine.s.phase=w.AdventurePhase.COMBAT_SETTLE;
+    engine.s.pendingCombatReward={stage:'basic',basic:{kind:'gold',gold:3}};
+    w.AdventureBattleController.resumeSettlement(engine);
+    assert.equal(document.getElementById('adv-settle-overlay'),overlay);
+    assert.equal(overlay.querySelector('.trophy-settle-rules'),null);
+    assertSingleCard(document);
+  } finally {dom.window.close();}
+});
+
+test('every monster table matches all actual rolls, including universal 11 and 12 drops', () => {
+  const {dom,w}=setup();
+  try {
+    w.eval(fs.readFileSync(path.join(root,'adventure/js/engine/loot.js'),'utf8'));
+    const loot=w.AdventureLoot;
+    for(const [scene,monsters] of Object.entries(loot.SCENE_RULES)) {
+      for(const name of Object.keys(monsters)) {
+        const rows=loot.getDropTable(name);
+        for(let face=1;face<=12;face++) {
+          const matches=rows.filter(row=>face>=row.first&&face<=row.last);
+          assert.equal(matches.length,1,name+' face '+face+' appears exactly once');
+          assert.deepEqual([...matches[0].drops],[...loot.rollMonsterDrop(scene,name,null,face).drops]);
+        }
+        assert.deepEqual([...rows.find(row=>row.first===11).drops],['SmallPotionTrophy']);
+        assert.deepEqual([...rows.find(row=>row.first===12).drops],['PurifyWaterTrophy']);
+      }
+    }
+  } finally {dom.window.close();}
+});
+
+test('loot playback waits for an explicit click after every hit and miss before the next roll or victory', async () => {
+  const {dom,w,document}=setup();
+  try {
+    document.getElementById('adv-settle-overlay').remove();
+    w.GameUI=class {};
+    w.AdventureDeck={trophyWhite:name=>({trophyName:name})};
+    w.renderCard=card=>{const face=document.createElement('canvas');face.dataset.trophy=card.trophyName;return face;};
+    w.FurryGame={CombatRuntime:{wait:async()=>{}}};
+    for(const file of ['adventure/js/engine/loot.js','js/ui/events.js']) w.eval(fs.readFileSync(path.join(root,file),'utf8'));
+    const ui=new w.GameUI(),sequence=[];
+    ui.state={phase:'GAME_OVER'};
+    ui._animationOrder=events=>events;
+    ui._isDefenseJudgmentEvent=()=>false;
+    ui._showZoneDesc=()=>{};
+    ui._renderPlayerHand=()=>{};
+    ui._playD12Animation=async value=>sequence.push('die:'+value);
+    let finishFlight;
+    ui._playTrophyDropAnimation=async names=>{
+      sequence.push('gain:'+names[0]);
+      if(names[0]==='SmallPotionTrophy') await new Promise(resolve=>{finishFlight=resolve;});
+    };
+    ui.playFloatingText=()=>sequence.push('victory');
+    ui.showError=error=>assert.fail(error);
+    const events=[];
+    for(const [index,face,drops] of [[1,11,['SmallPotionTrophy']],[2,9,[]],[3,12,['PurifyWaterTrophy']]]) {
+      const props={monsterName:'FrozenMammoth',rollIndex:index,rollCount:3,drops};
+      events.push({id:index*2,type:'diceRoll',purpose:'trophyDrop',value:face,...props});
+      events.push({id:index*2+1,type:'trophyDrop',roll:face,...props});
+    }
+    events.push({id:10,type:'gameOver'});
+    const playback=ui._playEvents(events,true);
+    const flush=()=>new Promise(resolve=>setImmediate(resolve));
+    await flush();
+    const firstButton=document.querySelector('.trophy-settle-confirm');
+    assert.equal(firstButton.disabled,true,'confirmation is disabled during acquisition flight');
+    firstButton.click();
+    assert.deepEqual(sequence,['die:11','gain:SmallPotionTrophy']);
+    finishFlight();await flush();
+    assert.equal(firstButton.disabled,false);
+    assert.equal(document.querySelector('.is-hit canvas').dataset.trophy,'SmallPotionTrophy');
+    await flush();
+    assert.deepEqual(sequence,['die:11','gain:SmallPotionTrophy'],'no timer automatically advances the result');
+    firstButton.click();firstButton.click();await flush();
+    assert.deepEqual(sequence,['die:11','gain:SmallPotionTrophy','die:9']);
+    assert.match(document.querySelector('.trophy-settle-status').textContent,/无掉落/);
+    await flush();
+    assert.equal(sequence.length,3,'a miss also blocks the next roll');
+    document.querySelector('.trophy-settle-confirm').click();await flush();
+    assert.deepEqual(sequence,['die:11','gain:SmallPotionTrophy','die:9','die:12','gain:PurifyWaterTrophy']);
+    assert.equal(document.querySelector('.is-hit canvas').dataset.trophy,'PurifyWaterTrophy');
+    assert.equal(ui._eventPlaybackDepth,1,'settlement stays blocked while awaiting the last confirmation');
+    document.querySelector('.trophy-settle-confirm').click();await playback;
+    assert.equal(sequence.at(-1),'victory');
+    assert.equal(ui._eventPlaybackDepth,0);
+    assert.equal(ui._trophyConfirmation,null);
+  } finally {dom.window.close();}
+});
+
+test('challenge loot closes and clears its die before subsequent battle feedback, for hits and misses', async () => {
+  for(const drops of [[],['SmallPotionTrophy']]) {
+    const {dom,w,document}=setup();
+    try {
+      document.getElementById('adv-settle-overlay').remove();
+      const reveal=document.createElement('div');reveal.id='reveal-cards';document.body.appendChild(reveal);
+      w.GameUI=class {};
+      w.AdventureDeck={trophyWhite:name=>({trophyName:name})};
+      w.renderCard=()=>document.createElement('canvas');
+      w.FurryGame={CombatRuntime:{wait:async()=>{}}};
+      for(const file of ['adventure/js/engine/loot.js','js/ui/events.js']) w.eval(fs.readFileSync(path.join(root,file),'utf8'));
+      const ui=new w.GameUI();
+      ui.state={phase:'AI_TURN',is1v2:true};
+      ui._isDefenseJudgmentEvent=()=>false;ui._renderPlayerHand=()=>{};
+      ui._playD12Animation=async()=>{reveal.textContent='D12';};
+      ui._playTrophyDropAnimation=async()=>{};
+      let resumed=false;
+      ui._showZoneDesc=(id,text)=>{
+        if(text==='继续战斗') {
+          assert.equal(document.getElementById('adv-settle-overlay'),null,'sheet closes before normal feedback');
+          assert.equal(reveal.textContent,'等待判定');resumed=true;
+        }
+      };
+      ui.showError=error=>assert.fail(error);
+      const props={monsterName:'FrozenOceanOctopus',battleContinues:true,drops};
+      const playback=ui._playEvents([
+        {id:1,type:'diceRoll',purpose:'trophyDrop',value:drops.length?11:9,...props},
+        {id:2,type:'trophyDrop',roll:drops.length?11:9,...props},
+        {id:3,type:'desc',desc:'继续战斗'}
+      ],true);
+      await new Promise(resolve=>setImmediate(resolve));
+      assert.equal(resumed,false);
+      assert.match(document.querySelector('h2').textContent,/击败敌人/);
+      document.querySelector('.trophy-settle-confirm').click();await playback;
+      assert.equal(resumed,true);assert.equal(ui.state.phase,'AI_TURN');
+    } finally {dom.window.close();}
+  }
+});
+
+test('controllable loot dice open their decision without a premature loot confirmation', async () => {
+  const {dom,w,document}=setup();
+  try {
+    document.getElementById('adv-settle-overlay').remove();
+    w.GameUI=class {};w.FurryGame={CombatRuntime:{wait:async()=>{}}};
+    w.eval(fs.readFileSync(path.join(root,'js/ui/events.js'),'utf8'));
+    const ui=new w.GameUI();ui.state={phase:'DICE_CHOICE',pendingDiceControl:{purpose:'trophyDrop'}};
+    const previous=document.createElement('div');previous.id='adv-settle-overlay';previous.className='trophy-settle-overlay';document.body.appendChild(previous);
+    ui._isDefenseJudgmentEvent=()=>false;ui._showZoneDesc=()=>{};
+    ui._playD12Animation=async()=>{};
+    let choices=0;ui._renderDiceControl=()=>choices++;
+    ui._waitForTrophyConfirmation=()=>assert.fail('unresolved die must not ask for loot confirmation');
+    await ui._playEvents([{id:1,type:'diceRoll',purpose:'trophyDrop',value:11,awaitControl:true}],true);
+    assert.equal(choices,1);assert.equal(document.getElementById('adv-settle-overlay'),null);
+  } finally {dom.window.close();}
+});
+
 test('settlement rewards and inventory share a single card across all reward stages', () => {
   const { dom, w, document, engine } = setup();
   try {
@@ -220,11 +383,11 @@ test('map return heal events flash LifeCore and the HP bar with separate floatin
   tasks.find(t=>t.ms===0).fn();
   assert.ok(ui.container.querySelector('[data-accessory-name="LifeCore"]').classList.contains('adv-accessory-trigger'));
   assert.ok(ui.container.querySelector('.adv-hp-bar').classList.contains('adv-hp-heal-flash'));
-  assert.match(ui.container.querySelector('.adv-map-heal-float').textContent,/\+3/);
+  assert.equal(ui.container.querySelector('.adv-map-heal-float').textContent,'[生命核心]❤️3');
   const next=tasks.find(t=>t.ms===1600);assert.ok(next,'separate heals wait for the first float');
   next.fn();
   assert.equal(ui.container.querySelectorAll('.adv-map-heal-float').length,2);
-  assert.match(ui.container.querySelectorAll('.adv-map-heal-float')[1].textContent,/\+10/);
+  assert.equal(ui.container.querySelectorAll('.adv-map-heal-float')[1].textContent,'[进入新层]❤️10');
   assert.equal(ui._pendingMapHeals.length,0);
  } finally {dom.window.close();}
 });

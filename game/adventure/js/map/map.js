@@ -119,7 +119,7 @@
     }
 
     summary() {
-      const counts = { empty: 0, start: 0, normal: 0, boss: 0, item: 0, shop: 0 };
+      const counts = Object.fromEntries(Object.values(T).map(type => [type, 0]));
       for (let r = 0; r < this.rows; r++) {
         for (let c = 0; c < this.cols; c++) {
           counts[this.grid[r][c].type]++;

@@ -88,10 +88,14 @@ test('all twelve loot faces match volcano.md and map names normalize correctly',
   ['BurnTrophy','BurnTrophy','BurnTrophy','BurnTrophy'],
   ['BurnTrophy','BurnTrophy','BurnTrophy','PiercingTrophy']
  ];
+ const expectFace=(table,face)=>{
+  if(face<=table.length) return [table[face-1]];
+  return [];
+ };
  names.forEach((name,i)=>{for(let face=1;face<=12;face++){
   const loot=w.AdventureLoot.rollMonsterDrop('火山',name,null,face);
   assert.equal(loot.scene,'volcano');
-  assert.deepEqual(Array.from(loot.drops),face<=4?[tables[i][face-1]]:[]);
+  assert.deepEqual(Array.from(loot.drops),expectFace(tables[i],face));
  }});
  assert.match(w.AdventureLoot.describeMonsterDrop('VolcanoCrab'),/熔脉/);
  assert.equal(w.AdventureLoot.describeMonsterDrop('VolcanoCrab').includes('MagmaVeinTrophy'),false);
@@ -107,7 +111,7 @@ test('volcano bosses register with pools, loot, icons and stage gates',()=>{
  const hp={VolcanoFlameLion:40,VolcanoMagmaRhino:45,VolcanoCinderPhoenix:50};
  bosses.forEach(name=>{
   const base=w.AdventureRegistry.getBoss(name);
-  assert.ok(base);assert.equal(base.hp,hp[name]);assert.equal(base.handLimit,3);assert.equal(base.whiteZeros,2);
+  assert.ok(base);assert.equal(base.hp,hp[name]);assert.equal(base.handLimit,3);assert.equal(base.whiteZeros,1);
   assert.ok(fs.existsSync(path.join(root,'adventure',base.icon)));
   assert.equal(w.AdventureStageGuide[name].length,name==='VolcanoCinderPhoenix'?2:3);
   const s3=bridge.applyStageMods(base,3);
@@ -122,7 +126,9 @@ test('volcano bosses register with pools, loot, icons and stage gates',()=>{
  };
  bosses.forEach(name=>{for(let face=1;face<=12;face++){
   const loot=w.AdventureLoot.rollMonsterDrop('volcano',name,null,face);
-  assert.deepEqual(Array.from(loot.drops),face<=6?[faces[name][face-1]]:[]);
+  const table=faces[name];
+  const expected=face<=table.length?[table[face-1]]:[];
+  assert.deepEqual(Array.from(loot.drops),expected);
  }});
 });
 test('volcano boss attack and defend hooks follow volcano.md',()=>{

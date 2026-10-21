@@ -130,8 +130,11 @@ _renderControls() {
             }
         }
     } else if (phase === 'PLAYER_DISCARD' && canAct) {
+        const handPending = s.pendingHandDiscard;
         const discardHint = s.pendingVixrapsPassive
             ? 'Vixraps被动：必须弃掉1张牌，然后恢复2点生命并施加1层灼伤'
+            : handPending
+                ? (handPending.hint || '请选择手牌弃掉')
             : s.pendingDiscardBeforeDefend
                 ? '必须弃掉1张手牌后再防御'
             : s.pendingHypothermiaDiscard
@@ -142,8 +145,12 @@ _renderControls() {
                     ? '可选择1张牌弃掉，也可取消'
                     : '可同时选择多张牌弃掉';
         html += `<span class="ctrl-hint">${discardHint}</span>`;
-        html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!hasDiscardCards ? 'disabled' : ''}>确认弃牌 (${(s.selectedCards || []).length})</button>`;
-        if (!s.forcedDiscard && !s.pendingVixrapsPassive && !s.pendingDiscardBeforeDefend && !s.pendingHypothermiaDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
+        // pendingHandDiscard: HandDiscardPicker owns confirm/cancel buttons.
+        if (!handPending) {
+            html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!hasDiscardCards ? 'disabled' : ''}>确认弃牌 (${(s.selectedCards || []).length})</button>`;
+            const canCancelDiscard = !s.forcedDiscard && !s.pendingVixrapsPassive && !s.pendingDiscardBeforeDefend && !s.pendingHypothermiaDiscard;
+            if (canCancelDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
+        }
     } else if (phase === 'OPPONENT_CARD_CHOICE' && canAct && s.isAdventure) {
         const targetKey = s.opponentHandTarget || (s.is1v2 ? (s.attackTarget || 'ai') : 'ai');
         const target = s[targetKey];
@@ -467,10 +474,17 @@ _getAvailableAttackMods(s) {
     const consumables = (advEngine.snapshot().consumables) || [];
     const mod = state.pendingAttackMod || {};
     const defensible = !mod.skip && !mod.unblock;
+    const dmg = state.pendingAttack && state.pendingAttack.damage != null ? Number(state.pendingAttack.damage) : 0;
     const attackMods = [];
     consumables.forEach((item, i) => {
         const def = window.AdventureRegistry.getItem(item.name);
         if (!def || def.combatUse !== 'attackMod') return;
+        if (def.attackModRecycle) {
+            if (!mod.card || mod.card.borrowedMonster) return;
+            attackMods.push({ index: i, item, def });
+            return;
+        }
+        if (dmg <= 0) return;
         if (def.attackModUnblock && !defensible) return;
         attackMods.push({ index: i, item, def });
     });
@@ -521,7 +535,8 @@ _confirmAttackMod() {
             await this._apiAction('resolveAttackModChoice', {
                 bonus: am.def.attackModBonus || 0,
                 unblock: !!am.def.attackModUnblock,
-                evilRoulette: !!am.def.attackModEvilRoulette
+                evilRoulette: !!am.def.attackModEvilRoulette,
+                recycle: !!am.def.attackModRecycle
             });
         } finally {
             this._attackModPromptOpen = false;

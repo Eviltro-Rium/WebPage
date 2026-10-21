@@ -20,17 +20,40 @@
   register('crystalBall', (eng, def, ctx) => {
     const pile = eng.s.playerPile;
     if (!pile) return { ok: false, message: '牌库尚未初始化' };
-    const count = Math.min(3, pile.deck.length);
-    if (!count) return { ok: false, message: '牌库为空' };
-    const cards = pile.deck.slice(pile.deck.length - count).reverse();
-    const order = Array.isArray(ctx.reorderOrder) ? ctx.reorderOrder.map(Number) : null;
-    if (!order) return { ok: false, needsChoice: true, crystalBallCards: cards, message: '请选择水晶球查看的牌的顺序' };
+    // One-shot peek: first open stashes cards and consumes the item (via consumeNow).
+    let order = Array.isArray(ctx.reorderOrder) ? ctx.reorderOrder.map(Number) : null;
+    if (ctx.cancel && eng.s.pendingCrystalBall) {
+      order = eng.s.pendingCrystalBall.cards.map((_, i) => i);
+    }
+    if (!order) {
+      if (eng.s.pendingCrystalBall && eng.s.pendingCrystalBall.cards) {
+        return {
+          ok: false, needsChoice: true, pending: true,
+          crystalBallCards: eng.s.pendingCrystalBall.cards,
+          message: '请选择水晶球查看的牌的顺序'
+        };
+      }
+      const count = Math.min(3, pile.deck.length);
+      if (!count) return { ok: false, message: '牌库为空' };
+      const cards = pile.deck.slice(pile.deck.length - count).reverse();
+      eng.s.pendingCrystalBall = { cards: JSON.parse(JSON.stringify(cards)) };
+      return {
+        ok: false, needsChoice: true, pending: true, consumeNow: true,
+        crystalBallCards: cards,
+        message: '请选择水晶球查看的牌的顺序'
+      };
+    }
+    const cards = (eng.s.pendingCrystalBall && eng.s.pendingCrystalBall.cards)
+      ? eng.s.pendingCrystalBall.cards
+      : pile.deck.slice(pile.deck.length - Math.min(3, pile.deck.length)).reverse();
+    const count = cards.length;
     if (order.length !== count || new Set(order).size !== count || order.some(i => i < 0 || i >= count)) {
       return { ok: false, message: '水晶球顺序无效' };
     }
     pile.deck.splice(pile.deck.length - count, count);
     const arranged = order.map(i => cards[i]);
     for (let i = arranged.length - 1; i >= 0; i--) pile.deck.push(arranged[i]);
+    eng.s.pendingCrystalBall = null;
     const drawn = pile.draw(1);
     return {
       ok: true,

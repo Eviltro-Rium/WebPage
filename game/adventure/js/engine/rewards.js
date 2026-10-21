@@ -34,10 +34,13 @@
       this.emit('basicReward', '战斗基础奖励', { basic });
     },
     _rollBasicCombatReward() {
-      // 无×1，5–10金币各×1，道具×1权重3，道具×2权重2 → 合计 12
+      // 流浪商人×1，5–10金币各×1，道具×1权重3，道具×2权重2 → 合计 12
       const total = 12;
       let r = random() * total;
-      if (r < 1) return { kind: 'none' };
+      if (r < 1) {
+        const acc = this._rollAccessoryDrop();
+        return acc ? { kind: 'merchant', accessory: acc, sold: false } : { kind: 'none' };
+      }
       r -= 1;
       for (let gold = 5; gold <= 10; gold++) {
         if (r < 1) return { kind: 'gold', gold };
@@ -54,6 +57,49 @@
       if (a) items.push(a);
       if (b) items.push(b);
       return { kind: 'items', items };
+    },
+    _merchantPrice() {
+      return this._applyShopDiscount(SHOP_ACCESSORY_PRICE);
+    },
+    /** 流浪商人：基础奖励阶段购买待售配饰（价=商店配饰价，优惠券减半） */
+    buyMerchantAccessory() {
+      const pending = this.s && this.s.pendingCombatReward;
+      const room = this.currentRoom();
+      let offer = null;
+      let fromStash = false;
+      if (this.s && this.s.phase === Phase.COMBAT_SETTLE && pending && pending.stage === 'basic' && !pending.applied) {
+        offer = pending.basic;
+      } else if (this.s && this.s.phase === Phase.REWARD && room && room.stashedLoot && room.stashedLoot.kind === 'merchant') {
+        offer = room.stashedLoot; // 回房：商人留在 rooms[].stashedLoot
+        fromStash = true;
+      }
+      if (!offer || offer.kind !== 'merchant') return { ok: false, message: '当前没有流浪商人' };
+      if (offer.sold) return { ok: false, reason: 'sold', message: '已购买' };
+      const itemName = offer.accessory;
+      const price = this._merchantPrice();
+      const check = this._canAddItem(itemName);
+      if (!check.ok) {
+        this.emit('buyFail', check.message, { itemName, reason: check.reason, source: 'merchant' });
+        return { ok: false, reason: check.reason, message: check.message };
+      }
+      if (!this.s.currency.spendGold(price)) {
+        this.emit('buyFail', '金币不足', { itemName, price, gold: this.s.currency.gold, source: 'merchant' });
+        return { ok: false, reason: 'gold', message: '金币不足（需要' + price + '）' };
+      }
+      if (!this.addItem(itemName)) {
+        this.s.currency.addGold(price);
+        return { ok: false, message: '无法获得配饰' };
+      }
+      offer.sold = true;
+      if (fromStash) {
+        this._clearStashedLoot(room);
+        room.visited = true;
+        this.s.phase = Phase.MAP;
+      }
+      const def = window.AdventureRegistry.getItem(itemName);
+      this._log('流浪商人：购买配饰 ' + (def ? def.displayName : itemName) + '，花费 ' + price + ' 金币');
+      this.emit('buy', '购买成功', { itemName, kind: 'accessory', price, source: 'merchant', gold: this.s.currency.gold });
+      return { ok: true, price };
     },
     _beginBossReward(room) {
       // Boss loot is already rolled three times in the battle engine and added to the hand.
@@ -96,6 +142,10 @@
         const def = window.AdventureRegistry.getItem(name);
         return '配饰：' + (def ? def.displayName : name);
       }
+      if (loot.kind === 'merchant') {
+        const def = window.AdventureRegistry.getItem(loot.accessory);
+        return '流浪商人：' + (def ? def.displayName : loot.accessory) + '（' + this._merchantPrice() + ' 金币）' + (loot.sold ? '·已购' : '');
+      }
       if (loot.kind === 'beast') {
         return '兽元：' + (window.AdventureCurrency.BEAST_LABEL[loot.beastType] || loot.beastType) + ' ×1';
       }
@@ -103,6 +153,7 @@
     },
     _applyBasicLoot(loot) {
       if (!loot || loot.kind === 'none') return { ok: true, empty: true };
+      if (loot.kind === 'merchant') return { ok: true, empty: true }; // 购买走 buyMerchantAccessory；领取=离开商人
       if (loot.kind === 'gold') {
         this.s.currency.addGold(loot.gold);
         return { ok: true };
@@ -139,7 +190,7 @@
     },
     _stashBasicLoot(room, loot) {
       if (!room) return;
-      if (!loot || loot.kind === 'none') {
+      if (!loot || loot.kind === 'none' || (loot.kind === 'merchant' && loot.sold)) {
         room.stashedLoot = null;
         room.rewardClaimed = true;
         return;
@@ -241,7 +292,9 @@
           return false;
         }
         this._lastRewardError = null;
-        this._clearStashedLoot(room);
+        if (pending.basic && pending.basic.kind === 'merchant' && !pending.basic.sold) {
+          this._stashBasicLoot(room, pending.basic);
+        } else this._clearStashedLoot(room);
         pending.applied = true;
         this._log('领取基础奖励：' + this._basicLootText(pending.basic));
         this.emit('reward', '领取战斗基础奖励', { basic: pending.basic });
@@ -391,7 +444,7 @@
         return true;
       }
 
-      const beast = window.AdventureCurrency.rollBeastReward();
+      const beast = this._applyMagnetBeastReward(window.AdventureCurrency.rollBeastReward());
       if (beast.auto) {
         this.s.pendingCombatReward = { stage: 'beast', basic: null, beast, applied: true };
         this.s.beastReward = null;
@@ -409,12 +462,12 @@
       const offeredText = beast.offeredTypes
         ? beast.offeredTypes.map(t => window.AdventureCurrency.BEAST_LABEL[t] + '×2').join('、')
         : this._tokenText(beast.offered);
-      this._log('兽元结算（情况' + (beast.scenario + 1) + '）：可选 ' + offeredText + '，请选2个');
+      this._log('兽元结算（情况' + (beast.scenario + 1) + '）：可选 ' + offeredText + '，请选' + beast.pickCount + '个');
       this.emit('beastReward', '选择兽元', {
         scenario: beast.scenario,
         offered: beast.offered,
         offeredTypes: beast.offeredTypes,
-        pickCount: 2
+        pickCount: beast.pickCount
       });
       return true;
     },
@@ -505,7 +558,7 @@
       return true;
     },
     _startBeastTokenReward(room) {
-      const scenario = window.AdventureCurrency.rollBeastReward();
+      const scenario = this._applyMagnetBeastReward(window.AdventureCurrency.rollBeastReward());
       this.s.beastReward = scenario;
       this.s.beastSelection = [];
 
@@ -520,9 +573,24 @@
         const offeredText = scenario.offeredTypes
           ? scenario.offeredTypes.map(t => window.AdventureCurrency.BEAST_LABEL[t] + '×2').join('、')
           : this._tokenText(scenario.offered);
-        this._log('兽元奖励（情况' + (scenario.scenario + 1) + '）：可选 ' + offeredText + '，请选2个');
-        this.emit('beastReward', '选择兽元', { scenario: scenario.scenario, offered: scenario.offered, offeredTypes: scenario.offeredTypes, pickCount: 2 });
+        this._log('兽元奖励（情况' + (scenario.scenario + 1) + '）：可选 ' + offeredText + '，请选' + scenario.pickCount + '个');
+        this.emit('beastReward', '选择兽元', { scenario: scenario.scenario, offered: scenario.offered, offeredTypes: scenario.offeredTypes, pickCount: scenario.pickCount });
       }
+    },
+    _applyMagnetBeastReward(scenario) {
+      const offered = scenario && scenario.offered;
+      const offeredTypes = offered
+        ? Object.keys(offered).filter(type => offered[type] > 0)
+        : [];
+      const fourDistinctTokens = offeredTypes.length === 4 &&
+        offeredTypes.every(type => offered[type] === 1);
+      const room = typeof this.currentRoom === 'function' ? this.currentRoom() : null;
+      const isNormalRoom = room && room.type === window.RoomType.NORMAL;
+      if (isNormalRoom && fourDistinctTokens &&
+          typeof this.hasAccessory === 'function' && this.hasAccessory('Magnet')) {
+        scenario.pickCount = Math.min(offeredTypes.length, (scenario.pickCount || 2) + 1);
+      }
+      return scenario;
     },
     _checkBeastOverflow(room) {
       const overflow = this.s.currency.overflowAfter(0);
@@ -673,6 +741,11 @@
 
       if (room.stashedLoot) {
         const loot = room.stashedLoot;
+        if (loot.kind === 'merchant') {
+          this._lastRewardError = { reason: 'merchant', message: '请与流浪商人交易，商品不会直接领取' };
+          this.s.phase = Phase.REWARD;
+          return null;
+        }
         const result = this._applyBasicLoot(loot);
         if (!result.ok) {
           this._lastRewardError = { reason: result.reason || 'full', message: result.message || '道具槽已满，无法领取留在房间的道具' };

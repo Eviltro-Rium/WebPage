@@ -65,10 +65,12 @@ test('DesertCamel loot: 1-2 sandblind, 3-4 thorns', () => {
     assert.equal(result.drops.length, 1);
     assert.equal(result.drops[0], 'ThornsTrophy');
   }
-  for (const roll of [5, 6, 7, 8, 9, 10, 11, 12]) {
+  for (const roll of [5, 6, 7, 8, 9, 10]) {
     const result = AdventureLoot.rollMonsterDrop('desert', 'DesertCamel', () => (roll - 1) / 12);
     assert.equal(result.drops.length, 0);
   }
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertCamel', null, 11).drops), ['SmallPotionTrophy']);
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertCamel', null, 12).drops), ['PurifyWaterTrophy']);
 });
 
 test('DesertCamel attack hooks', () => {

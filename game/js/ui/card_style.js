@@ -8,7 +8,7 @@
     BLUE:   { fill: '#2563EB', dark: '#1D4ED8', soft: '#DBEAFE', ink: '#1E3A8A' },
     GREEN:  { fill: '#16A34A', dark: '#15803D', soft: '#DCFCE7', ink: '#14532D' },
     BLACK:  { fill: '#2A2D34', dark: '#181A1F', soft: '#E7E9ED', ink: '#F8FAFC' },
-    WHITE:  { fill: '#F0EDE5', dark: '#D4CFC4', soft: '#FCFBF7', ink: '#34373D' }
+    WHITE:  { fill: '#F5F0DF', dark: '#DFD3B5', soft: '#FFFCF2', ink: '#403A2E' }
   };
 
   const COLOR_SHORT = { RED: '红', YELLOW: '黄', BLUE: '蓝', GREEN: '绿' };
@@ -27,32 +27,6 @@
     wild:         { label: 'WILD', aria: '指定颜色', fallback: '◆' },
     trophyWhite:  { label: 'BURN TROPHY', aria: '灼伤战利白卡', fallback: '♨' }
   };
-  const TROPHY_LABELS = {
-    BurnTrophy: 'BURN TROPHY',
-    PiercingTrophy: 'BLEED TROPHY',
-    FreezeTrophy: 'FREEZE TROPHY',
-    IceSealTrophy: 'ICE SEAL TROPHY',
-    HypothermiaTrophy: 'HYPOTHERMIA TROPHY',
-    RussianRouletteTrophy: 'RUSSIAN ROULETTE',
-    FlyTrophy: 'FLY TROPHY',
-    CritTrophy: 'CRIT TROPHY',
-    MagmaVeinTrophy: 'MAGMA VEIN',
-    DivingTrophy: 'DIVING TROPHY',
-    ScorchTrophy: 'SCORCH TROPHY',
-    LushTrophy: 'LUSH TROPHY',
-    PoisonTrophy: 'POISON TROPHY',
-    ParasiteTrophy: 'PARASITE TROPHY',
-    ThornsTrophy: 'THORNS TROPHY',
-    SandblindTrophy: 'SANDBLIND TROPHY',
-    QuicksandTrophy: 'QUICKSAND TROPHY',
-    TimeBombTrophy: 'TIME BOMB',
-    GuardTrophy: 'GUARD TROPHY',
-    DisarmTrophy: 'DISARM TROPHY',
-    ZeroTrophy: 'ZERO TROPHY',
-    SmallPotionTrophy: 'SMALL POTION',
-    PurifyWaterTrophy: 'PURIFY WATER'
-  };
-
   const ASSET_ROOT = (() => {
     if (typeof document === 'undefined' || !document.currentScript || !document.currentScript.src) return '';
     return new URL('../../', document.currentScript.src).href;
@@ -95,8 +69,9 @@
     trophy_GuardTrophy: cardAssetUrl('icons/buff_icons/guard.webp'),
     trophy_DisarmTrophy: cardAssetUrl('icons/card_icons/disarm.webp'),
     trophy_ZeroTrophy: cardAssetUrl('icons/card_icons/zero.webp'),
-    trophy_SmallPotionTrophy: cardAssetUrl('icons/items_icons/small_potion.webp'),
-    trophy_PurifyWaterTrophy: cardAssetUrl('icons/items_icons/purify_water.webp')
+    trophy_RiotTrophy: cardAssetUrl('icons/card_icons/riot.png'),
+    trophy_SmallPotionTrophy: cardAssetUrl('icons/buff_icons/small_potion.webp'),
+    trophy_PurifyWaterTrophy: cardAssetUrl('icons/buff_icons/purify_water.webp')
   };
 
   const faceCache = new Map(), backCache = new Map();
@@ -190,6 +165,61 @@
       || !!(card.npcCard || card.borrowedMonster || card.source === 'npc');
   }
 
+  function isWhiteFace(card) {
+    return !!(card && (card.isWhite || card.color === 'WHITE' || card.trophyWhite));
+  }
+
+  function trophyKind(card) {
+    if (!card.trophyWhite) return '';
+    const def = window.AdventureRegistry && card.trophyName
+      ? window.AdventureRegistry.getItem(card.trophyName) : null;
+    const kind = def ? def.trophyKind : card.trophyKind;
+    return ['drop', 'forge', 'both'].includes(kind) ? kind : '';
+  }
+
+  function drawTrophyBadge(g, w, kind) {
+    const size = Math.max(9, w * 0.18);
+    const inset = Math.max(3, w * 0.055);
+    const x = kind === 'drop' ? inset : w - inset - size;
+    const y = inset;
+    const cx = x + size / 2;
+    const px = n => x + size * n;
+    const py = n => y + size * n;
+    g.save();
+    g.fillStyle = kind === 'drop' ? '#0F766E' : '#B45309';
+    roundRect(g, x, y, size, size, size * 0.48);
+    g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.85)';
+    g.lineWidth = Math.max(0.7, size * 0.05);
+    g.stroke();
+    g.fillStyle = '#FFFFFF';
+    g.strokeStyle = '#FFFFFF';
+    g.lineWidth = Math.max(1.15, size * 0.11);
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    if (kind === 'drop') {
+      // Solid download mark: short stem plus a filled chevron.
+      const stemW = Math.max(1.4, size * 0.16);
+      g.fillRect(cx - stemW / 2, y + size * 0.2, stemW, size * 0.34);
+      g.beginPath();
+      g.moveTo(cx, y + size * 0.8);
+      g.lineTo(cx - size * 0.28, y + size * 0.5);
+      g.lineTo(cx + size * 0.28, y + size * 0.5);
+      g.closePath();
+      g.fill();
+    } else {
+      g.beginPath();
+      g.moveTo(px(0.51), py(0.43)); g.lineTo(px(0.28), py(0.76));
+      g.stroke();
+      g.beginPath();
+      g.moveTo(px(0.42), py(0.2)); g.lineTo(px(0.79), py(0.45));
+      g.lineTo(px(0.68), py(0.61)); g.lineTo(px(0.31), py(0.36));
+      g.closePath();
+      g.fill();
+    }
+    g.restore();
+  }
+
   function cardDescription(card, opts) {
     const color = { RED: '红色', YELLOW: '黄色', BLUE: '蓝色', GREEN: '绿色', BLACK: '黑色', WHITE: '白色' }[card.color] || '';
     const trophy = card.trophyWhite && typeof window !== 'undefined' && window.AdventureRegistry && card.trophyName
@@ -197,18 +227,21 @@
     const content = card.isNumberCard ? `${card.value}点数字牌` : (trophy ? trophy.displayName : ITEM_META[itemKind(card)].aria + '牌');
     const chosen = card.chosenColor && COLOR_SHORT[card.chosenColor] ? `，指定${COLOR_SHORT[card.chosenColor]}色` : '';
     const npc = isNpcWhiteCard(card, opts) ? '（怪物）' : '';
-    return color + content + chosen + npc;
+    const source = { drop: '，获取途径：怪物掉落', forge: '，获取途径：铁匠锻造', both: '，获取途径：怪物掉落、铁匠锻造' }[trophyKind(card)] || '';
+    return color + content + chosen + npc + source;
   }
 
   function renderCard(card, w, h, selected, opts) {
     card = normalizeCard(card);
-    const label=cardDescription(card,opts), cacheKey=[w,h,card.color,card.value,card.chosenColor||'',card.isBlack,card.isWhite,card.isNumberCard,itemKind(card),card.trophyName||'',isNpcWhiteCard(card,opts),iconRevision].join('|');
-    const hit=cached(faceCache,cacheKey,selected,label);if(hit)return hit;
+    const sourceKind = trophyKind(card);
+    const label=cardDescription(card,opts), cacheKey=[w,h,card.color,card.value,card.chosenColor||'',card.isBlack,card.isWhite,card.isNumberCard,itemKind(card),card.trophyName||'',sourceKind,isNpcWhiteCard(card,opts),iconRevision].join('|');
+    const hit=cached(faceCache,cacheKey,selected,label);if(hit){if(sourceKind)hit.setAttribute('title',label);return hit;}
     const c = document.createElement('canvas');
     c.width = w; c.height = h;
     c.className = 'card-canvas' + (selected ? ' selected' : '');
     c.setAttribute('role', 'img');
     c.setAttribute('aria-label', cardDescription(card, opts));
+    if (sourceKind) c.setAttribute('title', label);
     if (selected) c.setAttribute('aria-selected', 'true');
     const g = c.getContext('2d');
     g.imageSmoothingEnabled = true;
@@ -216,9 +249,9 @@
     const r = Math.min(CARD_RADIUS, w * 0.16);
     const npcWhite = isNpcWhiteCard(card, opts);
     const col = CARD_COLORS[card.color] || CARD_COLORS.BLACK;
-    const hasChosen = !!(card.chosenColor && (card.isBlack || card.isWhite));
+    const hasChosen = !!(card.chosenColor && (card.isBlack || isWhiteFace(card)));
     const chosenCol = hasChosen ? CARD_COLORS[card.chosenColor] : null;
-    const surfaceCol = col;
+    const surfaceCol = isWhiteFace(card) ? CARD_COLORS.WHITE : col;
     const isBlack = card.color === 'BLACK' || card.isBlack;
     const isLight = card.color === 'WHITE' || card.isWhite || card.color === 'YELLOW';
     const isSurfaceLight = isLight;
@@ -312,11 +345,14 @@
     g.lineWidth = 1;
     roundRect(g, 3, 3, w - 6, h - 6, Math.max(4, r - 3)); g.stroke();
 
-    // A restrained gold rim distinguishes reusable trophy-white cards from
-    // ordinary white/item cards without changing the card's color treatment.
+    // Fine metallic frame; source identity remains in the two top corners.
     if (card.trophyWhite) {
-      g.strokeStyle = '#D4A72C';
-      g.lineWidth = 2;
+      const gold = g.createLinearGradient(0, 0, w, h);
+      gold.addColorStop(0, '#F4DF9A');
+      gold.addColorStop(0.45, '#A87724');
+      gold.addColorStop(1, '#D7B76C');
+      g.strokeStyle = gold;
+      g.lineWidth = Math.max(1.3, w * 0.022);
       roundRect(g, 2, 2, w - 4, h - 4, Math.max(4, r - 2));
       g.stroke();
     }
@@ -341,14 +377,30 @@
       ovalGrad.addColorStop(0, lighten(chosenCol.fill, 12));
       ovalGrad.addColorStop(1, chosenCol.dark);
       g.fillStyle = ovalGrad;
+    } else if (isBlack) {
+      g.fillStyle = 'rgba(255,255,255,0.10)';
+    } else if (isWhiteFace(card)) {
+      g.save();
+      g.globalCompositeOperation = 'destination-out';
+      g.fillStyle = 'rgba(0,0,0,0.62)';
+      g.beginPath();
+      g.ellipse(centerX, centerY, ovalRX, ovalRY, ovalAngle, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+      g.fillStyle = 'rgba(255,255,255,0.16)';
     } else {
-      g.fillStyle = isBlack ? 'rgba(255,255,255,0.10)' : col.soft;
+      g.fillStyle = col.soft;
     }
     g.beginPath();
     g.ellipse(centerX, centerY, ovalRX, ovalRY, ovalAngle, 0, Math.PI * 2);
     g.fill();
-    g.strokeStyle = isBlack ? 'rgba(255,255,255,0.14)' : 'rgba(30,35,42,0.10)';
-    g.lineWidth = 1;
+    const whiteFace = isWhiteFace(card);
+    g.strokeStyle = isBlack
+      ? 'rgba(255,255,255,0.14)'
+      : whiteFace
+        ? (hasChosen ? chosenCol.fill : 'rgba(255,255,255,0.72)')
+        : 'rgba(30,35,42,0.10)';
+    g.lineWidth = whiteFace && hasChosen ? Math.max(1.4, w * 0.022) : 1;
     g.beginPath();
     g.ellipse(centerX, centerY, ovalRX - 0.5, ovalRY - 0.5, ovalAngle, 0, Math.PI * 2);
     g.stroke();
@@ -371,13 +423,13 @@
       const icon = iconForCard(card);
       const isBwItem = card.isBlack || card.isWhite;
       const iconSize = isBwItem
-        ? Math.min(w * 0.5, ovalRY * 1.26)
+        ? Math.min(w * 0.5, ovalRY * 1.4)
         : Math.min(w * 0.34, ovalRY * 0.95);
       const iconY = centerY - iconSize * (isBwItem ? 0.5 : 0.64);
 
       if (icon && icon.complete && icon.naturalWidth) {
         g.save();
-        g.globalAlpha = isBlack ? 0.92 : 0.84;
+        g.globalAlpha = card.trophyWhite ? 0.94 : isBlack ? 0.92 : 0.84;
         g.drawImage(icon, centerX - iconSize / 2, iconY, iconSize, iconSize);
         g.restore();
       } else {
@@ -387,20 +439,23 @@
         g.fillText(meta.fallback, centerX, centerY - ovalRY * 0.12);
       }
 
-      if (!compact && !isBwItem) {
+      if (!compact && !isBwItem && !card.trophyWhite) {
         g.font = `600 ${Math.max(6, w * 0.09)}px "Inter", "Segoe UI", sans-serif`;
         g.textAlign = 'center'; g.textBaseline = 'bottom';
         g.fillStyle = isBlack ? 'rgba(248,250,252,0.78)' : 'rgba(42,47,55,0.76)';
         const labelY = centerY + ovalRY * 0.72;
-        g.fillText(card.trophyWhite ? (TROPHY_LABELS[card.trophyName] || 'TROPHY WHITE') : meta.label, centerX, labelY);
+        g.fillText(meta.label, centerX, labelY);
       }
 
       const cornerMark = (card.isBlack || card.isWhite) ? '◆' : meta.fallback;
       g.font = `600 ${Math.max(6, w * 0.105)}px "Inter", "Segoe UI Symbol", sans-serif`;
       g.textAlign = 'left'; g.textBaseline = 'top';
       g.fillStyle = isSurfaceLight ? 'rgba(35,39,46,0.76)' : 'rgba(255,255,255,0.84)';
-      g.fillText(cornerMark, RIM + 3, RIM + 3);
+      if (!sourceKind) g.fillText(cornerMark, RIM + 3, RIM + 3);
     }
+
+    if (sourceKind === 'drop' || sourceKind === 'both') drawTrophyBadge(g, w, 'drop');
+    if (sourceKind === 'forge' || sourceKind === 'both') drawTrophyBadge(g, w, 'forge');
 
     remember(faceCache,cacheKey,c);
     return c;
@@ -465,6 +520,7 @@
     get iconRevision() {return iconRevision;},
     normalizeCard,
     isNpcWhiteCard,
+    isWhiteFace,
     renderCard,
     renderCardBack,
     roundRect,

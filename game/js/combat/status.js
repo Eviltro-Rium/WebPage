@@ -40,7 +40,7 @@
             if (isBleed || isPoison || isDrain || isThorns) {
                 const damageKind = isDrain ? kinds.DRAIN : isBleed ? kinds.BLEED : isPoison ? kinds.POISON : (kinds.THORNS || 'thorns');
                 const text = isDrain ? '吸血' : isBleed ? '流血' : isPoison ? '中毒' : '荆棘';
-                engine.emit(eventTypes.HURT || 'hurt', `-${damage}❤️[${text}]`, null, {
+                engine.emit(eventTypes.HURT || 'hurt', `[${text}]🗡️${damage}`, null, {
                     who: target, target, amount: damage, hpBefore, hpAfter: entity.hp, kind: damageKind,
                     damageSource: root.EngineDamage && root.EngineDamage.isBuffDamage(Object.assign({kind}, opts)) ? 'buff' : (opts.damageSource || 'attack'),
                     bleed: isBleed, drain: isDrain, poison: isPoison, thorns: isThorns,
@@ -63,7 +63,7 @@
             this.hurt(engine, entity, count, true, { silent: true });
             if (service) removeStatus(entity, 'bleed', 1); else entity.bleed--;
             const target = targetKey(engine, entity);
-            engine.emit(eventTypes.BLEED_SETTLE || 'bleedSettle', `-${count}❤️[流血]，-1[流血层数]`, null, {
+            engine.emit(eventTypes.BLEED_SETTLE || 'bleedSettle', `[流血]🗡️${count}，层数-1`, null, {
                 who: target, target, amount: count, hpBefore, hpAfter: entity.hp, kind: kinds.BLEED
             });
         },
@@ -77,14 +77,13 @@
                 if (before < 30 || entity.hp < 30) { if (service) setStatus(entity, 'bloodthirst', true); else entity.bloodthirst = true; }
             }
             const target = targetKey(engine, entity);
-            const desc = kind === 'wake'
-                ? `[苏醒]+${actual}❤️`
-                : `+${actual}[${kind === 'drain' ? '吸血' : kind === 'passive' ? '被动' : kind === 'lush' ? '茂盛' : '生命'}]`;
+            const healTag = kind === 'wake' ? '苏醒' : kind === 'drain' ? '吸血' : kind === 'passive' ? '被动' : kind === 'lush' ? '茂盛' : kind === 'rest' ? '休憩' : '';
+            const desc = (healTag ? `[${healTag}]` : '') + `❤️${actual}`;
             engine.emit(eventTypes.HEAL || 'heal', desc, null, { who: target, target, amount: actual, hpBefore: before, hpAfter: entity.hp, kind });
             if (kind !== 'drain' && kind !== 'wake' && engine.name(entity) === 'Serenity' && !entity.bloodthirst && entity.hp >= 30) {
                 const passiveBefore = entity.hp;
                 entity.hp = Math.min(entity.maxHp, entity.hp + 1);
-                if (entity.hp > passiveBefore) engine.emit(eventTypes.HEAL || 'heal', '+1[被动]', null, { who: target, target, amount: entity.hp-passiveBefore, hpBefore: passiveBefore, hpAfter: entity.hp, kind: 'passive' });
+                if (entity.hp > passiveBefore) engine.emit(eventTypes.HEAL || 'heal', '[被动]❤️1', null, { who: target, target, amount: entity.hp-passiveBefore, hpBefore: passiveBefore, hpAfter: entity.hp, kind: 'passive' });
             }
         },
 
@@ -166,12 +165,31 @@
             }
         },
 
+        /** Max successful thorns fires per attack turn (attacker with thorns). */
+        THORNS_TRIGGERS_PER_ATTACK_TURN: 2,
+        _clearThornsTriggersLeft(entity) {
+            if (!entity) return;
+            entity.thornsTriggersLeft = 0;
+        },
+        /** Reset remaining fires when an attack turn starts (only if entity has thorns). */
+        resetThornsTriggersForAttackTurn(entity) {
+            if (!entity) return;
+            if ((entity.thorns || 0) > 0) {
+                entity.thornsTriggersLeft = EngineStatus.THORNS_TRIGGERS_PER_ATTACK_TURN;
+            } else {
+                entity.thornsTriggersLeft = 0;
+            }
+        },
         thorns(engine, entity, amount, opts) {
             if (!entity || amount <= 0) return;
             const before = entity.thorns || 0;
             if (service) addStatus(entity, 'thorns', amount);
             else entity.thorns = Math.min(1, before + amount);
             const added = Math.max(0, (entity.thorns || 0) - before);
+            // Newly gained mid-turn: grant a full remaining budget for this attack turn.
+            if (added > 0 && (before <= 0 || entity.thornsTriggersLeft == null)) {
+                entity.thornsTriggersLeft = EngineStatus.THORNS_TRIGGERS_PER_ATTACK_TURN;
+            }
             if (added > 0 && (!opts || opts.silent !== true)) {
                 const target = targetKey(engine, entity);
                 engine.emit(eventTypes.BUFF || 'buff', `+${added}[荆棘]`, null, {
@@ -181,6 +199,12 @@
         },
         applyAttackSkillThorns(engine, entity) {
             if (!entity || !entity.alive || !(entity.thorns > 0)) return false;
+            // Belt-and-suspenders if gained without going through thorns()/turnStart.
+            if (entity.thornsTriggersLeft == null) {
+                entity.thornsTriggersLeft = EngineStatus.THORNS_TRIGGERS_PER_ATTACK_TURN;
+            }
+            if (entity.thornsTriggersLeft <= 0) return false;
+            entity.thornsTriggersLeft -= 1;
             engine.hurt(entity, 1, 'thorns');
             const who = targetKey(engine, entity);
             const label = who === 'player' ? '玩家' : (entity.name || 'AI');
@@ -200,7 +224,7 @@
                 });
             }
         },
-        /** Returns true when the attack skill misses. Always spends 1 stack when stacks > 0. */
+        /** Returns true when the attack skill misses. Pass spends 1 stack; fail spends 2. */
         resolveSandblindOnAttackSkill(engine, entity) {
             if (!entity || !entity.alive) return false;
             const stacks = Math.max(0, Number(entity.sandblind) || 0);
@@ -211,12 +235,13 @@
             const roll = typeof engine.rollD12 === 'function'
                 ? engine.rollD12('沙盲判定', { who })
                 : 1 + Math.floor(Math.random() * 12);
-            if (service) removeStatus(entity, 'sandblind', 1);
-            else entity.sandblind = Math.max(0, stacks - 1);
-            engine.emit(eventTypes.BUFF || 'buff', '-1[沙盲]', null, {
+            const failed = roll <= threshold;
+            const spent = Math.min(stacks, failed ? 2 : 1);
+            if (service) removeStatus(entity, 'sandblind', spent);
+            else entity.sandblind = Math.max(0, stacks - spent);
+            engine.emit(eventTypes.BUFF || 'buff', `-${spent}[沙盲]`, null, {
                 who, target: who, kind: 'sandblind', stacks: entity.sandblind || 0
             });
-            const failed = roll <= threshold;
             engine.emit(eventTypes.DESC || 'desc',
                 label + (failed
                     ? `[沙盲]判定失败（${roll}≤${threshold}），技能落空，跳过防御`
@@ -243,12 +268,13 @@
             let removed;
             if (service) {
                 removed = service.clearGroup(entity, 'debuff', 'all') || [];
+                if (!(entity.thorns > 0)) entity.thornsTriggersLeft = 0;
             } else {
                 removed = ['burn', 'bleed', 'poison', 'frozen', 'bomb', 'blind', 'iceSeal', 'hypothermia', 'thorns', 'sandblind', 'scorch']
                     .filter(key => entity[key]);
                 entity.burn = 0; entity.bleed = 0; entity.poison = 0;
                 entity.frozen = false; entity.bomb = 0; entity.blind = 0; entity.iceSeal = 0;
-                entity.hypothermia = 0; entity.thorns = 0; entity.sandblind = 0; entity.scorch = false;
+                entity.hypothermia = 0; entity.thorns = 0; entity.thornsTriggersLeft = 0; entity.sandblind = 0; entity.scorch = false;
             }
             EngineStatus._emitGroupClear(engine, entity, removed, 'clearDebuffs', '清除负面状态');
             return removed;
@@ -282,14 +308,18 @@
             if (service) {
                 if (all) {
                     service.clearAll(entity);
+                    entity.thornsTriggersLeft = 0;
                     return;
                 }
-                if (kind && service.clear(entity, kind)) return;
+                if (kind && service.clear(entity, kind)) {
+                    if (kind === 'thorns' || !(entity.thorns > 0)) entity.thornsTriggersLeft = 0;
+                    return;
+                }
             }
             if (all) {
                 entity.burn = 0; entity.bleed = 0; entity.poison = 0; entity.frozen = false;
                 entity.bomb = 0; entity.blind = 0; entity.iceSeal = 0; entity.hypothermia = 0;
-                entity.thorns = 0; entity.sandblind = 0;
+                entity.thorns = 0; entity.thornsTriggersLeft = 0; entity.sandblind = 0;
                 entity.guard = 0; entity.fly = 0; entity.lush = 0; entity.crit = 0; entity.parasite = 0;
                 entity.diving = false;
                 entity.scorch = false;
@@ -300,7 +330,7 @@
             if (kind === 'burn' && entity.burn) entity.burn--;
             else if (kind === 'bleed' && entity.bleed) entity.bleed--;
             else if (kind === 'poison' && entity.poison) entity.poison--;
-            else if (kind === 'thorns') entity.thorns = 0;
+            else if (kind === 'thorns') { entity.thorns = 0; entity.thornsTriggersLeft = 0; }
             else if (kind === 'sandblind' && entity.sandblind) entity.sandblind--;
             else if (kind === 'freeze') entity.frozen = false;
             else if (kind === 'bomb') entity.bomb = 0;

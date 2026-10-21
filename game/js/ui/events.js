@@ -9,16 +9,25 @@
     const EVENT_TYPES = eventNamespace.Types || { HIT: 'hit' };
     const DAMAGE_KINDS = eventNamespace.DamageKinds || { NORMAL: 'normal', BLEED: 'bleed', POISON: 'poison', DRAIN: 'drain' };
 
-    const damageFloat = (amount, suffix = '', custom = '') => {
-        if (!custom) return '-' + amount + '🗡️' + suffix;
-        return custom.includes('🗡️') ? custom : custom.replace(/^-\d+(?:\.\d+)?(?:❤️)?/, '-' + amount + '🗡️');
+    // 扣血/回血飘字统一格式：[效果]🗡️n / [效果]❤️n；普通伤害/恢复不带前缀。
+    const damageFloat = (amount, tag = '', suffix = '') => (tag ? '[' + tag + ']' : '') + '🗡️' + amount + suffix;
+    const HEAL_TAGS = { drain: '吸血', passive: '被动', lush: '茂盛', wake: '苏醒', rest: '休憩' };
+    const healFloat = (evt) => {
+        const amt = Math.max(0, Number(evt && evt.amount) || 0);
+        if (!(amt > 0)) return (evt && evt.desc) || '';
+        const tag = evt.healTag || HEAL_TAGS[evt.kind] || '';
+        return (tag ? '[' + tag + ']' : '') + '❤️' + amt;
     };
+    const scorchKeep = (evt) => !!(evt && (evt.scorch || /炙热\]?不消退/.test(String(evt.desc || ''))));
 
     Object.assign(GameUI.prototype, {
 _handAdditionCount(evt, who) {
     if (!evt) return 0;
     if (evt.type === 'draw' && evt.who === who) return Math.max(0, Number(evt.count) || 1);
-    if (evt.type === 'trophyDrop' && who === 'player' && Array.isArray(evt.drops)) return evt.drops.length;
+    if (evt.type === 'trophyDrop' && who === 'player') {
+        const drops = evt.drops || evt.card && evt.card.drops;
+        return Array.isArray(drops) ? drops.length : 0;
+    }
     return 0;
 },
 _trophyResultText(evt) {
@@ -171,7 +180,8 @@ _resetRevealBeforeDefenseJudgment() {
 },
 
 _animationOrder(events) {
-    const ordered = [...(events || [])];
+    const ordered = (events || []).map(evt => evt.type === 'trophyDrop' && !Array.isArray(evt.drops) && evt.card && Array.isArray(evt.card.drops)
+        ? Object.assign({}, evt.card, evt, { drops: evt.card.drops, card: null }) : evt);
     for (let i = 0; i < ordered.length; i++) {
         const evt = ordered[i];
         if (evt.type !== 'reveal' || !String(evt.desc || '').includes('防御判定')) continue;
@@ -196,9 +206,157 @@ _trophyDisplayName(name) {
     return String(def && def.displayName || name || '战利白卡').replace(/战利白卡$/, '') || '战利白卡';
 },
 
+_showTrophySettlement(evt, landed = false) {
+    if (this._trophyConfirmation) this._trophyConfirmation(false);
+    let overlay = document.getElementById('adv-settle-overlay');
+    const updating = !!overlay;
+    if (!overlay) {
+        this._trophyScrollTop = document.scrollingElement && document.scrollingElement.scrollTop;
+        overlay = document.createElement('div');
+        overlay.id = 'adv-settle-overlay';
+        document.body.appendChild(overlay);
+    }
+    overlay.className = 'game-over-overlay dialog-sheet-overlay trophy-settle-overlay' + (updating ? ' is-updating' : '');
+    overlay.replaceChildren();
+    const sheet = document.createElement('section');
+    sheet.className = 'game-over-box adv-settle-wrapper dialog-bottom-sheet trophy-settle-sheet';
+    sheet.setAttribute('aria-label', '战利品结算');
+    const heading = document.createElement('h2');
+    heading.textContent = '战利品骰子';
+    if (evt.battleContinues) heading.textContent = '击败敌人 · 战利品';
+    const status = document.createElement('p');
+    status.className = 'trophy-settle-status';
+    status.setAttribute('role', 'status');
+    const progress = evt.rollCount > 1 ? '第 ' + evt.rollIndex + ' / ' + evt.rollCount + ' 次 · ' : '';
+    const result = Array.isArray(evt.drops) ? (evt.drops.length ? '获得白卡' : '无掉落') : '等待确认骰面';
+    status.textContent = progress + (landed ? '投出 ' + (evt.roll ?? evt.value) + ' · ' + result : '投掷中…');
+    sheet.append(heading, status);
+    const rules = document.createElement('div');
+    rules.className = 'trophy-settle-rules';
+    const outcomes = global.AdventureLoot && global.AdventureLoot.getDropTable
+        ? global.AdventureLoot.getDropTable(evt.monsterName) : [];
+    const value = Number(evt.roll ?? evt.value);
+    const addRow = (label, drops, hit) => {
+        const row = document.createElement('div');
+        row.className = 'trophy-settle-rule' + (hit ? ' is-hit' : '') + (landed && !hit ? ' is-muted' : '');
+        const condition = document.createElement('span');
+        condition.className = 'trophy-settle-condition';
+        condition.textContent = label + '：';
+        row.appendChild(condition);
+        const cards = document.createElement('div');
+        cards.className = 'trophy-settle-cards';
+        for (const name of drops) {
+            const preview = this._createTrophyFlyCard(name);
+            preview.className = 'trophy-settle-card';
+            preview.dataset.trophyName = name;
+            preview.setAttribute('aria-label', this._trophyDisplayName(name) + '白卡');
+            const caption = preview.querySelector('.trophy-loot-caption');
+            if (caption) caption.remove();
+            cards.appendChild(preview);
+        }
+        if (!drops.length) cards.textContent = '无掉落';
+        row.appendChild(cards);
+        rules.appendChild(row);
+    };
+    for (const outcome of outcomes) {
+        const { first, last, drops } = outcome;
+        addRow(first === last ? String(first) : first + '–' + last, drops, landed && value >= first && value <= last);
+    }
+    // Legacy events or item-granted cards may have no monster rule attached.
+    if (!outcomes.length) addRow(Number.isFinite(value) ? String(value) : '获得', evt.drops || [], landed);
+    sheet.appendChild(rules);
+    const actions = document.createElement('div');
+    actions.className = 'adv-settle-actions trophy-settle-actions';
+    const confirm = document.createElement('button');
+    confirm.type = 'button';
+    confirm.className = 'trophy-settle-confirm';
+    confirm.textContent = '确认';
+    confirm.disabled = true;
+    actions.appendChild(confirm);
+    sheet.appendChild(actions);
+    overlay.appendChild(sheet);
+    return overlay;
+},
+
+_waitForTrophyConfirmation() {
+    const overlay = document.getElementById('adv-settle-overlay');
+    const button = overlay && overlay.querySelector('.trophy-settle-confirm');
+    if (!button) return Promise.resolve(false);
+    return new Promise(resolve => {
+        const finish = confirmed => {
+            if (this._trophyConfirmation !== finish) return;
+            this._trophyConfirmation = null;
+            button.disabled = true;
+            button.onclick = null;
+            resolve(confirmed);
+        };
+        this._trophyConfirmation = finish;
+        button.disabled = false;
+        button.onclick = () => finish(true);
+    });
+},
+
+_clearTrophySettlement() {
+    if (this._trophyConfirmation) this._trophyConfirmation(false);
+    const overlay = document.getElementById('adv-settle-overlay');
+    if (overlay && overlay.classList.contains('trophy-settle-overlay')) overlay.remove();
+},
+
+async _finishTrophySettlement(evt) {
+    const continues = evt.battleContinues != null ? evt.battleContinues : this.state && this.state.phase !== 'GAME_OVER';
+    if (!continues) return;
+    const overlay = document.getElementById('adv-settle-overlay');
+    if (overlay) {
+        overlay.classList.add('is-leaving');
+        const reduce = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!reduce) {
+            const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
+            await (runtime ? runtime.wait(180) : new Promise(resolve => setTimeout(resolve, 180)));
+        }
+    }
+    this._clearTrophySettlement();
+    const reveal = document.getElementById('reveal-cards');
+    if (reveal) {
+        reveal.innerHTML = '<span class="reveal-empty">等待判定</span>';
+        reveal.dataset.cardKey = '';
+    }
+    this._judgmentCards = [];
+    if (document.scrollingElement && Number.isFinite(this._trophyScrollTop)) {
+        document.scrollingElement.scrollTop = this._trophyScrollTop;
+    }
+    this._trophyScrollTop = null;
+},
+
+_queueTrophyHides(names) {
+    if (!this._pendingTrophyHides) this._pendingTrophyHides = [];
+    for (const name of names || []) {
+        if (name) this._pendingTrophyHides.push(String(name));
+    }
+},
+
+_releaseTrophyHides(names) {
+    if (!this._pendingTrophyHides || !this._pendingTrophyHides.length) return;
+    for (const name of names || []) {
+        if (!name) continue;
+        const key = String(name);
+        const idx = this._pendingTrophyHides.lastIndexOf(key);
+        if (idx >= 0) this._pendingTrophyHides.splice(idx, 1);
+    }
+    if (!this._pendingTrophyHides.length) this._pendingTrophyHides = null;
+},
+
+_pendingTrophyHideBag() {
+    const bag = Object.create(null);
+    for (const name of this._pendingTrophyHides || []) {
+        bag[name] = (bag[name] || 0) + 1;
+    }
+    return bag;
+},
+
 _hasPendingLootPresentation() {
     if (this._trophyGainPlaying) return true;
     if (this._lootPresentationActive) return true;
+    if (this._pendingTrophyHides && this._pendingTrophyHides.length) return true;
     const doc = global.document;
     return !!(doc && typeof doc.querySelector === 'function' && doc.querySelector('.trophy-fly-card'));
 },
@@ -228,11 +386,16 @@ _createTrophyFlyCard(name) {
 
 async _playTrophyDropAnimation(names, onArrive) {
     this._trophyGainPlaying = (this._trophyGainPlaying || 0) + 1;
+    const list = (names || []).filter(Boolean);
+    this._queueTrophyHides(list);
+    if (typeof this._renderPlayerHand === 'function') {
+        this._renderPlayerHand({ hideTrailing: typeof this._pendingDrawMask === 'function' ? this._pendingDrawMask('player') : 0 });
+    }
+    const flyNodes = [];
     try {
         const from = document.getElementById('reveal-cards') || document.querySelector('.ai-area') || document.body;
         const to = document.getElementById('player-hand') || document.body;
         const stage = document.getElementById('game-screen') || document.body;
-        if (typeof to.scrollIntoView === 'function') to.scrollIntoView({ block: 'nearest', behavior: 'instant' });
         const source = from.getBoundingClientRect();
         const hand = to.getBoundingClientRect();
         const board = typeof stage.getBoundingClientRect === 'function'
@@ -249,40 +412,40 @@ async _playTrophyDropAnimation(names, onArrive) {
         const cx = board.left + board.width / 2;
         const cy = board.top + Math.max(120, Math.min(board.height * 0.4, vh * 0.38));
         const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        const labels = names.map(name => this._trophyDisplayName(name));
-        this.playFloatingText(labels.length ? '获得[' + labels.join(']、[') + ']' : '获得战利白卡', '#f8e7a8', 'player');
-        if (!reduce && typeof this.burstParticles === 'function') {
-            this.burstParticles(cx, cy, 'rgba(252, 211, 77, 0.9)', 18);
-        }
-        const flights = names.map((name, i) => new Promise(resolve => {
+        const previews = Array.from(document.querySelectorAll('.trophy-settle-rule.is-hit .trophy-settle-card'));
+        const flights = list.map((name, i) => new Promise(resolve => {
             const node = this._createTrophyFlyCard(name);
-            const sx = start.left + start.width / 2 - 40 + (i - (names.length - 1) / 2) * 28;
-            const sy = start.top + start.height / 2 - 57;
-            const mx = cx - 40 - sx;
-            const my = cy - 57 - sy;
-            const ex = hand.left + hand.width / 2 - 40 - sx;
-            const ey = hand.top + hand.height / 2 - 57 - sy;
-            node.style.cssText = 'position:fixed;z-index:10050;left:' + sx + 'px;top:' + sy + 'px;width:80px;pointer-events:none;margin:0;';
+            flyNodes.push(node);
+            const previewIndex = previews.findIndex(el => el.dataset.trophyName === name);
+            const preview = previewIndex >= 0 ? previews.splice(previewIndex, 1)[0] : null;
+            const origin = preview ? preview.getBoundingClientRect() : start;
+            const sx = origin.left + origin.width / 2 - 40 + (preview ? 0 : (i - (list.length - 1) / 2) * 28);
+            const sy = origin.top + origin.height / 2 - 57;
+            const mx = Math.max(12, Math.min((Number(global.innerWidth) || board.width) - 92, cx - 40 + (i - (list.length - 1) / 2) * 96)) - sx;
+            const my = Math.min(cy - 57, sy - 72) - sy;
+            const ex = hand.left + hand.width / 2 - 40 - sx + (i - (list.length - 1) / 2) * 24;
+            const ey = hand.top + Math.min(hand.height * 0.35, 48) - sy;
+            node.style.cssText = 'position:fixed;z-index:10050;left:' + sx + 'px;top:' + sy + 'px;width:80px;pointer-events:none;margin:0;transform-origin:50% 50%;';
             document.body.appendChild(node);
             let settled = false;
             const done = () => {
                 if (settled) return;
                 settled = true;
-                node.remove();
                 resolve();
             };
             if (reduce || !node.animate) { setTimeout(done, 160); return; }
             try {
-                const duration = 980;
-                const delay = i * 120;
+                const duration = 1180;
+                const delay = i * 110;
                 const anim = node.animate([
-                    { transform: 'scale(0.45) rotate(-8deg)', opacity: 0, filter: 'brightness(1.8)' },
-                    { transform: 'translate(' + mx + 'px,' + my + 'px) scale(1.12)', opacity: 1, filter: 'brightness(1.15)', offset: 0.28 },
-                    { transform: 'translate(' + mx + 'px,' + my + 'px) scale(1)', opacity: 1, filter: 'brightness(1)', offset: 0.58 },
-                    { transform: 'translate(' + ex + 'px,' + ey + 'px) scale(0.62)', opacity: 0.78, filter: 'brightness(1.05)' }
-                ], { duration, delay, easing: 'cubic-bezier(.22,.82,.28,1)', fill: 'forwards' });
+                    { transform: 'scale(' + (preview ? '0.8' : '0.4') + ')', opacity: 0, filter: 'brightness(1.35)' },
+                    { transform: 'translate(' + mx + 'px,' + my + 'px) scale(1.12) rotate(-3deg)', opacity: 1, filter: 'brightness(1.1)', offset: 0.28 },
+                    { transform: 'translate(' + mx + 'px,' + my + 'px) scale(1.06)', opacity: 1, filter: 'brightness(1)', offset: 0.56 },
+                    { transform: 'translate(' + (ex * 0.72 + mx * 0.28) + 'px,' + (Math.min(my, ey) - 35) + 'px) scale(0.92) rotate(5deg)', opacity: 1, offset: 0.76 },
+                    { transform: 'translate(' + ex + 'px,' + ey + 'px) scale(0.72)', opacity: 0, filter: 'brightness(1)' }
+                ], { duration, delay, easing: 'cubic-bezier(.2,.85,.25,1)', fill: 'forwards' });
                 let timersAreSync = true;
-                const fallback = setTimeout(() => { if (!timersAreSync) done(); }, duration + delay + 80);
+                const fallback = setTimeout(() => { if (!timersAreSync) done(); }, duration + delay + 100);
                 timersAreSync = false;
                 const finish = () => { clearTimeout(fallback); done(); };
                 anim.onfinish = finish;
@@ -290,20 +453,24 @@ async _playTrophyDropAnimation(names, onArrive) {
             } catch (_) { done(); }
         }));
         await Promise.all(flights);
+        // Reveal the real hand card first, then drop the flight clone so there is no gap.
+        this._releaseTrophyHides(list);
         if (typeof onArrive === 'function') onArrive();
+        for (const node of flyNodes) { try { node.remove(); } catch (_) {} }
+        flyNodes.length = 0;
         if (reduce) return;
         to.classList.remove('trophy-hand-glow'); void to.offsetWidth; to.classList.add('trophy-hand-glow');
-        await new Promise(resolve => setTimeout(resolve, 720));
+        await new Promise(resolve => setTimeout(resolve, 300));
         to.classList.remove('trophy-hand-glow');
     } finally {
+        for (const node of flyNodes) { try { node.remove(); } catch (_) {} }
+        this._releaseTrophyHides(list);
         this._trophyGainPlaying = Math.max(0, (this._trophyGainPlaying || 1) - 1);
     }
 },
 
 async _playEvents(events, fast = false) {
     const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
-    // Loot must remain readable even when an action resumes in fast mode.
-    const waitReadable = ms => runtime ? runtime.wait(ms) : new Promise(resolve => setTimeout(resolve, ms));
     const wait = ms => runtime
         ? runtime.wait((fast || this._onlineAnimationFast) ? Math.max(60, Math.round(ms * 0.22)) : ms)
         : new Promise(resolve => setTimeout(resolve, (fast || this._onlineAnimationFast) ? Math.max(60, Math.round(ms * 0.22)) : ms));
@@ -311,7 +478,7 @@ async _playEvents(events, fast = false) {
     // Older saves omit drops on dice events; pair them with their result without rerolling.
     const lootResults = new Map();
     const lootTrophyByDie = new Map();
-    const flownTrophyIds = new Set();
+    const presentedTrophies = new Set();
     let pendingLootDie = null;
     for (const evt of orderedEvents) {
         if (evt.type === 'diceRoll' && evt.purpose === 'trophyDrop') pendingLootDie = evt;
@@ -368,7 +535,8 @@ async _playEvents(events, fast = false) {
                 // a brief flash of the old cards before the new hand is painted.
                 const playerHand = document.getElementById('player-hand');
                 const aiHand = document.getElementById(evt.target === 'ai2' || evt.who === 'ai2' ? 'ai2-hand' : 'ai-hand');
-                this._renderPlayerHand();
+                const swapMask = typeof this._pendingDrawMask === 'function' ? this._pendingDrawMask('player') : 0;
+                this._renderPlayerHand({ hideTrailing: swapMask });
                 if (this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2();
                 else this._renderAIHand();
                 if (playerHand) playerHand.classList.add('hand-swap-active');
@@ -470,23 +638,29 @@ async _playEvents(events, fast = false) {
             const rollIndex = Math.max(0, Number(evt.rollIndex) || 0);
             const rollLabel = rollCount > 1 && rollIndex > 0 ? ' · 第' + rollIndex + '/' + rollCount + '次' : '';
             const desc = (evt.desc || ('12面骰：' + value)) + rollLabel;
-            this._showZoneDesc('reveal-desc', '12面骰投掷中…' + rollLabel);
+            const pendingControl = !!(evt.awaitControl || !isLoot && this.state && this.state.pendingDiceControl);
+            this._showZoneDesc('reveal-desc', isLoot ? '' : '12面骰投掷中…' + rollLabel);
+            if (isLoot && !pendingControl) this._showTrophySettlement(evt);
+            if (isLoot && pendingControl) this._clearTrophySettlement();
+            // Open remote-dice sheet ASAP; do not wait for the full tumble.
+            if (pendingControl && typeof this._renderDiceControl === 'function') this._renderDiceControl();
             if (typeof this._playD12Animation === 'function') {
-                await this._playD12Animation(value, { desc, who: evt.who, outcome: evt.outcome });
+                await this._playD12Animation(value, { desc, who: evt.who, outcome: evt.outcome, fast: pendingControl, awaitControl: pendingControl });
             } else {
-                await wait(450);
+                await wait(pendingControl ? 80 : 450);
             }
             // Fly can fail and lead to another guard choice. Restore the
             // skill's card reference after the transient die animation.
             if(!isLoot && (this._judgmentCards||[]).length)this._paintJudgmentCards(this._judgmentCards);
+            // A controllable loot die has no final reward yet. Its dice-choice
+            // sheet owns this step; confirm loot only after that choice resolves.
+            if (isLoot && pendingControl) continue;
             if (isLoot) {
                 this._lootPresentationActive = (this._lootPresentationActive || 0) + 1;
                 try {
                     this._judgmentCards = [];
                     const drops = Array.isArray(evt.drops) ? evt.drops : lootResults.get(evt) || (evt.outcome === 'fail' ? [] : undefined);
-                    const result = this._trophyResultText(Object.assign({}, evt, { roll: value, drops }));
-                    this._showZoneDesc('reveal-desc', result + '\n' + (evt.dropSummary || evt.desc || ''));
-                    await waitReadable(1100);
+                    this._showTrophySettlement(Object.assign({}, evt, { roll: value, drops }), true);
                     const dropNames = Array.isArray(drops) ? drops.filter(Boolean) : [];
                     if (dropNames.length) {
                         this._renderPlayerHand({ hideTrailing: drawRemaining.player });
@@ -499,15 +673,17 @@ async _playEvents(events, fast = false) {
                         };
                         try { await this._playTrophyDropAnimation(dropNames, revealArrival); }
                         finally { revealArrival(); }
-                        const paired = lootTrophyByDie.get(evt);
-                        if (paired && Number.isFinite(Number(paired.id))) flownTrophyIds.add(Number(paired.id));
                     }
+                    const paired = lootTrophyByDie.get(evt);
+                    if (paired) presentedTrophies.add(paired);
+                    if (!await this._waitForTrophyConfirmation()) break;
+                    await this._finishTrophySettlement(evt);
                 } finally {
                     this._lootPresentationActive = Math.max(0, (this._lootPresentationActive || 1) - 1);
                 }
             } else {
                 this._showZoneDesc('reveal-desc', desc);
-                await wait(220);
+                await wait(pendingControl ? 40 : 220);
             }
         } else if (evt.type === 'lordDice' && Number.isFinite(Number(evt.roll))) {
             if (typeof this._playDiceAnimation === 'function') {
@@ -562,7 +738,7 @@ async _playEvents(events, fast = false) {
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
             // 普通扣血显示简洁的红色数字；不再复用冗余的“[伤害]”标签。
             if (Number(evt.amount) > 0) {
-                this.playFloatingText(damageFloat(evt.amount, '', evt.floatText), '#ff4444', side);
+                this.playFloatingText(damageFloat(evt.amount), '#ff4444', side);
             }
             this._playHitFeedback(side, evt.amount);
             await wait(400);
@@ -570,7 +746,7 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const amt = Math.max(0, Number(evt.amount) || 0);
             const text = amt > 0
-                ? damageFloat(amt, '[灼伤]，-1[灼伤层数]')
+                ? damageFloat(amt, '灼伤', scorchKeep(evt) ? '（[炙热]不消退）' : '，层数-1')
                 : (evt.desc || '');
             this.playFloatingText(text, '#ff8800', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
@@ -580,7 +756,7 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const amt = Math.max(0, Number(evt.amount) || 0);
             const text = amt > 0
-                ? damageFloat(amt, '[流血]，-1[流血层数]')
+                ? damageFloat(amt, '流血', '，层数-1')
                 : (evt.desc || '');
             this.playFloatingText(text, '#cc2222', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
@@ -590,7 +766,7 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const amt = Math.max(0, Number(evt.amount) || 0);
             const text = amt > 0
-                ? damageFloat(amt, '[中毒]')
+                ? damageFloat(amt, '中毒')
                 : (evt.desc || '');
             this.playFloatingText(text, '#84cc16', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
@@ -600,7 +776,7 @@ async _playEvents(events, fast = false) {
             const side = this._eventTarget(evt);
             const amt = Math.max(0, Number(evt.amount) || 0);
             const text = amt > 0
-                ? damageFloat(amt, '[定时炸弹]')
+                ? damageFloat(amt, '定时炸弹')
                 : (evt.desc || '炸弹爆炸！');
             this.playFloatingText(text, '#ff4444', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
@@ -616,7 +792,7 @@ async _playEvents(events, fast = false) {
             const amt = Math.max(0, Number(evt.amount) || 0);
             if (kind === DAMAGE_KINDS.NORMAL) {
                 if (!evt.suppressFloat && amt > 0) {
-                    this.playFloatingText(damageFloat(amt, '', evt.floatText), '#ff4444', side);
+                    this.playFloatingText(damageFloat(amt), '#ff4444', side);
                 }
             } else {
                 const tag = kind === DAMAGE_KINDS.POISON ? '中毒'
@@ -630,7 +806,7 @@ async _playEvents(events, fast = false) {
                     : '#ff4444';
                 if (!evt.suppressFloat) {
                     const text = (amt > 0 && tag)
-                        ? damageFloat(amt, '[' + tag + ']')
+                        ? damageFloat(amt, tag)
                         : (evt.desc || '');
                     this.playFloatingText(text, color, side);
                 }
@@ -646,7 +822,7 @@ async _playEvents(events, fast = false) {
             const tag = kind === DAMAGE_KINDS.BLEED || kind === 'bleed' ? '流血'
                 : kind === DAMAGE_KINDS.POISON || kind === 'poison' ? '中毒'
                 : '灼伤';
-            const text = amt > 0 ? damageFloat(amt, '[' + tag + ']') : (evt.desc || '');
+            const text = amt > 0 ? damageFloat(amt, tag, tag === '灼伤' && scorchKeep(evt) ? '（[炙热]不消退）' : tag === '中毒' ? '' : '，层数-1') : (evt.desc || '');
             this.playFloatingText(text, color, side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
             if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); }
@@ -695,17 +871,21 @@ async _playEvents(events, fast = false) {
         } else if (evt.type === 'heal') {
             const color = evt.kind === 'drain' ? '#e040fb' : evt.kind === 'passive' ? '#b388ff' : '#44dd44';
             const side = this._eventTarget(evt);
-            this.playFloatingText(evt.desc || '', color, side);
+            this.playFloatingText(healFloat(evt), color, side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
             await wait(400);
         } else if (evt.type === 'gameOver') {
             this.playFloatingText(evt.desc || '游戏结束', '#ffd700', 'player');
             await wait(1500);
         } else if (evt.type === 'trophyDrop' && Array.isArray(evt.drops)) {
-            const result = this._trophyResultText(evt);
-            this._showZoneDesc('reveal-desc', result + (evt.dropSummary ? '\n' + evt.dropSummary : ''));
-            if (flownTrophyIds.has(Number(evt.id))) { await waitReadable(500); continue; }
-            if (!evt.drops.length) { await waitReadable(500); continue; }
+            if (presentedTrophies.has(evt)) continue;
+            this._showZoneDesc('reveal-desc', '');
+            this._showTrophySettlement(evt, true);
+            if (!evt.drops.length) {
+                if (!await this._waitForTrophyConfirmation()) break;
+                await this._finishTrophySettlement(evt);
+                continue;
+            }
             this._lootPresentationActive = (this._lootPresentationActive || 0) + 1;
             this._renderPlayerHand({ hideTrailing: drawRemaining.player });
             let arrived = false;
@@ -715,12 +895,15 @@ async _playEvents(events, fast = false) {
                 drawRemaining.player = Math.max(0, drawRemaining.player - evt.drops.length);
                 this._renderPlayerHand({ hideTrailing: drawRemaining.player });
             };
-            try { await this._playTrophyDropAnimation(evt.drops, revealArrival); }
+            try {
+                await this._playTrophyDropAnimation(evt.drops, revealArrival);
+                if (!await this._waitForTrophyConfirmation()) break;
+                await this._finishTrophySettlement(evt);
+            }
             finally {
                 revealArrival();
                 this._lootPresentationActive = Math.max(0, (this._lootPresentationActive || 1) - 1);
             }
-            await waitReadable(500);
         } else if (evt.type === 'dualDice') {
             if (typeof this._playDualDiceAnimation === 'function') {
                 await this._playDualDiceAnimation(evt.roll, evt.target);
@@ -731,6 +914,9 @@ async _playEvents(events, fast = false) {
             this.showError('动画已跳过，游戏继续');
         }
     } } finally {
+        // Keep the final loot sheet for the controller to turn into rewards.
+        // Mid-battle drops (challenge rooms and items) must release the board.
+        if (!this.state || this.state.phase !== 'GAME_OVER') this._clearTrophySettlement();
         this._onlineAnimationFast = previousOnlineFast;
         this._eventPlaybackDepth = Math.max(0, (this._eventPlaybackDepth || 1) - 1);
     }

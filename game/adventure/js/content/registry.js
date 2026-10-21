@@ -8,8 +8,9 @@ window.AdventureRegistry = {
   _bosses: {},
   _items: {},
 
-  registerMonster(mod) { this._monsters[mod.name] = mod; },
-  registerBoss(mod)    { this._bosses[mod.name] = mod; },
+  // Ordinary monsters and bosses share one white 0 in their NPC deck.
+  registerMonster(mod) { this._monsters[mod.name] = Object.assign({}, mod, { whiteZeros: 1 }); },
+  registerBoss(mod)    { this._bosses[mod.name] = Object.assign({}, mod, { whiteZeros: 1 }); },
   registerItem(mod)    { this._items[mod.name] = mod; },
 
   getMonster(name) { return this._monsters[name] || null; },

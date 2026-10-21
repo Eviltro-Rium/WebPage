@@ -53,7 +53,7 @@ test('sandblind stacks cap at 6 and cleanses by 1 stack', () => {
   assert.equal(eng.s.player.sandblind || 0, 0);
 });
 
-test('sandblind miss skips skill and defense, and always spends 1 stack', () => {
+test('sandblind miss skips skill and defense, and spends 2 stacks', () => {
   const eng = new Engine();
   eng.start('Ryan', 'Saiki');
   eng.later = () => {};
@@ -66,7 +66,7 @@ test('sandblind miss skips skill and defense, and always spends 1 stack', () => 
   eng.s.busy = false;
   eng.s.selectedCard = 0;
   eng.play();
-  assert.equal(eng.s.player.sandblind, 1);
+  assert.equal(eng.s.player.sandblind, 0);
   assert.equal(eng.s.ai.hp, aiHp);
   assert.equal(eng.s.pendingAttack && eng.s.pendingAttack.damage, 0);
   assert.equal(!!eng.s.defenseSkipped, true);
@@ -94,7 +94,7 @@ test('6 stacks of sandblind always fail the D12 check', () => {
   eng.s.player.sandblind = 6;
   eng.rollD12 = () => 12;
   assert.equal(eng._onAttackSkillRelease(eng.s.player), true);
-  assert.equal(eng.s.player.sandblind, 5);
+  assert.equal(eng.s.player.sandblind, 4);
 });
 
 test('item cards in attack phase do not trigger sandblind', () => {
@@ -112,7 +112,7 @@ test('item cards in attack phase do not trigger sandblind', () => {
   assert.equal(eng.s.player.sandblind, 3);
 });
 
-test('AI sandblind miss skips player defense and spends 1 stack', () => {
+test('AI sandblind miss skips player defense and spends 2 stacks', () => {
   const eng = new Engine();
   eng.start('Ryan', 'Saiki');
   eng.later = () => {};
@@ -126,7 +126,7 @@ test('AI sandblind miss skips player defense and spends 1 stack', () => {
   eng.s.aiTurnStarted = false;
   eng.s.aiHasPlayed = false;
   eng.aiTurn();
-  assert.equal(eng.s.ai.sandblind, 2);
+  assert.equal(eng.s.ai.sandblind, 1);
   assert.equal(eng.s.player.hp, playerHp);
   assert.notEqual(eng.s.phase, 'PLAYER_DEFEND');
 });

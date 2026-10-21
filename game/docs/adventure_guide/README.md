@@ -10,6 +10,6 @@
 - [配饰图鉴](accessories.md)
 - [一次性道具图鉴](consumables.md)（含战利白卡）
 - [战利白卡掉落规则](loot.md)
-- [房间奖励机制](rewards.md)
+- [房间类型](rooms.md)（CSV / 进门 / 探索；含规划中新房）
 
 通用规则见上一级：[Buff 图鉴](../buff_guide.md)、[卡牌介绍](../Cards_deck.md)、[小规则汇总](../small_rules.md)。

@@ -56,7 +56,7 @@ test('FrozenOceanOctopus base stats and pool', () => {
   }
 });
 
-test('FrozenOceanOctopus loot: 1-2 diving, 3-4 small potion', () => {
+test('FrozenOceanOctopus loot: 1-2 diving, 3-4 ice seal', () => {
   for (const roll of [1, 2]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenOceanOctopus', () => (roll - 1) / 12);
     assert.equal(result.roll, roll);
@@ -67,18 +67,19 @@ test('FrozenOceanOctopus loot: 1-2 diving, 3-4 small potion', () => {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenOceanOctopus', () => (roll - 1) / 12);
     assert.equal(result.roll, roll);
     assert.equal(result.drops.length, 1);
-    assert.equal(result.drops[0], 'SmallPotionTrophy');
+    assert.equal(result.drops[0], 'IceSealTrophy');
   }
-  for (const roll of [5, 6, 7, 8, 9, 10, 11, 12]) {
+  for (const roll of [5, 6, 7, 8, 9, 10]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenOceanOctopus', () => (roll - 1) / 12);
     assert.equal(result.drops.length, 0);
   }
 });
 
+
 test('FrozenOceanOctopus attack hooks', () => {
   const m = getMonster('FrozenOceanOctopus');
   for (const v of [4, 5, 6]) {
-    assert.equal(m.attackDamage(numCard(v)), 4);
+    assert.equal(m.attackDamage(numCard(v)), 5);
     assert.equal(m.attackOctopusJudge(numCard(v)), false);
     assert.equal(m.attackGainDiving(numCard(v)), true);
   }
@@ -106,7 +107,7 @@ test('FrozenOceanOctopus stage mods', () => {
   const s2 = applyStageMods(m, 2);
   assert.equal(s2.hp, 30);
   const s3 = applyStageMods(m, 3);
-  assert.equal(s3.attackDamage(numCard(5)), 5);
+  assert.equal(s3.attackDamage(numCard(5)), 6);
   assert.equal(s3.attackOctopusJudgeDamage(false), 4);
   assert.equal(s3.attackOctopusJudgeDamage(true), 6);
   const s4 = applyStageMods(m, 4);
@@ -150,10 +151,10 @@ test('FrozenOceanOctopus skill desc', () => {
   assert.ok(atk2.includes('3🗡️'));
   assert.ok(atk2.includes('5🗡️'));
   const atk5 = getAdventureNpcSkillDesc('FrozenOceanOctopus', numCard(5), false, { stage: 1 });
-  assert.ok(atk5.includes('4🗡️'));
+  assert.ok(atk5.includes('5🗡️'));
   assert.ok(atk5.includes('潜水'));
   const atk5s3 = getAdventureNpcSkillDesc('FrozenOceanOctopus', numCard(5), false, { stage: 3 });
-  assert.ok(atk5s3.includes('5🗡️'));
+  assert.ok(atk5s3.includes('6🗡️'));
   const def2 = getAdventureNpcSkillDesc('FrozenOceanOctopus', numCard(2), true, { stage: 1 });
   assert.ok(def2.includes('2'));
   assert.ok(def2.includes('回1❤️'));

@@ -63,6 +63,42 @@ function battle(items=['DiceController'],opponent='CastleWolf') {
 function choose(e,use,value) { return e.dispatch('chooseDiceControl',{use,value}); }
 function itemCount(e) { return e._adventureEngine.s.consumables.filter(x=>x==='DiceController').length; }
 
+test('challenge first-kill loot pauses the survivor turn until acknowledged, including a restored battle',()=>{
+  const originalTimeout=context.setTimeout;
+  const timers=[];
+  context.setTimeout=fn=>{timers.push(fn);return timers.length;};
+  runtime.setRandomSource(()=>.1);
+  try {
+    const e=new context.AdventureBattleEngine();
+    e.startAdventure1v2({player:'Knight',opponent1:'FrozenOceanSnowyOwl',opponent2:'FrozenOceanOctopus',stage:1,discardTop:numCard(2,'BLUE'),
+      playerState:{hp:70,maxHp:80},playerPile:{deck:[],hand:[numCard(2,'BLUE')],discard:[],handLimit:5}});
+    e.events=[];timers.length=0;
+    e.s.ai2.hp=0;e.check();
+    assert.equal(e.s.trophyRolls.length,1);assert.equal(e.s.trophyRolls[0].monsterName,'FrozenOceanOctopus');
+    const loot=e.events.find(evt=>evt.type==='trophyDrop');
+    assert.equal(loot.battleContinues,true);
+    const healIndex=e.events.findIndex(evt=>evt.type==='heal');
+    assert.ok(healIndex>=0&&healIndex<e.events.findIndex(evt=>evt.type==='diceRoll'),'first-kill heal is presented before loot: '+e.events.map(evt=>evt.type).join(','));
+    e.startAITurn();
+    timers.shift()();
+    assert.ok(!e.events.some(evt=>evt.type==='aiPlay'),'survivor cannot play underneath the loot sheet');
+    assert.equal(typeof e._deferredLootTimer,'function');
+    const saved=JSON.parse(JSON.stringify({s:e.s,piles:e.piles,events:e.events,ver:e.ver,tableTopOwner:e.tableTopOwner}));
+    const restored=new context.AdventureBattleEngine();restored.restoreSession(saved);
+    assert.equal(restored.s.trophyRolls.length,1,'restore does not roll loot again');
+    const beforeTimers=timers.length;
+    restored.acknowledgeEvents(loot.id-1);
+    assert.equal(timers.length,beforeTimers,'unconfirmed loot still blocks the resumed timer');
+    restored.acknowledgeEvents(restored.ver);
+    assert.equal(timers.length,beforeTimers+1);
+    timers.pop()();
+    assert.ok(restored.events.some(evt=>evt.type==='aiPlay'&&evt.who==='ai'));
+    assert.equal(restored.s.trophyRolls.length,1);
+    e.acknowledgeEvents(e.ver);
+    assert.equal(e._deferredLootTimer,null,'the live battle also releases its queued continuation');
+  } finally {context.setTimeout=originalTimeout;runtime.resetRandomSource();}
+});
+
 test('DiceController is a 4-gold registered one-shot item, not activated from ordinary item slots',()=>{
   const def=AdventureRegistry.getItem('DiceController');assert.equal(def.price,4);assert.equal(def.kind,'consumable');assert.equal(def.diceOnly,true);
   const e=battle();e.s.phase='PLAYER_PLAY';e.s.busy=false;assert.equal(e._canUseAdventureCombatItemNow(def),false);
@@ -81,6 +117,21 @@ test('keeping a failed fly result costs nothing and restores the retry decision'
   choose(e,false);assert.equal(e.s.pendingDialog,'flyRetry');assert.equal(e.s.phase,'GUARD_CHOICE');assert.equal(itemCount(e),1);assert.equal(randomCalls,1);
   runtime.resetRandomSource();
 });
+test('remote dice rejects choosing the original face and leaves inventory untouched',()=>{
+  runtime.setRandomSource(()=>.05);const e=battle();e.s.ai.alive=false;e.s.ai.hp=0;e.check();
+  assert.equal(e.s.phase,'DICE_CHOICE');
+  const original=e.s.pendingDiceControl.value,hand=e.h.player.length,items=itemCount(e);
+  choose(e,true,original);
+  assert.equal(e.s.phase,'DICE_CHOICE');
+  assert.equal(e.s.pendingDiceControl.value,original);
+  assert.equal(itemCount(e),items);
+  assert.equal(e.h.player.length,hand);
+  choose(e,true,original===1?2:1);
+  assert.notEqual(e.s.phase,'DICE_CHOICE');
+  assert.equal(itemCount(e),items-1);
+  runtime.resetRandomSource();
+});
+
 test('invalid faces do not advance the roll or consume inventory; input is range-checked',()=>{
   runtime.setRandomSource(()=>.9);const e=battle();e.dispatch('chooseFly');
   for(const value of [0,13,1.5,'bad']) {choose(e,true,value);assert.equal(e.s.phase,'DICE_CHOICE');assert.equal(itemCount(e),1);}
@@ -213,20 +264,23 @@ test('Boss three loot rolls support remote dice and page restore without duplica
 });
 
 test('Boss three misses grant nothing; normal monsters still roll only once', () => {
+  // Face 10 stays empty; 11/12 are universal dual-source potions (tested elsewhere).
   for(const [opponent, count] of [['CastleChameleon',3],['CastleWolf',1]]) {
-    const e=battle([],opponent);runtime.setRandomSource(()=>.99);const hand=e.h.player.length;
+    const e=battle([],opponent);runtime.setRandomSource(()=>.75);const hand=e.h.player.length;
     e.s.ai.alive=false;e.s.ai.hp=0;e.check();
     assert.equal(e.s.trophyRolls.length,count);assert.equal(e.s.trophyDrops.length,0);
     assert.equal(e.h.player.length,hand);
+    assert.ok(e.s.trophyRolls.every(r=>r.roll===10));
   }
   runtime.resetRandomSource();
 });
 
 test('Boss can award the same trophy on each of its three rolls', () => {
-  const e=battle([], 'CastleGargoyle');runtime.setRandomSource(()=>0);const hand=e.h.player.length;
+  const e=battle([], 'CastleEagle');runtime.setRandomSource(()=>0);const hand=e.h.player.length;
   e.s.stage=4;e.s.ai.alive=false;e.s.ai.hp=0;e.check();
-  assert.equal(e.s.phase,'GAME_OVER');assert.equal(e.s.trophyRolls.length,3);
-  assert.deepEqual(Array.from(e.s.trophyDrops),['ZeroTrophy','ZeroTrophy','ZeroTrophy']);
+  // battle() starts in GUARD_CHOICE with pending guard; loot still grants 3 identical trophies.
+  assert.equal(e.s.trophyRolls.length,3);
+  assert.deepEqual(Array.from(e.s.trophyDrops),['CritTrophy','CritTrophy','CritTrophy']);
   assert.equal(e.h.player.length,hand+3);
   runtime.resetRandomSource();
 });
@@ -239,5 +293,55 @@ test('loot uses the defeated Boss rule even when a legacy/test map has a differe
   assert.equal(e.h.player.length,before+3);
   const result=e.finishAdventureBattle();
   assert.equal(result.playerPile.hand.filter(c=>c.trophyName==='LushTrophy').length,3);
+  runtime.resetRandomSource();
+});
+
+test('Magician adjusts D12 by +1 and costs 3 HP', () => {
+  const e = battle([], 'CastleWolf');
+  e._adventureEngine.s.accessories = ['Magician'];
+  e.s.accessories = ['Magician'];
+  runtime.setRandomSource(() => 0); // face 1
+  const hand = e.h.player.length;
+  const hpBefore = e.s.player.hp;
+  e.s.ai.alive = false; e.s.ai.hp = 0; e.check();
+  assert.equal(e.s.phase, 'DICE_CHOICE');
+  assert.equal(e.s.pendingDiceControl.mode, 'magician');
+  assert.equal(e.s.pendingDiceControl.value, 1);
+  e.dispatch('chooseDiceControl', { adjust: 1 });
+  assert.ok(!e.s.pendingDiceControl);
+  assert.ok(e._adventureEngine.s.accessories.includes('Magician'));
+  assert.equal(e.s.player.hp, hpBefore - 3);
+  // Wolf threshold 4: face 2 still drops Guard
+  assert.ok(e.s.trophyDrops.includes('GuardTrophy') || e.h.player.length >= hand);
+  runtime.resetRandomSource();
+});
+
+test('Magician cannot adjust when player HP is 3 or less', () => {
+  const e = battle([], 'CastleWolf');
+  e._adventureEngine.s.accessories = ['Magician'];
+  e.s.accessories = ['Magician'];
+  e.s.player.hp = 3;
+  runtime.setRandomSource(() => 0);
+  e.s.ai.alive = false; e.s.ai.hp = 0; e.check();
+  assert.equal(e.s.phase, 'DICE_CHOICE');
+  e.dispatch('chooseDiceControl', { adjust: 1 });
+  assert.equal(e.s.phase, 'DICE_CHOICE');
+  assert.equal(e.s.player.hp, 3);
+  e.dispatch('chooseDiceControl', { adjust: 0 });
+  assert.ok(!e.s.pendingDiceControl);
+  runtime.resetRandomSource();
+});
+
+test('Magician at face 1 cannot go −1', () => {
+  const e = battle([], 'CastleWolf');
+  e._adventureEngine.s.accessories = ['Magician'];
+  e.s.accessories = ['Magician'];
+  runtime.setRandomSource(() => 0);
+  e.s.ai.alive = false; e.s.ai.hp = 0; e.check();
+  assert.equal(e.s.phase, 'DICE_CHOICE');
+  e.dispatch('chooseDiceControl', { adjust: -1 });
+  assert.equal(e.s.phase, 'DICE_CHOICE');
+  e.dispatch('chooseDiceControl', { adjust: 0 });
+  assert.ok(!e.s.pendingDiceControl);
   runtime.resetRandomSource();
 });

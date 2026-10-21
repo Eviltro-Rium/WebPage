@@ -3,7 +3,7 @@
  *
  * 与主引擎的差异：
  *   - 玩家牌库去掉「交换手牌」道具牌（swapHand）。
- *   - NPC（怪物）拥有独立牌库：白色1~3各4张、白色4~6各2张，外加1张紫魔法和1张绿魔法；Boss 另加两张白色0。
+ *   - 普通怪物与 Boss 使用同一牌库：白0一张，白1~3各4张、白4~6各2张、白7两张，紫/绿魔法各一张。
  *   - 弃牌库拆分为不可见的玩家弃牌库与 NPC 弃牌库，互不混淆。
  *   - 弃牌库顶（DiscardTop）始终对应玩家弃牌库中的最后一张牌；它只是牌库数据的便捷视图，不会额外占用一张牌。
  *   - 怪物手牌上限2张且明牌展示；Boss 手牌上限3张。
@@ -44,7 +44,7 @@
       color: 'WHITE',
       trophyWhite: true,
       trophyName: name,
-      trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', IceSealTrophy: 'iceSeal', HypothermiaTrophy: 'hypothermia', RussianRouletteTrophy: 'roulette', FlyTrophy: 'fly', CritTrophy: 'crit', MagmaVeinTrophy: 'magmaVein', DivingTrophy: 'diving', ScorchTrophy: 'scorch', LushTrophy: 'lush', PoisonTrophy: 'poison', ParasiteTrophy: 'parasite', ThornsTrophy: 'thorns', SandblindTrophy: 'sandblind', QuicksandTrophy: 'quicksand', TimeBombTrophy: 'bomb', GuardTrophy: 'guard', DisarmTrophy: 'disarm', PurifyWaterTrophy: 'purify', ZeroTrophy: 'zero', SmallPotionTrophy: 'smallPotion' })[name] || null,
+      trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', IceSealTrophy: 'iceSeal', HypothermiaTrophy: 'hypothermia', RussianRouletteTrophy: 'roulette', FlyTrophy: 'fly', CritTrophy: 'crit', MagmaVeinTrophy: 'magmaVein', DivingTrophy: 'diving', ScorchTrophy: 'scorch', LushTrophy: 'lush', PoisonTrophy: 'poison', ParasiteTrophy: 'parasite', ThornsTrophy: 'thorns', SandblindTrophy: 'sandblind', QuicksandTrophy: 'quicksand', TimeBombTrophy: 'bomb', GuardTrophy: 'guard', DisarmTrophy: 'disarm', PurifyWaterTrophy: 'purify', ZeroTrophy: 'zero', SmallPotionTrophy: 'smallPotion', RiotTrophy: 'riot' })[name] || null,
       chosenColor: null,
       isBlack: false,
       isWhite: true,
@@ -82,11 +82,10 @@
     return shuffle(d);
   }
 
-  function makeNpcDeck(opts = {}) {
+  function makeNpcDeck() {
     const d = [];
     const npc = { npcCard: true };
-    const whiteZeros = Math.max(0, Number(opts.whiteZeros) || 0);
-    for (let i = 0; i < whiteZeros; i++) d.push(num('WHITE', 0, true, npc));
+    d.push(num('WHITE', 0, true, npc));
     for (let v = 1; v <= 3; v++) for (let n = 0; n < 4; n++) d.push(num('WHITE', v, true, npc));
     for (let v = 4; v <= 6; v++) for (let n = 0; n < 2; n++) d.push(num('WHITE', v, true, npc));
     // 白7：轮空牌，无攻防效果；所有怪物/Boss 各 2 张。

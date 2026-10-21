@@ -10,6 +10,11 @@
   const AdvR = window.AdventureRegistry;
   if (!CR || !AR || !AdvR) return;
 
+  function isPassNumber(mod, card) {
+    return !!(card && card.isNumberCard &&
+      (card.value === 7 || (card.value === 0 && !AdvR.getBoss(mod.name))));
+  }
+
   function applyStageMods(mod, stage) {
     if (!mod || !mod.stageMods) return mod;
     let result = mod;
@@ -25,6 +30,40 @@
   function attackDrawCount(result) {
     if (result === true) return 1;
     return Math.max(0, Math.floor(Number(result) || 0));
+  }
+
+  // 统一的 buff 获得入口：寄生走引擎 parasite()，茂盛走 StatusService（上限以 status_registry 为准），
+  // 飘字只显示实际加上的层数（满层时不再假装 +N）。
+  function _statusWho(eng, ent) {
+    if (eng && typeof eng._who === 'function') return eng._who(ent);
+    const s = eng && eng.s;
+    return s && ent === s.player ? 'player' : (s && ent === s.ai2 ? 'ai2' : 'ai');
+  }
+  function _gainLush(eng, ent, amount) {
+    if (!ent || !(amount > 0)) return 0;
+    const before = ent.lush || 0;
+    const service = (window.FurryGame && window.FurryGame.StatusService) || window.StatusService;
+    if (service && typeof service.add === 'function') service.add(ent, 'lush', amount);
+    else ent.lush = Math.min(2, before + amount);
+    const added = Math.max(0, (ent.lush || 0) - before);
+    if (added > 0 && eng && typeof eng.emit === 'function') {
+      const who = _statusWho(eng, ent);
+      eng.emit('buff', '+' + added + '[茂盛]', null, { who, target: who, kind: 'lush', stacks: ent.lush || 0 });
+    }
+    return added;
+  }
+  function _gainParasite(eng, ent, amount) {
+    if (!ent || !(amount > 0)) return 0;
+    const before = ent.parasite || 0;
+    if (eng && typeof eng.parasite === 'function') eng.parasite(ent, amount);
+    else {
+      ent.parasite = Math.min(1, before + amount);
+      if (ent.parasite > before && eng && typeof eng.emit === 'function') {
+        const who = _statusWho(eng, ent);
+        eng.emit('buff', '+1[寄生]', null, { who, target: who, kind: 'parasite', stacks: ent.parasite });
+      }
+    }
+    return Math.max(0, (ent.parasite || 0) - before);
   }
 
   function registerMonsterChar(mod) {
@@ -65,6 +104,7 @@
       damageAtSettlement(eng, v, a, t) {
         const active = mod; // Do not replace the staged definition with the raw registry entry.
         const card = eng.s.atkCard;
+        if (isPassNumber(mod, card)) return 0;
         // Card/dice judgment damage is locked to its revealed result, not rolled again.
         if (!card || typeof active.attackDamage!=='function' ||
             active.attackRevealDraw || active.attackOctopusJudge || active.attackKrakenJudge || active.attackHyenaJudge) return null;
@@ -83,6 +123,7 @@
       },
       damageAfterDefense(v, damage, defender, eng) {
         const active = mod, card = eng.s.defCard;
+        if (isPassNumber(mod, card)) return damage;
         // Recompute arithmetic only: never repeat dice, counters or status gains.
         if (typeof active.defendImmune==='function' && active.defendImmune(card)) return 0;
         if (typeof active.defendSplit==='function' && active.defendSplit(card)) return Math.ceil(damage/2);
@@ -104,8 +145,8 @@
           return { d: 0, skip: false, unblock: false };
         }
 
-        // 白7：轮空，无进攻效果（所有怪物/Boss 通用）
-        if (c && c.isNumberCard && c.value === 7) {
+        // 普通怪物的0/7、Boss的7均为轮空牌。
+        if (isPassNumber(mod, c)) {
           return { d: 0, skip: false, unblock: false };
         }
 
@@ -128,15 +169,11 @@
           const selfLush = typeof mod.attackLush === 'function' ? (Number(mod.attackLush(c)) || 0) : 0;
           const targetLush = Number(mod.attackLushTarget(c)) || 0;
           if (selfLush > 0) {
-            a.lush = Math.min(2, (a.lush || 0) + selfLush);
-            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
-            eng.emit('buff', '+' + selfLush + '[茂盛]', null, { who, kind: 'lush', stacks: a.lush });
+            _gainLush(eng, a, selfLush);
             lushAppliedEarly = true;
           }
           if (targetLush > 0) {
-            t.lush = Math.min(2, (t.lush || 0) + targetLush);
-            const twho = t === eng.s.ai2 ? 'ai2' : (t === eng.s.ai ? 'ai' : 'player');
-            eng.emit('buff', '+' + targetLush + '[茂盛]', null, { who: twho, kind: 'lush', stacks: t.lush });
+            _gainLush(eng, t, targetLush);
             lushAppliedEarly = true;
           }
         }
@@ -381,9 +418,7 @@
         if (typeof mod.attackParasite === 'function') {
           const p = mod.attackParasite(c);
           if (p > 0) {
-            a.parasite = Math.min(1, (a.parasite || 0) + p);
-            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
-            eng.emit('buff', '+' + p + '[寄生]', null, { who, kind: 'parasite', stacks: a.parasite });
+            _gainParasite(eng, a, p);
           }
         }
         if (typeof mod.attackClearPositive === 'function' && mod.attackClearPositive(c)) {
@@ -494,9 +529,7 @@
         if (typeof mod.attackLush === 'function' && !(ctx && ctx._lushAppliedEarly)) {
           const l = mod.attackLush(c);
           if (l > 0) {
-            a.lush = Math.min(2, (a.lush || 0) + l);
-            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
-            eng.emit('buff', '+' + l + '[茂盛]', null, { who, kind: 'lush', stacks: a.lush });
+            _gainLush(eng, a, l);
           }
         }
         // 自伤：调用 attackSelfHurt(card, ctx) 返回自伤数字，bridge 通过 hurt(attacker, n) 应用
@@ -609,8 +642,8 @@
           return { remaining: d, desc: '紫魔法防御：恢复' + magicHp + '生命，清除玩家正面buff' };
         }
 
-        // 白7：轮空，无防御效果（大王花等 canDefendHigh 仍可打出）
-        if (c && c.isNumberCard && c.value === 7) {
+        // 普通怪物的0/7、Boss的7均无防御效果。
+        if (isPassNumber(mod, c)) {
           return { remaining: d, desc: '无防御效果' };
         }
 
@@ -659,7 +692,14 @@
             poison(opponent, poisonDrainConfig.poison);
             const poisonStacks = opponent.poison || 0;
             const drainAmount = poisonStacks + (poisonDrainConfig.drain || 0);
-            if (drainAmount > 0) heal(defender, drainAmount);
+            // 吸取 = 对进攻方造成伤害并按实际扣血回复，走统一吸血方法（与 Knight/Serenity 防御吸血一致）
+            if (drainAmount > 0) {
+              if (eng && typeof eng.drainAttack === 'function') {
+                eng.drainAttack(defender, opponent, drainAmount, { forceDrainAvoidance: true });
+              } else {
+                heal(defender, drainAmount);
+              }
+            }
           }
         };
         const clearSelfDebuffs = typeof mod.defendClearDebuffs === 'function' ? !!mod.defendClearDebuffs(c) : false;
@@ -687,9 +727,12 @@
         const guardAmt = typeof mod.defendGuard === 'function' ? (mod.defendGuard(c) || 0) : 0;
         const applyGuard = () => {
           if (guardAmt > 0) {
-            defender.guard = Math.min(5, (defender.guard || 0) + guardAmt);
-            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
-            eng.emit('buff', '+' + guardAmt + '[守护]', null, { who, kind: 'guard', stacks: defender.guard });
+            if (typeof eng.addGuard === 'function') eng.addGuard(defender, guardAmt);
+            else {
+              defender.guard = Math.min(5, (defender.guard || 0) + guardAmt);
+              const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
+              eng.emit('buff', '+' + guardAmt + '[守护]', null, { who, kind: 'guard', stacks: defender.guard });
+            }
           }
         };
         const guardDesc = guardAmt > 0 ? '，获得' + guardAmt + '层守护' : '';
@@ -701,9 +744,7 @@
             if (eng.s.is1v2 && eng.s.ai2 && eng.s.ai2.alive) targets.push(eng.s.ai2);
             for (const t of targets) {
               if (!t.alive) continue;
-              t.lush = Math.min(2, (t.lush || 0) + allLushAmt);
-              const who = t === eng.s.player ? 'player' : (t === eng.s.ai2 ? 'ai2' : 'ai');
-              eng.emit('buff', '+' + allLushAmt + '[茂盛]', null, { who, kind: 'lush', stacks: t.lush });
+              _gainLush(eng, t, allLushAmt);
             }
           }
         };
@@ -835,9 +876,7 @@
         const lushAmt = typeof mod.defendLush === 'function' ? (mod.defendLush(c) || 0) : 0;
         const applyLush = () => {
           if (lushAmt > 0) {
-            defender.lush = Math.min(2, (defender.lush || 0) + lushAmt);
-            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
-            eng.emit('buff', '+' + lushAmt + '[茂盛]', null, { who, kind: 'lush', stacks: defender.lush });
+            _gainLush(eng, defender, lushAmt);
           }
         };
         const lushDesc = lushAmt > 0 ? '，获得' + lushAmt + '层茂盛' : '';
@@ -845,9 +884,7 @@
         const parasiteAmt = typeof mod.defendParasite === 'function' ? (mod.defendParasite(c) || 0) : 0;
         const applyParasite = () => {
           if (parasiteAmt > 0) {
-            defender.parasite = Math.min(1, (defender.parasite || 0) + parasiteAmt);
-            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
-            eng.emit('buff', '+1[寄生]', null, { who, kind: 'parasite', stacks: defender.parasite });
+            _gainParasite(eng, defender, parasiteAmt);
           }
         };
         const parasiteDesc = parasiteAmt > 0 ? '，获得' + parasiteAmt + '层寄生' : '';
@@ -1024,12 +1061,10 @@
         : '';
     }
     if (opts.stage) mod = applyStageMods(mod, opts.stage);
-    if (typeof mod.skillDescription === 'function') return mod.skillDescription(card, isDefend, opts);
-
-    // 白7：全怪物通用轮空牌
-    if (card.isNumberCard && card.value === 7) {
+    if (isPassNumber(mod, card)) {
       return isDefend ? '无防御效果' : '无进攻效果';
     }
+    if (typeof mod.skillDescription === 'function') return mod.skillDescription(card, isDefend, opts);
 
     if (isDefend) {
     // FrozenOrca defend copy (ocean.md). Attack copy lives in the attack branch below.
@@ -1374,7 +1409,7 @@
         return '抽取玩家牌库1张牌判定：普通颜色造成' + (3 + stageBonus) + '点[伤害]并放回牌库底，黑/白牌造成' + (5 + stageBonus) + '点[伤害]并置入玩家弃牌堆';
       }
       if (v >= 4 && v <= 6) {
-        return '造成' + (4 + stageBonus) + '点[伤害]，获得[潜水]';
+        return '造成' + (5 + stageBonus) + '点[伤害]，获得[潜水]';
       }
       return '无进攻效果';
     }

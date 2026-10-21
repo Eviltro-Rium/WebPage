@@ -2,6 +2,22 @@
  * calculate damage or spend statuses themselves. */
 (function(global){
   const root=global.FurryGame||(global.FurryGame={});
+  function hasRecycleAttackMod(engine){
+    const adv=engine&&engine._adventureEngine;
+    const list=adv&&adv.s&&adv.s.consumables;
+    if(!Array.isArray(list)||!global.AdventureRegistry)return false;
+    return list.some(entry=>{
+      const name=typeof entry==='string'?entry:(entry&&entry.name);
+      const def=name&&global.AdventureRegistry.getItem(name);
+      return def&&def.combatUse==='attackMod'&&def.attackModRecycle;
+    });
+  }
+  function shouldOpenAttackModChoice(engine){
+    const attack=engine.s&&engine.s.pendingAttack;
+    if(!attack||attack.attackModifier||!engine.s.isAdventure)return false;
+    if(attack.damage>0)return true;
+    return hasRecycleAttackMod(engine);
+  }
   function options(engine, owner, damage, unblock, card){
     const actor=engine.s[owner]||{};
     const numeric=(engine.s.atkCard||card||{}).isNumberCard;
@@ -32,7 +48,7 @@
     const pending=engine.s.pendingAttackMod,attack=engine.s.pendingAttack;
     if(!pending||!attack)throw Error('攻击修正上下文已失效');
     pending.buffChoiceDone=true;
-    if(!attack.attackModifier&&engine.s.isAdventure&&attack.damage>0){engine.s.phase='ATTACK_MOD_CHOICE';engine.s.busy=false;return engine.check();}
+    if(!attack.attackModifier&&shouldOpenAttackModChoice(engine)){engine.s.phase='ATTACK_MOD_CHOICE';engine.s.busy=false;return engine.check();}
     return engine.continueAfterAttackMod();
   }
   function begin(engine){
@@ -64,5 +80,5 @@
     if(kind){consume(engine,owner,kind);result.d=engine.s.pendingAttack.damage;result.unblock=engine.s.pendingAttack.unblock;result.aoeDamage=engine.s.pendingAttack.aoeDamage;}
     return result;
   }
-  root.AttackBuffs=Object.freeze({options,consume,begin,resolve,applyAI});
+  root.AttackBuffs=Object.freeze({options,consume,begin,resolve,applyAI,hasRecycleAttackMod,shouldOpenAttackModChoice});
 })(window);

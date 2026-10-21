@@ -33,6 +33,7 @@
     REWARD:      'ADVENTURE_REWARD',
     SHOP:        'ADVENTURE_SHOP',
     BLACKSMITH:  'ADVENTURE_BLACKSMITH',
+    GLITCH:      'ADVENTURE_GLITCH',
     CLEAR:       'ADVENTURE_CLEAR',
     GAME_OVER:   'ADVENTURE_GAME_OVER'
   };
@@ -52,6 +53,7 @@
     ADVENTURE_REWARD:      '领取奖励',
     ADVENTURE_SHOP:        '商店',
     ADVENTURE_BLACKSMITH:  '铁匠铺',
+    ADVENTURE_GLITCH:      '故障房',
     ADVENTURE_CLEAR:       '通关',
     ADVENTURE_GAME_OVER:   '游戏结束'
   };
@@ -139,6 +141,7 @@
         beastReward: null,
         beastSelection: [],
         pendingDiscard: 0,
+        pendingHandDiscard: null,
         pendingItemDiscard: 0,
         itemDiscardReturn: null,
         pendingCombatReward: null,
@@ -152,7 +155,8 @@
         stage: opts.stage || 1,
         scene: opts.scene || 'castle',
         usedScenes: [opts.scene || 'castle'],
-        pendingMapReturnEffects: null
+        pendingMapReturnEffects: null,
+        pendingBeastPayment: null
       };
 
       if (opts.gold) this.s.currency.addGold(opts.gold);
@@ -222,6 +226,7 @@
         beastReward: clone(save.beastReward) || null,
         beastSelection: clone(save.beastSelection) || [],
         pendingDiscard: save.pendingDiscard || 0,
+        pendingHandDiscard: clone(save.pendingHandDiscard) || null,
         pendingItemDiscard: save.pendingItemDiscard || 0,
         itemDiscardReturn: clone(save.itemDiscardReturn) || null,
         pendingCombatReward: clone(save.pendingCombatReward) || null,
@@ -235,7 +240,8 @@
         stage: save.stage || 1,
         scene: save.scene || 'castle',
         usedScenes: Array.from(new Set([...(save.usedScenes || []), save.scene || 'castle'])),
-        pendingMapReturnEffects: clone(save.pendingMapReturnEffects) || null
+        pendingMapReturnEffects: clone(save.pendingMapReturnEffects) || null,
+        pendingBeastPayment: clone(save.pendingBeastPayment) || null
       };
 
       this.s.currency.gold = save.currency.gold || 0;
@@ -270,6 +276,7 @@
           room.beastTokenClaimed = !!d.beastTokenClaimed;
           room.locked = !!d.locked;
           room.stashedLoot = d.stashedLoot ? clone(d.stashedLoot) : null;
+          room.glitchEvent = d.glitchEvent ? clone(d.glitchEvent) : null;
           if (d.monsterName != null) room.monsterName = d.monsterName;
           if (d.bossName != null) room.bossName = d.bossName;
           room.reward = d.reward ? clone(d.reward) : null;
@@ -342,7 +349,7 @@
     explorableRooms() {
       if (!this.s || this.s.activeCombat) return new Set();
       const blocked = [Phase.PLAYER_PLAY, Phase.PLAYER_DEFEND, Phase.NPC_TURN,
-        Phase.BEAST_CHOICE, Phase.BEAST_DISCARD, Phase.ITEM_DISCARD, Phase.COMBAT_SETTLE, Phase.GAME_OVER];
+        Phase.BEAST_CHOICE, Phase.BEAST_DISCARD, Phase.ITEM_DISCARD, Phase.COMBAT_SETTLE, Phase.GLITCH, Phase.GAME_OVER];
       if (blocked.includes(this.s.phase)) return new Set();
       return this.s.map.explorablePositions();
     }
@@ -377,7 +384,7 @@
         ? this.s.combat.enemy2
         : this.s.combat.enemy2 && this.s.combat.enemy2.name)) || null;
       if (room) {
-        if (enemy && (room.type === window.RoomType.NORMAL || room.type === window.RoomType.CHALLENGE)) {
+        if (enemy && (room.type === window.RoomType.NORMAL || room.type === window.RoomType.CHALLENGE || room.type === window.RoomType.GLITCH)) {
           room.monsterName = enemy;
         }
         if (enemy && room.type === window.RoomType.BOSS) room.bossName = enemy;
@@ -420,6 +427,11 @@
         room.monsterName = null;
         room.bossName = null;
         room.cleared = false;
+        if (room.type === window.RoomType.GLITCH && room.glitchEvent) {
+          room.cleared = true;
+          room.glitchEvent.status = 'done';
+          room.glitchEvent.message = '已使用回溯沙漏逃离异常遭遇，本房事件已结束。';
+        }
       }
       if (this.s.playerPile && typeof this.s.playerPile.drawToLimit === 'function') {
         const drawn = this.s.playerPile.drawToLimit();
@@ -436,7 +448,9 @@
       }
       this.s.discardTopOwner = null;
       this.s.phase = Phase.MAP;
-      this._log('回溯沙漏：退出当前房间，下次进入重新抽取怪物');
+      this._log(room && room.type === window.RoomType.GLITCH
+        ? '回溯沙漏：已逃离故障房，本房事件不能再次抽取'
+        : '回溯沙漏：退出当前房间，下次进入重新抽取怪物');
       this.emit('roomRewind', '回溯沙漏：房间遭遇已重置', {
         r: this.s.pos && this.s.pos.r,
         c: this.s.pos && this.s.pos.c,
@@ -445,7 +459,8 @@
       return true;
     }
 
-    enterCurrent() {
+    enterCurrent(opts) {
+      if (this.s.phase === Phase.GLITCH) return { ok: false, message: '请先完成故障房事件' };
       const room = this.currentRoom();
       if (!room || !room.isEnterable()) return {ok:false, message:'无法进入此房间'};
       if (this.s.phase === Phase.MAP && !this.s.activeCombat && !this.canMoveTo(this.s.pos.r, this.s.pos.c)) {
@@ -457,11 +472,12 @@
       const handlers = {
         [window.RoomType.NORMAL]:'_handleNormal', [window.RoomType.BOSS]:'_handleBoss',
         [window.RoomType.ITEM]:'_handleItem', [window.RoomType.SHOP]:'_handleShop',
-        [window.RoomType.BLACKSMITH]:'_handleBlacksmith', [window.RoomType.CHALLENGE]:'_handleChallenge'
+        [window.RoomType.BLACKSMITH]:'_handleBlacksmith', [window.RoomType.CHALLENGE]:'_handleChallenge',
+        [window.RoomType.GLITCH]:'_handleGlitch'
       };
       const handler = handlers[room.type];
       let result;
-      if (handler) result = this[handler](room);
+      if (handler) result = this[handler](room, opts);
       else this.s.phase = Phase.MAP;
       if (!result || result.ok !== false) room.visited = true;
       return result;
@@ -582,9 +598,10 @@
     _handleNormal(room) {
       if (room.cleared) {
         if (room.stashedLoot) {
-          this._log('普通房间已清除，可领取留在房间的基础奖励');
+          const merchant = room.stashedLoot.kind === 'merchant';
+          this._log(merchant ? '流浪商人仍在房间等待交易' : '普通房间已清除，可领取留在房间的基础奖励');
           this.s.phase = Phase.REWARD;
-          this.emit('rewardPending', '可领取保留的奖励', { roomType: room.type, stashed: room.stashedLoot });
+          this.emit('rewardPending', merchant ? '可与流浪商人交易' : '可领取保留的奖励', { roomType: room.type, stashed: room.stashedLoot });
         } else {
           this._log('普通房间已清除且无待领奖励');
           this.s.phase = Phase.MAP;
@@ -664,7 +681,7 @@
       this.emit('combatStart', '挑战房：' + monster1.name + ' + ' + monster2.name, { enemy: monster1.name, enemy2: monster2.name, is1v2: true });
     }
 
-    _handleItem(room) {
+    _handleItem(room, opts) {
       if (!room.doorUnlocked) {
         const cost = Array.isArray(room.doorCost) ? room.doorCost : [];
         if (!cost.length) {
@@ -677,12 +694,22 @@
           this.s.phase = Phase.MAP;
           return { ok: false, message: '兽元不足，需要：' + this._doorCostText(need) };
         }
-        this.s.currency.payBeastCost(need);
+        const payment = opts && opts.beastPayment;
+        const pay = this._applyBeastPayment(need, { kind: 'door' }, payment || null);
+        if (!pay.ok) {
+          this.s.phase = Phase.MAP;
+          if (pay.needBeastChoice) return pay;
+          return { ok: false, message: pay.message || ('兽元不足，需要：' + this._doorCostText(need)) };
+        }
         room.doorUnlocked = true;
         this._log('消耗兽元打开奖励房门：' + this._doorCostText(need));
-        this.emit('doorUnlock', '打开奖励房门', { cost: need.slice() });
+        this.emit('doorUnlock', '打开奖励房门', { cost: need.slice(), payment: pay.spend || payment || null });
       }
 
+      return this._enterItemRoomContent(room);
+    }
+
+    _enterItemRoomContent(room) {
       if (room.stashedLoot) {
         this.s.pendingRoomReward = this._cloneLoot(room.stashedLoot);
         this._log('奖励房间：有待领奖励');
@@ -718,7 +745,9 @@
         item: loot.item || null,
         items: Array.isArray(loot.items) ? loot.items.slice() : null,
         accessory: loot.accessory || null,
-        beastType: loot.beastType || null
+        beastType: loot.beastType || null,
+        sold: !!loot.sold,
+        price: loot.kind === 'merchant' ? this._merchantPrice() : null
       };
     }
 
@@ -730,7 +759,8 @@
         item: loot.item || null,
         items: Array.isArray(loot.items) ? loot.items.slice() : null,
         accessory: loot.accessory || null,
-        beastType: loot.beastType || null
+        beastType: loot.beastType || null,
+        ...(loot.kind === 'merchant' ? { sold: !!loot.sold, price: this._merchantPrice() } : {})
       };
     }
 
@@ -800,6 +830,132 @@
       if (!this.s) return;
       this.s.log.push({ turn: this.s.turn, msg, t: Date.now() });
       if (this.s.log.length > 200) this.s.log.shift();
+    }
+
+
+    _beastPaymentNeedsChoice(plans) {
+      if (!plans || !plans.length) return false;
+      return plans.length > 1 || plans.some(p => p.usesWild);
+    }
+
+    /**
+     * Apply or pending a beast-cost payment.
+     * - paymentOpt: exact spend map from UI / confirm → pay immediately
+     * - else if multiple plans or any usesWild substitute → set pendingBeastPayment
+     * - else auto-pay greedy (typed-first)
+     */
+    _applyBeastPayment(need, context, paymentOpt) {
+      if (this.s.pendingBeastPayment) {
+        return { ok: false, message: '请先完成当前的兽元支付选择' };
+      }
+      if (!this.s.currency.canPayBeastCost(need)) {
+        return { ok: false, message: '兽元不足' };
+      }
+      const plans = this.s.currency.listBeastPaymentPlans(need);
+      if (!plans.length) return { ok: false, message: '兽元不足' };
+
+      if (paymentOpt) {
+        if (!this.s.currency.payBeastCost(need, paymentOpt)) {
+          return { ok: false, message: '兽元支付方案无效' };
+        }
+        return { ok: true, spend: paymentOpt };
+      }
+
+      if (this._beastPaymentNeedsChoice(plans)) {
+        this.s.pendingBeastPayment = {
+          kind: context && context.kind,
+          needed: Array.isArray(need) ? need.slice() : [],
+          cost: Array.isArray(need) ? need.slice() : [],
+          plans: plans.map(p => ({
+            ben: p.ben || 0,
+            cao: p.cao || 0,
+            shui: p.shui || 0,
+            huo: p.huo || 0,
+            wuneng: p.wuneng || 0,
+            usesWild: !!p.usesWild
+          })),
+          context: context ? Object.assign({}, context) : {}
+        };
+        this.emit('beastPaymentChoice', '选择兽元支付方式', {
+          kind: context && context.kind,
+          plans: this.s.pendingBeastPayment.plans
+        });
+        return {
+          ok: false,
+          needBeastChoice: true,
+          plans: this.s.pendingBeastPayment.plans
+        };
+      }
+
+      if (!this.s.currency.payBeastCost(need)) {
+        return { ok: false, message: '兽元不足' };
+      }
+      return { ok: true, spend: plans[0] };
+    }
+
+    confirmBeastPayment(planOrIndex) {
+      const pending = this.s.pendingBeastPayment;
+      if (!pending) return { ok: false, message: '没有待确认的兽元支付' };
+      let plan = null;
+      if (typeof planOrIndex === 'number') {
+        plan = pending.plans[planOrIndex];
+      } else if (planOrIndex && typeof planOrIndex === 'object') {
+        if (planOrIndex.spend && typeof planOrIndex.spend === 'object') {
+          plan = Object.assign({}, planOrIndex.spend, {
+            usesWild: !!planOrIndex.usesWild
+          });
+        } else {
+          plan = planOrIndex;
+        }
+      }
+      if (!plan) return { ok: false, message: '无效支付方案' };
+      const spend = {
+        ben: plan.ben || 0,
+        cao: plan.cao || 0,
+        shui: plan.shui || 0,
+        huo: plan.huo || 0,
+        wuneng: plan.wuneng || 0
+      };
+      const need = pending.needed || pending.cost || [];
+      const kind = pending.kind;
+      const context = pending.context || {};
+      this.s.pendingBeastPayment = null;
+      if (!this.s.currency.payBeastCost(need, spend)) {
+        return { ok: false, message: '兽元支付方案无效' };
+      }
+      if (kind === 'door') return this._completeDoorPay(spend);
+      if (kind === 'blacksmithTrophy') {
+        return this._completeBlacksmithTrophyBuy(context.itemName, need, spend);
+      }
+      if (kind === 'blacksmithSlot') {
+        return this._completeBlacksmithSlotBuy(context.index, context.itemName, need, spend);
+      }
+      return { ok: true, spend };
+    }
+
+    cancelBeastPayment() {
+      if (!this.s.pendingBeastPayment) return { ok: false, message: '没有待确认的兽元支付' };
+      this.s.pendingBeastPayment = null;
+      this.emit('beastPaymentCancel', '取消兽元支付', {});
+      return { ok: true };
+    }
+
+    _completeDoorPay(spend) {
+      const room = this.currentRoom();
+      if (!room || room.type !== window.RoomType.ITEM) {
+        return { ok: false, message: '不在奖励房' };
+      }
+      if (room.doorUnlocked) {
+        return this._enterItemRoomContent(room);
+      }
+      const need = Array.isArray(room.doorCost) ? room.doorCost : [];
+      room.doorUnlocked = true;
+      this._log('消耗兽元打开奖励房门：' + this._doorCostText(need));
+      this.emit('doorUnlock', '打开奖励房门', { cost: need.slice(), payment: spend || null });
+      this.s.phase = Phase.ROOM_ENTER;
+      const result = this._enterItemRoomContent(room);
+      if (!result || result.ok !== false) room.visited = true;
+      return result;
     }
 
     snapshot() {
@@ -901,13 +1057,49 @@
           applied: !!this.s.pendingCombatReward.applied
         } : null,
         pendingRoomReward: this._snapshotLoot(this.s.pendingRoomReward),
+        pendingBeastPayment: this.s.pendingBeastPayment ? {
+          kind: this.s.pendingBeastPayment.kind || null,
+          needed: Array.isArray(this.s.pendingBeastPayment.needed)
+            ? this.s.pendingBeastPayment.needed.slice()
+            : (Array.isArray(this.s.pendingBeastPayment.cost)
+              ? this.s.pendingBeastPayment.cost.slice() : []),
+          cost: Array.isArray(this.s.pendingBeastPayment.cost)
+            ? this.s.pendingBeastPayment.cost.slice()
+            : (Array.isArray(this.s.pendingBeastPayment.needed)
+              ? this.s.pendingBeastPayment.needed.slice() : []),
+          plans: (this.s.pendingBeastPayment.plans || []).map(p => ({
+            ben: p.ben || 0,
+            cao: p.cao || 0,
+            shui: p.shui || 0,
+            huo: p.huo || 0,
+            wuneng: p.wuneng || 0,
+            usesWild: !!p.usesWild
+          })),
+          context: this.s.pendingBeastPayment.context
+            ? JSON.parse(JSON.stringify(this.s.pendingBeastPayment.context))
+            : null
+        } : null,
         pendingDiscard: this.s.pendingDiscard,
+        pendingHandDiscard: this.s.pendingHandDiscard ? {
+          kind: this.s.pendingHandDiscard.kind || null,
+          count: this.s.pendingHandDiscard.count || 1,
+          itemIndex: this.s.pendingHandDiscard.itemIndex,
+          itemName: this.s.pendingHandDiscard.itemName || null,
+          filter: this.s.pendingHandDiscard.filter || null,
+          legalIndices: Array.isArray(this.s.pendingHandDiscard.legalIndices)
+            ? this.s.pendingHandDiscard.legalIndices.slice() : null,
+          cancelable: this.s.pendingHandDiscard.cancelable !== false,
+          selected: Array.isArray(this.s.pendingHandDiscard.selected)
+            ? this.s.pendingHandDiscard.selected.slice() : [],
+          hint: this.s.pendingHandDiscard.hint || null
+        } : null,
         pendingItemDiscard: this.s.pendingItemDiscard,
         shopSelectedSlot: this.s.shopSelectedSlot == null ? null : this.s.shopSelectedSlot,
         blacksmithSelectedSlot: this.s.blacksmithSelectedSlot == null ? null : this.s.blacksmithSelectedSlot,
         blacksmithEntryGold: this._blacksmithEntryGold(),
         roomInfo: room ? {
           type: room.type,
+          glitchEvent: room.glitchEvent ? JSON.parse(JSON.stringify(room.glitchEvent)) : null,
           cleared: room.cleared,
           rewardClaimed: room.rewardClaimed,
           beastTokenClaimed: room.beastTokenClaimed,

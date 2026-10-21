@@ -5,8 +5,11 @@
  * engine.  It only owns scene/monster -> d12 -> trophy-card mapping; callers
  * decide when to roll and how to persist the resulting card.
  *
- * Cap: ordinary monsters ≤ 4/12 (1/3); Boss monsters ≤ 6/12 (1/2).
+ * Cap: ordinary <= 4/12; Boss <= 6/12 (does not block universal 11/12).
+ * Forge-only (RR / Disarm / Riot) never drop. Dual-source (SmallPotion / Purify / Zero)
+ * may drop; faces 11/12 are universal SmallPotion / PurifyWater on every table.
  */
+
 (function () {
   const random = () => window.FurryGame && window.FurryGame.CombatRuntime
     ? window.FurryGame.CombatRuntime.random() : Math.random();
@@ -21,20 +24,19 @@
       Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) })
     ]) }),
     CastleTiger: Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) }),
-    CastleCrow: Object.freeze({ outcomes: Object.freeze([
-      Object.freeze({ threshold: 2, drops: Object.freeze(['DisarmTrophy']) }),
-      Object.freeze({ threshold: 4, drops: Object.freeze(['SmallPotionTrophy']) })
-    ]) }),
+    CastleCrow: Object.freeze({ threshold: 3, drops: Object.freeze(['FlyTrophy']) }),
     CastleBat: Object.freeze({ threshold: 3, drops: Object.freeze(['PiercingTrophy']) }),
-    DungeonGoblin: Object.freeze({ threshold: 4, drops: Object.freeze(['DisarmTrophy', 'DisarmTrophy']) }),
+    // Goblin: SmallPotion + Guard on 1-4 (universal 11 still adds another SmallPotion).
+    DungeonGoblin: Object.freeze({ threshold: 4, drops: Object.freeze(['SmallPotionTrophy', 'GuardTrophy']) }),
     CastleChameleon: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 4, drops: Object.freeze(['PoisonTrophy']) }),
       Object.freeze({ threshold: 6, drops: Object.freeze(['GuardTrophy']) })
     ]) }),
     CastleEagle: Object.freeze({ outcomes: Object.freeze([
-      Object.freeze({ threshold: 3, drops: Object.freeze(['RussianRouletteTrophy']) }),
+      Object.freeze({ threshold: 3, drops: Object.freeze(['CritTrophy']) }),
       Object.freeze({ threshold: 6, drops: Object.freeze(['FlyTrophy']) })
     ]) }),
+    // Gargoyle: Zero 1-6 (both; forge also).
     CastleGargoyle: Object.freeze({ threshold: 6, drops: Object.freeze(['ZeroTrophy']) })
   });
 
@@ -65,6 +67,7 @@
       Object.freeze({ threshold: 6, drops: Object.freeze(['GuardTrophy']) })
     ]) }),
     ForestPython: Object.freeze({ threshold: 6, drops: Object.freeze(['PoisonTrophy']) }),
+    // Dryad: Zero 1-6 (both).
     ForestDryad: Object.freeze({ threshold: 6, drops: Object.freeze(['ZeroTrophy']) })
   });
 
@@ -79,7 +82,7 @@
       Object.freeze({ threshold: 4, drops: Object.freeze(['HypothermiaTrophy']) })
     ]) }),
     FrozenOceanShark: Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) }),
-    FrozenOceanSeal: Object.freeze({ threshold: 3, drops: Object.freeze(['DisarmTrophy']) }),
+    FrozenOceanSeal: Object.freeze({ threshold: 3, drops: Object.freeze(['FreezeTrophy']) }),
     FrozenPolarBear: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 2, drops: Object.freeze(['PiercingTrophy']) }),
       Object.freeze({ threshold: 4, drops: Object.freeze(['HypothermiaTrophy']) })
@@ -90,20 +93,24 @@
       Object.freeze({ threshold: 6, drops: Object.freeze(['HypothermiaTrophy']) })
     ]) }),
     FrozenOceanSnowyOwl: Object.freeze({ threshold: 4, drops: Object.freeze(['FlyTrophy']) }),
-    FrozenOceanSamoyed: Object.freeze({ threshold: 4, drops: Object.freeze(['SmallPotionTrophy']) }),
+    FrozenOceanSamoyed: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 2, drops: Object.freeze(['FreezeTrophy']) }),
+      Object.freeze({ threshold: 4, drops: Object.freeze(['IceSealTrophy']) })
+    ]) }),
     FrozenOceanTubeWorm: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 2, drops: Object.freeze(['BurnTrophy']) }),
       Object.freeze({ threshold: 4, drops: Object.freeze(['DivingTrophy']) })
     ]) }),
     FrozenOceanOctopus: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 2, drops: Object.freeze(['DivingTrophy']) }),
-      Object.freeze({ threshold: 4, drops: Object.freeze(['SmallPotionTrophy']) })
+      Object.freeze({ threshold: 4, drops: Object.freeze(['IceSealTrophy']) })
     ]) }),
     FrozenMammoth: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 3, drops: Object.freeze(['PiercingTrophy']) }),
       Object.freeze({ threshold: 5, drops: Object.freeze(['GuardTrophy']) }),
       Object.freeze({ threshold: 6, drops: Object.freeze(['HypothermiaTrophy']) })
     ]) }),
+    // Kraken: Zero 1-6 (both).
     FrozenKraken: Object.freeze({ threshold: 6, drops: Object.freeze(['ZeroTrophy']) })
   });
 
@@ -126,7 +133,7 @@
       Object.freeze({ threshold: 4, drops: Object.freeze(['ParasiteTrophy']) })
     ]) }),
     DesertScarab: Object.freeze({ outcomes: Object.freeze([
-      Object.freeze({ threshold: 2, drops: Object.freeze(['RussianRouletteTrophy']) }),
+      Object.freeze({ threshold: 2, drops: Object.freeze(['CritTrophy']) }),
       Object.freeze({ threshold: 4, drops: Object.freeze(['FlyTrophy']) })
     ]) }),
     DesertScorpion: Object.freeze({ outcomes: Object.freeze([
@@ -142,8 +149,13 @@
       Object.freeze({ threshold: 2, drops: Object.freeze(['FlyTrophy']) }),
       Object.freeze({ threshold: 4, drops: Object.freeze(['SandblindTrophy']) })
     ]) }),
+    // Pharaoh: Zero 1-6 (both).
     Pharaoh: Object.freeze({ threshold: 6, drops: Object.freeze(['ZeroTrophy']) }),
-    DesertHyena: Object.freeze({ threshold: 6, drops: Object.freeze(['ZeroTrophy']) }),
+    DesertHyena: Object.freeze({ outcomes: Object.freeze([
+      Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) }),
+      Object.freeze({ threshold: 5, drops: Object.freeze(['CritTrophy']) }),
+      Object.freeze({ threshold: 6, drops: Object.freeze(['ThornsTrophy']) })
+    ]) }),
     DesertSobek: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 4, drops: Object.freeze(['LushTrophy']) }),
       Object.freeze({ threshold: 5, drops: Object.freeze(['CritTrophy']) }),
@@ -194,7 +206,13 @@
       Object.freeze({ threshold: 6, drops: Object.freeze(['BurnTrophy']) })
     ]) })
   });
-  const SCENE_RULES = Object.freeze({ castle: CASTLE_RULES, forest: FOREST_RULES, ocean: OCEAN_RULES, desert: DESERT_RULES, volcano: VOLCANO_RULES });
+  const SCENE_RULES = Object.freeze({
+    castle: CASTLE_RULES,
+    forest: FOREST_RULES,
+    ocean: OCEAN_RULES,
+    desert: DESERT_RULES,
+    volcano: VOLCANO_RULES
+  });
 
   const TROPHY_TAGS = Object.freeze({
     BurnTrophy: "灼伤", PiercingTrophy: "流血", FreezeTrophy: "冰冻",
@@ -203,7 +221,8 @@
     PoisonTrophy: "中毒", ParasiteTrophy: "寄生", ThornsTrophy: "荆棘", SandblindTrophy: "沙盲", QuicksandTrophy: "流沙", GuardTrophy: "守护",
     DisarmTrophy: "缴械", ZeroTrophy: "0技能", TimeBombTrophy: "定时炸弹",
     SmallPotionTrophy: "小药剂", CritTrophy: "暴击", MagmaVeinTrophy: "熔脉",
-    FlyTrophy: "飞翔", RussianRouletteTrophy: "俄罗斯赌盘"
+    FlyTrophy: "飞翔", RussianRouletteTrophy: "俄罗斯赌盘",
+    PurifyWaterTrophy: "净化之水", RiotTrophy: "暴乱"
   });
 
   function formatDropSummary(rule) {
@@ -262,6 +281,18 @@
     return Math.floor(Math.max(0, Math.min(0.999999999, Number(source()) || 0)) * 12) + 1;
   }
 
+  // Faces 11/12 always grant dual-source potions; exclusive caps do not block these.
+  const UNIVERSAL_HIGH_FACES = Object.freeze({
+    11: Object.freeze(['SmallPotionTrophy']),
+    12: Object.freeze(['PurifyWaterTrophy'])
+  });
+
+  function attachUniversalHighFaces(roll, drops) {
+    const extra = UNIVERSAL_HIGH_FACES[roll];
+    if (!extra || !extra.length) return drops;
+    return drops.concat(extra);
+  }
+
   function rollMonsterDrop(scene, monsterName, randomFn, selectedRoll) {
     const sceneKey = normalizeScene(scene);
     const rule = SCENE_RULES[sceneKey] && SCENE_RULES[sceneKey][monsterName];
@@ -273,7 +304,7 @@
     const outcome = Array.isArray(rule.outcomes)
       ? rule.outcomes.find(item => roll <= item.threshold)
       : (roll <= rule.threshold ? rule : null);
-    const drops = outcome ? outcome.drops.slice() : [];
+    const drops = attachUniversalHighFaces(roll, outcome ? outcome.drops.slice() : []);
     return Object.freeze({
       scene: sceneKey,
       monsterName,
@@ -284,6 +315,24 @@
     });
   }
 
+  // Build the visible table from the same results used by combat, including
+  // universal faces, so presentation cannot silently omit a granted card.
+  function getDropTable(monsterName) {
+    const found = getDropRule(monsterName);
+    if (!found) return [];
+    const rows = [];
+    for (let face = 1; face <= 12; face++) {
+      const drops = rollMonsterDrop(found.scene, monsterName, null, face).drops;
+      const previous = rows[rows.length - 1];
+      if (previous && previous.drops.length === drops.length && previous.drops.every((name, i) => name === drops[i])) {
+        previous.last = face;
+      } else {
+        rows.push({ first: face, last: face, drops });
+      }
+    }
+    return rows;
+  }
+
   window.AdventureLoot = Object.freeze({
     SCENE_RULES,
     TROPHY_TAGS,
@@ -291,6 +340,7 @@
     rollD12,
     formatDropSummary,
     getDropRule,
+    getDropTable,
     describeMonsterDrop,
     rollMonsterDrop
   });

@@ -34,11 +34,12 @@
         this._log('战斗胜利');
         const isBoss = room && room.type === window.RoomType.BOSS;
         const isChallenge = room && room.type === window.RoomType.CHALLENGE;
+        const isGlitch = room && room.type === window.RoomType.GLITCH;
         if (isChallenge) {
           // 挑战房只在击败第一个敌人时（战斗内）恢复一次并照常补牌；
           // 击败第二个敌人结束战斗时不再有基础胜利恢复。
           this._log('挑战房：击败第二个敌人不再恢复生命');
-        } else if (isBoss) {
+        } else if (isBoss || isGlitch) {
           // Boss 胜利不再当场回血；改为进入下一 stage 时恢复 10 点（见 continueTo）。
         } else {
           const healAmount = 3;
@@ -56,7 +57,12 @@
             wisdomNecklace: this.hasAccessory('WisdomNecklace')
           };
           this.emit('combatEnd', '战斗胜利', { result: 'win' });
-          if (!isBoss || !this.completeAdventure()) this._prepareCombatSettlement(room);
+          if (isGlitch) {
+            room.glitchEvent.status = 'done';
+            room.glitchEvent.message = '异常遭遇已结束，战利品已结算。';
+            this.s.pendingCombatReward = null;
+            this.s.phase = Phase.MAP;
+          } else if (!isBoss || !this.completeAdventure()) this._prepareCombatSettlement(room);
         } else {
           this.s.pendingMapReturnEffects = null;
           this.emit('combatEnd', '战斗胜利', { result: 'win' });

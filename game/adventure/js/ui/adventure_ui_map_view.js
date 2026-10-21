@@ -8,10 +8,21 @@
     item:   { label: '奖励', cls: 'room-item', glyph: '', icon: ROOM_ICON_DIR + 'bonus_room.webp' },
     shop:   { label: '商店', cls: 'room-shop', glyph: '', icon: ROOM_ICON_DIR + 'shopping_room.webp' },
     blacksmith: { label: '铁匠铺', cls: 'room-blacksmith', glyph: '', icon: ROOM_ICON_DIR + 'smith_room.webp' },
-    challenge: { label: '挑战', cls: 'room-challenge', glyph: '', icon: ROOM_ICON_DIR + 'challenge_room.webp' }
+    challenge: { label: '挑战', cls: 'room-challenge', glyph: '', icon: ROOM_ICON_DIR + 'challenge_room.webp' },
+    glitch: { label: '故障', cls: 'room-glitch', glyph: '', icon: ROOM_ICON_DIR + 'glitch_room.webp' }
   };
 
   class AdventureUIMapViewMethods {
+    _syncRoomLootIcon(cell, model) {
+      let icon = cell.querySelector('.adv-cell-loot-icon');
+      cell.classList.toggle('has-merchant', !!model.hasMerchant);
+      if (!model.lootIcon) { if (icon) icon.remove(); return; }
+      if (!icon) { icon = document.createElement('img'); cell.appendChild(icon); }
+      icon.className = 'adv-cell-loot-icon' + (model.hasMerchant ? ' adv-cell-merchant-icon' : '');
+      if (icon.getAttribute('src') !== model.lootIcon) icon.setAttribute('src', model.lootIcon);
+      icon.alt = model.hasMerchant ? '流浪商人，可交易' : '待领奖励';
+    }
+
     _buildHeader(snap) {
       const h = document.createElement('div');
       h.className = 'adventure-header';
@@ -58,9 +69,7 @@
         } else {
           cell.textContent = style.glyph;
         }
-        if (cellModel.lootIcon) {
-          cell.insertAdjacentHTML('beforeend', '<img class="adv-cell-loot-icon" src="' + cellModel.lootIcon + '" alt="待领奖励">');
-        }
+        this._syncRoomLootIcon(cell, cellModel);
         if (cellModel.visited) cell.classList.add('visited');
         if (cellModel.cleared) cell.classList.add('cleared');
         if (cellModel.rewardClaimed) cell.classList.add('reward-claimed');
@@ -96,6 +105,7 @@
           ((cellModel.doorCost && cellModel.doorCost.length) || (cellModel.entryGold > 0))
         ));
         cell.classList.toggle('door-unlocked', !!cellModel.doorUnlocked);
+        this._syncRoomLootIcon(cell, cellModel);
         cell.title = cellModel.title || '';
       });
       return true;

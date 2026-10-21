@@ -8,9 +8,10 @@
  *   SHOP       商店房间：通过货币购买物品
  *   BLACKSMITH 铁匠铺房间：支付金币开门后，用兽元交易配饰
  *   CHALLENGE  挑战房间：1v2对战，胜利后获得挑战房奖励+兽元全选
+ *   GLITCH     故障房间：每房一次 D12 事件
  * 另有 EMPTY 表示地图外空房间（不可进入）。
  *
- * CSV 编码：-1=地图外 0=起点 1=普通 2=boss 3=奖励 4=商店 5=铁匠铺 6=挑战
+ * CSV 编码：-1=地图外 0=起点 1=普通 2=boss 3=奖励 4=商店 5=铁匠铺 6=挑战 7=故障
  * 奖励房（3）与铁匠铺（5）应放在支路，不在起点→Boss 最短路径上；
  * 奖励房进入需消耗两个随机普通兽元开门（万能可替代）。
  * 开门后本层只滚动一次奖励（领取后不可再刷）；未领时可留在房间，再次进入领取同一份。
@@ -24,7 +25,8 @@
     ITEM:   'item',
     SHOP:   'shop',
     BLACKSMITH: 'blacksmith',
-    CHALLENGE: 'challenge'
+    CHALLENGE: 'challenge',
+    GLITCH: 'glitch'
   };
 
   const CODE_TO_TYPE = {
@@ -35,7 +37,8 @@
     3: RoomType.ITEM,
     4: RoomType.SHOP,
     5: RoomType.BLACKSMITH,
-    6: RoomType.CHALLENGE
+    6: RoomType.CHALLENGE,
+    7: RoomType.GLITCH
   };
 
   const TYPE_TO_CODE = {};
@@ -49,7 +52,8 @@
     item:   '奖励',
     shop:   '商店',
     blacksmith: '铁匠铺',
-    challenge: '挑战'
+    challenge: '挑战',
+    glitch: '故障'
   };
 
   class Room {
@@ -64,6 +68,7 @@
       this.locked = !!opts.locked;
       /** 战斗基础奖励 / 奖励房奖励留在房间待领 */
       this.stashedLoot = null;
+      this.glitchEvent = null;
 
       this.monsterName = opts.monsterName || null;
       this.bossName = opts.bossName || null;
@@ -99,6 +104,7 @@
     opensExploration() {
       if (!this.isEnterable()) return false;
       if (this.type === RoomType.START) return true;
+      if (this.type === RoomType.GLITCH) return !!this.visited;
       if (this.isCombatRoom()) return !!this.cleared;
       if (this.type === RoomType.ITEM || this.type === RoomType.BLACKSMITH) return !!this.doorUnlocked;
       if (this.type === RoomType.SHOP) return !!this.visited &&

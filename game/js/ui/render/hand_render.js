@@ -12,8 +12,9 @@
             const container = document.getElementById('player-hand');
             if (!container || !s || !s.playerHand) return;
             const hideTrailing = this._hideTrailingCount(options, 'player');
-            const canInteract = s.onlineCanAct !== false && ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
-                'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD'].includes(s.phase);
+            const pickerActive = !!(this._handDiscardPicker && this._handDiscardPicker.isActive());
+            const canInteract = pickerActive || (s.onlineCanAct !== false && ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
+                'PLAYER_SEVEN_CHOICE', 'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'PLAYER_DISCARD'].includes(s.phase));
             const isDefend = s.phase === 'PLAYER_DEFEND';
             // legalHand covers normal play/defense and the explicit numeric
             // skill-choice phases.  Discard selection deliberately ignores
@@ -26,7 +27,25 @@
             if (s.selectedCard >= 0) this._npcHandFocusIndex = -1;
             const [cardWidth,cardHeight]=currentCardSize();
             const revision=window.CardStyle?window.CardStyle.iconRevision||0:0;
-            const paintKey=JSON.stringify([s.onlineCanAct,s.phase,s.needColorChoice,s.unblockDefend,s.legalHand||null,this._animatingPlayerCardKey||'',hideTrailing,cardWidth,cardHeight,revision,(s.playerHand||[]).map(cardVisualKey),(s.chanFiveCards||[]).map(cardVisualKey)]);
+            const trophyHideBag = typeof this._pendingTrophyHideBag === 'function' ? this._pendingTrophyHideBag() : null;
+            const trophyHideKey = trophyHideBag ? JSON.stringify(trophyHideBag) : '';
+            const hiddenByTrophy = (() => {
+                if (!trophyHideBag) return new Set();
+                const bag = Object.assign(Object.create(null), trophyHideBag);
+                const hide = new Set();
+                for (let i = s.playerHand.length - 1; i >= 0; i--) {
+                    const card = s.playerHand[i];
+                    const name = card && card.trophyWhite && (card.trophyName || card.name);
+                    if (!name || !bag[name]) continue;
+                    hide.add(i);
+                    bag[name] -= 1;
+                    if (!bag[name]) delete bag[name];
+                }
+                return hide;
+            })();
+            const pickerSel = pickerActive && this._handDiscardPicker._active
+                ? this._handDiscardPicker._active.selected.slice() : null;
+            const paintKey=JSON.stringify([s.onlineCanAct,s.phase,s.needColorChoice,s.unblockDefend,s.legalHand||null,this._animatingPlayerCardKey||'',hideTrailing,trophyHideKey,cardWidth,cardHeight,revision,(s.playerHand||[]).map(cardVisualKey),(s.chanFiveCards||[]).map(cardVisualKey),!!pickerActive,pickerSel]);
             const handKey = JSON.stringify([
                 s.onlineCanAct,
                 s.phase,
@@ -37,13 +56,25 @@
                 s.legalHand || null,
                 this._animatingPlayerCardKey || '',
                 hideTrailing,
+                trophyHideKey,
                 (s.playerHand || []).map(cardVisualKey),
-                (s.chanFiveCards || []).map(cardVisualKey)
+                (s.chanFiveCards || []).map(cardVisualKey),
+                !!pickerActive,
+                pickerSel
             ]);
-            const visibleCount=Math.max(0,s.playerHand.length-hideTrailing);
+            const trailingHidden = new Set();
+            if (hideTrailing) {
+                for (let i = s.playerHand.length - hideTrailing; i < s.playerHand.length; i++) {
+                    if (i >= 0) trailingHidden.add(i);
+                }
+            }
+            const allHidden = new Set([...trailingHidden, ...hiddenByTrophy]);
+            const visibleCount = Math.max(0, s.playerHand.length - allHidden.size);
             if(container.dataset.handRenderKey&&container.dataset.handPaintKey===paintKey&&container.children.length===visibleCount){
                 for(const node of container.children){const index=Number(node.dataset.index),selected=index===s.selectedCard||(s.selectedCards||[]).includes(index);node.classList.toggle('selected',selected);node.setAttribute('aria-selected',String(selected));}
-                container.dataset.handRenderKey=handKey;return;
+                container.dataset.handRenderKey=handKey;
+                if (pickerActive) this._handDiscardPicker.bindHand(container);
+                return;
             }
             this._hideTooltip();
             container.dataset.handRenderKey = handKey;
@@ -93,9 +124,13 @@
                 // animation lands, so they never "pop in" before the backs
                 // arrive at the hand.
                 if (hideTrailing && i >= s.playerHand.length - hideTrailing) continue;
+                // Trophy loot flights also hide by identity so a mid-flight
+                // re-render cannot show the card before its clone lands.
+                if (hiddenByTrophy.has(i)) continue;
                 const card = s.playerHand[i];
                 const sel = i === s.selectedCard || ((s.selectedCards || []).includes(i));
-                const isUnplayable = (isPlayPhase || isNumericChoice)
+                const isDiscardFilter = s.phase === 'PLAYER_DISCARD' && s.pendingHandDiscard && Array.isArray(s.legalHand);
+                const isUnplayable = (isPlayPhase || isNumericChoice || isDiscardFilter)
                     && Array.isArray(s.legalHand) && s.legalHand[i] === false;
                 const [cw, ch] = [cardWidth,cardHeight];
                 const cv = renderCard(card, cw, ch, sel);
@@ -116,7 +151,7 @@
                 cv.dataset.cardMatch = cardMatchKey(card);
                 // An illegal card is inert: it cannot be selected by either click
                 // path, and does not steal hover focus from a playable card.
-                if (!isUnplayable) {
+                if (!isUnplayable && !pickerActive) {
                     cv.addEventListener('click', async (event) => {
                         if (this._isHandlingAction || this._isConsumingEvents) return;
                         if (cv.classList.contains('disabled')) return;
@@ -214,6 +249,7 @@
             if (s.chanFiveCards && s.chanFiveCards.length > 0 && s.onlineCanAct !== false) {
                 this.dialogs.showChanFiveDialog(s);
             }
+            if (pickerActive) this._handDiscardPicker.bindHand(container);
         },
 
         _resolveHandSkillDesc(charName, card, isDefend, adventureOpts) {

@@ -44,6 +44,96 @@ for (const relative of sources) {
 
 const { AdventureBattleEngine, CharacterRegistry, AdventureEngine } = context;
 
+function bindChallenge(target = 'ai') {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({player:'Ryan',opponent1:'CastleWolf',opponent2:'CastleWolf',stage:1,
+    playerPile:{deck:[],hand:[number(1)],discard:[],handLimit:5}});
+  engine._adventureEngine = {s:{consumables:[{name:'Bind'},{name:'Bind'}]}, snapshot(){return this.s;}};
+  engine.s.lordPlayerTargetIdx = target === 'ai2' ? 1 : 0;
+  engine.s.attackTarget = target;
+  engine.events = [];
+  return engine;
+}
+
+for (const target of ['ai', 'ai2']) {
+  test('Bind only skips the current challenge opponent once: ' + target, () => {
+    const engine = bindChallenge(target);
+    const other = target === 'ai' ? 'ai2' : 'ai';
+    engine.useAdventureCombatItem(0);
+    assert.equal(engine.s[target].bindMark, true);
+    assert.ok(!engine.s[other].bindMark);
+    engine.useAdventureCombatItem(0);
+    assert.equal(engine._adventureEngine.s.consumables.length, 1, 'one use per player turn');
+    engine.dispatch('doEndTurn');
+    assert.equal(engine.s.phase, 'PLAYER_PLAY');
+    assert.equal(engine.s.activeAttacker, 'player');
+    assert.equal(engine.s[target].bindMark, false);
+    assert.equal(engine.s.bindUsedThisTurn, false);
+    engine.dispatch('doEndTurn');
+    assert.equal(engine.s.activeAttacker, target, 'the mark does not skip twice');
+    engine.endAi1v2();
+    assert.equal(engine.s.attackTarget, other, 'normal opponent rotation resumes');
+  });
+}
+
+test('Bind resolves the second challenge opponent even with no attack card selected', () => {
+  const engine = bindChallenge('ai2');
+  engine.s.attackTarget = null;
+  engine.useAdventureCombatItem(0);
+  assert.equal(engine.s.ai2.bindMark, true);
+  assert.ok(!engine.s.ai.bindMark);
+});
+
+test('Bind survives saving and does not skip an unmarked challenge opponent', () => {
+  const engine = bindChallenge('ai2');
+  engine.useAdventureCombatItem(0);
+  engine.s.lordPlayerTargetIdx = 0;
+  engine.s.attackTarget = 'ai';
+  const saved = JSON.parse(JSON.stringify({s:engine.s,piles:engine.piles,events:[],ver:engine.ver,tableTopOwner:engine.tableTopOwner}));
+  const restored = new AdventureBattleEngine();
+  restored.restoreSession(saved, engine._adventureEngine, false);
+  restored.later = () => {};
+  restored.dispatch('doEndTurn');
+  assert.equal(restored.s.activeAttacker, 'ai');
+  assert.equal(restored.s.ai2.bindMark, true);
+  restored.endAi1v2();
+  assert.equal(restored.s.bindUsedThisTurn, false);
+  restored.dispatch('doEndTurn');
+  assert.equal(restored.s.phase, 'PLAYER_PLAY');
+  assert.equal(restored.s.ai2.bindMark, false);
+});
+
+test('Bind can chain on extra turns and does not transfer from a defeated opponent', () => {
+  const engine = bindChallenge();
+  engine.useAdventureCombatItem(0);
+  engine.dispatch('doEndTurn');
+  engine.useAdventureCombatItem(0);
+  assert.equal(engine._adventureEngine.s.consumables.length, 0);
+  engine.dispatch('doEndTurn');
+  assert.equal(engine.s.phase, 'PLAYER_PLAY');
+  engine.s.ai.bindMark = true;
+  engine.s.ai.hp = 0;
+  engine.s.ai.alive = false;
+  engine.s.eliminatedHandled.ai = true;
+  engine.s.trophyDropHandled.ai = true;
+  engine.dispatch('doEndTurn');
+  assert.equal(engine.s.activeAttacker, 'ai2');
+  assert.ok(!engine.s.ai2.bindMark);
+});
+
+test('Bind preserves the ordinary single-opponent extra attack', () => {
+  const engine = start();
+  engine.later = () => {};
+  engine._adventureEngine = {s:{consumables:[{name:'Bind'}]}, snapshot(){return this.s;}};
+  engine.useAdventureCombatItem(0);
+  engine.startAITurn();
+  assert.equal(engine.s.phase, 'PLAYER_PLAY');
+  assert.equal(engine.s.ai.bindMark, false);
+  engine.startAITurn();
+  assert.equal(engine.s.phase, 'AI_TURN');
+});
+
 function number(value, color = 'RED', white = false) {
   return {
     value,
@@ -157,10 +247,14 @@ test('NPC decks include two white 7 pass cards with no skill effect', () => {
   const sevens = deck.filter(c => c.isNumberCard && c.isWhite && c.value === 7);
   assert.equal(sevens.length, 2);
   assert.ok(sevens.every(c => c.npcCard));
+  assert.equal(deck.filter(c => c.isNumberCard && c.isWhite && c.value === 0).length, 1);
 
   const bossDeck = context.AdventureDeck.makeNpcDeck({ whiteZeros: 2 });
   assert.equal(bossDeck.filter(c => c.isNumberCard && c.isWhite && c.value === 7).length, 2);
-  assert.equal(bossDeck.filter(c => c.isNumberCard && c.isWhite && c.value === 0).length, 2);
+  assert.equal(bossDeck.filter(c => c.isNumberCard && c.isWhite && c.value === 0).length, 1);
+  assert.equal(deck.length, 23);
+  assert.deepEqual(Array.from(deck, c => c.magic ? 'purple' : c.greenMagic ? 'green' : c.value).sort(),
+    Array.from(bossDeck, c => c.magic ? 'purple' : c.greenMagic ? 'green' : c.value).sort());
 
   const engine = new AdventureBattleEngine();
   engine.startAdventure({
@@ -187,6 +281,42 @@ test('NPC decks include two white 7 pass cards with no skill effect', () => {
 
   const wolf = start({ hand: [number(2, 'RED')] }, number(2, 'RED'));
   assert.equal(wolf.aiDefendLegal(white7, wolf.s.discardTop, wolf.aiContext({})), false);
+});
+
+test('all ordinary NPC zero/seven and boss seven have no attack or defense effects at every stage', () => {
+  const registry = context.AdventureRegistry;
+  for (const mod of [...registry.allMonsters(), ...registry.allBosses()]) {
+    const values = registry.getBoss(mod.name) ? [7] : [0, 7];
+    assert.equal(mod.whiteZeros, 1);
+    for (const stage of [1, 2, 3, 4]) {
+      const engine = new AdventureBattleEngine();
+      engine.later = () => {};
+      engine.startAdventure({player:'Ryan',opponent:mod.name,stage,
+        playerPile:{deck:[],hand:[number(1)],discard:[],handLimit:5}});
+      const definition = context.CharacterRegistry.get(mod.name);
+      for (const value of values) {
+        const card = number(value, 'WHITE', true);
+        const before = JSON.stringify([engine.s.player, engine.s.ai, engine.h, engine.events]);
+        const attack = engine.effect(mod.name, value, card, engine.s.ai, engine.s.player);
+        assert.equal(attack.d, 0, mod.name + ' attack ' + value + ' stage ' + stage);
+        assert.ok(!attack.skip && !attack.unblock);
+        engine.s.atkCard = card;
+        assert.equal(definition.damageAtSettlement(engine, value, engine.s.ai, engine.s.player), 0);
+        const defense = definition.defend(engine, mod.name, value, 9, card, engine.s.ai, engine.s.player,
+          'ai', 'RED', {});
+        assert.equal(defense.remaining, 9);
+        engine.s.defCard = card;
+        assert.equal(definition.damageAfterDefense(value, 9, engine.s.ai, engine), 9);
+        assert.equal(JSON.stringify([engine.s.player, engine.s.ai, engine.h, engine.events]), before,
+          mod.name + ' must not change health/status/cards/events');
+        const describe = context.AdventureMonsterBridge.getAdventureNpcSkillDesc;
+        assert.match(describe(mod.name, card, false, {stage}), /无进攻效果/);
+        assert.match(describe(mod.name, card, true, {stage}), /无防御效果/);
+      }
+    }
+    context.AdventureMonsterBridge.registerMonsterChar(mod);
+    context.AdventureMonsterBridge.registerMonsterAI(mod);
+  }
 });
 
 test('adventure battle controller detects the exported shared 1v1 UI', () => {
@@ -257,8 +387,8 @@ test('battle startup preserves the player pile and gives the NPC its own two-car
   // discardTop is mirrored as the newest card in the owner's discard pile.
   assert.deepEqual(Array.from(engine.piles.player.discard, card => card.value), [6, 2]);
   assert.equal(engine.h.ai.length, 2);
-  // NPC deck: 白1~3×4 + 白4~6×2 + 白7×2 + 紫/绿魔法 = 22，开局抽 2 张后剩 20。
-  assert.equal(engine.piles.ai.deck.length, 20);
+  // NPC deck: 白0×1 + 白1~3×4 + 白4~6×2 + 白7×2 + 紫/绿魔法 = 23，开局抽 2 张后剩 21。
+  assert.equal(engine.piles.ai.deck.length, 21);
   assert.equal(engine.s.player.hp, 74);
   assert.equal(engine.s.player.burn, 1);
   assert.equal(engine.s.player.guard, 2);
@@ -481,6 +611,9 @@ test('Otto 6 two-number branch enters NPC defense in challenge room', () => {
 
   const after = engine.dispatch('resolveAttackModChoice', { bonus: 0 });
   assert.equal(after.phase, 'AI_DEFEND');
+  assert.ok(engine.s.pendingAIDefense,'defense is saved until the attack prelude is acknowledged');
+  assert.equal(engine.h.ai.length,2,'NPC hand stays intact while the player attack animates');
+  engine.acknowledgeEvents(engine.ver);
   assert.equal(engine.h.ai.length, 1, 'NPC should spend its legal defense card');
   assert.equal(engine.pendingSettlement && engine.pendingSettlement.kind, 'PLAYER_ATTACK');
   assert.ok(engine.events.some(event => event.type === 'aiDefend'));
@@ -510,6 +643,7 @@ test('Otto 6 challenge defense continues after an NPC magic bridge without repla
   engine.dispatch('selectCard', { index: 0 });
   engine.dispatch('doPlay');
   engine.dispatch('resolveAttackModChoice', { bonus: 0 });
+  engine.acknowledgeEvents(engine.ver);
 
   assert.ok(engine.s.pendingAIBridge, 'magic defense should request another defense card');
   const bridgeEventId = engine.s.pendingAIBridge.afterEventId;
@@ -553,6 +687,60 @@ test('Otto 7 keeps HP/10 in challenge rooms and makes small hits unblockable', (
     helpers
   );
   assert.equal(classicDuo.d, 10, 'classic 1v2 doubles HP and scales Otto 7 by /20');
+});
+
+test('restored Knight attack resumes the surviving snowy owl defense after the octopus is eliminated', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure1v2({
+    player:'Knight', opponent1:'FrozenOceanSnowyOwl', opponent2:'FrozenOceanOctopus', stage:1,
+    discardTop:number(2,'BLUE'), playerPile:{deck:[],hand:[number(5,'BLUE')],discard:[],handLimit:5}
+  });
+  engine.s.ai2.hp=0;engine.s.ai2.alive=false;
+  engine.s.eliminatedHandled.ai2=true;engine.s.trophyDropHandled.ai2=true;
+  engine.h.ai.splice(0,engine.h.ai.length,number(5,'BLUE',true),number(1,'BLUE',true));
+  Object.assign(engine.s,{phase:'AI_DEFEND',busy:true,attackTarget:'ai',atkOwner:'player',atkCard:number(2,'BLUE'),
+    pendingAttack:{damage:3},defCard:null,defOwner:null});
+  engine.events=[];engine.pendingSettlement=null;
+  const saved=JSON.parse(JSON.stringify({s:engine.s,piles:engine.piles,events:[],ver:engine.ver,tableTopOwner:engine.tableTopOwner}));
+  const restored=new AdventureBattleEngine();
+  restored.restoreSession(saved);
+  assert.equal(restored.s.defOwner,'ai');
+  assert.equal(restored.s.defCard.value,1,'surviving owl spends its legal white defense card');
+  assert.ok(restored.pendingSettlement,'remaining damage is ready for event-confirmed settlement');
+  assert.equal(restored.h.ai.length,1);
+});
+
+test('Knight blue 2 and PurifyCrystal preserve a resumable defense against either challenge survivor', () => {
+  for(const target of ['ai','ai2']) {
+    const engine=new AdventureBattleEngine();
+    engine.startAdventure1v2({player:'Knight',opponent1:target==='ai'?'FrozenOceanSnowyOwl':'FrozenOceanOctopus',
+      opponent2:target==='ai2'?'FrozenOceanSnowyOwl':'FrozenOceanOctopus',stage:1,discardTop:number(2,'BLUE'),
+      playerPile:{deck:[],hand:[number(2,'BLUE'),number(5,'BLUE')],discard:[],handLimit:5}});
+    const dead=target==='ai'?'ai2':'ai';
+    engine.s[dead].hp=0;engine.s[dead].alive=false;engine.s.eliminatedHandled[dead]=true;engine.s.trophyDropHandled[dead]=true;
+    engine.h[target].splice(0,engine.h[target].length,number(5,'BLUE',true),number(1,'BLUE',true));
+    engine.s[target].burn=2;engine.s.player.hypothermia=1;
+    const adventure={s:{consumables:[],accessories:['PurifyCrystal']},hasAccessory:name=>name==='PurifyCrystal',accessoryCount:name=>name==='PurifyCrystal'?1:0};
+    engine._adventureEngine=adventure;
+    engine.events=[];
+    engine.dispatch('selectCard',{index:0});engine.dispatch('doPlay');
+    engine.dispatch('resolveAttackModChoice',{bonus:0});
+    assert.equal(engine.s.phase,'PURIFY_CRYSTAL_CHOICE');
+    engine.dispatch('choosePurifyCrystal',{choice:{who:'opp',kind:'burn'}});
+    assert.equal(engine.s.phase,'AI_DEFEND');
+    assert.ok(engine.s.pendingAIDefense);
+    assert.equal(engine.s.defCard,null,'defense waits for the attack and accessory animations');
+    const saved=JSON.parse(JSON.stringify({s:engine.s,piles:engine.piles,events:engine.events,ver:engine.ver,tableTopOwner:engine.tableTopOwner}));
+    const restored=new AdventureBattleEngine();restored.restoreSession(saved,adventure);
+    const through=restored.ver;
+    restored.acknowledgeEvents(through-1);
+    assert.equal(restored.h[target].length,2,'partial acknowledgments do not advance defense');
+    restored.acknowledgeEvents(through);
+    assert.equal(restored.s.defOwner,target);assert.equal(restored.s.defCard.value,1);
+    assert.equal(restored.h[target].length,1);assert.ok(restored.pendingSettlement);
+    restored.acknowledgeEvents(through);
+    assert.equal(restored.h[target].length,1,'duplicate acknowledgments never play another card');
+  }
 });
 
 test('Otto attack 0 no longer causes self damage', () => {
@@ -1161,9 +1349,38 @@ test('Disarm trophy discards a selected NPC card and draws for the player', () =
   engine.select(0);
   engine.play();
   assert.equal(engine.s.pendingDialog, 'trophyDisarm');
+  assert.equal(engine.s.pendingTrophyDisarm.resumePhase, 'PLAYER_PLAY');
   engine.dispatch('chooseTrophyDisarm', { target: 'ai', index: 1 });
   assert.equal(engine.h.ai.length, 1);
   assert.equal(engine.s.pendingDialog, null);
+  assert.equal(engine.s.phase, 'PLAYER_PLAY');
+});
+
+test('Disarm trophy is legal on defend and resumes PLAYER_DEFEND after choose', () => {
+  const engine = startLeon();
+  const trophy = context.AdventureDeck.trophyWhite('DisarmTrophy');
+  engine.h.player = [trophy];
+  engine.s.playerHand = engine.h.player;
+  engine.h.ai = [number(4, 'RED'), number(2, 'BLUE')];
+  engine.s.discardTop = number(1, 'RED');
+  engine.s.atkCard = number(5, 'RED');
+  engine.s.pendingAttack = { damage: 5 };
+  engine.s.phase = 'PLAYER_DEFEND';
+  engine.s.busy = false;
+  assert.equal(engine.legal(trophy, true), true, 'disarm should be legal on defend');
+  const legalHand = engine._computeLegalHand();
+  assert.equal(legalHand[0], true, 'legalHand should allow disarm on defend');
+  engine.select(0);
+  engine.defend();
+  assert.equal(engine.s.pendingDialog, 'trophyDisarm');
+  assert.equal(engine.s.phase, 'TROPHY_DISARM_CHOICE');
+  assert.equal(engine.s.pendingTrophyDisarm.resumePhase, 'PLAYER_DEFEND');
+  assert.equal(engine.s.pendingAttack.damage, 5, 'pending attack must survive disarm choice');
+  engine.dispatch('chooseTrophyDisarm', { target: 'ai', index: 0 });
+  assert.equal(engine.h.ai.length, 1);
+  assert.equal(engine.s.pendingDialog, null);
+  assert.equal(engine.s.phase, 'PLAYER_DEFEND', 'after choose from defend, stay in defend');
+  assert.equal(engine.s.pendingAttack.damage, 5);
 });
 
 test('Chameleon Paint borrows an NPC card with source metadata', () => {
@@ -1592,7 +1809,7 @@ test('lush heals player and both challenge NPCs exactly once with one lush event
       assert.equal(heals.length, 1, who + ' emits one heal');
       assert.equal(heals[0].kind, 'lush');
       assert.equal(heals[0].amount, stacks);
-      assert.equal(heals[0].desc, '+' + stacks + '[茂盛]');
+      assert.equal(heals[0].desc, '[茂盛]❤️' + stacks);
       assert.equal(entity.lush, stacks, 'persistent lush is not consumed');
     }
     entity.hp = entity.maxHp - 1;
@@ -1688,4 +1905,28 @@ test('a won Boss drop is distributed to the hand, collection and restored map sa
   restored.restoreFromSave(save,context.AdventureMap.fromGrid(save.mapLayout));
   assert.equal(restored.s.playerPile.hand.filter(c=>c.trophyName==='LushTrophy').length,3);
   assert.equal(restored.s.trophyWhiteCards.filter(name=>name==='LushTrophy').length,3);
+});
+
+test('GarbageRecycle opens attack mod even when confirmed damage is zero', () => {
+  const engine = start({ hand: [number(4, 'BLUE')] });
+  engine._adventureEngine = { s: { consumables: [{ name: 'GarbageRecycle' }] } };
+  const card = number(4, 'BLUE');
+  card.uid = 'garbage-zero';
+  engine.gateAdventureAttackMod(card, 0, true, false);
+  assert.equal(engine.s.phase, 'ATTACK_MOD_CHOICE');
+  assert.equal(engine.s.pendingAttack.damage, 0);
+});
+
+test('GarbageRecycle returns the played attack card after settlement', () => {
+  const engine = start();
+  const card = number(2, 'YELLOW');
+  card.uid = 'garbage-return';
+  engine.discardBottom.push(Object.assign({}, card));
+  engine.s.pendingAttack = { damage: 2, recycleAttackCard: Object.assign({}, card) };
+  engine.s.atkOwner = 'player';
+  const before = engine.h.player.length;
+  engine.afterAttack();
+  assert.equal(engine.h.player.length, before + 1);
+  assert.ok(engine.h.player.some(c => c.uid === 'garbage-return'));
+  assert.equal(engine.discardBottom.some(c => c.uid === 'garbage-return'), false);
 });

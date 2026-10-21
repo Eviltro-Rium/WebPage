@@ -126,8 +126,85 @@
       return true;
     }
 
-    payBeastCost(needed) {
+    /** List every affordable spend map for needed[]. Each plan is
+     *  { ben,cao,shui,huo,wuneng, usesWild }. usesWild = substitute for typed
+     *  slots only (explicit cost wuneng does not count). Empty when unaffordable. */
+    listBeastPaymentPlans(needed) {
+      const req = this._countBeastNeed(needed);
+      if (!req) return [];
+      const wildBase = req.wuneng || 0;
+      const wildAvail = (this.tokens.wuneng || 0) - wildBase;
+      if (wildAvail < 0) return [];
+      const plans = [];
+      const search = (idx, wildLeft, spend) => {
+        if (idx >= BEAST_TYPES.length) {
+          const wildSub = wildAvail - wildLeft;
+          const wildUsed = wildBase + wildSub;
+          plans.push({
+            ben: spend.ben || 0,
+            cao: spend.cao || 0,
+            shui: spend.shui || 0,
+            huo: spend.huo || 0,
+            wuneng: wildUsed,
+            // usesWild / usesWildSubstitute = wild topping typed slots only (not cost wuneng)
+            usesWild: wildSub > 0,
+            usesWildSubstitute: wildSub > 0
+          });
+          return;
+        }
+        const t = BEAST_TYPES[idx];
+        const need = req[t] || 0;
+        const have = this.tokens[t] || 0;
+        const minSpecific = Math.max(0, need - wildLeft);
+        const maxSpecific = Math.min(need, have);
+        for (let specific = minSpecific; specific <= maxSpecific; specific++) {
+          spend[t] = specific;
+          search(idx + 1, wildLeft - (need - specific), spend);
+        }
+        spend[t] = 0;
+      };
+      search(0, wildAvail, { ben: 0, cao: 0, shui: 0, huo: 0 });
+      // Deduplicate exact spend signatures only (ben,cao,shui,huo,wuneng).
+      // Do NOT collapse by wildSub count — ben+万 and huo+万 stay as two plans.
+      // e.g. need ben+huo with {ben:1,huo:1,wuneng:2} → 4 plans:
+      //   ben+huo / ben+万 / huo+万 / 万×2.
+      const seen = {};
+      const unique = [];
+      for (let i = 0; i < plans.length; i++) {
+        const plan = plans[i];
+        const key = BEAST_TYPES.map(t => plan[t] || 0).join(',') + ',' + (plan.wuneng || 0);
+        if (seen[key]) continue;
+        seen[key] = true;
+        unique.push(plan);
+      }
+      return unique;
+    }
+
+    /**
+     * Pay needed[]. Optional spend map {ben,cao,shui,huo,wuneng} forces that
+     * exact payment (used after the player picks a plan). Without spend, keep
+     * the greedy default: prefer typed tokens, fill shortfall with wild.
+     */
+    payBeastCost(needed, spend) {
       if (!this.canPayBeastCost(needed)) return false;
+      if (spend) {
+        const plans = this.listBeastPaymentPlans(needed);
+        const match = plans.find(p =>
+          BEAST_TYPES.every(t => (p[t] || 0) === (spend[t] || 0)) &&
+          (p.wuneng || 0) === (spend.wuneng || 0)
+        );
+        if (!match) return false;
+        for (let i = 0; i < ALL_BEAST_TYPES.length; i++) {
+          const t = ALL_BEAST_TYPES[i];
+          const use = match[t] || 0;
+          if ((this.tokens[t] || 0) < use) return false;
+        }
+        for (let i = 0; i < ALL_BEAST_TYPES.length; i++) {
+          const t = ALL_BEAST_TYPES[i];
+          this.tokens[t] -= (match[t] || 0);
+        }
+        return true;
+      }
       const req = this._countBeastNeed(needed);
       let wildUsed = req.wuneng || 0;
       for (let i = 0; i < BEAST_TYPES.length; i++) {

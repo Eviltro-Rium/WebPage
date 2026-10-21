@@ -69,12 +69,17 @@ test('DesertBison loot: roll 4 drops CritTrophy', () => {
   assert.equal(result.drops[0], 'CritTrophy');
 });
 
-test('DesertBison loot: roll 5-12 drops nothing', () => {
-  for (const roll of [5, 6, 8, 12]) {
+test('DesertBison loot: roll 5-10 drops nothing', () => {
+  for (const roll of [5, 6, 8, 10]) {
     const result = AdventureLoot.rollMonsterDrop('desert', 'DesertBison', () => (roll - 1) / 12);
     assert.equal(result.roll, roll);
     assert.equal(result.drops.length, 0);
   }
+});
+
+test('DesertBison loot: 11/12 drop dual-source potions', () => {
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertBison', null, 11).drops), ['SmallPotionTrophy']);
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertBison', null, 12).drops), ['PurifyWaterTrophy']);
 });
 
 // ===== 基础属性测试 =====

@@ -46,15 +46,17 @@ test('thorns stacks cap at 1 and is a cleanseable debuff', () => {
   eng.thorns(eng.s.player, 1);
   eng.thorns(eng.s.player, 1);
   assert.equal(eng.s.player.thorns, 1);
+  assert.equal(eng.s.player.thornsTriggersLeft, 2);
   eng.clearDebuffs(eng.s.player);
   assert.equal(eng.s.player.thorns || 0, 0);
+  assert.equal(eng.s.player.thornsTriggersLeft || 0, 0);
 });
 
 test('attack-phase skill with thorns deals 1 independent damage and ignores guard', () => {
   const eng = new Engine();
   eng.start('Ryan', 'Saiki');
   eng.later = () => {};
-  eng.s.player.thorns = 1;
+  eng.thorns(eng.s.player, 1);
   eng.s.player.guard = 3;
   const hp = eng.s.player.hp;
   eng.h.player = [number(3, 'RED')];
@@ -66,13 +68,14 @@ test('attack-phase skill with thorns deals 1 independent damage and ignores guar
   assert.equal(eng.s.player.hp, hp - 1);
   assert.equal(eng.s.player.guard, 3);
   assert.equal(eng.s.player.thorns, 1);
+  assert.equal(eng.s.player.thornsTriggersLeft, 1);
 });
 
 test('item cards in attack phase do not trigger thorns', () => {
   const eng = new Engine();
   eng.start('Ryan', 'Saiki');
   eng.later = () => {};
-  eng.s.player.thorns = 1;
+  eng.thorns(eng.s.player, 1);
   const hp = eng.s.player.hp;
   const potion = { value: -1, color: 'WHITE', isWhite: true, isItemCard: true, isNumberCard: false, potion: true };
   eng.h.player = [potion];
@@ -88,7 +91,7 @@ test('defense skills do not trigger thorns', () => {
   const eng = new Engine();
   eng.start('Ryan', 'Saiki');
   eng.later = () => {};
-  eng.s.player.thorns = 1;
+  eng.thorns(eng.s.player, 1);
   const hp = eng.s.player.hp;
   eng.s.pendingAttack = { damage: 2 };
   eng.s.atkCard = number(2, 'RED');
@@ -99,4 +102,72 @@ test('defense skills do not trigger thorns', () => {
   eng.s.selectedCard = 0;
   eng.defend();
   assert.equal(eng.s.player.hp, hp);
+});
+
+test('thorns triggers at most twice per attack turn; 3rd attack skill deals no thorns damage', () => {
+  const eng = new Engine();
+  eng.start('Ryan', 'Saiki');
+  eng.later = () => {};
+  eng.s.player.thorns = 1;
+  eng.turnStart('player'); // reset remaining to 2 for this attack turn
+  assert.equal(eng.s.player.thornsTriggersLeft, 2);
+  const hp = eng.s.player.hp;
+
+  assert.equal(eng._onAttackSkillRelease(eng.s.player), false);
+  assert.equal(eng.s.player.hp, hp - 1);
+  assert.equal(eng.s.player.thornsTriggersLeft, 1);
+
+  assert.equal(eng._onAttackSkillRelease(eng.s.player), false);
+  assert.equal(eng.s.player.hp, hp - 2);
+  assert.equal(eng.s.player.thornsTriggersLeft, 0);
+
+  // 3rd attack skill this turn: no further thorns HP
+  assert.equal(eng._onAttackSkillRelease(eng.s.player), false);
+  assert.equal(eng.s.player.hp, hp - 2);
+  assert.equal(eng.s.player.thornsTriggersLeft, 0);
+  assert.equal(eng.s.player.thorns, 1);
+});
+
+test('next attack turn restores thornsTriggersLeft to 2', () => {
+  const eng = new Engine();
+  eng.start('Ryan', 'Saiki');
+  eng.later = () => {};
+  eng.s.player.thorns = 1;
+  eng.turnStart('player');
+  eng._onAttackSkillRelease(eng.s.player);
+  eng._onAttackSkillRelease(eng.s.player);
+  assert.equal(eng.s.player.thornsTriggersLeft, 0);
+
+  eng.turnStart('player');
+  assert.equal(eng.s.player.thornsTriggersLeft, 2);
+  // Capture HP after turnStart (character turnStart may heal) so only thorns is measured.
+  const hp = eng.s.player.hp;
+  eng._onAttackSkillRelease(eng.s.player);
+  assert.equal(eng.s.player.hp, hp - 1);
+  assert.equal(eng.s.player.thornsTriggersLeft, 1);
+});
+
+test('no thorns means no triggers and remaining stays 0', () => {
+  const eng = new Engine();
+  eng.start('Ryan', 'Saiki');
+  eng.later = () => {};
+  eng.turnStart('player');
+  assert.equal(eng.s.player.thorns || 0, 0);
+  assert.equal(eng.s.player.thornsTriggersLeft || 0, 0);
+  const hp = eng.s.player.hp;
+  eng._onAttackSkillRelease(eng.s.player);
+  assert.equal(eng.s.player.hp, hp);
+  assert.equal(eng.s.player.thornsTriggersLeft || 0, 0);
+});
+
+test('combat snapshot includes thornsTriggersLeft on the entity', () => {
+  const eng = new Engine();
+  eng.start('Ryan', 'Saiki');
+  eng.thorns(eng.s.player, 1);
+  eng.turnStart('player');
+  eng._onAttackSkillRelease(eng.s.player);
+  const snap = eng.combatSnapshot ? eng.combatSnapshot() : null;
+  assert.ok(snap, 'combatSnapshot should exist');
+  assert.equal(snap.state.player.thorns, 1);
+  assert.equal(snap.state.player.thornsTriggersLeft, 1);
 });

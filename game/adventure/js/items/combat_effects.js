@@ -50,25 +50,28 @@
 
   register('crystalBall', (eng, def, ctx) => {
     const choice = ctx.choice;
-    if (choice && choice.cancel) {
-      eng.s.crystalBallCards = null;
-      eng.s.pendingDialog = null;
-      return { pending: true };
-    }
     const count = Math.min(3, eng.deck.length);
     if (!count) return { ok: false, message: '水晶球：牌库为空' };
-    const cards = eng.deck.slice(eng.deck.length - count).reverse();
-    const order = choice && Array.isArray(choice.order) ? choice.order.map(Number) : null;
+    const cards = (eng.s.crystalBallCards && eng.s.crystalBallCards.length)
+      ? eng.s.crystalBallCards
+      : eng.deck.slice(eng.deck.length - count).reverse();
+    // Cancel is not a free re-peek: treat as confirm with original order so
+    // the item is consumed after the first reveal.
+    let order = choice && Array.isArray(choice.order) ? choice.order.map(Number) : null;
+    if (choice && choice.cancel && !order) {
+      order = cards.map((_, i) => i);
+    }
     if (!order) {
       eng.s.crystalBallCards = clone(cards);
       eng.s.pendingDialog = 'crystalBall';
       eng.s.busy = false;
       return { pending: true };
     }
-    if (order.length !== count || new Set(order).size !== count || order.some(i => i < 0 || i >= count)) {
+    const n = cards.length;
+    if (order.length !== n || new Set(order).size !== n || order.some(i => i < 0 || i >= n)) {
       return { ok: false, message: '水晶球顺序无效' };
     }
-    eng.deck.splice(eng.deck.length - count, count);
+    eng.deck.splice(eng.deck.length - n, n);
     const arranged = order.map(i => cards[i]);
     for (let i = arranged.length - 1; i >= 0; i--) eng.deck.push(arranged[i]);
     eng.s.crystalBallCards = null;
@@ -77,8 +80,8 @@
     return {
       ok: true,
       message: drawn.length
-        ? '已调整牌库顶' + count + '张牌的顺序，并抽取1张牌'
-        : '已调整牌库顶' + count + '张牌的顺序（牌库已空，未能抽牌）'
+        ? '已调整牌库顶' + n + '张牌的顺序，并抽取1张牌'
+        : '已调整牌库顶' + n + '张牌的顺序（牌库已空，未能抽牌）'
     };
   });
 
@@ -156,7 +159,11 @@
     if (!eng._adventureEngine) {
       return { ok: false, message: '无法回溯：冒险引擎未连接' };
     }
-    return { ok: true, message: '退出当前房间，手牌补至上限，下次重新遭遇', rewindRoom: true };
+    const room = typeof eng._adventureEngine.currentRoom === 'function' ? eng._adventureEngine.currentRoom() : null;
+    const message = room && room.type === window.RoomType.GLITCH
+      ? '退出故障房，手牌补至上限；本房事件已消耗，不能重新抽取'
+      : '退出当前房间，手牌补至上限，下次重新遭遇';
+    return { ok: true, message, rewindRoom: true };
   });
 
   register('naturalShield', (eng, def, ctx) => {
@@ -313,7 +320,7 @@
     }
     if (Array.isArray(eng.s.trophyDrops)) eng.s.trophyDrops.push(trophyName);
     else eng.s.trophyDrops = [trophyName];
-    eng.emit('trophyDrop', '获得战利白卡', { who: 'player', drops: [trophyName], source: 'furnace' });
+    eng.emit('trophyDrop', '获得战利白卡', null, { who: 'player', drops: [trophyName], source: 'furnace' });
     eng._invariantBaseline = null;
     if (typeof eng._checkInvariants === 'function') eng._checkInvariants('furnace');
     const trophyDef = window.AdventureRegistry && window.AdventureRegistry.getItem(trophyName);
@@ -329,19 +336,25 @@
     return { ok: true, message: applied.message };
   });
 
-  register('bind', (eng) => {
+  register('bind', (eng, def, ctx) => {
     if (eng.s.phase !== 'PLAYER_PLAY') {
       return { ok: false, message: '捆缚只能在进攻回合使用' };
     }
     if (eng.s.bindUsedThisTurn) {
       return { ok: false, message: '本回合已使用过捆缚' };
     }
-    eng._bindSkipNextAITurn = true;
+    let target = ctx.ai;
+    if (eng.s.isLord && !eng.s.attackTarget) {
+      const key = eng.s.lordPlayerTargetIdx === 1 ? 'ai2' : 'ai';
+      target = eng.s[key] && eng.s[key].alive ? eng.s[key] : eng.s[key === 'ai' ? 'ai2' : 'ai'];
+    }
+    if (!target || !target.alive || target.hp <= 0) {
+      return { ok: false, message: '当前没有可捆缚的对手' };
+    }
     eng.s.bindUsedThisTurn = true;
     const status = window.FurryGame && window.FurryGame.StatusService;
-    if (eng.s.ai) { if (status) status.set(eng.s.ai, 'bind', true); else eng.s.ai.bindMark = true; }
-    if (eng.s.ai2 && eng.s.ai2.alive) { if (status) status.set(eng.s.ai2, 'bind', true); else eng.s.ai2.bindMark = true; }
-    return { ok: true, message: '本回合结束后将跳过对手进攻，再进行一次进攻' };
+    if (status) status.set(target, 'bind', true); else target.bindMark = true;
+    return { ok: true, message: '捆缚当前对手：跳过其下一次进攻，玩家再进行一次进攻' };
   });
 
   window.AdventureCombatEffects = Object.freeze({ register, apply, handlers });

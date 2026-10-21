@@ -66,7 +66,7 @@ test('DesertSobek base stats, boss pool, icon, whiteZeros', () => {
   assert.equal(m.kind, '鳄神索贝克');
   assert.equal(m.hp, 35);
   assert.equal(m.minStage, 1);
-  assert.equal(m.whiteZeros, 2);
+  assert.equal(m.whiteZeros, 1);
   assert.equal(m.handLimit, 3);
   assert.equal(m.icon, '../icons/npc_icons/desert_sobek.webp');
   assert.ok(fs.existsSync(path.join(gameRoot, 'icons/npc_icons/desert_sobek.webp')));
@@ -86,9 +86,11 @@ test('DesertSobek loot: 1-4 LushTrophy, 5 CritTrophy, 6 PiercingTrophy', () => {
   }
   assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertSobek', () => 4 / 12).drops), ['CritTrophy']);
   assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertSobek', () => 5 / 12).drops), ['PiercingTrophy']);
-  for (const roll of [7, 12]) {
+  for (const roll of [7, 10]) {
     assert.equal(AdventureLoot.rollMonsterDrop('desert', 'DesertSobek', () => (roll - 1) / 12).drops.length, 0);
   }
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertSobek', null, 11).drops), ['SmallPotionTrophy']);
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertSobek', null, 12).drops), ['PurifyWaterTrophy']);
 });
 
 test('DesertSobek attack 1/2/3: 3 damage + bleed', () => {

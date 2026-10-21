@@ -32,7 +32,7 @@ test('map return preserves accessory feedback through redraws and reveals cards 
     tasks.find(task=>task.ms===0).fn();
     tasks.find(task=>task.ms===1600).fn();
     assert(ui.container.querySelector('[data-accessory-name="LifeCore"]').classList.contains('adv-accessory-trigger'));
-    assert.deepEqual(Array.from(ui.container.querySelectorAll('.adv-map-heal-float'),node=>node.textContent),['生命核心 +3❤️','进入新层 +10❤️']);
+    assert.deepEqual(Array.from(ui.container.querySelectorAll('.adv-map-heal-float'),node=>node.textContent),['[生命核心]❤️3','[进入新层]❤️10']);
     tasks.find(task=>task.ms===360).fn();
     assert(w.document.querySelector('.adv-wisdom-fly-card'));
     assert.equal(original.style.visibility,'hidden');

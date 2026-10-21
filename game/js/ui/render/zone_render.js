@@ -83,7 +83,7 @@
             // animated; the reveal event itself owns the judgment area meanwhile.
             if (this._isConsumingEvents || (this.state.events||[]).some(evt=>evt.type==='reveal'||evt.type==='judgmentEnd')) return;
             const cards = this.state.revealCards || [];
-            const dice = this.state.diceRoll || null;
+            const dice = this.state.diceRoll && this.state.diceRoll.purpose !== 'trophyDrop' ? this.state.diceRoll : null;
             this._judgmentCards=cards;
             const key = JSON.stringify({ cards, dice });
             if (box.dataset.cardKey === key) return;
@@ -116,17 +116,66 @@
                 panel.className = 'dialog-overlay dialog-sheet-overlay';
                 document.body.appendChild(panel);
             }
-            const key = pending.presentedThrough + ':' + pending.diceIndex;
+            const mode = pending.mode || 'remote';
+            const key = pending.presentedThrough + ':' + pending.diceIndex + ':' + mode;
             if (panel.dataset.key === key) return;
             panel.dataset.key = key;
-            panel.innerHTML = '<div class="dialog-box dialog-bottom-sheet dice-choice-box"><h3>遥控骰子</h3>' +
-                '<p>当前骰面：' + pending.value + '。选择新骰面会消耗 1 个遥控骰子。</p>' +
-                '<div class="dice-face-grid" aria-label="选择骰面">' +
-                Array.from({length:12},(_,i)=>'<button type="button" data-face="'+(i+1)+'" aria-label="改为 '+(i+1)+'">'+(i+1)+'</button>').join('') +
-                '</div><button type="button" class="choice-row choice-secondary" data-keep>保留 ' + pending.value + ' · 不使用</button></div>';
+            const currentFace = Math.max(1, Math.min(12, Number(pending.value) || 1));
             let submitting = false;
+
+            if (mode === 'magician') {
+                const playerHp = this.state && this.state.player ? Number(this.state.player.hp) : 0;
+                const canPayHp = playerHp > 3;
+                const canMinus = currentFace > 1 && canPayHp;
+                const canPlus = currentFace < 12 && canPayHp;
+                const hpNote = canPayHp ? '每次 ±1 消耗 3 点生命。' : '生命 ≤3，只能保留原结果。';
+                panel.innerHTML = '<div class="dialog-box dialog-bottom-sheet dice-choice-box"><h3>魔术师</h3>' +
+                    '<p>当前骰面：' + currentFace + '。可将结果 ±1（' + hpNote + '）</p>' +
+                    '<div class="dice-magician-actions" aria-label="魔术师调整">' +
+                    '<button type="button" class="choice-row" data-adjust="-1"' + (canMinus ? '' : ' disabled aria-disabled="true"') +
+                    '>' + (canMinus ? '−1 → ' + (currentFace - 1) + '（−3❤️）' : (canPayHp ? '−1（已到下限）' : '−1（生命不足）')) + '</button>' +
+                    '<button type="button" class="choice-row" data-adjust="1"' + (canPlus ? '' : ' disabled aria-disabled="true"') +
+                    '>' + (canPlus ? '+1 → ' + (currentFace + 1) + '（−3❤️）' : (canPayHp ? '+1（已到上限）' : '+1（生命不足）')) + '</button>' +
+                    '</div><button type="button" class="choice-row choice-secondary" data-keep>保留 ' + currentFace + '</button></div>';
+                const submitAdjust = async (adjust) => {
+                    if (submitting || this._isHandlingAction) return;
+                    if (adjust !== 0) {
+                        const next = currentFace + adjust;
+                        if (next < 1 || next > 12) return;
+                    }
+                    submitting = true;
+                    if (adjust !== 0) {
+                        const face = zone.querySelector('.d12-result strong, .d12-die-face');
+                        if (face) face.textContent = String(currentFace + adjust);
+                    }
+                    panel.querySelectorAll('button').forEach(button => button.disabled = true);
+                    try {
+                        await this._apiAction('chooseDiceControl', { adjust });
+                    } finally {
+                        submitting = false;
+                    }
+                };
+                panel.querySelector('[data-keep]').onclick = () => submitAdjust(0);
+                panel.querySelectorAll('[data-adjust]').forEach(button => {
+                    button.onclick = () => submitAdjust(Number(button.dataset.adjust));
+                });
+                return;
+            }
+
+            panel.innerHTML = '<div class="dialog-box dialog-bottom-sheet dice-choice-box"><h3>遥控骰子</h3>' +
+                '<p>当前骰面：' + currentFace + '。选择新骰面会消耗 1 个遥控骰子。</p>' +
+                '<div class="dice-face-grid" aria-label="选择骰面">' +
+                Array.from({length:12},(_,i)=>{
+                    const face = i + 1;
+                    const same = face === currentFace;
+                    return '<button type="button" data-face="'+face+'"'+(same?' disabled aria-disabled="true" class="dice-face-current"':'')+
+                        ' aria-label="'+(same?'当前骰面 '+face+'（不可选）':'改为 '+face)+'">'+face+'</button>';
+                }).join('') +
+                '</div><button type="button" class="choice-row choice-secondary" data-keep>保留 ' + currentFace + ' · 不使用</button></div>';
             const submit = async (use,value) => {
-                if (submitting || this._isHandlingAction || this._isConsumingEvents) return;
+                // Allow choose while D12 anim plays — pendingDiceControl is already live.
+                if (submitting || this._isHandlingAction) return;
+                if (use && Number(value) === currentFace) return;
                 submitting = true;
                 if (use) {
                     const face = zone.querySelector('.d12-result strong, .d12-die-face');
@@ -137,7 +186,12 @@
                     await this._apiAction('chooseDiceControl',{use,value});
                 } finally {
                     submitting = false;
-                    if (panel.isConnected) panel.querySelectorAll('button').forEach(button => button.disabled = false);
+                    if (panel.isConnected) {
+                        panel.querySelectorAll('button').forEach(button => {
+                            const face = Number(button.dataset.face);
+                            button.disabled = Number.isFinite(face) && face === currentFace;
+                        });
+                    }
                 }
             };
             panel.querySelector('[data-keep]').onclick = () => submit(false);

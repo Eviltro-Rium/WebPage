@@ -81,12 +81,17 @@ test('FrozenOrca loot: roll 6 drops HypothermiaTrophy', () => {
   assert.equal(result.drops[0], 'HypothermiaTrophy');
 });
 
-test('FrozenOrca loot: roll 7-12 drops nothing', () => {
-  for (const roll of [7, 8, 9, 10, 11, 12]) {
+test('FrozenOrca loot: roll 7-10 drops nothing', () => {
+  for (const roll of [7, 8, 9, 10]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenOrca', () => (roll - 1) / 12);
     assert.equal(result.roll, roll);
     assert.equal(result.drops.length, 0);
   }
+});
+
+test('FrozenOrca loot: 11/12 drop dual-source potions', () => {
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('ocean', 'FrozenOrca', null, 11).drops), ['SmallPotionTrophy']);
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('ocean', 'FrozenOrca', null, 12).drops), ['PurifyWaterTrophy']);
 });
 
 // ===== boss 基础属性测试 =====
@@ -100,7 +105,7 @@ test('FrozenOrca base stats', () => {
   assert.equal(boss.attack, 3);
   assert.equal(boss.defense, 2);
   assert.equal(boss.handLimit, 3);
-  assert.equal(boss.whiteZeros, 2);
+  assert.equal(boss.whiteZeros, 1);
 });
 
 // ===== 进攻测试 =====

@@ -517,7 +517,7 @@
 
   // ===== 墨潮章鱼 =====
   // 进攻1/2/3：抽取玩家牌库1张牌判定；普通颜色3点伤害并放回玩家牌库底，黑/白牌（含战利白卡）5点伤害并置入玩家弃牌堆
-  // 进攻4/5/6：4点伤害，获得潜水
+  // 进攻4/5/6：5点伤害，获得潜水
   // 防御1/2/3：反击2点，恢复1点
   R.registerMonster({
     name: 'FrozenOceanOctopus',
@@ -528,7 +528,7 @@
     icon: '../icons/npc_icons/frozen_ocean_octopus.webp',
     attackDamage(card) {
       const v = card && card.value;
-      if (v >= 4 && v <= 6) return 4;
+      if (v >= 4 && v <= 6) return 5;
       return 0;
     },
     // 进攻1/2/3：抽取玩家牌库判定（桥接层结算伤害与判定牌去向）
@@ -657,14 +657,14 @@
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
       const v = card.value;
-      if (v >= 1 && v <= 3) return 2;
+      if (v >= 1 && v <= 3) return 3;
       if (v >= 4 && v <= 6) return 3 + Math.max(0, Number(ctx && ctx.playerBleed) || 0);
       return v === 0 ? 3 : 0;
     },
     attackEffectTiming(value) { return value === 0 ? 'beforeDamage' : 'afterDamage'; },
     attackGuard(card) {
       if (!card || !card.isNumberCard) return 0;
-      return card.value === 0 ? 4 : card.value >= 1 && card.value <= 3 ? 2 : 0;
+      return card.value === 0 ? 4 : 0;
     },
     attackBleed(card) {
       return card && card.isNumberCard && card.value >= 1 && card.value <= 3 ? card.value : 0;

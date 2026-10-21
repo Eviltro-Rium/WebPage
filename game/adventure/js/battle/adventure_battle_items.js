@@ -29,6 +29,48 @@
         return this.state();
       }
 
+      // 弃牌符 / 熔炉：无 index 时进入 Vixraps 式手牌点选，不弹窗。
+      if ((def.combatUse === 'discardTalisman' || def.combatUse === 'furnace') &&
+          !(choice && (choice.index != null || typeof choice === 'number'))) {
+        const hand = this.h.player || [];
+        if (def.combatUse === 'discardTalisman') {
+          if (!hand.length) {
+            this.emit('desc', '手牌为空，无法使用弃牌符');
+            return this.state();
+          }
+          return this.beginHandDiscard({
+            kind: 'discardTalisman',
+            itemIndex: itemIndex,
+            itemName: def.name,
+            count: 1,
+            cancelable: true,
+            resumePhase: this.s.phase,
+            hint: '弃牌符：请选择1张手牌弃掉（然后抽2张）'
+          });
+        }
+        const legalIndices = [];
+        hand.forEach((c, i) => {
+          if (c && c.isNumberCard && !c.isItemCard && !c.isBlack && !c.isWhite &&
+              ['RED', 'YELLOW', 'BLUE', 'GREEN'].includes(c.color)) legalIndices.push(i);
+        });
+        if (!legalIndices.length) {
+          this.emit('desc', '没有可熔炼的普通颜色手牌');
+          return this.state();
+        }
+        return this.beginHandDiscard({
+          kind: 'furnace',
+          itemIndex: itemIndex,
+          itemName: def.name,
+          count: 1,
+          filter: 'colorNumber',
+          legalIndices: legalIndices,
+          cancelable: true,
+          resumePhase: this.s.phase,
+          hint: '熔炉：请选择1张红/黄/蓝/绿点数牌弃掉',
+          emptyMessage: '没有可熔炼的普通颜色手牌'
+        });
+      }
+
       const player = this.s.player;
       const purifyChoices = Array.isArray(choice) ? choice : null;
       let targetKey = this.s.attackTarget;
@@ -301,5 +343,122 @@
     }
 
   };
+
+  // Vixraps-style hand discard for consumables (弃牌符 / 熔炉).
+  // UI should enter PLAYER_DISCARD, click hand cards, then doConfirmDiscard /
+  // doCancelDiscard — no showOpponentCardChoice popup.
+  const prevConfirmDiscard = Engine.prototype.confirmDiscard;
+  const prevCancelDiscard = Engine.prototype.cancelDiscard;
+
+  extension.beginHandDiscard = function (opts) {
+    opts = opts || {};
+    const hand = this.h.player || [];
+    const count = Math.max(1, Number(opts.count) || 1);
+    if (hand.length < count) {
+      this.emit('desc', opts.emptyMessage || '手牌不足，无法弃牌');
+      return this.state();
+    }
+    let legalIndices = null;
+    if (Array.isArray(opts.legalIndices)) {
+      legalIndices = opts.legalIndices.map(Number).filter(i => i >= 0 && i < hand.length);
+    } else if (opts.filter === 'colorNumber') {
+      legalIndices = [];
+      hand.forEach((c, i) => {
+        if (c && c.isNumberCard && !c.isItemCard && !c.isBlack && !c.isWhite &&
+            ['RED', 'YELLOW', 'BLUE', 'GREEN'].includes(c.color)) legalIndices.push(i);
+      });
+    }
+    if (legalIndices && legalIndices.length < count) {
+      this.emit('desc', opts.emptyMessage || '没有可弃的手牌');
+      return this.state();
+    }
+    const resumePhase = opts.resumePhase || this.s.phase || 'PLAYER_PLAY';
+    this.s.pendingHandDiscard = {
+      kind: opts.kind || 'handDiscard',
+      count: count,
+      itemIndex: opts.itemIndex != null ? Number(opts.itemIndex) : null,
+      itemName: opts.itemName || null,
+      filter: opts.filter || null,
+      legalIndices: legalIndices,
+      cancelable: opts.cancelable !== false,
+      resumePhase: resumePhase,
+      hint: opts.hint || ('请选择' + count + '张手牌弃掉')
+    };
+    this.s.phase = 'PLAYER_DISCARD';
+    this.s.busy = false;
+    this.s.forcedDiscard = false;
+    this.s.selectedCard = -1;
+    this.s.selectedCards = [];
+    this.emit('desc', this.s.pendingHandDiscard.hint);
+    return this.state();
+  };
+
+  extension._confirmPendingHandDiscard = function () {
+    const pending = this.s && this.s.pendingHandDiscard;
+    if (!pending) throw Error('当前没有待确认的手牌弃牌');
+    const selected = (this.s.selectedCards || []).slice();
+    if (selected.length !== pending.count) {
+      throw Error(pending.hint || ('请选择' + pending.count + '张手牌'));
+    }
+    if (Array.isArray(pending.legalIndices)) {
+      const allow = new Set(pending.legalIndices.map(Number));
+      if (selected.some(i => !allow.has(i))) throw Error(pending.hint || '该牌不可选');
+    }
+    const kind = pending.kind;
+    const itemIndex = pending.itemIndex;
+    const resumePhase = pending.resumePhase || 'PLAYER_PLAY';
+    // Clear before re-entering item use so nested confirm cannot loop.
+    this.s.pendingHandDiscard = null;
+    this.s.selectedCard = -1;
+    this.s.selectedCards = [];
+    this.s.phase = resumePhase;
+    this.s.busy = false;
+
+    if ((kind === 'discardTalisman' || kind === 'furnace') && itemIndex != null) {
+      // Re-enter item use with the chosen hand index; consumes on success.
+      return this.useAdventureCombatItem(itemIndex, { index: selected[0] });
+    }
+    // Generic: discard selected cards then restore phase.
+    selected.sort((a, b) => b - a);
+    for (const i of selected) {
+      if (!this.h.player[i]) continue;
+      const card = this.h.player.splice(i, 1)[0];
+      this.discardWithEvent(card, 'player', { handIndex: i, desc: '玩家弃掉' + this.cardText(card) });
+    }
+    this.s.phase = resumePhase;
+    return this.state();
+  };
+
+  extension.confirmDiscard = function () {
+    if (this.s && this.s.pendingHandDiscard) {
+      return this._confirmPendingHandDiscard();
+    }
+    return prevConfirmDiscard.call(this);
+  };
+
+  extension.cancelDiscard = function () {
+    const pending = this.s && this.s.pendingHandDiscard;
+    if (pending) {
+      if (!pending.cancelable) throw Error(pending.hint || '必须弃牌，不能取消');
+      const resume = pending.resumePhase || 'PLAYER_PLAY';
+      this.s.pendingHandDiscard = null;
+      this.s.phase = resume;
+      this.s.busy = false;
+      this.s.selectedCard = -1;
+      this.s.selectedCards = [];
+      this.emit('desc', '已取消弃牌');
+      return this.state();
+    }
+    return prevCancelDiscard.call(this);
+  };
+
+  // Allow item use while already in our own hand-discard pending (confirm path
+  // restores resumePhase first). Block starting a second hand-discard.
+  const prevCanUse = extension._canUseAdventureCombatItemNow;
+  extension._canUseAdventureCombatItemNow = function (def) {
+    if (this.s && this.s.pendingHandDiscard) return false;
+    return prevCanUse.call(this, def);
+  };
+
   Object.assign(Engine.prototype, extension);
 })(window);

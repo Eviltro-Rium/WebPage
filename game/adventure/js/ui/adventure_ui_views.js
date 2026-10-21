@@ -25,10 +25,14 @@
       const wrap = document.createElement('div');
       wrap.className = 'adventure-wrap';
       wrap.appendChild(ui._buildHeader(snap));
-      if (snap.phase === Phase.SHOP) {
+      if (snap.phase === Phase.GLITCH) {
+        wrap.appendChild(ui._buildGlitchPage(snap));
+      } else if (snap.phase === Phase.SHOP) {
         wrap.appendChild(ui._buildShopPage(snap));
       } else if (snap.phase === Phase.BLACKSMITH) {
         wrap.appendChild(ui._buildBlacksmithPage(snap));
+      } else if (snap.phase === Phase.REWARD && snap.roomInfo && snap.roomInfo.stashedLoot && snap.roomInfo.stashedLoot.kind === 'merchant') {
+        wrap.appendChild(ui._buildMerchantPage(snap));
       } else if (snap.phase === Phase.REWARD && snap.roomInfo && snap.roomInfo.type === global.RoomType.BOSS && snap.roomInfo.cleared) {
         wrap.appendChild(ui._buildBossRewardPage(snap));
       } else if (snap.phase === Phase.REWARD && snap.pendingRoomReward) {

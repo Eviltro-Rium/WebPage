@@ -59,6 +59,8 @@ class FakeEl {
     this.children.push(child);
     return child;
   }
+  append(...children) { children.forEach(child => this.appendChild(child)); }
+  replaceChildren(...children) { this.innerHTML = ''; this.append(...children); }
   removeChild(child) {
     const i = this.children.indexOf(child);
     if (i >= 0) this.children.splice(i, 1);
@@ -76,7 +78,7 @@ class FakeEl {
 
 function matchToken(el, token) {
   if (token.startsWith('#')) return el.id === token.slice(1);
-  if (token.startsWith('.')) return el.className.split(' ').includes(token.slice(1));
+  if (token.startsWith('.')) return token.slice(1).split('.').every(cls=>el.className.split(' ').includes(cls));
   const m = token.match(/^\[data-index="(\d+)"\]$/);
   if (m) return String(el.dataset.index) === m[1];
   if (token === '*') return true;
@@ -106,7 +108,7 @@ function makeDocument() {
   const doc = {
     body,
     createElement: (tag) => new FakeEl(tag),
-    getElementById: (id) => byId[id] || null,
+    getElementById: (id) => byId[id] || queryAll(body, '#' + id)[0] || null,
     querySelector: (sel) => queryAll(body, sel)[0] || null,
     querySelectorAll: (sel) => queryAll(body, sel),
   };
@@ -172,6 +174,9 @@ function harness() {
     doc.getElementById(id).innerHTML = '';
   }
   const ui = Object.create(context.GameUI.prototype);
+  // Playback-order tests acknowledge each result immediately. The actual
+  // click gate is exercised with real DOM buttons in settlement-ui.test.js.
+  ui._waitForTrophyConfirmation = async () => true;
   const animCalls = [];
   ui.anim = {
     drawCards: async (count, isPlayer, target) => { animCalls.push({ op: 'draw', count, isPlayer, target: target && target.id }); },
@@ -364,7 +369,14 @@ test('loot dice flies obtained trophies once before victory and does not replay 
 
 test('Boss rewards keep each landed result readable and play card arrival before victory', async () => {
   const {ui, doc} = harness();
-  const sequence=[],descriptions=[],pauses=[];
+  const sequence=[],descriptions=[],pauses=[],statuses=[],confirmations=[];
+  ui._waitForTrophyConfirmation=async()=>{confirmations.push(true);return true;};
+  const showSettlement=ui._showTrophySettlement.bind(ui);
+  ui._showTrophySettlement=(evt,landed)=>{
+    const overlay=showSettlement(evt,landed);
+    if(landed) statuses.push(overlay.querySelector('.trophy-settle-status').textContent);
+    return overlay;
+  };
   const originalTimeout=context.setTimeout;
   context.setTimeout=(fn,ms)=>{pauses.push(ms);fn();return 1;};
   try {
@@ -384,11 +396,11 @@ test('Boss rewards keep each landed result readable and play card arrival before
     }
     await ui._playEvents(events,true);
     assert.deepEqual(sequence,['die:2','gain:GuardTrophy','die:10','die:3','gain:GuardTrophy','victory']);
-    assert.equal(pauses.filter(ms=>ms===1100).length,3,'loot holds bypass fast-mode shortening');
-    assert.equal(pauses.filter(ms=>ms===500).length,3,'each result gets a clear gap before next roll');
+    assert.equal(confirmations.length,3,'each Boss roll requires a separate confirmation, including misses');
     assert.equal(staleJudgments,0,'old judgment cards must not replace landed loot dice');
-    assert.ok(descriptions.some(text=>text.includes('无收获')&&text.includes('2/3')));
-    assert.ok(descriptions.some(text=>text.includes('获得')&&text.includes('GuardTrophy')));
+    assert.ok(descriptions.every(text=>text===''),'judgment zone has no loot descriptions');
+    assert.ok(statuses.some(text=>text.includes('无掉落')&&text.includes('2 / 3')));
+    assert.equal(statuses.filter(text=>text.includes('获得白卡')).length,2);
     assert.equal(doc.getElementById('player-hand').children.length,3);
   } finally {context.setTimeout=originalTimeout;}
 });
@@ -438,12 +450,18 @@ test('challenge first elimination visibly flies its trophy into the hand while t
     assert.equal(doc.getElementById('player-hand').children.length,2);
     assert.equal(ui.state.phase,'PLAYER_PLAY');assert.equal(ui.state.ai2.alive,true);
     assert.ok(!doc.getElementById('player-hand').classList.contains('trophy-hand-glow'));
+    assert.equal(doc.getElementById('adv-settle-overlay'),null,'mid-battle loot sheet releases the board');
   } finally {context.AdventureDeck=oldDeck;FakeEl.prototype.animate=oldAnimate;}
 });
 
 test('legacy loot dice show their paired reward, while a controllable unresolved die does not claim a miss', async () => {
   const {ui}=harness(),labels=[];
-  ui._showZoneDesc=(id,text)=>labels.push(text);
+  const showSettlement=ui._showTrophySettlement.bind(ui);
+  ui._showTrophySettlement=(evt,landed)=>{
+    const overlay=showSettlement(evt,landed);
+    if(landed) labels.push(overlay.querySelector('.trophy-settle-status').textContent);
+    return overlay;
+  };
   ui._playD12Animation=async()=>{};
   ui._playTrophyDropAnimation=async()=>{};
   ui.state.playerHand=[Object.assign(card('legacy-drop','WHITE',-1),{trophyWhite:true,trophyName:'GuardTrophy'})];
@@ -451,10 +469,10 @@ test('legacy loot dice show their paired reward, while a controllable unresolved
     {id:40,type:'diceRoll',purpose:'trophyDrop',value:1,rollIndex:1,rollCount:3,desc:'table'},
     {id:41,type:'trophyDrop',roll:1,drops:['GuardTrophy'],rollIndex:1,rollCount:3}
   ],true);
-  assert.ok(labels.some(text=>text.includes('获得')&&text.includes('GuardTrophy')));
-  assert.ok(!labels.some(text=>text.includes('无收获')));
+  assert.ok(labels.some(text=>text.includes('获得白卡')));
+  assert.ok(!labels.some(text=>text.includes('无掉落')));
   labels.length=0;
   await ui._playEvents([{id:42,type:'diceRoll',purpose:'trophyDrop',value:10,rollIndex:2,rollCount:3,desc:'table'}],true);
   assert.ok(labels.some(text=>text.includes('等待确认')));
-  assert.ok(!labels.some(text=>text.includes('无收获')));
+  assert.ok(!labels.some(text=>text.includes('无掉落')));
 });

@@ -57,7 +57,7 @@ test('Pharaoh base stats, boss pool and Stage 2 gate', () => {
   assert.equal(m.kind, '法老');
   assert.equal(m.hp, 50);
   assert.equal(m.minStage, 2);
-  assert.equal(m.whiteZeros, 2);
+  assert.equal(m.whiteZeros, 1);
   assert.equal(m.icon, '../icons/npc_icons/pharaoh.webp');
   const pool = context.AdventureBossPool.desert;
   assert.equal(pool['*'], undefined);
@@ -82,14 +82,19 @@ test('Pharaoh only appears from Stage 2 in desert boss picks', () => {
   }
 });
 
-test('Pharaoh loot: rolls 1-6 drop ZeroTrophy', () => {
+test('Pharaoh loot: Zero 1-6; 11/12 dual-source potions', () => {
   for (const roll of [1, 2, 3, 4, 5, 6]) {
     const r = AdventureLoot.rollMonsterDrop('desert', 'Pharaoh', () => (roll - 1) / 12);
     assert.deepEqual(Array.from(r.drops), ['ZeroTrophy']);
   }
-  for (const roll of [7, 12]) {
-    assert.equal(AdventureLoot.rollMonsterDrop('desert', 'Pharaoh', () => (roll - 1) / 12).drops.length, 0);
+  for (const roll of [7, 8, 9, 10]) {
+    const r = AdventureLoot.rollMonsterDrop('desert', 'Pharaoh', () => (roll - 1) / 12);
+    assert.deepEqual(Array.from(r.drops), []);
   }
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'Pharaoh', null, 11).drops),
+    ['SmallPotionTrophy']);
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'Pharaoh', null, 12).drops),
+    ['PurifyWaterTrophy']);
 });
 
 test('Pharaoh attack hooks follow card value and color', () => {

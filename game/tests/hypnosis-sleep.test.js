@@ -186,6 +186,23 @@ test('Vixraps attack 0 applies hypnosis to the main target only', () => {
   assert.ok(r.d === 0);
 });
 
+test('Vixraps attack 0 keeps at most 3 burn after settling a full stack', () => {
+  const eng = new Engine();
+  eng.start('Vixraps', 'Saiki');
+  eng.s.ai.burn = 5;
+  eng.h.player = [number(0, 'RED')];
+  eng.s.discardTop = number(0, 'RED');
+  eng.s.phase = 'PLAYER_PLAY';
+  eng.s.busy = false;
+  eng.s.selectedCard = 0;
+  eng.later = () => {};
+  eng.play();
+  assert.equal(eng.s.ai.burn, 3, 'apply 2 then settle twice from the cap of 5');
+  assert.ok(!eng.s.pendingBuffRestore, 'settled burn is not rolled back to 5');
+  if (eng.pendingSettlement) eng.acknowledgeEvents(eng.ver);
+  assert.equal(eng.s.ai.burn, 3);
+});
+
 test('Vixraps attack 6 applies burn first then heals and deals by current stacks', () => {
   const eng = new Engine();
   eng.start('Vixraps', 'Saiki');
@@ -257,7 +274,7 @@ test('wake emits one ordinary heal event', () => {
   eng.turnStart('ai');
   const wakes = eng.events.filter(event => event.type === 'heal' && (event.kind === 'wake' || event.kind === 'heal'));
   assert.equal(wakes.length, 1);
-  assert.match(wakes[0].desc, /\+10/);
+  assert.equal(wakes[0].desc, '[苏醒]❤️10');
 });
 
 test('clearDebuffs removes hypnosis and sleep', () => {
@@ -554,4 +571,22 @@ test('1v2: Vixraps attack 0 still settles existing burn on all opponents', () =>
   assert.equal(eng.s.ai.burn, 1, 'existing burn settles twice without gaining new stacks');
   assert.equal(eng.s.ai.hp, hp - 5);
   assert.equal(!!eng.s.ai.hypnosis, false);
+});
+
+test('1v2: Vixraps attack 0 leaves at most 3 burn on a capped selected target', () => {
+  const eng = new Engine();
+  eng.start1v2('Vixraps', 'Saiki', 'Ryan');
+  eng.s.attackTarget = 'ai2';
+  eng.s.ai.burn = 5;
+  eng.s.ai2.burn = 5;
+  eng.h.player = [number(0, 'RED')];
+  eng.s.discardTop = number(0, 'RED');
+  eng.s.phase = 'PLAYER_PLAY';
+  eng.s.busy = false;
+  eng.s.selectedCard = 0;
+  eng.later = () => {};
+  eng.play1v2();
+  assert.equal(eng.s.ai2.burn, 3, 'selected target: cap 5, apply 2, settle twice');
+  assert.equal(eng.s.ai.burn, 3, 'other enemy: existing 5 settles twice');
+  assert.ok(!eng.s.pendingBuffRestore);
 });

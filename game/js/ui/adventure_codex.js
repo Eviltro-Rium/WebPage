@@ -25,7 +25,7 @@
     { key: 'freeze', name: '冷冻', type: '负面状态', icon: 'icons/buff_icons/freeze.webp', desc: '堆叠上限：1\n维持效果：持续\n无法防御蓝色攻击。受到蓝色攻击时只能跳过防御并承受全部伤害。' },
     { key: 'blind', name: '致盲', type: '负面状态', icon: 'icons/buff_icons/blind.webp', desc: '堆叠上限：1\n维持效果：持续\n持续期间不能在战斗中使用一次性道具，只能等待被净化。' },
     { key: 'iceSeal', name: '冰封', type: '负面状态', icon: 'icons/buff_icons/ice_seal.webp', desc: '堆叠上限：1\n维持效果：衰减\n有冰封的角色在下一次补牌时少补1张牌，随后移除1层冰封；可被净化。' },
-    { key: 'bomb', name: '定时炸弹', type: '负面状态', icon: 'icons/buff_icons/time_bomb.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n初始倒计时为5。被施加者每打出1张牌倒计时减少1，归零时爆炸并受到5点伤害；可被净化。' },
+    { key: 'bomb', name: '定时炸弹', type: '负面状态', icon: 'icons/buff_icons/time_bomb.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n初始倒计时为5。被施加者每打出1张牌倒计时减少1，归零时爆炸并受到5点伤害；图标右上角数字为当前倒计时；可被净化。' },
     { key: 'guard', name: '守护', type: '正面状态', icon: 'icons/buff_icons/guard.webp', desc: '堆叠上限：5\n维持效果：持续\n受到攻击或反击伤害时可消耗守护层数等额减免；不能减免灼伤、流血、中毒、炸弹、荆棘、寄生等Buff伤害。' },
     { key: 'fly', name: '飞翔', type: '正面状态', icon: 'icons/buff_icons/fly.webp', desc: '堆叠上限：2\n维持效果：持续\n受到攻击或反击伤害时可消耗1层投掷12面骰，1~6成功躲避、7~12失败；失败后可继续尝试或使用守护。不能减免Buff伤害，也不能躲避攻击附带的状态。' },
     { key: 'harden', name: '硬化', type: '正面状态', icon: 'icons/buff_icons/harden.webp', desc: '堆叠上限：2\n维持效果：持续\n每层使真正标记为不可防御的攻击伤害减免1点，最多减至0；层数不消耗。该减免先于守护和飞翔结算，不减免灼伤、流血、中毒、炸弹等Buff独立伤害，可被净化。' },
@@ -40,28 +40,28 @@
     { key: 'diving', name: '潜水', type: '正面状态', icon: 'icons/buff_icons/diving.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有潜水的角色免疫蓝色攻击（含被指定为蓝色的白牌）造成的伤害和buff施加。对手依旧可以对自己施加正面增益。冰封、诅咒等仍能命中。' },
     { key: 'scorch', name: '炙热', type: '负面状态', icon: 'icons/buff_icons/scorch.webp', desc: '堆叠上限：1\n维持效果：持续\n持有期间触发灼伤结算时，仍造成灼伤伤害，但不消退灼伤层数；可被净化。' },
     { key: 'hypothermia', name: '失温', type: '负面状态', icon: 'icons/buff_icons/hypothermia.webp', desc: '堆叠上限：2\n维持效果：衰减\n当失温达到2层时，立即强制弃1张牌（玩家自选，NPC按最低优先级弃牌），随后失温削减1层。' },
-    { key: 'bind', name: '捆缚', type: '印记', icon: 'icons/items_icons/binding.webp', desc: '堆叠上限：1\n维持效果：规则结束\n捆缚印记不能被净化或超级净化清除；目标在本回合结束后跳过自己的进攻阶段，由当前回合角色再发动一次进攻，额外进攻完成后按规则移除。' },
+    { key: 'bind', name: '捆缚', type: '印记', icon: 'icons/buff_icons/binding.webp', desc: '堆叠上限：1\n维持效果：规则结束\n捆缚印记不能被净化或超级净化清除；目标在本回合结束后跳过自己的进攻阶段，由当前回合角色再发动一次进攻，额外进攻完成后按规则移除。' },
     { key: 'hypnosis', name: '催眠', type: '负面状态', icon: 'icons/buff_icons/sleepy_1.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有催眠的角色在自己的进攻阶段结束、切换到对手进攻阶段时立即转化为[沉睡]。已处于[沉睡]时免疫新的[催眠]。' },
     { key: 'sleep', name: '沉睡', type: '负面状态', icon: 'icons/buff_icons/sleepy_2.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n拥有沉睡的角色在自己的进攻回合开始时立刻苏醒，恢复10点生命（不超过生命上限）。同时被进攻时会跳过防御阶段，所有伤害直接结算。' },
-    { key: 'thorns', name: '荆棘', type: '负面状态', icon: 'icons/buff_icons/thorns.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有荆棘的角色在进攻阶段每释放一次技能，立即受到1点独立伤害（不可用守护/飞翔减免）；可被净化。' },
+    { key: 'thorns', name: '荆棘', type: '负面状态', icon: 'icons/buff_icons/thorns.webp', desc: '堆叠上限：1\n维持效果：持续\n每个进攻回合最多触发2次：释放进攻技能时立即受到1点独立伤害（不可用守护/飞翔减免）；图标右上角数字为本回合剩余触发次数；可被净化。' },
     { key: 'quicksand', name: '流沙', type: '负面状态', icon: 'icons/buff_icons/quicksand.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有流沙的角色手牌上限减少1张；回合结束时按降低后的上限弃牌和补牌。不会立即弃掉现有手牌；可被普通净化、超级净化清除，清除后恢复原上限。' },
-    { key: 'sandblind', name: '沙盲', type: '负面状态', icon: 'icons/buff_icons/sandblind.webp', desc: '堆叠上限：6\n维持效果：持续\n进攻触发技能时立刻投掷12面骰：若结果≤2×层数则本次技能落空（对手跳过防御）；每次判定后层数-1。6层时必定失败；可被净化（每次净化减1层）。' },
-    { key: 'bloodthirst', name: '嗜血', type: '印记', icon: 'icons/items_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：永久\nSerenity专属嗜血印记。生命低于30时获得；获得后即使恢复到30以上也不会移除，且不能被净化或超级净化清除。未获得印记时，正常恢复额外+1生命；嗜血后技能按嗜血规则结算。' },
-    { key: 'taunt', name: '嘲弄', type: '印记', icon: 'icons/items_icons/mock.webp', desc: '堆叠上限：1\n维持效果：整段防御阶段\n嘲风鬣狗印记。进入防御阶段获得并用12面骰选色（1–3红/4–6黄/7–9蓝/10–12绿），卡片底色标出本阶段失效进攻色；该色进攻全空，鬣狗无需防御。鬣狗进入进攻阶段时清除。不可被净化。' }
+    { key: 'sandblind', name: '沙盲', type: '负面状态', icon: 'icons/buff_icons/sandblind.webp', desc: '堆叠上限：6\n维持效果：持续\n进攻触发技能时立刻投掷12面骰：若结果≤2×层数则本次技能落空（对手跳过防御）。判定通过层数-1，判定失败层数-2（不足则扣至0）。6层时必定失败；可被净化（每次净化减1层）。' },
+    { key: 'bloodthirst', name: '嗜血', type: '印记', icon: 'icons/buff_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：永久\nSerenity专属嗜血印记。生命低于30时获得；获得后即使恢复到30以上也不会移除，且不能被净化或超级净化清除。未获得印记时，正常恢复额外+1生命；嗜血后技能按嗜血规则结算。' },
+    { key: 'taunt', name: '嘲弄', type: '印记', icon: 'icons/buff_icons/mock.webp', desc: '堆叠上限：1\n维持效果：整段防御阶段\n嘲风鬣狗印记。进入防御阶段获得并用12面骰选色（1–3红/4–6黄/7–9蓝/10–12绿），以🔴🟡🔵🟢标出本阶段失效进攻色；该色进攻全空，鬣狗无需防御。鬣狗进入进攻阶段时清除。不可被净化。' }
   ];
 
   // 主角图鉴：仅展示玩家可选择的角色（排除冒险 NPC、领主专属和测试用角色）。
   const PLAYER_CHARS = [
     { name: 'Ryan', hp: 70, type: '战士', passive: '进攻回合开始前恢复1点生命', avatar: 'avatars/Ryan.webp', color: '#14eb5f' },
-    { name: 'Leon', hp: 90, type: '骑士', passive: '免疫灼伤伤害', avatar: 'avatars/Leon.webp', color: '#ee1111' },
+    { name: 'Leon', hp: 90, type: '骑士', passive: '免疫灼伤', avatar: 'avatars/Leon.webp', color: '#ee1111' },
     { name: 'Chan', hp: 80, type: '谋士', passive: '进攻回合开始前抽1张牌', avatar: 'avatars/Chan.webp', color: '#1399f2' },
-    { name: 'Saiki', hp: 80, type: '猎手', passive: '有效黄色牌在防御结算后施加1层流血', avatar: 'avatars/Saiki.webp', color: '#9b59b6' },
-    { name: 'Blaze', hp: 85, type: '狂战', passive: '有灼伤时1至7牌攻击伤害+1', avatar: 'avatars/Blaze.webp', color: '#e67e22' },
-    { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；低于30生命获得嗜血印记，印记永久且不可净化；未获得印记时恢复+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
-    { name: 'Moze', hp: 100, type: '守护', passive: '守护可减免攻击和反击伤害，不能减免Buff伤害', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
-    { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出数字牌或白色道具牌获得对应颜色混沌（含指定颜色）', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
-    { name: 'Otto', hp: 100, type: '战士', passive: '进攻时伤害>4可选择消耗1层[暴击]使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
-    { name: 'Vixraps', hp: 85, type: '灼热', passive: '打出黑牌后弃1张牌（无手牌则免），回2❤️并施加1层灼伤', avatar: 'avatars/Vixraps.webp', color: '#c0392b' }
+    { name: 'Saiki', hp: 80, type: '猎手', passive: '进攻打出有效黄色牌时，防御结算后施加1层流血', avatar: 'avatars/Saiki.webp', color: '#9b59b6' },
+    { name: 'Blaze', hp: 85, type: '狂战', passive: '自身有灼伤时，1至7牌的攻击伤害+1', avatar: 'avatars/Blaze.webp', color: '#e67e22' },
+    { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；生命低于30获得嗜血印记（永久、不可净化）；无印记时恢复额外+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
+    { name: 'Moze', hp: 100, type: '守护', passive: '可消耗守护减免攻击与反击伤害（不含Buff伤害）', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
+    { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出数字/白道具牌获得对应颜色混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
+    { name: 'Otto', hp: 100, type: '战士', passive: '进攻伤害>4时可消耗1层[暴击]使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
+    { name: 'Vixraps', hp: 85, type: '灼热', passive: '打出黑牌后须弃1张（无手牌可免），然后回复2生命并对对手施加1层灼伤', avatar: 'avatars/Vixraps.webp', color: '#c0392b' }
   ];
 
   const PLAYER_SKILL_GRID = [
@@ -165,17 +165,39 @@
     return includeZero ? NPC_SKILL_GRID : NPC_SKILL_GRID.filter(row => row.label !== '0');
   }
 
+  function collectionSubhead(count, description) {
+    return `<div class="codex-collection-subhead"><span class="codex-collection-count">${count} 项</span><p>${description}</p></div>`;
+  }
+
   function buildCategoryPage() {
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back">&larr; 返回</button><h1 class="rules-title">图鉴</h1></div>';
+    const registry = window.AdventureRegistry;
+    const consumables = registry ? registry.allItems().filter(it => it.kind === 'consumable').length : 0;
+    const accessories = registry ? registry.allItems().filter(it => it.kind === 'accessory').length : 0;
+    const trophies = registry ? registry.allItems().filter(it => it.kind === 'trophyWhite').length : 0;
+    const counts = {
+      player: PLAYER_CHARS.length,
+      monster: registry ? registry.allMonsters().length : 0,
+      boss: registry ? registry.allBosses().length : 0,
+      consumable: consumables,
+      accessory: accessories,
+      trophyWhite: trophies,
+      buff: BUFF_DATA.length
+    };
+    const categories = [
+      ['player', '🎭', '主角图鉴', '角色技能与被动'],
+      ['monster', '👹', '怪物图鉴', '敌人技能与战利品'],
+      ['boss', '👑', 'Boss图鉴', '首领技能与阶段强化'],
+      ['consumable', '🧪', '道具图鉴', '冒险中可用的消耗品'],
+      ['accessory', '💍', '饰品图鉴', '持续生效的冒险装备'],
+      ['trophyWhite', '🃏', '战利白卡', '掉落、锻造与双源卡牌'],
+      ['buff', '✨', 'Buff图鉴', '状态、层数与持续方式']
+    ];
     html += '<div class="codex-category-grid">';
-    html += '<div class="codex-category-card" data-cat="player"><div class="codex-category-icon">🎭</div><div class="codex-category-name">主角图鉴</div></div>';
-    html += '<div class="codex-category-card" data-cat="monster"><div class="codex-category-icon">👹</div><div class="codex-category-name">怪物图鉴</div></div>';
-    html += '<div class="codex-category-card" data-cat="boss"><div class="codex-category-icon">👑</div><div class="codex-category-name">Boss图鉴</div></div>';
-    html += '<div class="codex-category-card" data-cat="consumable"><div class="codex-category-icon">🧪</div><div class="codex-category-name">道具图鉴</div></div>';
-    html += '<div class="codex-category-card" data-cat="accessory"><div class="codex-category-icon">💍</div><div class="codex-category-name">饰品图鉴</div></div>';
-    html += '<div class="codex-category-card" data-cat="trophyWhite"><div class="codex-category-icon">🃏</div><div class="codex-category-name">战利白卡</div></div>';
-    html += '<div class="codex-category-card" data-cat="buff"><div class="codex-category-icon">✨</div><div class="codex-category-name">Buff图鉴</div></div>';
+    for (const [key, icon, name, description] of categories) {
+      html += `<button type="button" class="codex-category-card" data-cat="${key}"><span class="codex-category-icon">${icon}</span><span class="codex-category-copy"><span class="codex-category-name">${name}</span><span class="codex-category-desc">${description}</span></span><span class="codex-category-count">${counts[key]}</span><span class="codex-category-arrow" aria-hidden="true">›</span></button>`;
+    }
     html += '</div></div>';
     return html;
   }
@@ -183,13 +205,15 @@
   function buildPlayerCharList() {
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">主角图鉴</h1></div>';
+    html += collectionSubhead(PLAYER_CHARS.length, '选择一位主角，查看生命值、被动能力与牌面技能。');
     html += '<div class="char-detail-grid">';
     for (const ch of PLAYER_CHARS) {
-      html += `<div class="char-detail-card" data-name="${ch.name}">
+      html += `<button type="button" class="char-detail-card" data-name="${ch.name}" style="--character-accent:${ch.color}">
         <img class="char-detail-avatar" src="${ch.avatar}" alt="${ch.name}">
-        <div class="char-detail-name" style="color:${ch.color}">${ch.name}</div>
-        <div class="char-detail-type">${ch.type}</div>
-      </div>`;
+        <span class="char-detail-name">${ch.name}</span>
+        <span class="char-detail-type">${ch.type}</span>
+        <span class="char-detail-open">查看技能 <span aria-hidden="true">›</span></span>
+      </button>`;
     }
     html += '</div></div>';
     return html;
@@ -205,16 +229,16 @@
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; 主角列表</button><h1 class="rules-title">主角图鉴</h1></div>';
 
-    html += `<div class="char-detail-hero">
+    html += `<div class="char-detail-hero" style="--character-accent:${ch.color}">
       <img class="char-detail-hero-avatar" src="${ch.avatar}" alt="${ch.name}">
       <div class="char-detail-hero-info">
-        <div class="char-detail-hero-name" style="color:${ch.color}">${ch.name}</div>
+        <div class="char-detail-hero-name">${ch.name}</div>
         <div class="char-detail-hero-type">${ch.type} · HP ${ch.hp}</div>
         <div class="char-detail-hero-passive">被动：${ch.passive}</div>
       </div>
     </div>`;
 
-    html += '<div class="skill-grid">';
+    html += '<div class="skill-grid-caption"><span>进攻</span><span>点数</span><span>防御</span></div><div class="skill-grid">';
     for (const row of PLAYER_SKILL_GRID) {
       const atkDesc = atk[row.atkKey] ? colorize(stripPrefix(atk[row.atkKey])) : '—';
       const defDesc = row.defKey >= 0 && def[row.defKey] ? colorize(stripPrefix(def[row.defKey])) : (row.defKey >= 0 ? '无防御效果' : '');
@@ -238,11 +262,12 @@
     const monsters = window.AdventureRegistry ? window.AdventureRegistry.allMonsters() : [];
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">怪物图鉴</h1></div>';
+    html += collectionSubhead(monsters.length, '查看怪物技能、特殊规则与战斗后的战利品掉落。');
     html += '<div class="char-detail-grid">';
     for (const m of monsters) {
       const icon = resolveIcon(m.icon);
       const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${m.name}">` : `<div class="char-detail-avatar codex-no-icon">${m.name[0]}</div>`;
-      html += `<div class="char-detail-card" data-name="${m.name}">${iconHtml}<div class="char-detail-name">${m.name}</div><div class="char-detail-type">${m.kind || '怪物'}</div></div>`;
+      html += `<button type="button" class="char-detail-card codex-creature-card" data-name="${m.name}">${iconHtml}<span class="char-detail-name">${m.kind || m.name}</span><span class="char-detail-type">${m.kind || '怪物'}</span><span class="char-detail-open">查看技能 <span aria-hidden="true">›</span></span></button>`;
     }
     html += '</div></div>';
     return html;
@@ -365,6 +390,7 @@
 
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; 怪物列表</button><h1 class="rules-title">怪物图鉴</h1></div>';
+    html += '<div class="codex-detail-kicker">冒险图鉴 <span>普通怪物</span></div>';
     html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
     html += `<div class="char-detail-hero-name">${m.kind || m.name}</div>`;
     html += `<div class="char-detail-hero-type">${m.kind || '怪物'} · HP ${m.hp}${m.handLimit ? ' · 手牌' + m.handLimit : ''}</div>`;
@@ -382,6 +408,7 @@
     const bosses = window.AdventureRegistry ? window.AdventureRegistry.allBosses() : [];
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">Boss图鉴</h1></div>';
+    html += collectionSubhead(bosses.length, '查看首领技能、专属掉落与各阶段强化。');
     if (!bosses.length) {
       html += '<div class="codex-empty">暂无Boss数据</div>';
     } else {
@@ -389,7 +416,7 @@
       for (const b of bosses) {
         const icon = resolveIcon(b.icon);
         const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${b.name}">` : `<div class="char-detail-avatar codex-no-icon">${b.name[0]}</div>`;
-        html += `<div class="char-detail-card" data-name="${b.name}">${iconHtml}<div class="char-detail-name">${b.kind || b.name}</div><div class="char-detail-type">HP ${b.hp}</div></div>`;
+        html += `<button type="button" class="char-detail-card codex-creature-card codex-boss-card" data-name="${b.name}">${iconHtml}<span class="char-detail-name">${b.kind || b.name}</span><span class="char-detail-type">Boss · HP ${b.hp}</span><span class="char-detail-open">查看技能 <span aria-hidden="true">›</span></span></button>`;
       }
       html += '</div>';
     }
@@ -408,6 +435,7 @@
 
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; Boss列表</button><h1 class="rules-title">Boss图鉴</h1></div>';
+    html += '<div class="codex-detail-kicker">冒险图鉴 <span>首领</span></div>';
     html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
     html += `<div class="char-detail-hero-name">${b.kind || b.name}</div>`;
     html += `<div class="char-detail-hero-type">Boss · HP ${b.hp}${b.handLimit ? ' · 手牌' + b.handLimit : ''}</div>`;
@@ -429,6 +457,7 @@
     const title = kind === 'consumable' ? '道具图鉴' : '饰品图鉴';
     let html = '<div class="char-detail-page">';
     html += `<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">${title}</h1></div>`;
+    html += collectionSubhead(items.length, kind === 'consumable' ? '按效果与使用场景浏览冒险道具。' : '查看饰品效果、属性加成与兑换消耗。');
     if (!items.length) {
       html += '<div class="codex-empty">暂无数据</div>';
     } else {
@@ -442,18 +471,21 @@
         const stackLabel = it.kind === 'accessory' && it.maxStacks
           ? ' · 上限' + it.maxStacks
           : '';
-        html += `<div class="codex-all-item">`;
+        html += `<article class="codex-all-item codex-item-entry">`;
         html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${it.displayName}</span><span class="codex-all-item-meta">${kindLabel} · ${price}金币${stackLabel}${useSceneLabel}</span></div></div>`;
         const descText = window.descToEmoji ? window.descToEmoji(it.description || '') : (it.description || '无描述');
         html += `<div class="codex-all-item-desc">${descText}</div>`;
         if (it.statBonus) {
-          html += '<div class="codex-stat-bonus">';
-          html += '<div class="codex-stat-list">';
-          for (const [k, v] of Object.entries(it.statBonus)) {
-            const label = k === 'maxHp' ? '生命上限' : k === 'dropRateBonus' ? '掉落概率' : k === 'handLimitBonus' ? '手牌上限' : k;
-            html += `<span class="codex-stat-chip">${label}+${v}</span>`;
+          const statEntries = Object.entries(it.statBonus).filter(([k]) => k !== 'handLimitBonus');
+          if (statEntries.length) {
+            html += '<div class="codex-stat-bonus">';
+            html += '<div class="codex-stat-list">';
+            for (const [k, v] of statEntries) {
+              const label = k === 'maxHp' ? '生命上限' : k === 'dropRateBonus' ? '掉落概率' : k;
+              html += `<span class="codex-stat-chip">${label}+${v}</span>`;
+            }
+            html += '</div></div>';
           }
-          html += '</div></div>';
         }
         if (it.kind === 'accessory' && it.beastTradeCost && it.beastTradeCost.length) {
           html += '<div class="codex-stat-bonus"><div class="codex-stat-list">';
@@ -471,90 +503,151 @@
           }
           html += '</div></div>';
         }
-        html += '</div>';
+        html += '</article>';
       }
       html += '</div>';
     }
     html += '</div>';
     return html;
+  }
+
+  function trophyCardObject(name, kind) {
+    return {
+      value: -1,
+      color: 'WHITE',
+      isWhite: true,
+      isBlack: false,
+      isNumberCard: false,
+      isItemCard: true,
+      trophyWhite: true,
+      trophyName: name,
+      trophyKind: kind || ''
+    };
+  }
+
+  function trophyCostMarkup(it) {
+    if (it.trophyKind === 'drop' || !it.beastTradeCost || !it.beastTradeCost.length) return '';
+    const beastNames = { huo: '火兽元', shui: '水兽元', cao: '草兽元', ben: '本兽元', wuneng: '万能兽元' };
+    const costMap = {};
+    for (const t of it.beastTradeCost) costMap[t] = (costMap[t] || 0) + 1;
+    const parts = [];
+    for (const [k, v] of Object.entries(costMap)) {
+      parts.push(`<span class="codex-trophy-token" data-beast="${k}">${beastNames[k] || k}<b>×${v}</b></span>`);
+    }
+    return '<div class="codex-trophy-cost"><span class="codex-trophy-cost-label">锻造消耗</span><div class="codex-trophy-tokens">' + parts.join('') + '</div></div>';
+  }
+
+  function trophySourceSymbol(kind) {
+    const paths = kind === 'drop'
+      ? '<path d="M8 3v7m-3-3 3 3 3-3M3 11v2h10v-2"/>'
+      : '<path d="m5 12 5-7M7 3l5 3-2 3-5-3Z"/>';
+    return `<svg class="codex-trophy-source-icon" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+  }
+
+  function trophyEntryMarkup(it) {
+    // Shared cycling rules sit below the direct card action; buff mechanics are
+    // intentionally left to the separate buff codex.
+    const effectText = String(it.description || '').replace(/(?:抽1张牌，可继续搭桥|不抽牌，不继续搭桥)。?$/, '').replace(/。$/, '');
+    const zero = it.trophyEffect === 'zero';
+    const name = it.displayName.replace(/战利白卡$/, '');
+    return `<article class="codex-trophy-entry" aria-label="${it.displayName}">` +
+      `<span class="codex-trophy-face-slot" data-codex-trophy="${it.name}" data-codex-kind="${it.trophyKind || ''}"></span>` +
+      '<div class="codex-trophy-copy">' +
+      `<h3 class="codex-trophy-name">${name}</h3>` +
+      `<p class="codex-trophy-effect">${formatCodexRichText(effectText)}</p>` +
+      `<div class="codex-trophy-play-rules${zero ? ' is-exception' : ''}"><span>${zero ? '不抽牌' : '抽牌 +1'}</span><span>${zero ? '不继续搭桥' : '可继续搭桥'}</span></div>` +
+      trophyCostMarkup(it) + '</div></article>';
   }
 
   function buildTrophyList() {
     const allItems = window.AdventureRegistry ? window.AdventureRegistry.allItems() : [];
     const items = allItems.filter(it => it.kind === 'trophyWhite');
-    let html = '<div class="char-detail-page">';
+    const sections = [
+      { kind: 'drop', title: '掉落白卡', hint: '怪物战利品 · 左上角标' },
+      { kind: 'forge', title: '锻造白卡', hint: '铁匠铺制作 · 右上角标' },
+      { kind: 'both', title: '双源白卡', hint: '掉落与锻造均可获得 · 双角标' }
+    ];
+    let html = '<div class="char-detail-page codex-trophy-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">战利白卡</h1></div>';
     if (!items.length) {
       html += '<div class="codex-empty">暂无数据</div>';
     } else {
-      html += '<div class="codex-all-list">';
-      for (const it of items) {
-        const icon = resolveIcon(it.icon);
-        const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${it.displayName}">` : `<div class="char-detail-avatar codex-no-icon">${it.displayName[0]}</div>`;
-        html += `<div class="codex-all-item">`;
-        html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${it.displayName}</span><span class="codex-all-item-meta">战利白卡</span></div></div>`;
-        const descText = window.descToEmoji ? window.descToEmoji(it.description || '') : (it.description || '无描述');
-        html += `<div class="codex-all-item-desc">${descText}</div>`;
-        if (it.beastTradeCost && it.beastTradeCost.length) {
-          html += '<div class="codex-stat-bonus"><div class="codex-stat-list">';
-          const beastNames = { huo: '火兽元', shui: '水兽元', cao: '草兽元', ben: '本兽元', wuneng: '万能兽元' };
-          const beastColors = { huo: '#ff5555', shui: '#55aaff', cao: '#55cc55', ben: '#ffcc44', wuneng: '#cc88ff' };
-          const costMap = {};
-          for (const t of it.beastTradeCost) costMap[t] = (costMap[t] || 0) + 1;
-          const parts = [];
-          for (const [k, v] of Object.entries(costMap)) {
-            const name = beastNames[k] || k;
-            const color = beastColors[k] || '#ccc';
-            parts.push(`${v}<span style="color:${color}">[${name}]</span>`);
-          }
-          html += `<span class="codex-stat-chip">兑换消耗：${parts.join(' ')}</span>`;
-          html += '</div></div>';
-        }
-        html += '</div>';
-      }
-      html += '</div>';
+      html += '<section class="codex-trophy-intro" aria-label="战利白卡使用规则">';
+      html += `<div class="codex-trophy-intro-top"><span>冒险牌组收藏</span><span>共 ${items.length} 张</span></div>`;
+      html += '<h2>加入牌组，循环使用</h2><p>获得后加入手牌，不占道具槽。打出后进入弃牌库，洗回后可再次抽到。</p>';
+      html += '<div class="codex-trophy-legend"><span class="is-drop">' + trophySourceSymbol('drop') + '左上 · 掉落</span><span class="is-forge">' + trophySourceSymbol('forge') + '右上 · 锻造</span><span>' + trophySourceSymbol('drop') + trophySourceSymbol('forge') + '双角标 · 双源</span></div>';
+      html += '</section>';
+      sections.forEach((section) => {
+        const list = items.filter(it => it.trophyKind === section.kind)
+          .sort((a, b) => String(a.displayName || '').localeCompare(String(b.displayName || ''), 'zh'));
+        html += `<section class="codex-trophy-section" data-trophy-kind="${section.kind}" aria-labelledby="codex-trophy-${section.kind}">`;
+        html += `<header class="codex-trophy-section-head"><div><h2 id="codex-trophy-${section.kind}">${section.title}<span>${list.length} 张</span></h2><p>${section.hint}</p></div></header>`;
+        html += '<div class="codex-trophy-grid">';
+        html += list.map(it => trophyEntryMarkup(it)).join('') || '<div class="codex-empty">暂无</div>';
+        html += '</div></section>';
+      });
     }
     html += '</div>';
     return html;
+  }
+
+  function mountCodexTrophyCards(root) {
+    if (!root || typeof window.renderCard !== 'function') return;
+    const width = 88, height = 128;
+    root.querySelectorAll('.codex-trophy-face-slot').forEach(slot => {
+      try {
+        const name = slot.getAttribute('data-codex-trophy');
+        const card = trophyCardObject(name, slot.getAttribute('data-codex-kind'));
+        const canvas = window.renderCard(card, width, height, false);
+        canvas.classList.add('codex-trophy-face');
+        slot.replaceChildren(canvas);
+      } catch (err) {
+        console.error(err);
+      }
+    });
   }
 
   function buildBuffList() {
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">Buff图鉴</h1></div>';
-    html += '<div class="codex-all-list">';
-    for (const buff of BUFF_DATA) {
-      if (buff.key === 'bloodthirst' || buff.key === 'bind' || buff.key === 'taunt') continue;
+    html += collectionSubhead(BUFF_DATA.length, '按状态类别浏览层数上限、持续方式与具体效果。');
+    const groups = [
+      { type: '负面状态', title: '负面状态' },
+      { type: '正面状态', title: '正面状态' },
+      { type: '印记', title: '特殊印记', hint: '不可净化' }
+    ];
+    for (const group of groups) {
+      const list = BUFF_DATA.filter(buff => buff.type === group.type);
+      html += `<section class="codex-encyclopedia-section" data-status-type="${group.type}">`;
+      html += `<header class="codex-encyclopedia-head"><h2>${group.title}</h2><span>${list.length} 项${group.hint ? ' · ' + group.hint : ''}</span></header>`;
+      html += '<div class="codex-all-list codex-buff-grid">';
+      for (const buff of list) {
       const icon = resolveIcon(buff.icon);
       const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${buff.name}">` : `<div class="char-detail-avatar codex-no-icon">${buff.name[0]}</div>`;
-      const typeColor = buff.type === '正面状态' ? '#4ade80' : buff.type === '负面状态' ? '#f87171' : '#94a3b8';
-      html += `<div class="codex-all-item">`;
-      html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${buff.name}</span><span class="codex-all-item-meta" style="color:${typeColor}">${buff.type}</span></div></div>`;
+      html += `<article class="codex-all-item codex-buff-entry">`;
+      html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${buff.name}</span><span class="codex-all-item-meta">${group.hint || buff.type}</span></div></div>`;
       const descLines = String(buff.desc || '').split('\n').filter(Boolean);
-      html += `<div class="codex-all-item-desc">${descLines.map(line => formatCodexRichText(line)).join('<br>')}</div>`;
-      html += '</div>';
+      const cap = descLines.find(line => line.startsWith('堆叠上限：'));
+      const duration = descLines.find(line => line.startsWith('维持效果：'));
+      const details = descLines.filter(line => line !== cap && line !== duration);
+      if (cap || duration) {
+        html += '<div class="codex-buff-facts">';
+        if (cap) html += `<span>${formatCodexRichText(cap.replace('堆叠上限：', '上限：'))}</span>`;
+        if (duration) html += `<span>${formatCodexRichText(duration.replace('维持效果：', '持续：'))}</span>`;
+        html += '</div>';
+      }
+      if (details.length) html += `<div class="codex-buff-description">${details.map(line => formatCodexRichText(line)).join('<br>')}</div>`;
+      html += '</article>';
+      }
+      html += '</div></section>';
     }
     html += '</div>';
-    // 特殊机制（非Buff）单独一行
-    html += '<div class="special-marks-section">';
-    html += '<div class="special-marks-title">印记（不可净化）</div>';
-    html += '<div class="codex-all-list">';
-    const specialMarks = BUFF_DATA.filter(b => b.key === 'bloodthirst' || b.key === 'bind' || b.key === 'taunt');
-    for (const buff of specialMarks) {
-      const icon = resolveIcon(buff.icon);
-      const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${buff.name}">` : `<div class="char-detail-avatar codex-no-icon">${buff.name[0]}</div>`;
-      html += `<div class="codex-all-item">`;
-      html += `<div class="codex-all-item-header">${iconHtml}<div class="codex-all-item-info"><span class="codex-all-item-name">${buff.name}</span><span class="codex-all-item-meta" style="color:#94a3b8">${buff.type} · 不可净化</span></div></div>`;
-      const descLines = String(buff.desc || '').split('\n').filter(Boolean);
-      html += `<div class="codex-all-item-desc">${descLines.map(line => formatCodexRichText(line)).join('<br>')}</div>`;
-      html += '</div>';
-    }
-    html += '</div></div></div>';
     return html;
   }
 
   function buildSkillGrid(atk, def, canDefendHigh = false, includeZero = false) {
     if (!atk.length && !def.length) return '';
-    let html = '<div class="skill-grid">';
+    let html = '<div class="skill-grid-caption"><span>进攻</span><span>点数</span><span>防御</span></div><div class="skill-grid">';
     for (const row of npcSkillGrid(includeZero)) {
       const atkDesc = atk[row.atkKey] ? formatCodexSkillText(atk[row.atkKey]) : '—';
       const highDefKey = canDefendHigh && ['4', '5', '6', '7'].includes(row.label) ? row.atkKey : -1;
@@ -661,6 +754,12 @@
   function showTrophyList(container) {
     container.innerHTML = buildTrophyList();
     document.getElementById('codex-back-cat').addEventListener('click', () => showCategoryPage(container));
+    mountCodexTrophyCards(container);
+    if (window.cardIconsReady && typeof window.cardIconsReady.then === 'function') {
+      window.cardIconsReady.then(() => {
+        if (container.querySelector('.codex-trophy-entry')) mountCodexTrophyCards(container);
+      });
+    }
   }
 
   function showBuffList(container) {
@@ -668,5 +767,5 @@
     document.getElementById('codex-back-cat').addEventListener('click', () => showCategoryPage(container));
   }
 
-  window.AdventureCodex = { show: showCategoryPage };
+  window.AdventureCodex = { show: showCategoryPage, buildTrophyList, paintTrophyCards: mountCodexTrophyCards };
 })();

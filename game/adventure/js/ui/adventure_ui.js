@@ -153,7 +153,7 @@
           if (heal.amount <= 0) return;
           const float = document.createElement('div');
           float.className = 'adv-map-heal-float';
-          float.textContent = heal.label + ' +' + heal.amount + '❤️';
+          float.textContent = '[' + heal.label + ']❤️' + heal.amount;
           bar.appendChild(float);
           schedule(() => float.remove(), 1500);
         }, i * 1600);
@@ -277,7 +277,7 @@
 
       const enemy = (sessionMatches && combatSession.enemy) || (lock && lock.enemy) || null;
       if (enemy) {
-        if (room.type === window.RoomType.NORMAL || room.type === window.RoomType.CHALLENGE) room.monsterName = enemy;
+        if (room.type === window.RoomType.NORMAL || room.type === window.RoomType.CHALLENGE || room.type === window.RoomType.GLITCH) room.monsterName = enemy;
         if (room.type === window.RoomType.BOSS) room.bossName = enemy;
       }
 
@@ -324,6 +324,7 @@
           })) : [];
           const reachable = explorable.has(r + ',' + c);
           const hasLoot = !!room.stashedLoot;
+          const hasMerchant = !!(room.stashedLoot && room.stashedLoot.kind === 'merchant' && !room.stashedLoot.sold);
           const isItemRoom = room.type === T.ITEM;
           const isBlacksmith = room.type === T.BLACKSMITH;
           const entryGold = isBlacksmith && typeof this.eng._blacksmithEntryGold === 'function'
@@ -333,14 +334,14 @@
             (isBlacksmith && !room.doorUnlocked && entryGold > 0);
           const doorUnlocked = (isItemRoom || isBlacksmith) && !!room.doorUnlocked;
           const title = '(' + (r + 1) + ',' + (c + 1) + ') ' + room.label() + '房间' +
-            (hasLoot ? '（有待领奖励）' : '') +
+            (hasMerchant ? '（流浪商人可交易）' : hasLoot ? '（有待领奖励）' : '') +
             (isItemRoom && doorLocked ? '（开门：' + doorCost.map(item => item.label).join('+') + '）' : '') +
             (isBlacksmith && doorLocked ? '（进入：' + entryGold + '金币）' : '') +
             (doorUnlocked ? '（已开门）' : '') +
             (reachable ? '（单击选中，双击进入）' : '');
           cells.push({
             r, c, type: room.type, visited: !!room.visited, cleared: !!room.cleared,
-            rewardClaimed: !!room.rewardClaimed, hasLoot, lootIcon: hasLoot ? this._stashedLootIconSrc(room.stashedLoot) : null,
+            rewardClaimed: !!room.rewardClaimed, hasLoot, hasMerchant, lootIcon: hasLoot ? this._stashedLootIconSrc(room.stashedLoot) : null,
             current: !!pos && pos.r === r && pos.c === c, reachable: !!reachable,
             doorCost, doorLocked, doorUnlocked, entryGold, title
           });
@@ -359,6 +360,9 @@
         }
         return;
       }
+
+      this._syncPendingBeastPaymentDialog();
+      this._syncPendingHandDiscard();
       this._clearMapClickTimer();
       this._stopTipsRotation();
       if (this.eng.s && this.eng.s.phase === window.AdventurePhase.MAP && !this._test) {
@@ -631,6 +635,11 @@
           this._renderTestMode();
           return;
         }
+        if ((id && id.startsWith('adv-glitch-')) || e.target.closest('[data-glitch-discard]')) {
+          const button = e.target.closest('button');
+          if (button && !button.disabled) void this._handleGlitchAction(button);
+          return;
+        }
         if (id === 'adv-enter') { this._handleEnterRoom(); }
         else if (id === 'adv-reward') {
           const loot = this.eng.collectReward();
@@ -641,7 +650,12 @@
           }
           this.render();
         }
-        else if (id === 'adv-skip-reward') { this.eng.skipReward(); this.render(); }
+        else if (id === 'adv-skip-reward' || id === 'adv-merchant-leave') { this.eng.skipReward(); this.render(); }
+        else if (id === 'adv-merchant-buy') {
+          const result = this.eng.buyMerchantAccessory();
+          if (!result.ok) this._toast(result.message || '购买失败');
+          this.render();
+        }
         else if (id === 'adv-room-claim') {
           if (!this.eng.claimRoomReward()) {
             const err = this.eng._lastRewardError;
@@ -690,15 +704,19 @@
         else if (id === 'adv-blacksmith-trade') {
           const sel = this.eng.s.blacksmithSelectedSlot;
           if (sel == null) { this._toast('请先选择槽位'); return; }
+          let result;
           if (sel === 'trophy') {
-            const result = this.eng.buyBlacksmithTrophy();
-            if (!result.ok) this._toast(result.message || '锻造失败');
+            result = this.eng.buyBlacksmithTrophy();
           } else {
-            const result = this.eng.buyBlacksmithSlot(sel);
-            if (!result.ok) {
-              if (result.reason === 'accessoryFull') this._showAlertDialog('无法拾取', result.message || '配饰已达上限');
-              else this._toast(result.message || '兑换失败');
-            }
+            result = this.eng.buyBlacksmithSlot(sel);
+          }
+          if (result && result.needBeastChoice) {
+            this.render();
+            return;
+          }
+          if (result && !result.ok) {
+            if (result.reason === 'accessoryFull') this._showAlertDialog('无法拾取', result.message || '配饰已达上限');
+            else this._toast(result.message || (sel === 'trophy' ? '锻造失败' : '兑换失败'));
           }
           this.render();
         }
@@ -753,46 +771,11 @@
             });
             return;
           }
-          if (def && def.combatUse === 'discardTalisman') {
-            const hand = (this.eng.s.playerPile && this.eng.s.playerPile.hand) || [];
-            if (!hand.length) {
-              this._toast('手牌为空，无法使用弃牌符');
-              return;
-            }
-            this._getDialogs().showOpponentCardChoice(
-              [{ key: 'player', label: '选择要弃掉的手牌', cards: hand.slice() }],
-              choice => {
-                const result = this.eng.useConsumable(useIndex, { discardIndex: choice.index });
-                if (result && result.message) this._toast(result.message);
-                this.render();
-              },
-              '弃牌符 · 弃1抽2'
-            );
-            return;
-          }
-          if (def && def.combatUse === 'furnace') {
-            const hand = (this.eng.s.playerPile && this.eng.s.playerPile.hand) || [];
-            const selectable = [];
-            const indices = [];
-            hand.forEach((card, i) => {
-              if (!card || !card.isNumberCard || card.isItemCard || card.isBlack || card.isWhite) return;
-              if (!['RED', 'YELLOW', 'BLUE', 'GREEN'].includes(card.color)) return;
-              selectable.push(card);
-              indices.push(i);
-            });
-            if (!selectable.length) {
-              this._toast('没有可熔炼的普通颜色手牌');
-              return;
-            }
-            this._getDialogs().showOpponentCardChoice(
-              [{ key: 'player', label: '红→炙热 / 黄→沙盲 / 蓝→潜水 / 绿→茂盛', cards: selectable }],
-              choice => {
-                const result = this.eng.useConsumable(useIndex, { discardIndex: indices[choice.index] });
-                if (result && result.message) this._toast(result.message);
-                this.render();
-              },
-              '熔炉 · 弃颜色牌换战利白卡'
-            );
+          if (def && (def.combatUse === 'discardTalisman' || def.combatUse === 'furnace')) {
+            // Engine beginHandDiscard → pendingHandDiscard; picker eats snapshot.
+            const result = this.eng.useConsumable(useIndex);
+            if (result && result.message) this._toast(result.message);
+            this.render();
             return;
           }
           if (def && def.combatUse === 'crystalBall') {
@@ -846,6 +829,10 @@
       if (now - this._lastEnterRoomAt < 450) return;
       this._lastEnterRoomAt = now;
       const result = this.eng.enterCurrent();
+      if (result && result.needBeastChoice) {
+        this.render();
+        return;
+      }
       if (result && result.ok === false) {
         this._toast(result.message || '无法进入');
         this.render();
@@ -1179,6 +1166,74 @@
       this.container.innerHTML = '<div class="adv-test-shell adv-test-result"><div class="adv-test-kicker">TEST COMPLETE</div><div class="adv-test-result-mark ' + (won ? 'win' : 'lose') + '">' + mark + '</div><h2>' + title + '</h2><p>' + label + detail + '</p><p class="adv-test-muted">测试不会发放奖励，也不会改变正式冒险进度。</p><div class="adv-test-actions"><button type="button" class="adv-btn adv-btn-primary" id="adv-test-again">再次测试</button><button type="button" class="adv-btn" id="adv-test-home">返回主页</button></div></div>';
     }
 
+
+    _syncPendingHandDiscard() {
+      const pending = this.eng && this.eng.s && this.eng.s.pendingHandDiscard;
+      if (!pending) {
+        if (this._handDiscardPickerInst && this._handDiscardPickerInst.isActive()) {
+          this._handDiscardPickerInst.cancel(true);
+        }
+        return;
+      }
+      const hand = (this.eng.s.playerPile && this.eng.s.playerPile.hand) || [];
+      const allowed = Array.isArray(pending.legalIndices) ? pending.legalIndices.slice() : null;
+      const selected = Array.isArray(pending.selected) ? pending.selected.slice() : [];
+      if (this._handDiscardPickerInst && this._handDiscardPickerInst.isActive()) {
+        const a = this._handDiscardPickerInst._active;
+        if (a) {
+          a.cards = hand.slice();
+          a.allowed = new Set(allowed != null ? allowed : hand.map((_, i) => i));
+          a.max = Math.max(1, pending.count || 1);
+          a.title = pending.hint || a.title;
+          a.allowCancel = pending.cancelable !== false;
+          a.selected = selected;
+          this._handDiscardPickerInst._ensureBar();
+          this._handDiscardPickerInst._refreshBar();
+          this._handDiscardPickerInst.bindHand();
+        }
+        return;
+      }
+      this._startHandDiscardPicker({
+        cards: hand.slice(),
+        allowedIndices: allowed != null ? allowed : undefined,
+        max: pending.count || 1,
+        title: pending.hint || '选择要弃掉的手牌',
+        handSelector: '#adv-hand-zone',
+        allowCancel: pending.cancelable !== false,
+        selected: selected,
+        onToggle: (index) => {
+          const r = this.eng.selectHandDiscardIndex(index);
+          if (!r || r.ok === false) {
+            if (r && r.message) this._toast(r.message);
+            return;
+          }
+          const p = r.pendingHandDiscard || (this.eng.s && this.eng.s.pendingHandDiscard);
+          if (this._handDiscardPickerInst) {
+            this._handDiscardPickerInst.applySelected(p && p.selected);
+          }
+        },
+        onConfirm: () => {
+          const result = this.eng.confirmHandDiscard();
+          if (result && result.message) this._toast(result.message);
+          this.render();
+        },
+        onCancel: () => {
+          const result = this.eng.cancelHandDiscard();
+          if (result && result.message) this._toast(result.message);
+          this.render();
+        }
+      });
+    }
+
+    _startHandDiscardPicker(opts) {
+      if (typeof HandDiscardPicker !== 'function') {
+        console.error('[AdventureUI] HandDiscardPicker missing');
+        return;
+      }
+      if (!this._handDiscardPickerInst) this._handDiscardPickerInst = new HandDiscardPicker(this);
+      this._handDiscardPickerInst.start(opts);
+    }
+
     _getDialogs() {
       if (!this._dialogs) this._dialogs = new DialogManager(() => {});
       return this._dialogs;
@@ -1226,9 +1281,8 @@
       const actions = document.createElement('div'); actions.className = 'dialog-buttons';
       const reset = document.createElement('button'); reset.className = 'adv-btn'; reset.textContent = '重置'; reset.onclick = () => { order.splice(0, order.length, ...cards.map((_, i) => i)); refresh(); };
       const confirm = document.createElement('button'); confirm.className = 'adv-btn adv-btn-primary'; confirm.textContent = '确认放回'; confirm.onclick = () => { overlay.remove(); onChoose(order.slice()); };
-      const cancel = document.createElement('button'); cancel.className = 'adv-btn'; cancel.textContent = '取消'; cancel.onclick = () => { overlay.remove(); if (onCancel) onCancel(); };
-      actions.append(reset, confirm, cancel); box.appendChild(actions); overlay.appendChild(box); document.body.appendChild(overlay);
-      overlay.addEventListener('click', event => { if (event.target === overlay) { overlay.remove(); if (onCancel) onCancel(); } });
+      // No cancel: peek already spent; cancel would let the player re-open forever.
+      actions.append(reset, confirm); box.appendChild(actions); overlay.appendChild(box); document.body.appendChild(overlay);
     }
 
     _showCombatLaunchError(message) {
@@ -1301,6 +1355,190 @@
         this._showTrophyBackpack();
       }));
       overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    }
+
+    _blacksmithTradeCost(sel) {
+      const room = this.eng.currentRoom();
+      if (!room) return [];
+      if (sel === 'trophy') {
+        const name = room.blacksmithTrophySlot;
+        const def = name && window.AdventureRegistry.getItem(name);
+        return def && Array.isArray(def.beastTradeCost) ? def.beastTradeCost.slice() : [];
+      }
+      const name = room.blacksmithSlots && room.blacksmithSlots[sel];
+      const def = name && window.AdventureRegistry.getItem(name);
+      return def && Array.isArray(def.beastTradeCost) ? def.beastTradeCost.slice() : [];
+    }
+
+    /** True only for wild substituting typed cost — not hardcoded wuneng slots. */
+    _planUsesWild(plan) {
+      if (!plan) return false;
+      if (typeof plan.usesWildSubstitute === 'boolean') return plan.usesWildSubstitute;
+      if (typeof plan.usesWild === 'boolean') return plan.usesWild;
+      return false;
+    }
+
+    /** Icon chip for one beast type × count (no text names). */
+    _beastIconChip(type, count, sizeClass) {
+      const n = count || 0;
+      if (!n) return '';
+      const icon = (window.AdventureCurrency.BEAST_ICON && window.AdventureCurrency.BEAST_ICON[type]) || '';
+      const cls = sizeClass || 'adv-beast-icon';
+      const img = icon
+        ? '<img class="' + cls + '" src="' + icon + '" alt="">'
+        : '<span class="adv-beast-glyph">' + ((window.AdventureCurrency.BEAST_GLYPH && window.AdventureCurrency.BEAST_GLYPH[type]) || '') + '</span>';
+      return '<span class="adv-beast-pay-chip adv-beast-' + type + '">' + img +
+        (n > 1 ? '<span class="adv-beast-pay-count">×' + n + '</span>' : '') + '</span>';
+    }
+
+    /** Spend map → icon row HTML. */
+    _formatBeastSpendIcons(spend) {
+      const parts = [];
+      const types = window.AdventureCurrency.ALL_BEAST_TYPES;
+      for (let i = 0; i < types.length; i++) {
+        const t = types[i];
+        const chip = this._beastIconChip(t, spend[t] || 0, 'adv-beast-pay-icon');
+        if (chip) parts.push(chip);
+      }
+      return parts.length ? parts.join('') : '';
+    }
+
+    /** needed[] → icon row HTML. */
+    _formatBeastNeedIcons(needed) {
+      const counts = {};
+      (needed || []).forEach(t => { counts[t] = (counts[t] || 0) + 1; });
+      return Object.keys(counts).map(t => this._beastIconChip(t, counts[t], 'adv-beast-pay-icon')).join('');
+    }
+
+    /** Format a spend map into short labels like "本×1 + 万×1" (toast fallback). */
+    _formatBeastSpend(spend) {
+      const parts = [];
+      const types = window.AdventureCurrency.ALL_BEAST_TYPES;
+      for (let i = 0; i < types.length; i++) {
+        const t = types[i];
+        const n = spend[t] || 0;
+        if (!n) continue;
+        const label = window.AdventureCurrency.BEAST_LABEL[t] || t;
+        parts.push(label + '×' + n);
+      }
+      return parts.join(' + ') || '无';
+    }
+
+    /**
+     * If only one non-wild plan exists, call onReady(null) so the engine keeps
+     * its greedy default. Otherwise show a choice dialog; onReady(plan).
+     */
+    _withBeastPayment(needed, onReady) {
+      if (!needed || !needed.length) { onReady(null); return; }
+      const currency = this.eng.s.currency;
+      if (!currency.canPayBeastCost(needed)) {
+        this._toast('兽元不足，需要：' + this._formatBeastNeed(needed));
+        return;
+      }
+      const plans = typeof currency.listBeastPaymentPlans === 'function'
+        ? currency.listBeastPaymentPlans(needed)
+        : [];
+      if (!plans.length) {
+        this._toast('兽元不足，需要：' + this._formatBeastNeed(needed));
+        return;
+      }
+      const needsChoice = plans.length > 1 || plans.some(p => this._planUsesWild(p));
+      if (!needsChoice) { onReady(null); return; }
+      this._showBeastPaymentChoice(needed, plans, onReady);
+    }
+
+    _formatBeastNeed(needed) {
+      const counts = {};
+      (needed || []).forEach(t => { counts[t] = (counts[t] || 0) + 1; });
+      return Object.keys(counts).map(t =>
+        (window.AdventureCurrency.BEAST_LABEL[t] || t) + '×' + counts[t]
+      ).join(' + ');
+    }
+
+    _dedupeBeastPlans(plans) {
+      const types = window.AdventureCurrency.ALL_BEAST_TYPES;
+      const seen = {};
+      const out = [];
+      (plans || []).forEach(plan => {
+        const key = types.map(t => plan[t] || 0).join(',');
+        if (seen[key]) return;
+        seen[key] = true;
+        out.push(plan);
+      });
+      return out;
+    }
+
+    _showBeastPaymentChoice(needed, plans, onChoose, onCancel) {
+      if (document.getElementById('adv-beast-pay-dialog')) return;
+      const overlay = document.createElement('div');
+      overlay.id = 'adv-beast-pay-dialog';
+      overlay.className = 'dialog-overlay';
+      // No separate "need" row — it duplicated the typed-only plan visually.
+      const unique = this._dedupeBeastPlans(plans);
+      const sorted = unique.slice().sort((a, b) => { const aw = this._planUsesWild(a), bw = this._planUsesWild(b); return aw === bw ? 0 : aw ? 1 : -1; });
+      const buttons = sorted.map((plan, i) => {
+        const usesWild = this._planUsesWild(plan);
+        const detail = this._formatBeastSpendIcons(plan);
+        return '<button class="adv-btn adv-beast-pay-option' + (usesWild ? '' : ' adv-btn-primary') +
+          '" data-beast-plan="' + i + '">' +
+          '<span class="adv-beast-pay-row">' + detail + '</span>' +
+          '</button>';
+      }).join('');
+      overlay.innerHTML = '<div class="dialog-box adv-beast-pay-dialog" style="max-width:400px">' +
+        '<div class="dialog-title">选择支付方式</div>' +
+        '<div class="dialog-buttons adv-beast-pay-options">' +
+        buttons +
+        '<button class="adv-btn" id="adv-beast-pay-cancel">取消</button>' +
+        '</div></div>';
+      document.body.appendChild(overlay);
+      const close = () => overlay.remove();
+      overlay.querySelectorAll('[data-beast-plan]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const plan = sorted[Number(btn.getAttribute('data-beast-plan'))];
+          close();
+          if (onChoose) onChoose(plan);
+        });
+      });
+      const cancel = () => { close(); if (onCancel) onCancel(); };
+      overlay.querySelector('#adv-beast-pay-cancel').addEventListener('click', cancel);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) cancel(); });
+    }
+
+    /** Prefer engine-owned pendingBeastPayment from snapshot when present. */
+    _syncPendingBeastPaymentDialog() {
+      const pending = this.eng && this.eng.s && this.eng.s.pendingBeastPayment;
+      const open = document.getElementById('adv-beast-pay-dialog');
+      if (!pending || !Array.isArray(pending.plans) || !pending.plans.length) {
+        if (open && this._beastPayFromPending) { open.remove(); this._beastPayFromPending = false; }
+        return;
+      }
+      if (open) return;
+      this._beastPayFromPending = true;
+      const needed = Array.isArray(pending.needed) ? pending.needed : (pending.cost || []);
+      this._showBeastPaymentChoice(needed, pending.plans, (plan) => {
+        this._beastPayFromPending = false;
+        const result = this.eng.confirmBeastPayment(plan);
+        if (result && result.ok === false) {
+          if (result.reason === 'accessoryFull') this._showAlertDialog('无法拾取', result.message || '配饰已达上限');
+          else this._toast(result.message || '支付失败');
+          this.render();
+          return;
+        }
+        const combatPhases = ['ADVENTURE_PLAYER_PLAY', 'ADVENTURE_PLAYER_DEFEND', 'ADVENTURE_NPC_TURN'];
+        if (combatPhases.includes(this.eng.s.phase)) {
+          if (!window.AdventureBattleController || !window.AdventureBattleController.isAvailable()) {
+            this._showCombatLaunchError('1v1 战斗模块加载失败，请刷新页面后重试');
+            return;
+          }
+          void this._startBridgeCombat();
+          return;
+        }
+        this.render();
+      }, () => {
+        this._beastPayFromPending = false;
+        this.eng.cancelBeastPayment();
+        this.render();
+      });
     }
 
     _showConfirmDialog(title, body, onConfirm) {

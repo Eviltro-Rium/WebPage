@@ -24,8 +24,7 @@
     const raw = (window.AdventureRegistry &&
       (window.AdventureRegistry.getMonster(name) || window.AdventureRegistry.getBoss(name))) || null;
     return {
-      handLimit: (raw && raw.handLimit) || 2,
-      whiteZeros: (raw && raw.whiteZeros) || 0
+      handLimit: (raw && raw.handLimit) || 2
     };
   }
 
@@ -50,7 +49,7 @@
       this.tableTopOwner = null;
     }
 
-    restoreSession(snapshot, adventureEngine = null) {
+    restoreSession(snapshot, adventureEngine = null, resume = true) {
       const data = snapshot && (snapshot.battle || snapshot);
       if (!data || !data.s || !data.piles) throw new Error('战斗快照无效');
       this._adventureEngine = adventureEngine || null;
@@ -120,6 +119,66 @@
       this._invariantReady = true;
       this._invariantBaseline = null;
       this._checkInvariants('restoreSession');
+      if (resume) {
+        // Timers are not part of a JSON save. Recover the actual continuation
+        // rather than leaving a restored AI_DEFEND screen waiting forever.
+        this._deferredLootTimer = null;
+        this._restoreAdventureDefense();
+        this._resumeRestoredAITurn = ['AI_TURN', 'AI2_TURN'].includes(this.s.phase);
+        if (!this.events.length && !this.s.pendingDiceControl) this.acknowledgeEvents(this.ver);
+      }
+      return this.state();
+    }
+
+    _restoreAdventureDefense() {
+      if (this.s.phase !== 'AI_DEFEND' || this.s.pendingAIDefense || this.pendingSettlement ||
+          this.s.pendingAIBridge || this.s.defCard || this.s.defenseSkipped ||
+          !this.s.atkCard || this.s.atkOwner !== 'player' || !(this.s.pendingAttack && this.s.pendingAttack.damage > 0)) return;
+      this.s.pendingAIDefense = {
+        card: clone(this.s.atkCard), damage: this.s.pendingAttack.damage, afterEventId: this.ver
+      };
+    }
+
+    _hasUnconfirmedAdventureLoot() {
+      return this.events.some(evt => evt.type === 'trophyDrop' || evt.type === 'diceRoll' && evt.purpose === 'trophyDrop');
+    }
+
+    later(fn, ms = 550) {
+      // An enemy turn must not run underneath a first-kill loot confirmation.
+      // Keep the same single-continuation semantics as the shared timer.
+      this._deferredLootTimer = null;
+      const run = () => {
+        if (this._hasUnconfirmedAdventureLoot()) {
+          this._deferredLootTimer = fn;
+          return;
+        }
+        fn();
+      };
+      return super.later(run, ms);
+    }
+
+    acknowledgeEvents(through) {
+      super.acknowledgeEvents(through);
+      const pending = this.s.pendingAIDefense;
+      if (pending && through >= pending.afterEventId && !this.s.pendingDiceControl) {
+        this.s.pendingAIDefense = null;
+        if (this.s.phase === 'AI_DEFEND' && this.s.player.alive && !this._allEnemiesDead()) {
+          if (this.s.is1v2) this.runAIDefend1v2(pending.card, pending.damage);
+          else this.aiDefend(pending.card, pending.damage);
+        }
+      }
+      if (!this._hasUnconfirmedAdventureLoot() && !this.s.pendingDiceControl) {
+        const next = this._deferredLootTimer;
+        this._deferredLootTimer = null;
+        if (next) this.later(next, 0);
+        else if (this._resumeRestoredAITurn && !this.events.length && !this.pendingSettlement &&
+            !this.s.pendingAIBridge && !this.s.pendingAIContinue) {
+          this._resumeRestoredAITurn = false;
+          if (['AI_TURN', 'AI2_TURN'].includes(this.s.phase)) {
+            this.later(() => this.s.is1v2 ? this.aiTurn1v2() : this.aiTurn(), 0);
+          }
+        }
+      }
       return this.state();
     }
 
@@ -167,15 +226,17 @@
       const label = monsterName || defeatedKey;
       const boss = window.AdventureRegistry && window.AdventureRegistry.getBoss(monsterName);
       const rollCount = boss ? 3 : 1;
+      const battleContinues = !!(this.s.is1v2 && ['ai', 'ai2'].some(key => key !== defeatedKey && this.s[key] && this.s[key].alive));
       let lastLoot = null;
       for (let rollIndex = 1; rollIndex <= rollCount; rollIndex++) {
         // All rolls use the shared D12 boundary, including remote-dice replay.
         const roll = this.rollD12(dropSummary, {
-          who: 'player', purpose: 'trophyDrop', monsterName: label, dropSummary, rollIndex, rollCount
+          who: 'player', purpose: 'trophyDrop', monsterName: label, dropSummary, rollIndex, rollCount, battleContinues
         });
         // Rules belong to the defeated NPC, not the map (legacy/test encounters can differ).
         const loot = lootService.rollMonsterDrop(found.scene, monsterName, null, roll);
         if (!loot || loot.roll == null) continue;
+        if (this.s.diceRoll) this.s.diceRoll.purpose = 'trophyDrop';
         lastLoot = loot;
         const drops = Array.isArray(loot.drops) ? loot.drops.slice() : [];
         if (drops.length && this.piles && this.piles.player && window.AdventureDeck) {
@@ -191,8 +252,8 @@
           diceEvent.outcome = drops.length ? 'success' : 'fail';
           diceEvent.drops = drops.slice();
         }
-        this.emit('trophyDrop', '战利白卡掉落结算', {
-          who: 'player', monsterName: label, roll: loot.roll, drops: drops.slice(), rollIndex, rollCount, dropSummary
+        this.emit('trophyDrop', '战利白卡掉落结算', null, {
+          who: 'player', monsterName: label, roll: loot.roll, drops: drops.slice(), rollIndex, rollCount, dropSummary, battleContinues
         });
         if (drops.length) {
           // Each successful roll legitimately creates new player-owned cards.
@@ -210,7 +271,11 @@
       if (this.s && this.s.isAdventure && this.s.player && this.s.player.alive) {
         const defeated = this.s.is1v2 ? ['ai', 'ai2'] : ['ai'];
         defeated.forEach(key => {
-          if (this.s[key] && !this.s[key].alive) this._resolveAdventureTrophyDrop(key);
+          if (!this.s[key] || this.s[key].alive) return;
+          // Challenge rooms reuse lord routing, whose check() does not run
+          // the ordinary 1v2 elimination hook. Complete that hook here too.
+          if (this.s.is1v2 && !(this.s.eliminatedHandled && this.s.eliminatedHandled[key])) this._on1v2OpponentEliminated(key);
+          else this._resolveAdventureTrophyDrop(key);
         });
       }
       return this.state();
@@ -250,7 +315,7 @@
       // shared 1v1 session and replacing it afterward.
       this.piles = modeAdapter.createPiles({
         player: normalizePile('player', config.playerPile, AD.makePlayerDeck(), 5),
-        ai: normalizePile('ai', null, AD.makeNpcDeck({ whiteZeros: aiSpec.whiteZeros }), aiSpec.handLimit)
+        ai: normalizePile('ai', null, AD.makeNpcDeck(), aiSpec.handLimit)
       });
 
       this.s = modeAdapter.createState({
@@ -388,7 +453,7 @@
       const AD = window.AdventureDeck;
       const aiSpec = resolveNpcPileSpec(opponent1Name);
       const ai2Spec = resolveNpcPileSpec(opponent2Name);
-      const sharedNpcDeck = AD.makeNpcDeck({ whiteZeros: aiSpec.whiteZeros });
+      const sharedNpcDeck = AD.makeNpcDeck();
       const sharedNpcDiscard = [];
       this.piles = modeAdapter.createPiles({
         player: normalizePile('player', config.playerPile, AD.makePlayerDeck(), 5),
@@ -517,7 +582,6 @@
           this.emit('desc', (this.s[defeatedKey].name || '怪物') + '出局，手牌已放入怪物弃牌库');
         }
       }
-      this._resolveAdventureTrophyDrop(defeatedKey);
       const result = super._on1v2OpponentEliminated(defeatedKey);
       // Ordinary/Boss victories do not refill the player. A challenge room
       // continues against the surviving NPC, and the next player-turn refill
@@ -528,6 +592,8 @@
         this.s.challengeRefillAvailable = true;
         this.emit('desc', '挑战房：第一名敌人已击败，回合补牌仍会进行');
       }
+      // Finish defeat/heal feedback before the loot sheet opens.
+      this._resolveAdventureTrophyDrop(defeatedKey);
       return result;
     }
 
@@ -987,35 +1053,8 @@
           return this.state();
         }
       }
-      if (this.s && this.s.isAdventure && this._bindSkipNextAITurn) {
-        this._bindSkipNextAITurn = false;
-        const hands = this.handCounts();
-        this.silentDraws(function () {
-          this.fillHands(true);
-          this.turnStart('player');
-          this._tryEnergyShieldOnAttack();
-        });
-        const status = window.FurryGame && window.FurryGame.StatusService;
-        if (this.s.ai) { if (status) status.set(this.s.ai, 'bind', true); else this.s.ai.bindMark = true; }
-        if (this.s.ai2 && this.s.ai2.alive) { if (status) status.set(this.s.ai2, 'bind', true); else this.s.ai2.bindMark = true; }
-        this.s.bindExtraTurn = true;
-        this.s.bindUsedThisTurn = false;
-        this.s.phase = 'PLAYER_PLAY';
-        this.s.busy = false;
-        this.s.activeAttacker = 'player';
-        this.s.hasPlayedThisTurn = false;
-        this.s.turn++;
-        this._energyShieldAppliedThisTurn = false;
-        this.emit('desc', '捆缚：跳过对手进攻，玩家再进行一次进攻');
-        this.emitDrawDiff(hands);
-        return this.check();
-      }
-      if (this.s && this.s.bindExtraTurn) {
-        const status = window.FurryGame && window.FurryGame.StatusService;
-        if (this.s.ai) { if (status) status.set(this.s.ai, 'bind', false); else this.s.ai.bindMark = false; }
-        if (this.s.ai2) { if (status) status.set(this.s.ai2, 'bind', false); else this.s.ai2.bindMark = false; }
-        this.s.bindExtraTurn = false;
-      }
+      const skipped = this._trySkipBoundOpponentTurn();
+      if (skipped) return skipped;
       // Opening first-strike: refill NPC only; skip player hand fill and the
       // 1v2 opening burn tick that normally runs when ending a player turn.
       if (this.s && this.s.isAdventure && this.s.skipOpeningPlayerFill) {
@@ -1054,6 +1093,56 @@
         return this.check();
       }
       return super.startAITurn();
+    }
+
+    _lordStartNextAI() {
+      const skipped = this._trySkipBoundOpponentTurn();
+      return skipped || super._lordStartNextAI();
+    }
+
+    _trySkipBoundOpponentTurn() {
+      // Challenge rooms alternate opponents using the lord turn order. The
+      // visible attack target may have changed since the item was used.
+      let nextOpponent = 'ai';
+      if (this.s && this.s.is1v2) {
+        nextOpponent = this.s.isLord && this.s.lordPlayerTargetIdx === 1 ? 'ai2' : 'ai';
+        if (!this.s[nextOpponent] || !this.s[nextOpponent].alive) {
+          nextOpponent = nextOpponent === 'ai' ? 'ai2' : 'ai';
+        }
+      }
+      const bound = this.s && this.s[nextOpponent];
+      if (this.s && this.s.isAdventure && bound && bound.alive && bound.bindMark) {
+        const status = window.FurryGame && window.FurryGame.StatusService;
+        if (status) status.set(bound, 'bind', false); else bound.bindMark = false;
+        if (typeof this._clearAllAdventureDefendPhaseMocks === 'function') this._clearAllAdventureDefendPhaseMocks();
+        this.s.pendingHypnosisPromote = 'player';
+        this.s.phase = 'PLAYER_PLAY';
+        this._energyShieldAppliedThisTurn = false;
+        const hands = this.handCounts();
+        this.silentDraws(function () {
+          if (this.s.is1v2) this.fillHands1v2(true); else this.fillHands(true);
+          if (this.s.isLord) this.settleBurn(this.s.player);
+          this.turnStart('player');
+          this._tryEnergyShieldOnAttack();
+        });
+        this.s.bindUsedThisTurn = false;
+        this.s.phase = 'PLAYER_PLAY';
+        this.s.busy = false;
+        this.s.activeAttacker = 'player';
+        this.s.hasPlayedThisTurn = false;
+        this.s.pendingAttack = null;
+        this.s.pendingAIContinue = null;
+        this.s.pendingAIBridge = null;
+        this.s.forceEndAITurn = false;
+        this.s.atkCard = this.s.defCard = null;
+        this.s.atkOwner = this.s.defOwner = null;
+        this.s.aiTurnStarted = this.s.aiHasPlayed = false;
+        this.s.turn++;
+        this.emit('desc', '捆缚：跳过' + bound.name + '本次进攻，清除标记，玩家再进行一次进攻');
+        this.emitDrawDiff(hands);
+        return this.check();
+      }
+      return null;
     }
 
     _tryFreezeLaserOnAttackDamage(target, amount, kind) {
@@ -1322,16 +1411,17 @@
         if (d && !skip && !unblock) {
           this.s.phase = 'AI_DEFEND';
           this.s.busy = true;
-          // Otto 4 and most immediate adventure attacks use delay=0. Running
-          // defense synchronously prevents the single shared combat timer
-          // from being replaced by a concurrent 1v2 animation/turn task.
-          if ((Number(delay) || 0) > 0) this.later(() => this.runAIDefend1v2(card, d), delay);
-          else return this.runAIDefend1v2(card, d);
+          this.s.pendingAIDefense = { card: clone(card), damage: d, afterEventId: this.ver };
+          if (!this.events.length) return this.acknowledgeEvents(this.ver);
         }
         else { this.s.phase = 'AI_DEFEND'; this.s.busy = true; this.deferSettlement('PLAYER_ATTACK', d, 0); }
         return this.check();
       }
-      if (d && !skip && !unblock) { this.s.phase = 'AI_DEFEND'; this.s.busy = true; this.later(() => this.aiDefend(card, d), delay); }
+      if (d && !skip && !unblock) {
+        this.s.phase = 'AI_DEFEND'; this.s.busy = true;
+        this.s.pendingAIDefense = { card: clone(card), damage: d, afterEventId: this.ver };
+        if (!this.events.length) return this.acknowledgeEvents(this.ver);
+      }
       else {
         this.s.phase = 'AI_DEFEND'; this.s.busy = true;
         this.deferSettlement('PLAYER_ATTACK', d, 0);
@@ -1378,7 +1468,13 @@
       const pending = this.s.pendingPurifyCrystal;
       this.s.pendingDialog = null;
       this.s.pendingPurifyCrystal = null;
+      if (typeof this._flushPendingKnightChaos === 'function') this._flushPendingKnightChaos();
       return this._proceedToDefend(pending.damage, pending.skip, pending.unblock, pending.card, pending.delay);
+    }
+
+    endAi1v2() {
+      this.s.bindUsedThisTurn = false;
+      return super.endAi1v2();
     }
 
     endAi() {
@@ -1393,7 +1489,7 @@
           if (status) status.remove(this.s.ai, 'burn', 1); else this.s.ai.burn--;
         }
         if (this.name(this.s.ai) !== 'Leon') {
-          this.emit('burnSettle', keep ? `-${dmg}❤️[灼伤]（[炙热]不消退）` : `-${dmg}❤️[灼伤]，-1[灼伤层数]`, null, { who: 'ai', target: 'ai', amount: dmg, kind: 'burn', scorch: keep });
+          this.emit('burnSettle', keep ? `[灼伤]🗡️${dmg}（[炙热]不消退）` : `[灼伤]🗡️${dmg}，层数-1`, null, { who: 'ai', target: 'ai', amount: dmg, kind: 'burn', scorch: keep });
           this.s.ai.hp = Math.max(0, this.s.ai.hp - dmg);
           this.s.ai.alive = this.s.ai.hp > 0;
         }

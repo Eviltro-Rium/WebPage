@@ -32,6 +32,16 @@
 
 - 代码：`engine.js:731` `endTurn()`、`engine.js:1318`（1v2）、`engine_lord.js:130`（领主）
 
+### 统一手牌弃牌交互（Vixraps 式，无弹窗）
+
+凡「从自己手牌选 N 张弃掉」的流程，**统一**走与 Vixraps 被动相同的交互：进入 `PLAYER_DISCARD`（或地图等价挂起），在手牌区点选后确认；**不要**再用对手选牌弹窗 / `showOpponentCardChoice` 一类浮层选自己的手牌。
+
+- 覆盖：Vixraps 被动、失温 2 层、克拉肯防御后弃牌、手牌超限强制弃牌、技能后可选弃牌、**弃牌符**、**熔炉**（`filter: 'colorNumber'`，仅红/黄/蓝/绿点数牌）等。
+- 挂起字段 `pendingHandDiscard`：`{ kind, count, itemIndex, itemName, filter, legalIndices, cancelable, selected?, hint, resumePhase? }`
+- 引擎：无 index 用弃牌符/熔炉 → 自动 `beginHandDiscard`；战斗确认/取消走 `confirmDiscard` / `cancelDiscard`；地图走 `selectHandDiscardIndex` → `confirmHandDiscard` / `cancelHandDiscard`
+- UI：`HandDiscardPicker` 吃 snapshot 的 `pendingHandDiscard` + 上述 confirm/cancel（缓存可对齐 `hand-discard` / `hand-discard-dice`）
+- `cancelable: false`（Vixraps / 失温 / 超限 / 克拉肯等）不显示取消；道具弃牌默认可取消
+
 ---
 
 ## 4. 冰封 — 补牌少补1张

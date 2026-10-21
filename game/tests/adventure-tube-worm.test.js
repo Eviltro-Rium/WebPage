@@ -65,10 +65,12 @@ test('FrozenOceanTubeWorm loot: 1-2 BurnTrophy, 3-4 DivingTrophy', () => {
     assert.equal(result.drops.length, 1);
     assert.equal(result.drops[0], 'DivingTrophy');
   }
-  for (const roll of [5, 6, 7, 8, 9, 10, 11, 12]) {
+  for (const roll of [5, 6, 7, 8, 9, 10]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenOceanTubeWorm', () => (roll - 1) / 12);
     assert.equal(result.drops.length, 0);
   }
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('ocean', 'FrozenOceanTubeWorm', null, 11).drops), ['SmallPotionTrophy']);
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('ocean', 'FrozenOceanTubeWorm', null, 12).drops), ['PurifyWaterTrophy']);
 });
 
 test('FrozenOceanTubeWorm attack 1/2/3: damage + burn', () => {

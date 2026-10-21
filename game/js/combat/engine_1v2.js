@@ -50,7 +50,7 @@
     // Adventure challenge rooms heal only for the first kill; the second kill ends the fight with no heal.
     const otherKey=defeatedKey==='ai'?'ai2':'ai',otherAlive=!!(this.s[otherKey]&&this.s[otherKey].alive);
     if(this.s.isAdventure&&otherAlive&&this.s.player&&this.s.player.alive){
-      this.heal(this.s.player,3,'passive');
+      this.heal(this.s.player,3,'rest');
       const name=(this.s[defeatedKey]&&this.s[defeatedKey].name)||defeatedKey;
       this.emit('desc','击败'+name+'，恢复3点生命');
     }
@@ -422,7 +422,7 @@
         const vixrapsPassive=c.isBlack&&this.name(this.s.player)==='Vixraps'
           ? this._beginVixrapsPassive('player',c,'PLAYER_DEFEND') : false;
         if(!this.s.pendingDialog&&!vixrapsPassive)this._tickBomb('player');
-        if(!vixrapsPassive){this.s.phase='PLAYER_DEFEND';this.s.busy=false;}
+        if(!this.s.pendingDialog&&!vixrapsPassive){this.s.phase='PLAYER_DEFEND';this.s.busy=false;}
         return this.check()
       }
       this.emit('defend','玩家打出防御牌',c);

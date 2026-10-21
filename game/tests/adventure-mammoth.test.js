@@ -71,19 +71,19 @@ function defend(e,value,damage) {
 }
 
 test('Mammoth is available in every ocean boss pool, with an existing icon',()=>{
-  const m=staged(1); assert.equal(m.hp,45); assert.equal(m.handLimit,3); assert.equal(m.whiteZeros,2);
+  const m=staged(1); assert.equal(m.hp,45); assert.equal(m.handLimit,3); assert.equal(m.whiteZeros,1);
   assert.equal(m.kind,'长牙猛犸');
   assert.ok(fs.existsSync(path.resolve(gameRoot,'adventure',m.icon)));
   for(const stage of ['*',2,3,4]) assert.ok(context.AdventureBossPool.ocean[stage].includes(bossName));
 });
-for(const v of [1,2,3])test('Mammoth attack '+v+' deals 2, then grants guard and applies corresponding bleed',()=>{
+for(const v of [1,2,3])test('Mammoth attack '+v+' deals 3, then applies corresponding bleed',()=>{
   const e=battle(),hp=e.s.player.hp,r=attack(e,v);
-  assert.equal(r.d,2); assert.equal(e.s.ai.guard,0); assert.equal(e.s.player.bleed,0);
+  assert.equal(r.d,3); assert.equal(e.s.ai.guard,0); assert.equal(e.s.player.bleed,0);
   const damage=e.prepareAttackSettlement(r.d,'player');
   assert.equal(e.s.player.bleed,0);
   e.settlePreparedHit(e.s.ai,e.s.player,{damage,bleed:0});
   e.performAttack({type:'aoe',commitAttackEffects:true,target:'player'});
-  assert.equal(e.s.player.hp,hp-2); assert.equal(e.s.player.bleed,v); assert.equal(e.s.ai.guard,2);
+  assert.equal(e.s.player.hp,hp-3); assert.equal(e.s.player.bleed,v); assert.equal(e.s.ai.guard,0);
   const hit=e.events.findIndex(x=>x.type==='hit'),bleed=e.events.findIndex(x=>x.type==='buff'&&x.kind==='bleed');
   assert.ok(hit>=0&&bleed>hit);
 });
@@ -121,7 +121,7 @@ test('Mammoth 0 defense is fully immune, gains 2 guard and applies 2 bleed',()=>
 test('Mammoth stages are cumulative; undefined attacks and defenses gain no effects',()=>{
   for(const stage of [1,2,3,4]) {
     const m=staged(stage); assert.equal(m.hp,stage>=2?55:45);
-    for(const v of [0,1,2,3,4,5,6])assert.equal(m.attackDamage(numCard(v),{playerBleed:2}), (v===0?3:v<=3?2:5)+(stage>=3?1:0));
+    for(const v of [0,1,2,3,4,5,6])assert.equal(m.attackDamage(numCard(v),{playerBleed:2}), (v===0?3:v<=3?3:5)+(stage>=3?1:0));
     assert.equal(m.defendBleed(numCard(1)),stage>=4?2:1);
     assert.equal(m.defendBleed(numCard(0)),stage>=4?3:2);
     for(const v of [4,5,6,7]) { assert.equal(m.defendBleed(numCard(v)),0); assert.equal(m.defendImmune(numCard(v)),false); }
@@ -133,12 +133,13 @@ test('Mammoth all 12 loot faces match the documented outcomes',()=>{
   for(let roll=1;roll<=12;roll++) {
     const result=AdventureLoot.rollMonsterDrop('ocean',bossName,()=>(roll-1)/12);
     assert.equal(result.roll,roll);
-    assert.deepEqual(Array.from(result.drops),roll<=3?['PiercingTrophy']:roll<=5?['GuardTrophy']:roll===6?['HypothermiaTrophy']:[]);
+    const expected = roll<=3?['PiercingTrophy']:roll<=5?['GuardTrophy']:roll===6?['HypothermiaTrophy']:roll===11?['SmallPotionTrophy']:roll===12?['PurifyWaterTrophy']:[];
+    assert.deepEqual(Array.from(result.drops),expected);
   }
 });
 test('Mammoth skill descriptions include scaling, hypothermia, guard, immunity and stage buffs',()=>{
   const desc=(v,def,stage=1)=>AdventureMonsterBridge.getAdventureNpcSkillDesc(bossName,numCard(v),def,{stage});
-  assert.match(desc(2,false),/2层\[流血\]/); assert.match(desc(2,false),/2层\[守护\]/);
+  assert.match(desc(2,false),/2层\[流血\]/); assert.doesNotMatch(desc(2,false),/守护/); assert.match(desc(1,false),/3🗡️/);
   assert.match(desc(4,false),/3\+/); assert.match(desc(4,false),/流血/);assert.match(desc(4,false),/失温/);
   assert.match(desc(0,false),/不可防御/); assert.match(desc(0,false),/4层\[守护\]/);
   assert.match(desc(0,true),/免疫所有伤害/);assert.match(desc(0,true),/2层\[守护\]/);
@@ -155,6 +156,6 @@ for(const testMode of [false,true])test('Mammoth starts in '+(testMode?'test':'n
   const pile=e._npcPile || e.piles.ai;
   assert.ok(pile,'NPC has an isolated pile');
   const zeroCount=[...pile.deck,...pile.discard,...e.h.ai].filter(c=>c.isNumberCard&&c.value===0).length;
-  assert.equal(zeroCount,2,'Boss deck has exactly two white 0 cards');
+  assert.equal(zeroCount,1,'Boss deck has exactly one white 0 card');
   e.s.player.bleed=2;const r=attack(e,4);assert.equal(r.d,6);assert.equal(e.prepareAttackSettlement(r.d,'player'),6);
 });

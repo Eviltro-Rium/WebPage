@@ -58,16 +58,19 @@ test('FrozenKraken base stats, boss pool from stage 2', () => {
   }
 });
 
-test('FrozenKraken loot: 1-6 zero trophy', () => {
+test('FrozenKraken loot: Zero 1-6; 11/12 dual-source potions', () => {
   for (const roll of [1, 2, 3, 4, 5, 6]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenKraken', () => (roll - 1) / 12);
-    assert.equal(result.drops.length, 1);
-    assert.equal(result.drops[0], 'ZeroTrophy');
+    assert.deepEqual(Array.from(result.drops), ['ZeroTrophy']);
   }
-  for (const roll of [7, 8, 9, 10, 11, 12]) {
+  for (const roll of [7, 8, 9, 10]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenKraken', () => (roll - 1) / 12);
     assert.equal(result.drops.length, 0);
   }
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('ocean', 'FrozenKraken', null, 11).drops),
+    ['SmallPotionTrophy']);
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('ocean', 'FrozenKraken', null, 12).drops),
+    ['PurifyWaterTrophy']);
 });
 
 test('FrozenKraken attack hooks', () => {

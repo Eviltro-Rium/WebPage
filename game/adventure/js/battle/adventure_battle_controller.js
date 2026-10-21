@@ -130,6 +130,7 @@
 
   function leaveBattleToMap(finalState, persistentState, playerWon) {
     if (gameUI) {
+      if (typeof gameUI._clearTrophySettlement === 'function') gameUI._clearTrophySettlement();
       if (typeof gameUI._hideTooltip === 'function') gameUI._hideTooltip();
       if (gameUI.gameScreen) gameUI.gameScreen.classList.remove('active');
       gameUI._is1v2 = false;
@@ -214,6 +215,7 @@
 
   function leaveTestBattle(finalState, persistentState, playerWon) {
     if (gameUI) {
+      if (typeof gameUI._clearTrophySettlement === 'function') gameUI._clearTrophySettlement();
       if (typeof gameUI._hideTooltip === 'function') gameUI._hideTooltip();
       if (gameUI.gameScreen) gameUI.gameScreen.classList.remove('active');
       gameUI._is1v2 = false;
@@ -286,6 +288,15 @@
       } else if (button.hasAttribute('data-item-discard')) {
         eng.discardConsumable(Number(button.getAttribute('data-item-discard')));
         refresh();
+      } else if (button.id === 'adv-settle-merchant-buy') {
+        const buy = typeof eng.buyMerchantAccessory === 'function' ? eng.buyMerchantAccessory() : { ok: false, message: '流浪商人暂不可用' };
+        if (!buy || !buy.ok) {
+          saveAdventureProgress(eng);
+          const reasonText = { gold: '金币不足', sold: '商品已售出' };
+          renderSettlement(overlay, eng, leave, (buy && (buy.message || reasonText[buy.reason])) || '无法购买：配饰互斥或已达上限');
+          return;
+        }
+        refresh();
       } else if (button.id === 'adv-settle-claim') {
         if (!eng.claimCombatReward()) {
           if (eng._lastRewardError && eng._lastRewardError.reason === 'accessoryFull') {
@@ -351,6 +362,11 @@
     return rows.join('');
   }
 
+  function merchantPrice(basic, def) {
+    if (basic && Number.isFinite(Number(basic.price))) return Number(basic.price);
+    return (def && def.price) || 15;
+  }
+
   function basicRewardHtml(pending, AC) {
     const basic = pending && pending.basic;
     if (!basic) return '<div class="adv-settle-row">基础奖励：无</div>';
@@ -374,6 +390,19 @@
       const def = window.AdventureRegistry && window.AdventureRegistry.getItem(name);
       const icon = def && def.icon ? '<img src="' + def.icon + '" class="adv-settle-icon" alt="">' : '';
       return '<div class="adv-settle-row">' + icon + '配饰：' + (def ? def.displayName : name) + '</div>';
+    }
+    if (basic.kind === 'merchant') {
+      const name = basic.accessory || basic.item;
+      const def = window.AdventureRegistry && window.AdventureRegistry.getItem(name);
+      if (!def) return '<div class="adv-settle-row">流浪商人：已离开</div>';
+      const price = merchantPrice(basic, def);
+      const icon = def.icon ? '<img src="' + def.icon + '" class="adv-settle-icon" alt="">' : '';
+      const sold = basic.sold ? '<span class="adv-merchant-sold">已购买</span>' : '<span class="adv-merchant-price">' + price + ' 金币</span>';
+      return '<div class="adv-settle-row adv-merchant-intro"><img src="../icons/adventure_ui_icons/wandering_merchant.webp" class="adv-merchant-portrait" alt="流浪商人" width="64" height="64">流浪商人路过，出售 1 件配饰：</div>' +
+        '<div class="adv-settle-row adv-merchant-offer" title="' + String(def.description || '').replace(/"/g, '&quot;') + '">' + icon +
+        '<span class="adv-merchant-name">' + def.displayName + '</span>' + sold + '</div>' +
+        (def.description ? '<div class="adv-settle-row adv-merchant-desc">' + def.description + '</div>' : '') +
+        (!basic.sold ? '<div class="adv-settle-row adv-merchant-desc">未购买的商品会留在本房间，可稍后返回交易。</div>' : '');
     }
     if (basic.kind === 'beast') {
       const label = AC.BEAST_LABEL[basic.beastType] || basic.beastType;
@@ -498,6 +527,18 @@
         html += '<div class="adv-settle-section-title">' + (isBoss ? 'Boss奖励' : '基础奖励') + '</div>';
         html += basicRewardHtml(pending, AC);
         html += '</div>';
+        const merchant = pending.basic && pending.basic.kind === 'merchant' ? pending.basic : null;
+        if (merchant && !isBoss) {
+          const mdef = window.AdventureRegistry && window.AdventureRegistry.getItem(merchant.accessory || merchant.item);
+          const price = merchantPrice(merchant, mdef);
+          const gold = snap.currency ? snap.currency.gold : 0;
+          const canBuy = !!mdef && !merchant.sold && gold >= price;
+          const buyLabel = merchant.sold ? '已购买' : (gold >= price ? '购买（' + price + ' 金币）' : '金币不足（' + gold + '/' + price + '）');
+          html += '<div class="adv-settle-actions">' +
+            '<button id="adv-settle-merchant-buy"' + (canBuy ? '' : ' disabled') + '>' + buyLabel + '</button>' +
+            '<button id="adv-settle-claim" class="adv-settle-secondary">' + (merchant.sold ? '继续' : '不买，继续') + '</button>' +
+            '</div>';
+        } else
         html += '<div class="adv-settle-actions">' +
           '<button id="adv-settle-claim">领取</button>' +
           (isBoss
@@ -590,11 +631,10 @@
       if (tip) tip.remove();
     }
     const existing = document.getElementById('adv-settle-overlay');
-    if (existing) existing.remove();
-    const overlay = document.createElement('div');
+    const overlay = existing || document.createElement('div');
     overlay.id = 'adv-settle-overlay';
     overlay.className = 'game-over-overlay dialog-sheet-overlay';
-    document.body.appendChild(overlay);
+    if (!existing) document.body.appendChild(overlay);
 
     const leave = () => {
       overlay.remove();
@@ -678,6 +718,12 @@
         advEng.onCombatEnd(playerWon ? 'win' : 'lose');
         if (playerWon) saveAdventureProgress(advEng);
         if (advEng.s.phase === window.AdventurePhase.CLEAR && advEng.s.stage >= 4) clearCombatSession();
+        const completedRoom = typeof advEng.currentRoom === 'function' ? advEng.currentRoom() : null;
+        if (playerWon && advEng.s.phase === window.AdventurePhase.MAP &&
+            completedRoom && completedRoom.type === window.RoomType.GLITCH) {
+          schedule(() => leaveBattleToMap(finalState, persistentState, true), 180);
+          return;
+        }
         showAdventureSettlement(advEng, finalState, persistentState, playerWon);
         return;
       }

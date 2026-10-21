@@ -52,7 +52,7 @@ test('plain monster damage uses a hit event and displays concise damage text', a
 
   await ui._playEvents([{ type: 'hit', desc: '受到4点伤害', who: 'enemy', amount: 4 }], true);
 
-  assert.deepEqual(floating, [['-4🗡️', '#ff4444', 'ai']]);
+  assert.deepEqual(floating, [['🗡️4', '#ff4444', 'ai']]);
   assert.deepEqual(hits, [['ai', 4]]);
 });
 
@@ -61,7 +61,7 @@ test('legacy plain player damage displays concise text and still plays hit feedb
 
   await ui._playEvents([{ type: 'hurt', desc: '-3[伤害]', who: 'player', amount: 3 }], true);
 
-  assert.deepEqual(floating, [['-3🗡️', '#ff4444', 'player']]);
+  assert.deepEqual(floating, [['🗡️3', '#ff4444', 'player']]);
   assert.deepEqual(hits, [['player', 3]]);
 });
 
@@ -70,7 +70,7 @@ test('status damage keeps its semantic floating text', async () => {
 
   await ui._playEvents([{ type: 'hurt', desc: '-2[流血]', who: 'enemy', amount: 2, bleed: true }], true);
 
-  assert.deepEqual(floating, [['-2🗡️[流血]', '#cc2222', 'ai']]);
+  assert.deepEqual(floating, [['[流血]🗡️2', '#cc2222', 'ai']]);
   assert.deepEqual(hits, [['ai', 2]]);
 });
 
@@ -79,7 +79,7 @@ test('burn settle float uses damage sword marker', async () => {
 
   await ui._playEvents([{ type: 'burnSettle', desc: '-3[灼伤]，-1[灼伤层数]', who: 'player', amount: 3 }], true);
 
-  assert.deepEqual(floating, [['-3🗡️[灼伤]，-1[灼伤层数]', '#ff8800', 'player']]);
+  assert.deepEqual(floating, [['[灼伤]🗡️3，层数-1', '#ff8800', 'player']]);
 });
 
 test('parseSegments colors -n❤️ red while keeping status tag color', () => {
@@ -97,7 +97,7 @@ test('second monster target field receives feedback in its own UI lane', async (
 
   await ui._playEvents([{ type: 'hit', desc: '受到5点伤害', target: 'ai2', amount: 5 }], true);
 
-  assert.deepEqual(floating, [['-5🗡️', '#ff4444', 'ai2']]);
+  assert.deepEqual(floating, [['🗡️5', '#ff4444', 'ai2']]);
   assert.deepEqual(hits, [['ai2', 5]]);
 });
 
@@ -108,13 +108,22 @@ test('all HP loss floats use a sword while healing keeps hearts', async () => {
       const { ui, floating } = feedbackHarness();
       await ui._playEvents([{ type, target, amount: 2, kind: type === 'hurt' ? 'thorns' : undefined }], true);
       assert.equal(floating.length, 1, type + '/' + target);
-      assert.ok(floating[0][0].startsWith('-2🗡️'), type + '/' + target);
+      assert.match(floating[0][0], /^(?:\[[^\]]+\])?🗡️2(?:$|，|（)/, type + '/' + target);
       assert.equal(floating[0][2], target);
     }
   }
   const { ui, floating } = feedbackHarness();
-  await ui._playEvents([{ type:'heal', target:'player', amount:10, desc:'[苏醒]+10❤️', kind:'wake' }],true);
-  assert.equal(floating[0][0], '[苏醒]+10❤️');
-  const segments = JSON.parse(JSON.stringify(context.parseSegments('-3🗡️[灼伤]', '#ff8800')));
-  assert.deepEqual(segments, [{text:'-3🗡️',color:'#ff4444'},{text:'[灼伤]',color:'#fdba74'}]);
+  await ui._playEvents([
+    { type:'heal', target:'player', amount:10, desc:'[苏醒]❤️10', kind:'wake' },
+    { type:'heal', target:'player', amount:4, kind:'heal' },
+    { type:'heal', target:'player', amount:3, kind:'drain' },
+    { type:'heal', target:'player', amount:1, kind:'passive' },
+    { type:'heal', target:'player', amount:3, kind:'rest' }
+  ],true);
+  assert.deepEqual(floating.map(f => f[0]), ['[苏醒]❤️10', '❤️4', '[吸血]❤️3', '[被动]❤️1', '[休憩]❤️3']);
+  const segments = JSON.parse(JSON.stringify(context.parseSegments('[灼伤]🗡️3', '#ff8800')));
+  assert.deepEqual(segments, [{text:'[灼伤]',color:'#fdba74'},{text:'🗡️3',color:'#ff4444'}]);
+  const heal = JSON.parse(JSON.stringify(context.parseSegments('[吸血]❤️3', '#e040fb')));
+  assert.equal(heal[1].text, '❤️3');
+  assert.equal(heal[1].color, '#86efac');
 });

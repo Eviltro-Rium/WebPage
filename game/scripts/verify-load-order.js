@@ -33,7 +33,7 @@ const indexExpected = expand(['characters', 'ai', 'combat']).concat([
 ], manifest.index_extra_content, [
   'js/ui/adventure_codex.js', 'js/ui/card_style.js', 'js/ui/ui_core.js',
   'js/ui/render/runtime.js', 'js/ui/render/particles.js', 'js/ui/render/home_screen.js', 'js/ui/render/combat_screen.js',
-  'js/ui/render/status_render.js', 'js/ui/render/hand_render.js', 'js/ui/render/adventure_bar.js',
+  'js/ui/render/status_render.js', 'js/ui/hand_discard_picker.js', 'js/ui/render/hand_render.js', 'js/ui/render/adventure_bar.js',
   'js/ui/render/zone_render.js',
   'js/ui/feedback.js', 'js/ui/renderer.js', 'js/ui/events.js', 'js/ui/controls.js',
   'js/ui/mode_1v2.js', 'js/ui/mode_lord.js', 'js/version.js'
@@ -42,7 +42,7 @@ const indexExpected = expand(['characters', 'ai', 'combat']).concat([
 const adventureExpected = expand(['characters', 'ai', 'combat']).concat([
   'js/ui/skills.js', 'js/ui/dialogs.js', 'js/ui/card_style.js', 'js/ui/ui_core.js',
   'js/ui/render/runtime.js', 'js/ui/render/particles.js', 'js/ui/render/home_screen.js', 'js/ui/render/combat_screen.js',
-  'js/ui/render/status_render.js', 'js/ui/render/hand_render.js', 'js/ui/render/adventure_bar.js',
+  'js/ui/render/status_render.js', 'js/ui/hand_discard_picker.js', 'js/ui/render/hand_render.js', 'js/ui/render/adventure_bar.js',
   'js/ui/render/zone_render.js',
   'js/ui/feedback.js', 'js/ui/renderer.js', 'js/ui/events.js', 'js/ui/controls.js',
   'js/ui/mode_1v2.js', 'js/ui/mode_lord.js'
@@ -58,6 +58,7 @@ const adventureExpected = expand(['characters', 'ai', 'combat']).concat([
   'adventure/js/engine/rewards.js',
   'adventure/js/engine/inventory.js',
   'adventure/js/engine/combat_result.js',
+  'adventure/js/engine/glitch.js',
   'adventure/js/battle/battle_engine.js',
   'adventure/js/battle/adventure_battle_items.js',
   'adventure/js/battle/dice_controller.js',
@@ -68,6 +69,7 @@ const adventureExpected = expand(['characters', 'ai', 'combat']).concat([
   'adventure/js/ui/adventure_ui.js',
   'adventure/js/ui/adventure_ui_map_view.js',
   'adventure/js/ui/adventure_ui_panels.js',
+  'adventure/js/ui/adventure_ui_glitch.js',
   'adventure/js/ui/adventure_ui_views.js', 'js/version.js'
 ]);
 

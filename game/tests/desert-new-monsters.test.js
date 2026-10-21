@@ -65,9 +65,11 @@ test('DesertLizard loot: 1-2 sandblind, 3-4 quicksand', () => {
     assert.equal(r.drops.length, 1);
     assert.equal(r.drops[0], 'QuicksandTrophy');
   }
-  for (const roll of [5, 6, 12]) {
+  for (const roll of [5, 6, 10]) {
     assert.equal(rollDrop('desert', 'DesertLizard', roll).drops.length, 0);
   }
+  assert.deepEqual(Array.from(rollDrop('desert', 'DesertLizard', 11).drops), ['SmallPotionTrophy']);
+  assert.deepEqual(Array.from(rollDrop('desert', 'DesertLizard', 12).drops), ['PurifyWaterTrophy']);
 });
 
 test('DesertLizard attack hooks', () => {
@@ -193,10 +195,10 @@ test('DesertScarab base stats', () => {
   assert.equal(m.hp, 20);
 });
 
-test('DesertScarab loot: 1-2 russian roulette, 3-4 fly', () => {
+test('DesertScarab loot: 1-2 crit, 3-4 fly', () => {
   for (const roll of [1, 2]) {
     const r = rollDrop('desert', 'DesertScarab', roll);
-    assert.equal(r.drops[0], 'RussianRouletteTrophy');
+    assert.equal(r.drops[0], 'CritTrophy');
   }
   for (const roll of [3, 4]) {
     const r = rollDrop('desert', 'DesertScarab', roll);
@@ -319,6 +321,26 @@ test('DesertScorpion effect: 4/5/6 unblockable + thorns + poison', () => {
   eng.commitAttackStatuses('afterDamage');
   assert.equal(eng.s.player.thorns, 1);
   assert.equal(eng.s.player.poison, 1);
+});
+
+test('DesertScorpion defend 1/2/3 poison drain hurts attacker via shared drain', () => {
+  const eng = new Engine();
+  eng.start('Ryan', 'DesertScorpion');
+  eng.later = () => {};
+  const scorpion = eng.s.ai, player = eng.s.player;
+  scorpion.hp = 10;
+  const playerBefore = player.hp;
+  context.CharacterRegistry.get('DesertScorpion').defend(
+    eng, 'DesertScorpion', 2, 3, numCard(2), scorpion, player, 'ai', 'RED', {
+      poison: (target, n) => eng.poison(target, n),
+      heal: (target, n) => eng.heal(target, n),
+      hurt: (target, n) => eng.counterAttack(target, n),
+      bleed: () => {}, clearDebuffs: target => eng.clearDebuffs(target)
+    });
+  assert.equal(player.poison, 1);
+  // 1 层中毒 → 吸取 1：玩家掉 1 血，蝎子按实际扣血回 1
+  assert.equal(playerBefore - player.hp, 1);
+  assert.equal(scorpion.hp, 11);
 });
 
 // ===== 沙漠毒蛇 DesertViper =====
@@ -512,11 +534,18 @@ test('DesertAntlion attacks and cumulative stages leave pass cards inert', () =>
 test('DesertAntlion D12 loot covers all faces and names the new drops', () => {
   for(let roll=1;roll<=12;roll++) {
     const result=rollDrop('desert','DesertAntlion',roll);
-    assert.deepEqual(Array.from(result.drops), roll<=2 ? ['QuicksandTrophy'] : roll<=4 ? ['ThornsTrophy'] : []);
+    const expected = roll<=2 ? ['QuicksandTrophy']
+      : roll<=4 ? ['ThornsTrophy']
+      : roll===11 ? ['SmallPotionTrophy']
+      : roll===12 ? ['PurifyWaterTrophy']
+      : [];
+    assert.deepEqual(Array.from(result.drops), expected);
   }
   const result=rollDrop('desert','DesertAntlion',1);
   assert.match(result.summary,/1-2.*流沙/);
   assert.match(result.summary,/3-4.*荆棘/);
+  assert.equal(/11.*小药剂/.test(result.summary), false);
+  assert.equal(/12.*净化之水/.test(result.summary), false);
 });
 
 function stagedEngine(t, name, stage=2) {
