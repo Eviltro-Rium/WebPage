@@ -65,7 +65,7 @@
 
   function clone(card) { return JSON.parse(JSON.stringify(card)); }
 
-  function makePlayerDeck(opts = {}) {
+  function makePlayerDeck() {
     const d = [];
     for (const c of COLORS) {
       for (let v = 1; v <= 7; v++)
@@ -79,7 +79,7 @@
     // 洗入 / 净化 / 超级净化各比对战标准组少 2 张。
     for (let i = 0; i < 2; i++) d.push(item('BLACK', 'shuffle'), item('WHITE', 'superPurify'));
     for (let i = 0; i < 4; i++) d.push(item('WHITE', 'purify'));
-    return opts.shuffle === false ? d : shuffle(d);
+    return shuffle(d);
   }
 
   function makeNpcDeck() {

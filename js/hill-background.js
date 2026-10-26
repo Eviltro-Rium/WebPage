@@ -739,6 +739,12 @@
       (document.documentElement.classList.contains("home-is-booting") ||
         document.documentElement.classList.contains("subpage-is-booting"));
     var bootStart = null;
+    var lastBootFrame = null;
+    var homeLoadingProgress = isHomePage && window.RiumHomeLoadingProgress
+      ? window.RiumHomeLoadingProgress.create() : null;
+    // The bar has no extra CSS easing: it follows the same value as the camera.
+    var loadingBar = document.getElementById("home-loading-bar");
+    if (homeLoadingProgress && loadingBar) loadingBar.style.transition = "none";
     var bootDuration = subpageBoot
       ? mobile
         ? 1650
@@ -1258,16 +1264,19 @@
       visible = !document.hidden;
     });
 
+    var loadingPercent = document.getElementById("home-loading-percent");
+    var loadingLabelNode = document.getElementById("home-loading-label");
+    var loadingStages = document.querySelectorAll("[data-loading-stage]");
+    var lastLoadingStage = null;
     function updateHomeLoading(progress, label, stage) {
       var percent = Math.round(THREE.MathUtils.clamp(progress, 0, 1) * 100);
-      var bar = document.getElementById("home-loading-bar");
-      var percentEl = document.getElementById("home-loading-percent");
-      var labelEl = document.getElementById("home-loading-label");
-      if (bar) bar.style.width = percent + "%";
-      if (percentEl) percentEl.textContent = percent + "%";
-      if (labelEl && label) labelEl.textContent = label;
-      if (stage) {
-        var stageEls = document.querySelectorAll("[data-loading-stage]");
+      if (homeLoadingProgress && progress < 1) percent = Math.min(99, percent);
+      if (loadingBar) loadingBar.style.width = (homeLoadingProgress ? progress * 100 : percent) + "%";
+      if (loadingPercent && loadingPercent.textContent !== percent + "%") loadingPercent.textContent = percent + "%";
+      if (loadingLabelNode && label && loadingLabelNode.textContent !== label) loadingLabelNode.textContent = label;
+      if (stage && stage !== lastLoadingStage) {
+        lastLoadingStage = stage;
+        var stageEls = loadingStages;
         var stageNames = ["scene", "assets", "page", "enter"];
         var stageIndex = stageNames.indexOf(stage);
         Array.prototype.forEach.call(stageEls, function (stageEl) {
@@ -1343,7 +1352,7 @@
           var bootProgress = readyForReveal
             ? rawBootProgress
             : Math.min(rawBootProgress, 0.92);
-          var bootEase = bootProgress * bootProgress * (3 - 2 * bootProgress);
+
           var galleryProgress = isHomePage
             ? THREE.MathUtils.clamp(Number(window.__riumGalleryProgress) || 0, 0, 1)
             : windowLoaded
@@ -1377,20 +1386,30 @@
               : "正在整理页面布局…";
           }
 
+          // A failed asset/CDN callback must not keep the camera in its loading
+          // pose after the HTML safety timeout has already revealed the page.
+          var released = isHomePage && !document.documentElement.classList.contains("home-is-booting");
+          var displayedProgress = homeLoadingProgress
+            ? homeLoadingProgress.step(released ? 1 : loadingProgress, lastBootFrame === null ? 0 : t - lastBootFrame)
+            : loadingProgress;
+          lastBootFrame = t;
+          var cameraProgress = homeLoadingProgress ? displayedProgress : bootProgress;
+          var bootEase = homeLoadingProgress ? cameraProgress
+            : cameraProgress * cameraProgress * (3 - 2 * cameraProgress);
           camera.position.lerpVectors(bootFromPos, homePos, bootEase);
           bootLook.lerpVectors(bootFromLook, homeLook, bootEase);
           camera.lookAt(bootLook);
           camera.fov = THREE.MathUtils.lerp(24, 48, bootEase);
           camera.updateProjectionMatrix();
-          updateHomeLoading(loadingProgress, loadingLabel, loadingStage);
+          updateHomeLoading(displayedProgress, loadingLabel, loadingStage);
 
-          if (bootProgress >= 1) {
+          if (cameraProgress >= 1) {
             bootMode = false;
             camera.position.copy(homePos);
             camera.lookAt(homeLook);
             camera.fov = 48;
             camera.updateProjectionMatrix();
-            finishHomeLoading();
+            if (!released) finishHomeLoading();
           }
         } else {
           camera.position.x += (HOME_POS.x + mouseX * 1.6 - camera.position.x) * 0.035;

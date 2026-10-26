@@ -27,7 +27,7 @@
     { id: 'fly',         property: 'fly',         label: '飞翔', icon: 'buff_icons/fly.webp',          polarity: 'buff',   stack: true, max: 2, cleanse: 'decrement', trigger: 'onDamage', transferable: true },
     { id: 'harden',      property: 'harden',      label: '硬化', icon: 'buff_icons/harden.webp',       polarity: 'buff',   stack: true, max: 2, cleanse: 'decrement', trigger: 'onUnblockableDamage', unblockableReductionPerStack: 1, transferable: true },
     { id: 'crit',        property: 'crit',        label: '暴击', icon: 'buff_icons/crit.webp',         polarity: 'buff',   stack: true, max: 3, cleanse: 'decrement', trigger: 'onAttack', transferable: true },
-    { id: 'magmaVein',   property: 'magmaVein',   label: '熔脉', icon: 'buff_icons/magma_vein.webp', polarity: 'buff',   stack: true, max: 2, cleanse: 'decrement', trigger: 'attackMod', transferable: true },
+    { id: 'magmaVein',   property: 'magmaVein',   label: '熔脉', icon: 'buff_icons/magma_vein.webp', polarity: 'buff',   stack: true, max: 1, cleanse: 'reset',     trigger: 'attackMod', transferable: true },
     { id: 'lush',        property: 'lush',        label: '茂盛', icon: 'buff_icons/lush.webp',         polarity: 'buff',   stack: true, max: 2, cleanse: 'decrement', trigger: 'attackStart', transferable: true },
     { id: 'parasite',    property: 'parasite',    label: '寄生', icon: 'buff_icons/parasite.webp',     polarity: 'buff',   stack: true, max: 1, cleanse: 'decrement', trigger: 'attackStart', transferable: true },
     { id: 'diving',      property: 'diving',      label: '潜水', icon: 'buff_icons/diving.webp',       polarity: 'buff',   stack: false, max: 1, cleanse: 'reset', trigger: 'onBlueAttack', transferable: true },

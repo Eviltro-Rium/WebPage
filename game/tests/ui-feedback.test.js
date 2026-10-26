@@ -105,14 +105,11 @@ test('second monster target field receives feedback in its own UI lane', async (
 test('all HP loss floats use a sword while healing keeps hearts', async () => {
   for (const target of ['player', 'ai', 'ai2']) {
     for (const type of ['hit', 'hurt', 'burnSettle', 'bleedSettle', 'poisonSettle', 'bombExplode', 'buffSettle']) {
-      const { ui, floating, hits } = feedbackHarness();
+      const { ui, floating } = feedbackHarness();
       await ui._playEvents([{ type, target, amount: 2, kind: type === 'hurt' ? 'thorns' : undefined }], true);
       assert.equal(floating.length, 1, type + '/' + target);
       assert.match(floating[0][0], /^(?:\[[^\]]+\])?🗡️2(?:$|，|（)/, type + '/' + target);
       assert.equal(floating[0][2], target);
-      assert.equal(hits.length, 1, type + '/' + target + ' hit feedback plays once');
-      assert.equal(hits[0][0], target);
-      assert.equal(hits[0][1], 2);
     }
   }
   const { ui, floating } = feedbackHarness();

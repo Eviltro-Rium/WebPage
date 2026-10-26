@@ -32,7 +32,7 @@
     hp: 20,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/frozen_ocean_lynx.webp?v=20261023-ocean-orientation',
+    icon: '../icons/npc_icons/frozen_ocean_lynx.webp',
     attackDamage(card) {
       const v = card.value;
       if (v >= 1 && v <= 3) return 3;
@@ -82,7 +82,7 @@
     hp: 25,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/frozen_ocean_whale.webp?v=20261023-ocean-orientation',
+    icon: '../icons/npc_icons/frozen_ocean_whale.webp',
     attackDamage(card) {
       const v = card.value;
       if (v >= 1 && v <= 3) return 2;
@@ -134,7 +134,7 @@
     hp: 27,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/frozen_ocean_shark.webp?v=20261023-ocean-orientation',
+    icon: '../icons/npc_icons/frozen_ocean_shark.webp',
     attackDamage(card, ctx) {
       const v = card.value;
       const bleed = ctx.playerBleed || 0;
@@ -186,7 +186,7 @@
     hp: 20,
     attack: 3,
     defense: 1,
-    icon: '../icons/npc_icons/frozen_ocean_seal.webp?v=20261023-ocean-orientation',
+    icon: '../icons/npc_icons/frozen_ocean_seal.webp',
     // 进攻1/2/3：从牌堆抽一张牌展示，造成对应数字伤害，随后放入弃牌堆；魔法牌加入手牌
     attackRevealDraw(card) {
       const v = card.value;
@@ -233,7 +233,7 @@
     hp: 25,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/frozen_ocean_polar_bear.webp?v=20261023-ocean-orientation',
+    icon: '../icons/npc_icons/frozen_ocean_polar_bear.webp',
     // 进攻1/2/3：造成对手 buff 总层数点伤害
     attackDamage(card, ctx) {
       const v = card.value;
@@ -309,7 +309,7 @@
     defense: 2,
     handLimit: 3,
     whiteZeros: 2,
-    icon: '../icons/npc_icons/frozen_ocean_killer_whale.webp?v=20261023-ocean-orientation',
+    icon: '../icons/npc_icons/frozen_ocean_killer_whale.webp',
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
       const v = card.value;
@@ -368,7 +368,7 @@
     hp: 24,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/frozen_ocean_snowy_owl.webp?v=20261023-ocean-orientation',
+    icon: '../icons/npc_icons/frozen_ocean_snowy_owl.webp',
     attackDamage(card) {
       const v = card.value;
       if (v >= 1 && v <= 3) return 2;
@@ -418,7 +418,7 @@
     hp: 20,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/frozen_ocean_samoyed.webp?v=20261023-ocean-orientation',
+    icon: '../icons/npc_icons/frozen_ocean_samoyed.webp',
     immuneFreeze: true,
     immuneHypothermia: true,
     attackDamage(card, ctx) {
@@ -474,7 +474,7 @@
     handLimit: 3,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/frozen_ocean_tube_worm.webp?v=20261023-ocean-orientation',
+    icon: '../icons/npc_icons/frozen_ocean_tube_worm.webp',
     attackDamage(card) {
       const v = card && card.value;
       if (v >= 1 && v <= 3) return v;
@@ -525,7 +525,7 @@
     hp: 24,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/frozen_ocean_octopus.webp?v=20261023-ocean-orientation',
+    icon: '../icons/npc_icons/frozen_ocean_octopus.webp',
     attackDamage(card) {
       const v = card && card.value;
       if (v >= 4 && v <= 6) return 5;
@@ -586,7 +586,7 @@
     defense: 2,
     handLimit: 3,
     whiteZeros: 2,
-    icon: '../icons/npc_icons/kraken.webp?v=20261023-ocean-orientation',
+    icon: '../icons/npc_icons/kraken.webp',
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
       const v = card.value;
@@ -653,7 +653,7 @@
     defense: 2,
     handLimit: 3,
     whiteZeros: 2,
-    icon: '../icons/npc_icons/frozen_ocean_wooli.webp?v=20261023-ocean-orientation',
+    icon: '../icons/npc_icons/frozen_ocean_wooli.webp',
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
       const v = card.value;

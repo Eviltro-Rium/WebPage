@@ -45,9 +45,6 @@
     borrowed.borrowedFrom = targetKey;
     borrowed.borrowedMonsterName = eng.name(targetChar);
     eng.h.player.push(borrowed);
-    eng.emit('cardTransfer', '暂借对手手牌', borrowed, {
-      who: 'player', from: targetKey, handIndex: index, count: 1
-    });
     return { ok: true, message: '暂借' + borrowed.borrowedMonsterName + '的一张牌，加入玩家手牌' };
   });
 
@@ -119,13 +116,11 @@
     const peeked = removed.slice().reverse();
     const kept = [];
     let discarded = 0;
-    const discardedCards = [];
     for (let i = 0; i < peeked.length; i++) {
       const card = peeked[i];
       if (discardFlags[i]) {
         if (card && (card.isBlack || card.isWhite)) delete card.chosenColor;
         npcDiscard.push(card);
-        discardedCards.push(clone(card));
         discarded++;
       } else {
         kept.push(card);
@@ -134,9 +129,6 @@
     for (let i = kept.length - 1; i >= 0; i--) npcDeck.push(kept[i]);
     eng.s.chaosOrbCards = null;
     eng.s.pendingDialog = null;
-    if (discardedCards.length) eng.emit('discardMany', '混沌球：弃掉NPC牌库顶的牌', null, {
-      who: 'ai', from: 'npcDeck', destination: 'bottom', faceUp: true, cards: discardedCards
-    });
     return {
       ok: true,
       message: discarded

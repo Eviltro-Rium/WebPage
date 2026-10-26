@@ -80,7 +80,6 @@
   ],
   "adventure_content": [
     "adventure/js/content/registry.js",
-    "adventure/js/content/stage_guide.js",
     "adventure/js/content/currency.js",
     "adventure/js/content/room.js",
     "adventure/js/content/monster.js",

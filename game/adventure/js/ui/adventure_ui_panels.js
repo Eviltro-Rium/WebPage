@@ -218,14 +218,13 @@
       if (b.chaos_yellow)  items.push('<span class="adv-buff adv-buff-chaos-yellow" title="混沌·黄">' + icon('chaos_yellow', '混沌·黄') + '</span>');
       if (b.chaos_blue)    items.push('<span class="adv-buff adv-buff-chaos-blue" title="混沌·蓝">' + icon('chaos_blue', '混沌·蓝') + '</span>');
       if (b.chaos_green)   items.push('<span class="adv-buff adv-buff-chaos-green" title="混沌·绿">' + icon('chaos_green', '混沌·绿') + '</span>');
-      if (b.bloodthirst)   items.push('<span class="adv-buff adv-buff-bloodthirst" title="嗜血">' + icon('blood_thirsty', '嗜血') + '</span>');
+      if (b.bloodthirst)   items.push('<span class="adv-buff adv-buff-bloodthirst" title="嗜血">嗜血</span>');
       if (b.tauntMark || b.taunt) {
         const mc = String(b.mockAttackColor || b.tauntColor || '').toUpperCase();
         const colorTip = ({ RED: '🔴', YELLOW: '🟡', BLUE: '🔵', GREEN: '🟢' })[mc] || '';
         const cls = 'adv-buff adv-buff-taunt' + (mc ? ' adv-buff-taunt-' + mc.toLowerCase() : '');
-        items.push('<span class="' + cls + '" title="嘲弄' + (colorTip ? '·' + colorTip : '') + '">' + icon('mock', '嘲弄') + '</span>');
+        items.push('<span class="' + cls + '" title="嘲弄' + (colorTip ? '·' + colorTip : '') + '"><img class="adv-buff-icon" src="../icons/buff_icons/mock.webp" alt="嘲弄">嘲弄' + (colorTip ? colorTip : '') + '</span>');
       }
-      if (b.bindMark) items.push('<span class="adv-buff" title="捆缚">' + icon('binding', '捆缚') + '</span>');
       if (!items.length) return '';
       return '<div class="adv-buff-bar">' + items.join('') + '</div>';
     }

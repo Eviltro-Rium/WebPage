@@ -23,7 +23,10 @@
                     <div class="npc-deck-info" id="npc-deck-info" style="display:none"></div>
                     <span class="phase-info" id="phase-info">出牌阶段</span>
                     <span class="turn-info" id="turn-info">回合 1</span>
-                    <button class="menu-btn" id="menu-btn">☰</button>
+                    <div class="hud-side-tools">
+                        <button class="menu-btn" id="menu-btn" type="button" aria-label="菜单">☰</button>
+                        <button class="skill-book-btn" id="skill-book-btn" type="button" aria-label="角色技能" title="角色技能">📖</button>
+                    </div>
                 </div>
                 <div class="hp-section" id="ai-hp-section">
                     <span class="attacker-indicator">进攻方</span>
@@ -77,6 +80,7 @@
                 <div class="action-desc" id="action-desc"></div>
                 <div class="controls" id="controls"></div>`;
             this.gameScreen.innerHTML = html;
+            if (typeof this._bindMenuButton === 'function') this._bindMenuButton();
         },
 
         updateDisplay() {
@@ -126,6 +130,7 @@
             this._renderReveal();
             this._renderDiceControl();
             this._renderControls();
+            if (typeof this._syncPendingHandDiscard === 'function') this._syncPendingHandDiscard();
             this._updateAdventureInfo(s);
             this._renderAdventureItemBar(s);
             this._updateAdventureNpcLabels(s);

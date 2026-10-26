@@ -476,11 +476,7 @@
       if (reward) {
         if (reward.currency) this.s.currency.addGold(reward.currency);
         if (reward.items) reward.items.forEach(it => this.addItem(it));
-        if (reward.heal) {
-          const before = this.s.player.hp;
-          this.s.player.hp = Math.min(this.s.player.maxHp, before + reward.heal);
-          this.queueMapRecovery({ heal: this.s.player.hp - before, hpBefore: before, label: '房间补给' });
-        }
+        if (reward.heal) this.s.player.hp = Math.min(this.s.player.maxHp, this.s.player.hp + reward.heal);
       }
       room.rewardClaimed = true;
       this._log('获得金币奖励' + (reward && reward.currency ? '：' + reward.currency + '金币' : '：无'));
@@ -582,13 +578,17 @@
       }
     },
     _applyMagnetBeastReward(scenario) {
-      if (!scenario || scenario.auto) return scenario;
-      const slots = this._offeredSlotTypes(scenario);
+      const offered = scenario && scenario.offered;
+      const offeredTypes = offered
+        ? Object.keys(offered).filter(type => offered[type] > 0)
+        : [];
+      const fourDistinctTokens = offeredTypes.length === 4 &&
+        offeredTypes.every(type => offered[type] === 1);
       const room = typeof this.currentRoom === 'function' ? this.currentRoom() : null;
       const isNormalRoom = room && room.type === window.RoomType.NORMAL;
-      if (isNormalRoom && slots.length === 4 &&
+      if (isNormalRoom && fourDistinctTokens &&
           typeof this.hasAccessory === 'function' && this.hasAccessory('Magnet')) {
-        scenario.pickCount = 3;
+        scenario.pickCount = Math.min(offeredTypes.length, (scenario.pickCount || 2) + 1);
       }
       return scenario;
     },
@@ -607,7 +607,7 @@
     },
     selectBeastToken(type) {
       if (this.s.phase !== Phase.BEAST_CHOICE) return false;
-      const scenario = this._applyMagnetBeastReward(this.s.beastReward);
+      const scenario = this.s.beastReward;
       if (!scenario) return false;
       const pickCount = scenario.pickCount || 2;
       if (this.s.beastSelection.length >= pickCount) return false;
@@ -622,7 +622,7 @@
     },
     confirmBeastTokenChoice() {
       if (this.s.phase !== Phase.BEAST_CHOICE) return false;
-      const scenario = this._applyMagnetBeastReward(this.s.beastReward);
+      const scenario = this.s.beastReward;
       if (!scenario) return false;
       if (this.s.beastSelection.length < scenario.pickCount) return false;
       this._confirmBeastTokenChoice();
@@ -638,7 +638,7 @@
     },
     toggleBeastSlot(slotIndex) {
       if (this.s.phase !== Phase.BEAST_CHOICE) return false;
-      const scenario = this._applyMagnetBeastReward(this.s.beastReward);
+      const scenario = this.s.beastReward;
       if (!scenario) return false;
       const slots = this._offeredSlotTypes(scenario);
       if (slotIndex < 0 || slotIndex >= slots.length) return false;

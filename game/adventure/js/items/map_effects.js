@@ -14,13 +14,7 @@
     const id = def && (def.combatUse || def.mapUse);
     const handler = id ? handlers[id] : null;
     if (!handler) return { ok: false, message: '该道具暂无可用效果' };
-    const hpBefore = engine.s.player.hp;
-    const result = handler(engine, def, ctx || {});
-    if (result && result.ok && typeof engine.queueMapRecovery === 'function') {
-      engine.queueMapRecovery({ heal: engine.s.player.hp - hpBefore, hpBefore,
-        drawn: result.drawn || 0, label: def.displayName });
-    }
-    return result;
+    return handler(engine, def, ctx || {});
   }
 
   register('crystalBall', (eng, def, ctx) => {
@@ -63,7 +57,6 @@
     const drawn = pile.draw(1);
     return {
       ok: true,
-      drawn: drawn.length,
       message: drawn.length
         ? '已调整牌库顶' + count + '张牌的顺序，并抽取1张牌'
         : '已调整牌库顶' + count + '张牌的顺序（牌库已空，未能抽牌）'
@@ -114,7 +107,7 @@
     if (!pile) return { ok: false, message: '牌库尚未初始化' };
     if (choice === 'draw2') {
       const drawn = pile.draw(2);
-      return { ok: true, drawn: drawn.length, message: '抽取' + drawn.length + '张牌' };
+      return { ok: true, message: '抽取' + drawn.length + '张牌' };
     }
     const n = pile.hand.length;
     while (pile.hand.length) {
@@ -122,7 +115,7 @@
       pile.discardCard(card);
     }
     const redrawn = pile.draw(n);
-    return { ok: true, drawn: redrawn.length, message: '弃掉' + n + '张并重抽' + redrawn.length + '张' };
+    return { ok: true, message: '弃掉' + n + '张并重抽' + redrawn.length + '张' };
   });
 
   register('discardTalisman', (eng, def, ctx) => {
@@ -140,7 +133,7 @@
     else pile.discard.push(card);
     const drawAmt = Math.max(1, Number(def.discardThenDraw) || 2);
     const drawn = pile.draw(drawAmt);
-    return { ok: true, drawn: drawn.length, message: '弃掉1张，抽取' + drawn.length + '张牌' };
+    return { ok: true, message: '弃掉1张，抽取' + drawn.length + '张牌' };
   });
 
   function furnaceTrophyForCard(def, card) {

@@ -35,7 +35,7 @@
     hp: 24,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/desert_bison.webp?v=20261024-npc-portraits',
+    icon: '../icons/npc_icons/desert_bison.webp',
     attackDamage(card, ctx) {
       const v = card && card.value;
       if (v >= 1 && v <= 3) return 2 * ((ctx && ctx.playerBleed) || 0);
@@ -95,7 +95,7 @@
     hp: 20,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/desert_camel.webp?v=20261024-npc-portraits',
+    icon: '../icons/npc_icons/desert_camel.webp',
     firstStrike: true,
     attackDamage(card) {
       const v = card && card.value;
@@ -146,7 +146,7 @@
     hp: 20,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/desert_lizard.webp?v=20261024-npc-portraits',
+    icon: '../icons/npc_icons/desert_lizard.webp',
     attackDamage(card) {
       const v = card && card.value;
       if (v >= 1 && v <= 3) return 3;
@@ -192,7 +192,7 @@
     hp: 25,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/desert_sandworm.webp?v=20261024-npc-portraits',
+    icon: '../icons/npc_icons/desert_sandworm.webp',
     attackDamage(card) {
       const v = card && card.value;
       if (v >= 1 && v <= 3) return 4;
@@ -231,7 +231,7 @@
     hp: 20,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/desert_scarab.webp?v=20261024-npc-portraits',
+    icon: '../icons/npc_icons/desert_scarab.webp',
     attackDamage(card) {
       const v = card && card.value;
       if (v >= 1 && v <= 3) return 3;
@@ -273,7 +273,7 @@
     hp: 18,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/desert_scorpion.webp?v=20261024-npc-portraits',
+    icon: '../icons/npc_icons/desert_scorpion.webp',
     attackDamage(card) {
       const v = card && card.value;
       if (v >= 1 && v <= 3) return 3;
@@ -318,7 +318,7 @@
     minStage: 2,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/desert_viper.webp?v=20261024-npc-portraits',
+    icon: '../icons/npc_icons/desert_viper.webp',
     attackDamage(card) {
       const v = card && card.value;
       if (v >= 1 && v <= 3) return 3;
@@ -364,7 +364,7 @@
     minStage: 2,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/desert_antlion.webp?v=20261024-npc-portraits',
+    icon: '../icons/npc_icons/desert_antlion.webp',
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
       if (card.value >= 1 && card.value <= 3) return 3;
@@ -409,7 +409,7 @@
     hp: 24,
     attack: 3,
     defense: 2,
-    icon: '../icons/npc_icons/desert_vulture.webp?v=20261024-npc-portraits',
+    icon: '../icons/npc_icons/desert_vulture.webp',
     attackDamage(card) {
       const v = card && card.value;
       if (v >= 1 && v <= 3) return 3;
@@ -475,7 +475,7 @@
     defense: 2,
     handLimit: 3,
     whiteZeros: 2,
-    icon: '../icons/npc_icons/pharaoh.webp?v=20261024-npc-portraits',
+    icon: '../icons/npc_icons/pharaoh.webp',
     attackDamage(card) {
       if (isPharaohLow(card)) return 3;
       if (isPharaohHigh(card)) return 6;
@@ -564,7 +564,7 @@
     defense: 2,
     handLimit: 3,
     whiteZeros: 2,
-    icon: '../icons/npc_icons/desert_hyena.webp?v=20261024-npc-portraits',
+    icon: '../icons/npc_icons/desert_hyena.webp',
     // 被动[嘲弄]：进入整段防御阶段时掷骰选色并挂印记（引擎在 player turnStart 调用一次）
     onEnterDefendPhase(eng, entity) {
       const roll = eng && typeof eng.rollD12 === 'function'
@@ -676,7 +676,7 @@
     defense: 2,
     handLimit: 3,
     whiteZeros: 2,
-    icon: '../icons/npc_icons/desert_sobek.webp?v=20261024-npc-portraits',
+    icon: '../icons/npc_icons/desert_sobek.webp',
     attackDamage(card, ctx) {
       if (isSobekLow(card)) return 3;
       if (isSobekHigh(card)) return 5;

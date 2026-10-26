@@ -5,21 +5,6 @@ const test = require('node:test');
 const { JSDOM } = require('jsdom');
 const root = path.resolve(__dirname, '..');
 
-test('purify dialogs list cleanseable statuses and omit all permanent marks', () => {
-  const dom=new JSDOM('<body></body>',{runScripts:'outside-only'}),w=dom.window;
-  try {
-    for(const file of ['js/combat/status_registry.js','js/combat/status_service.js','js/ui/dialogs.js'])
-      w.eval(fs.readFileSync(path.join(root,file),'utf8')+(file.endsWith('dialogs.js')?'\nwindow.fixtureDialogs=new DialogManager();':''));
-    const player={burn:2,magmaVein:2,bloodthirst:true,bindMark:true,tauntMark:true};
-    w.fixtureDialogs.showSuperPurifyChoice([{key:'player',label:'自己',ch:player}],async()=>{});
-    const body=w.document.getElementById('super-purify-choice-dialog').textContent;
-    assert.match(body,/灼伤/);assert.match(body,/熔脉/);assert.doesNotMatch(body,/嗜血|捆缚|嘲弄/);
-    w.fixtureDialogs.showPurifyChoice(player,async()=>{});
-    const choice=w.document.getElementById('purify-choice-dialog').textContent;
-    assert.match(choice,/灼伤/);assert.doesNotMatch(choice,/嗜血|捆缚|嘲弄/);
-  } finally {w.close();}
-});
-
 function setup() {
   const html = fs.readFileSync(path.join(__dirname, 'fixtures/settlement-preview.html'), 'utf8');
   const dom = new JSDOM(html, { runScripts: 'outside-only' });
@@ -389,17 +374,17 @@ test('map return heal events flash LifeCore and the HP bar with separate floatin
   w.eval(fs.readFileSync(path.join(root,'adventure/js/ui/adventure_ui.js'),'utf8'));
   const ui=Object.create(w.AdventureUI.prototype);
   ui.container=w.document.getElementById('map');
-  ui.eng={s:{phase:w.AdventurePhase.MAP,player:{hp:43,maxHp:70}},on:(type,fn)=>{listeners[type]=fn;}};
+  ui.eng={s:{phase:w.AdventurePhase.MAP},on:(type,fn)=>{listeners[type]=fn;}};
   ui._appendLog=()=>{};ui._bindEngine();
-  ui._queueMapRecoveryFeedback([{itemName:'LifeCore',label:'生命核心',heal:3,hpBefore:30},
-    {label:'进入新层',heal:10,hpBefore:33}]);
+  listeners.accessory({type:'accessory',extra:{itemName:'LifeCore',amount:3}});
+  listeners.stageHeal({type:'stageHeal',extra:{amount:10,stage:2}});
   assert.equal(ui._pendingMapHeals.length,2);
   ui._playPendingMapHeals();
   tasks.find(t=>t.ms===0).fn();
   assert.ok(ui.container.querySelector('[data-accessory-name="LifeCore"]').classList.contains('adv-accessory-trigger'));
   assert.ok(ui.container.querySelector('.adv-hp-bar').classList.contains('adv-hp-heal-flash'));
   assert.equal(ui.container.querySelector('.adv-map-heal-float').textContent,'[生命核心]❤️3');
-  const next=tasks.find(t=>t.ms===140);assert.ok(next,'heal labels follow in a short shared transition');
+  const next=tasks.find(t=>t.ms===1600);assert.ok(next,'separate heals wait for the first float');
   next.fn();
   assert.equal(ui.container.querySelectorAll('.adv-map-heal-float').length,2);
   assert.equal(ui.container.querySelectorAll('.adv-map-heal-float')[1].textContent,'[进入新层]❤️10');

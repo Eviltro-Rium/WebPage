@@ -18,11 +18,6 @@
   var natural = {};
   var pending = sources.length;
   var loaded = 0;
-  var nextSource = 0;
-  var started = false;
-  var layoutPending = false;
-  var layoutFinished = false;
-  var layoutQueued = false;
   window.__riumGalleryProgress = 0;
 
   function metrics(vw) {
@@ -250,20 +245,6 @@
 
   var lastLayoutWidth = -1;
   var layoutFrame = 0;
-  var galleryVisible = true;
-  function syncMotion() {
-    layersEl.style.setProperty('--gallery-play-state', galleryVisible && !document.hidden ? 'running' : 'paused');
-  }
-  if (typeof IntersectionObserver === 'function') {
-    galleryVisible = false;
-    var observer = new IntersectionObserver(function (entries) {
-      galleryVisible = entries.some(function (entry) { return entry.isIntersecting; });
-      syncMotion();
-    }, { rootMargin: '400px' });
-    observer.observe(viewport);
-    document.addEventListener('visibilitychange', syncMotion);
-    syncMotion();
-  }
   function layout() {
     var vw = viewport.clientWidth;
     // Height-only toolbar/keyboard resizes must not rebuild all WebP strips.
@@ -328,20 +309,7 @@
       }
     }));
     pending -= 1;
-    if (pending > 0) { loadNext(); return; }
-    // Building the curved strips need not interrupt the intro camera.
-    if (document.documentElement.classList.contains('home-is-booting')) {
-      layoutPending = true;
-      document.addEventListener('rium-home-ready', queueLayout, { once: true });
-      return;
-    }
-    finishLayout();
-  }
-
-  function finishLayout() {
-    if (layoutFinished) return;
-    layoutFinished = true;
-    layoutPending = false;
+    if (pending > 0) return;
     layout();
     window.__riumGalleryReady = true;
     document.dispatchEvent(new CustomEvent("rium-page-assets-ready", {
@@ -356,48 +324,18 @@
     }, { passive: true });
   }
 
-  function queueLayout() {
-    if (layoutQueued || layoutFinished) return;
-    layoutQueued = true;
-    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(finishLayout, { timeout: 500 });
-    else setTimeout(finishLayout, 0);
-  }
-
-  function loadNext() {
-    if (nextSource >= sources.length) return;
-    var src = sources[nextSource++];
-    var probe = new Image();
-    probe.decoding = "async";
-    probe.fetchPriority = 'low';
-    probe.onload = function () {
-      natural[src] = { w: probe.naturalWidth, h: probe.naturalHeight };
-      // Present sources only after their bitmaps finish decoding.
-      if (probe.decode) probe.decode().catch(function () {}).then(done);
-      else done();
-    };
-    probe.onerror = done;
-    probe.src = src;
-  }
-  function startLoading() {
-    if (started) return;
-    started = true;
-    // Limit concurrent decode work while the landscape is being animated.
-    loadNext();
-    loadNext();
-  }
-  document.addEventListener('rium-scene-ready', startLoading, { once: true });
-  if (!document.documentElement.classList.contains('home-is-booting')) startLoading();
-  window.addEventListener('load', function () {
-    if (!document.getElementById('hill-bg-canvas')) startLoading();
-  }, { once: true });
-  // Also flush after the existing fail-open timeout releases the page.
-  if (typeof MutationObserver === 'function') {
-    var bootObserver = new MutationObserver(function () {
-      if (document.documentElement.classList.contains('home-is-booting')) return;
-      bootObserver.disconnect();
-      startLoading();
-      if (layoutPending) queueLayout();
-    });
-    bootObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  for (i = 0; i < sources.length; i++) {
+    (function (src) {
+      var probe = new Image();
+      probe.decoding = "async";
+      probe.onload = function () {
+        natural[src] = { w: probe.naturalWidth, h: probe.naturalHeight };
+        // Present sources only after their bitmaps finish decoding.
+        if (probe.decode) probe.decode().catch(function () {}).then(done);
+        else done();
+      };
+      probe.onerror = done;
+      probe.src = src;
+    })(sources[i]);
   }
 })();

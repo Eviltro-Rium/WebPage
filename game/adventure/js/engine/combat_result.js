@@ -41,13 +41,9 @@
           this._log('挑战房：击败第二个敌人不再恢复生命');
         } else if (isBoss || isGlitch) {
           // Boss 胜利不再当场回血；改为进入下一 stage 时恢复 10 点（见 continueTo）。
-        } else if (this.s.player.name !== 'Serenity') {
-          // Serenity does not receive the normal-room +3 victory recovery.
-          // Accessory and room-specific recovery settle independently below.
+        } else {
           const healAmount = 3;
-          const before = this.s.player.hp;
           this.s.player.hp = Math.min(this.s.player.maxHp, this.s.player.hp + healAmount);
-          this.queueMapRecovery({ heal: this.s.player.hp - before, hpBefore: before, label: '战斗恢复' });
           this._log('恢复' + healAmount + '点生命（当前' + this.s.player.hp + '/' + this.s.player.maxHp + '）');
         }
 
@@ -112,8 +108,6 @@
      */
     onCombatReturnToMap() {
       if (!this.s || this.s.phase !== Phase.MAP) return null;
-      this.recoverLegacySerenityCards();
-      this.settleRoomExitMarks();
       const pending = this.s.pendingMapReturnEffects;
       if (!pending) return null;
       // Consume before emitting events; a second render or restored save cannot repeat it.
@@ -124,7 +118,6 @@
         const before = this.s.player.hp;
         this.s.player.hp = Math.min(this.s.player.maxHp, before + amount);
         const healed = this.s.player.hp - before;
-        this.queueMapRecovery({ heal: healed, hpBefore: before, label: '生命核心', itemName: 'LifeCore' });
         this._log('生命核心：返回地图恢复' + healed + '点生命');
         this.emit('accessory', '生命核心回复', {
           itemName: 'LifeCore', amount: healed, target: 'player', timing: 'returnToMap',
@@ -135,19 +128,16 @@
         const before = this.s.player.hp;
         this.s.player.hp = Math.min(this.s.player.maxHp, before + pending.stageHeal);
         const healed = this.s.player.hp - before;
-        this.queueMapRecovery({ heal: healed, hpBefore: before, label: '进入新层' });
         this._log('进入第' + this.s.stage + '层：恢复' + healed + '点生命');
         this.emit('stageHeal', '进入新层恢复生命', {
           amount: healed, stage: this.s.stage, hpBefore: before, hpAfter: this.s.player.hp,
           target: 'player', timing: 'returnToMap'
         });
       }
-      this.settleRoomExitMarks();
       if (!pending.wisdomNecklace || !this.hasAccessory('WisdomNecklace') || !this.s.playerPile) return null;
       const def = window.AdventureRegistry.getItem('WisdomNecklace');
       const count = (def && def.onCombatWinDraw) || 2;
       const drawn = this.s.playerPile.draw(count);
-      this.queueMapRecovery({ drawn: drawn.length, label: '智慧项链', itemName: 'WisdomNecklace' });
       this._log('智慧项链：返回地图时抽取' + drawn.length + '张牌');
       this.emit('accessory', '智慧项链触发：返回地图时抽取' + drawn.length + '张牌', {
         itemName: 'WisdomNecklace', target: 'player', drawn: drawn.length, timing: 'returnToMap'

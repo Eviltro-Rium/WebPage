@@ -1092,7 +1092,7 @@
 .adv-buff-taunt-blue { color: #93c5fd; background: rgba(59,130,246,0.18); border-color: rgba(59,130,246,0.5); }
 .adv-buff-taunt-green { color: #86efac; background: rgba(34,197,94,0.18); border-color: rgba(34,197,94,0.5); }
 
-.adv-buff-magma { color: #ffb088; background: linear-gradient(135deg, #8c251deb, #f75b29a8); border-color: #ff8652; }
+.adv-buff-magma { color: #fb923c; background: rgba(249,115,22,0.18); border-color: rgba(249,115,22,0.5); }
 
 .adv-trophy-pack-thumb { position: relative; display: inline-block; flex: 0 0 auto; }
 .adv-trophy-pack-count { position: absolute; right: -6px; bottom: -4px; min-width: 20px; padding: 1px 4px; border-radius: 9px; background: #d4a72c; color: #1f1608; font-size: .68rem; font-weight: 800; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
