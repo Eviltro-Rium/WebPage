@@ -1,0 +1,52 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../../adventure/"><title>冒险动画与状态预览</title>
+<link rel="stylesheet" href="../css/game.css?v=20261022-ui-recovery"><link rel="stylesheet" href="css/adventure.css?v=20261022-ui-recovery">
+<style>#preview-controls{display:flex;gap:10px;align-items:center;padding:12px;flex-wrap:wrap;color:#fff;background:#142034}#preview-controls button{padding:7px 12px;cursor:pointer}#game-screen{display:block}#game-screen[hidden]{display:none}</style>
+</head><body><div id="preview-controls">
+<button id="preview-map">地图</button><button id="preview-recover">恢复与补牌</button><button id="preview-battle">战斗</button>
+<button id="preview-npc-play">怪物连续出两张牌</button><button id="preview-discard">同时弃四张</button><button id="preview-purify">超级净化</button><span id="preview-result">加载中</span>
+</div><main id="adventure-container"></main><div id="game-screen" class="screen" hidden></div>
+<script>
+(async () => {
+  const manifest = await (await fetch('../script_manifest.json')).json();
+  for (const file of ['characters','ai','combat','ui_shell','adventure_content','adventure_runtime'].flatMap(key => manifest[key])) {
+    await new Promise((resolve,reject) => { const script=document.createElement('script');script.src='../'+file+'?v=20261022-ui-recovery';script.onload=resolve;script.onerror=reject;document.head.appendChild(script); });
+  }
+  const map=document.getElementById('adventure-container'), screen=document.getElementById('game-screen'), result=document.getElementById('preview-result');
+  const ui=window.recoveryPreview=new AdventureUI(map);ui.eng.testMode=true;
+  ui.eng.start(new AdventureMap([[0,1,1],[1,1,1],[1,1,2]]),'Serenity',{scene:'castle',stage:2,accessories:['Magnet','LifeCore','WisdomNecklace']});
+  Object.assign(ui.eng.s.player,{hp:25,bloodthirst:true,magmaVein:2,bindMark:true});
+  ui.eng.s.playerPile.hand.splice(2);ui.bindActions();
+  const number=(value,white=false)=>FurryGame.Card.number(white?'WHITE':'BLUE',value,white);
+  let engine,game;
+  const showMap=()=>{screen.hidden=true;map.hidden=false;ui.render();result.textContent='地图状态';};
+  document.getElementById('preview-map').onclick=showMap;
+  document.getElementById('preview-recover').onclick=()=>{
+    screen.hidden=true;map.hidden=false;ui.eng.s.pendingMapReturnEffects={lifeCore:true,wisdomNecklace:true,stageHeal:10};ui.render();
+    result.textContent='恢复后 HP '+ui.eng.s.player.hp+'；嗜血 '+ui.eng.s.player.bloodthirst;
+  };
+  document.getElementById('preview-battle').onclick=()=>{
+    map.hidden=true;screen.hidden=false;
+    engine=new AdventureBattleEngine();engine.later=()=>{};
+    engine.startAdventure({player:'Serenity',opponent:'CastleWolf',stage:2,scene:'castle',testMode:true,playerState:{hp:25,maxHp:75,bloodthirst:true,magmaVein:2},
+      playerPile:{deck:[],hand:[number(1),number(2),number(3),number(4)],discard:[],handLimit:5},discardTop:number(2)});
+    engine.h.ai.splice(0,engine.h.ai.length,number(4,true),number(7,true),number(1,true));engine.s.ai.magmaVein=2;engine.s.revealAIHand=true;engine.events=[];
+    game=window.recoveryBattle=new GameUI();game.mountBattle(null,engine.state(),screen);result.textContent='怪物手牌 3 张';
+  };
+  document.getElementById('preview-npc-play').onclick=async()=>{
+    if(!engine)return;
+    for(let i=0;i<2&&engine.h.ai.length;i++){
+      game._prevState=game.state;const card=engine.h.ai.shift();game.state=engine.state();await game._playAICardAnimation(card);
+    }
+    result.textContent='怪物手牌模型 '+engine.h.ai.length+'；显示 '+document.querySelectorAll('#ai-hand .card-canvas').length;
+  };
+  document.getElementById('preview-discard').onclick=async()=>{
+    if(!engine)return;const cards=engine.h.player.splice(0);game.state=engine.state();
+    const before=performance.now();await game._playDiscardManyAnimation({who:'player',cards});result.textContent='同时弃掉 '+cards.length+' 张，用时 '+Math.round(performance.now()-before)+'ms';
+  };
+  document.getElementById('preview-purify').onclick=()=>{
+    if(!game)return;game.dialogs.showSuperPurifyChoice([{key:'player',label:'自己',ch:engine.s.player}],async()=>{});
+  };
+  showMap();
+})().catch(error=>{document.getElementById('preview-result').textContent=error.stack||String(error);});
+</script></body></html>

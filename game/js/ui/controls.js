@@ -9,75 +9,6 @@
         const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
         return runtime ? runtime.schedule(owner, fn, ms, channel) : setTimeout(fn, ms);
     };
-    const escapeMenuText = (text) => String(text == null ? '' : text)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    const GameSideMenu = {
-        dismiss(overlay) {
-            if (!overlay) return;
-            if (overlay._escapeHandler) document.removeEventListener('keydown', overlay._escapeHandler);
-            overlay.remove();
-        },
-        open(config) {
-            const panel = (config && config.panel) || 'menu';
-            const existing = document.getElementById('game-menu-overlay');
-            if (existing) {
-                const same = existing.dataset.panel === panel;
-                this.dismiss(existing);
-                if (same) return null;
-            }
-            const overlay = document.createElement('div');
-            overlay.id = 'game-menu-overlay';
-            overlay.className = 'game-menu-overlay';
-            overlay.dataset.panel = panel;
-            const items = (config && config.items) || [];
-            const title = (config && config.title) || '⛭ 菜单';
-            const boxClass = 'game-menu-box' + ((config && config.boxClass) ? ' ' + config.boxClass : '');
-            const body = (config && config.html)
-                ? `<div class="game-menu-body">${config.html}</div>`
-                : items.map(item => `<button type="button" class="game-menu-btn ${escapeMenuText(item.className || '')}" data-menu-id="${escapeMenuText(item.id)}">${escapeMenuText(item.label || '')}</button>`).join('');
-            overlay.innerHTML = `
-        <div class="${boxClass}" role="dialog" aria-modal="true" aria-label="${escapeMenuText(title)}">
-            <div class="game-menu-title-row">
-                <div class="game-menu-title">${escapeMenuText(title)}</div>
-                <button type="button" class="game-menu-close" data-menu-id="gm-close" aria-label="关闭">✕</button>
-            </div>
-            ${body}
-        </div>`;
-            document.body.appendChild(overlay);
-            const doClose = (after) => this.close(overlay, after);
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) doClose(); });
-            const escHandler = (e) => {
-                if (e.key === 'Escape') {
-                    doClose();
-                    document.removeEventListener('keydown', escHandler);
-                }
-            };
-            overlay._escapeHandler = escHandler;
-            document.addEventListener('keydown', escHandler);
-            overlay.querySelectorAll('[data-menu-id]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const id = btn.getAttribute('data-menu-id');
-                    if (id === 'gm-close') { doClose(); return; }
-                    const item = items.find(entry => entry.id === id);
-                    doClose(() => { if (item && typeof item.onClick === 'function') item.onClick(); });
-                });
-            });
-            if (config && typeof config.onMount === 'function') config.onMount(overlay);
-            return overlay;
-        },
-        close(overlay, after) {
-            if (!overlay || overlay.classList.contains('is-closing')) return;
-            if (overlay._escapeHandler) document.removeEventListener('keydown', overlay._escapeHandler);
-            overlay.classList.add('is-closing');
-            schedule(() => {
-                overlay.remove();
-                if (typeof after === 'function') after();
-            }, 180, null, 'error-overlay');
-        }
-    };
-    global.GameSideMenu = GameSideMenu;
     Object.assign(GameUI.prototype, {
 _renderControls() {
     const s = this.state;
@@ -130,11 +61,8 @@ _renderControls() {
             }
         }
     } else if (phase === 'PLAYER_DISCARD' && canAct) {
-        const handPending = s.pendingHandDiscard;
         const discardHint = s.pendingVixrapsPassive
             ? 'Vixraps被动：必须弃掉1张牌，然后恢复2点生命并施加1层灼伤'
-            : handPending
-                ? (handPending.hint || '请选择手牌弃掉')
             : s.pendingDiscardBeforeDefend
                 ? '必须弃掉1张手牌后再防御'
             : s.pendingHypothermiaDiscard
@@ -145,12 +73,8 @@ _renderControls() {
                     ? '可选择1张牌弃掉，也可取消'
                     : '可同时选择多张牌弃掉';
         html += `<span class="ctrl-hint">${discardHint}</span>`;
-        // pendingHandDiscard: HandDiscardPicker owns confirm/cancel buttons.
-        if (!handPending) {
-            html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!hasDiscardCards ? 'disabled' : ''}>确认弃牌 (${(s.selectedCards || []).length})</button>`;
-            const canCancelDiscard = !s.forcedDiscard && !s.pendingVixrapsPassive && !s.pendingDiscardBeforeDefend && !s.pendingHypothermiaDiscard;
-            if (canCancelDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
-        }
+        html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!hasDiscardCards ? 'disabled' : ''}>确认弃牌 (${(s.selectedCards || []).length})</button>`;
+        if (!s.forcedDiscard && !s.pendingVixrapsPassive && !s.pendingDiscardBeforeDefend && !s.pendingHypothermiaDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
     } else if (phase === 'OPPONENT_CARD_CHOICE' && canAct && s.isAdventure) {
         const targetKey = s.opponentHandTarget || (s.is1v2 ? (s.attackTarget || 'ai') : 'ai');
         const target = s[targetKey];
@@ -163,36 +87,14 @@ _renderControls() {
         html += `<span class="ctrl-hint">已确认 ${dmg} 点伤害，请点击道具栏中的攻击修正道具选择</span>`;
         html += `<button class="ctrl-btn btn-play" id="btn-attack-mod-confirm" ${!hasSelection ? 'disabled' : ''}>确认修正</button>`;
         html += `<button class="ctrl-btn btn-skip" id="btn-attack-mod-skip">不修正</button>`;
-    } else if ((phase === 'CRIT_CHOICE' || phase === 'ATTACK_BUFF_CHOICE') && canAct) {
-        const pending = s.pendingAttackBuffChoice || s.pendingCritChoice || {};
-        // Wait for the skill judgment / sandblind d12 animations of this attack
-        // to finish playing before opening the modifier dialog.
-        // Also skip while settling (_deferAttackBuffDialog): _showAcceptedControls(true)
-        // may run before _consumeEvents sets _isConsumingEvents.
-        if(s.pendingAttackBuffChoice && !this._isConsumingEvents && !this._deferAttackBuffDialog && this.dialogs && this.dialogs.showAttackBuffChoice){
-            this.dialogs.showAttackBuffChoice(pending,buff=>this._apiAction('resolveAttackBuffChoice',{buff}));
-        }
-        const dmg = pending.damage != null
-            ? pending.damage
+    } else if (phase === 'CRIT_CHOICE' && canAct) {
+        const dmg = s.pendingCritChoice && s.pendingCritChoice.damage != null
+            ? s.pendingCritChoice.damage
             : (s.pendingAttack && s.pendingAttack.damage) || 0;
-        const magmaStacks = pending.magmaStacks != null
-            ? Number(pending.magmaStacks) || 0
-            : ((s.player && s.player.magmaVein) || 0);
-        const critStacks = pending.critStacks != null
-            ? Number(pending.critStacks) || 0
-            : ((s.player && s.player.crit) || 0);
-        const canMagma = pending.canMagma != null ? !!pending.canMagma : magmaStacks > 0;
-        const canCrit = pending.canCrit != null ? !!pending.canCrit : (critStacks > 0 && dmg > 4 && !pending.unblock);
-        const magmaDmg = pending.magmaPreviewDamage != null
-            ? pending.magmaPreviewDamage
-            : Math.ceil(Number(dmg) * 1.5);
-        const bits = [];
-        if (canMagma) bits.push(`熔脉×1.5→${magmaDmg}🗡️（剩${magmaStacks}）`);
-        if (canCrit) bits.push(`暴击不可防御（剩${critStacks}）`);
-        html += `<span class="ctrl-hint">伤害 ${dmg} 点` + (bits.length ? '：' + bits.join(' / ') : '') + `；同一次只能选一种攻击修正</span>`;
-        if (canMagma && !s.pendingAttackBuffChoice) html += `<button class="ctrl-btn btn-play" id="btn-magma-use">使用熔脉</button>`;
-        if (canCrit && !s.pendingAttackBuffChoice) html += `<button class="ctrl-btn btn-play" id="btn-crit-use">使用暴击</button>`;
-        if(!s.pendingAttackBuffChoice) html += `<button class="ctrl-btn btn-skip" id="btn-crit-skip">不使用</button>`;
+        const stacks = (s.player && s.player.crit) || 0;
+        html += `<span class="ctrl-hint">伤害 ${dmg} 点（>4），可消耗1层暴击变为不可防御（剩余 ${stacks}）</span>`;
+        html += `<button class="ctrl-btn btn-play" id="btn-crit-use">使用暴击</button>`;
+        html += `<button class="ctrl-btn btn-skip" id="btn-crit-skip">不使用</button>`;
     } else if (phase === 'PLAYER_FIVE_CHOICE' && canAct) {
         html += `<span class="ctrl-hint">请选择一张数字牌：恢复牌面生命，或造成1.5倍伤害</span>`;
         html += `<button class="ctrl-btn btn-play" id="btn-five-heal" ${!hasNumberCard ? 'disabled' : ''}>恢复${hasNumberCard ? ` ${selectedCard.value}` : ''}</button>`;
@@ -250,19 +152,8 @@ async _bindControls() {
     bind('btn-skip', async () => { await this._apiAction('doSkipDefend'); });
     bind('btn-attack-mod-confirm', () => { this._confirmAttackMod(); });
     bind('btn-attack-mod-skip', () => { this._skipAttackMod(); });
-    bind('btn-magma-use', async () => { await this._apiAction('resolveAttackBuffChoice', { buff: 'magmaVein' }); });
-    bind('btn-crit-use', async () => {
-        const s = this.state || {};
-        const api = (s.phase === 'ATTACK_BUFF_CHOICE' || s.pendingAttackBuffChoice)
-            ? 'resolveAttackBuffChoice' : 'resolveCritChoice';
-        await this._apiAction(api, api === 'resolveAttackBuffChoice' ? { buff: 'crit' } : { use: true });
-    });
-    bind('btn-crit-skip', async () => {
-        const s = this.state || {};
-        const api = (s.phase === 'ATTACK_BUFF_CHOICE' || s.pendingAttackBuffChoice)
-            ? 'resolveAttackBuffChoice' : 'resolveCritChoice';
-        await this._apiAction(api, api === 'resolveAttackBuffChoice' ? { buff: null } : { use: false });
-    });
+    bind('btn-crit-use', async () => { await this._apiAction('resolveCritChoice', { use: true }); });
+    bind('btn-crit-skip', async () => { await this._apiAction('resolveCritChoice', { use: false }); });
     bind('btn-use-item', async () => { await this._useSelectedCombatItem(); });
     bind('btn-demon-pact', async () => { await this._apiAction('useDemonPact'); });
     bind('btn-confirm-discard', async () => { await this._apiAction('doConfirmDiscard'); });
@@ -307,50 +198,65 @@ async _bindControls() {
     bind('btn-online-room', () => onlineGameOverFn('room'));
     bind('btn-online-home', () => onlineGameOverFn('home'));
 
-    this._bindMenuButton();
-},
-
-_bindMenuButton() {
     const menuBtn = document.getElementById('menu-btn');
-    if (menuBtn && !menuBtn._menuBound) {
-        menuBtn._menuBound = true;
-        menuBtn.addEventListener('click', () => this._showGameMenu());
-    }
-    const bookBtn = document.getElementById('skill-book-btn');
-    if (bookBtn && !bookBtn._bookBound) {
-        bookBtn._bookBound = true;
-        bookBtn.addEventListener('click', () => this._showSkillOverlay());
-    }
+    if (menuBtn && !menuBtn._menuBound) { menuBtn._menuBound = true; menuBtn.addEventListener('click', () => this._showGameMenu()); }
 },
 
 _showGameMenu() {
-    const extra = (typeof this.getBattleMenuExtraItems === 'function' && this.getBattleMenuExtraItems()) || [];
-    const extraItems = Array.isArray(extra) ? extra : [];
-    const items = [
-        ...extraItems,
-        { id: 'gm-quit', className: 'game-menu-quit', label: '🚪 退出游戏', onClick: async () => {
-            if (typeof this.onBattleExit === 'function') {
-                await this.onBattleExit();
-                return;
-            }
-            await this._sessionDispatch('restart');
-            this.state = null; this._prevState = null;
-            if (this._pollInterval) clearInterval(this._pollInterval);
-            this.gameScreen.classList.remove('active');
-            this.selectScreen.classList.add('active');
-            this._selectedPlayerChar = null; this._selectedAIChar = null;
-            this._buildSelectScreen();
-        } },
-        { id: 'gm-cancel', className: 'game-menu-cancel', label: '✕ 继续游戏' }
-    ];
-    GameSideMenu.open({ title: '⛭ 菜单', items });
+    const existing = document.getElementById('game-menu-overlay');
+    if (existing) { this._closeGameMenu(existing); return; }
+    const overlay = document.createElement('div');
+    overlay.id = 'game-menu-overlay';
+    overlay.className = 'game-menu-overlay';
+    overlay.innerHTML = `
+        <div class="game-menu-box">
+            <div class="game-menu-title">⛭ 菜单</div>
+            <button class="game-menu-btn game-menu-skills" id="gm-skills">📖 查看角色技能</button>
+            <button class="game-menu-btn game-menu-quit" id="gm-quit">🚪 退出游戏</button>
+            <button class="game-menu-btn game-menu-cancel" id="gm-cancel">✕ 继续游戏</button>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    const doClose = () => this._closeGameMenu(overlay);
+
+    document.getElementById('gm-cancel').addEventListener('click', doClose);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) doClose(); });
+
+    const escHandler = (e) => { if (e.key === 'Escape') { doClose(); document.removeEventListener('keydown', escHandler); } };
+    document.addEventListener('keydown', escHandler);
+
+    document.getElementById('gm-skills').addEventListener('click', () => {
+        overlay.remove();
+        this._showSkillOverlay();
+    });
+    document.getElementById('gm-quit').addEventListener('click', async () => {
+        overlay.remove();
+        if (typeof this.onBattleExit === 'function') {
+            await this.onBattleExit();
+            return;
+        }
+        await this._sessionDispatch('restart');
+        this.state = null; this._prevState = null;
+        if (this._pollInterval) clearInterval(this._pollInterval);
+        this.gameScreen.classList.remove('active');
+        this.selectScreen.classList.add('active');
+        this._selectedPlayerChar = null; this._selectedAIChar = null;
+        this._buildSelectScreen();
+    });
 },
 
 _closeGameMenu(overlay) {
-    GameSideMenu.close(overlay || document.getElementById('game-menu-overlay'));
+    if (!overlay) return;
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity 0.15s ease';
+    const box = overlay.querySelector('.game-menu-box');
+    if (box) { box.style.transform = 'scale(0.92) translateY(8px)'; box.style.opacity = '0'; box.style.transition = 'all 0.15s ease'; }
+    schedule(() => overlay.remove(), 150, this, 'error-overlay');
 },
 
 _showSkillOverlay() {
+    const existing = document.getElementById('skill-overlay');
+    if (existing) { existing.remove(); return; }
     const s = this.state;
     if (!s || !s.player) return;
     const advEngine = window.AdventureBattleController && window.AdventureBattleController.activeEngine &&
@@ -375,7 +281,11 @@ _showSkillOverlay() {
         });
     }
 
-    let html = '';
+    const overlay = document.createElement('div');
+    overlay.id = 'skill-overlay';
+    overlay.className = 'skill-overlay';
+    let html = '<div class="skill-overlay-inner">';
+    html += '<div class="skill-overlay-header"><button class="rules-back-btn" id="skill-back">&larr; 返回</button><h1 class="rules-title">角色技能</h1></div>';
     const PLAYER_SKILL_GRID = [
         { atkKey: 0, defKey: 0, label: '1' }, { atkKey: 1, defKey: 1, label: '2' },
         { atkKey: 2, defKey: 2, label: '3' }, { atkKey: 7, defKey: 3, label: '0' },
@@ -391,7 +301,7 @@ _showSkillOverlay() {
     const stripPrefix = t => (t || '').replace(/^\d+\s*/, '');
     const tagifySkill = t => {
         let out = String(t || '');
-        const names = ['熔脉', '丰饶', '嘲弄', '失温', '炙热', '冰封', '定时炸弹', '流沙', '沙盲', '荆棘', '催眠', '沉睡', '捆缚', '嗜血', '寄生', '茂盛', '潜水', '飞翔', '守护', '硬化', '暴击', '致盲', '中毒', '流血', '冷冻', '灼伤'];
+        const names = ['失温', '炙热', '冰封', '定时炸弹', '流沙', '沙盲', '荆棘', '催眠', '沉睡', '捆缚', '嗜血', '寄生', '茂盛', '潜水', '飞翔', '守护', '暴击', '致盲', '中毒', '流血', '冷冻', '灼伤'];
         for (const name of names) {
             out = out.replace(new RegExp('(?<!\\[)' + name + '(?!\\])', 'g'), '[' + name + ']');
         }
@@ -457,13 +367,11 @@ _showSkillOverlay() {
         }
         html += '</div>';
     }
-    html += '<div class="skill-footnote">🗡️伤害 ❤️生命 🛡️格挡 🃏卡牌 · 小数均向上取整</div>';
-    GameSideMenu.open({
-        panel: 'skills',
-        title: '📖 角色技能',
-        boxClass: 'game-menu-box-book',
-        html
-    });
+    html += '</div>';
+    overlay.innerHTML = html;
+    document.body.appendChild(overlay);
+    document.getElementById('skill-back').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
 },
 
 _getAvailableAttackMods(s) {
@@ -474,17 +382,10 @@ _getAvailableAttackMods(s) {
     const consumables = (advEngine.snapshot().consumables) || [];
     const mod = state.pendingAttackMod || {};
     const defensible = !mod.skip && !mod.unblock;
-    const dmg = state.pendingAttack && state.pendingAttack.damage != null ? Number(state.pendingAttack.damage) : 0;
     const attackMods = [];
     consumables.forEach((item, i) => {
         const def = window.AdventureRegistry.getItem(item.name);
         if (!def || def.combatUse !== 'attackMod') return;
-        if (def.attackModRecycle) {
-            if (!mod.card || mod.card.borrowedMonster) return;
-            attackMods.push({ index: i, item, def });
-            return;
-        }
-        if (dmg <= 0) return;
         if (def.attackModUnblock && !defensible) return;
         attackMods.push({ index: i, item, def });
     });
@@ -535,8 +436,7 @@ _confirmAttackMod() {
             await this._apiAction('resolveAttackModChoice', {
                 bonus: am.def.attackModBonus || 0,
                 unblock: !!am.def.attackModUnblock,
-                evilRoulette: !!am.def.attackModEvilRoulette,
-                recycle: !!am.def.attackModRecycle
+                evilRoulette: !!am.def.attackModEvilRoulette
             });
         } finally {
             this._attackModPromptOpen = false;
@@ -558,10 +458,9 @@ _skipAttackMod() {
 },
 
 async _apiAction(method, params) {
-    if (this._isHandlingAction || this._isSelectingCard || this._isConsumingEvents) return false;
+    if (this._isHandlingAction || this._isSelectingCard || this._isConsumingEvents) return;
     this._isHandlingAction = true;
     let shouldPollAI = false;
-    let ok = false;
     const quickDecision = this._isDecisionAction(method);
     this._showActionPending(method);
     try {
@@ -590,7 +489,6 @@ async _apiAction(method, params) {
             const hasEvents = result.events && result.events.length > 0;
             const entersDecision = this._isInteractiveDecisionPhase(result.phase);
             this._showAcceptedControls(hasEvents);
-            ok = true;
             if (typeof this._onlineResultSink === 'function' && this.state.isOnline) {
                 // OnlineUI is the sole owner of authoritative snapshot
                 // application and event playback. This prevents a local
@@ -617,7 +515,6 @@ async _apiAction(method, params) {
         this._isHandlingAction = false;
     }
     if (shouldPollAI) this._pollAI();
-    return ok;
 },
 
 _isDecisionAction(method) {
@@ -626,7 +523,7 @@ _isDecisionAction(method) {
         'doFiveHeal', 'doFiveDamage',
         'doChanSevenKeep', 'doChanSevenDiscard', 'doSaikiThreeKeep',
         'doSaikiThreeDiscard', 'doChanFourDiscard', 'doChanFourSwap',
-        'doSaikiSixConfirm', 'resolveAttackModChoice', 'resolveCritChoice', 'resolveAttackBuffChoice', 'chooseTarget', 'chooseColor', 'choosePurify',
+        'doSaikiSixConfirm', 'resolveAttackModChoice', 'resolveCritChoice', 'chooseTarget', 'chooseColor', 'choosePurify',
         'chooseSuperPurifyTarget', 'chooseGuard', 'chanFiveReorder', 'choosePurifyCrystal', 'chooseMozeSeven',
         'chooseAICard', 'doOpponentCardConfirm', 'chooseTrophyDisarm', 'chooseTrophyPurify', 'chooseDiceControl'
     ]).has(method);
@@ -635,7 +532,7 @@ _isDecisionAction(method) {
 _isInteractiveDecisionPhase(phase) {
     return new Set([
         'PLAYER_FIVE_CHOICE', 'PLAYER_SEVEN_CHOICE',
-        'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'ATTACK_MOD_CHOICE', 'CRIT_CHOICE', 'ATTACK_BUFF_CHOICE', 'PLAYER_DISCARD',
+        'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'ATTACK_MOD_CHOICE', 'CRIT_CHOICE', 'PLAYER_DISCARD',
         'CHAN_FIVE_REORDER', 'GUARD_CHOICE', 'TARGET_CHOICE', 'PURIFY_CRYSTAL_CHOICE', 'OPPONENT_CARD_CHOICE',
         'TROPHY_DISARM_CHOICE', 'TROPHY_PURIFY_CHOICE', 'DICE_CHOICE'
     ]).has(phase);
@@ -648,9 +545,6 @@ _showAcceptedControls(settling) {
             ? '跳过防御'
             : (PHASE_NAMES[this.state.phase] || this.state.phase);
     }
-    // While events are about to play, hold the attack-buff dialog so it does not
-    // open before _isConsumingEvents flips true (and so clicks cannot race).
-    this._deferAttackBuffDialog = !!settling;
     this._renderControls();
     if (!settling) return;
     const container = document.getElementById('controls');
@@ -670,7 +564,7 @@ _showActionPending(method) {
         doChanSevenKeep: '正在加入手牌', doChanSevenDiscard: '正在弃掉卡牌',
         doSaikiThreeKeep: '正在加入手牌', doSaikiThreeDiscard: '正在弃掉卡牌',
         doChanFourSwap: '正在交换卡牌', doChanFourDiscard: '正在弃牌并结算伤害',
-        doSaikiSixConfirm: '正在结算数字判定', resolveAttackModChoice: '正在应用攻击修正', resolveCritChoice: '正在结算攻击修正选择', resolveAttackBuffChoice: '正在结算攻击修正选择', chooseTarget: '正在确认目标',
+        doSaikiSixConfirm: '正在结算数字判定', resolveAttackModChoice: '正在应用攻击修正', resolveCritChoice: '正在结算暴击选择', chooseTarget: '正在确认目标',
         chooseColor: '正在指定颜色', choosePurify: '正在执行净化', chooseSuperPurifyTarget: '正在执行超级净化', chooseMozeSeven: '正在结算 Moze 7牌',
         chooseGuard: '正在结算守护', chanFiveReorder: '正在确认牌库顺序',
         chooseAICard: '正在选择对手手牌', doOpponentCardConfirm: '正在处理对手手牌',

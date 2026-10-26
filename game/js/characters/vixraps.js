@@ -4,11 +4,11 @@
     name: 'Vixraps',
     hp: 85,
     type: '灼热',
-    passive: '打出黑牌后须弃1张（无手牌可免），然后回复2生命并对对手施加1层灼伤',
+    passive: '打出黑牌后，在搭桥出牌之前，必须弃掉1张牌，然后恢复2点生命并对对手施加1层灼伤。如果打出黑牌后没有手牌，则不需要弃牌，仍可恢复2点生命并施加1层灼伤',
     init() { return {}; },
     turnStart(eng, ch) {},
     damageAtSettlement(eng, v, a, t) { return v === 7 ? (t.burn || 0) * 2 : null; },
-    attackEffectTiming: {1: 'afterDamage', 5: 'afterDamage', 6: 'immediate'},
+    attackEffectTiming: {1: 'afterDamage', 5: 'afterDamage'},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, heal, draw, hurt } = helpers;
       let d = 0, skip = false, unblock = false, immediateBuffs = false;
@@ -59,8 +59,6 @@
       }
       if (v === 0) {
         // 只对当前目标施加催眠和2层灼伤，所有对手仍连续结算两次已有灼伤。
-        // 结算会减层；immediateBuffs 避免 _deferAttackBuffs 把减层回滚成施加前的层数。
-        immediateBuffs = true;
         if (typeof eng.applyHypnosis === 'function') eng.applyHypnosis(t);
         burn(2);
         const targetKeys = typeof eng._enemyKeys === 'function'

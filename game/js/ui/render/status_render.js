@@ -24,16 +24,9 @@
             const s = this.state || {};
             const is1v2 = !!s.is1v2;
             const attacker = this._stateAttackerKey(s, who);
-            // In 1v2/challenge rooms, only highlight a defender when a target
-            // is actually selected. Falling back to NPC1 made the badge jump
-            // upward after attackTarget was cleared.
-            let defender = null;
-            if (attacker === 'player') {
-                if (is1v2) defender = (s.attackTarget === 'ai' || s.attackTarget === 'ai2') ? s.attackTarget : null;
-                else defender = 'ai';
-            } else if (attacker === 'ai' || attacker === 'ai2') {
-                defender = 'player';
-            }
+            const defender = attacker === 'player'
+                ? (is1v2 ? (s.attackTarget || (s.ai && s.ai.alive ? 'ai' : 'ai2')) : 'ai')
+                : 'player';
             const sections = {
                 player: document.getElementById('player-hp-section'),
                 ai: document.getElementById('ai-hp-section'),
@@ -103,7 +96,7 @@
                 lush: { colorClass: 'lush-buff' }, parasite: { colorClass: 'parasite-buff' },
                 crit: { colorClass: 'crit-buff' },
                 diving: { colorClass: 'diving-buff' }, scorch: { colorClass: 'scorch-buff' }, bloodthirst: { colorClass: 'bloodthirst-buff' },
-                bind: { colorClass: 'bind-mark' }, taunt: { colorClass: 'taunt-mark' }, chaos_red: { colorClass: 'chaos-red-buff' },
+                bind: { colorClass: 'bind-mark' }, chaos_red: { colorClass: 'chaos-red-buff' },
                 chaos_yellow: { colorClass: 'chaos-yellow-buff' }, chaos_blue: { colorClass: 'chaos-blue-buff' },
                 chaos_green: { colorClass: 'chaos-green-buff' }
             };
@@ -125,33 +118,10 @@
                 if (b.stacks > 0) {
                     currentKeys.push(b.key);
                     const path = b.path || gameAssetUrl(`icons/buff_icons/${b.icon}.webp`);
-                    let title = b.label || b.key;
+                    const title = b.label || b.key;
                     const animCls = !prevSet.has(b.key) ? ' icon-appear' : '';
-                    const specialClass = b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.key === 'bind' ? 'bind-mark' : b.key === 'taunt' ? 'taunt-mark' : b.key === 'bomb' ? 'bomb-mark' : b.colorClass || '';
-                    let countHtml = '';
-                    if (b.key === 'thorns') {
-                        // Remaining attack-turn triggers (engine: thornsTriggersLeft). Stacks stay at 1.
-                        const left = ch.thornsTriggersLeft;
-                        if (left != null) {
-                            title = `${title}（本回合还可触发${left}次）`;
-                            countHtml = `<span class="buff-count buff-count-tr" data-thorns-left="${left}">${left}</span>`;
-                        }
-                    } else if (b.key === 'bomb') {
-                        // Countdown lives in the top-right, same corner as thorns remaining.
-                        title = `${title}（倒计时${b.stacks}）`;
-                        countHtml = `<span class="buff-count buff-count-tr buff-count-bomb">${b.stacks}</span>`;
-                    } else if (!b.hideCount) {
-                        countHtml = `<span class="buff-count">${b.stacks}</span>`;
-                    }
-                    let nameHtml = '';
-                    if (b.key === 'bloodthirst') nameHtml = '<span class="buff-name">嗜血</span>';
-                    else if (b.key === 'bind') nameHtml = '<span class="buff-name">捆缚</span>';
-                    else if (b.key === 'taunt') {
-                        const emoji = ({ RED: '🔴', YELLOW: '🟡', BLUE: '🔵', GREEN: '🟢' })[String(ch.mockAttackColor || '').toUpperCase()] || '';
-                        nameHtml = emoji ? `<span class="buff-name buff-name-taunt">${emoji}</span>` : '<span class="buff-name">嘲弄</span>';
-                        if (emoji) title = `${title}（无效${emoji}）`;
-                    }
-                    html += `<div class="buff-icon-wrap ${specialClass}${animCls}" data-buff-key="${b.key}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${nameHtml}${countHtml}</div>`;
+                    const specialClass = b.key === 'bloodthirst' ? 'bloodthirst-buff' : b.key === 'bind' ? 'bind-mark' : b.key === 'bomb' ? 'bomb-mark' : b.colorClass || '';
+                    html += `<div class="buff-icon-wrap ${specialClass}${animCls}" data-buff-key="${b.key}" title="${title}" aria-label="${title}"><img src="${path}" alt="${title}">${b.hideCount ? '' : `<span class="buff-count">${b.stacks}</span>`}</div>`;
                 }
             }
             prevKeys[prefix] = currentKeys;

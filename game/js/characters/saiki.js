@@ -4,7 +4,7 @@
     name: 'Saiki',
     hp: 80,
     type: '猎手',
-    passive: '进攻打出有效黄色牌时，防御结算后施加1层流血',
+    passive: '进攻时打出有效黄色牌会在防御结算后施加1层流血',
     init() { return {}; },
     turnStart(eng, ch) {},
     damageAtSettlement(eng, v, a, t) { return v === 7 ? 3 + (t.bleed || 0) : null; },

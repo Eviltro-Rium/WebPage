@@ -4,7 +4,7 @@
     name: 'Serenity',
     hp: 75,
     type: '暗影',
-    passive: '免疫冷冻；生命低于30获得嗜血印记（永久、不可净化）；无印记时恢复额外+1',
+    passive: '免疫冷冻；生命低于30时获得嗜血印记，印记永久保留且不可净化；未获得印记时恢复额外+1',
     init() { return {}; },
     turnStart(eng, ch) { if (ch.hp < 30) ch.bloodthirst = true; },
     effect(eng, v, c, a, t, owner, helpers) {

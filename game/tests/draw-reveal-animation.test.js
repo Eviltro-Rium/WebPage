@@ -212,6 +212,38 @@ function harness() {
   return { ui, doc, animCalls, renders };
 }
 
+test('consecutive visible NPC plays and defenses never restore an already-played hand card', async () => {
+  const {ui,doc} = harness();
+  const first=card('first','WHITE',4), second=card('second','WHITE',1), remaining=card('remaining','WHITE',3);
+  ui.state.isAdventure=true;ui.state.aiHand=[remaining];ui.state.aiHandSize=1;
+  ui._prevState={aiHand:[first,second,remaining]};
+  paintHand(doc,'ai-hand',[first,second,remaining]);
+  await ui._playAICardAnimation(first);
+  await ui._playAIDefendAnimation(second);
+  const visible=doc.getElementById('ai-hand').children;
+  assert.equal(visible.length,1);
+  assert.equal(visible[0].dataset.cardId,context.cardId(remaining));
+});
+
+test('multi-discard flights start together and only repaint after all land', async () => {
+  const {ui,doc} = harness();
+  const cards=[card('a'),card('b'),card('c'),card('d')], finishes=[];
+  paintHand(doc,'player-hand',cards);ui.state.playerHand=[];
+  ui.anim.discardCard=()=>new Promise(resolve=>finishes.push(resolve));
+  const flight=ui._playDiscardManyAnimation({who:'player',cards});
+  assert.equal(finishes.length,4,'all flights must start before any arrival');
+  assert.equal(doc.getElementById('player-hand').children.length,0);
+  finishes.forEach(finish=>finish());await flight;
+});
+
+test('adjacent discard events share one multi-card animation', async () => {
+  const {ui} = harness(), batches=[];
+  ui._playDiscardManyAnimation=async event=>batches.push(event.cards.length);
+  ui._playDiscardAnimation=async()=>assert.fail('should batch consecutive discards');
+  await ui._playEvents([1,2,3].map(value=>({type:'discard',who:'player',card:card(String(value))})),true);
+  assert.deepEqual(batches,[3]);
+});
+
 function paintHand(doc, id, cards) {
   const el = doc.getElementById(id);
   el.innerHTML = '';

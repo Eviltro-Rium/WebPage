@@ -77,6 +77,24 @@ function loadSources(ctx) {
   }
 }
 
+test('map recovery presentation survives reload without healing or drawing again', () => {
+  const ctx=createContext();loadSources(ctx);
+  const eng=new ctx.AdventureEngine();eng.start(makeMap(ctx),'Ryan');
+  eng.addItem('LifeCore');eng.addItem('WisdomNecklace');eng.s.player.hp=10;
+  const beforeHand=eng.s.playerPile.hand.length;
+  eng.s.pendingMapReturnEffects={lifeCore:true,wisdomNecklace:true};eng.onCombatReturnToMap();
+  const saved=ctx.AdventureSave.serialize(eng);
+  assert.equal(saved.pendingMapRecoveries.length,2);
+  const restored=new ctx.AdventureEngine();restored.restoreFromSave(saved,makeMap(ctx));
+  restored.onCombatReturnToMap();
+  assert.equal(restored.s.player.hp,13);assert.equal(restored.s.playerPile.hand.length,beforeHand+2);
+  const effects=restored.takeMapRecoveryFeedback();
+  assert.equal(effects.reduce((n,effect)=>n+effect.heal,0),3);
+  assert.equal(effects.reduce((n,effect)=>n+effect.drawn,0),2);
+  assert.equal(restored.takeMapRecoveryFeedback().length,0);
+  assert.equal(ctx.AdventureSave.serialize(restored).pendingMapRecoveries.length,0);
+});
+
 function makeMap(ctx) {
   return new ctx.AdventureMap([
     [0, 1, -1],

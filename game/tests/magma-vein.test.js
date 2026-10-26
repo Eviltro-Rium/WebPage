@@ -6,10 +6,15 @@ for(const file of ['adventure/js/deck/adventure_deck.js','adventure/js/engine/ad
 const card=value=>ctx.FurryGame.Card.number('RED',value);
 function setup(){const e=new ctx.Engine();e.start('Ryan','Blaze');e.later=()=>{};e.s.atkCard=card(3);e.s.atkOwner='player';e._finishAfterCritChoice=function(d,skip,unblock){this.finished={d,skip,unblock};this.s.phase='AI_DEFEND';return this.state();};return e;}
 function gate(e,d=5,unblock=false,opts={}){return e.gateAdventureAttackMod(e.s.atkCard,d,false,unblock,0,opts);}
-test('magma is capped at one, pure positive status and all cleanse methods remove it',()=>{
- const e=setup();e.magmaVein(e.s.player,2);e.magmaVein(e.s.player);assert.equal(e.s.player.magmaVein,1);assert.equal(e.events.filter(x=>x.kind==='magmaVein').length,1);
- e.clean(e.s.player,false,'magmaVein');assert.equal(e.s.player.magmaVein,0);e.magmaVein(e.s.player);e.clean(e.s.player,true);assert.equal(e.s.player.magmaVein,0);
+test('magma caps at two, one-layer cleanse preserves one charge and full cleanse removes both',()=>{
+ const e=setup();e.magmaVein(e.s.player,2);e.magmaVein(e.s.player);assert.equal(e.s.player.magmaVein,2);assert.equal(e.events.filter(x=>x.kind==='magmaVein').length,1);
+ e.clean(e.s.player,false,'magmaVein');assert.equal(e.s.player.magmaVein,1);e.magmaVein(e.s.player);e.clean(e.s.player,true);assert.equal(e.s.player.magmaVein,0);
  e.magmaVein(e.s.player);e.clearDebuffs(e.s.player);assert.equal(e.s.player.magmaVein,1);e.clearPositiveBuffs(e.s.player);assert.equal(e.s.player.magmaVein,0);
+});
+test('using magma spends exactly one of two charges',()=>{const e=setup();e.magmaVein(e.s.player,2);gate(e,3);e.resolveAttackBuffChoice({buff:'magmaVein'});assert.equal(e.finished.d,5);assert.equal(e.s.player.magmaVein,1);});
+test('boolean poison requests produce numeric deltas and capped poison has no extra float',()=>{
+ const e=setup();e.events=[];e.poison(e.s.player,true);e.poison(e.s.player,true);e.poison(e.s.player,true);
+ assert.equal(e.s.player.poison,2);assert.deepEqual(Array.from(e.events.filter(x=>x.kind==='poison'),x=>x.desc),['+1[中毒]','+1[中毒]']);
 });
 test('magma trophy gains self buff, bridges and draws; never targets the enemy',()=>{
  const e=setup(),c=ctx.AdventureDeck.trophyWhite('MagmaVeinTrophy'),n=e.h.player.length;

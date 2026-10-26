@@ -1,0 +1,34 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../../../"><title>山丘场景性能与画面对照</title>
+<link rel="stylesheet" href="styles.css?v=20261026-home-performance">
+<style>#profile{position:fixed;z-index:100;top:16px;left:16px;padding:14px;background:#071a2bdd;color:white;border-radius:12px;font:14px system-ui}#profile button{margin:8px 4px 0;padding:6px 12px}#profile pre{white-space:pre-wrap}</style>
+</head><body class="page-home"><aside id="profile"><strong>同一场景：可见区域裁剪 / 全量提交</strong><pre id="stats">初始化中…</pre><button id="cull">切换为全量提交</button><button id="theme">切换昼夜</button></aside>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+let allPlants=false,dark=false;
+const OriginalRenderer=THREE.WebGLRenderer;
+THREE.WebGLRenderer=function(options){
+  const renderer=new OriginalRenderer(options),draw=renderer.render.bind(renderer);let lastStats='';
+  renderer.render=function(scene,camera){
+    camera.position.set(0,7.2,16.5);camera.lookAt(0,2.6,-6);camera.fov=48;camera.updateProjectionMatrix();
+    const plants=[];scene.traverse(object=>{
+      if(object.isInstancedMesh){
+        if(!object.userData.baseline)object.userData.baseline=object.instanceMatrix.array.slice();
+        plants.push([object,object.visible,object.count,allPlants?object.instanceMatrix.array.slice():null]);
+        if(allPlants){object.visible=true;object.count=object.userData.baseline.length/16;object.instanceMatrix.array.set(object.userData.baseline);object.instanceMatrix.updateRange.count=-1;object.instanceMatrix.needsUpdate=true;}
+        object.material.uniforms.uTime.value=4;
+      }
+    });
+    draw(scene,camera);
+    const total=plants.reduce((sum,[object])=>sum+object.userData.baseline.length/16,0);
+    const visible=allPlants?total:plants.reduce((sum,[object])=>sum+(object.visible?object.count:0),0);
+    const text='模式：'+(allPlants?'全量提交':'可见区域裁剪')+'\n植物总数：'+total+'\n本帧提交植物：'+visible+'\n本帧三角形：'+renderer.info.render.triangles+'\n绘制调用：'+renderer.info.render.calls;
+    if(text!==lastStats){document.getElementById('stats').textContent=text;lastStats=text;}
+    plants.forEach(([object,visible,count,matrices])=>{object.visible=visible;object.count=count;if(matrices){object.instanceMatrix.array.set(matrices);object.instanceMatrix.updateRange.count=-1;object.instanceMatrix.needsUpdate=true;}});
+  };return renderer;
+};
+document.getElementById('cull').onclick=()=>{allPlants=!allPlants;document.getElementById('cull').textContent=allPlants?'切换为可见区域裁剪':'切换为全量提交';};
+document.getElementById('theme').onclick=()=>{dark=!dark;document.documentElement.setAttribute('data-theme',dark?'dark':'light');document.dispatchEvent(new CustomEvent('rium-theme-change',{detail:{theme:dark?'dark':'light'}}));};
+</script>
+<script src="js/hill-scene-runtime.js?v=20261026-home-performance"></script><script src="js/hill-background.js?v=20261026-home-performance"></script>
+</body></html>

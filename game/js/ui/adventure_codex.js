@@ -32,7 +32,7 @@
     { key: 'lush', name: '茂盛', type: '正面状态', icon: 'icons/buff_icons/lush.webp', desc: '堆叠上限：2\n维持效果：持续\n每有1层，在自己进攻开始前恢复1点生命；可被净化移除。' },
     { key: 'parasite', name: '寄生', type: '正面状态', icon: 'icons/buff_icons/parasite.webp', desc: '堆叠上限：1\n维持效果：持续\n在自己进攻开始前，吸取对手1点生命（不可用守护/飞翔/道具减免）；可被净化移除。' },
     { key: 'crit', name: '暴击', type: '正面状态', icon: 'icons/buff_icons/crit.webp', desc: '堆叠上限：3\n维持效果：持续\n攻击修正类。进攻伤害>4（防御前）时可在攻击修正阶段消耗1层使本次攻击不可防御；与[熔脉]、攻击修正道具互斥不可叠用；本身不可防御的技能不能使用。可被净化。' },
-    { key: 'magmaVein', name: '熔脉', type: '正面状态', icon: 'icons/buff_icons/magma_vein.webp', desc: '堆叠上限：1\n维持效果：持续至触发\n攻击修正类。在攻击修正阶段主动消耗1层，使本次进攻伤害×1.5（向上取整）；只放大技能伤害。与[暴击]、攻击修正道具互斥不可叠用；不作用于防御/反击。可被净化。' },
+    { key: 'magmaVein', name: '熔脉', type: '正面状态', icon: 'icons/buff_icons/magma_vein.webp', desc: '堆叠上限：2\n维持效果：持续至触发\n攻击修正类。在攻击修正阶段主动消耗1层，使本次进攻伤害×1.5（向上取整）；只放大技能伤害。与[暴击]、攻击修正道具互斥不可叠用；不作用于防御/反击。可被净化。' },
     { key: 'chaos_red', name: '混沌·红', type: '正面状态', icon: 'icons/buff_icons/chaos_red.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出红色数字牌/指定为红的黑白牌，或指定为红的白色道具牌后获得，进攻回合开始前清除。' },
     { key: 'chaos_yellow', name: '混沌·黄', type: '正面状态', icon: 'icons/buff_icons/chaos_yellow.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出黄色数字牌/指定为黄的黑白牌，或指定为黄的白色道具牌后获得，进攻回合开始前清除。' },
     { key: 'chaos_blue', name: '混沌·蓝', type: '正面状态', icon: 'icons/buff_icons/chaos_blue.webp', desc: '堆叠上限：1\n维持效果：衰减\nKnight专属状态。打出蓝色数字牌/指定为蓝的黑白牌，或指定为蓝的白色道具牌后获得，进攻回合开始前清除。' },
@@ -57,7 +57,7 @@
     { name: 'Chan', hp: 80, type: '谋士', passive: '进攻回合开始前抽1张牌', avatar: 'avatars/Chan.webp', color: '#1399f2' },
     { name: 'Saiki', hp: 80, type: '猎手', passive: '进攻打出有效黄色牌时，防御结算后施加1层流血', avatar: 'avatars/Saiki.webp', color: '#9b59b6' },
     { name: 'Blaze', hp: 85, type: '狂战', passive: '自身有灼伤时，1至7牌的攻击伤害+1', avatar: 'avatars/Blaze.webp', color: '#e67e22' },
-    { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；生命低于30获得嗜血印记（永久、不可净化）；无印记时恢复额外+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
+    { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；生命低于30获得不可净化的嗜血印记；离房时生命高于30则清除；无印记时恢复额外+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
     { name: 'Moze', hp: 100, type: '守护', passive: '可消耗守护减免攻击与反击伤害（不含Buff伤害）', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
     { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出数字/白道具牌获得对应颜色混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
     { name: 'Otto', hp: 100, type: '战士', passive: '进攻伤害>4时可消耗1层[暴击]使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
@@ -267,7 +267,7 @@
     for (const m of monsters) {
       const icon = resolveIcon(m.icon);
       const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${m.name}">` : `<div class="char-detail-avatar codex-no-icon">${m.name[0]}</div>`;
-      html += `<button type="button" class="char-detail-card codex-creature-card" data-name="${m.name}">${iconHtml}<span class="char-detail-name">${m.kind || m.name}</span><span class="char-detail-type">${m.kind || '怪物'}</span><span class="char-detail-open">查看技能 <span aria-hidden="true">›</span></span></button>`;
+      html += `<button type="button" class="char-detail-card codex-creature-card" data-name="${m.name}">${iconHtml}<span class="char-detail-name">${m.kind || m.name}</span><span class="char-detail-type">普通怪物 · HP ${m.hp}</span><span class="char-detail-open">查看技能 <span aria-hidden="true">›</span></span></button>`;
     }
     html += '</div></div>';
     return html;
@@ -393,7 +393,7 @@
     html += '<div class="codex-detail-kicker">冒险图鉴 <span>普通怪物</span></div>';
     html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
     html += `<div class="char-detail-hero-name">${m.kind || m.name}</div>`;
-    html += `<div class="char-detail-hero-type">${m.kind || '怪物'} · HP ${m.hp}${m.handLimit ? ' · 手牌' + m.handLimit : ''}</div>`;
+    html += `<div class="char-detail-hero-type">普通怪物 · HP ${m.hp}${m.handLimit ? ' · 手牌' + m.handLimit : ''}</div>`;
     html += `</div></div>`;
 
     html += buildSpecialNotesFromList(notes);

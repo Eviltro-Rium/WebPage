@@ -27,8 +27,7 @@ _showZoneDesc(id, desc) {
     }
     el.appendChild(text);
     const plain = String(desc || '');
-    const sideBySide = id === 'atk-desc' || id === 'def-desc';
-    const needsToggle = !sideBySide && plain.length > 12;
+    const needsToggle = plain.length > 12;
     if (needsToggle) {
         const toggle = document.createElement('button');
         toggle.type = 'button';

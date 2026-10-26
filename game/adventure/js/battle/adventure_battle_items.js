@@ -80,6 +80,7 @@
       if (!targetKey) targetKey = 'ai';
       const ai = this.s[targetKey] || this.s.ai;
 
+      const effectAfterId = this.ver;
       const effects = window.AdventureCombatEffects;
       const result = effects && typeof effects.apply === 'function'
         ? effects.apply(this, def, { choice, purifyChoices, player, ai, advEngine, targetKey })
@@ -93,6 +94,10 @@
 
       this.emit('desc', '使用道具[' + def.displayName + ']：' + result.message);
       advEngine.s.consumables.splice(itemIndex, 1);
+      this.emit('itemConsumed', '使用' + def.displayName, null, {
+        itemIndex, itemName: def.name, effectAfterId,
+        inventoryBefore: snap.consumables.map(entry => typeof entry === 'string' ? entry : entry.name)
+      });
       if (window.AdventureSave && typeof window.AdventureSave.save === 'function') {
         window.AdventureSave.save(advEngine);
       }

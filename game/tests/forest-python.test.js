@@ -50,7 +50,7 @@ test('ForestPython base stats', () => {
   assert.equal(m.hp, 35);
   assert.equal(m.whiteZeros, 1);
   assert.equal(m.handLimit, 3);
-  assert.equal(m.icon, '../icons/npc_icons/forest_python.webp');
+  assert.equal(m.icon, '../icons/npc_icons/forest_python.webp?v=20261022-forest-portraits');
 });
 
 test('ForestPython 4/5/6 and 0 attackDamage uses current (after-apply) poison stacks', () => {

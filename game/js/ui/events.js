@@ -23,6 +23,7 @@
     Object.assign(GameUI.prototype, {
 _handAdditionCount(evt, who) {
     if (!evt) return 0;
+    if (evt.type === 'cardTransfer' && evt.who === who) return 1;
     if (evt.type === 'draw' && evt.who === who) return Math.max(0, Number(evt.count) || 1);
     if (evt.type === 'trophyDrop' && who === 'player') {
         const drops = evt.drops || evt.card && evt.card.drops;
@@ -73,7 +74,10 @@ _prepareHandAnimation(events) {
     // A state packet can be painted by a remote/session adapter just before
     // its event queue starts. Mask the new trailing cards once more so the
     // flight remains the first visible representation of a draw.
-    if (counts.player) this._renderPlayerHand({ hideTrailing: counts.player });
+    // Preserve outgoing hand faces until the discard flights capture them.
+    const playerDiscards = list.some(evt => (evt.type === 'discard' || evt.type === 'discardMany')
+        && evt.who === 'player' && evt.from === 'hand');
+    if (counts.player && !playerDiscards) this._renderPlayerHand({ hideTrailing: counts.player });
     if (counts.ai2 && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: counts.ai2, who: 'ai2' });
     if (counts.ai && this.state && this.state.is1v2 && this._renderAIHand1v2) this._renderAIHand1v2({ hideTrailing: counts.ai, who: 'ai' });
     else if (counts.ai) this._renderAIHand({ hideTrailing: counts.ai });
@@ -182,6 +186,14 @@ _resetRevealBeforeDefenseJudgment() {
 _animationOrder(events) {
     const ordered = (events || []).map(evt => evt.type === 'trophyDrop' && !Array.isArray(evt.drops) && evt.card && Array.isArray(evt.card.drops)
         ? Object.assign({}, evt.card, evt, { drops: evt.card.drops, card: null }) : evt);
+    // Consumption is committed only after validation. Present it immediately
+    // before that use's effect events without changing their authoritative IDs.
+    const consumptions = ordered.filter(evt => evt.type === 'itemConsumed' && Number.isFinite(evt.effectAfterId));
+    for (const evt of consumptions) {
+        ordered.splice(ordered.indexOf(evt), 1);
+        const start = ordered.findIndex(candidate => candidate.id > evt.effectAfterId);
+        ordered.splice(start < 0 ? ordered.length : start, 0, evt);
+    }
     for (let i = 0; i < ordered.length; i++) {
         const evt = ordered[i];
         if (evt.type !== 'reveal' || !String(evt.desc || '').includes('防御判定')) continue;
@@ -474,7 +486,20 @@ async _playEvents(events, fast = false) {
     const wait = ms => runtime
         ? runtime.wait((fast || this._onlineAnimationFast) ? Math.max(60, Math.round(ms * 0.22)) : ms)
         : new Promise(resolve => setTimeout(resolve, (fast || this._onlineAnimationFast) ? Math.max(60, Math.round(ms * 0.22)) : ms));
-    const orderedEvents = this._animationOrder(events);
+    const orderedEvents = [];
+    for (const evt of this._animationOrder(events)) {
+        const previous = orderedEvents[orderedEvents.length - 1];
+        if (evt.type === 'discard' && !evt.deferRevealExit && previous &&
+            (previous.type === 'discard' || previous.type === 'discardMany') && !previous.deferRevealExit &&
+            evt.who === previous.who && evt.from === previous.from &&
+            evt.destination === previous.destination && evt.faceUp === previous.faceUp) {
+            orderedEvents[orderedEvents.length - 1] = Object.assign({}, previous, {
+                type: 'discardMany', card: null,
+                cards: [...(previous.cards || [previous.card]), evt.card],
+                desc: '同时弃掉' + ((previous.cards || [previous.card]).length + 1) + '张牌'
+            });
+        } else orderedEvents.push(evt);
+    }
     // Older saves omit drops on dice events; pair them with their result without rerolling.
     const lootResults = new Map();
     const lootTrophyByDie = new Map();
@@ -506,7 +531,25 @@ async _playEvents(events, fast = false) {
     this._eventPlaybackDepth = (this._eventPlaybackDepth || 0) + 1;
     try { for (const evt of orderedEvents) {
         try {
-          if (evt.type === 'aiPlay') {
+          if (evt.type === 'itemConsumed') {
+            if (typeof this._playCombatItemConsumption === 'function') await this._playCombatItemConsumption(evt);
+        } else if (evt.type === 'cardTransfer' && evt.card) {
+            const target = document.getElementById('player-hand');
+            const sourceHand = evt.from === 'discard' ? null : document.getElementById(evt.from + '-hand');
+            const sourceCard = sourceHand && this._findHandCardElement(sourceHand, evt.card);
+            const source = sourceCard || sourceHand || document.getElementById('discard-top');
+            const rect = source && source.getBoundingClientRect();
+            if (sourceCard) sourceCard.style.visibility = 'hidden';
+            this._renderPlayerHand({ hideTrailing: drawRemaining.player });
+            try {
+                if (rect && target) await this.anim.flyCard(evt.card, { getBoundingClientRect: () => rect }, target, 430, 55, evt.from === 'discard' ? 'player' : evt.from);
+            } finally {
+                drawRemaining.player = Math.max(0, drawRemaining.player - 1);
+                if (sourceHand) this._repaintOwnerHand(evt.from);
+                else this._renderDiscardTop();
+                this._repaintOwnerHand('player');
+            }
+        } else if (evt.type === 'aiPlay') {
             this._lastAnimatedAIDefenseKey = null;
             // Some older/bridge states omitted the card payload even though
             // the engine had already recorded the active attack card. Keep
@@ -750,7 +793,7 @@ async _playEvents(events, fast = false) {
                 : (evt.desc || '');
             this.playFloatingText(text, '#ff8800', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
-            if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,136,0,0.8)', Math.min(amt * 3, 20)); } }
+            this._playHitFeedback(side, amt, 'rgba(255,136,0,0.8)');
             await wait(500);
         } else if (evt.type === 'bleedSettle') {
             const side = this._eventTarget(evt);
@@ -760,7 +803,7 @@ async _playEvents(events, fast = false) {
                 : (evt.desc || '');
             this.playFloatingText(text, '#cc2222', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
-            if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(204,34,34,0.8)', Math.min(amt * 3, 20)); } }
+            this._playHitFeedback(side, amt, 'rgba(204,34,34,0.8)');
             await wait(500);
         } else if (evt.type === 'poisonSettle') {
             const side = this._eventTarget(evt);
@@ -770,7 +813,7 @@ async _playEvents(events, fast = false) {
                 : (evt.desc || '');
             this.playFloatingText(text, '#84cc16', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
-            if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); }
+            this._playHitFeedback(side, amt, 'rgba(132,204,22,0.8)');
             await wait(500);
         } else if (evt.type === 'bombExplode') {
             const side = this._eventTarget(evt);
@@ -780,9 +823,7 @@ async _playEvents(events, fast = false) {
                 : (evt.desc || '炸弹爆炸！');
             this.playFloatingText(text, '#ff4444', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
-            this.shakeScreen(10, 400);
-            const hpEl = document.getElementById(side + '-hp-section');
-            if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,68,68,0.9)', 25); }
+            this._playHitFeedback(side, amt, 'rgba(255,68,68,0.9)');
             await wait(600);
         } else if (evt.type === 'hurt') {
             const side = this._eventTarget(evt);
@@ -825,7 +866,7 @@ async _playEvents(events, fast = false) {
             const text = amt > 0 ? damageFloat(amt, tag, tag === '灼伤' && scorchKeep(evt) ? '（[炙热]不消退）' : tag === '中毒' ? '' : '，层数-1') : (evt.desc || '');
             this.playFloatingText(text, color, side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
-            if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); }
+            this._playHitFeedback(side, amt, color);
             await wait(500);
         } else if (evt.type === 'buff') {
             const side = this._eventTarget(evt);
@@ -840,7 +881,8 @@ async _playEvents(events, fast = false) {
                 chaos_reset: '#c084fc',
                 chaos_red: '#f87171', chaos_yellow: '#fde047', chaos_blue: '#60a5fa', chaos_green: '#4ade80'
             };
-            this.playFloatingText(evt.desc || '', colors[evt.kind] || '#c4b5fd', side);
+            const desc = evt.kind === 'poison' ? String(evt.desc || '').replace(/\+true/g, '+1') : evt.desc || '';
+            this.playFloatingText(desc, colors[evt.kind] || '#c4b5fd', side);
             if (this.state[side]) {
                 let ch = this._feedbackEntity(evt, side);
                 if (evt.stacks != null && evt.kind) {

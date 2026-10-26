@@ -72,85 +72,6 @@
             overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
         },
 
-
-        _startHandDiscardPicker(opts) {
-            if (typeof HandDiscardPicker !== 'function') {
-                console.error('[UI] HandDiscardPicker missing');
-                return;
-            }
-            if (!this._handDiscardPickerInst) this._handDiscardPickerInst = new HandDiscardPicker(this);
-            this._handDiscardPickerInst.start(opts);
-        },
-
-        /** Combat: eat snapshot.pendingHandDiscard via HandDiscardPicker. */
-        _syncPendingHandDiscard() {
-            const s = this.state;
-            const pending = s && s.pendingHandDiscard;
-            if (!pending || s.phase !== 'PLAYER_DISCARD') {
-                if (this._handDiscardPickerInst && this._handDiscardPickerInst.isActive()
-                    && this._handDiscardPickerInst._active
-                    && this._handDiscardPickerInst._active.source === 'combatPending') {
-                    this._handDiscardPickerInst.cancel(true);
-                }
-                return;
-            }
-            const hand = Array.isArray(s.playerHand) ? s.playerHand : [];
-            const allowed = Array.isArray(pending.legalIndices)
-                ? pending.legalIndices.slice()
-                : (Array.isArray(s.legalHand)
-                    ? s.legalHand.map((ok, i) => (ok ? i : -1)).filter(i => i >= 0)
-                    : hand.map((_, i) => i));
-            const selected = Array.isArray(s.selectedCards) ? s.selectedCards.slice()
-                : (Array.isArray(pending.selected) ? pending.selected.slice() : []);
-            const self = this;
-            if (this._handDiscardPickerInst && this._handDiscardPickerInst.isActive()
-                && this._handDiscardPickerInst._active
-                && this._handDiscardPickerInst._active.source === 'combatPending') {
-                const a = this._handDiscardPickerInst._active;
-                a.cards = hand.slice();
-                a.allowed = new Set(allowed);
-                a.max = Math.max(1, pending.count || 1);
-                a.title = pending.hint || a.title;
-                a.allowCancel = pending.cancelable !== false;
-                a.selected = selected;
-                this._handDiscardPickerInst._ensureBar();
-                this._handDiscardPickerInst._refreshBar();
-                this._handDiscardPickerInst.bindHand();
-                return;
-            }
-            this._startHandDiscardPicker({
-                cards: hand.slice(),
-                allowedIndices: allowed,
-                max: pending.count || 1,
-                title: pending.hint || '选择要弃掉的手牌',
-                allowCancel: pending.cancelable !== false,
-                selected: selected,
-                onToggle: async (index) => {
-                    if (self._isHandlingAction || self._isSelectingCard) return;
-                    self._isSelectingCard = true;
-                    try {
-                        const result = typeof self._sessionDispatch === 'function'
-                            ? await self._sessionDispatch('selectCard', { index })
-                            : await Bridge.call('selectCard', { index });
-                        if (result && !result.error) {
-                            self.state = result;
-                            self.updateDisplay();
-                        } else if (result && result.error) {
-                            self.showError(result.error);
-                            if (result.state) { self.state = result.state; self.updateDisplay(); }
-                        }
-                    } finally {
-                        self._isSelectingCard = false;
-                    }
-                },
-                onConfirm: () => { void self._apiAction('doConfirmDiscard'); },
-                onCancel: () => { void self._apiAction('doCancelDiscard'); }
-            });
-            if (this._handDiscardPickerInst && this._handDiscardPickerInst._active) {
-                this._handDiscardPickerInst._active.source = 'combatPending';
-            }
-        },
-
         // Render crystal-ball choices with the same real card canvas and drag
         // ordering interaction used by Chan 5.
         _showCrystalBallChoice(cards, onChoose, onCancel) {
@@ -174,8 +95,9 @@
             const actions = document.createElement('div'); actions.className = 'dialog-buttons';
             const reset = document.createElement('button'); reset.className = 'ctrl-btn btn-skip'; reset.textContent = '重置'; reset.onclick = () => { order.splice(0, order.length, ...cards.map((_, i) => i)); refresh(); };
             const confirm = document.createElement('button'); confirm.className = 'ctrl-btn btn-play'; confirm.textContent = '确认放回'; confirm.onclick = () => { overlay.remove(); onChoose(order.slice()); };
-            // No cancel: peek already spent; cancel would let the player re-open forever.
-            actions.append(reset, confirm); box.appendChild(actions); overlay.appendChild(box); document.body.appendChild(overlay);
+            const cancel = document.createElement('button'); cancel.className = 'ctrl-btn btn-skip'; cancel.textContent = '取消'; cancel.onclick = () => { overlay.remove(); if (onCancel) onCancel(); };
+            actions.append(reset, confirm, cancel); box.appendChild(actions); overlay.appendChild(box); document.body.appendChild(overlay);
+            overlay.addEventListener('click', event => { if (event.target === overlay) { overlay.remove(); if (onCancel) onCancel(); } });
         },
 
         // Chaos Orb: peek NPC deck top 3. Click a card to toggle keep vs discard;
@@ -286,7 +208,6 @@
                 let modBadge = '';
                 if (isAttackModItem && def.attackModUnblock) modBadge = '<span class="adv-combat-item-bonus">破防</span>';
                 else if (isAttackModItem && def.attackModEvilRoulette) modBadge = '<span class="adv-combat-item-bonus">赌盘</span>';
-                else if (isAttackModItem && def.attackModRecycle) modBadge = '<span class="adv-combat-item-bonus">回收</span>';
                 else if (isAttackModItem && def.attackModBonus) modBadge = '<span class="adv-combat-item-bonus">+' + def.attackModBonus + '</span>';
                 html += '<button class="' + cls + '" data-item-index="' + i + '" data-render-key="' + renderKey + '" title="' + (item.description || item.displayName) + '"' + ((!canUse && !selectable) ? ' disabled' : '') + '>' +
                     (item.icon ? '<img src="' + item.icon + '" alt="' + item.displayName + '">' : '') +
@@ -438,8 +359,34 @@
                 this._showCardMasterChoice(choice => { void run(choice); });
                 return;
             }
-            // discardTalisman / furnace: engine beginHandDiscard → PLAYER_DISCARD
-            // (Vixraps-style hand select + controls confirm/cancel). No popup.
+            if (def.combatUse === 'discardTalisman') {
+                const hand = Array.isArray(s.playerHand) ? s.playerHand : [];
+                if (!hand.length) return;
+                this.dialogs.showOpponentCardChoice(
+                    [{ key: 'player', label: '选择要弃掉的手牌', cards: hand }],
+                    choice => { void run({ index: choice.index }); },
+                    '弃牌符 · 弃1抽2'
+                );
+                return;
+            }
+            if (def.combatUse === 'furnace') {
+                const hand = Array.isArray(s.playerHand) ? s.playerHand : [];
+                const selectable = [];
+                const indices = [];
+                hand.forEach((card, i) => {
+                    if (!card || !card.isNumberCard || card.isItemCard || card.isBlack || card.isWhite) return;
+                    if (!['RED', 'YELLOW', 'BLUE', 'GREEN'].includes(card.color)) return;
+                    selectable.push(card);
+                    indices.push(i);
+                });
+                if (!selectable.length) return;
+                this.dialogs.showOpponentCardChoice(
+                    [{ key: 'player', label: '红→炙热 / 黄→沙盲 / 蓝→潜水 / 绿→茂盛', cards: selectable }],
+                    choice => { void run({ index: indices[choice.index] }); },
+                    '熔炉 · 弃颜色牌换战利白卡'
+                );
+                return;
+            }
             if (def.combatUse === 'crystalBall') {
                 const preview = await Bridge.call('useAdventureCombatItem', { itemIndex: idx });
                 if (!preview || preview.error) return;
@@ -447,7 +394,10 @@
                 this.state = preview;
                 this.updateDisplay();
                 if (Array.isArray(preview.crystalBallCards) && preview.crystalBallCards.length) {
-                    this._showCrystalBallChoice(preview.crystalBallCards, order => { void run({ order }); });
+                    this._showCrystalBallChoice(preview.crystalBallCards, order => { void run({ order }); }, async () => {
+                        const cleared = await Bridge.call('useAdventureCombatItem', { itemIndex: idx, choice: { cancel: true } });
+                        if (cleared && !cleared.error) { this.state = cleared; this.updateDisplay(); }
+                    });
                 }
                 return;
             }

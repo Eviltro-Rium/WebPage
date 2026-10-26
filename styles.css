@@ -979,6 +979,7 @@ main .section-gallery {
   height: 0;
   transform-style: preserve-3d;
   animation: galleryCylinderSpin 68s linear infinite;
+  animation-play-state: var(--gallery-play-state, running);
   will-change: transform;
 }
 

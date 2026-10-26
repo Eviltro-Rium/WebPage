@@ -17,7 +17,7 @@
 
   R.registerMonster({
     name: 'VolcanoSalamander', kind: '火山蝾螈', hp: 20, attack: 3, defense: 2,
-    minStage: 1, icon: '../icons/npc_icons/volcano_salamander.webp',
+    minStage: 1, icon: '../icons/npc_icons/volcano_salamander.webp?v=20261024-npc-portraits',
     attackDamage: c => low(c) ? 3 : high(c) ? 5 : 0,
     attackBurn: c => numeric(c) ? 1 : 0,
     defendBlock: block(2),
@@ -30,7 +30,7 @@
   });
   R.registerMonster({
     name: 'VolcanoCrab', kind: '熔岩蟹', hp: 24, attack: 2, defense: 2,
-    minStage: 1, icon: '../icons/npc_icons/volcano_crab.webp',
+    minStage: 1, icon: '../icons/npc_icons/volcano_crab.webp?v=20261024-npc-portraits',
     attackDamage: c => low(c) ? 2 : high(c) ? 5 : 0,
     attackGuard: c => low(c) ? 2 : 0,
     attackGainMagma: c => high(c) ? 1 : 0,
@@ -44,7 +44,7 @@
   });
   R.registerMonster({
     name: 'VolcanoAshWolf', kind: '灰烬狼', hp: 20, attack: 4, defense: 0,
-    minStage: 1, icon: '../icons/npc_icons/volcano_wolf.webp', firstStrike: true,
+    minStage: 1, icon: '../icons/npc_icons/volcano_wolf.webp?v=20261024-npc-portraits', firstStrike: true,
     attackDamage: c => low(c) ? 4 : high(c) ? 3 : 0,
     attackUnblockable: high,
     attackBurn: c => high(c) ? 2 : 0,
@@ -63,7 +63,7 @@
   });
   R.registerMonster({
     name: 'VolcanoObsidianBoar', kind: '黑曜野猪', hp: 26, attack: 4, defense: 2,
-    minStage: 1, icon: '../icons/npc_icons/volcano_boar.webp',
+    minStage: 1, icon: '../icons/npc_icons/volcano_boar.webp?v=20261024-npc-portraits',
     attackDamage: (c, ctx) => low(c) ? Math.max(0, Number(ctx && ctx.playerBurn) || 0) : high(c) ? 4 : 0,
     attackBleed: c => high(c) ? 1 : 0,
     attackBurn: c => high(c) ? 1 : 0,
@@ -83,7 +83,7 @@
   });
   R.registerMonster({
     name: 'VolcanoCinderBadger', kind: '熔渣獾', hp: 20, attack: 3, defense: 2,
-    icon: '../icons/npc_icons/volcano_badger.webp', poisonImmune: true,
+    icon: '../icons/npc_icons/volcano_badger.webp?v=20261024-npc-portraits', poisonImmune: true,
     attackDamage: c => low(c) ? 3 : high(c) ? 4 : 0,
     attackPoison: low,
     attackGuard: c => high(c) ? 2 : 0,
@@ -104,7 +104,7 @@
   });
   R.registerMonster({
     name: 'VolcanoObsidianArmadillo', kind: '黑曜犰狳', hp: 32, attack: 3, defense: 2,
-    minStage: 2, icon: '../icons/npc_icons/volcano_armadillo.webp',
+    minStage: 2, icon: '../icons/npc_icons/volcano_armadillo.webp?v=20261024-npc-portraits',
     attackDamage: c => low(c) ? 3 : high(c) ? 4 : 0,
     attackBurn: low,
     attackScorch: low,
@@ -138,7 +138,7 @@
   });
   R.registerMonster({
     name: 'VolcanoBasaltCentipede', kind: '玄岩蜈蚣', hp: 20, attack: 1, defense: 1,
-    icon: '../icons/npc_icons/volcano_centipede.webp',
+    icon: '../icons/npc_icons/volcano_centipede.webp?v=20261024-npc-portraits',
     attackDamage: (c, ctx) => low(c) ? Math.max(0, Number(ctx && ctx.playerBurn) || 0) : 0,
     attackScorch: low,
     attackBurn: c => high(c) ? 3 : 0,
@@ -163,7 +163,7 @@
   });
   R.registerMonster({
     name: 'VolcanoMagmaSlug', kind: '熔岩蛞蝓', hp: 25, attack: 2, defense: 2,
-    icon: '../icons/npc_icons/volcano_slug.webp',
+    icon: '../icons/npc_icons/volcano_slug.webp?v=20261024-npc-portraits',
     attackDamage: c => low(c) ? 2 : high(c) ? 4 : 0,
     attackGuard: c => low(c) ? 2 : 0,
     attackSandblind: c => high(c) ? 2 : 0,
@@ -183,7 +183,7 @@
   });
   R.registerMonster({
     name: 'VolcanoSulfurWeasel', kind: '硫晶鼬', hp: 24, attack: 3, defense: 2,
-    minStage: 2, icon: '../icons/npc_icons/volcano_weasel.webp',
+    minStage: 2, icon: '../icons/npc_icons/volcano_weasel.webp?v=20261024-npc-portraits',
     attackDamage: c => low(c) ? Number(c.value) || 0 : high(c) ? 5 : 0,
     attackBurn: c => low(c) ? Number(c.value) || 0 : 0,
     attackHarden: c => high(c) ? 1 : 0,
@@ -208,7 +208,7 @@
   });
   R.registerBoss({
     name: 'VolcanoFlameLion', kind: '炎鬃狮', hp: 40, attack: 3, defense: 2,
-    handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_lion.webp',
+    handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_lion.webp?v=20261024-npc-portraits',
     attackDamage: c => low(c) ? 4 : high(c) ? 3 : 0,
     attackUnblockable: high,
     attackBurn: c => low(c) ? 1 : zero(c) ? 2 : 0,
@@ -248,7 +248,7 @@
   });
   R.registerBoss({
     name: 'VolcanoMagmaRhino', kind: '熔核犀', hp: 45, attack: 3, defense: 2,
-    handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_rhino.webp',
+    handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_rhino.webp?v=20261024-npc-portraits',
     attackDamage: c => low(c) ? 3 : high(c) ? 5 : zero(c) ? 6 : 0,
     attackGuard: c => low(c) ? 1 : 0,
     attackBleed: low,
@@ -287,7 +287,7 @@
   });
   R.registerBoss({
     name: 'VolcanoCinderPhoenix', kind: '余烬凤凰', hp: 35, attack: 3, defense: 2,
-    minStage: 2, handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_phoenix.webp',
+    minStage: 2, handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_phoenix.webp?v=20261024-npc-portraits',
     attackTurnStart(eng, x) {
       if (!x || (Number(x.fly) || 0) > 0) return;
       const service = window.FurryGame && window.FurryGame.StatusService;

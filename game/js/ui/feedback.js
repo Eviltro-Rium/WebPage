@@ -15,8 +15,58 @@
     const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
     const schedule = (fn, ms) => runtime ? runtime.schedule(null, fn, ms) : setTimeout(fn, ms);
     const random = () => runtime ? runtime.random() : Math.random();
+    const hitPortraits = new Map();
 
     const proto = GameUI.prototype;
+
+    proto._preloadHitPortrait = function (src) {
+        if (!src) return null;
+        if (hitPortraits.has(src)) return hitPortraits.get(src);
+        const image = new Image();
+        const entry = { image, ready: false, loaded: null };
+        entry.loaded = new Promise(resolve => {
+            image.onload = () => { entry.ready = true; resolve(true); };
+            image.onerror = () => resolve(false);
+        });
+        hitPortraits.set(src, entry);
+        image.src = src;
+        return entry;
+    };
+
+    proto._playAvatarHit = function (side) {
+        const avatar = document.getElementById(`${side}-avatar`);
+        if (!avatar) return;
+        const hit = {
+            character: avatar.dataset.char,
+            normalSrc: avatar.dataset.normalSrc || avatar.getAttribute('src'),
+            hitSrc: avatar.dataset.hitSrc
+        };
+        avatar._avatarHit = hit;
+        avatar.classList.remove('avatar-hit');
+        void avatar.offsetWidth;
+        avatar.classList.add('avatar-hit');
+
+        const portrait = this._preloadHitPortrait(hit.hitSrc);
+        const showExpression = () => {
+            if (avatar._avatarHit !== hit || avatar.dataset.char !== hit.character || !avatar.isConnected) return;
+            if (portrait.ready && avatar.dataset.hitSrc === hit.hitSrc) avatar.src = hit.hitSrc;
+        };
+        if (portrait) {
+            if (portrait.ready) showExpression();
+            else portrait.loaded.then(showExpression);
+        }
+        // Each avatar owns its token: an earlier hit cannot reset a later hit
+        // or restore the old monster after a challenge-room target changes.
+        schedule(() => {
+            if (avatar._avatarHit !== hit) return;
+            avatar._avatarHit = null;
+            avatar.classList.remove('avatar-hit');
+            if (hit.hitSrc && avatar.getAttribute('src') === hit.hitSrc &&
+                avatar.dataset.char === hit.character && avatar.dataset.normalSrc === hit.normalSrc) {
+                avatar.src = hit.normalSrc;
+            }
+        }, 380);
+    };
 
     proto._eventSide = function (who) {
         if (who === 'player') return 'player';
@@ -36,6 +86,7 @@
         amount = Math.max(0, Number(amount) || 0);
         if (!amount) return;
         side = this._eventSide(side);
+        this._playAvatarHit(side);
 
         const isPlayer = side === 'player';
         this.shakeScreen(isPlayer ? Math.min(amount * 2, 10) : Math.min(amount, 6), isPlayer ? 300 : 220);
@@ -45,14 +96,22 @@
         hpSection.classList.remove('combatant-hit');
         void hpSection.offsetWidth;
         hpSection.classList.add('combatant-hit');
-        hpSection.addEventListener('animationend', () => hpSection.classList.remove('combatant-hit'), { once: true });
+        const token = {};
+        hpSection._hitFeedback = token;
+        schedule(() => {
+            if (hpSection._hitFeedback !== token) return;
+            hpSection._hitFeedback = null;
+            hpSection.classList.remove('combatant-hit');
+        }, 380);
 
-        const rect = hpSection.getBoundingClientRect();
+        const avatar = document.getElementById(`${side}-avatar`);
+        const rect = (avatar || hpSection).getBoundingClientRect();
         this.burstParticles(
             rect.left + rect.width / 2,
             rect.top + rect.height / 2,
             color,
-            Math.min(amount * 3, 20)
+            Math.min(6, 3 + Math.ceil(amount / 4)),
+            { hit: true, radius: Math.hypot(rect.width, rect.height) / 2 + 8, target: side }
         );
     };
 
@@ -107,6 +166,7 @@
     };
 
     proto.shakeScreen = function (intensity, duration) {
+        if (global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
         const container = document.getElementById('game-container');
         if (!container) return;
         if (this._shakeTimer) uiCancelFrame(this._shakeTimer);
@@ -194,30 +254,39 @@
         return this._playD12Animation(roll);
     };
 
-    proto.burstParticles = function (x, y, color, count) {
+    proto.burstParticles = function (x, y, color, count, options = {}) {
+        if (global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const subtle = !!options.hit;
+        const radius = subtle ? Math.max(0, Number(options.radius) || 0) : 0;
+        if (subtle && ['player', 'ai', 'ai2'].includes(options.target)) {
+            document.querySelectorAll(`.burst-particle[data-hit-target="${options.target}"]`).forEach(el => el.remove());
+        }
         const particles = [];
         for (let i = 0; i < (count || 12); i++) {
             const angle = (Math.PI * 2 * i) / (count || 12) + (random() - 0.5) * 0.5;
-            const speed = 40 + random() * 80;
-            const size = 3 + random() * 4;
+            const speed = subtle ? 24 + random() * 24 : 40 + random() * 80;
+            const size = subtle ? 1.5 + random() : 3 + random() * 4;
             const el = document.createElement('div');
             el.className = 'burst-particle';
-            el.style.left = x + 'px'; el.style.top = y + 'px';
+            if (subtle) el.dataset.hitTarget = options.target || '';
+            el.style.left = (x + Math.cos(angle) * radius - (subtle ? size / 2 : 0)) + 'px';
+            el.style.top = (y + Math.sin(angle) * radius - (subtle ? size / 2 : 0)) + 'px';
             el.style.width = size + 'px'; el.style.height = size + 'px';
             el.style.background = color;
-            el.style.boxShadow = `0 0 ${size * 2}px ${color}`;
+            el.style.opacity = subtle ? '0.5' : '1';
+            el.style.boxShadow = `0 0 ${subtle ? 3 : size * 2}px ${color}`;
             document.body.appendChild(el);
             particles.push({ el, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1 });
         }
         const start = performance.now();
-        const dur = 600;
+        const dur = subtle ? 280 : 600;
         const tick = (now) => {
             const dt = Math.min(1,(now - start) / dur);
             const seconds = dt * dur / 1000;
             if (dt >= 1) { particles.forEach(p => p.el.remove()); return; }
             for (const p of particles) {
-                const px=p.vx*seconds,py=p.vy*seconds+60*seconds*seconds;p.life=1-dt;
-                p.el.style.opacity=p.life;
+                const px=p.vx*seconds,py=p.vy*seconds+(subtle ? 0 : 60)*seconds*seconds;p.life=1-dt;
+                p.el.style.opacity=p.life*(subtle ? 0.5 : 1);
                 p.el.style.transform=`translate(${px}px, ${py}px) scale(${p.life})`;
             }
             uiFrame(tick);
