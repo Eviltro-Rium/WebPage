@@ -366,7 +366,7 @@
       }
 
       this._syncPendingBeastPaymentDialog();
-      this._syncPendingHandDiscard();
+      this._cancelHandDiscardPickerIfNoPending();
       this._clearMapClickTimer();
       this._stopTipsRotation();
       if (this.eng.s && this.eng.s.phase === window.AdventurePhase.MAP && !this._test) {
@@ -394,6 +394,17 @@
       });
       if (window.AdventureUIViews && typeof window.AdventureUIViews.render === 'function') {
         window.AdventureUIViews.render(this, viewModel);
+      }
+      this._syncPendingHandDiscard();
+      if (typeof this._maybeAutoResolvePendingGlitchRoll === 'function') {
+        this._maybeAutoResolvePendingGlitchRoll();
+      }
+    }
+
+    _cancelHandDiscardPickerIfNoPending() {
+      const pending = this.eng && this.eng.s && this.eng.s.pendingHandDiscard;
+      if (!pending && this._handDiscardPickerInst && this._handDiscardPickerInst.isActive()) {
+        this._handDiscardPickerInst.cancel(true);
       }
     }
 

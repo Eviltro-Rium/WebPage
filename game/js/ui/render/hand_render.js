@@ -11,6 +11,7 @@
             const s = this.state;
             const container = document.getElementById('player-hand');
             if (!container || !s || !s.playerHand) return;
+            this._renderReserveCards(container, s);
             const hideTrailing = this._hideTrailingCount(options, 'player');
             const pickerActive = !!(this._handDiscardPicker && this._handDiscardPicker.isActive());
             const canInteract = pickerActive || (s.onlineCanAct !== false && ['PLAYER_PLAY', 'PLAYER_DEFEND', 'PLAYER_FIVE_CHOICE',
@@ -250,6 +251,82 @@
                 this.dialogs.showChanFiveDialog(s);
             }
             if (pickerActive) this._handDiscardPicker.bindHand(container);
+        },
+
+        _ensurePlayerHandLayout(container) {
+            const zone = container && container.closest ? container.closest('.player-hand-zone') : null;
+            if (!zone) return null;
+            let layout = zone.querySelector('.player-hand-layout');
+            if (!layout) {
+                layout = document.createElement('div');
+                layout.className = 'player-hand-layout';
+                zone.insertBefore(layout, container);
+                layout.appendChild(container);
+            }
+            let reserve = layout.querySelector('#player-reserve') || layout.querySelector('.reserve-zone');
+            if (!reserve) {
+                reserve = document.createElement('div');
+                reserve.className = 'reserve-zone';
+                reserve.id = 'player-reserve';
+                reserve.hidden = true;
+                layout.appendChild(reserve);
+            }
+            return reserve;
+        },
+
+        _renderReserveCards(container, s) {
+            const reserve = this._ensurePlayerHandLayout(container);
+            if (!reserve) return;
+            const cards = s.isAdventure && Array.isArray(s.reserveCards) ? s.reserveCards : [];
+            if (!cards.length) {
+                if (reserve.hidden || reserve._reserveCloseTimer) return;
+                reserve.setAttribute('aria-hidden', 'true');
+                reserve.classList.add('is-closing');
+                reserve.classList.remove('is-open');
+                const finish = () => {
+                    reserve._reserveCloseTimer = null;
+                    reserve.hidden = true;
+                    reserve.replaceChildren();
+                    reserve.classList.remove('is-closing');
+                };
+                if (global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches) finish();
+                else reserve._reserveCloseTimer = global.setTimeout(finish, 300);
+                return;
+            }
+            if (reserve._reserveCloseTimer) {
+                global.clearTimeout(reserve._reserveCloseTimer);
+                reserve._reserveCloseTimer = null;
+            }
+            const opening = reserve.hidden;
+            reserve.hidden = false;
+            reserve.removeAttribute('aria-hidden');
+            reserve.classList.remove('is-closing');
+            reserve.replaceChildren();
+            const content = document.createElement('div');
+            content.className = 'reserve-content';
+            reserve.appendChild(content);
+            const label = document.createElement('div');
+            label.className = 'reserve-title';
+            label.textContent = '储备区' + (cards.length > 1 ? '（' + cards.length + '/3）' : '');
+            content.appendChild(label);
+            const slot = document.createElement('div');
+            slot.className = 'reserve-slot';
+            content.appendChild(slot);
+            const [width, height] = currentCardSize();
+            cards.slice(0, 3).forEach((card, index) => {
+                const selected = s.selectedReserveIndex === index;
+                const canvas = renderCard(card, width, height, selected);
+                const enabled = !this._handDiscardPicker && !s.needColorChoice && s.onlineCanAct !== false && ['PLAYER_PLAY','PLAYER_DEFEND'].includes(s.phase) && !s.unblockDefend && (!s.legalReserve || s.legalReserve[index] !== false);
+                if (!enabled) canvas.classList.add('disabled');
+                if (enabled) canvas.addEventListener('click', () => { void this._apiAction('selectReserveCard', { index }); });
+                canvas.addEventListener('mouseenter', () => this._showTooltip(card, canvas, s.phase === 'PLAYER_DEFEND'));
+                canvas.addEventListener('mouseleave', () => this._hideTooltip());
+                slot.appendChild(canvas);
+            });
+            // Establish the collapsed layout once so the first card opens the
+            // area smoothly; ordinary re-renders keep the current transition.
+            if (opening) void reserve.offsetHeight;
+            reserve.classList.add('is-open');
         },
 
         _resolveHandSkillDesc(charName, card, isDefend, adventureOpts) {

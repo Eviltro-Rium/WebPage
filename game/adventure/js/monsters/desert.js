@@ -14,16 +14,22 @@
   if (!R) return;
 
   window.AdventureBossPool = window.AdventureBossPool || {};
-  // 鬣狗和索贝克从 Stage 1 出现，只有法老从 Stage 2 起出现。
+  // 鬣狗和索贝克从 Stage 1 出现，只有法老从 Stage 3 起出现。
   window.AdventureBossPool.desert = {
     1: ['DesertHyena', 'DesertSobek'],
-    2: ['Pharaoh', 'DesertHyena', 'DesertSobek'],
+    2: ['DesertHyena', 'DesertSobek'],
     3: ['Pharaoh', 'DesertHyena', 'DesertSobek'],
     4: ['Pharaoh', 'DesertHyena', 'DesertSobek']
   };
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
-  window.AdventureMonsterPool.desert = { '*': ['DesertBison', 'DesertCamel', 'DesertLizard', 'DesertSandworm', 'DesertScarab', 'DesertScorpion', 'DesertViper', 'DesertAntlion', 'DesertVulture'] };
+  window.AdventureMonsterPool.desert = { '*': ['DesertBison', 'DesertSandworm', 'DesertScarab', 'DesertScorpion', 'DesertViper', 'DesertVulture'] };
+
+  window.AdventureElitePool = window.AdventureElitePool || {};
+  window.AdventureElitePool.desert = {
+    3: ['DesertLizard', 'DesertAntlion', 'DesertCamel'],
+    4: ['DesertLizard', 'DesertAntlion', 'DesertCamel']
+  };
 
   // ===== 沙暴蛮牛 =====
   // 进攻1/2/3：造成2×玩家[流血]层数伤害
@@ -86,13 +92,14 @@
   // ===== 旱海驼 =====
   // 被动：先手攻击（firstStrike，battle_engine 开场跳过玩家补牌、对手先行进攻）
   // 进攻1/2/3：造成3点伤害，施加2层沙盲
-  // 进攻4/5/6：造成5点伤害，施加1层荆棘
+  // 进攻4/5/6：造成6点伤害，施加1层荆棘
   // 防御1/2/3：格挡一半伤害（向上取整）
   // stage4：防御1/2/3 额外施加1层荆棘
   R.registerMonster({
     name: 'DesertCamel',
     kind: '旱海驼',
-    hp: 20,
+    hp: 32,
+    minStage: 3,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/desert_camel.webp',
@@ -100,7 +107,7 @@
     attackDamage(card) {
       const v = card && card.value;
       if (v >= 1 && v <= 3) return 3;
-      if (v >= 4 && v <= 6) return 5;
+      if (v >= 4 && v <= 6) return 6;
       return 0;
     },
     // 进攻1/2/3：施加2层沙盲
@@ -118,15 +125,6 @@
       return 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
-      3: orig => ({
-        // 进攻1/2/3技能伤害+1（4/5/6不变）
-        attackDamage(card, ctx) {
-          const v = card && card.value;
-          if (v >= 1 && v <= 3) return orig.attackDamage(card, ctx) + 1;
-          return orig.attackDamage(card, ctx);
-        }
-      }),
       4: orig => ({
         // 防御1/2/3：额外施加1层荆棘
         defendThorns(card) {
@@ -143,10 +141,12 @@
   R.registerMonster({
     name: 'DesertLizard',
     kind: '日光鬣蜥',
-    hp: 20,
+    hp: 30,
+    minStage: 3,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/desert_lizard.webp',
+    defendEscape(card) { return !!(card && card.isNumberCard && card.value === 0); },
     attackDamage(card) {
       const v = card && card.value;
       if (v >= 1 && v <= 3) return 3;
@@ -168,17 +168,7 @@
       return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 2 : 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
-      3: orig => ({
-        attackSandblind(card) {
-          return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 2 : 0;
-        }
-      }),
-      4: orig => ({
-        defendBlock(card, incoming) {
-          return Math.min(orig.defendBlock(card, incoming) + 1, incoming || 0);
-        }
-      })
+      4: () => ({ defendCounter(card) { return card && card.isNumberCard && card.value >= 1 && card.value <= 3 ? 1 : 0; } })
     }
   });
 
@@ -360,8 +350,8 @@
   R.registerMonster({
     name: 'DesertAntlion',
     kind: '漏斗蚁狮',
-    hp: 24,
-    minStage: 2,
+    hp: 30,
+    minStage: 3,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/desert_antlion.webp',
@@ -379,21 +369,15 @@
     },
     defendBlock(card, incoming) {
       if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return 0;
-      return Math.ceil(Math.max(0, Number(incoming) || 0) / 2);
+      return Math.min(2, Math.max(0, Number(incoming) || 0));
     },
     defendThorns(card) {
       return card && card.isNumberCard && card.value >= 1 && card.value <= 3 ? 1 : 0;
     },
     stageMods: {
-      3: orig => ({
-        attackDamage(card, ctx) {
-          const damage = orig.attackDamage(card, ctx);
-          return damage > 0 ? damage + 1 : 0;
-        }
-      }),
       4: () => ({
         defendCounter(card) {
-          return card && card.isNumberCard && card.value >= 1 && card.value <= 3 ? 1 : 0;
+          return card && card.isNumberCard && card.value >= 1 && card.value <= 3 ? 2 : 0;
         }
       })
     }
@@ -455,7 +439,7 @@
     }
   });
 
-  // ===== 法老（Boss，Stage 2 起） =====
+  // ===== 法老（Boss，Stage 3 起） =====
   // 进攻1/2/3：造成3点伤害，按技能牌颜色：🔴施加2层[灼伤] / 🟡施加[流沙] / 🔵施加[失温] / 🟢自身获得[茂盛]
   // 进攻4/5/6：造成6点伤害，技能牌为🟡时不可防御
   // 进攻0：恢复3点生命，清除自身所有负面状态，抽取2张牌（不造成伤害，跳过玩家防御）
@@ -469,7 +453,7 @@
   R.registerBoss({
     name: 'Pharaoh',
     kind: '法老',
-    minStage: 2,
+    minStage: 3,
     hp: 50,
     attack: 3,
     defense: 2,
@@ -477,7 +461,7 @@
     whiteZeros: 2,
     icon: '../icons/npc_icons/pharaoh.webp',
     attackDamage(card) {
-      if (isPharaohLow(card)) return 3;
+      if (isPharaohLow(card)) return 4;
       if (isPharaohHigh(card)) return 6;
       return 0;
     },
@@ -527,12 +511,6 @@
       return isPharaohZero(card);
     },
     stageMods: {
-      3: orig => ({
-        attackDamage(card, ctx) {
-          const damage = orig.attackDamage(card, ctx);
-          return damage > 0 ? damage + 1 : 0;
-        }
-      }),
       4: orig => ({
         defendHeal(card) {
           const amount = orig.defendHeal(card);
@@ -678,8 +656,8 @@
     whiteZeros: 2,
     icon: '../icons/npc_icons/desert_sobek.webp',
     attackDamage(card, ctx) {
-      if (isSobekLow(card)) return 3;
-      if (isSobekHigh(card)) return 5;
+      if (isSobekLow(card)) return 4;
+      if (isSobekHigh(card)) return 6;
       if (isSobekZero(card)) {
         // Prefer playerPositiveBuffStacks (positive only). Do not use playerBuffTotal
         // (that mixes debuffs). Bridge applies mutual lush before counting on 0.
@@ -738,10 +716,9 @@
           return damage > 0 ? damage + 1 : 0;
         }
       }),
-      4: orig => ({
-        defendHeal(card) {
-          const amount = orig.defendHeal(card);
-          return amount > 0 ? amount + 1 : 0;
+      4: () => ({
+        defendLush(card) {
+          return (isSobekLow(card) || isSobekZero(card)) && sobekColor(card) === 'GREEN' ? 1 : 0;
         }
       })
     }

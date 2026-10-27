@@ -269,14 +269,12 @@ test('real glitch page buttons honor dice control, mandatory discard and combat 
   ctx.FurryGame.CombatRuntime.setRandomSource(() => 2.5 / 12);
   ui.container.querySelector('#adv-glitch-roll').click();
   ctx.FurryGame.CombatRuntime.resetRandomSource();
-  assert.equal(ui.container.querySelector('.adv-glitch-die strong').textContent, '3');
-  assert.equal(ui.container.querySelectorAll('.adv-glitch-outcome').length, 6);
-  ui.container.querySelector('#adv-glitch-resolve').click();
+  await new Promise(resolve => globalThis.setTimeout(resolve, 0));
   assert.equal(ui.container.querySelector('#adv-glitch-leave'), null);
   ui.container.querySelector('[data-glitch-discard] img').click();
   assert.ok(ui.container.querySelector('#adv-glitch-leave'));
   ui.eng = engine(ctx); roll(ctx, ui.eng, 1); ui.render();
-  ui.container.querySelector('#adv-glitch-resolve').click();
+  await ui._finishGlitchRoll();
   assert.equal(launches, 1);
   dom.window.close();
 });

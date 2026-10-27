@@ -290,6 +290,34 @@ async _playDiscardManyAnimation(evt) {
     } finally { this._repaintOwnerHand(owner); }
 },
 
+async _playBorrowedCardAnimation(evt, remaining = 0) {
+    const owner = evt && evt.fromOwner === 'ai2' ? 'ai2' : 'ai';
+    const opponentHand = document.getElementById(owner + '-hand');
+    const playerHand = document.getElementById('player-hand');
+    if (!evt || !evt.card || !opponentHand || !playerHand) {
+        this._repaintOwnerHand(owner);
+        this._renderPlayerHand({ hideTrailing: remaining });
+        return;
+    }
+    const oldHand = this._prevState && this._prevState[owner === 'ai2' ? 'ai2Hand' : 'aiHand'];
+    const nodes = Array.from(opponentHand.querySelectorAll('.card-canvas'));
+    const oldHandVisible = !Array.isArray(oldHand) || nodes.length === oldHand.length;
+    const indexed = oldHandVisible && Number.isInteger(Number(evt.handIndex))
+        ? nodes.find(node => Number(node.dataset.aiIndex) === Number(evt.handIndex)) : null;
+    const indexedMatches = indexed && (indexed.dataset.cardId === cardId(evt.card) || indexed.dataset.cardMatch === cardMatchKey(evt.card));
+    const sourceCard = oldHandVisible ? (indexedMatches ? indexed : this._findHandCardElement(opponentHand, evt.card)) : null;
+    const origin = sourceCard || opponentHand;
+    this._renderPlayerHand({ hideTrailing: remaining + 1 });
+    if (sourceCard) sourceCard.style.visibility = 'hidden';
+    try {
+        await this.anim.flyCard(evt.card, origin, playerHand, animDuration(this, 500), 56, owner);
+    } finally {
+        if (sourceCard) sourceCard.remove();
+        this._repaintOwnerHand(owner);
+        this._renderPlayerHand({ hideTrailing: remaining });
+    }
+},
+
 async _playAttackRecycleAnimation(evt, remaining = 0) {
     const card = evt && evt.card;
     const discard = document.getElementById('discard-top');

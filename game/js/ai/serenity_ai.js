@@ -5,7 +5,7 @@
     attackScore(eng, v, c, x) {
       const bloodthirst = !!(x.self && x.self.bloodthirst) || x.hpPct < 30;
       if (v === 0) {
-        const healValue = Math.min(10, 1 + x.handSize * 3);
+        const healValue = Math.min(9, x.handSize * 3);
         const resetValue = bloodthirst ? x.oppHand * 4 : 0;
         return 48 + Math.min(28, x.missingHp + healValue) + resetValue;
       }
@@ -14,7 +14,7 @@
       if (v === 4) return bloodthirst ? 77 : 58;
       if (v === 2) return bloodthirst ? 71 : 50;
       if (v === 1) return bloodthirst ? 58 : (50 + Math.min(12, x.missingHp));
-      if (v === 5) return x.missingHp >= 4 ? 56 : 46;
+      if (v === 5) return x.missingHp >= 3 ? 56 : 46;
       if (v === 3) return bloodthirst ? 68 : 44;
       return null;
     },
@@ -57,8 +57,8 @@
       // relies on a UI-side `target` variable and loses discarded cards.
       if (v === 0) {
         const own = helpers.selfHand;
-        const healValue = 1 + Math.min(9, own.length * 3);
-        helpers.healSelf(healValue);
+        const healValue = Math.min(9, own.length * 3);
+        if (healValue > 0) helpers.healSelf(healValue);
         const ownDiscard = own.splice(0, own.length);
         eng.discardManyWithEvent(ownDiscard, owner, { desc: `Serenity 0牌弃掉自己全部${ownDiscard.length}张手牌` });
 

@@ -49,9 +49,10 @@ test('DesertLizard base stats and pool', () => {
   const m = getMonster('DesertLizard');
   assert.ok(m);
   assert.equal(m.kind, '日光鬣蜥');
-  assert.equal(m.hp, 20);
+  assert.equal(m.hp, 30);
   assert.equal(m.icon, '../icons/npc_icons/desert_lizard.webp');
-  assert.ok(context.AdventureMonsterPool.desert['*'].includes('DesertLizard'));
+  assert.ok(!context.AdventureMonsterPool.desert['*'].includes('DesertLizard'));
+  assert.ok(context.AdventureElitePool.desert[3].includes('DesertLizard'));
 });
 
 test('DesertLizard loot: 1-2 sandblind, 3-4 quicksand', () => {
@@ -97,13 +98,13 @@ test('DesertLizard defend: block cap 2 + 2 sandblind', () => {
 test('DesertLizard stage mods', () => {
   const m = getMonster('DesertLizard');
   const s2 = applyStageMods(m, 2);
-  assert.equal(s2.hp, 25);
+  assert.equal(s2.hp, 30);
   const s3 = applyStageMods(m, 3);
-  assert.equal(s3.attackSandblind(numCard(2)), 2);
+  assert.equal(s3.attackSandblind(numCard(2)), 1);
   assert.equal(s3.attackSandblind(numCard(5)), 0);
   assert.equal(s3.attackQuicksand(numCard(5)), 1);
   const s4 = applyStageMods(m, 4);
-  assert.equal(s4.defendBlock(numCard(2), 8), 3);
+  assert.equal(s4.defendBlock(numCard(2), 8), 2);
   assert.equal(s4.defendBlock(numCard(2), 2), 2);
 });
 
@@ -492,9 +493,9 @@ test('DesertVulture effect: 4/5/6 clears positive buffs', () => {
 test('DesertAntlion base stats, Stage gate, and WebP asset', () => {
   const m = getMonster('DesertAntlion');
   assert.equal(m.kind, '漏斗蚁狮');
-  assert.equal(m.hp, 24);
-  assert.equal(m.minStage, 2);
-  assert.ok(context.AdventureMonsterPool.desert['*'].includes(m.name));
+  assert.equal(m.hp, 30);
+  assert.equal(m.minStage, 3);
+  assert.ok(context.AdventureElitePool.desert[3].includes(m.name));
   assert.equal(m.icon, '../icons/npc_icons/desert_antlion.webp');
   assert.ok(fs.existsSync(path.join(gameRoot, 'icons/npc_icons/desert_antlion.webp')));
   assert.equal(fs.existsSync(path.join(gameRoot, 'icons/npc_icons/desert_antlion.png')), false);
@@ -504,18 +505,18 @@ test('DesertAntlion attacks and cumulative stages leave pass cards inert', () =>
   const m = getMonster('DesertAntlion');
   for (const stage of [2, 3, 4]) {
     const mod = applyStageMods(m, stage);
-    assert.equal(mod.hp, 24);
+    assert.equal(mod.hp, 30);
     for (const value of [1, 2, 3]) {
-      assert.equal(mod.attackDamage(numCard(value)), stage >= 3 ? 4 : 3);
+      assert.equal(mod.attackDamage(numCard(value)), 3);
       assert.equal(mod.attackUnblockableIfBuff(numCard(value), {quicksand:0}), false);
       assert.equal(mod.attackUnblockableIfBuff(numCard(value), {quicksand:1}), true);
       assert.equal(mod.attackQuicksand(numCard(value)), 0);
       assert.equal(mod.defendThorns(numCard(value)), 1);
-      for (const damage of [0,1,2,3,5,8]) assert.equal(mod.defendBlock(numCard(value),damage), Math.ceil(damage/2));
-      assert.equal(typeof mod.defendCounter==='function' ? mod.defendCounter(numCard(value)) : 0, stage>=4 ? 1:0);
+      for (const damage of [0,1,2,3,5,8]) assert.equal(mod.defendBlock(numCard(value),damage), Math.min(2,damage));
+      assert.equal(typeof mod.defendCounter==='function' ? mod.defendCounter(numCard(value)) : 0, stage>=4 ? 2:0);
     }
     for (const value of [4,5,6]) {
-      assert.equal(mod.attackDamage(numCard(value)), stage >= 3 ? 6:5);
+      assert.equal(mod.attackDamage(numCard(value)), 5);
       assert.equal(mod.attackQuicksand(numCard(value)),1);
       assert.equal(mod.defendBlock(numCard(value),8),0);
       assert.equal(mod.defendThorns(numCard(value)),0);
@@ -577,7 +578,7 @@ test('DesertAntlion attack status applies after damage and only to its target', 
   assert.equal(low.unblock,true);
 });
 
-test('DesertAntlion defense halves rounded up, thorns targets attacker, Stage4 counters once', t => {
+test('DesertAntlion defense blocks two, thorns targets attacker, Stage4 counters once', t => {
   const eng=stagedEngine(t,'DesertAntlion',4);
   const hp=eng.s.player.hp;
   eng.events=[];
@@ -585,8 +586,8 @@ test('DesertAntlion defense halves rounded up, thorns targets attacker, Stage4 c
     heal:(x,n)=>eng.heal(x,n),hurt:(x,n)=>eng.hurt(x,n),
     poison:(x,n)=>eng.poison(x,n),bleed:(x,n)=>eng.bleed(x,n)
   });
-  assert.equal(result.remaining,2);
-  assert.equal(eng.s.player.hp,hp-1);
+  assert.equal(result.remaining,3);
+  assert.equal(eng.s.player.hp,hp-2);
   assert.equal(eng.s.player.thorns,1);
   assert.equal(eng.s.ai.thorns,0);
   assert.equal(eng.events.filter(e=>e.type==='hit').length,1);
@@ -616,15 +617,15 @@ test('DesertViper Stage4 defense adds two poison with the status cap intact', t 
   assert.equal(eng.s.ai.poison,0);
 });
 
-test('Stage1 desert room picks exclude Viper/Antlion; Stage2 permits both', () => {
+test('desert normal rooms allow Viper from Stage2 and exclude all elite monsters', () => {
   const file=path.join(gameRoot,'adventure/js/engine/adventure_engine.js');
   vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:file});
-  const eng=new context.AdventureEngine();eng.s={scene:'desert',stage:1};
-  for(const name of ['DesertViper','DesertAntlion']) {
-    assert.equal(eng._isAvailableAtStage(getMonster(name),1),false);
-    assert.equal(eng._isAvailableAtStage(getMonster(name),2),true);
-    for(let i=0;i<50;i++)assert.ok(!['DesertViper','DesertAntlion'].includes(eng._pickMonsterName({monsterName:name})));
-    eng.s.stage=2;assert.equal(eng._pickMonsterName({monsterName:name}),name);eng.s.stage=1;
+  const eng=new context.AdventureEngine();
+  for (const stage of [1,2,3,4]) {
+    eng.s={scene:'desert',stage};
+    const names=eng._encounterNames('monster');
+    assert.equal(names.includes('DesertViper'),stage>=2);
+    for (const name of ['DesertAntlion','DesertCamel','DesertLizard']) assert.ok(!names.includes(name));
   }
 });
 
@@ -632,10 +633,10 @@ test('Viper/Antlion combat and codex descriptions match Stage2/3/4 rules', () =>
   const describe=AdventureMonsterBridge.getAdventureNpcSkillDesc;
   for(const stage of [2,3,4]) {
     assert.match(describe('DesertAntlion',numCard(2),false,{stage}),/流沙.*不可防御/);
-    assert.match(describe('DesertAntlion',numCard(5),false,{stage}),new RegExp((stage>=3 ? 6:5)+'🗡️.*流沙'));
-    assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/半数伤害/);
+    assert.match(describe('DesertAntlion',numCard(5),false,{stage}),new RegExp(5+'🗡️.*流沙'));
+    assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/格挡2/);
     assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/荆棘/);
-    if(stage>=4)assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/反击1🗡️/);
+    if(stage>=4)assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/反击2🗡️/);
     assert.match(describe('DesertViper',numCard(5),false,{stage}),new RegExp('吸'+(stage>=3 ? 3:2)+'\\+玩家.*中毒'));
     assert.match(describe('DesertViper',numCard(2),true,{stage}),new RegExp(stage>=4 ? '施加2层.*中毒' : '施加\\[中毒\\]'));
   }

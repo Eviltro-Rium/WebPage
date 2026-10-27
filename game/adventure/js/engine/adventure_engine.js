@@ -156,6 +156,7 @@
         consumables: opts.consumables ? opts.consumables.slice() : [],
         trophyWhiteCards: opts.trophyWhiteCards ? opts.trophyWhiteCards.slice() : [],
         accessories: opts.accessories ? opts.accessories.slice() : [],
+        magazineReserve: [],
         playerPile: null,
         discardTop: null,
         discardTopOwner: null,
@@ -267,7 +268,8 @@
         pendingMapReturnEffects: clone(save.pendingMapReturnEffects) || null,
         pendingMapRecoveries: clone(save.pendingMapRecoveries) || [],
         serenityDiscardRecoveryVersion: save.serenityDiscardRecoveryVersion == null ? 0 : save.serenityDiscardRecoveryVersion,
-        pendingBeastPayment: clone(save.pendingBeastPayment) || null
+        pendingBeastPayment: clone(save.pendingBeastPayment) || null,
+        magazineReserve: clone(save.magazineReserve) || []
       };
 
       this.s.currency.gold = save.currency.gold || 0;

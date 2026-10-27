@@ -70,15 +70,15 @@ test('ForestPython 4/5/6 and 0 attackDamage uses current (after-apply) poison st
   assert.equal(m.attackDamage(numCard(5), { playerPoison: 3 }), 6);
 });
 
-test('ForestPython 1/2/3 attack damage is face value; poison apply on 0-6', () => {
+test('ForestPython 1/2/3 deal two without poison; only 0/4/5/6 apply poison', () => {
   const m = getBoss('ForestPython');
-  assert.equal(m.attackDamage(numCard(1), { playerPoison: 2 }), 1);
+  assert.equal(m.attackDamage(numCard(1), { playerPoison: 2 }), 2);
   assert.equal(m.attackDamage(numCard(2), { playerPoison: 2 }), 2);
-  assert.equal(m.attackDamage(numCard(3), { playerPoison: 2 }), 3);
-  for (const v of [0, 1, 2, 3, 4, 5, 6]) {
+  assert.equal(m.attackDamage(numCard(3), { playerPoison: 2 }), 2);
+  for (const v of [0, 4, 5, 6]) {
     assert.equal(m.attackPoison(numCard(v)), 1, 'attackPoison ' + v);
   }
-  assert.equal(m.attackPoison(numCard(2)), 1);
+  assert.equal(m.attackPoison(numCard(2)), 0);
   assert.equal(m.attackPoison(numCard(5)), 1);
   assert.equal(m.attackUnblockable(numCard(0)), true);
   assert.equal(m.attackUnblockable(numCard(5)), false);
@@ -110,19 +110,21 @@ test('ForestPython stage3: +1 only for 0/1/2/3; 4/5/6 unchanged', () => {
   assert.equal(s3.attackDamage(numCard(5), { playerPoison: 0 }), 0);
   assert.equal(s3.attackDamage(numCard(5), { playerPoison: 1 }), 3);
   assert.equal(s3.attackDamage(numCard(2), { playerPoison: 0 }), 3); // 2+1
-  assert.equal(s3.attackDamage(numCard(1), { playerPoison: 0 }), 2);
-  assert.equal(s3.attackDamage(numCard(3), { playerPoison: 0 }), 4);
+  assert.equal(s3.attackDamage(numCard(1), { playerPoison: 0 }), 3);
+  assert.equal(s3.attackDamage(numCard(3), { playerPoison: 0 }), 3);
   assert.equal(s3.attackDamage(numCard(0), { playerPoison: 0 }), 1); // 0+1
   assert.equal(s3.attackDamage(numCard(0), { playerPoison: 1 }), 4); // 3+1
   assert.equal(s3.attackDamage(numCard(0), { playerPoison: 2 }), 7); // 6+1
 });
 
-test('ForestPython stage4: defendCounter +1 (incl. 0→1 for split)', () => {
+test('ForestPython stage4: defense heals one and leaves counters unchanged', () => {
   const m = getBoss('ForestPython');
   const s4 = applyStageMods(m, 4);
-  assert.equal(s4.defendCounter(numCard(1)), 2);
-  assert.equal(s4.defendCounter(numCard(3)), 4);
-  assert.equal(s4.defendCounter(numCard(0)), 1);
+  assert.equal(s4.defendCounter(numCard(1)), 1);
+  assert.equal(s4.defendCounter(numCard(3)), 3);
+  assert.equal(s4.defendCounter(numCard(0)), 0);
+  assert.equal(s4.defendHeal(numCard(0)), 1);
+  assert.equal(s4.defendHeal(numCard(2)), 1);
 });
 
 test('ForestPython 5 via effect: poison applied early then damage 3 from 0 stacks', (t) => {

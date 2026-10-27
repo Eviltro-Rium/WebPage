@@ -7,7 +7,7 @@
     <title>地牢冒险 · Furry Trial</title>
     <link rel="icon" href="../../favicon-ryan.webp" type="image/webp">
     <link rel="apple-touch-icon" href="../../favicon-ryan.webp">
-    <link rel="stylesheet" href="../css/game.css?v=20261027-loot-dice-sheet">
+    <link rel="stylesheet" href="../css/game.css?v=20261028-reserve-transition">
     <link rel="stylesheet" href="css/adventure.css?v=20261027-settlement-scroll">
     <style>
         /* Keep the initial/test screens on the shared game-home background.
@@ -62,7 +62,7 @@
     <script src="../js/combat/state.js?v=20261018-hand-discard"></script>
     <script src="../js/combat/deck.js"></script>
     <script src="../js/combat/piles.js"></script>
-    <script src="../js/combat/invariants.js"></script>
+    <script src="../js/combat/invariants.js?v=20261027-magazine"></script>
     <script src="../js/combat/status_registry.js?v=20261027-recovered"></script>
     <script src="../js/combat/status_service.js?v=20261016-thorns-triggers"></script>
     <script src="../js/combat/status.js?v=20261027-recovered"></script>
@@ -84,7 +84,7 @@
     <script src="../js/combat/engine_lord.js?v=20261004-quicksand"></script>
     <script src="../js/combat/bridge.js"></script>
     <script src="../js/combat/session.js"></script>
-    <script src="../js/ui/skills.js?v=20261027-blaze-four"></script>
+    <script src="../js/ui/skills.js?v=20261027-forest-elites"></script>
     <script src="../js/ui/dialogs.js?v=20261027-recovered"></script>
     <script src="../js/ui/card_style.js?v=20261019-ivory-white-cards"></script>
     <script src="../js/ui/ui_core.js?v=20261027-recovered"></script>
@@ -93,34 +93,34 @@
     <script src="../js/ui/render/home_screen.js"></script>
     <script src="../js/ui/render/combat_screen.js?v=20261018-hand-discard"></script>
     <script src="../js/ui/render/status_render.js?v=20261027-recovered"></script>
-    <script src="../js/ui/hand_discard_picker.js?v=20261018-hand-discard"></script>
-    <script src="../js/ui/render/hand_render.js?v=20261018-hand-discard"></script>
+    <script src="../js/ui/hand_discard_picker.js?v=20261027-magazine"></script>
+    <script src="../js/ui/render/hand_render.js?v=20261028-reserve-transition"></script>
     <script src="../js/ui/render/adventure_bar.js?v=20261027-inventory-panel"></script>
     <script src="../js/ui/render/zone_render.js?v=20261027-loot-dice-sheet"></script>
     <script src="../js/ui/feedback.js?v=20261027-loot-dice-sheet"></script>
-    <script src="../js/ui/renderer.js?v=20261027-garbage-recycle"></script>
-    <script src="../js/ui/events.js?v=20261027-garbage-recycle"></script>
-    <script src="../js/ui/controls.js?v=20261027-garbage-recycle"></script>
+    <script src="../js/ui/renderer.js?v=20261027-chameleon-transfer"></script>
+    <script src="../js/ui/events.js?v=20261027-desert-elites"></script>
+    <script src="../js/ui/controls.js?v=20261027-magazine"></script>
     <script src="../js/ui/mode_1v2.js?v=20261018-hand-discard"></script>
     <script src="../js/ui/mode_lord.js"></script>
 
     <script src="js/content/registry.js?v=20261021-npc-zero"></script>
-    <script src="js/content/stage_guide.js?v=20261027-recovered"></script>
+    <script src="js/content/stage_guide.js?v=20261027-forest-elites"></script>
     <script src="js/content/currency.js?v=20261018-beast-pay-combos"></script>
-    <script src="js/content/room.js?v=20261021-glitch"></script>
+    <script src="js/content/room.js?v=20261027-desert-elites"></script>
     <script src="js/content/monster.js"></script>
     <script src="js/monsters/castle.js?v=20261027-recovered"></script>
-    <script src="js/monsters/forest.js?v=20261027-recovered"></script>
+    <script src="js/monsters/forest.js?v=20261027-forest-elites"></script>
     <script src="js/monsters/ocean.js?v=20261027-recovered"></script>
-    <script src="js/monsters/desert.js?v=20261027-recovered"></script>
+    <script src="js/monsters/desert.js?v=20261027-desert-elites"></script>
     <script src="js/monsters/volcano.js?v=20261027-recovered"></script>
     <script src="js/content/boss.js"></script>
-    <script src="js/content/monster_registry.js?v=20261021-npc-zero"></script>
-    <script src="js/items/item_defs.js?v=20261027-garbage-recycle"></script>
-    <script src="js/items/combat_effects.js?v=20261021-bind-target"></script>
+    <script src="js/content/monster_registry.js?v=20261027-forest-elites"></script>
+    <script src="js/items/item_defs.js?v=20261027-magician-webp"></script>
+    <script src="js/items/combat_effects.js?v=20261027-chameleon-transfer"></script>
     <script src="js/items/map_effects.js?v=20261027-recovered"></script>
     <script src="js/map/csv_loader.js"></script>
-    <script src="js/map/map_data.js?v=20261021-glitch"></script>
+    <script src="js/map/map_data.js?v=20261027-forest-elites"></script>
     <script src="js/map/map.js?v=20261021-glitch"></script>
     <script src="js/deck/adventure_deck.js?v=20261027-recovered"></script>
     <script src="js/deck/npc_strategy.js"></script>
@@ -129,15 +129,15 @@
     <script src="js/engine/shop.js?v=20261020-magician"></script>
     <script src="js/engine/rewards.js?v=20261027-recovered"></script>
     <script src="js/engine/inventory.js?v=20261027-recovered"></script>
-    <script src="js/engine/combat_result.js?v=20261027-recovered"></script>
+    <script src="js/engine/combat_result.js?v=20261027-desert-elites"></script>
     <script src="js/engine/glitch.js?v=20261027-recovered"></script>
-    <script src="js/battle/battle_engine.js?v=20261027-accessory-triggers"></script>
-    <script src="js/battle/adventure_battle_items.js?v=20261027-accessory-triggers"></script>
+    <script src="js/battle/battle_engine.js?v=20261027-desert-elites"></script>
+    <script src="js/battle/adventure_battle_items.js?v=20261027-magazine"></script>
     <script src="js/battle/dice_controller.js?v=20261027-loot-dice-sheet"></script>
     <script src="js/save/adventure_save.js?v=20261027-recovered"></script>
     <script src="js/ui/card_render.js"></script>
     <script src="js/battle/adventure_battle_session.js?v=20261016-defeat-save-reset"></script>
-    <script src="js/battle/adventure_battle_controller.js?v=20261027-settlement-scroll"></script>
+    <script src="js/battle/adventure_battle_controller.js?v=20261027-desert-elites"></script>
     <script src="js/ui/adventure_ui.js?v=20261027-recovered"></script>
     <script src="js/ui/adventure_ui_map_view.js?v=20261021-merchant-return"></script>
     <script src="js/ui/adventure_ui_panels.js?v=20261027-recovered"></script>
@@ -437,6 +437,6 @@
             });
         })();
     </script>
-    <script src="../js/version.js?v=3.2"></script>
+    <script src="../js/version.js?v=3.3"></script>
 </body>
 </html>

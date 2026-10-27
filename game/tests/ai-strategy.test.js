@@ -396,7 +396,7 @@ test('bloodthirst Serenity value 0 resets both hands without an undefined target
   const result = engine.aiSpecialEffect('Serenity', 0, number(0));
 
   assert.equal(result.skip, true);
-  assert.equal(engine.s.ai.hp, 27);
+  assert.equal(engine.s.ai.hp, 26);
   assert.equal(engine.h.ai.length, 4);
   assert.equal(engine.h.player.length, 1);
   assert.equal(engine.discardBottom.length, 4);

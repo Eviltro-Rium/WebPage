@@ -35,7 +35,10 @@
     const saved = session && typeof session.save === 'function' ? session.save(engine) : false;
     // Combat item/gold/HP changes live on the adventure engine. Persist them
     // with the fight snapshot so a refresh cannot restore spent consumables.
-    if (engine && engine._adventureEngine) saveAdventureProgress(engine._adventureEngine);
+    if (engine && engine._adventureEngine) {
+      if (typeof engine._syncMagazineReserveToAdventure === 'function') engine._syncMagazineReserveToAdventure();
+      saveAdventureProgress(engine._adventureEngine);
+    }
     return saved;
   }
 
@@ -715,8 +718,12 @@
 
       if (advEng) {
         advEng.applyBattleResult(persistentState);
-        advEng.onCombatEnd(playerWon ? 'win' : 'lose');
+        advEng.onCombatEnd(finalState.opponentEscaped ? 'escape' : playerWon ? 'win' : 'lose');
         if (playerWon) saveAdventureProgress(advEng);
+        if (finalState.opponentEscaped) {
+          schedule(() => leaveBattleToMap(finalState, persistentState, true), 180);
+          return;
+        }
         if (advEng.s.phase === window.AdventurePhase.CLEAR && advEng.s.stage >= 4) clearCombatSession();
         const completedRoom = typeof advEng.currentRoom === 'function' ? advEng.currentRoom() : null;
         if (playerWon && advEng.s.phase === window.AdventurePhase.MAP &&

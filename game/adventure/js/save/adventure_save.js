@@ -137,6 +137,7 @@
       consumables: (s.consumables || []).slice(),
       trophyWhiteCards: (s.trophyWhiteCards || []).slice(),
       accessories: (s.accessories || []).slice(),
+      magazineReserve: CLONE(s.magazineReserve) || [],
       beastReward: CLONE(s.beastReward) || null,
       beastSelection: CLONE(s.beastSelection) || [],
       pendingDiscard: s.pendingDiscard || 0,

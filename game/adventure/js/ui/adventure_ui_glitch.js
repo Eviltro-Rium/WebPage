@@ -16,7 +16,7 @@
       const busy = !!this._glitchRolling;
       let html = '<div class="adv-glitch-heading"><img src="../icons/adventure_ui_icons/glitch_room.webp" alt=""><div><div class="adv-glitch-kicker">异常信号</div><h2>故障房间</h2></div></div>';
       const intro = !event ? '投掷12面骰，抽取一次故障事件。也可暂时离开，稍后回来再投。'
-        : rolled ? '确认骰面后执行对应事件。' : '本房事件已触发，离开或刷新均不会重抽。';
+        : rolled ? '骰面已落定，事件即将触发。' : '本房事件已触发，离开或刷新均不会重抽。';
       html += '<p class="adv-glitch-intro">' + intro + '</p>';
       if (event) {
         html += '<div class="adv-glitch-die' + (busy ? ' rolling' : '') + '" aria-label="12面骰结果' + event.roll + '"><small>D12</small><strong>' + event.roll + '</strong></div>';
@@ -31,11 +31,11 @@
       if (!event) {
         html += '<div class="adv-glitch-actions"><button class="adv-btn adv-btn-primary" id="adv-glitch-roll">投掷事件骰</button><button class="adv-btn" id="adv-glitch-leave">暂时离开</button></div>';
       } else if (rolled) {
-        if (this.eng.hasAccessory('Magician')) {
-          const canAdjust = !busy && this.eng.canAdjustGlitchDice();
-          html += '<div class="adv-glitch-actions"><button class="adv-btn" id="adv-glitch-minus"' + (canAdjust && event.roll > 1 ? '' : ' disabled') + '>−1</button><span>魔术师 · 消耗3点生命调整一次</span><button class="adv-btn" id="adv-glitch-plus"' + (canAdjust && event.roll < 12 ? '' : ' disabled') + '>+1</button></div>';
+        if (!busy && this.eng.hasAccessory('Magician') && this.eng.canAdjustGlitchDice()) {
+          html += '<div class="adv-glitch-actions"><button class="adv-btn" id="adv-glitch-minus"' + (event.roll > 1 ? '' : ' disabled') + '>−1</button><span>魔术师 · 消耗3点生命调整一次（须在事件触发前）</span><button class="adv-btn" id="adv-glitch-plus"' + (event.roll < 12 ? '' : ' disabled') + '>+1</button></div>';
+        } else if (busy) {
+          html += '<p class="adv-glitch-note">骰子判定中…</p>';
         }
-        html += '<button class="adv-btn adv-btn-primary" id="adv-glitch-resolve"' + (busy ? ' disabled' : '') + '>' + (busy ? '骰子判定中…' : '确认并触发事件') + '</button>';
       } else {
         html += '<p class="adv-glitch-result" role="status">' + event.message + '</p>';
         if (['discard', 'overflow'].includes(event.status)) {
@@ -50,6 +50,30 @@
       page.innerHTML = html;
       return page;
     },
+    async _finishGlitchRoll() {
+      if (this._glitchResolving) return;
+      const event = this.eng.s && this.eng.currentRoom() && this.eng.currentRoom().glitchEvent;
+      if (!event || event.status !== 'rolled') return;
+      this._glitchResolving = true;
+      try {
+        const launched = this.eng.resolveGlitchEvent();
+        if (launched && this.eng.s.phase === window.AdventurePhase.PLAYER_PLAY) {
+          await this._startBridgeCombat();
+          return;
+        }
+        this.render();
+      } finally {
+        this._glitchResolving = false;
+      }
+    },
+    _maybeAutoResolvePendingGlitchRoll() {
+      if (this._glitchRolling || this._glitchResolving) return;
+      const phase = this.eng && this.eng.s && this.eng.s.phase;
+      if (phase !== window.AdventurePhase.GLITCH) return;
+      const event = this.eng.currentRoom() && this.eng.currentRoom().glitchEvent;
+      if (!event || event.status !== 'rolled') return;
+      void this._finishGlitchRoll();
+    },
     async _handleGlitchAction(button) {
       if (this._glitchRolling) return;
       const id = button.id;
@@ -60,14 +84,15 @@
         const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (!reduce) await new Promise(resolve => setTimeout(resolve, 600));
         this._glitchRolling = false;
-      } else if (id === 'adv-glitch-minus' || id === 'adv-glitch-plus') {
-        this.eng.adjustGlitchDice(id === 'adv-glitch-plus' ? 1 : -1);
-      } else if (id === 'adv-glitch-resolve') {
-        if (this.eng.resolveGlitchEvent() && this.eng.s.phase === window.AdventurePhase.PLAYER_PLAY) {
-          await this._startBridgeCombat();
-          return;
-        }
-      } else if (id === 'adv-glitch-leave') this.eng.leaveGlitchRoom();
+        await this._finishGlitchRoll();
+        return;
+      }
+      if (id === 'adv-glitch-minus' || id === 'adv-glitch-plus') {
+        if (!this.eng.adjustGlitchDice(id === 'adv-glitch-plus' ? 1 : -1)) return;
+        await this._finishGlitchRoll();
+        return;
+      }
+      if (id === 'adv-glitch-leave') this.eng.leaveGlitchRoom();
       else if (button.hasAttribute('data-glitch-discard')) this.eng.discardGlitchItem(Number(button.getAttribute('data-glitch-discard')));
       this.render();
     }

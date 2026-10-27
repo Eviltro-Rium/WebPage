@@ -19,7 +19,7 @@
       if (!room || this.s.phase !== Phase.GLITCH || room.glitchEvent) return false;
       const roll = 1 + Math.floor(random() * 12);
       room.glitchEvent = { status: 'rolled', roll, originalRoll: roll, adjusted: false };
-      this._log('故障房：投出' + roll + '，等待确认事件');
+      this._log('故障房：投出' + roll);
       this.emit('glitchRoll', '故障事件骰', { value: roll, sides: 12 });
       return true;
     },

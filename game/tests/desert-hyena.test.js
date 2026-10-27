@@ -72,7 +72,7 @@ test('DesertHyena base stats, boss pool, icon, whiteZeros', () => {
   const pool = context.AdventureBossPool.desert;
   for (const stage of [2, 3, 4]) {
     assert.ok(pool[stage].includes('DesertHyena'), 'stage ' + stage);
-    assert.ok(pool[stage].includes('Pharaoh'), 'Pharaoh still in stage ' + stage);
+    assert.equal(pool[stage].includes('Pharaoh'), stage >= 3);
   }
 });
 

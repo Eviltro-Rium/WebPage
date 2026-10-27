@@ -186,14 +186,14 @@
     displayName: '小药剂战利白卡',
     kind: 'trophyWhite',
     trophyKind: 'both',
-    description: '自身恢复3点生命。抽1张牌，可继续搭桥。',
+    description: '自身恢复2点生命。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/small_potion.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophySmallPotion',
     trophyEffect: 'smallPotion',
-    healAmount: 3,
-    beastTradeCost: ['cao', 'huo']
+    healAmount: 2,
+    beastTradeCost: ['cao', 'cao']
   });
 
   R.registerItem({
@@ -450,6 +450,18 @@
     useScene: 'both',
     price: 7,
     combatUse: 'cardMaster',
+    needsChoice: true
+  });
+
+  R.registerItem({
+    name: 'Magazine',
+    displayName: '弹夹',
+    kind: 'consumable',
+    description: '选择1张手牌放入储备区（至多3张，满时不可再用）；储备牌不计入手牌，可正常打出，且不受弃手牌影响。整局冒险保留至游戏结束。',
+    icon: ICON + 'magazine.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'magazine',
     needsChoice: true
   });
 
@@ -780,7 +792,7 @@
     displayName: '魔术师',
     kind: 'accessory',
     description: '每次12面骰判定出结果后可将骰面±1（夹在1–12），每次调整消耗3点生命；与遥控骰子互斥，先遥控再魔术师（最多1个）',
-    icon: ICON + 'magician.png',
+    icon: ICON + 'magician.webp',
     beastTradeCost: ['shui', 'shui', 'ben', 'wuneng'],
     price: 15,
     maxStacks: 1,
@@ -814,12 +826,13 @@
     name: 'TimeBombTrophy',
     displayName: '定时炸弹战利白卡',
     kind: 'trophyWhite',
-    trophyKind: 'drop',
+    trophyKind: 'forge',
     description: '对手获得[定时炸弹]。抽1张牌，可继续搭桥。',
     icon: '../icons/buff_icons/time_bomb.webp',
     useScene: 'combat',
     price: 5,
     combatUse: 'trophyBomb',
-    trophyEffect: 'bomb'
+    trophyEffect: 'bomb',
+    beastTradeCost: ['cao', 'huo']
   });
 })();

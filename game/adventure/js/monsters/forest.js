@@ -1,6 +1,6 @@
 /**
  * 丛林场景 · 怪物定义
- * 所有怪物在 Stage 1-4 均可出现，按 stage 强化（累积叠加）：
+ * 普通怪物按 stage 强化（累积叠加）；精英怪仅在 Stage 3/4 精英房出现：
  *   Stage 2：增加生命上限
  *   Stage 3：增加伤害
  *   Stage 4：加强防御
@@ -19,10 +19,12 @@
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.forest = {
-    '*': ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestLeech'],
-    2: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha', 'ForestLeech'],
-    3: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha', 'ForestLeech'],
-    4: ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestDendrobatidFrog', 'ForestLadybug', 'ForestCapybara', 'ForestRafflesia', 'ForestPiranha', 'ForestLeech']
+    '*': ['ForestMonkey', 'ForestDeer', 'ForestCrocodile', 'ForestLadybug', 'ForestRafflesia', 'ForestLeech']
+  };
+  window.AdventureElitePool = window.AdventureElitePool || {};
+  window.AdventureElitePool.forest = {
+    3: ['ForestDendrobatidFrog', 'ForestCapybara', 'ForestPiranha'],
+    4: ['ForestDendrobatidFrog', 'ForestCapybara', 'ForestPiranha']
   };
 
   // ===== 藤噪顽猴 =====
@@ -189,13 +191,14 @@
   R.registerMonster({
     name: 'ForestDendrobatidFrog',
     kind: '箭毒蛙',
-    hp: 18,
+    hp: 30,
+    minStage: 3,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/forest_dendrobatid_frog.webp',
     attackDamage(card, ctx) {
       const v = card.value;
-      if (v >= 1 && v <= 3) return 3;
+      if (v >= 1 && v <= 3) return 4;
       if (v >= 4 && v <= 6) return 4 + ((ctx && ctx.playerPoison) || 0);
       return 0;
     },
@@ -209,10 +212,11 @@
       if (v >= 1 && v <= 3) return v;
       return 0;
     },
+    defendPoison(card) {
+      return card.isNumberCard && card.value >= 1 && card.value <= 3 ? 1 : 0;
+    },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
-      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
-      4: orig => ({ defendCounter: (card, incoming) => orig.defendCounter(card, incoming) + 1 })
+      4: () => ({ defendHeal: card => card.isNumberCard && card.value >= 1 && card.value <= 3 ? 2 : 0 })
     }
   });
 
@@ -264,7 +268,8 @@
   R.registerMonster({
     name: 'ForestCapybara',
     kind: '静河水豚',
-    hp: 20,
+    hp: 32,
+    minStage: 3,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/forest_capybara.webp',
@@ -284,9 +289,7 @@
       return 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
-      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
-      4: orig => ({ defendBlock: (card, incoming) => Math.max(0, incoming - 1) })
+      4: () => ({ defendBlock: (card, incoming) => card.isNumberCard && card.value >= 1 && card.value <= 3 ? Math.max(0, incoming - 1) : 0 })
     }
   });
 
@@ -352,15 +355,15 @@
   R.registerMonster({
     name: 'ForestPiranha',
     kind: '食人鱼',
-    minStage: 2,
-    hp: 25,
+    minStage: 3,
+    hp: 30,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/forest_piranha.webp',
     attackDamage(card, ctx) {
       const v = card.value;
       if (v >= 1 && v <= 3) return ((ctx && ctx.playerBleed) || 0) * 2;
-      if (v >= 4 && v <= 6) return 2;
+      if (v >= 4 && v <= 6) return 4;
       return 0;
     },
     attackUnblockable(card) {
@@ -378,9 +381,10 @@
       return card.value >= 1 && card.value <= 3 ? 1 : 0;
     },
     stageMods: {
-
-      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
-      4: orig => ({ defendCounter: (card, incoming) => orig.defendCounter(card, incoming) + 1 })
+      4: () => ({
+        defendHeal: card => card.isNumberCard && card.value >= 1 && card.value <= 3 ? 1 : 0,
+        defendBleed: card => card.isNumberCard && card.value >= 1 && card.value <= 3 ? 2 : 0
+      })
     }
   });
 
@@ -455,7 +459,7 @@
     attackDamage(card, ctx) {
       const v = card.value;
       const poison = Number(ctx && ctx.playerPoison) || 0;
-      if (v >= 1 && v <= 3) return v;
+      if (v >= 1 && v <= 3) return 2;
       // ctx.playerPoison 须为 beforeDamage 施加后的实际层数（上限 2）；不再 +1
       if (v >= 4 && v <= 6 || v === 0) return 3 * Math.min(2, poison);
       return 0;
@@ -465,7 +469,6 @@
     },
     attackPoison(card) {
       const v = card.value;
-      if (v >= 1 && v <= 3) return 1;
       if (v >= 4 && v <= 6) return 1;
       if (v === 0) return 1;
       return 0;
@@ -501,8 +504,8 @@
           return base;
         }
       }),
-      // Stage4：1/2/3 反击 +1；0 均摊后额外反击 1（defendSplit 分支会读 defendCounter）
-      4: orig => ({ defendCounter: (card) => orig.defendCounter(card) + 1 })
+      // Stage4：低牌与0防御额外恢复1点生命。
+      4: () => ({ defendHeal: card => card.isNumberCard && (card.value === 0 || card.value >= 1 && card.value <= 3) ? 1 : 0 })
     }
   });
 
@@ -552,8 +555,7 @@
     },
     stageMods: {
 
-      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
-      4: orig => ({ defendBlock: (card, incoming) => orig.defendBlock(card, incoming) + 1 })
+      4: () => ({ defendCounter: card => card.isNumberCard && (card.value === 0 || card.value >= 1 && card.value <= 3) ? 1 : 0 })
     }
   });
 })();

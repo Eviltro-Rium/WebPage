@@ -45,6 +45,9 @@
     borrowed.borrowedFrom = targetKey;
     borrowed.borrowedMonsterName = eng.name(targetChar);
     eng.h.player.push(borrowed);
+    eng.emit('cardTransfer', '变色龙颜料：暂借对手手牌', borrowed, {
+      who: 'player', fromOwner: targetKey, from: 'hand', handIndex: index
+    });
     return { ok: true, message: '暂借' + borrowed.borrowedMonsterName + '的一张牌，加入玩家手牌' };
   });
 

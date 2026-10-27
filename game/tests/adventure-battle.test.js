@@ -286,7 +286,7 @@ test('NPC decks include two white 7 pass cards with no skill effect', () => {
 test('all ordinary NPC zero/seven and boss seven have no attack or defense effects at every stage', () => {
   const registry = context.AdventureRegistry;
   for (const mod of [...registry.allMonsters(), ...registry.allBosses()]) {
-    const values = registry.getBoss(mod.name) ? [7] : [0, 7];
+    const values = registry.getBoss(mod.name) ? [7] : (mod.defendEscape ? [7] : [0, 7]);
     assert.equal(mod.whiteZeros, 1);
     for (const stage of [1, 2, 3, 4]) {
       const engine = new AdventureBattleEngine();
@@ -1439,10 +1439,33 @@ test('Chameleon Paint borrows an NPC card with source metadata', () => {
   engine.s.phase = 'PLAYER_PLAY';
   engine.s.busy = false;
   engine.h.ai = [number(2, 'RED')];
+  engine.events = [];
   engine.useAdventureCombatItem(0, { target: 'ai', index: 0 });
   assert.equal(engine.h.player.at(-1).borrowedFrom, 'ai');
   assert.equal(engine.h.player.at(-1).borrowedMonster, true);
   assert.equal(engine._adventureEngine.s.consumables.length, 0);
+  const transfer = engine.events.find(evt => evt.type === 'cardTransfer');
+  assert.equal(transfer.fromOwner, 'ai');
+  assert.equal(transfer.handIndex, 0);
+  assert.equal(transfer.card.borrowedMonster, true);
+});
+
+test('Chameleon Paint emits the source and selected hand index for the second challenge opponent', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({player:'Leon', opponent1:'CastleWolf', opponent2:'CastleWolf', stage:1,
+    playerPile:{deck:[], hand:[], discard:[], handLimit:5}, discardTop:number(1, 'RED')});
+  engine._adventureEngine = {snapshot:() => ({consumables:[{name:'ChameleonPaint'}]}), s:{consumables:['ChameleonPaint']}};
+  engine.s.phase = 'PLAYER_PLAY'; engine.s.busy = false;
+  engine.h.ai2 = [number(1, 'RED'), number(2, 'BLUE')];
+  engine.events = [];
+  engine.useAdventureCombatItem(0, {target:'ai2', index:1});
+  const transfer = engine.events.find(evt => evt.type === 'cardTransfer');
+  assert.equal(transfer.fromOwner, 'ai2');
+  assert.equal(transfer.handIndex, 1);
+  assert.equal(transfer.card.value, 2);
+  assert.equal(engine.h.ai2.length, 1);
+  assert.equal(engine.h.player.at(-1).borrowedFrom, 'ai2');
 });
 
 test('borrowed NPC number card resolves NPC attack skill against its owner', () => {
@@ -2157,4 +2180,178 @@ test('Blaze trophy zero still hits the other challenge opponent when the target 
   assert.equal(engine.s.ai.hp, 0);
   assert.equal(engine.s.ai2.hp, 15);
   assert.equal(engine.s.ai2.burn, 2);
+});
+
+function magazineBattle(hand = [number(2, 'RED')]) {
+  const engine = start({deck:[], hand, discard:[], handLimit:5}, number(2, 'RED'));
+  engine.later = () => {};
+  const adv = {s:{consumables:['Magazine'], accessories:[], magazineReserve:[]},
+    snapshot() { return {consumables:this.s.consumables.map(name => ({name})), accessories:[]}; },
+    hasAccessory() { return false; },
+    applyBattleResult(result) {
+      if (Array.isArray(result.magazineReserve)) this.s.magazineReserve = JSON.parse(JSON.stringify(result.magazineReserve));
+    }};
+  engine._adventureEngine = adv;
+  engine.s.phase = 'PLAYER_PLAY'; engine.s.busy = false;
+  return engine;
+}
+
+function storeMagazine(engine, index = 0) {
+  engine.dispatch('useAdventureCombatItem', {itemIndex:0});
+  engine.dispatch('selectCard', {index});
+  engine.dispatch('doConfirmDiscard');
+}
+
+test('Magazine costs five and stores a card outside the hand without consuming on cancel', () => {
+  const def = context.AdventureRegistry.getItem('Magazine');
+  assert.equal(def.price, 5);
+  const engine = magazineBattle();
+  engine.dispatch('useAdventureCombatItem', {itemIndex:0});
+  engine.dispatch('doCancelDiscard');
+  assert.equal(engine._adventureEngine.s.consumables.length, 1);
+  storeMagazine(engine);
+  assert.equal(engine.h.player.length, 0);
+  assert.equal(engine.s.reserveCards.length, 1);
+  assert.equal(engine._adventureEngine.s.consumables.length, 0);
+  assert.equal(engine.state().playerHand.length, 0);
+  assert.equal(engine.state().reserveCards.length, 1);
+});
+
+test('Magazine cannot fill reserve beyond three cards', () => {
+  const engine = magazineBattle();
+  engine._adventureEngine.s.consumables = ['Magazine', 'Magazine', 'Magazine', 'Magazine'];
+  for (let i = 0; i < 3; i++) {
+    engine.h.player.push(number(i + 1, 'RED'));
+    engine.dispatch('useAdventureCombatItem', { itemIndex: 0 });
+    engine.dispatch('selectCard', { index: engine.h.player.length - 1 });
+    engine.dispatch('doConfirmDiscard');
+  }
+  assert.equal(engine.s.reserveCards.length, 3);
+  engine.h.player.push(number(9, 'RED'));
+  engine.dispatch('useAdventureCombatItem', { itemIndex: 0 });
+  assert.equal(engine._adventureEngine.s.consumables.length, 1);
+  assert.equal(engine.s.reserveCards.length, 3);
+});
+
+test('Magazine reserve card can be played with no normal cards in hand', () => {
+  const engine = magazineBattle();
+  storeMagazine(engine);
+  engine.dispatch('selectReserveCard', {index:0});
+  engine.dispatch('doPlay');
+  assert.equal(engine.s.reserveCards.length, 0);
+  assert.equal(engine.h.player.length, 0);
+  assert.equal(engine.s.atkCard.value, 2);
+});
+
+test('Magazine reserve is excluded from forced discard and persists after combat', () => {
+  const engine = magazineBattle();
+  storeMagazine(engine);
+  engine.s.pendingSerenitySixDiscard = true;
+  assert.equal(engine._openSerenitySixDiscardIfPending(), false);
+  assert.equal(engine.s.reserveCards.length, 1);
+  const result = engine.finishAdventureBattle();
+  assert.equal(result.playerPile.hand.length, 0);
+  assert.equal(result.magazineReserve.length, 1);
+  assert.equal(result.magazineReserve[0].value, 2);
+});
+
+test('Magazine reserve black card waits for color without entering the hand', () => {
+  const engine = magazineBattle([black()]);
+  storeMagazine(engine);
+  engine.dispatch('selectReserveCard', {index:0});
+  engine.dispatch('doPlay');
+  assert.equal(engine.s.needColorChoice, true);
+  assert.equal(engine.h.player.length, 0);
+  assert.equal(engine.s.reserveCards.length, 1);
+  engine.dispatch('chooseColor', {color:'BLUE'});
+  assert.equal(engine.s.reserveCards.length, 0);
+  assert.equal(engine.h.player.length, 0);
+  assert.equal(engine.s.discardTop.chosenColor, 'BLUE');
+});
+
+test('Magazine reserve can be used for defense', () => {
+  const engine = magazineBattle([number(1, 'RED')]);
+  storeMagazine(engine);
+  engine.s.phase = 'PLAYER_DEFEND';
+  engine.s.pendingAttack = {damage:4, unblock:false};
+  engine.s.atkOwner = 'ai'; engine.s.atkCard = number(1, 'RED');
+  engine.dispatch('selectReserveCard', {index:0});
+  engine.dispatch('doDefend');
+  assert.equal(engine.s.reserveCards.length, 0);
+  assert.equal(engine.h.player.length, 0);
+  assert.equal(engine.s.defCard.value, 1);
+});
+
+test('Magazine reserve survives battle end on the adventure run without entering hand', () => {
+  const engine = magazineBattle([number(9, 'RED')]);
+  storeMagazine(engine);
+  const adv = engine._adventureEngine;
+  const snapshot = JSON.parse(JSON.stringify({s:engine.s, piles:engine.piles, h:engine.h, events:engine.events, ver:engine.ver, tableTopOwner:engine.tableTopOwner}));
+  const restored = new AdventureBattleEngine();
+  restored._adventureEngine = adv;
+  restored.restoreSession(snapshot, adv, false);
+  assert.equal(restored.s.reserveCards.length, 1);
+  for (let i = 0; i < 5; i++) restored.h.player.push(number(i + 1, 'BLUE'));
+  const result = restored.finishAdventureBattle();
+  assert.equal(result.playerPile.hand.length, 5);
+  assert.deepEqual(result.magazineReserve.map(c => c.value), [9]);
+  adv.applyBattleResult(result);
+  assert.deepEqual(adv.s.magazineReserve.map(c => c.value), [9]);
+  assert.equal(result.playerPile.discard.some(c => c.value === 9 && c.color === 'RED'), false);
+});
+
+test('Magazine reserve card can attack the selected opponent in a challenge room', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({player:'Ryan', opponent1:'CastleWolf', opponent2:'CastleWolf', stage:1,
+    playerPile:{deck:[], hand:[number(2, 'RED')], discard:[], handLimit:5},
+    discardTop:number(2, 'RED'), discardTopOwner:'player'});
+  engine._adventureEngine = {s:{consumables:['Magazine'], accessories:[]},
+    snapshot() {return {consumables:this.s.consumables.map(name => ({name})), accessories:[]};},
+    hasAccessory() {return false;}};
+  engine.s.phase = 'PLAYER_PLAY'; engine.s.busy = false; engine.s.lordPlayerTargetIdx = 1;
+  storeMagazine(engine);
+  engine.dispatch('selectReserveCard', {index:0});
+  engine.dispatch('doPlay');
+  assert.equal(engine.s.reserveCards.length, 0);
+  assert.equal(engine.s.attackTarget, 'ai2');
+  assert.equal(engine.s.atkCard.value, 2);
+});
+
+test('DesertLizard defense zero escapes immediately with no hit or trophy rolls', () => {
+  const engine = new AdventureBattleEngine(); engine.later=()=>{};
+  engine.startAdventure({player:'Ryan', opponent:'DesertLizard',stage:3,
+    playerPile:{deck:[],hand:[number(2,'RED')],discard:[],handLimit:5},discardTop:number(2,'RED')});
+  engine.h.ai.splice(0,engine.h.ai.length,number(0,'WHITE',true));
+  const hp=engine.s.ai.hp;
+  engine.s.phase='PLAYER_PLAY';engine.s.busy=false;engine.s.selectedCard=0;
+  engine.events=[];
+  engine.dispatch('doPlay');
+  if(engine.s.phase==='ATTACK_MOD_CHOICE')engine.dispatch('resolveAttackModChoice',{bonus:0});
+  for(let i=0;i<6 && engine.s.phase!=='GAME_OVER';i++)engine.acknowledgeEvents(engine.ver);
+  assert.equal(engine.s.opponentEscaped,'ai', JSON.stringify({phase:engine.s.phase, events:engine.events,pending:engine.s.pendingAIDefense}));
+  assert.equal(engine.s.phase,'GAME_OVER');
+  assert.equal(engine.s.ai.hp,hp);
+  assert.equal(engine.pendingSettlement,null);
+  assert.equal(engine.s.trophyRolls.length,0);
+  engine.finishAdventureBattle();
+  assert.equal(engine.s.trophyRolls.length,0);
+});
+
+test('a defeated desert elite rolls twice and face ten grants DrawTwo each time', t => {
+  const oldLoot=context.AdventureLoot;
+  vm.runInContext(fs.readFileSync(path.join(gameRoot,'adventure/js/engine/loot.js'),'utf8'),context);
+  const runtime=context.FurryGame.CombatRuntime;
+  t.after(()=>{runtime.resetRandomSource();context.AdventureLoot=oldLoot;});
+  const engine=new AdventureBattleEngine();engine.later=()=>{};
+  engine.startAdventure({player:'Ryan',opponent:'DesertAntlion',stage:3,
+    playerPile:{deck:[],hand:[],discard:[],handLimit:5}});
+  engine.s.ai.hp=0;engine.s.ai.alive=false;
+  runtime.setRandomSource(()=>9/12);
+  engine._resolveAdventureTrophyDrop('ai');
+  assert.equal(engine.s.trophyRolls.length,2);
+  assert.deepEqual(Array.from(engine.s.trophyDrops),['DrawTwoTrophy','DrawTwoTrophy']);
+  assert.equal(engine.h.player.filter(c=>c.trophyName==='DrawTwoTrophy').length,2);
+  engine._resolveAdventureTrophyDrop('ai');
+  assert.equal(engine.s.trophyRolls.length,2,'drop cannot be repeated');
 });

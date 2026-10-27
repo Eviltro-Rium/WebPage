@@ -8,6 +8,7 @@
  */
 (function () {
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
+  const MAGAZINE_RESERVE_MAX = 3;
 
   function normalizePile(owner, source, fallbackDeck, handLimit) {
     const pile = source || {};
@@ -49,6 +50,20 @@
       this.tableTopOwner = null;
     }
 
+    _syncMagazineReserveToAdventure() {
+      const adv = this._adventureEngine;
+      if (!adv || !adv.s || !this.s) return;
+      const cards = Array.isArray(this.s.reserveCards) ? this.s.reserveCards : [];
+      adv.s.magazineReserve = clone(cards.slice(0, MAGAZINE_RESERVE_MAX));
+    }
+
+    _initMagazineReserve(config = {}) {
+      const adv = this._adventureEngine;
+      const fromAdv = adv && adv.s && adv.s.magazineReserve;
+      const src = config.magazineReserve || config.reserveCards || fromAdv || [];
+      this.s.reserveCards = clone(Array.isArray(src) ? src.slice(0, MAGAZINE_RESERVE_MAX) : []);
+    }
+
     restoreSession(snapshot, adventureEngine = null, resume = true) {
       const data = snapshot && (snapshot.battle || snapshot);
       if (!data || !data.s || !data.piles) throw new Error('战斗快照无效');
@@ -65,6 +80,9 @@
       this.s.discardTopOwner = this.tableTopOwner;
       this._ensureStatuses();
       this._initTrophyLootState();
+      if (Array.isArray(this.s.reserveCards) && this.s.reserveCards.length > MAGAZINE_RESERVE_MAX) {
+        this.s.reserveCards.length = MAGAZINE_RESERVE_MAX;
+      }
       // Migrate old battle snapshots where the table top lived outside the
       // discard pile. New snapshots already include it as the last discard.
       const oldTop = this.s.discardTop;
@@ -213,6 +231,7 @@
     }
 
     _resolveAdventureTrophyDrop(defeatedKey) {
+      if (this.s && this.s.opponentEscaped) return null;
       if (!this.s || !this.s.isAdventure || !this.s.player || !this.s.player.alive) return null;
       this._initTrophyLootState();
       if (!defeatedKey || this.s.trophyDropHandled[defeatedKey]) return null;
@@ -266,6 +285,17 @@
     }
 
     check() {
+      if (this.s && this.s.opponentEscaped) {
+        clearTimeout(this.timer);
+        this.pendingSettlement = null;
+        this.s.pendingAIDefense = null;
+        this.s.pendingAIContinue = null;
+        this.s.pendingAIBridge = null;
+        this.s.queuedCounterHits = [];
+        this.s.phase = 'GAME_OVER';
+        this.s.busy = false;
+        return this.state();
+      }
       const result = super.check();
       // Resolve drops in the same call that applies the final hit. This keeps
       // the reward in the player's hand before the map settlement screen.
@@ -404,6 +434,7 @@
         this.emitDrawDiff(openingHands);
         this._tryEnergyShieldOnAttack();
       }
+      this._initMagazineReserve(config);
       this._invariantReady = true;
       this._invariantBaseline = null;
       this._checkInvariants('startAdventure');
@@ -537,6 +568,7 @@
         this._tryEnergyShieldOnAttack();
       }
 
+      this._initMagazineReserve(config);
       this._invariantReady = true;
       this._invariantBaseline = null;
       this._checkInvariants('startAdventure1v2');
@@ -839,6 +871,12 @@
       }
     }
 
+    escapeAdventureOpponent(owner) {
+      if (!this.s || !this.s.isAdventure || owner === 'player') return;
+      this.s.opponentEscaped = owner;
+      this.emit('desc', '日光鬣蜥脱离战斗，房间已探索，无奖励');
+    }
+
     state() {
       if (this.s && this.piles) {
         this.s.isAdventure = true;
@@ -898,6 +936,11 @@
             : this._demonPactDefendAttack !== this.s.pendingAttack));
       }
       const view = super.state();
+      view.reserveCards = (this.s && this.s.reserveCards) || [];
+      view.legalReserve = view.reserveCards.map(card => {
+        if (!this.s || this.s.needColorChoice || !['PLAYER_PLAY', 'PLAYER_DEFEND'].includes(this.s.phase)) return false;
+        return !!this.legal(card, this.s.phase === 'PLAYER_DEFEND');
+      });
       // In adventure mode the current table top is already part of the
       // player's physical discard pile, so do not add a virtual +1 here.
       if (this.piles && this.piles.player) {
@@ -931,6 +974,7 @@
       }
       clearTimeout(this.timer);
       this._settleTableTop();
+      this._syncMagazineReserveToAdventure();
 
       // A borrowed monster card never becomes part of the player's persistent
       // collection. If it was still in the hand/deck when the room ended,
@@ -977,7 +1021,8 @@
         discardTopOwner: null,
         npcResetCount: this.piles.ai.deck.length,
         trophyDrops: Array.isArray(this.s.trophyDrops) ? this.s.trophyDrops.slice() : [],
-        trophyRolls: clone(this.s.trophyRolls) || []
+        trophyRolls: clone(this.s.trophyRolls) || [],
+        magazineReserve: clone((this.s.reserveCards || []).slice(0, MAGAZINE_RESERVE_MAX))
       };
     }
 
@@ -1274,13 +1319,14 @@
       this.emit('desc', '复活十字：恢复' + healAmt + '点生命，配饰损坏消失');
     }
 
-    // DesertSobek 被动[丰饶]：致死时若有[茂盛]，仅清正面 buff，血量回到 15（可多次）。
+    // DesertSobek 被动[丰饶]：致死时若有[茂盛]，清除所有 buff，血量回到 15。
     _tryDesertSobekFertility(entity, beforeHp) {
       if (!this.s || !this.s.isAdventure) return;
       if (!entity || (entity !== this.s.ai && entity !== this.s.ai2)) return;
       if (!(beforeHp > 0) || entity.hp > 0) return;
       if (this.name(entity) !== 'DesertSobek') return;
       if (!((entity.lush || 0) > 0)) return;
+      if (typeof this.clearDebuffs === 'function') this.clearDebuffs(entity);
       if (typeof this.clearPositiveBuffs === 'function') this.clearPositiveBuffs(entity);
       else {
         entity.guard = 0; entity.fly = 0; entity.harden = 0; entity.crit = 0; entity.lush = 0;
@@ -1293,7 +1339,7 @@
       entity.alive = true;
       const who = this._who ? this._who(entity) : (entity === this.s.ai2 ? 'ai2' : 'ai');
       this.emit('buff', '[丰饶]复活', null, { who, kind: 'fertility', stacks: 1 });
-      this.emit('desc', '[丰饶]：清除所有正面buff，恢复至15点生命');
+      this.emit('desc', '[丰饶]：清除所有buff，恢复至15点生命');
     }
 
     afterAttack() {
@@ -1540,6 +1586,49 @@
       if (method === 'useAdventureCombatItem') {
         const choice = params.choices != null ? params.choices : (params.choice || null);
         return this.useAdventureCombatItem(params.itemIndex || 0, choice);
+      }
+      if (method === 'selectReserveCard') {
+        if (!this.s || this.s.busy || this.s.needColorChoice || !['PLAYER_PLAY','PLAYER_DEFEND'].includes(this.s.phase) || this.s.unblockDefend) throw Error('当前不能选择储备牌');
+        const index = Number(params.index), cards = this.s.reserveCards || [];
+        if (!Number.isInteger(index) || index < 0 || !cards[index] || !this.legal(cards[index], this.s.phase === 'PLAYER_DEFEND')) throw Error('该储备牌不能打出');
+        this.s.selectedReserveIndex = this.s.selectedReserveIndex === index ? null : index;
+        this.s.selectedCard = -1;
+        this.s.selectedCards = [];
+        return this.state();
+      }
+      if (method === 'selectCard' && this.s) this.s.selectedReserveIndex = null;
+      if ((method === 'doPlay' || method === 'doDefend' || method === 'chooseColor' && this.s && this.s.pendingReserveColor) && this.s && this.s.selectedReserveIndex != null) {
+        const index = this.s.selectedReserveIndex, cards = this.s.reserveCards || [], card = cards[index];
+        if (!card || !['PLAYER_PLAY','PLAYER_DEFEND'].includes(this.s.phase)) throw Error('当前不能打出储备牌');
+        if (method !== 'chooseColor' && card.isBlack && !card.chosenColor) {
+          this.s.pendingReserveColor = true;
+          this.s.needColorChoice = true;
+          this.s.pendingDialog = 'color';
+          return this.state();
+        }
+        if (method === 'chooseColor') {
+          if (!['RED','YELLOW','BLUE','GREEN'].includes(params.color)) throw Error('请选择有效颜色');
+          card.chosenColor = params.color;
+          this.s.pendingReserveColor = false;
+          this.s.needColorChoice = false;
+          this.s.pendingDialog = null;
+        }
+        cards.splice(index, 1);
+        this.h.player.push(card);
+        this.s.selectedCard = this.h.player.length - 1;
+        this.s.selectedReserveIndex = null;
+        try {
+          super.dispatch(this.s.phase === 'PLAYER_DEFEND' ? 'doDefend' : 'doPlay', {});
+        } catch (error) {
+          const handIndex = this.h.player.indexOf(card);
+          if (handIndex >= 0) { this.h.player.splice(handIndex, 1); cards.splice(index, 0, card); }
+          this.s.selectedCard = -1;
+          throw error;
+        }
+        const handIndex = this.h.player.indexOf(card);
+        if (handIndex >= 0) { this.h.player.splice(handIndex, 1); cards.splice(index, 0, card); this.s.selectedCard = -1; }
+        this._syncMagazineReserveToAdventure();
+        return this.state();
       }
       if (method === 'chooseTrophyDisarm') return this.chooseTrophyDisarm(params.target, params.index);
       if (method === 'chooseTrophyPurify') return this.chooseTrophyPurify(params);

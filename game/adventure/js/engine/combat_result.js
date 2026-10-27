@@ -30,6 +30,24 @@
       const room = this.currentRoom();
       this.s.activeCombat = null;
 
+      if (result === 'escape') {
+        if (room) {
+          room.cleared = true;
+          room.visited = true;
+          room.rewardClaimed = true;
+          room.beastTokenClaimed = true;
+          room.stashedLoot = null;
+        }
+        this.s.pendingMapReturnEffects = null;
+        this.s.pendingCombatReward = null;
+        this.s.beastReward = null;
+        this.s.combat = null;
+        this.s.phase = Phase.MAP;
+        this._log('怪物脱离战斗：房间已探索，无奖励');
+        this.emit('combatEnd', '怪物脱离战斗，无奖励', {result:'escape'});
+        return;
+      }
+
       if (result === 'win') {
         this._log('战斗胜利');
         const isBoss = room && room.type === window.RoomType.BOSS;

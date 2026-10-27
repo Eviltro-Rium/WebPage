@@ -32,7 +32,9 @@ const sources = [
   'adventure/js/engine/loot.js',
   'adventure/js/engine/rewards.js',
   'adventure/js/engine/combat_result.js',
-  'adventure/js/monsters/castle.js'
+  'adventure/js/monsters/castle.js',
+  'adventure/js/monsters/desert.js',
+  'adventure/js/monsters/forest.js'
 ];
 
 for (const relative of sources) {
@@ -42,10 +44,10 @@ for (const relative of sources) {
 
 const { AdventureEngine, AdventureMap, Room, AdventureLoot } = context;
 
-test('map code 9 creates an elite combat room', () => {
-  const room = Room.fromCode(0, 1, 9);
+test('map code 8 creates an elite combat room', () => {
+  const room = Room.fromCode(0, 1, 8);
   assert.equal(room.type, 'elite');
-  assert.equal(room.code(), 9);
+  assert.equal(room.code(), 8);
   assert.equal(room.isCombatRoom(), true);
 });
 
@@ -129,4 +131,73 @@ test('gargoyle boss only appears from stage 3 onward', () => {
   eng.s.stage = 3;
   const stage3 = eng._encounterNames('boss');
   assert.ok(stage3.includes('CastleGargoyle'));
+});
+
+test('old elite code 9 loads but serializes as documented code 8', () => {
+  assert.equal(Room.fromCode(0, 1, 9).code(), 8);
+});
+
+test('desert elites are exclusive to Stage3/4 elite encounters', () => {
+  const eng = new AdventureEngine();
+  eng.start(new AdventureMap([[0,8]]), 'Ryan');
+  eng.s.scene = 'desert';
+  const expected = ['DesertLizard','DesertAntlion','DesertCamel'];
+  for (const stage of [1,2,3,4]) {
+    eng.s.stage = stage;
+    assert.equal(eng._encounterNames('elite').length, stage >= 3 ? 3 : 0);
+    for (const name of expected) assert.ok(!eng._encounterNames('monster').includes(name));
+    if (stage >= 3) {
+      assert.ok(expected.includes(eng._pickMonsterName({type:'elite',monsterName:'DesertBison'})));
+    }
+  }
+});
+
+test('forest normal rooms exclude elite monsters and elite encounters start at Stage3', () => {
+  const eng=new AdventureEngine();eng.start(new AdventureMap([[0,8]]),'Ryan');eng.s.scene='forest';
+  const expected=['ForestDendrobatidFrog','ForestCapybara','ForestPiranha'];
+  for(const stage of [1,2,3,4]){
+    eng.s.stage=stage;
+    assert.equal(eng._encounterNames('elite').length,stage>=3?3:0);
+    for(const name of expected)assert.ok(!eng._encounterNames('monster').includes(name));
+    if(stage>=3)assert.ok(expected.includes(eng._pickMonsterName({type:'elite',monsterName:'ForestMonkey'})));
+    assert.ok(!expected.includes(eng._pickMonsterName({type:'normal',monsterName:'ForestPiranha'})));
+  }
+});
+
+test('all eighteen late castle/desert/forest CSVs and embedded maps have two reachable elite rooms', () => {
+  const maps = {window:{}};
+  vm.runInNewContext(fs.readFileSync(path.join(gameRoot,'adventure/js/map/map_data.js'),'utf8'), maps);
+  for (const scene of ['castle','desert','forest']) for (const stage of [3,4]) for (const variant of [1,2,3]) {
+    const name = `stage_0${stage}_${scene}_${variant}`;
+    const csv = fs.readFileSync(path.join(gameRoot,'adventure/maps',name+'.csv'),'utf8').replace(/\r\n/g,'\n');
+    assert.equal(maps.window.AdventureMapData[name], csv);
+    const grid = csv.trim().split('\n').filter(line=>!line.startsWith('#')).map(line=>line.split(',').map(Number));
+    const elites = []; let start;
+    grid.forEach((row,r)=>row.forEach((code,c)=>{if(code===8)elites.push([r,c]);if(code===0)start=[r,c];}));
+    assert.equal(elites.length,2,name);
+    const visited = new Set([start.join(',')]), queue = [start];
+    for (let i=0;i<queue.length;i++) {
+      const [r,c]=queue[i];
+      for (const [nr,nc] of [[r+1,c],[r-1,c],[r,c+1],[r,c-1]]) {
+        const key=nr+','+nc;
+        if(grid[nr] && grid[nr][nc] != null && grid[nr][nc] !== -1 && !visited.has(key)){visited.add(key);queue.push([nr,nc]);}
+      }
+    }
+    for (const pos of elites) assert.ok(visited.has(pos.join(',')),name+' elite reachable');
+  }
+});
+
+test('an escaped elite marks its room explored without rewards or victory recovery', () => {
+  const eng = new AdventureEngine();
+  eng.start(new AdventureMap([[0,8]]), 'Ryan');
+  eng.s.scene='desert'; eng.s.stage=3; eng.move(0,1);
+  eng.s.player.hp=30;
+  eng.s.combat={enemy:{name:'DesertLizard'},kind:'elite'};
+  eng.onCombatEnd('escape');
+  assert.equal(eng.s.phase, context.AdventurePhase.MAP);
+  assert.equal(eng.s.player.hp,30);
+  assert.equal(eng.currentRoom().cleared,true);
+  assert.equal(eng.currentRoom().beastTokenClaimed,true);
+  assert.equal(eng.s.pendingCombatReward,null);
+  assert.equal(eng.s.pendingMapReturnEffects,null);
 });

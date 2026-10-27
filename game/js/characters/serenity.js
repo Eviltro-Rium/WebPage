@@ -27,7 +27,7 @@
       } else if (v === 5) {
         let r = eng.reveal('Serenity 5牌判定');
         if (r && ['YELLOW', 'GREEN'].includes(eng.effective(r))) {
-          heal(a, 4);
+          heal(a, 3);
           skip = true;
         } else {
           d = 5;
@@ -55,7 +55,7 @@
         }
       } else if (v === 0) {
         let own = eng.h[owner], bonus = Math.min(9, own.length * 3);
-        heal(a, 1 + bonus);
+        if (bonus > 0) heal(a, bonus);
         const dropped = own.splice(0, own.length);
         eng.discardManyWithEvent(dropped, owner, { desc: 'Serenity 0牌：弃掉所有手牌' });
         if (bt) {

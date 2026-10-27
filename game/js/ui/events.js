@@ -25,6 +25,7 @@ _handAdditionCount(evt, who) {
     if (!evt) return 0;
     if (evt.type === 'draw' && evt.who === who) return Math.max(0, Number(evt.count) || 1);
     if (evt.type === 'attackRecycle' && who === 'player') return 1;
+    if (evt.type === 'cardTransfer' && evt.who === who) return 1;
     if (evt.type === 'trophyDrop' && who === 'player') {
         const drops = evt.drops || evt.card && evt.card.drops;
         return Array.isArray(drops) ? drops.length : 0;
@@ -242,7 +243,9 @@ _showTrophySettlement(evt, landed = false) {
     const rules = document.createElement('div');
     rules.className = 'trophy-settle-rules';
     const outcomes = global.AdventureLoot && global.AdventureLoot.getDropTable
-        ? global.AdventureLoot.getDropTable(evt.monsterName) : [];
+        ? global.AdventureLoot.getDropTable(evt.monsterName, {
+            elite: !!(global.AdventureLoot.isEliteMonster && global.AdventureLoot.isEliteMonster(evt.monsterName))
+        }) : [];
     const value = Number(evt.roll ?? evt.value);
     const addRow = (label, drops, hit) => {
         const row = document.createElement('div');
@@ -591,6 +594,10 @@ async _playEvents(events, fast = false) {
             await wait(600);
             this._showCardSkillDesc('def-desc', evt.card, who, true);
             await wait(350);
+        } else if (evt.type === 'cardTransfer' && evt.card) {
+            this._showZoneDesc('reveal-desc', evt.desc || '暂借对手手牌');
+            drawRemaining.player = Math.max(0, drawRemaining.player - 1);
+            await this._playBorrowedCardAnimation(evt, drawRemaining.player);
         } else if (evt.type === 'attackRecycle' && evt.card) {
             this._showZoneDesc('reveal-desc', evt.desc || '垃圾回收：收回进攻牌');
             drawRemaining.player = Math.max(0, drawRemaining.player - 1);

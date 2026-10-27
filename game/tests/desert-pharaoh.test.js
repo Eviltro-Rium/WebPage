@@ -51,26 +51,26 @@ function defendWith(eng, card, incoming) {
   });
 }
 
-test('Pharaoh base stats, boss pool and Stage 2 gate', () => {
+test('Pharaoh base stats, boss pool and Stage 3 gate', () => {
   const m = getBoss('Pharaoh');
   assert.ok(m);
   assert.equal(m.kind, '法老');
   assert.equal(m.hp, 50);
-  assert.equal(m.minStage, 2);
+  assert.equal(m.minStage, 3);
   assert.equal(m.whiteZeros, 1);
   assert.equal(m.icon, '../icons/npc_icons/pharaoh.webp');
   const pool = context.AdventureBossPool.desert;
   assert.equal(pool['*'], undefined);
-  for (const stage of [2, 3, 4]) assert.ok(pool[stage].includes('Pharaoh'));
+  for (const stage of [3, 4]) assert.ok(pool[stage].includes('Pharaoh'));
 });
 
-test('Pharaoh only appears from Stage 2 in desert boss picks', () => {
+test('Pharaoh only appears from Stage 3 in desert boss picks', () => {
   const file = path.join(gameRoot, 'adventure/js/engine/adventure_engine.js');
   vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
   const eng = new context.AdventureEngine();
   eng.s = { scene: 'desert', stage: 1 };
   for (let i = 0; i < 50; i++) assert.ok(['DesertHyena','DesertSobek'].includes(eng._pickBossName({ bossName: 'Pharaoh' })));
-  eng.s.stage = 2;
+  eng.s.stage = 3;
   const desertBosses = new Set();
   for (let i = 0; i < 80; i++) desertBosses.add(eng._pickBossName({}));
   assert.ok(desertBosses.has('Pharaoh'));
@@ -100,7 +100,7 @@ test('Pharaoh loot: Zero 1-6; 11/12 dual-source potions', () => {
 test('Pharaoh attack hooks follow card value and color', () => {
   const m = getBoss('Pharaoh');
   for (const v of [1, 2, 3]) {
-    assert.equal(m.attackDamage(numCard(v)), 3);
+    assert.equal(m.attackDamage(numCard(v)), 4);
     assert.equal(m.attackBurn(numCard(v, 'RED')), 2);
     assert.equal(m.attackBurn(numCard(v, 'BLUE')), 0);
     assert.equal(m.attackQuicksand(numCard(v, 'YELLOW')), 1);
@@ -143,18 +143,18 @@ test('Pharaoh defend hooks', () => {
   assert.equal(m.defendClearDebuffs(numCard(0)), true);
 });
 
-test('Pharaoh stage mods: Stage 3 attack +1, Stage 4 defend heal +1', () => {
+test('Pharaoh stage mods: Stage 3 base attacks, Stage 4 defend heal +1', () => {
   const m = getBoss('Pharaoh');
   const s2 = applyStageMods(m, 2);
-  assert.equal(s2.attackDamage(numCard(2)), 3);
+  assert.equal(s2.attackDamage(numCard(2)), 4);
   assert.equal(s2.defendHeal(numCard(2)), 1);
   const s3 = applyStageMods(m, 3);
   assert.equal(s3.attackDamage(numCard(2)), 4);
-  assert.equal(s3.attackDamage(numCard(5)), 7);
+  assert.equal(s3.attackDamage(numCard(5)), 6);
   assert.equal(s3.attackDamage(numCard(0)), 0);
   assert.equal(s3.defendHeal(numCard(2)), 1);
   const s4 = applyStageMods(m, 4);
-  assert.equal(s4.attackDamage(numCard(5)), 7);
+  assert.equal(s4.attackDamage(numCard(5)), 6);
   assert.equal(s4.defendHeal(numCard(2)), 2);
   assert.equal(s4.defendHeal(numCard(0)), 0);
 });
@@ -194,7 +194,7 @@ test('Pharaoh 1/2/3 green attack grants itself lush', t => {
   const card = numCard(2, 'GREEN');
   eng.s.atkCard = card; eng.s.atkOwner = 'ai';
   const r = eng.effect('Pharaoh', 2, card, eng.s.ai, eng.s.player);
-  assert.equal(r.d, 3);
+  assert.equal(r.d, 4);
   eng.prepareAttackSettlement(r.d, 'player');
   eng.commitAttackStatuses('afterDamage');
   assert.equal(eng.s.ai.lush, 1);
@@ -206,7 +206,7 @@ test('Pharaoh 1/2/3 red attack burns the target for 2 after damage', t => {
   const card = numCard(2, 'RED');
   eng.s.atkCard = card; eng.s.atkOwner = 'ai';
   const r = eng.effect('Pharaoh', 2, card, eng.s.ai, eng.s.player);
-  assert.equal(r.d, 3);
+  assert.equal(r.d, 4);
   eng.prepareAttackSettlement(r.d, 'player');
   eng.commitAttackStatuses('afterDamage');
   assert.equal(eng.s.player.burn, 2);
@@ -246,8 +246,8 @@ test('compactSkillText follows the panel shorthand rules', () => {
 test('Pharaoh skill panel text', () => {
   for (const stage of [2, 3, 4]) {
     const bonus = stage >= 3 ? 1 : 0;
-    assert.match(describe('Pharaoh', numCard(2), false, { stage }), new RegExp('^' + (3 + bonus) + '🗡️，.*🔴施加2层\\[灼伤\\].*🟡施加\\[流沙\\].*🔵施加\\[失温\\].*🟢获得\\[茂盛\\]'));
-    assert.match(describe('Pharaoh', numCard(5), false, { stage }), new RegExp('^' + (6 + bonus) + '🗡️，.*🟡则不可防御'));
+    assert.match(describe('Pharaoh', numCard(2), false, { stage }), new RegExp('^' + 4 + '🗡️，.*🔴施加2层\\[灼伤\\].*🟡施加\\[流沙\\].*🔵施加\\[失温\\].*🟢获得\\[茂盛\\]'));
+    assert.match(describe('Pharaoh', numCard(5), false, { stage }), new RegExp('^' + 6 + '🗡️，.*🟡则不可防御'));
     assert.equal(describe('Pharaoh', numCard(0), false, { stage }), '回3❤️，清除自身所有负面状态，抽2🃏');
     assert.equal(describe('Pharaoh', numCard(2), true, { stage }), '反击3🗡️，回' + (stage >= 4 ? 2 : 1) + '❤️');
     assert.equal(describe('Pharaoh', numCard(0), true, { stage }), '清除自身所有负面状态，反击相同点伤害');
@@ -257,8 +257,7 @@ test('Pharaoh skill panel text', () => {
 
 test('Pharaoh stage guide entries', () => {
   assert.deepEqual(JSON.parse(JSON.stringify(context.AdventureStageGuide.Pharaoh)), [
-    { stage: '3', text: '进攻技能伤害 +1' },
     { stage: '4', text: '防御恢复 +1' }
   ]);
-  assert.match(JSON.stringify(context.AdventureMonsterNotes.Pharaoh), /Stage 2/);
+  assert.match(JSON.stringify(context.AdventureMonsterNotes.Pharaoh), /Stage 3/);
 });

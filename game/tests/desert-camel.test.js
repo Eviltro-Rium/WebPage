@@ -44,12 +44,13 @@ test('DesertCamel base stats and pool', () => {
   const m = getMonster('DesertCamel');
   assert.ok(m);
   assert.equal(m.kind, '旱海驼');
-  assert.equal(m.hp, 20);
+  assert.equal(m.hp, 32);
   assert.equal(m.firstStrike, true);
   assert.equal(m.icon, '../icons/npc_icons/desert_camel.webp');
   const pool = context.AdventureMonsterPool.desert;
   assert.ok(pool['*'].includes('DesertBison'));
-  assert.ok(pool['*'].includes('DesertCamel'));
+  assert.ok(!pool['*'].includes('DesertCamel'));
+  assert.ok(context.AdventureElitePool.desert[3].includes('DesertCamel'));
 });
 
 test('DesertCamel loot: 1-2 sandblind, 3-4 thorns', () => {
@@ -81,7 +82,7 @@ test('DesertCamel attack hooks', () => {
     assert.equal(m.attackThorns(numCard(v)), 0);
   }
   for (const v of [4, 5, 6]) {
-    assert.equal(m.attackDamage(numCard(v)), 5);
+    assert.equal(m.attackDamage(numCard(v)), 6);
     assert.equal(m.attackSandblind(numCard(v)), 0);
     assert.equal(m.attackThorns(numCard(v)), 1);
   }
@@ -101,12 +102,12 @@ test('DesertCamel defend 1/2/3: half block, thorns only at stage 4', () => {
 test('DesertCamel stage mods', () => {
   const m = getMonster('DesertCamel');
   const s2 = applyStageMods(m, 2);
-  assert.equal(s2.hp, 25);
+  assert.equal(s2.hp, 32);
   const s3 = applyStageMods(m, 3);
-  assert.equal(s3.attackDamage(numCard(2)), 4);
-  assert.equal(s3.attackDamage(numCard(5)), 5);
+  assert.equal(s3.attackDamage(numCard(2)), 3);
+  assert.equal(s3.attackDamage(numCard(5)), 6);
   const s4 = applyStageMods(m, 4);
-  assert.equal(s4.attackDamage(numCard(2)), 4, 'stage4 keeps stage3 damage bonus');
+  assert.equal(s4.attackDamage(numCard(2)), 3, 'elite has no stage3 damage bonus');
 });
 
 test('DesertCamel 1/2/3: damage 3 and 2 sandblind on target', () => {
@@ -121,12 +122,12 @@ test('DesertCamel 1/2/3: damage 3 and 2 sandblind on target', () => {
   assert.equal(eng.s.player.thorns || 0, 0);
 });
 
-test('DesertCamel 4/5/6: damage 5 and thorns on target', () => {
+test('DesertCamel 4/5/6: damage 6 and thorns on target', () => {
   const eng = new Engine();
   eng.start('Ryan', 'DesertCamel');
   eng.later = () => {};
   const r = eng.effect('DesertCamel', 5, numCard(5), eng.s.ai, eng.s.player);
-  assert.equal(r.d, 5);
+  assert.equal(r.d, 6);
   eng.prepareAttackSettlement(r.d, 'player');
   eng.commitAttackStatuses('afterDamage');
   assert.equal(eng.s.player.thorns, 1);
@@ -138,10 +139,10 @@ test('DesertCamel skill desc', () => {
   assert.ok(atk2.includes('3🗡️'));
   assert.ok(atk2.includes('沙盲'));
   const atk5 = getAdventureNpcSkillDesc('DesertCamel', numCard(5), false, { stage: 1 });
-  assert.ok(atk5.includes('5🗡️'));
+  assert.ok(atk5.includes('6🗡️'));
   assert.ok(atk5.includes('荆棘'));
   const atk2s3 = getAdventureNpcSkillDesc('DesertCamel', numCard(2), false, { stage: 3 });
-  assert.ok(atk2s3.includes('4🗡️'));
+  assert.ok(atk2s3.includes('3🗡️'));
   const def2 = getAdventureNpcSkillDesc('DesertCamel', numCard(2), true, { stage: 1 });
   assert.ok(def2.includes('半数'));
   const def2s4 = getAdventureNpcSkillDesc('DesertCamel', numCard(2), true, { stage: 4 });

@@ -31,12 +31,16 @@
       }
       if (v === 6) {
         const burnLayers = a.burn || 0;
-        heal(a, Math.ceil(1.5 * burnLayers));
+        const healAmt = 1 + burnLayers;
+        heal(a, healAmt);
+        burn(1);
         const status = window.FurryGame && window.FurryGame.StatusService;
         if (status) status.clear(a, 'burn', 'all');
         else a.burn = 0;
-        burn(1);
         skip = true;
+        if (typeof eng.emit === 'function') {
+          eng.emit('desc', `Blaze 6牌：恢复${healAmt}点+对手灼伤1+清除自身灼伤`);
+        }
       }
       if (v === 7) {
         if (burnSelf) burnSelf(2);

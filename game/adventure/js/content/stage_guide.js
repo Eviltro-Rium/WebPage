@@ -264,20 +264,7 @@
       "text": "防御额外施加 1 层[流血]"
     }
   ],
-  "ForestDendrobatidFrog": [
-    {
-      "stage": "2",
-      "text": "生命上限 +5（23）"
-    },
-    {
-      "stage": "3",
-      "text": "所有伤害 +1"
-    },
-    {
-      "stage": "4",
-      "text": "防御反击 +1"
-    }
-  ],
+  "ForestDendrobatidFrog": [{"stage": "4", "text": "防御恢复2❤️"}],
   "ForestLadybug": [
     {
       "stage": "2",
@@ -292,20 +279,7 @@
       "text": "格挡 +1"
     }
   ],
-  "ForestCapybara": [
-    {
-      "stage": "2",
-      "text": "生命上限 +5（25）"
-    },
-    {
-      "stage": "3",
-      "text": "所有伤害 +1"
-    },
-    {
-      "stage": "4",
-      "text": "将超过 1 点的伤害降低为 1 点"
-    }
-  ],
+  "ForestCapybara": [{"stage": "4", "text": "将超过1点的伤害降低为1点"}],
   "ForestRafflesia": [
     {
       "stage": "2",
@@ -320,16 +294,7 @@
       "text": "防御恢复 +1"
     }
   ],
-  "ForestPiranha": [
-    {
-      "stage": "3",
-      "text": "所有伤害 +1"
-    },
-    {
-      "stage": "4",
-      "text": "防御反击 +1"
-    }
-  ],
+  "ForestPiranha": [{"stage": "4", "text": "防御恢复1❤️，额外施加1层[流血]"}],
   "ForestPanda": [
     {
       "stage": "2",
@@ -355,19 +320,10 @@
     },
     {
       "stage": "4",
-      "text": "防御反击 +1；防御 0 均摊后额外反击 1🗡️"
+      "text": "防御额外恢复1❤️"
     }
   ],
-  "ForestDryad": [
-    {
-      "stage": "3",
-      "text": "进攻伤害 +1"
-    },
-    {
-      "stage": "4",
-      "text": "格挡 +1"
-    }
-  ],
+  "ForestDryad": [{"stage": "4", "text": "防御额外反击1🗡️"}],
   "FrozenOceanLynx": [
     {
       "stage": "2",
@@ -462,34 +418,8 @@
       "text": "防御技能施加[流血]层数 +1"
     }
   ],
-  "DesertCamel": [
-    {
-      "stage": "2",
-      "text": "生命上限 +5（25）"
-    },
-    {
-      "stage": "3",
-      "text": "进攻 1/2/3 技能伤害 +1"
-    },
-    {
-      "stage": "4",
-      "text": "防御 1/2/3 额外施加1层[荆棘]"
-    }
-  ],
-  "DesertLizard": [
-    {
-      "stage": "2",
-      "text": "生命上限 +5（25）"
-    },
-    {
-      "stage": "3",
-      "text": "进攻改为施加2层[沙盲]"
-    },
-    {
-      "stage": "4",
-      "text": "防御格挡 +1"
-    }
-  ],
+  "DesertCamel": [{"stage": "4", "text": "防御 1/2/3 额外施加1层[荆棘]"}],
+  "DesertLizard": [{"stage": "4", "text": "防御额外反击1点[伤害]"}],
   "DesertSandworm": [
     {
       "stage": "2",
@@ -536,10 +466,7 @@
     { "stage": "3", "text": "进攻 4/5/6 吸取 +1" },
     { "stage": "4", "text": "防御施加[中毒]层数 +1" }
   ],
-  "DesertAntlion": [
-    { "stage": "3", "text": "进攻伤害 +1" },
-    { "stage": "4", "text": "防御额外反击 1 点[伤害]" }
-  ],
+  "DesertAntlion": [{"stage": "4", "text": "防御额外反击2点[伤害]"}],
   "DesertVulture": [
     {
       "stage": "2",
@@ -554,16 +481,7 @@
       "text": "防御反击 +1"
     }
   ],
-  "Pharaoh": [
-    {
-      "stage": "3",
-      "text": "进攻技能伤害 +1"
-    },
-    {
-      "stage": "4",
-      "text": "防御恢复 +1"
-    }
-  ],
+  "Pharaoh": [{"stage": "4", "text": "防御恢复 +1"}],
   "DesertHyena": [
     {
       "stage": "2",
@@ -589,7 +507,7 @@
     },
     {
       "stage": "4",
-      "text": "防御恢复 +1❤️"
+      "text": "防御技能牌指定为🟢时额外获得[茂盛]"
     }
   ],
   "FrozenOceanSnowyOwl": [
@@ -768,7 +686,7 @@
     }
   ],
   "ForestCrocodile": [],
-  "ForestDendrobatidFrog": [],
+  "ForestDendrobatidFrog": [{"title":"出现条件","lines":["仅在 Stage 3/4 精英房出现"]}],
   "ForestLadybug": [
     {
       "title": "被动",
@@ -797,7 +715,7 @@
     {
       "title": "出现条件",
       "lines": [
-        "仅从 Stage 2 开始出现"
+        "仅在 Stage 3/4 精英房出现"
       ]
     }
   ],
@@ -856,18 +774,18 @@
       ]
     }
   ],
-  "DesertLizard": [],
+  "DesertLizard": [{"title":"被动","lines":["防御打出0时立即脱离战斗，无奖励，房间标记已探索"]}],
   "DesertSandworm": [],
   "DesertScarab": [],
   "DesertScorpion": [],
   "DesertViper": [{ "title": "出现条件", "lines": ["仅从 Stage 2 开始出现"] }],
-  "DesertAntlion": [{ "title": "出现条件", "lines": ["仅从 Stage 2 开始出现"] }],
+  "DesertAntlion": [{ "title": "出现条件", "lines": ["仅从 Stage 3 开始出现在精英房"] }],
   "DesertVulture": [],
   "Pharaoh": [
     {
       "title": "出现条件",
       "lines": [
-        "仅从 Stage 2 开始出现"
+        "仅从 Stage 3 开始出现"
       ]
     }
   ],
@@ -883,7 +801,7 @@
     {
       "title": "被动",
       "lines": [
-        "[丰饶]：被击败时若持有[茂盛]，清除自身所有正面 buff，生命恢复至 15（复活）"
+        "[丰饶]：被击败时若持有[茂盛]，清除自身所有buff，生命恢复至 15（复活）"
       ]
     }
   ],

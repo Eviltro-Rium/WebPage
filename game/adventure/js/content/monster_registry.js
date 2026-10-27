@@ -642,6 +642,11 @@
           return { remaining: d, desc: '紫魔法防御：恢复' + magicHp + '生命，清除玩家正面buff' };
         }
 
+        if (typeof mod.defendEscape === 'function' && mod.defendEscape(c) && owner !== 'player') {
+          if (typeof eng.escapeAdventureOpponent === 'function') eng.escapeAdventureOpponent(owner);
+          return { remaining: 0, desc: '日光鬣蜥脱离战斗，房间已探索，无奖励' };
+        }
+
         // 普通怪物的0/7、Boss的7均无防御效果。
         if (isPassNumber(mod, c)) {
           return { remaining: d, desc: '无防御效果' };
@@ -823,6 +828,14 @@
         const applyAllExtras = () => { applyGuard(); applyFly(); applyDefendMagma(); applyAllLush(); applyAllHeal(); applyDiving(); applyGainCrit(); applyFireEffects(); };
         const allExtrasDesc = guardDesc + flyDesc + magmaDesc + allLushDesc + allHealDesc + divingDesc + gainCritDesc;
 
+        const lushAmt = typeof mod.defendLush === 'function' ? (mod.defendLush(c) || 0) : 0;
+        const applyLush = () => {
+          if (lushAmt > 0) {
+            _gainLush(eng, defender, lushAmt);
+          }
+        };
+        const lushDesc = lushAmt > 0 ? '，获得' + lushAmt + '层茂盛' : '';
+
         if (typeof mod.defendImmune === 'function' && mod.defendImmune(c)) {
           if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c) && clearDebuffs) {
             clearDebuffs(defender);
@@ -837,11 +850,12 @@
           }
           applyClearSelfDebuffs();
           applyImmuneHeal();
+          applyLush();
           applyPoison(); applyBleed(); applyHypothermia(); applyThorns(); applySandblind(); applyPoisonDrain();applyDrawSelf(); applyAllExtras();
           const clearText = (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c))
             ? '，免疫buff，清除自身所有debuff'
             : '';
-          return { remaining: 0, desc: '免疫所有伤害' + counterDesc + clearText + immuneHealDesc + suffix() + clearSelfDebuffsDesc + drawSelfDesc + allExtrasDesc };
+          return { remaining: 0, desc: '免疫所有伤害' + counterDesc + clearText + immuneHealDesc + lushDesc + suffix() + clearSelfDebuffsDesc + drawSelfDesc + allExtrasDesc };
         }
 
         const deckCompare = typeof mod.defendDeckCompare === 'function' ? mod.defendDeckCompare(c) : null;
@@ -873,14 +887,6 @@
           };
         }
 
-        const lushAmt = typeof mod.defendLush === 'function' ? (mod.defendLush(c) || 0) : 0;
-        const applyLush = () => {
-          if (lushAmt > 0) {
-            _gainLush(eng, defender, lushAmt);
-          }
-        };
-        const lushDesc = lushAmt > 0 ? '，获得' + lushAmt + '层茂盛' : '';
-
         const parasiteAmt = typeof mod.defendParasite === 'function' ? (mod.defendParasite(c) || 0) : 0;
         const applyParasite = () => {
           if (parasiteAmt > 0) {
@@ -896,10 +902,11 @@
           const split = Math.ceil(d / 2);
           if (hurt) hurt(opponent, split);
           applyClearSelfDebuffs();
+          applyImmuneHeal();
           applyPoison(); applyBleed(); applyHypothermia(); applyThorns(); applySandblind(); applyPoisonDrain();applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
           return {
             remaining: split,
-            desc: '均摊伤害，双方各受' + split + '点' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc
+            desc: '均摊伤害，双方各受' + split + '点' + immuneHealDesc + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc
           };
         }
 
@@ -1061,6 +1068,7 @@
         : '';
     }
     if (opts.stage) mod = applyStageMods(mod, opts.stage);
+    if (isDefend && typeof mod.defendEscape === 'function' && mod.defendEscape(card)) return '立刻脱离战斗，无奖励，房间标记已探索';
     if (isPassNumber(mod, card)) {
       return isDefend ? '无防御效果' : '无进攻效果';
     }
@@ -1109,11 +1117,12 @@
     // DesertSobek defend (desert.md): heal 1/2/3; immune 0 + conditional lush counter.
     if (mod.name === 'DesertSobek' && card.isNumberCard) {
       const v = card.value;
+      const lushText = Number(opts.stage) >= 4 ? '；🟢额外获得[茂盛]' : '';
       if (v >= 1 && v <= 3) {
         const heal = typeof mod.defendHeal === 'function' ? (mod.defendHeal(card) || 0) : 3;
-        return '恢复' + heal + '点生命';
+        return '恢复' + heal + '点生命' + lushText;
       }
-      if (v === 0) return '免疫所有伤害；有[茂盛]则消耗1层反击3点伤害';
+      if (v === 0) return '免疫所有伤害；有[茂盛]则消耗1层反击3点伤害' + lushText;
       return '无防御效果';
     }
     // DesertBison defend: counter card value + bleed (desert.md).
@@ -1319,7 +1328,7 @@
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
       if (v >= 1 && v <= 3) {
-        return '造成' + (v + 1 + stageBonus) + '🗡️，施加[中毒]；玩家[中毒]≥2时额外抽1🃏';
+        return '造成' + (2 + stageBonus) + '🗡️；玩家[中毒]≥2时额外抽1🃏';
       }
       if (v >= 4 && v <= 6) {
         return '先施加[中毒]，再按施加后层数×3🗡️（上限2，最多6）';
@@ -1359,15 +1368,11 @@
     }
     // ForestDendrobatidFrog 4/5/6: poison-scaled formula.
     if (mod.name === 'ForestDendrobatidFrog' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
-      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      return '造成' + (4 + stageBonus) + '+玩家[中毒]层数点[伤害]';
+      return '造成4+玩家[中毒]层数点[伤害]';
     }
     // ForestPiranha 1/2/3: bleed×2 formula (forest.md / SKILL_DATA).
     if (mod.name === 'ForestPiranha' && card.isNumberCard && card.value >= 1 && card.value <= 3) {
-      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      return stageBonus
-        ? '造成' + stageBonus + '+玩家[流血]层数×2点[伤害]'
-        : '造成玩家[流血]层数×2点[伤害]';
+      return '造成玩家[流血]层数×2点[伤害]';
     }
     // FrozenOrca: diving + deferred hypothermia on 1/2/3, bleed on 4/5/6,
     // bleed-scaled damage on 0 (ocean.md). Defend copy is in the isDefend branch.
@@ -1511,12 +1516,11 @@
     // Pharaoh: color-based effect on 1/2/3, yellow-unblockable 4/5/6, self-restore 0 (desert.md).
     if (mod.name === 'Pharaoh' && card.isNumberCard) {
       const v = card.value;
-      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
       if (v >= 1 && v <= 3) {
-        return '造成' + (3 + stageBonus) + '点[伤害]，按技能牌颜色：🔴施加2层[灼伤]、🟡施加[流沙]、🔵施加[失温]、🟢获得[茂盛]';
+        return '造成' + 4 + '点[伤害]，按技能牌颜色：🔴施加2层[灼伤]、🟡施加[流沙]、🔵施加[失温]、🟢获得[茂盛]';
       }
       if (v >= 4 && v <= 6) {
-        return '造成' + (6 + stageBonus) + '点[伤害]，若技能牌为🟡则不可防御';
+        return '造成' + 6 + '点[伤害]，若技能牌为🟡则不可防御';
       }
       if (v === 0) {
         return '恢复3点[生命]，清除自身所有负面状态，抽取2张牌';
@@ -1528,10 +1532,10 @@
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
       if (v >= 1 && v <= 3) {
-        return '造成' + (3 + stageBonus) + '点[伤害]，施加1层[流血]';
+        return '造成' + (4 + stageBonus) + '点[伤害]，施加1层[流血]';
       }
       if (v >= 4 && v <= 6) {
-        return '造成' + (5 + stageBonus) + '点[伤害]；🟢获得[茂盛]、🟡获得[暴击]';
+        return '造成' + (6 + stageBonus) + '点[伤害]；🟢获得[茂盛]、🟡获得[暴击]';
       }
       if (v === 0) {
         // After compact: 双方获得[茂盛]，对手每层正面buff→3🗡️（≤3不可防御）

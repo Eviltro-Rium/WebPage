@@ -42,10 +42,10 @@ const DROP = [
   'BurnTrophy', 'PiercingTrophy', 'FreezeTrophy', 'IceSealTrophy', 'HypothermiaTrophy',
   'FlyTrophy', 'CritTrophy', 'MagmaVeinTrophy', 'DivingTrophy', 'ScorchTrophy', 'LushTrophy',
   'PoisonTrophy', 'ParasiteTrophy', 'ThornsTrophy', 'QuicksandTrophy', 'SandblindTrophy',
-  'TimeBombTrophy', 'GuardTrophy'
+  'GuardTrophy'
 ];
 const FORGE_ONLY = [
-  'RussianRouletteTrophy', 'DisarmTrophy', 'RiotTrophy'
+  'RussianRouletteTrophy', 'DisarmTrophy', 'RiotTrophy', 'TimeBombTrophy'
 ];
 const BOTH = [
   'ZeroTrophy', 'SmallPotionTrophy', 'PurifyWaterTrophy', 'DrawTwoTrophy'
@@ -70,8 +70,10 @@ test('trophyKind: forge-only keep costs; RR/Disarm/Riot use card_icons', () => {
     assert.ok(def, name);
     assert.equal(def.trophyKind, 'forge', name);
     assert.ok(Array.isArray(def.beastTradeCost) && def.beastTradeCost.length >= 1, name);
-    assert.match(def.icon, /card_icons/, name);
+    if (name === 'TimeBombTrophy') assert.match(def.icon, /buff_icons/, name);
+    else assert.match(def.icon, /card_icons/, name);
   }
+  assert.deepEqual(Array.from(AdventureRegistry.getItem('TimeBombTrophy').beastTradeCost), ['cao', 'huo']);
 });
 
 test('trophyKind: both (SmallPotion/Purify/Zero) keep costs and stay forge-eligible', () => {
@@ -86,8 +88,8 @@ test('trophyKind: both (SmallPotion/Purify/Zero) keep costs and stay forge-eligi
     assert.match(AdventureRegistry.getItem(name).icon, /buff_icons/, name);
   }
   const potion = AdventureRegistry.getItem('SmallPotionTrophy');
-  assert.equal(potion.healAmount, 3);
-  assert.deepEqual(Array.from(potion.beastTradeCost), ['cao', 'huo']);
+  assert.equal(potion.healAmount, 2);
+  assert.deepEqual(Array.from(potion.beastTradeCost), ['cao', 'cao']);
   assert.deepEqual(Array.from(AdventureRegistry.getItem('PurifyWaterTrophy').beastTradeCost), ['shui', 'ben']);
   const drawTwo = AdventureRegistry.getItem('DrawTwoTrophy');
   assert.equal(drawTwo.trophyKind, 'both');

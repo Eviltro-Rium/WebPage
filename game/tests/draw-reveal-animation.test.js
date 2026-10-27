@@ -534,3 +534,47 @@ test('legacy loot dice show their paired reward, while a controllable unresolved
   assert.ok(labels.some(text=>text.includes('等待确认')));
   assert.ok(!labels.some(text=>text.includes('无掉落')));
 });
+
+for (const owner of ['ai', 'ai2']) {
+  test(`chameleon transfer flies from ${owner} hand and hides the borrowed card until arrival`, async () => {
+    const {ui,doc} = harness();
+    const held = card('held'), borrowed = card('borrowed', 'WHITE', 2), kept = card('kept', 'WHITE', 4), later = card('later');
+    const borrowedResult = Object.assign({}, borrowed, {borrowedMonster:true, borrowedFrom:owner});
+    ui.state.isAdventure = true; ui.state.is1v2 = owner === 'ai2';
+    ui.state.playerHand = [held, borrowedResult, later];
+    ui.state[owner === 'ai2' ? 'ai2Hand' : 'aiHand'] = [kept];
+    ui._prevState = {[owner === 'ai2' ? 'ai2Hand' : 'aiHand']:[borrowed, kept]};
+    const enemyHand = paintHand(doc, owner + '-hand', [borrowed, kept]);
+    enemyHand.children.forEach((node, i) => { node.dataset.aiIndex = i; });
+    let finish, start;
+    ui.anim.flyCard = (c, from, to, duration, arc, sourceOwner) => {
+      start = {c, from, to, sourceOwner};
+      return new Promise(resolve => { finish = resolve; });
+    };
+    const event = {type:'cardTransfer', who:'player', fromOwner:owner, handIndex:0, card:borrowedResult};
+    ui._prepareHandAnimation([event,{type:'draw',who:'player',count:1}]);
+    assert.equal(doc.getElementById('player-hand').children.length, 1);
+    const flight = ui._playBorrowedCardAnimation(event, 1);
+    assert.equal(start.from, enemyHand.children[0]);
+    assert.equal(start.from.style.visibility, 'hidden');
+    assert.equal(start.to.id, 'player-hand');
+    assert.equal(start.sourceOwner, owner);
+    assert.equal(doc.getElementById('player-hand').children.length, 1);
+    finish(); await flight;
+    const cards = doc.getElementById('player-hand').children;
+    assert.equal(cards.length, 2);
+    assert.equal(cards[1].dataset.cardId, context.cardId(borrowedResult));
+  });
+}
+
+test('chameleon transfer event is dispatched to its flight with remaining draws masked', async () => {
+  const {ui} = harness();
+  const borrowed = card('borrowed-event'), later = card('later-event');
+  ui.state.playerHand = [borrowed, later];
+  let recorded;
+  ui._playBorrowedCardAnimation = async (event, remaining) => {recorded = {event, remaining};};
+  const transfer = {type:'cardTransfer', who:'player', fromOwner:'ai2', card:borrowed};
+  await ui._playEvents([transfer, {type:'draw',who:'player',count:1}], true);
+  assert.equal(recorded.event, transfer);
+  assert.equal(recorded.remaining, 1);
+});

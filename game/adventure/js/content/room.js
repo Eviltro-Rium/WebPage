@@ -12,7 +12,7 @@
  *   ELITE      精英房间：1v1 精英怪，奖励结算同普通房，战利品骰投 2 次
  * 另有 EMPTY 表示地图外空房间（不可进入）。
  *
- * CSV 编码：-1=地图外 0=起点 1=普通 2=boss 3=奖励 4=商店 5=铁匠铺 6=挑战 7=故障 9=精英
+ * CSV 编码：-1=地图外 0=起点 1=普通 2=boss 3=奖励 4=商店 5=铁匠铺 6=挑战 7=故障 8=精英
  * 奖励房（3）与铁匠铺（5）应放在支路，不在起点→Boss 最短路径上；
  * 奖励房进入需消耗两个随机普通兽元开门（万能可替代）。
  * 开门后本层只滚动一次奖励（领取后不可再刷）；未领时可留在房间，再次进入领取同一份。
@@ -41,11 +41,13 @@
     5: RoomType.BLACKSMITH,
     6: RoomType.CHALLENGE,
     7: RoomType.GLITCH,
-    9: RoomType.ELITE
+    8: RoomType.ELITE,
+    9: RoomType.ELITE // Compatibility with earlier elite-map saves.
   };
 
   const TYPE_TO_CODE = {};
   Object.keys(CODE_TO_TYPE).forEach(k => { TYPE_TO_CODE[CODE_TO_TYPE[k]] = Number(k); });
+  TYPE_TO_CODE[RoomType.ELITE] = 8;
 
   const TYPE_LABEL = {
     empty:  '空',

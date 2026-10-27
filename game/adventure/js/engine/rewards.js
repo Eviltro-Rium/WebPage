@@ -525,6 +525,9 @@
       }
       this.s.discardTop = new window.AdventureDeck.DiscardTop(savedTop);
       this.s.discardTopOwner = savedTop ? (result.discardTopOwner || 'player') : null;
+      if (Array.isArray(result.magazineReserve)) {
+        this.s.magazineReserve = clone(result.magazineReserve.slice(0, 3));
+      }
       // Battle loot cards are inserted into the transient battle hand first.  On
       // persistence, reconcile the physical trophy cards with the collection
       // list so a refresh or repeated settlement cannot duplicate a drop.

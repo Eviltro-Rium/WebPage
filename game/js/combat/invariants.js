@@ -38,6 +38,7 @@
         pushAll(result.player, player.deck);
         pushAll(result.player, player.hand);
         pushAll(result.player, player.discard);
+        pushAll(result.player, engine.s && engine.s.reserveCards);
       }
       // Challenge rooms expose two hands but one shared NPC deck/discard.
       const seenDecks = new Set();

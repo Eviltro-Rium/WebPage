@@ -29,6 +29,20 @@
         return this.state();
       }
 
+      if (def.combatUse === 'magazine') {
+        const reserveMax = 3;
+        if ((this.s.reserveCards || []).length >= reserveMax) {
+          this.emit('desc', '储备区已满（至多' + reserveMax + '张），请先打出后再使用弹夹');
+          return this.state();
+        }
+        if (!(this.h.player || []).length) {
+          this.emit('desc', '手牌为空，无法使用弹夹');
+          return this.state();
+        }
+        return this.beginHandDiscard({kind:'magazine', itemIndex, itemName:def.name,
+          count:1, cancelable:true, resumePhase:this.s.phase, hint:'弹夹：选择1张手牌放入储备区'});
+      }
+
       // 弃牌符 / 熔炉：无 index 时进入 Vixraps 式手牌点选，不弹窗。
       if ((def.combatUse === 'discardTalisman' || def.combatUse === 'furnace') &&
           !(choice && (choice.index != null || typeof choice === 'number'))) {
@@ -384,6 +398,7 @@
     this.s.busy = false;
     this.s.forcedDiscard = false;
     this.s.selectedCard = -1;
+    this.s.selectedReserveIndex = null;
     this.s.selectedCards = [];
     this.emit('desc', this.s.pendingHandDiscard.hint);
     return this.state();
@@ -409,6 +424,24 @@
     this.s.selectedCards = [];
     this.s.phase = resumePhase;
     this.s.busy = false;
+
+    if (kind === 'magazine') {
+      const adv = this._adventureEngine;
+      const item = adv && adv.s && adv.s.consumables && adv.s.consumables[itemIndex];
+      if (!item || (typeof item === 'string' ? item : item.name) !== pending.itemName || !this.h.player[selected[0]]) {
+        throw Error('弹夹或选择的手牌已失效');
+      }
+      const card = this.h.player.splice(selected[0], 1)[0];
+      const reserve = this.s.reserveCards || (this.s.reserveCards = []);
+      if (reserve.length >= 3) throw Error('储备区已满');
+      reserve.push(card);
+      adv.s.consumables.splice(itemIndex, 1);
+      this.emit('desc', '使用道具[弹夹]：将' + this.cardText(card) + '放入储备区');
+      if (typeof this._syncMagazineReserveToAdventure === 'function') this._syncMagazineReserveToAdventure();
+      if (window.AdventureSave && typeof window.AdventureSave.save === 'function') window.AdventureSave.save(adv);
+      this._checkInvariants('magazine');
+      return this.state();
+    }
 
     if ((kind === 'discardTalisman' || kind === 'furnace') && itemIndex != null) {
       // Re-enter item use with the chosen hand index; consumes on success.

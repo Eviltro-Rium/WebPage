@@ -86,8 +86,8 @@ _renderControls() {
     let html = '';
     const phase = s.phase;
     const canAct = s.onlineCanAct !== false;
-    const hasCard = s.selectedCard >= 0;
-    const selectedCard = hasCard && s.playerHand ? s.playerHand[s.selectedCard] : null;
+    const hasCard = s.selectedCard >= 0 || s.selectedReserveIndex != null;
+    const selectedCard = s.selectedReserveIndex != null ? (s.reserveCards || [])[s.selectedReserveIndex] : (hasCard && s.playerHand ? s.playerHand[s.selectedCard] : null);
     const hasNumberCard = !!(selectedCard && selectedCard.isNumberCard);
     const hasDiscardCards = (s.selectedCards || []).length > 0;
 
