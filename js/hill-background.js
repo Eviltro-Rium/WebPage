@@ -655,7 +655,10 @@
     });
   }
 
-  function scatterGrid(mesh, cols, rows, width, depth, stagger, scaleBase, scaleJitter, heightScale) {
+  var sceneRuntime = window.RiumHillRuntime;
+  var yieldWork = sceneRuntime ? sceneRuntime.yieldTask : function () { return new Promise(function (resolve) { setTimeout(resolve, 0); }); };
+
+  async function scatterGrid(mesh, cols, rows, width, depth, stagger, scaleBase, scaleJitter, heightScale) {
     var dummy = new THREE.Object3D();
     var n = 0;
     var r, c, u, v, x, z, s;
@@ -673,11 +676,12 @@
         mesh.setMatrixAt(n, dummy.matrix);
         n += 1;
       }
+      if ((r + 1) % 8 === 0) await yieldWork();
     }
     mesh.instanceMatrix.needsUpdate = true;
   }
 
-  function scatterFlowers(mesh, count, width, depth) {
+  async function scatterFlowers(mesh, count, width, depth) {
     var dummy = new THREE.Object3D();
     var n = 0;
     var attempts = 0;
@@ -704,16 +708,18 @@
       patch = Math.sin(x * 0.31) * Math.cos(z * 0.27) + Math.sin(x * 0.17 + z * 0.21);
       if (Math.random() > 0.72 + patch * 0.2) continue;
       placeFlower(x, z, 0.92 + Math.random() * 0.32);
+      if (n % 256 === 0) await yieldWork();
     }
     while (n < count) {
       x = (Math.random() - 0.5) * width;
       z = (Math.random() - 0.5) * depth;
       placeFlower(x, z, 0.96 + Math.random() * 0.24);
+      if (n % 256 === 0) await yieldWork();
     }
     mesh.instanceMatrix.needsUpdate = true;
   }
 
-  function init() {
+  async function init() {
     var canvas = document.createElement("canvas");
     canvas.id = "hill-bg-canvas";
     canvas.setAttribute("aria-hidden", "true");
@@ -733,7 +739,7 @@
     var windowLoaded = document.readyState === "complete";
     var assetsReady =
       isProjectsPage ||
-      (windowLoaded && (!isHomePage || window.__riumGalleryReady === true));
+      windowLoaded;
     var bootMode =
       !reducedMotion &&
       (document.documentElement.classList.contains("home-is-booting") ||
@@ -930,6 +936,7 @@
 
     var world = new THREE.Group();
     scene.add(world);
+    await yieldWork();
 
     var terrainGeo = new THREE.PlaneGeometry(72, 56, 96, 64);
     terrainGeo.rotateX(-Math.PI / 2);
@@ -995,23 +1002,65 @@
 
     var grass = new THREE.InstancedMesh(grassGeo, grassMat, grassCols * grassRows);
     grass.frustumCulled = false;
-    scatterGrid(grass, grassCols, grassRows, 66, 50, 0.14, 1.08, 0.28, 1.02);
+    await scatterGrid(grass, grassCols, grassRows, 66, 50, 0.14, 1.08, 0.28, 1.02);
     world.add(grass);
 
     var undergrowth = new THREE.InstancedMesh(underGeo, underMat, underCols * underRows);
     undergrowth.frustumCulled = false;
-    scatterGrid(undergrowth, underCols, underRows, 68, 52, 0.12, 1.12, 0.26, 0.82);
+    await scatterGrid(undergrowth, underCols, underRows, 68, 52, 0.12, 1.12, 0.26, 0.82);
     world.add(undergrowth);
 
     var carpet = new THREE.InstancedMesh(carpetGeo, carpetMat, carpetCols * carpetRows);
     carpet.frustumCulled = false;
-    scatterGrid(carpet, carpetCols, carpetRows, 70, 54, 0.1, 1.28, 0.22, 0.62);
+    await scatterGrid(carpet, carpetCols, carpetRows, 70, 54, 0.1, 1.28, 0.22, 0.62);
     world.add(carpet);
 
     var flowers = new THREE.InstancedMesh(flowerGeo, flowerMat, flowerCount);
     flowers.frustumCulled = false;
-    scatterFlowers(flowers, flowerCount, 66, 50);
+    await scatterFlowers(flowers, flowerCount, 66, 50);
     world.add(flowers);
+
+    var plantLayers = [];
+    var plantFrustum = new THREE.Frustum();
+    var plantProjection = new THREE.Matrix4();
+    async function addPlantTiles(mesh) {
+      if (!sceneRuntime) return;
+      mesh.geometry.computeBoundingSphere();
+      var sphere = mesh.geometry.boundingSphere;
+      var tiles = await sceneRuntime.partitionInstances(mesh.instanceMatrix.array, sphere.center, sphere.radius + 1, 12);
+      tiles.forEach(function (tile) {
+        tile.bounds = new THREE.Box3(new THREE.Vector3().fromArray(tile.min), new THREE.Vector3().fromArray(tile.max));
+        tile.visible = null;
+      });
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      plantLayers.push({ mesh: mesh, tiles: tiles });
+    }
+    await addPlantTiles(grass);
+    await addPlantTiles(undergrowth);
+    await addPlantTiles(carpet);
+    await addPlantTiles(flowers);
+    function cullPlantTiles() {
+      if (!sceneRuntime) return;
+      camera.updateMatrixWorld();
+      plantProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      plantFrustum.setFromProjectionMatrix(plantProjection);
+      plantLayers.forEach(function (layer) {
+        var changed = false;
+        layer.tiles.forEach(function (tile) {
+          var visible = plantFrustum.intersectsBox(tile.bounds);
+          if (tile.visible !== visible) { tile.visible = visible; changed = true; }
+        });
+        if (!changed) return;
+        var count = sceneRuntime.packVisibleInstances(layer.mesh.instanceMatrix.array, layer.tiles);
+        layer.mesh.count = count;
+        layer.mesh.visible = count > 0;
+        if (count) {
+          layer.mesh.instanceMatrix.updateRange.offset = 0;
+          layer.mesh.instanceMatrix.updateRange.count = count * 16;
+          layer.mesh.instanceMatrix.needsUpdate = true;
+        }
+      });
+    }
 
     var pollenCount = 140;
     var pollenPos = new Float32Array(pollenCount * 3);
@@ -1288,8 +1337,7 @@
     }
 
     function refreshAssetsReady() {
-      var galleryReady = !isHomePage || window.__riumGalleryReady === true;
-      assetsReady = isProjectsPage || (windowLoaded && galleryReady);
+      assetsReady = isProjectsPage || windowLoaded;
       if (!bootMode && assetsReady && commentsReady) finishHomeLoading();
     }
 
@@ -1305,6 +1353,7 @@
       var loader = document.getElementById("home-loading");
       document.documentElement.classList.remove("home-is-booting", "subpage-is-booting");
       updateHomeLoading(1, isGuestbook ? "留言已加载" : "场景已就绪", "enter");
+      document.dispatchEvent(new CustomEvent("rium-home-ready"));
       if (!loader) return;
       loader.classList.add("is-done");
       window.setTimeout(function () {
@@ -1323,6 +1372,15 @@
       commentsReady = true;
       refreshAssetsReady();
     });
+
+    await yieldWork();
+    renderer.compile(scene, camera);
+    await yieldWork();
+    renderer.render(scene, camera);
+    if (sceneRuntime) await sceneRuntime.waitForGpu(renderer.getContext());
+    windowLoaded = document.readyState === "complete";
+    refreshAssetsReady();
+    document.dispatchEvent(new CustomEvent("rium-scene-ready"));
 
     var running = true;
     function animate(t) {
@@ -1425,6 +1483,7 @@
       }
       faceCloudsToCamera();
       syncSkyDirections();
+      cullPlantTiles();
       renderer.render(scene, camera);
     }
 
@@ -1432,9 +1491,21 @@
     if (reducedMotion) finishHomeLoading();
   }
 
+  function start() {
+    init().catch(function (error) {
+      console.error('[Hill scene]', error);
+      var canvas = document.getElementById('hill-bg-canvas');
+      if (canvas) canvas.remove();
+      document.documentElement.classList.remove('home-is-booting', 'subpage-is-booting');
+      var loader = document.getElementById('home-loading');
+      if (loader) loader.remove();
+      document.dispatchEvent(new CustomEvent('rium-scene-ready'));
+      document.dispatchEvent(new CustomEvent('rium-home-ready'));
+    });
+  }
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", start);
   } else {
-    init();
+    start();
   }
 })();

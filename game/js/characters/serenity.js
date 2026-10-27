@@ -4,7 +4,7 @@
     name: 'Serenity',
     hp: 75,
     type: '暗影',
-    passive: '免疫冷冻；生命低于30获得嗜血印记（永久、不可净化）；无印记时恢复额外+1',
+    passive: '免疫冷冻；生命低于30获得嗜血印记（不可净化，冒险离房时生命高于30则清除）；无印记时恢复额外+1',
     init() { return {}; },
     turnStart(eng, ch) { if (ch.hp < 30) ch.bloodthirst = true; },
     effect(eng, v, c, a, t, owner, helpers) {
@@ -14,7 +14,8 @@
       if (a.hp < 30) a.bloodthirst = true;
       if (v === 1) {
         d = 2;
-        heal(a, 2);
+        if (bt) bleed(2);
+        else heal(a, 2);
       } else if (v === 2) {
         d = bt ? 5 : 3;
       } else if (v === 3) {
@@ -34,7 +35,16 @@
         if (r) eng.discardWithEvent(r, owner, { from: 'reveal', faceUp: true, desc: `Serenity 5牌将${eng.cardText(r)}置于弃牌库底` });
       } else if (v === 6) {
         d = 6;
-        unblock = bt;
+        const hand = eng.h && eng.h[owner] || [];
+        if (hand.length) {
+          if (owner === 'player') {
+            eng.s.pendingSerenitySixDiscard = true;
+          } else if (typeof eng.chooseAIDiscard === 'function') {
+            const worst = eng.chooseAIDiscard(hand);
+            const card = hand.splice(worst, 1)[0];
+            eng.discardWithEvent(card, owner, { handIndex: worst, desc: 'Serenity 6牌：弃掉' + eng.cardText(card) });
+          }
+        }
       } else if (v === 7) {
         d = 5;
         unblock = true;
@@ -46,11 +56,13 @@
       } else if (v === 0) {
         let own = eng.h[owner], bonus = Math.min(9, own.length * 3);
         heal(a, 1 + bonus);
-        own.splice(0, own.length);
+        const dropped = own.splice(0, own.length);
+        eng.discardManyWithEvent(dropped, owner, { desc: 'Serenity 0牌：弃掉所有手牌' });
         if (bt) {
           const targetKey = typeof eng._who === 'function' ? eng._who(t) : (owner === 'player' ? 'ai' : 'player');
           let opp = eng.h[targetKey] || [], count = opp.length;
-          opp.splice(0, opp.length);
+          const discarded = opp.splice(0, opp.length);
+          eng.discardManyWithEvent(discarded, targetKey, { desc: 'Serenity 嗜血0牌：对手弃掉所有手牌' });
           draw(targetKey, Math.max(0, count - 1), true);
         }
         draw(owner, 4, true);
@@ -59,23 +71,21 @@
       return { d, skip, unblock };
     },
     damageAfterDefense(v, damage, defender) {
-      if ([3].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2) - (defender.bloodthirst ? 2 : 0));
+      if ([3].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2));
       if (v === 1) return Math.max(0, damage - 3);
       return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
       const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;
+      const counter = helpers.counter || ((target, amount) => hurt(target, amount));
       let remaining = d, desc = '';
       if (v === 1) {
         let b = Math.min(3, d);
-        let bt = !!defender.bloodthirst || defender.hp < 30;
-        if (defender.hp < 30) defender.bloodthirst = true;
-        if (bt) heal(defender, b);
         remaining = Math.max(0, d - b);
-        desc = bt ? `Serenity 1牌：防御3点+恢复${b}点(嗜血)` : 'Serenity 1牌：防御至多3点';
+        desc = 'Serenity 1牌：防御至多3点';
       } else if (v === 2) {
         bleed(opponent, 1);
-        let drain = (opponent.bleed || 0) * 2;
+        let drain = (opponent.bleed || 0) * 1;
         // Life steal must remove HP from the attacker and heal the defender
         // by the amount actually taken (after fly/guard mitigation).
         if (typeof eng.drainAttack === 'function') {
@@ -90,11 +100,11 @@
         desc = `Serenity 2牌：1层流血+吸取${drain}点生命`;
       } else if (v === 3) {
         let b = Math.ceil(d / 2);
+        remaining = Math.max(0, d - b);
         let bt = !!defender.bloodthirst || defender.hp < 30;
         if (defender.hp < 30) defender.bloodthirst = true;
-        if (bt) b = Math.min(d, b + 2);
-        remaining = Math.max(0, d - b);
-        desc = `Serenity 3牌：格挡${b}点`;
+        if (bt) counter(opponent, 2);
+        desc = bt ? `Serenity 3牌：格挡${b}点+反击2点(嗜血)` : `Serenity 3牌：格挡${b}点`;
         // v===0 由 engine.js#defenseJudge 翻牌判定完成，这里不再处理。
       }
       return { remaining, desc };

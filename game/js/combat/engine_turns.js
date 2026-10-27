@@ -74,6 +74,7 @@
       if (discardBeforeDefend && selected.length !== 1) throw Error('只能弃掉1张牌后再防御');
       if (this.s.pendingHypothermiaDiscard && selected.length !== 1) throw Error('失温只能弃掉1张牌');
       if (this.s.pendingKrakenDefendDiscard && selected.length !== 1) throw Error('克拉肯0牌：只能弃掉1张牌');
+      if (this.s.pendingSerenitySixDiscard && selected.length !== 1) throw Error('Serenity 6牌：只能弃掉1张牌');
       selected.sort((a, b) => b - a);
       for (const i of selected) {
         if (!this.h.player[i]) continue;
@@ -99,6 +100,10 @@
         if (selected.length !== 1) throw Error('克拉肯0牌：只能弃掉1张牌');
         return this._finishKrakenDefendDiscard();
       }
+      if (this.s.pendingSerenitySixDiscard) {
+        if (selected.length !== 1) throw Error('Serenity 6牌：只能弃掉1张牌');
+        return this._finishSerenitySixDiscard();
+      }
       if (this.s.mayDiscardAfterSkill) {
         this.s.mayDiscardAfterSkill = false;
         this.s.phase = 'PLAYER_PLAY';
@@ -118,6 +123,7 @@
       if (this.s.pendingDiscardBeforeDefend) throw Error('必须弃掉1张牌后再防御，不能取消');
       if (this.s.pendingHypothermiaDiscard) throw Error('失温必须弃掉1张牌，不能取消');
       if (this.s.pendingKrakenDefendDiscard) throw Error('克拉肯0牌：必须弃掉1张牌，不能取消');
+      if (this.s.pendingSerenitySixDiscard) throw Error('Serenity 6牌：必须弃掉1张牌，不能取消');
       if (this.s.forcedDiscard) throw Error(`手牌超过${this.getHandLimit('player')}张，不能取消弃牌`);
       this.s.mayDiscardAfterSkill = false;
       this.s.phase = 'PLAYER_PLAY';

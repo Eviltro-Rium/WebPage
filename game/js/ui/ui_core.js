@@ -33,7 +33,9 @@ const GAME_ASSET_ROOT = (() => {
     return new URL('../../', document.currentScript.src).href;
 })();
 function gameAssetUrl(path) {
-    return GAME_ASSET_ROOT ? new URL(path, GAME_ASSET_ROOT).href : path;
+    const url = GAME_ASSET_ROOT ? new URL(path, GAME_ASSET_ROOT).href : path;
+    return /icons\/npc_icons\/[^?]+\.webp/.test(path)
+        ? url + (url.includes('?') ? '&' : '?') + 'portraitRev=20261027' : url;
 }
 window.gameAssetUrl = gameAssetUrl;
 
@@ -132,13 +134,30 @@ function descToEmoji(text) {
 }
 window.descToEmoji = descToEmoji;
 
+/** Put mutually exclusive skill branches on their own lines for display. */
+function formatSkillDescBranches(text) {
+    if (typeof text !== 'string' || !text) return text;
+    if (!/(?:→|否则|时|[🔴🟡🔵🟢⚪⚫]|；(?:有|若|对手))/.test(text)) return text;
+    return text
+        .replace(/：(?=[^；\n]{0,48}(?:→|[🔴🟡🔵🟢⚪⚫]))/g, '：\n')
+        .replace(/；/g, '\n')
+        .replace(/、(?=[🔴🟡🔵🟢⚪⚫])/g, '\n')
+        .replace(/，(?=否则|若)/g, '\n');
+}
+window.formatSkillDescBranches = formatSkillDescBranches;
+
 function parseSegments(text, defaultColor) {
-    text = descToEmoji(text);
+    text = formatSkillDescBranches(descToEmoji(text));
     const segs = [];
     let i = 0;
     const HP_LOSS = '#ff4444';
     const HP_GAIN = '#86efac';
     while (i < text.length) {
+        if (text[i] === '\n') {
+            segs.push({ text: '\n', break: true, color: null });
+            i += 1;
+            continue;
+        }
         // Buff / heal floats: keep the numeric HP delta as a dedicated colored segment.
         // Unified HP floats: 🗡️n = HP loss, ❤️n = HP gain (e.g. [灼伤]🗡️3, [吸血]❤️3).
         const unified = text.slice(i).match(/^(🗡️|❤️)\d+(?:\.\d+)?/);
@@ -164,7 +183,7 @@ function parseSegments(text, defaultColor) {
         }
         let j = i + 1;
         while (j < text.length) {
-            if (text[j] === '[') break;
+            if (text[j] === '[' || text[j] === '\n') break;
             if ((text[j] === '+' || text[j] === '-') && /^\d+❤️/.test(text.slice(j + 1))) break;
             if (/^(?:🗡️|❤️)\d/.test(text.slice(j))) break;
             j++;
@@ -174,6 +193,30 @@ function parseSegments(text, defaultColor) {
     }
     return segs;
 }
+
+function skillSegmentsToHtml(segs) {
+    return (segs || []).map(sg => {
+        if (sg.break) return '<br>';
+        return sg.color ? '<span style="color:' + sg.color + '">' + sg.text + '</span>' : sg.text;
+    }).join('');
+}
+
+function appendParsedSegments(el, segs) {
+    if (!el) return;
+    for (const seg of segs || []) {
+        if (seg.break) {
+            el.appendChild(document.createElement('br'));
+            continue;
+        }
+        const span = document.createElement('span');
+        span.textContent = seg.text;
+        if (seg.color) span.style.color = seg.color;
+        el.appendChild(span);
+    }
+}
+window.parseSegments = parseSegments;
+window.skillSegmentsToHtml = skillSegmentsToHtml;
+window.appendParsedSegments = appendParsedSegments;
 
 function cardId(card) {
     return `${card.uid || ''}_${card.color}_${card.value}_${card.isBlack}_${card.isWhite}_${card.potion}_${card.magic}_${card.greenMagic}_${card.magicColor || ''}_${card.purify}_${card.superPurify}_${card.swapHand}_${card.shuffleToDeck}_${card.drawTwo}_${card.drawThree}_${!!card.trophyWhite}_${card.trophyName || ''}`;

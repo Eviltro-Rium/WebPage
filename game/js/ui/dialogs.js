@@ -355,7 +355,7 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
             const btn = document.createElement('button'); btn.className = 'choice-row';
             const buffs = [];
             if (statusRegistry) {
-                statusRegistry.list(t.ch).forEach(def => {
+                statusRegistry.list(t.ch, def => def.cleanse !== 'never').forEach(def => {
                     const amount = statusRegistry.amount(t.ch, def.id);
                     const suffix = def.stack && amount > 1 ? `×${amount}` : '';
                     buffs.push(`<img src="${statusIcon(def)}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>${def.label}${suffix}</span>`);
@@ -377,13 +377,7 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
             if (t.ch.lush > 0) buffs.push(`<img src="${buffIcon('lush')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>茂盛×${t.ch.lush}</span>`);
             if (t.ch.diving) buffs.push(`<img src="${buffIcon('diving')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>潜水</span>`);
             if ((t.ch.parasite || 0) > 0) buffs.push(`<img src="${buffIcon('parasite')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>寄生×${t.ch.parasite}</span>`);
-            if (t.ch.bloodthirst) buffs.push(`<img src="${buffIcon('blood_thirsty')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>嗜血</span>`);
-            if (t.ch.tauntMark) {
-                const mc = String(t.ch.mockAttackColor || '').toUpperCase();
-                const tip = ({ RED: '🔴', YELLOW: '🟡', BLUE: '🔵', GREEN: '🟢' })[mc] || '';
-                buffs.push(`<img src="${buffIcon('mock')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>嘲弄${tip ? '·' + tip : ''}</span>`);
-            }
-            if (t.ch.bindMark) buffs.push(`<img src="${buffIcon('binding')}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>捆缚</span>`);
+
             for (const [key, label] of [['chaos_red', '混沌·红'], ['chaos_yellow', '混沌·黄'], ['chaos_blue', '混沌·蓝'], ['chaos_green', '混沌·绿']]) {
                 if (t.ch[key]) buffs.push(`<img src="${buffIcon(key)}" alt="" style="width:20px;height:20px;vertical-align:middle"><span>${label}</span>`);
             }

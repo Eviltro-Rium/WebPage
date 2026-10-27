@@ -162,6 +162,8 @@
         scorch: !!p.scorch,
         hypothermia: p.hypothermia || 0,
         bindMark: !!p.bindMark,
+        tauntMark: !!p.tauntMark,
+        mockAttackColor: p.mockAttackColor || null,
         chaos_red: !!p.chaos_red,
         chaos_yellow: !!p.chaos_yellow,
         chaos_blue: !!p.chaos_blue,
@@ -292,8 +294,10 @@
     },
     _applyAccessoryOnAdd(def) {
       if (def.statBonus && def.statBonus.maxHp) {
+        const before = this.s.player.hp;
         this.s.player.maxHp += def.statBonus.maxHp;
         this.s.player.hp += def.statBonus.maxHp;
+        this.queueMapRecovery({ heal: this.s.player.hp - before, hpBefore: before, label: def.displayName, itemName: def.name });
       }
       this._syncBeastCap();
       this._syncHandLimit();

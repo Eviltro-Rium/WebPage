@@ -285,12 +285,7 @@
             tip.appendChild(title);
             const body = document.createElement('div');
             body.className = 'tooltip-body';
-            for (const seg of parseSegments(desc, '#e6e6f0')) {
-                const span = document.createElement('span');
-                span.textContent = seg.text;
-                span.style.color = seg.color;
-                body.appendChild(span);
-            }
+            appendParsedSegments(body, parseSegments(desc, '#e6e6f0'));
             tip.appendChild(body);
             document.body.appendChild(tip);
             const r = anchorEl.getBoundingClientRect();

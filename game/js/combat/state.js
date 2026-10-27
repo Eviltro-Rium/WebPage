@@ -54,6 +54,7 @@
         pendingDiscardBeforeDefend: null,
         pendingHypothermiaDiscard: false,
         pendingKrakenDefendDiscard: false,
+        pendingSerenitySixDiscard: false,
         hypothermiaDiscardResume: null,
         forceEndAITurn: false,
         activeAttacker: 'player',

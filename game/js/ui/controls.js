@@ -139,6 +139,8 @@ _renderControls() {
                 ? '必须弃掉1张手牌后再防御'
             : s.pendingHypothermiaDiscard
                 ? '[失温]达到2层：必须弃掉1张牌'
+            : s.pendingSerenitySixDiscard
+                ? 'Serenity 6牌：必须弃掉1张牌'
             : s.forcedDiscard
                 ? `手牌超限：需弃至 ${global.StatusService ? global.StatusService.handLimit(s.player, s.handLimit || 5) : (s.handLimit || 5)} 张`
                 : s.mayDiscardAfterSkill
@@ -148,7 +150,7 @@ _renderControls() {
         // pendingHandDiscard: HandDiscardPicker owns confirm/cancel buttons.
         if (!handPending) {
             html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!hasDiscardCards ? 'disabled' : ''}>确认弃牌 (${(s.selectedCards || []).length})</button>`;
-            const canCancelDiscard = !s.forcedDiscard && !s.pendingVixrapsPassive && !s.pendingDiscardBeforeDefend && !s.pendingHypothermiaDiscard;
+            const canCancelDiscard = !s.forcedDiscard && !s.pendingVixrapsPassive && !s.pendingDiscardBeforeDefend && !s.pendingHypothermiaDiscard && !s.pendingSerenitySixDiscard && !s.pendingKrakenDefendDiscard;
             if (canCancelDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
         }
     } else if (phase === 'OPPONENT_CARD_CHOICE' && canAct && s.isAdventure) {
@@ -401,7 +403,9 @@ _showSkillOverlay() {
         t = String(t || '').replace(/\[牌\]/g, '🃏');
         if (typeof parseSegments !== 'function') return t;
         const segs = parseSegments(tagifySkill(t), '');
-        return segs.map(sg => sg.color ? `<span style="color:${sg.color}">${sg.text}</span>` : sg.text).join('');
+        return typeof skillSegmentsToHtml === 'function'
+            ? skillSegmentsToHtml(segs)
+            : segs.map(sg => sg.color ? `<span style="color:${sg.color}">${sg.text}</span>` : sg.text).join('');
     };
     for (const ch of chars) {
         let atk = (SKILL_DATA && SKILL_DATA.attack && SKILL_DATA.attack[ch.name]) || [];

@@ -19,12 +19,7 @@ _showZoneDesc(id, desc) {
     el.classList.remove('is-expanded');
     const text = document.createElement('span');
     text.className = 'desc-text';
-    for (const seg of segs) {
-        const span = document.createElement('span');
-        span.textContent = seg.text;
-        if (seg.color) span.style.color = seg.color;
-        text.appendChild(span);
-    }
+    appendParsedSegments(text, segs);
     el.appendChild(text);
     const plain = String(desc || '');
     const sideBySide = id === 'atk-desc' || id === 'def-desc';
@@ -263,18 +258,19 @@ async _playDiscardManyAnimation(evt) {
             return match;
         }
         if(reveal)return reveal;
-        const fallbackIdx = handCards.findIndex((_, idx) => !used.has(idx));
-        if (fallbackIdx >= 0) {
-            used.add(fallbackIdx);
-            return handCards[fallbackIdx];
-        }
         return hand || document.getElementById('reveal-cards');
     });
-    for (let index = 0; index < cards.length; index++) {
-        if (index) await wait(70);
-        await this.anim.discardCard(cards[index], sources[index], discard, faceUp, { landsOnTop });
-    }
-    this._repaintOwnerHand(owner);
+    const rects = new Map(sources.filter(Boolean).map(source => [source, source.getBoundingClientRect()]));
+    const origins = sources.map(source => source && ({
+        dataset: Object.assign({}, source.dataset),
+        getBoundingClientRect: () => rects.get(source),
+        remove() {} // Physical origins are removed together below, before flights begin.
+    }));
+    sources.forEach(source => { if (source && handCards.includes(source)) source.remove(); });
+    try {
+        await Promise.all(cards.map((card, index) =>
+            this.anim.discardCard(card, origins[index], discard, faceUp, { landsOnTop })));
+    } finally { this._repaintOwnerHand(owner); }
 },
 
 async _playHandSwapAnimation(evt) {
@@ -331,11 +327,6 @@ async _playAICardAnimation(card, who = 'ai') {
     const atkZone = document.getElementById('atk-cards');
     if (!aiHand || !atkZone) { await wait(500); return; }
     const revealFace = !!(this.state && (this.state.revealAIHand || this.state.isAdventure));
-    const prevHand = this._prevAiHandFor(who);
-    // 明牌：先还原出牌前手牌，再定位源牌，避免剩余手牌被误当成飞出牌
-    if (revealFace && prevHand && prevHand.length) {
-        this._paintRevealedHand(aiHand, prevHand);
-    }
     let sourceCard = this._findHandCardElement(aiHand, card);
     if (!sourceCard && !revealFace) sourceCard = aiHand.lastElementChild;
     if (sourceCard) sourceCard.style.visibility = 'hidden';
@@ -346,7 +337,7 @@ async _playAICardAnimation(card, who = 'ai') {
             await this.anim.flyCardBack(sourceCard || aiHand, atkZone, animDuration(this, 440), 54);
         }
     }
-    finally { if (sourceCard) sourceCard.remove(); }
+    finally { if (sourceCard) sourceCard.remove(); this._repaintOwnerHand(who); }
     this._settleZoneCard(atkZone, card, who);
 },
 
@@ -355,10 +346,6 @@ async _playAIDefendAnimation(card, who = 'ai') {
     const defZone = document.getElementById('def-cards');
     if (!aiHand || !defZone) return;
     const revealFace = !!(this.state && (this.state.revealAIHand || this.state.isAdventure));
-    const prevHand = this._prevAiHandFor(who);
-    if (revealFace && prevHand && prevHand.length) {
-        this._paintRevealedHand(aiHand, prevHand);
-    }
     let sourceCard = this._findHandCardElement(aiHand, card);
     if (!sourceCard && !revealFace) sourceCard = aiHand.lastElementChild;
     if (sourceCard) sourceCard.style.visibility = 'hidden';
@@ -369,7 +356,7 @@ async _playAIDefendAnimation(card, who = 'ai') {
             await this.anim.flyCardBack(sourceCard || aiHand, defZone, animDuration(this, 440), 42);
         }
     }
-    finally { if (sourceCard) sourceCard.remove(); }
+    finally { if (sourceCard) sourceCard.remove(); this._repaintOwnerHand(who); }
     this._settleZoneCard(defZone, card, who);
 },
 

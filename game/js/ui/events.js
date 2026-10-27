@@ -474,7 +474,20 @@ async _playEvents(events, fast = false) {
     const wait = ms => runtime
         ? runtime.wait((fast || this._onlineAnimationFast) ? Math.max(60, Math.round(ms * 0.22)) : ms)
         : new Promise(resolve => setTimeout(resolve, (fast || this._onlineAnimationFast) ? Math.max(60, Math.round(ms * 0.22)) : ms));
-    const orderedEvents = this._animationOrder(events);
+    const orderedEvents = [];
+    for (const evt of this._animationOrder(events)) {
+        const previous = orderedEvents[orderedEvents.length - 1];
+        if (evt.type === 'discard' && !evt.deferRevealExit && previous &&
+            (previous.type === 'discard' || previous.type === 'discardMany') && !previous.deferRevealExit &&
+            evt.who === previous.who && evt.from === previous.from &&
+            evt.destination === previous.destination && evt.faceUp === previous.faceUp) {
+            orderedEvents[orderedEvents.length - 1] = Object.assign({}, previous, {
+                type: 'discardMany', card: null,
+                cards: [...(previous.cards || [previous.card]), evt.card],
+                desc: '同时弃掉' + ((previous.cards || [previous.card]).length + 1) + '张牌'
+            });
+        } else orderedEvents.push(evt);
+    }
     // Older saves omit drops on dice events; pair them with their result without rerolling.
     const lootResults = new Map();
     const lootTrophyByDie = new Map();
@@ -750,7 +763,7 @@ async _playEvents(events, fast = false) {
                 : (evt.desc || '');
             this.playFloatingText(text, '#ff8800', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
-            if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,136,0,0.8)', Math.min(amt * 3, 20)); } }
+            this._playHitFeedback(side, amt, 'rgba(255,136,0,0.8)');
             await wait(500);
         } else if (evt.type === 'bleedSettle') {
             const side = this._eventTarget(evt);
@@ -760,7 +773,7 @@ async _playEvents(events, fast = false) {
                 : (evt.desc || '');
             this.playFloatingText(text, '#cc2222', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
-            if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); const hpEl = document.getElementById(side + '-hp-section'); if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(204,34,34,0.8)', Math.min(amt * 3, 20)); } }
+            this._playHitFeedback(side, amt, 'rgba(204,34,34,0.8)');
             await wait(500);
         } else if (evt.type === 'poisonSettle') {
             const side = this._eventTarget(evt);
@@ -770,7 +783,7 @@ async _playEvents(events, fast = false) {
                 : (evt.desc || '');
             this.playFloatingText(text, '#84cc16', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
-            if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); }
+            this._playHitFeedback(side, amt, 'rgba(132,204,22,0.8)');
             await wait(500);
         } else if (evt.type === 'bombExplode') {
             const side = this._eventTarget(evt);
@@ -780,9 +793,7 @@ async _playEvents(events, fast = false) {
                 : (evt.desc || '炸弹爆炸！');
             this.playFloatingText(text, '#ff4444', side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
-            this.shakeScreen(10, 400);
-            const hpEl = document.getElementById(side + '-hp-section');
-            if (hpEl) { const r = hpEl.getBoundingClientRect(); this.burstParticles(r.left + r.width / 2, r.top + r.height / 2, 'rgba(255,68,68,0.9)', 25); }
+            this._playHitFeedback(side, amt, 'rgba(255,68,68,0.9)');
             await wait(600);
         } else if (evt.type === 'hurt') {
             const side = this._eventTarget(evt);
@@ -825,7 +836,7 @@ async _playEvents(events, fast = false) {
             const text = amt > 0 ? damageFloat(amt, tag, tag === '灼伤' && scorchKeep(evt) ? '（[炙热]不消退）' : tag === '中毒' ? '' : '，层数-1') : (evt.desc || '');
             this.playFloatingText(text, color, side);
             if (this.state[side]) { this._updateHpBar(side, this._feedbackEntity(evt, side)); this._updateBuffs(side, this._feedbackEntity(evt, side)); }
-            if (amt > 0) { this.shakeScreen(Math.min(amt * 2, 10), 300); }
+            this._playHitFeedback(side, amt, color);
             await wait(500);
         } else if (evt.type === 'buff') {
             const side = this._eventTarget(evt);
@@ -840,7 +851,8 @@ async _playEvents(events, fast = false) {
                 chaos_reset: '#c084fc',
                 chaos_red: '#f87171', chaos_yellow: '#fde047', chaos_blue: '#60a5fa', chaos_green: '#4ade80'
             };
-            this.playFloatingText(evt.desc || '', colors[evt.kind] || '#c4b5fd', side);
+            const desc = evt.kind === 'poison' ? String(evt.desc || '').replace(/\+true/g, '+1') : evt.desc || '';
+            this.playFloatingText(desc, colors[evt.kind] || '#c4b5fd', side);
             if (this.state[side]) {
                 let ch = this._feedbackEntity(evt, side);
                 if (evt.stacks != null && evt.kind) {

@@ -778,7 +778,7 @@
     name: 'Magnet',
     displayName: '磁铁',
     kind: 'accessory',
-    description: '普通房兽元结算出现4种各1枚的选项时，可从中选择3枚',
+    description: '普通房兽元结算提供4枚兽元时，可从中选择3枚',
     icon: ICON + 'magnet.webp',
     beastTradeCost: ['cao', 'huo', 'huo', 'shui', 'shui'],
     price: 15,

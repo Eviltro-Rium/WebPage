@@ -82,6 +82,18 @@ test('burn settle float uses damage sword marker', async () => {
   assert.deepEqual(floating, [['[灼伤]🗡️3，层数-1', '#ff8800', 'player']]);
 });
 
+test('skill description branches are split onto separate lines', () => {
+  const serenity = context.parseSegments('3点[伤害]；嗜血时改为5点[伤害]', '');
+  assert.equal(serenity.filter(seg => seg.break).length, 1);
+  assert.equal(context.skillSegmentsToHtml(serenity).includes('<br>'), true);
+  const ryan = context.parseSegments('3点[伤害]，恢复1点[生命]', '');
+  assert.equal(ryan.some(seg => seg.break), false);
+  const colors = context.formatSkillDescBranches('造成3点[伤害]，按技能牌颜色：🔴施加2层[灼伤]、🟡施加[流沙]、🔵施加[失温]、🟢获得[茂盛]');
+  assert.equal(colors, '造成3点[伤害]，按技能牌颜色：\n🔴施加2层[灼伤]\n🟡施加[流沙]\n🔵施加[失温]\n🟢获得[茂盛]');
+  const fork = context.formatSkillDescBranches('造成3点[伤害]，若技能牌为🟡施加2层[沙盲]，否则获得[飞翔]');
+  assert.equal(fork, '造成3点[伤害]\n若技能牌为🟡施加2层[沙盲]\n否则获得[飞翔]');
+});
+
 test('parseSegments colors -n❤️ red while keeping status tag color', () => {
   const segs = JSON.parse(JSON.stringify(context.parseSegments('-3❤️[灼伤]，-1[灼伤层数]', '#ff8800')));
   assert.deepEqual(segs, [
@@ -105,11 +117,14 @@ test('second monster target field receives feedback in its own UI lane', async (
 test('all HP loss floats use a sword while healing keeps hearts', async () => {
   for (const target of ['player', 'ai', 'ai2']) {
     for (const type of ['hit', 'hurt', 'burnSettle', 'bleedSettle', 'poisonSettle', 'bombExplode', 'buffSettle']) {
-      const { ui, floating } = feedbackHarness();
+      const { ui, floating, hits } = feedbackHarness();
       await ui._playEvents([{ type, target, amount: 2, kind: type === 'hurt' ? 'thorns' : undefined }], true);
       assert.equal(floating.length, 1, type + '/' + target);
       assert.match(floating[0][0], /^(?:\[[^\]]+\])?🗡️2(?:$|，|（)/, type + '/' + target);
       assert.equal(floating[0][2], target);
+      assert.equal(hits.length, 1, type + '/' + target + ' hit feedback plays once');
+      assert.equal(hits[0][0], target);
+      assert.equal(hits[0][1], 2);
     }
   }
   const { ui, floating } = feedbackHarness();

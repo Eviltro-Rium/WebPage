@@ -11,6 +11,25 @@
         const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
         return runtime ? runtime.schedule(owner, fn, ms, channel) : setTimeout(fn, ms);
     };
+    function npcPassiveText(name, definition, stage) {
+        const notes = (global.AdventureMonsterNotes && global.AdventureMonsterNotes[name]) || [];
+        const lines = notes.filter(note => note.title === '被动').flatMap(note => note.lines || [])
+            .map(line => String(line).replace(/\*\*/g, '').trim())
+            .filter(line => {
+                const match = line.match(/^Stage\s+([\d/]+)\s*[:：]/i);
+                return !match || match[1].split('/').map(Number).includes(Number(stage) || 1);
+            }).map(line => line.replace(/^Stage\s+[\d/]+\s*[:：]\s*/i, '').replace(/[。；]$/, ''));
+        const add = text => { if (!lines.some(line => line.includes(text))) lines.push(text); };
+        if (definition.firstStrike && !lines.some(line => /先手/.test(line))) add('先手攻击');
+        if (definition.initialLush && !lines.some(line => /茂盛/.test(line))) add('初始[茂盛]' + definition.initialLush + '层');
+        if (definition.noAttack) add(definition.attackSkipDescription || '不主动进攻');
+        if (definition.immuneFreeze && !lines.some(line => /冷冻/.test(line))) add('免疫[冷冻]');
+        if (definition.immuneHypothermia && !lines.some(line => /失温/.test(line))) add('免疫[失温]');
+        if (definition.poisonImmune && !lines.some(line => /中毒/.test(line))) add('免疫[中毒]');
+        if (definition.canDefendHigh) add('可用高点数牌防御');
+        if (definition.handLimit && definition.handLimit < 4 && global.AdventureRegistry.getMonster(name)) add('手牌上限' + definition.handLimit);
+        return lines.join('；');
+    }
     Object.assign(GameUI.prototype, {
         _stateAttackerKey(s, who) {
             const state = s || {};
@@ -48,25 +67,59 @@
             });
         },
 
+        _updateNpcPassive(prefix, name, definition) {
+            const section = document.getElementById(`${prefix}-hp-section`);
+            if (!section) return;
+            let details = section.querySelector('.npc-hp-details');
+            if (!definition || prefix === 'player') {
+                section.classList.remove('npc-hp-section');
+                if (details) {
+                    const bar = details.querySelector('.hp-bar-outer');
+                    if (bar) details.before(bar);
+                    details.remove();
+                }
+                return;
+            }
+            section.classList.add('npc-hp-section');
+            if (!details) {
+                const bar = section.querySelector('.hp-bar-outer');
+                if (!bar) return;
+                details = document.createElement('div'); details.className = 'npc-hp-details';
+                bar.before(details); details.appendChild(bar);
+                const passive = document.createElement('p'); passive.className = 'npc-passive';
+                details.appendChild(passive);
+            }
+            const text = npcPassiveText(name, definition, this.state && (this.state.adventureStage || this.state.stage));
+            const passive = details.querySelector('.npc-passive');
+            passive.textContent = text ? '被动：' + text : '';
+            passive.hidden = !text;
+        },
+
         _updateAvatar(prefix, name) {
             const el = document.getElementById(`${prefix}-avatar`);
             if (!el) return;
             const charName = (name || '').replace(/^AI\d*\s+/, '');
+            const registry = global.AdventureRegistry;
+            const definition = registry && (registry.getMonster(charName) || registry.getBoss(charName));
+            this._updateNpcPassive(prefix, charName, definition);
+            el.classList.toggle('npc-avatar', !!definition);
             if (charName && charName !== el.dataset.char) {
+                el._avatarHit = null; el.classList.remove('avatar-hit');
                 el.dataset.char = charName;
-                const monsterDef = window.AdventureRegistry && window.AdventureRegistry.getMonster(charName);
-                const bossDef = window.AdventureRegistry && window.AdventureRegistry.getBoss(charName);
-                const advDef = monsterDef || bossDef;
-                if (advDef && advDef.icon) {
-                    el.src = gameAssetUrl(advDef.icon.replace(/^\.\.\//, ''));
-                    el.onerror = () => {
-                        el.src = gameAssetUrl(`avatars/${charName}.webp`);
-                        el.onerror = null;
-                    };
-                } else {
-                    el.src = gameAssetUrl(`avatars/${charName}.webp`);
-                    el.onerror = null;
-                }
+                const src = definition && definition.icon
+                    ? gameAssetUrl(definition.icon.replace(/^\.\.\//, ''))
+                    : gameAssetUrl(`avatars/${charName}.webp`);
+                el.dataset.normalSrc = src;
+                el.dataset.hitSrc = definition && definition.icon
+                    ? src.replace(/\.webp(?:\?.*)?$/, '_hit.webp?v=20261027-portraits') : '';
+                el.src = src;
+                if (el.dataset.hitSrc && typeof this._preloadHitPortrait === 'function') this._preloadHitPortrait(el.dataset.hitSrc);
+                el.onerror = definition ? () => {
+                    el._avatarHit = null; el.classList.remove('avatar-hit');
+                    el.dataset.hitSrc = '';
+                    el.dataset.normalSrc = gameAssetUrl(`avatars/${charName}.webp`);
+                    el.src = el.dataset.normalSrc; el.onerror = null;
+                } : null;
             }
         },
 
@@ -101,7 +154,7 @@
                 bomb: { colorClass: 'bomb-mark' }, hypothermia: { colorClass: 'hypothermia-buff' },
                 guard: { colorClass: 'guard-buff' }, fly: { colorClass: 'fly-buff' },
                 lush: { colorClass: 'lush-buff' }, parasite: { colorClass: 'parasite-buff' },
-                crit: { colorClass: 'crit-buff' },
+                crit: { colorClass: 'crit-buff' }, magmaVein: { colorClass: 'magma-vein-buff' },
                 diving: { colorClass: 'diving-buff' }, scorch: { colorClass: 'scorch-buff' }, bloodthirst: { colorClass: 'bloodthirst-buff' },
                 bind: { colorClass: 'bind-mark' }, taunt: { colorClass: 'taunt-mark' }, chaos_red: { colorClass: 'chaos-red-buff' },
                 chaos_yellow: { colorClass: 'chaos-yellow-buff' }, chaos_blue: { colorClass: 'chaos-blue-buff' },

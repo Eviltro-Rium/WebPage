@@ -114,6 +114,8 @@
       scene: s.scene || 'castle',
       usedScenes: (s.usedScenes || [s.scene || 'castle']).slice(),
       pendingMapReturnEffects: CLONE(s.pendingMapReturnEffects) || null,
+      pendingMapRecoveries: CLONE(s.pendingMapRecoveries) || [],
+      serenityDiscardRecoveryVersion: s.serenityDiscardRecoveryVersion || 0,
       pos: CLONE(s.pos),
       phase: s.phase,
       turn: s.turn || 0,

@@ -258,10 +258,37 @@
       this.s.busy = false;
       return this.check();
     }
+    _openSerenitySixDiscardIfPending() {
+      if (!this.s || !this.s.pendingSerenitySixDiscard) return false;
+      const hand = (this.h && this.h.player) || [];
+      if (!hand.length || this._allEnemiesDead()) {
+        this.s.pendingSerenitySixDiscard = false;
+        return false;
+      }
+      this.s.phase = 'PLAYER_DISCARD';
+      this.s.busy = false;
+      this.s.forcedDiscard = true;
+      this.s.selectedCard = -1;
+      this.s.selectedCards = [];
+      this.emit('desc', 'Serenity 6牌：请选择1张手牌弃掉');
+      return true;
+    }
+    _finishSerenitySixDiscard() {
+      this.s.pendingSerenitySixDiscard = false;
+      this.s.forcedDiscard = false;
+      this.s.selectedCard = -1;
+      this.s.selectedCards = [];
+      this.emit('desc', 'Serenity 6牌：已弃掉1张手牌');
+      if (this._openHypothermiaDiscardIfPending('START_AI_TURN')) return this.check();
+      if (!this._allEnemiesDead()) return this.startAITurn();
+      this.s.phase = 'PLAYER_PLAY';
+      this.s.busy = false;
+      return this.check();
+    }
     _afterPlayerAttackSettled(forceEnd) {
       if (forceEnd) this.s.hypothermiaDiscardResume = 'START_AI_TURN';
       this.afterAttack();
-      if (forceEnd && !this.s.pendingHypothermiaDiscard && !this.s.pendingKrakenDefendDiscard && !this._allEnemiesDead()) this.startAITurn();
+      if (forceEnd && !this.s.pendingHypothermiaDiscard && !this.s.pendingKrakenDefendDiscard && !this.s.pendingSerenitySixDiscard && !this._allEnemiesDead()) this.startAITurn();
     }
     _enterPlayerDefend(damage, {unblock=false, freezeBlock=false}={}){
       const blocked=!!(unblock||freezeBlock);
@@ -652,7 +679,7 @@
     settleBleed(target,stacks){const S=this._status();if(S&&S.settleBleed){S.settleBleed(this,target,stacks);return}if((target.bleed||0)<=0||stacks<=0)return;this.hurt(target,stacks,true,{silent:true});target.bleed--;let w=target===this.s.player?'player':(target===this.s.ai2?'ai2':'ai');this.emit('bleedSettle',`[流血]🗡️${stacks}，层数-1`,null,{who:w,amount:stacks})}
     settleBurn(ch){if(!ch||!ch.burn)return 0;const dmg=ch.burn;const hpBefore=ch.hp;const keep=!!ch.scorch;const S=window.FurryGame&&window.FurryGame.StatusService;if(!keep){if(S)S.remove(ch,'burn',1);else ch.burn--}const w=this._who(ch);if(this.name(ch)==='Leon'){this.emit('burnSettle',keep?'[灼伤]免疫（[炙热]不消退）':'[灼伤]免疫，层数-1',null,{who:w,amount:0,hpBefore,hpAfter:ch.hp,scorch:keep});return 0}this.emit('burnSettle',keep?`[灼伤]🗡️${dmg}（[炙热]不消退）`:`[灼伤]🗡️${dmg}，层数-1`,null,{who:w,amount:dmg,hpBefore,hpAfter:Math.max(0,hpBefore-dmg),scorch:keep});this.hurt(ch,dmg,false,{silent:true});return dmg}
     setScorch(entity,on,opts){if(!entity)return;const was=!!entity.scorch;const S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.set(entity,'scorch',!!on);else entity.scorch=!!on;if(!opts||opts.silent!==true){const w=this._who(entity);if(on&&!was)this.emit('buff','[炙热]',null,{who:w,kind:'scorch',stacks:1});else if(!on&&was)this.emit('buff','-[炙热]',null,{who:w,kind:'scorch',stacks:0})}}
-    poison(x,n,opts){const S=this._status();if(S&&S.poison){S.poison(this,x,n,opts);return}if(n>0){x.poison=Math.min(2,(x.poison||0)+n);if(!opts||opts.silent!==true){let w=x===this.s.player?'player':(x===this.s.ai2?'ai2':'ai');this.emit('buff',`+${n}[中毒]`,null,{who:w,kind:'poison',stacks:x.poison})}}}
+    poison(x,n,opts){const S=this._status();if(S&&S.poison)return S.poison(this,x,n,opts);n=Math.max(0,Number(n)||0);if(!x||!n)return 0;const before=Number(x.poison)||0;x.poison=Math.min(2,before+n);const added=x.poison-before;if(added>0&&(!opts||opts.silent!==true))this.emit('buff',`+${added}[中毒]`,null,{who:this._who(x),kind:'poison',stacks:x.poison,amount:added});return added}
     thorns(x,n,opts){const S=this._status();if(S&&S.thorns){S.thorns(this,x,n,opts);return}if(!x||n<=0)return;const before=x.thorns||0;x.thorns=Math.min(1,before+n);const added=x.thorns-before;if(added>0&&(before<=0||x.thornsTriggersLeft==null))x.thornsTriggersLeft=2;if(added>0&&(!opts||opts.silent!==true))this.emit('buff',`+${added}[荆棘]`,null,{who:this._who(x),kind:'thorns',stacks:x.thorns})}
     getHandLimit(owner='player'){const adapter=this._adapter();if(adapter&&adapter.handLimit)return adapter.handLimit(this,owner);const base=owner==='player'?(this.s.handLimit||5):5;return window.StatusService?window.StatusService.handLimit(this.s[owner],base):base}
     magmaVein(x,n=1,opts){const service=window.StatusService;if(!x||n<=0||!service)return;const before=service.amount(x,'magmaVein');service.add(x,'magmaVein',n);if(service.amount(x,'magmaVein')>before&&(!opts||!opts.silent)){const who=this._who(x);this.emit('buff','+1[熔脉]',null,{who,target:who,kind:'magmaVein',stacks:service.amount(x,'magmaVein')})}}
@@ -879,7 +906,7 @@
           if(Array.isArray(legal)&&legal[i]===false)throw Error(pendingHand.hint||'该牌不可选');
         }
         let a=this.s.selectedCards||[],p=a.indexOf(i);
-        if(this.s.mayDiscardAfterSkill||this.s.pendingVixrapsPassive||this.s.pendingDiscardBeforeDefend||this.s.pendingHypothermiaDiscard||this.s.pendingKrakenDefendDiscard||pendingHand)a=p>=0?[]:[i];
+        if(this.s.mayDiscardAfterSkill||this.s.pendingVixrapsPassive||this.s.pendingDiscardBeforeDefend||this.s.pendingHypothermiaDiscard||this.s.pendingKrakenDefendDiscard||this.s.pendingSerenitySixDiscard||pendingHand)a=p>=0?[]:[i];
         else if(p>=0)a.splice(p,1);
         else a.push(i);
         this.s.selectedCards=a;this.s.selectedCard=a.length?a[0]:-1;
@@ -1558,7 +1585,7 @@
       this.h.player.push(pulled);
       this.emit('desc','垃圾回收：收回'+this.cardText(pulled));
     }
-    afterAttack(){let target=this.s.attackTarget||'ai';this._tickBomb(target);this._tickBomb('player');if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();let optionalDiscard=!!this.s.mayDiscardAfterSkill;if(this.s.pendingAttack&&this.s.pendingAttack.recycleAttackCard)this._recycleAttackCardToHand();if(this.s.atkOwner)this._grantChaosIfKnight(this.s.atkOwner);this.s.pendingAttack=null;this.s.queuedCounterHits=[];this.s.counterAvoidance=false;this.s.pendingPlayerAttackRemaining=null;this.s.pendingPlayerAttackBleed=0;this.s.pendingSkillStatuses=[];this.s.pendingDamageFormula=null;this.s.pendingFiveChoice=false;this.s.fiveChoiceCard=null;this.s.pendingNumberJudge=null;this.s.pendingAttackMod=null;this.s.attackDebuffSnapshot=null;this.s.opponentHandTarget=null;this.s.defenseSkipped=false;this.s.unblockDefend=false;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];if(this.s.pendingKrakenDefendDiscard){if(this.s.player&&this.s.player.alive&&(this.h.player||[]).length){this.s.phase='PLAYER_DISCARD';this.s.busy=false;this.s.forcedDiscard=true;this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','防御0：请选择1张手牌弃掉');return}else{this.s.pendingKrakenDefendDiscard=false;if(!(this.h.player||[]).length)this.emit('desc','无手牌可弃')}}if(this._openHypothermiaDiscardIfPending(this.s.hypothermiaDiscardResume||'PLAYER_PLAY'))return;this.s.phase=optionalDiscard?'PLAYER_DISCARD':'PLAYER_PLAY';this.s.busy=false;if(optionalDiscard){this.s.forcedDiscard=false;this.s.selectedCard=-1;this.s.selectedCards=[]}}
+    afterAttack(){let target=this.s.attackTarget||'ai';this._tickBomb(target);this._tickBomb('player');if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();let optionalDiscard=!!this.s.mayDiscardAfterSkill;if(this.s.pendingAttack&&this.s.pendingAttack.recycleAttackCard)this._recycleAttackCardToHand();if(this.s.atkOwner)this._grantChaosIfKnight(this.s.atkOwner);this.s.pendingAttack=null;this.s.queuedCounterHits=[];this.s.counterAvoidance=false;this.s.pendingPlayerAttackRemaining=null;this.s.pendingPlayerAttackBleed=0;this.s.pendingSkillStatuses=[];this.s.pendingDamageFormula=null;this.s.pendingFiveChoice=false;this.s.fiveChoiceCard=null;this.s.pendingNumberJudge=null;this.s.pendingAttackMod=null;this.s.attackDebuffSnapshot=null;this.s.opponentHandTarget=null;this.s.defenseSkipped=false;this.s.unblockDefend=false;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];if(this.s.pendingKrakenDefendDiscard){if(this.s.player&&this.s.player.alive&&(this.h.player||[]).length){this.s.phase='PLAYER_DISCARD';this.s.busy=false;this.s.forcedDiscard=true;this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','防御0：请选择1张手牌弃掉');return}else{this.s.pendingKrakenDefendDiscard=false;if(!(this.h.player||[]).length)this.emit('desc','无手牌可弃')}}if(this._openSerenitySixDiscardIfPending())return;if(this._openHypothermiaDiscardIfPending(this.s.hypothermiaDiscardResume||'PLAYER_PLAY'))return;this.s.phase=optionalDiscard?'PLAYER_DISCARD':'PLAYER_PLAY';this.s.busy=false;if(optionalDiscard){this.s.forcedDiscard=false;this.s.selectedCard=-1;this.s.selectedCards=[]}}
     _grantChaosForCard(ch,card){if(!ch||!ch.alive||this.name(ch)!=='Knight')return;if(!card)return;if(card.isItemCard&&!card.isWhite)return;let color=this.effective(card);if(!C.includes(color))return;let key='chaos_'+color.toLowerCase();if(ch[key])return;let S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.set(ch,key,true);else ch[key]=true;const who=this._who(ch);this.emit('buff','[混沌-'+this.colorName(color).replace('色','')+']',null,{who,kind:key,stacks:1});this.emit('desc',ch.name+'获得[混沌-'+this.colorName(color)+']',card)}
     _grantChaosIfKnight(who){this._grantChaosForCard(this.s[who],this.s.atkCard);let defWho=this.s.defOwner;if(defWho&&defWho!==who)this._grantChaosForCard(this.s[defWho],this.s.defCard)}
     _shouldDeferKnightChaos(){const d=this.s&&this.s.pendingDialog;return d==='purify'||d==='superPurify'||d==='trophyPurify'||d==='purifyCrystal'}
@@ -1594,11 +1621,15 @@
         if(selected.length!==1)throw Error('克拉肯0牌：只能弃掉1张牌');
         return this._finishKrakenDefendDiscard();
       }
+      if(this.s.pendingSerenitySixDiscard){
+        if(selected.length!==1)throw Error('Serenity 6牌：只能弃掉1张牌');
+        return this._finishSerenitySixDiscard();
+      }
       if(this.s.mayDiscardAfterSkill){this.s.mayDiscardAfterSkill=false;this.s.phase='PLAYER_PLAY';this.emit('desc','已完成可选弃牌');return this.state()}
       if(this.s.forcedDiscard&&this.h.player.length > this.getHandLimit('player')){this.emit('desc',`仍需弃牌，手牌必须不超过${this.getHandLimit('player')}张`);return this.state()}
       this.s.forcedDiscard=false;return this.startAITurn()
     }
-    cancelDiscard(){if(this.s.pendingVixrapsPassive)throw Error('Vixraps被动必须弃掉1张牌，不能取消');if(this.s.pendingDiscardBeforeDefend)throw Error('必须弃掉1张牌后再防御，不能取消');if(this.s.pendingHypothermiaDiscard)throw Error('失温必须弃掉1张牌，不能取消');if(this.s.pendingKrakenDefendDiscard)throw Error('防御0：必须弃掉1张牌，不能取消');if(this.s.forcedDiscard)throw Error('手牌超限，不能取消弃牌');this.s.mayDiscardAfterSkill=false;this.s.phase='PLAYER_PLAY';this.s.selectedCard=-1;this.s.selectedCards=[];return this.state()}
+    cancelDiscard(){if(this.s.pendingVixrapsPassive)throw Error('Vixraps被动必须弃掉1张牌，不能取消');if(this.s.pendingDiscardBeforeDefend)throw Error('必须弃掉1张牌后再防御，不能取消');if(this.s.pendingHypothermiaDiscard)throw Error('失温必须弃掉1张牌，不能取消');if(this.s.pendingKrakenDefendDiscard)throw Error('防御0：必须弃掉1张牌，不能取消');if(this.s.pendingSerenitySixDiscard)throw Error('Serenity 6牌：必须弃掉1张牌，不能取消');if(this.s.forcedDiscard)throw Error('手牌超限，不能取消弃牌');this.s.mayDiscardAfterSkill=false;this.s.phase='PLAYER_PLAY';this.s.selectedCard=-1;this.s.selectedCards=[];return this.state()}
     aiSpecialEffect(n,v,c){let a=this.s.ai,t=this.s.player,owner=this.s.atkOwner&&this.s.atkOwner!=='player'?this.s.atkOwner:'ai',m=AIRegistry.get(n);if(!m)return null;let silent={silent:true},helpers={burnTarget:q=>this.burn(t,q,silent),burnSelf:q=>this.burn(a,q,silent),bleedTarget:q=>this.bleed(t,q,silent),gainGuard:q=>this.addGuard(a,q),healSelf:(q,k)=>this.heal(a,q,k),drawSelf:(q,an)=>this.draw(owner,q,an),clearSelf:()=>this.clearDebuffs(a),selfHand:this.h[owner],targetHand:this.h.player,owner,target:t,self:a,copy:cp};return m.specialEffect(this,n,v,c,a,t,owner,helpers,this.aiContext())}
     aiTurn(){if(!this.s.aiTurnStarted){if(this.s.pendingHypnosisPromote==null)this.s.pendingHypnosisPromote='player';this.turnStart('ai');this.s.aiTurnStarted=true;this.s.aiHasPlayed=false;if(!this.s.ai.alive)return this.check()}let _noAtkMod=this._getAdventureMod(this.name(this.s.ai));if(_noAtkMod&&_noAtkMod.noAttack){this.emit('desc',this.s.ai.name+'无进攻阶段，跳过进攻');if(typeof _noAtkMod.attackSkipEffect==='function')_noAtkMod.attackSkipEffect(this,this.s.ai,this.s.player);return this.later(()=>this.endAi(),700)}let top=this.s.discardTop,chosen=this.chooseAIPlay(top);if(!chosen){if(!this.s.aiHasPlayed&&this.h.ai.length){let dropped=this.h.ai.splice(0,this.h.ai.length);for(let i=dropped.length-1;i>=0;i--)this.discardWithEvent(dropped[i],'ai',{handIndex:i,desc:`AI无牌可出，弃掉${this.cardText(dropped[i])}`});this.emit('desc',`AI无牌可出，弃掉全部${dropped.length}张手牌`)}return this.later(()=>this.endAi(),700)}let i=this.h.ai.indexOf(chosen),c=this.h.ai.splice(i,1)[0];this.setAIWildColor(c,top,false);this.s.aiHasPlayed=true;this.s.atkCard=cp(c);this.s.atkOwner='ai';this.setDiscardTop(c,'ai');this.rememberAttackDebuffs('player');let _buffBefore={bleed:this.s.player.bleed||0,burn:this.s.player.burn||0,poison:this.s.player.poison||0,blind:this.s.player.blind||0,iceSeal:this.s.player.iceSeal||0,frozen:!!this.s.player.frozen,sandblind:this.s.player.sandblind||0,thorns:this.s.player.thorns||0,quicksand:this.s.player.quicksand||0};this.applySaikiPassive(this.s.ai,this.s.player,c);this.emit('aiPlay',`AI ${this.name(this.s.ai)} 按角色策略出牌`,c);this.announceAIColor(c);if(c.isItemCard){let kind=this.itemKind(c);this.emit('itemEffect',this.itemEffectDesc(c,'ai'),c,{effect:kind,who:'ai'});this.useItem(c,this.s.ai,this.s.player,'ai');this._grantChaosOnItemPlay('ai',c);if(c.isBlack&&this.name(this.s.ai)==='Vixraps')this._beginVixrapsPassive('ai',c,'AI_TURN');this.s.pendingAIBridge={mode:'attack',afterEventId:this.ver,effect:kind,owner:'ai'};return this.check()}if(this._onAttackSkillRelease(this.s.ai))return this._finishAISandblindMiss('ai');this._deferAttackBuffs('player',_buffBefore);let r=this.aiSpecialEffect(this.name(this.s.ai),c.value,c)||this.effect(this.name(this.s.ai),c.value,c,this.s.ai,this.s.player);this._deferAttackBuffs('player',_buffBefore);if(r.immediateBuffs)this._restoreAttackBuffs();this.s.pendingAttack={damage:r.d,unblock:r.unblock,isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage,hypothermiaTarget:r.hypothermiaTarget,hypothermiaAmount:r.hypothermiaAmount};{let freezeBlock=this._freezeBlocksDefend(this.s.player,this.s.atkCard);if(r.d&&!r.skip&&!r.unblock&&!freezeBlock){if(this.s.player.sleep){this.emit('desc','你处于[沉睡]，无法打出防御牌');this.s.phase='AI_TURN';this.s.busy=true;this.deferSettlement('AI_ATTACK',r.d,0);return this.check()}this.s.phase='PLAYER_DEFEND';this.s.busy=false;this.s.unblockDefend=false;return}if(r.d&&(r.unblock||freezeBlock)){if(this._enterPlayerDefend(r.d,{unblock:!!r.unblock,freezeBlock}))return;return}}if(!r.d)this.emit('desc',`AI ${this.name(this.s.ai)} 本次技能分支未造成伤害，跳过防御`,c);if(r.d&&this.playerNeedsAvoidChoice()){this.askGuard(r.d);return}this._restoreAttackBuffs();this.dealAttackHit(this.s.ai,this.s.player,r.d,!!(r.isDrain||r.drain));{const pa=this.s.pendingAttack||{};if((pa.hypothermiaTarget&&pa.hypothermiaAmount)||(pa.aoeTargets&&pa.aoeDamage))this.performAttack({type:'aoe',target:'player',aoeTargets:pa.aoeTargets,aoeDamage:pa.aoeDamage,skipTarget:true,hypothermiaTarget:pa.hypothermiaTarget,hypothermiaAmount:pa.hypothermiaAmount});}this.s.phase='AI_TURN';this.s.busy=true;this.s.pendingAIContinue={afterEventId:this.ver};return this.check()}
     endAi(){this.trimAI();this.settleBurn(this.s.ai);this.s.turn++;this.s.phase='PLAYER_PLAY';this.s.busy=false;this.s.activeAttacker='player';this.s.pendingAttack=null;this.s.pendingAIBridge=null;this.s.pendingAIContinue=null;this.s.forceEndAITurn=false;this.s.attackDebuffSnapshot=null;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];this.s.hasPlayedThisTurn=false;this.s.aiTurnStarted=false;this.s.aiHasPlayed=false;this.s.pendingHypnosisPromote='ai';let _hands=this.handCounts();this.silentDraws(function(){this.fillHands(false);this.turnStart('player')});this.emitDrawDiff(_hands);this.check()}

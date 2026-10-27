@@ -2103,3 +2103,5 @@ html[data-theme="dark"] .home-loading__hud {
     contain-intrinsic-size: 1px 560px;
   }
 }
+
+.gallery-cylinder-ring { animation-play-state: var(--gallery-play-state, running); }

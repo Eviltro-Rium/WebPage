@@ -26,6 +26,7 @@ const sources = [
   'js/combat/runtime.js',
   'js/characters/registry.js',
   'js/characters/ryan.js',
+  'js/characters/serenity.js',
   'adventure/js/content/registry.js',
   'adventure/js/content/currency.js',
   'adventure/js/content/room.js',
@@ -48,10 +49,10 @@ for (const relative of sources) {
 
 const { AdventureEngine, AdventureMap, AdventurePhase } = context;
 
-function startEngine(grid = [[0, 1]]) {
+function startEngine(grid = [[0, 1]], character = 'Ryan') {
   const map = new AdventureMap(grid);
   const eng = new AdventureEngine();
-  eng.start(map, 'Ryan');
+  eng.start(map, character);
   return eng;
 }
 
@@ -70,6 +71,76 @@ function enterBossCombat(eng) {
   eng.s.combat = { enemy: { name: 'CastleChameleon' } };
   return room;
 }
+
+test('Magnet permits three actual selections in every four-token normal-room scenario', () => {
+  const random = context.Math.random;
+  try {
+    for (let scenario = 0; scenario < 7; scenario++) {
+      const eng = startEngine();
+      const room = enterNormalCombat(eng);
+      eng.addItem('Magnet');
+      context.Math.random = () => (scenario + .5) / 8;
+      eng._beginDedicatedBeastSettlement(room);
+      assert.equal(eng.snapshot().beastReward.pickCount, 3);
+      eng.snapshot();
+      assert.equal(eng.s.beastReward.pickCount, 3, 'projection must not keep increasing the limit');
+      for (let slot = 0; slot < 3; slot++) assert.equal(eng.toggleBeastSlot(slot), true);
+      assert.equal(eng.toggleBeastSlot(3), false);
+      assert.equal(eng.confirmBeastTokenChoice(), true);
+      assert.equal(eng.s.currency.totalBeastTokens(), 3);
+      assert.equal(room.beastTokenClaimed, true);
+    }
+    const eng = startEngine(); enterNormalCombat(eng);
+    context.Math.random = () => .05;
+    assert.equal(eng._applyMagnetBeastReward(context.AdventureCurrency.rollBeastReward()).pickCount, 2);
+    eng.addItem('Magnet'); eng.currentRoom().type = 'challenge';
+    assert.equal(eng._applyMagnetBeastReward(context.AdventureCurrency.rollBeastReward()).pickCount, 2);
+    context.Math.random = () => .99;
+    assert.equal(eng._applyMagnetBeastReward(context.AdventureCurrency.rollBeastReward()).auto, true);
+  } finally { context.Math.random = random; }
+});
+
+test('Serenity room completion does not heal and exit marks follow actual HP', () => {
+  const eng = startEngine(undefined, 'Serenity'); enterNormalCombat(eng);
+  Object.assign(eng.s.player, {name:'Serenity',bloodthirst:true,hp:29});
+  eng.onCombatEnd('win');
+  assert.equal(eng.s.player.hp, 29);
+  assert.equal(eng.s.player.bloodthirst, true, 'settlement remains inside the room');
+  eng.s.phase = AdventurePhase.MAP;
+  eng.onCombatReturnToMap();
+  assert.equal(eng.s.player.hp, 29);
+  assert.equal(eng.s.player.bloodthirst, true);
+  assert.equal(eng.takeMapRecoveryFeedback().length, 0, 'room exit emits no battle recovery');
+  Object.assign(eng.s.player, {bloodthirst:true,hp:31});
+  eng.onCombatReturnToMap(); assert.equal(eng.s.player.bloodthirst, false);
+  Object.assign(eng.s.player, {bloodthirst:true,hp:30});
+  eng.onCombatReturnToMap(); assert.equal(eng.s.player.bloodthirst, true);
+  eng.addItem('LifeCore'); eng.s.pendingMapReturnEffects = {lifeCore:true};
+  eng.onCombatReturnToMap(); assert.equal(eng.s.player.bloodthirst, false);
+  assert.equal(eng.s.player.hp, 33);
+  const feedback = eng.takeMapRecoveryFeedback();
+  assert.equal(feedback.length, 1);
+  assert.equal(feedback[0].label, '生命核心');
+  assert.equal(feedback[0].heal, 3);
+  eng.onCombatReturnToMap(); assert.equal(eng.s.player.hp, 33);
+  assert.equal(eng.takeMapRecoveryFeedback().length, 0);
+});
+
+test('Serenity never receives normal-room battle recovery with or without bloodthirst', () => {
+  for (const hp of [10, 29, 30, 31, 74]) {
+    for (const bloodthirst of [false, true]) {
+      const eng = startEngine(undefined, 'Serenity');
+      const room = enterNormalCombat(eng);
+      Object.assign(eng.s.player, {hp, bloodthirst});
+      eng.onCombatEnd('win');
+      assert.equal(eng.s.player.hp, hp);
+      assert.equal(room.cleared, true, 'normal reward settlement still completes');
+      eng.returnToMap(); eng.onCombatReturnToMap(); eng.onCombatReturnToMap();
+      assert.equal(eng.s.player.hp, hp);
+      assert.equal(eng.takeMapRecoveryFeedback().length, 0);
+    }
+  }
+});
 
 test('combat victory heals 3 HP in normal rooms', () => {
   const eng = startEngine();
@@ -706,7 +777,9 @@ test('shop and drop rolls are uniform over consumables only', () => {
   let i = 0;
   try {
     Math.random = () => {
-      const r = (i % consumables.length) / consumables.length;
+      // Sample the center of each bucket; exact floating-point boundaries
+      // can round back into the previous bucket when multiplied by N.
+      const r = ((i % consumables.length) + .5) / consumables.length;
       i += 1;
       return r;
     };

@@ -92,6 +92,24 @@
       (this._listeners['*'] || []).forEach(fn => fn(ev));
     }
 
+    queueMapRecovery(effect) {
+      if (!this.s || !effect) return;
+      (this.s.pendingMapRecoveries ||= []).push({
+        label: effect.label || '',
+        itemName: effect.itemName || undefined,
+        heal: Math.max(0, Number(effect.heal) || 0),
+        drawn: Math.max(0, Number(effect.drawn) || 0),
+        hpBefore: effect.hpBefore
+      });
+    }
+
+    takeMapRecoveryFeedback() {
+      if (!this.s) return [];
+      const list = this.s.pendingMapRecoveries || [];
+      this.s.pendingMapRecoveries = [];
+      return list;
+    }
+
     start(map, characterName, opts = {}) {
       const charMod = window.CharacterRegistry.get(characterName);
       if (!charMod) throw new Error('未知角色: ' + characterName);
@@ -156,6 +174,8 @@
         scene: opts.scene || 'castle',
         usedScenes: [opts.scene || 'castle'],
         pendingMapReturnEffects: null,
+        pendingMapRecoveries: [],
+        serenityDiscardRecoveryVersion: 1,
         pendingBeastPayment: null
       };
 
@@ -241,6 +261,8 @@
         scene: save.scene || 'castle',
         usedScenes: Array.from(new Set([...(save.usedScenes || []), save.scene || 'castle'])),
         pendingMapReturnEffects: clone(save.pendingMapReturnEffects) || null,
+        pendingMapRecoveries: clone(save.pendingMapRecoveries) || [],
+        serenityDiscardRecoveryVersion: save.serenityDiscardRecoveryVersion == null ? 0 : save.serenityDiscardRecoveryVersion,
         pendingBeastPayment: clone(save.pendingBeastPayment) || null
       };
 
@@ -303,6 +325,7 @@
           (!this.s.pos || !map.explorablePositions().has(this.s.pos.r + ',' + this.s.pos.c))) {
         this.s.pos = map.start ? {r:map.start.r, c:map.start.c} : null;
       }
+      if (!this.s.activeCombat) this.recoverLegacySerenityCards();
       this.emit('restore', '已恢复冒险进度', { character: save.characterName });
       return this.s;
     }
@@ -555,7 +578,7 @@
       const AD = window.AdventureDeck;
       const pile = this.s && this.s.playerPile;
       if (!AD || !pile) return 0;
-      const template = AD.makePlayerDeck ? AD.makePlayerDeck() : null;
+      const template = AD.makePlayerDeck ? AD.makePlayerDeck({ shuffle: false }) : null;
       const baseCount = Array.isArray(template) ? template.length : 99;
       const trophyCount = (this.s.trophyWhiteCards || []).filter(name => {
         const def = window.AdventureRegistry && window.AdventureRegistry.getItem(name);

@@ -77,6 +77,7 @@
         const pile = this.s.playerPile;
         while (pile.hand.length) pile.discardFromHand(0);
         const count = pile.draw(3).length;
+        this.queueMapRecovery({ drawn: count, label: '故障房重整' });
         this.s.discardTop = new window.AdventureDeck.DiscardTop(null);
         this.s.discardTopOwner = null;
         event.message = '所有手牌已放入弃牌库，重新抽取' + count + '张牌。';
@@ -84,6 +85,7 @@
         const before = this.s.player.hp;
         this.s.player.hp = Math.min(this.s.player.maxHp, before + 10);
         const count = this.s.playerPile.drawToLimit().length;
+        this.queueMapRecovery({ heal: this.s.player.hp - before, hpBefore: before, drawn: count, label: '故障房补给' });
         this.s.discardTop = new window.AdventureDeck.DiscardTop(null);
         this.s.discardTopOwner = null;
         event.message = '恢复' + (this.s.player.hp - before) + '点生命，手牌补至上限（抽取' + count + '张）。';

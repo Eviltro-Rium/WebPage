@@ -52,7 +52,7 @@
       if (typeof engine.applyPendingVixrapsBurnSettle === 'function') engine.applyPendingVixrapsBurnSettle();
       if (forceEnd) engine.s.hypothermiaDiscardResume = 'START_AI_TURN';
       engine.afterAttack();
-      if (forceEnd && !engine.s.pendingHypothermiaDiscard && !engine._allEnemiesDead()) engine.startAITurn();
+      if (forceEnd && !engine.s.pendingHypothermiaDiscard && !engine.s.pendingKrakenDefendDiscard && !engine.s.pendingSerenitySixDiscard && !engine._allEnemiesDead()) engine.startAITurn();
       engine.check();
     },
 

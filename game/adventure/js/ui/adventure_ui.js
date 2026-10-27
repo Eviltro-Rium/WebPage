@@ -62,24 +62,13 @@
 
     _bindEngine() {
       this.eng.on('*', (ev) => this._appendLog(ev.desc));
-      // Heals that should be shown on the map: queue them, play once the map renders.
-      this._pendingMapHeals = [];
-      this.eng.on('stageHeal', (ev) => {
-        const amount = Number(ev && ev.extra && ev.extra.amount) || 0;
-        this._pendingMapHeals.push({ amount, label: '进入新层' });
-      });
+      this._pendingMapHeals = this._pendingMapHeals || [];
       this.eng.on('itemAcquired', (ev) => {
         const effect = ev && ev.extra;
         if (!effect || effect.kind !== 'trophyWhite' || !effect.itemName) return;
         const origin = this.container.querySelector('.adv-blacksmith-trophy-stall');
         const rect = origin ? origin.getBoundingClientRect() : null;
         schedule(() => this._playTrophyForgeAnimation(effect.itemName, rect), 60);
-      });
-      this.eng.on('accessory', (ev) => {
-        const effect = ev && ev.extra;
-        if (!effect || effect.itemName !== 'LifeCore') return;
-        const amount = Number(effect.amount) || 0;
-        this._pendingMapHeals.push({ amount, label: '生命核心', itemName: 'LifeCore' });
       });
     }
 
@@ -115,14 +104,27 @@
       anim.onfinish = done; anim.oncancel = done;
     }
 
+    _queueMapRecoveryFeedback(events) {
+      this._pendingMapHeals = this._pendingMapHeals || [];
+      let drawn = 0, itemName = null;
+      for (const ev of events || []) {
+        if (!ev) continue;
+        if (Number(ev.heal != null ? ev.heal : ev.amount) > 0) this._pendingMapHeals.push(ev);
+        drawn += Math.max(0, Number(ev.drawn) || 0);
+        if (ev.drawn && ev.itemName) itemName = ev.itemName;
+      }
+      if (drawn) this._pendingMapReturnEffect = { itemName, drawn };
+    }
+
     _queueMapReturnFeedback() {
+      if (this.eng && typeof this.eng.takeMapRecoveryFeedback === 'function') {
+        this._queueMapRecoveryFeedback(this.eng.takeMapRecoveryFeedback());
+      }
       const effect = this._pendingMapReturnEffect;
       const healCount = (this._pendingMapHeals || []).length;
       if (!effect && !healCount) return;
       this._pendingMapReturnEffect = null;
-      // Keep the mounted cards/icons alive through redraws caused by map clicks
-      // or late icon decoding. Effects do not run gameplay settlement twice.
-      this._mapFeedbackUntil = Date.now() + Math.max(2200, healCount * 1600 + 200);
+      this._mapFeedbackUntil = Date.now() + Math.max(2200, healCount * 140 + 900);
       const side = this.container.querySelector('.adventure-sidebar');
       if (side && typeof side.scrollIntoView === 'function') side.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       if (effect) this._animateMapReturnEffects(effect);
@@ -150,13 +152,14 @@
               schedule(() => slot.classList.remove('adv-accessory-trigger'), 1000);
             }
           }
-          if (heal.amount <= 0) return;
+          const amount = heal.amount != null ? Number(heal.amount) : Number(heal.heal);
+          if (!(amount > 0)) return;
           const float = document.createElement('div');
           float.className = 'adv-map-heal-float';
-          float.textContent = '[' + heal.label + ']❤️' + heal.amount;
+          float.textContent = '[' + heal.label + ']❤️' + amount;
           bar.appendChild(float);
           schedule(() => float.remove(), 1500);
-        }, i * 1600);
+        }, i * 140);
       });
     }
 
@@ -959,8 +962,8 @@
     }
 
     _animateMapReturnEffects(effect) {
-      if (!effect || effect.itemName !== 'WisdomNecklace') return;
-      const slot = this.container.querySelector('[data-accessory-name="WisdomNecklace"]');
+      if (!effect || !(effect.drawn > 0)) return;
+      const slot = effect.itemName && this.container.querySelector('[data-accessory-name="' + effect.itemName + '"]');
       if (slot) {
         slot.classList.remove('adv-accessory-trigger');
         void slot.offsetWidth;
@@ -1013,7 +1016,7 @@
             animation.onfinish = done; animation.oncancel = done;
             schedule(done, 1000);
           } catch (_) { done(); }
-        }, 360 + index * 140);
+        }, 100 + index * 65);
       });
     }
 

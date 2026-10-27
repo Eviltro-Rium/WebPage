@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../../"><title>受击反馈预览</title>
+<link rel="stylesheet" href="css/game.css?v=20261025-npc-passive">
+<style>
+body{display:block;overflow:auto;background:#10232b;color:#e2e8f0;padding:24px;font-family:system-ui}
+#game-container{max-width:900px;margin:36px auto}.hp-section{background:#19323c;margin:20px 0}
+.preview-controls{display:flex;flex-wrap:wrap;gap:10px;max-width:900px;margin:auto}.preview-controls button,.preview-controls select{padding:10px 14px;border-radius:8px;background:#21495a;color:white;border:1px solid #507a8b}
+#preview-status{max-width:900px;margin:20px auto;color:#b8d4de}
+</style></head><body>
+<div class="preview-controls"><select id="scene" aria-label="场景"><option value="forest">森林</option><option value="castle">城堡</option><option value="ocean">冻洋</option><option value="desert">沙漠</option><option value="volcano">火山</option></select>
+<button id="hit">攻击对手 I</button><button id="hit2">攻击对手 II</button><button id="both">同时受击</button><button id="repeat">连续受击</button><button id="poison">中毒结算</button><button id="zero">零伤害</button></div>
+<p id="preview-status" role="status">加载中</p><main id="game-container"></main>
+<script src="js/ui/ui_core.js"></script><script src="js/ui/render/runtime.js"></script>
+<script src="adventure/js/content/registry.js"></script>
+<script src="adventure/js/content/stage_guide.js"></script>
+<script src="adventure/js/monsters/forest.js"></script><script src="adventure/js/monsters/castle.js"></script><script src="adventure/js/monsters/ocean.js"></script><script src="adventure/js/monsters/desert.js"></script><script src="adventure/js/monsters/volcano.js"></script>
+<script src="js/ui/render/status_render.js?v=20261025-npc-passive"></script><script src="js/ui/feedback.js?v=20261025-hit-particles"></script><script src="js/ui/events.js?v=20261025-hit-feedback"></script>
+<script>
+const preview = window.hitFeedbackPreview = Object.create(GameUI.prototype);
+preview._floatingTextLanes = {player:[],ai:[],ai2:[]};
+const choices={forest:['ForestMonkey','ForestDeer'],castle:['CastleWolf','CastleFox'],ocean:['FrozenOceanLynx','FrozenOceanWhale'],desert:['DesertBison','DesertCamel'],volcano:['VolcanoSalamander','VolcanoCrab']};
+const defs=()=>[...AdventureRegistry.allMonsters(),...AdventureRegistry.allBosses()];
+function selectScene(){
+  const scene=document.getElementById('scene').value;
+  const available=defs().filter(d=>d.scene===scene || d.icon.includes('/'+(scene==='ocean'?'frozen_ocean':scene)+'_'));
+  const names=choices[scene].map((name,i)=>defs().find(d=>d.name===name)||available[i]);
+  document.getElementById('game-container').innerHTML=['ai','ai2','player'].map((side,i)=>`<section class="hp-section" id="${side}-hp-section"><img class="hp-avatar" id="${side}-avatar" alt="头像"><span class="hp-name">${i<2?names[i].kind:'Ryan'}</span><div class="hp-bar-outer"><div class="hp-bar-inner" id="${side}-hp-bar"></div><span class="hp-text" id="${side}-hp-text"></span></div><div id="${side}-buffs" class="buff-icons"></div></section>`).join('');
+  preview.state={ai:{name:names[0].name,hp:30,maxHp:40},ai2:{name:names[1].name,hp:30,maxHp:40},player:{name:'Ryan',hp:60,maxHp:70}};
+  for(const side of ['ai','ai2','player']){preview._updateAvatar(side,preview.state[side].name);preview._updateHpBar(side,preview.state[side]);}
+  document.getElementById('preview-status').textContent='受击表情约 0.38 秒后恢复；对手独立播放';
+}
+document.getElementById('scene').onchange=selectScene;
+document.getElementById('hit').onclick=()=>preview._playHitFeedback('ai',4);
+document.getElementById('hit2').onclick=()=>preview._playHitFeedback('ai2',4);
+document.getElementById('both').onclick=()=>{preview._playHitFeedback('ai',4);preview._playHitFeedback('ai2',4);};
+document.getElementById('repeat').onclick=()=>{for(let i=0;i<3;i++)setTimeout(()=>preview._playHitFeedback('ai',4),i*140);};
+document.getElementById('poison').onclick=()=>preview._playEvents([{type:'poisonSettle',target:'ai2',amount:2,hpAfter:28}]);
+document.getElementById('zero').onclick=()=>preview._playHitFeedback('ai',0);
+selectScene();
+</script></body></html>

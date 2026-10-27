@@ -118,7 +118,7 @@
        if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();
        if(forceEnd)this.s.hypothermiaDiscardResume='START_AI_TURN';
        this.afterAttack();
-      if(forceEnd&&!this.s.pendingHypothermiaDiscard)this.startAITurn();
+      if(forceEnd&&!this.s.pendingHypothermiaDiscard&&!this.s.pendingKrakenDefendDiscard&&!this.s.pendingSerenitySixDiscard)this.startAITurn();
       this.check();return
     }
     let forceEnd=!!this.s.forceEndAITurn;this.s.forceEndAITurn=false;let bombOwner=this.s.atkOwner || this._curAI() || 'ai';

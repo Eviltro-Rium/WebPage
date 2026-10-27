@@ -10,10 +10,10 @@
         return 48 + Math.min(28, x.missingHp + healValue) + resetValue;
       }
       if (v === 7) return bloodthirst ? 86 : (x.self.hp > 2 ? 61 : 20);
-      if (v === 6) return bloodthirst ? 82 : 62;
+      if (v === 6) return 62;
       if (v === 4) return bloodthirst ? 77 : 58;
       if (v === 2) return bloodthirst ? 71 : 50;
-      if (v === 1) return 50 + Math.min(12, x.missingHp);
+      if (v === 1) return bloodthirst ? 58 : (50 + Math.min(12, x.missingHp));
       if (v === 5) return x.missingHp >= 4 ? 56 : 46;
       if (v === 3) return bloodthirst ? 68 : 44;
       return null;
@@ -23,8 +23,8 @@
       const bloodthirst = !!(x.self && x.self.bloodthirst) || x.hpPct < 30;
       if (v === 0) return x.lethal ? 108 : 86;
       if (v === 3) return (bloodthirst ? 69 : 55) + (x.lethal ? 18 : 0);
-      if (v === 1) return (bloodthirst ? 66 : 54) + (x.lethal ? 14 : 0);
-      if (v === 2) return 42 + Math.min(20, x.oppBleed * 4) + Math.min(12, x.missingHp);
+      if (v === 1) return 54 + (x.lethal ? 14 : 0);
+      if (v === 2) return 42 + Math.min(12, x.oppBleed * 2) + Math.min(8, x.missingHp);
       return null;
     },
 

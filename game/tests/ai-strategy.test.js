@@ -683,8 +683,60 @@ test('Serenity defense 2 drains attacker HP and heals only actual life taken', (
 
   assert.equal(result.remaining, 5);
   assert.equal(engine.s.player.bleed, 3);
-  assert.equal(engine.s.player.hp, 44);
-  assert.equal(engine.s.ai.hp, 26);
+  assert.equal(engine.s.player.hp, 47);
+  assert.equal(engine.s.ai.hp, 23);
+});
+
+test('Serenity attack 1 heals normally and applies bleed while bloodthirst', () => {
+  const engine = setup('Serenity');
+  const mod = CharacterRegistry.get('Serenity');
+  const helpers = {
+    heal: (target, amount) => { target.hp = Math.min(target.maxHp, target.hp + amount); },
+    bleed: (amount) => engine.bleed(engine.s.ai, amount),
+    hurt: (target, amount) => engine.hurt(target, amount),
+    draw() {},
+    clearDebuffs() {}
+  };
+  engine.s.player.hp = 50;
+  engine.s.ai.bleed = 0;
+  const normal = mod.effect(engine, 1, number(1), engine.s.player, engine.s.ai, 'player', helpers);
+  assert.equal(normal.d, 2);
+  assert.equal(engine.s.player.hp, 52);
+  assert.equal(engine.s.ai.bleed, 0);
+
+  engine.s.player.bloodthirst = true;
+  engine.s.player.hp = 20;
+  const thirsty = mod.effect(engine, 1, number(1), engine.s.player, engine.s.ai, 'player', helpers);
+  assert.equal(thirsty.d, 2);
+  assert.equal(engine.s.player.hp, 20);
+  assert.equal(engine.s.ai.bleed, 2);
+});
+
+test('Serenity attack 6 deals 6 and requires a discard instead of skipping defense', () => {
+  const engine = setup('Serenity');
+  engine.h.player.push(number(2), number(3));
+  const result = engine.effect('Serenity', 6, number(6), engine.s.player, engine.s.ai);
+  assert.equal(result.d, 6);
+  assert.equal(result.unblock, false);
+  assert.equal(engine.s.pendingSerenitySixDiscard, true);
+});
+
+test('Serenity defense 3 blocks half and counters 2 while bloodthirst', () => {
+  const engine = setup('Serenity');
+  const mod = CharacterRegistry.get('Serenity');
+  const counters = [];
+  engine.s.ai.bloodthirst = true;
+  const result = mod.defend(
+    engine, 'Serenity', 3, 7, number(3), engine.s.ai, engine.s.player, 'ai', 'RED',
+    {
+      hurt: (target, amount, kind) => engine.hurt(target, amount, kind),
+      heal: (target, amount, kind) => engine.heal(target, amount, kind),
+      counter: (target, amount) => counters.push([target, amount]),
+      bleed() {}
+    }
+  );
+  assert.equal(result.remaining, 3);
+  assert.deepEqual(counters, [[engine.s.player, 2]]);
 });
 
 test('Knight defense 0 drains the active ai2 target in 1v2', () => {

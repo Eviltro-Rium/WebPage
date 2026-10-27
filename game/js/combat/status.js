@@ -157,12 +157,16 @@
         },
 
         poison(engine, entity, amount, opts) {
-            if (amount <= 0) return;
+            amount = Math.max(0, Number(amount) || 0);
+            if (!entity || amount <= 0) return 0;
+            const before = Number(entity.poison) || 0;
             if (service) addStatus(entity, 'poison', amount); else entity.poison = Math.min(2, (entity.poison || 0) + amount);
-            if (!opts || opts.silent !== true) {
+            const added = (Number(entity.poison) || 0) - before;
+            if (added > 0 && (!opts || opts.silent !== true)) {
                 const target = targetKey(engine, entity);
-                engine.emit(eventTypes.BUFF || 'buff', `+${amount}[中毒]`, null, { who: target, target, kind: 'poison', stacks: entity.poison });
+                engine.emit(eventTypes.BUFF || 'buff', `+${added}[中毒]`, null, { who: target, target, kind: 'poison', stacks: entity.poison, amount: added });
             }
+            return added;
         },
 
         /** Max successful thorns fires per attack turn (attacker with thorns). */

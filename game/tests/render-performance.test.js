@@ -147,6 +147,26 @@ test('particle trajectories depend on elapsed time, not display refresh rate',t=
   assert.deepEqual([...w.document.querySelectorAll('.burst-particle')].map(el=>el.style.transform),first);
 });
 
+test('hit particles stay outside the portrait and repeated hits cannot stack a particle cloud',t=>{
+  const env=setup(t,'<section id="ai-hp-section"><img id="ai-avatar"></section>');if(!env)return;
+  const {w,load,frames}=env;
+  load('js/combat/runtime.js');w.FurryGame.CombatRuntime.setRandomSource(()=>0.5);
+  w.uiFrame=fn=>w.FurryGame.RenderFrames.frame(fn);w.performance.now=()=>0;
+  load('js/ui/feedback.js');const ui=new w.GameUI();ui._playAvatarHit=()=>{};ui.shakeScreen=()=>{};
+  w.document.getElementById('ai-avatar').getBoundingClientRect=()=>({left:100,top:100,width:48,height:48});
+  ui._playHitFeedback('ai',99);
+  const particles=()=>[...w.document.querySelectorAll('.burst-particle')];
+  assert.equal(particles().length,6);
+  for(const el of particles()){
+    const x=parseFloat(el.style.left),y=parseFloat(el.style.top),size=parseFloat(el.style.width);
+    assert.ok(x+size<96 || x>152 || y+size<96 || y>152,'particle and glow clear the face');
+    assert.ok(size<=2.5);assert.equal(el.style.opacity,'0.5');
+  }
+  ui._playHitFeedback('ai',99);assert.equal(particles().length,6);
+  const tick=now=>{const batch=[...frames];frames.clear();batch.forEach(([,fn])=>fn(now));};
+  tick(280);assert.equal(particles().length,0);
+});
+
 test('homepage WebP gallery ignores height-only resizes and coalesces real width changes',async t=>{
   const env=setup(t,'<div class="gallery-cylinder-viewport"><div class="gallery-cylinder-layers"></div></div><div class="gallery-cylinder-seed"><img src="a.webp"><img src="b.webp"></div>');if(!env)return;
   const {w,load,frames}=env,viewport=w.document.querySelector('.gallery-cylinder-viewport'),layers=w.document.querySelector('.gallery-cylinder-layers');
