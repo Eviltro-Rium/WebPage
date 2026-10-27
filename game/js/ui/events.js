@@ -24,6 +24,7 @@
 _handAdditionCount(evt, who) {
     if (!evt) return 0;
     if (evt.type === 'draw' && evt.who === who) return Math.max(0, Number(evt.count) || 1);
+    if (evt.type === 'attackRecycle' && who === 'player') return 1;
     if (evt.type === 'trophyDrop' && who === 'player') {
         const drops = evt.drops || evt.card && evt.card.drops;
         return Array.isArray(drops) ? drops.length : 0;
@@ -592,7 +593,8 @@ async _playEvents(events, fast = false) {
             await wait(350);
         } else if (evt.type === 'attackRecycle' && evt.card) {
             this._showZoneDesc('reveal-desc', evt.desc || '垃圾回收：收回进攻牌');
-            await this._playAttackRecycleAnimation(evt);
+            drawRemaining.player = Math.max(0, drawRemaining.player - 1);
+            await this._playAttackRecycleAnimation(evt, drawRemaining.player);
             await wait(100);
         } else if (evt.type === 'draw') {
             const count = Math.max(0, Number(evt.count) || 1);

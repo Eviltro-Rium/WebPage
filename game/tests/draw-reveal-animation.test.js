@@ -324,6 +324,21 @@ test('opponent-hand steal reveal preserves the innocent NPC card', async () => {
   assert.notEqual(handKids[0].style.visibility, 'hidden');
 });
 
+test('recycled attack card stays hidden until its flight lands without revealing later draws', async () => {
+  const {ui,doc,animCalls}=harness();
+  const held=card('held'),recycled=card('recycled'),later=card('later');
+  ui.state.playerHand=[held,recycled,later];
+  ui._renderDiscardTop=()=>{};
+  const evt={type:'attackRecycle',who:'player',card:recycled};
+  ui._prepareHandAnimation([evt,{type:'draw',who:'player',count:1}]);
+  assert.equal(doc.getElementById('player-hand').children.length,1);
+  await ui._playAttackRecycleAnimation(evt,1);
+  const cards=doc.getElementById('player-hand').children;
+  assert.equal(cards.length,2);
+  assert.equal(cards[1].dataset.cardId,context.cardId(recycled));
+  assert.equal(animCalls.filter(call=>call.op==='fly').length,1);
+});
+
 test('discard with a stale hand index keeps the innocent card and repaints', async () => {
   const { ui, doc, renders } = harness();
   // Discarded card already gone from state; the positional index now points

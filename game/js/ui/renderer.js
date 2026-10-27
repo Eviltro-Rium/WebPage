@@ -290,7 +290,7 @@ async _playDiscardManyAnimation(evt) {
     } finally { this._repaintOwnerHand(owner); }
 },
 
-async _playAttackRecycleAnimation(evt) {
+async _playAttackRecycleAnimation(evt, remaining = 0) {
     const card = evt && evt.card;
     const discard = document.getElementById('discard-top');
     const hand = document.getElementById('player-hand');
@@ -298,13 +298,13 @@ async _playAttackRecycleAnimation(evt) {
         await wait(120);
         return;
     }
-    this._renderPlayerHand({ hideTrailing: 1 });
+    this._renderPlayerHand({ hideTrailing: remaining + 1 });
     this._renderDiscardTop();
     await wait(30);
     try {
         await this.anim.flyCard(card, discard, hand, animDuration(this, 440), 52);
     } finally {
-        this._renderPlayerHand();
+        this._renderPlayerHand({ hideTrailing: remaining });
         this._renderDiscardTop();
     }
     await wait(80);

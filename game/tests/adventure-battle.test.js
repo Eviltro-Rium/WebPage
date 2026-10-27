@@ -2004,11 +2004,112 @@ test('GarbageRecycle emits attackRecycle for UI flight back to hand', () => {
   card.uid = 'garbage-flight';
   engine.s.pendingAttack = { damage: 1, recycleAttackCard: Object.assign({}, card), discardTopBeforeAttack: null };
   engine.s.atkOwner = 'player';
+  engine.piles.player.discard.push(Object.assign({}, card));
   engine.s.discardTop = Object.assign({}, card);
   engine.afterAttack();
   const evt = engine.events.find(e => e.type === 'attackRecycle');
   assert.ok(evt);
   assert.equal(evt.card.uid, 'garbage-flight');
+});
+
+for (const [mode, priorOwner] of [['normal','player'],['normal','ai'],['challenge','ai2']]) {
+  test('GarbageRecycle restores the exact previous top and owner after defense: ' + mode + ' / ' + priorOwner, () => {
+    const engine = mode === 'normal' ? start() : new AdventureBattleEngine();
+    if (mode === 'challenge') engine.startAdventure1v2({
+      player:'Ryan',opponent1:'CastleWolf',opponent2:'CastleWolf',stage:1,
+      playerPile:{deck:[number(4)],hand:[number(1)],discard:[],handLimit:5}
+    });
+    engine.later=()=>{};
+    const previous=number(1,'WHITE',true);previous.uid='recycle-previous';previous.chosenColor='GREEN';
+    const played=number(2,'YELLOW');played.uid='recycle-played';
+    const sameFace=number(2,'YELLOW');sameFace.uid='recycle-other';
+    const defense=number(3,'WHITE',true);defense.uid='recycle-defense';
+    engine.setDiscardTop(previous,priorOwner);
+    engine._rememberDiscardTopBeforePlayerAttack();
+    engine.setDiscardTop(played,'player');
+    engine.piles.player.discard.push(sameFace);
+    engine.setDiscardTop(defense,'ai');
+    const playerTotal=engine.piles.player.deck.length+engine.piles.player.hand.length+engine.piles.player.discard.length;
+    const npcTotal=engine.piles.ai.deck.length+engine.piles.ai.discard.length+engine.piles.ai.hand.length+(engine.piles.ai2?engine.piles.ai2.hand.length:0);
+    engine.s.atkOwner='player';
+    engine.s.pendingAttack={damage:2};
+    engine.s.pendingAttackMod={card:played,skip:true,unblock:false,delay:0};
+    engine.s.phase='ATTACK_MOD_CHOICE';
+    engine.events.push({id:9000,type:'desc'});
+    engine.resolveAttackModChoice({recycle:true});
+    engine.afterAttack();
+    assert.equal(engine.h.player.at(-1).uid,'recycle-played');
+    assert(engine.piles.player.discard.some(card=>card.uid==='recycle-other'));
+    assert(engine.piles.ai.discard.some(card=>card.uid==='recycle-defense'));
+    assert.equal(engine.s.discardTop.uid,'recycle-previous');
+    assert.equal(engine.s.discardTop.chosenColor,'GREEN');
+    assert.equal(engine.s.discardTopOwner,priorOwner);
+    assert.equal(engine.tableTopOwner,priorOwner);
+    assert.equal(engine._pile(priorOwner).discard.at(-1).uid,'recycle-previous');
+    assert.equal(engine.piles.player.deck.length+engine.piles.player.hand.length+engine.piles.player.discard.length,playerTotal);
+    assert.equal(engine.piles.ai.deck.length+engine.piles.ai.discard.length+engine.piles.ai.hand.length+(engine.piles.ai2?engine.piles.ai2.hand.length:0),npcTotal);
+  });
+}
+
+test('GarbageRecycle restores a previous top shuffled into its owner deck without creating cards', () => {
+  const previous=number(1,'BLUE');previous.uid='recycle-prior-in-deck';
+  const played=number(2,'YELLOW');played.uid='recycle-shuffled-attack';
+  const engine=start({discard:[previous]},previous,'player');
+  engine._rememberDiscardTopBeforePlayerAttack();
+  engine.setDiscardTop(played,'player');
+  const index=engine.piles.player.discard.findIndex(card=>card.uid===previous.uid);
+  engine.piles.player.deck.push(engine.piles.player.discard.splice(index,1)[0]);
+  engine.s.atkOwner='player';
+  engine.s.pendingAttack={damage:2,recycleAttackCard:played,discardTopBeforeAttack:previous,discardTopBeforeAttackOwner:'player'};
+  const count=engine.piles.player.deck.length+engine.piles.player.discard.length+engine.piles.player.hand.length;
+  engine.afterAttack();
+  assert.equal(engine.s.discardTop.uid,previous.uid);
+  assert.equal(engine.piles.player.discard.at(-1).uid,previous.uid);
+  assert.equal(engine.piles.player.deck.length+engine.piles.player.discard.length+engine.piles.player.hand.length,count);
+});
+
+test('Chan 5 offers GarbageRecycle after the no-damage reorder completes', () => {
+  const engine=start();
+  engine.later=()=>{};
+  engine._adventureEngine={s:{consumables:[{name:'GarbageRecycle'}]}};
+  engine.s.atkCard=number(5,'BLUE');
+  engine.startChanFive();
+  const order=engine.s.chanFiveCards.map((_,index)=>index).join(',');
+  engine.finishChanFive(order);
+  assert.equal(engine.s.phase,'ATTACK_MOD_CHOICE');
+  assert.equal(engine.s.pendingAttack.damage,0);
+});
+
+test('Chan 5 keeps the original settlement timing outside adventure mode', () => {
+  const engine=new context.Engine(),delays=[];
+  engine.start('Chan','Ryan');
+  engine.later=(callback,delay)=>delays.push(delay);
+  engine.s.atkCard=number(5,'BLUE');
+  engine.startChanFive();
+  engine.finishChanFive(engine.s.chanFiveCards.map((_,index)=>index).join(','));
+  assert.equal(engine.s.phase,'AI_DEFEND');
+  assert(delays.includes(1700));
+});
+
+test('GarbageRecycle never synthesizes a card when the physical attack card cannot be found', () => {
+  const engine=start();
+  const missing=number(2,'YELLOW');missing.uid='missing-attack';
+  engine.s.atkOwner='player';
+  engine.s.discardTop=Object.assign({},missing);
+  engine.s.pendingAttack={damage:2,recycleAttackCard:missing,discardTopBeforeAttack:null};
+  const before=engine.h.player.length;
+  engine.afterAttack();
+  assert.equal(engine.h.player.length,before);
+  assert(!engine.events.some(event=>event.type==='attackRecycle'));
+});
+
+test('GarbageRecycle rejects the choice if the physical attack card is missing', () => {
+  const engine=start();
+  const missing=number(2,'YELLOW');missing.uid='missing-attack';
+  engine.s.phase='ATTACK_MOD_CHOICE';
+  engine.s.pendingAttackMod={card:missing};
+  engine.s.pendingAttack={damage:2};
+  assert.throws(()=>engine.resolveAttackModChoice({recycle:true}),/进攻牌已不在玩家牌库中/);
 });
 
 for (const zeroKind of ['number', 'trophy']) {

@@ -1,6 +1,25 @@
 const assert=require('node:assert/strict'),test=require('node:test'),fs=require('node:fs'),path=require('node:path');
 const {JSDOM}=require('jsdom');
 function setup(){const dom=new JSDOM('<body></body>',{runScripts:'outside-only'});dom.window.eval(fs.readFileSync(path.join(__dirname,'../js/ui/dialogs.js'),'utf8')+';window.testDialogs=new DialogManager();');return {dom,w:dom.window,dialogs:dom.window.testDialogs};}
+test('rejected attack modifier restores the item and item cards cannot use GarbageRecycle',async()=>{
+ const {dom,w}=setup();
+ try{
+  w.eval('window.GameUI=class {};');
+  w.eval(fs.readFileSync(path.join(__dirname,'../js/ui/controls.js'),'utf8'));
+  const inventory=[{name:'GarbageRecycle'}];
+  const adv={s:{consumables:inventory},snapshot:()=>({consumables:inventory})};
+  w.AdventureBattleController={activeEngine:()=>({_adventureEngine:adv})};
+  w.AdventureRegistry={getItem:()=>({combatUse:'attackMod',attackModRecycle:true})};
+  const ui=new w.GameUI();
+  ui.state={phase:'ATTACK_MOD_CHOICE',pendingAttack:{damage:0},pendingAttackMod:{card:{isNumberCard:true,isItemCard:false}}};
+  ui._attackModSelectedItem=0;ui._apiAction=async()=>false;ui.updateDisplay=()=>{};
+  ui._confirmAttackMod();await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(inventory.length,1);assert.equal(inventory[0].name,'GarbageRecycle');
+  ui.state.pendingAttackMod.card={isItemCard:true};
+  assert.equal(ui._getAvailableAttackMods().length,0);
+ }finally{dom.window.close();}
+});
+
 test('guard dialog uses bounded controls instead of one button per stack',async()=>{
  const {dom,w,dialogs}=setup();let payload;dialogs.showGuardOrFlyChoice({guard:100,fly:2},100,p=>{payload=p;});
  const box=w.document.querySelector('.dialog-box');assert.equal(box.querySelectorAll('button').length,3);const range=box.querySelector('input');assert.equal(range.max,'100');range.value='7';range.dispatchEvent(new w.Event('input'));assert.match(box.querySelector('.guard-damage-preview').textContent,/93/);

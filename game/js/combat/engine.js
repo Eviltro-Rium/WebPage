@@ -88,7 +88,7 @@
       let label=who==='player'?'玩家':who==='ai2'?'AI2':'AI';
       this.emit('discardMany',extra.desc||`${label}弃掉${batch.length}张牌`,batch[0],Object.assign({who,from:'hand',destination:'bottom',cards:batch.map(c=>Object.assign({},c))},extra))
     }
-    _rememberDiscardTopBeforePlayerAttack(){this.s.discardTopBeforePlayerAttack=this.s.discardTop?cp(this.s.discardTop):null}
+    _rememberDiscardTopBeforePlayerAttack(){this.s.discardTopBeforePlayerAttack=this.s.discardTop?cp(this.s.discardTop):null;this.s.discardTopOwnerBeforePlayerAttack=this.tableTopOwner||this.s.discardTopOwner||null}
     setDiscardTop(card){if(this.s.discardTop&&!this._skipNextDiscardTop)this.discardToBottom(this.s.discardTop);this._skipNextDiscardTop=false;this.s.discardTop=Card.normalize(card)||Object.assign({},card);this.s.diceRoll=null;const actor=this.s.defOwner||this.s.atkOwner;const owner=actor==='ai2'?'ai2':actor==='ai'?'ai':null;if(owner)this._markBombPlay(owner);this._checkInvariants('setDiscardTop')}
     emit(type,desc,card,extra={}){
       // A revealed card has already reached its real pile/hand. Only its
@@ -600,10 +600,19 @@
       this.s.attackModBonus=params.bonus||0;
       if(params.recycle){
         const source=this.s.pendingAttackMod&&this.s.pendingAttackMod.card||this.s.atkCard;
-        if(!source||source.borrowedMonster)throw Error('无法收回该进攻牌');
+        if(!source||source.borrowedMonster||source.isItemCard)throw Error('无法收回该进攻牌');
+        if(this.s.isAdventure&&typeof this._pile==='function'){
+          const pile=this._pile('player');
+          const matches=c=>c&&(source.uid&&c.uid?source.uid===c.uid:
+            typeof this._sameCard==='function'?this._sameCard(c,source):
+            c.value===source.value&&c.color===source.color&&!c.isItemCard);
+          if(!pile||![pile.discard,pile.deck,pile.hand].some(list=>Array.isArray(list)&&list.some(matches)))
+            throw Error('进攻牌已不在玩家牌库中，无法使用垃圾回收');
+        }
         if(this.s.pendingAttack){
           this.s.pendingAttack.recycleAttackCard=cp(source);
           this.s.pendingAttack.discardTopBeforeAttack=this.s.discardTopBeforePlayerAttack!==undefined&&this.s.discardTopBeforePlayerAttack?cp(this.s.discardTopBeforePlayerAttack):null;
+          this.s.pendingAttack.discardTopBeforeAttackOwner=this.s.discardTopOwnerBeforePlayerAttack||null;
         }
         this.emit('desc','垃圾回收：将在技能结算后收回打出的进攻牌');
       }
@@ -1484,8 +1493,8 @@
       this.later(()=>{this.afterAttack();this.check()},1500);
       return this.check()
     }
-    startChanFive(){this.hurt(this.s.player,2);let cards=[];for(let i=0;i<5&&this.deck.length;i++)cards.push(this.deck.pop());this.s.chanFiveCards=cp(cards);this.s.phase='CHAN_FIVE_REORDER';this.s.busy=false;this.emit('desc',`Chan 5牌：消耗2点生命，查看牌库顶${cards.length}张并排序`);if(!cards.length){this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this.afterAttack();this.check()},1200)}return this.check()}
-    finishChanFive(order){let cards=this.s.chanFiveCards;if(!cards||!cards.length)throw Error('当前没有需要排序的牌');let ids=String(order||'').split(',').map(Number);if(ids.length!==cards.length||new Set(ids).size!==cards.length||ids.some(i=>i<0||i>=cards.length))ids=cards.map((_,i)=>i);let arranged=ids.map(i=>cards[i]);for(let i=arranged.length-1;i>=0;i--)this.deck.push(arranged[i]);this.s.chanFiveCards=null;this.draw('player',2,true);this.emit('desc','Chan 5牌：排序完成，抽取新的牌库顶2张牌并跳过防御');this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this.afterAttack();this.check()},1700);return this.check()}
+    startChanFive(){this.hurt(this.s.player,2);let cards=[];for(let i=0;i<5&&this.deck.length;i++)cards.push(this.deck.pop());this.s.chanFiveCards=cp(cards);this.s.phase='CHAN_FIVE_REORDER';this.s.busy=false;this.emit('desc',`Chan 5牌：消耗2点生命，查看牌库顶${cards.length}张并排序`);if(!cards.length){if(this.s.isAdventure)return this.gateAdventureAttackMod(this.s.atkCard,0,true,false,1200);this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this.afterAttack();this.check()},1200)}return this.check()}
+    finishChanFive(order){let cards=this.s.chanFiveCards;if(!cards||!cards.length)throw Error('当前没有需要排序的牌');let ids=String(order||'').split(',').map(Number);if(ids.length!==cards.length||new Set(ids).size!==cards.length||ids.some(i=>i<0||i>=cards.length))ids=cards.map((_,i)=>i);let arranged=ids.map(i=>cards[i]);for(let i=arranged.length-1;i>=0;i--)this.deck.push(arranged[i]);this.s.chanFiveCards=null;this.draw('player',2,true);this.emit('desc','Chan 5牌：排序完成，抽取新的牌库顶2张牌并跳过防御');if(this.s.isAdventure)return this.gateAdventureAttackMod(this.s.atkCard,0,true,false,1700);this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this.afterAttack();this.check()},1700);return this.check()}
     startOttoFour(card){
       let targetKey=this.s.is1v2?(this.s.attackTarget||'ai'):'ai';
       this.refillDeckIfNeeded();let c1=this.deck.length?this.deck.pop():null;
@@ -1586,6 +1595,7 @@
       const uid=card.uid;
       const match=c=>{
         if(!c)return false;
+        if(uid&&c.uid)return c.uid===uid;
         if(typeof this._sameCard==='function')return this._sameCard(c,card);
         return uid?c.uid===uid:(c.value===card.value&&c.color===card.color&&!c.isItemCard);
       };
@@ -1597,18 +1607,53 @@
       let pulled=null;
       const pile=typeof this._pile==='function'?this._pile('player'):null;
       if(pile&&Array.isArray(pile.discard)){
-        for(let i=pile.discard.length-1;i>=0;i--){
-          if(match(pile.discard[i])){pulled=pile.discard.splice(i,1)[0];break;}
-        }
-        if(!pulled&&this.s.discardTop&&match(this.s.discardTop)){
-          pulled=cp(this.s.discardTop);
-          for(let j=pile.discard.length-1;j>=0;j--){
-            if(match(pile.discard[j])){pile.discard.splice(j,1);break;}
+        for(const list of [pile.discard,pile.deck,pile.hand]){
+          if(!Array.isArray(list))continue;
+          for(let i=list.length-1;i>=0;i--){
+            if(match(list[i])){pulled=list.splice(i,1)[0];break;}
           }
+          if(pulled)break;
         }
-        if(pile.discard.length)this.s.discardTop=cp(pile.discard[pile.discard.length-1]);
-        else this.s.discardTop=restoreTop();
-        this.s.diceRoll=null;
+        if(pulled){
+          const before=restoreTop();
+          const recordedOwner=pending.discardTopBeforeAttackOwner;
+          let restored=null,restoredOwner=null;
+          if(before){
+            const owners=recordedOwner?[recordedOwner]:['player','ai','ai2'];
+            const seen=new Set();
+            for(const owner of owners){
+              const source=this._pile(owner);
+              if(!source||seen.has(source))continue;
+              seen.add(source);
+              const same=c=>c&&(before.uid&&c.uid?before.uid===c.uid:this._sameCard(c,before));
+              for(const list of [source.discard,source.deck,source.hand]){
+                if(!Array.isArray(list))continue;
+                const index=list.findIndex(same);
+                if(index<0)continue;
+                restored=list.splice(index,1)[0];
+                Object.assign(restored,before);
+                source.discard.push(restored);
+                restoredOwner=owner;
+                break;
+              }
+              if(restored)break;
+            }
+          }
+          if(restored||!before){
+            this.s.discardTop=restored?cp(restored):null;
+            this.tableTopOwner=restoredOwner;
+            this.s.discardTopOwner=restoredOwner;
+          }else{
+            this.emit('desc','垃圾回收：原弃牌库顶已不在牌库中，保留当前有效库顶');
+            if(this.s.discardTop&&match(this.s.discardTop)){
+              const fallback=pile.discard[pile.discard.length-1]||null;
+              this.s.discardTop=fallback?cp(fallback):null;
+              this.tableTopOwner=fallback?'player':null;
+              this.s.discardTopOwner=this.tableTopOwner;
+            }
+          }
+          this.s.diceRoll=null;
+        }
       }else{
         const bottom=this.discardBottom||[];
         for(let i=bottom.length-1;i>=0;i--){
@@ -1624,7 +1669,7 @@
       this.h.player.push(pulled);
       this.emit('attackRecycle','垃圾回收：收回'+this.cardText(pulled),pulled,{who:'player',card:pulled});
     }
-    afterAttack(){let target=this.s.attackTarget||'ai';this._tickBomb(target);this._tickBomb('player');if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();let optionalDiscard=!!this.s.mayDiscardAfterSkill;if(this.s.pendingAttack&&this.s.pendingAttack.recycleAttackCard)this._recycleAttackCardToHand();delete this.s.discardTopBeforePlayerAttack;if(this.s.atkOwner)this._grantChaosIfKnight(this.s.atkOwner);this.s.pendingAttack=null;this.s.queuedCounterHits=[];this.s.counterAvoidance=false;this.s.pendingPlayerAttackRemaining=null;this.s.pendingPlayerAttackBleed=0;this.s.pendingSkillStatuses=[];this.s.pendingDamageFormula=null;this.s.pendingFiveChoice=false;this.s.fiveChoiceCard=null;this.s.pendingNumberJudge=null;this.s.pendingAttackMod=null;this.s.attackDebuffSnapshot=null;this.s.opponentHandTarget=null;this.s.defenseSkipped=false;this.s.unblockDefend=false;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];if(this.s.pendingKrakenDefendDiscard){if(this.s.player&&this.s.player.alive&&(this.h.player||[]).length){this.s.phase='PLAYER_DISCARD';this.s.busy=false;this.s.forcedDiscard=true;this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','防御0：请选择1张手牌弃掉');return}else{this.s.pendingKrakenDefendDiscard=false;if(!(this.h.player||[]).length)this.emit('desc','无手牌可弃')}}if(this._openSerenitySixDiscardIfPending())return;if(this._openHypothermiaDiscardIfPending(this.s.hypothermiaDiscardResume||'PLAYER_PLAY'))return;this.s.phase=optionalDiscard?'PLAYER_DISCARD':'PLAYER_PLAY';this.s.busy=false;if(optionalDiscard){this.s.forcedDiscard=false;this.s.selectedCard=-1;this.s.selectedCards=[]}}
+    afterAttack(){let target=this.s.attackTarget||'ai';this._tickBomb(target);this._tickBomb('player');if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();let optionalDiscard=!!this.s.mayDiscardAfterSkill;if(this.s.pendingAttack&&this.s.pendingAttack.recycleAttackCard)this._recycleAttackCardToHand();delete this.s.discardTopBeforePlayerAttack;delete this.s.discardTopOwnerBeforePlayerAttack;if(this.s.atkOwner)this._grantChaosIfKnight(this.s.atkOwner);this.s.pendingAttack=null;this.s.queuedCounterHits=[];this.s.counterAvoidance=false;this.s.pendingPlayerAttackRemaining=null;this.s.pendingPlayerAttackBleed=0;this.s.pendingSkillStatuses=[];this.s.pendingDamageFormula=null;this.s.pendingFiveChoice=false;this.s.fiveChoiceCard=null;this.s.pendingNumberJudge=null;this.s.pendingAttackMod=null;this.s.attackDebuffSnapshot=null;this.s.opponentHandTarget=null;this.s.defenseSkipped=false;this.s.unblockDefend=false;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];if(this.s.pendingKrakenDefendDiscard){if(this.s.player&&this.s.player.alive&&(this.h.player||[]).length){this.s.phase='PLAYER_DISCARD';this.s.busy=false;this.s.forcedDiscard=true;this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','防御0：请选择1张手牌弃掉');return}else{this.s.pendingKrakenDefendDiscard=false;if(!(this.h.player||[]).length)this.emit('desc','无手牌可弃')}}if(this._openSerenitySixDiscardIfPending())return;if(this._openHypothermiaDiscardIfPending(this.s.hypothermiaDiscardResume||'PLAYER_PLAY'))return;this.s.phase=optionalDiscard?'PLAYER_DISCARD':'PLAYER_PLAY';this.s.busy=false;if(optionalDiscard){this.s.forcedDiscard=false;this.s.selectedCard=-1;this.s.selectedCards=[]}}
     _grantChaosForCard(ch,card){if(!ch||!ch.alive||this.name(ch)!=='Knight')return;if(!card)return;if(card.isItemCard&&!card.isWhite)return;let color=this.effective(card);if(!C.includes(color))return;let key='chaos_'+color.toLowerCase();if(ch[key])return;let S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.set(ch,key,true);else ch[key]=true;const who=this._who(ch);this.emit('buff','[混沌-'+this.colorName(color).replace('色','')+']',null,{who,kind:key,stacks:1});this.emit('desc',ch.name+'获得[混沌-'+this.colorName(color)+']',card)}
     _grantChaosIfKnight(who){this._grantChaosForCard(this.s[who],this.s.atkCard);let defWho=this.s.defOwner;if(defWho&&defWho!==who)this._grantChaosForCard(this.s[defWho],this.s.defCard)}
     _shouldDeferKnightChaos(){const d=this.s&&this.s.pendingDialog;return d==='purify'||d==='superPurify'||d==='trophyPurify'||d==='purifyCrystal'}

@@ -363,7 +363,7 @@
     name: 'GarbageRecycle',
     displayName: '垃圾回收',
     kind: 'consumable',
-    description: '技能结算完成后收回本次打出的进攻牌（可在无数值伤害的技能上使用；与攻击修正Ⅰ/Ⅱ/Ⅲ等共用选择）',
+    description: '技能结算完成后收回本次进攻牌，弃牌库顶恢复为出牌前的牌（可用于无数值伤害的技能，与攻击修正共用选择）',
     icon: ICON + 'garbage_collection.webp',
     useScene: 'combat',
     price: 6,

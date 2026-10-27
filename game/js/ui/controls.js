@@ -484,7 +484,7 @@ _getAvailableAttackMods(s) {
         const def = window.AdventureRegistry.getItem(item.name);
         if (!def || def.combatUse !== 'attackMod') return;
         if (def.attackModRecycle) {
-            if (!mod.card || mod.card.borrowedMonster) return;
+            if (!mod.card || mod.card.borrowedMonster || mod.card.isItemCard) return;
             attackMods.push({ index: i, item, def });
             return;
         }
@@ -531,17 +531,22 @@ _confirmAttackMod() {
       window.AdventureBattleController.activeEngine()._adventureEngine;
     this._attackModPromptOpen = true;
     (async () => {
+        let removed = null;
         try {
             if (advEngine && advEngine.s && Array.isArray(advEngine.s.consumables)) {
-                advEngine.s.consumables.splice(idx, 1);
+                removed = advEngine.s.consumables.splice(idx, 1)[0];
             }
             this._attackModSelectedItem = null;
-            await this._apiAction('resolveAttackModChoice', {
+            const accepted = await this._apiAction('resolveAttackModChoice', {
                 bonus: am.def.attackModBonus || 0,
                 unblock: !!am.def.attackModUnblock,
                 evilRoulette: !!am.def.attackModEvilRoulette,
                 recycle: !!am.def.attackModRecycle
             });
+            if (!accepted && removed && this.state && this.state.phase === 'ATTACK_MOD_CHOICE') {
+                advEngine.s.consumables.splice(idx, 0, removed);
+                this.updateDisplay();
+            }
         } finally {
             this._attackModPromptOpen = false;
         }
