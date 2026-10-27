@@ -280,7 +280,8 @@
 
       const enemy = (sessionMatches && combatSession.enemy) || (lock && lock.enemy) || null;
       if (enemy) {
-        if (room.type === window.RoomType.NORMAL || room.type === window.RoomType.CHALLENGE || room.type === window.RoomType.GLITCH) room.monsterName = enemy;
+        if (room.type === window.RoomType.NORMAL || room.type === window.RoomType.ELITE ||
+          room.type === window.RoomType.CHALLENGE || room.type === window.RoomType.GLITCH) room.monsterName = enemy;
         if (room.type === window.RoomType.BOSS) room.bossName = enemy;
       }
 

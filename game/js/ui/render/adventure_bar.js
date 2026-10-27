@@ -337,16 +337,29 @@
             if (!screen) return;
             const isAdventure = !!(s && s.isAdventure);
             screen.classList.toggle("adventure-combat-layout", isAdventure);
-            if (!isAdventure) return;
+            let panel = screen.querySelector('.adventure-inventory-panel');
+            if (!isAdventure) {
+                if (panel) panel.hidden = true;
+                return;
+            }
 
             const hand = screen.querySelector(".player-hand-zone");
             const controls = screen.querySelector("#controls");
             const itemBar = screen.querySelector("#adventure-item-bar");
             if (!hand || !controls || !itemBar) return;
 
-            // Keep adventure controls below the hand and inventory below controls.
+            // Keep equipment and currency together below the hand controls.
             if (hand.nextElementSibling !== controls) hand.after(controls);
-            if (controls.nextElementSibling !== itemBar) controls.after(itemBar);
+            if (!panel) {
+                panel = document.createElement('section');
+                panel.className = 'adventure-inventory-panel';
+                panel.setAttribute('aria-label', '道具、配饰与货币');
+            }
+            panel.hidden = false;
+            if (controls.nextElementSibling !== panel) controls.after(panel);
+            if (itemBar.parentElement !== panel) panel.appendChild(itemBar);
+            const currency = screen.querySelector('#adventure-info-bar');
+            if (currency && itemBar.nextElementSibling !== currency) itemBar.after(currency);
         },
 
         _bindItemBarEvents(bar, consumables, s, inAttackMod) {

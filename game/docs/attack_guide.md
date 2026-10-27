@@ -327,12 +327,12 @@ attackPoison(card) {
 
 ### 灼伤（Burn）
 
-灼伤不由怪物方法直接施加，由配饰「火焰之拳」触发：
+配饰「火焰之拳」可在玩家释放有反击伤害的防御技能时，对攻击者施加灼伤：
 
 ```javascript
 // adventure/js/battle/battle_engine.js
-_tryFlameFistOnDefend(skip) {
-  // 玩家防御时，对攻击方施加灼伤
+_tryFlameFistOnDefend(attacker) {
+  // 防御技能产生反击伤害时，对攻击方施加灼伤
   this.burn(attacker, stacks); // stacks = 1
 }
 ```

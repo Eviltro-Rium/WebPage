@@ -70,6 +70,7 @@
     trophy_DisarmTrophy: cardAssetUrl('icons/card_icons/disarm.webp'),
     trophy_ZeroTrophy: cardAssetUrl('icons/card_icons/zero.webp'),
     trophy_RiotTrophy: cardAssetUrl('icons/card_icons/riot.png'),
+    trophy_DrawTwoTrophy: cardAssetUrl('icons/card_icons/draw_cards.webp'),
     trophy_SmallPotionTrophy: cardAssetUrl('icons/buff_icons/small_potion.webp'),
     trophy_PurifyWaterTrophy: cardAssetUrl('icons/buff_icons/purify_water.webp')
   };

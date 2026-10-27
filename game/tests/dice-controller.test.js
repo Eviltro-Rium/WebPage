@@ -159,6 +159,8 @@ test('blindness blocks remote dice but does not stop ordinary rolling',()=>{
 test('loot pauses before trophy creation, choosing a face selects the documented drop exactly once',()=>{
   runtime.setRandomSource(()=>.9);const e=battle(),hand=e.h.player.length;e.s.ai.alive=false;e.s.ai.hp=0;
   e.check();assert.equal(e.s.phase,'DICE_CHOICE');assert.equal(e.s.pendingDiceControl.purpose,'trophyDrop');assert.equal(e.h.player.length,hand);
+  assert.equal(e.s.pendingDiceControl.presentation.monsterName,e.s.ai.name);
+  assert.equal(e.s.pendingDiceControl.presentation.rollIndex,1);
   choose(e,true,1);assert.equal(e.h.player.length,hand+1);assert.equal(itemCount(e),0);
   assert.equal(e.s.trophyDrops[0],'GuardTrophy');e.check();assert.equal(e.h.player.length,hand+1);runtime.resetRandomSource();
 });

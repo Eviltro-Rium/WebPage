@@ -95,6 +95,7 @@
     tx.diceIndex = index;
     tx.who = extra.who || 'player';
     tx.purpose = extra.purpose || 'judgment';
+    tx.presentation = clone(extra);
     tx.mode = mode;
     const evt = e.events[e.events.length - 1];
     if (evt && evt.type === 'diceRoll') evt.awaitControl = true;

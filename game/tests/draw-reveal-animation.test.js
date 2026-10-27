@@ -236,6 +236,17 @@ test('multi-discard flights start together and only repaint after all land', asy
   finishes.forEach(finish=>finish());await flight;
 });
 
+test('shared-origin multi-discard fans one flight per discarded card', async () => {
+  const {ui} = harness();
+  const cards=[card('a'),card('b'),card('c')];
+  const opts=[];
+  ui.anim.discardCard=async(_c,_from,_to,_face,options)=>opts.push(options);
+  await ui._playDiscardManyAnimation({who:'player',cards});
+  assert.equal(opts.length,3);
+  assert.deepEqual(opts.map(o=>o.fanIndex),[0,1,2]);
+  assert.ok(opts.every(o=>o.fanCount===3));
+});
+
 test('adjacent discard events share one multi-card animation', async () => {
   const {ui} = harness(), batches=[];
   ui._playDiscardManyAnimation=async event=>batches.push(event.cards.length);

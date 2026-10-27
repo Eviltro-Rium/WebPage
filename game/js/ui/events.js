@@ -228,9 +228,16 @@ _showTrophySettlement(evt, landed = false) {
     status.className = 'trophy-settle-status';
     status.setAttribute('role', 'status');
     const progress = evt.rollCount > 1 ? '第 ' + evt.rollIndex + ' / ' + evt.rollCount + ' 次 · ' : '';
-    const result = Array.isArray(evt.drops) ? (evt.drops.length ? '获得白卡' : '无掉落') : '等待确认骰面';
+    const result = !evt.awaitControl && Array.isArray(evt.drops) ? (evt.drops.length ? '获得白卡' : '无掉落') : '等待确认骰面';
     status.textContent = progress + (landed ? '投出 ' + (evt.roll ?? evt.value) + ' · ' + result : '投掷中…');
-    sheet.append(heading, status);
+    const die = document.createElement('div');
+    die.className = 'trophy-settle-die';
+    const face = Number(evt.roll ?? evt.value);
+    if (landed && Number.isFinite(face)) {
+        die.setAttribute('aria-label', '战利品骰面 ' + face);
+        die.innerHTML = '<div class="d12-result"><span class="d12-label">D12</span><strong>' + face + '</strong></div>';
+    }
+    sheet.append(heading, die, status);
     const rules = document.createElement('div');
     rules.className = 'trophy-settle-rules';
     const outcomes = global.AdventureLoot && global.AdventureLoot.getDropTable
@@ -272,6 +279,7 @@ _showTrophySettlement(evt, landed = false) {
     confirm.className = 'trophy-settle-confirm';
     confirm.textContent = '确认';
     confirm.disabled = true;
+    actions.hidden = !!evt.awaitControl;
     actions.appendChild(confirm);
     sheet.appendChild(actions);
     overlay.appendChild(sheet);
@@ -582,6 +590,10 @@ async _playEvents(events, fast = false) {
             await wait(600);
             this._showCardSkillDesc('def-desc', evt.card, who, true);
             await wait(350);
+        } else if (evt.type === 'attackRecycle' && evt.card) {
+            this._showZoneDesc('reveal-desc', evt.desc || '垃圾回收：收回进攻牌');
+            await this._playAttackRecycleAnimation(evt);
+            await wait(100);
         } else if (evt.type === 'draw') {
             const count = Math.max(0, Number(evt.count) || 1);
             const drawOwner = evt.who === 'ai2' ? 'ai2' : evt.who === 'ai' ? 'ai' : evt.who === 'player' ? 'player' : 'ai';
@@ -653,12 +665,17 @@ async _playEvents(events, fast = false) {
             const desc = (evt.desc || ('12面骰：' + value)) + rollLabel;
             const pendingControl = !!(evt.awaitControl || !isLoot && this.state && this.state.pendingDiceControl);
             this._showZoneDesc('reveal-desc', isLoot ? '' : '12面骰投掷中…' + rollLabel);
-            if (isLoot && !pendingControl) this._showTrophySettlement(evt);
-            if (isLoot && pendingControl) this._clearTrophySettlement();
+            let lootOverlay = null;
+            if (isLoot) {
+                this._trophyControlEvent = evt;
+                lootOverlay = this._showTrophySettlement(evt, pendingControl);
+            }
             // Open remote-dice sheet ASAP; do not wait for the full tumble.
             if (pendingControl && typeof this._renderDiceControl === 'function') this._renderDiceControl();
+            if (isLoot) lootOverlay = document.getElementById('adv-settle-overlay') || lootOverlay;
             if (typeof this._playD12Animation === 'function') {
-                await this._playD12Animation(value, { desc, who: evt.who, outcome: evt.outcome, fast: pendingControl, awaitControl: pendingControl });
+                await this._playD12Animation(value, { desc, who: evt.who, outcome: evt.outcome, fast: pendingControl, awaitControl: pendingControl,
+                    target: isLoot && lootOverlay ? lootOverlay.querySelector('.trophy-settle-die') : undefined });
             } else {
                 await wait(pendingControl ? 80 : 450);
             }
@@ -928,7 +945,8 @@ async _playEvents(events, fast = false) {
     } } finally {
         // Keep the final loot sheet for the controller to turn into rewards.
         // Mid-battle drops (challenge rooms and items) must release the board.
-        if (!this.state || this.state.phase !== 'GAME_OVER') this._clearTrophySettlement();
+        const pendingLoot = this.state && this.state.pendingDiceControl && this.state.pendingDiceControl.purpose === 'trophyDrop';
+        if ((!this.state || this.state.phase !== 'GAME_OVER') && !pendingLoot) this._clearTrophySettlement();
         this._onlineAnimationFast = previousOnlineFast;
         this._eventPlaybackDepth = Math.max(0, (this._eventPlaybackDepth || 1) - 1);
     }

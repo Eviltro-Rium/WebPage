@@ -379,10 +379,14 @@ class AnimLayer {
             flyEl.appendChild(faceUp ? renderCard(card, width, height, false) : renderCardBack(width, height));
             document.body.appendChild(flyEl);
 
-            const sx = fromRect.left + fromRect.width / 2 - width / 2;
+            const fanCount = Math.max(1, Number(opts.fanCount) || 1);
+            const fanIndex = Math.max(0, Number(opts.fanIndex) || 0);
+            const spread = fanCount > 1 ? Math.min(26, 84 / (fanCount - 1)) : 0;
+            const fanX = (fanIndex - (fanCount - 1) / 2) * spread;
+            const sx = fromRect.left + fromRect.width / 2 - width / 2 + fanX;
             const sy = fromRect.top + fromRect.height / 2 - height / 2;
             // Cards going to the discard-bottom must not look like they replace the shared top.
-            const ex = toRect.left + toRect.width / 2 - width / 2 + (landsOnTop ? 0 : 18);
+            const ex = toRect.left + toRect.width / 2 - width / 2 + (landsOnTop ? 0 : 18) + fanX * 0.35;
             const ey = toRect.top + toRect.height / 2 - height / 2 + (landsOnTop ? 6 : 28);
             const distance = Math.hypot(ex - sx, ey - sy);
             const arc = Math.max(40, Math.min(100, distance * 0.22));

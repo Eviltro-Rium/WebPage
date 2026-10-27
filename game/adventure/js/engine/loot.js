@@ -6,8 +6,9 @@
  * decide when to roll and how to persist the resulting card.
  *
  * Cap: ordinary <= 4/12; Boss <= 6/12 (does not block universal 11/12).
- * Forge-only (RR / Disarm / Riot) never drop. Dual-source (SmallPotion / Purify / Zero)
+ * Forge-only (RR / Disarm / Riot) never drop. Dual-source (SmallPotion / Purify / Zero / DrawTwo)
  * may drop; faces 11/12 are universal SmallPotion / PurifyWater on every table.
+ * Elite defeats: face 10 adds DrawTwoTrophy; 11/12 stay universal.
  */
 
 (function () {
@@ -222,8 +223,10 @@
     DisarmTrophy: "缴械", ZeroTrophy: "0技能", TimeBombTrophy: "定时炸弹",
     SmallPotionTrophy: "小药剂", CritTrophy: "暴击", MagmaVeinTrophy: "熔脉",
     FlyTrophy: "飞翔", RussianRouletteTrophy: "俄罗斯赌盘",
-    PurifyWaterTrophy: "净化之水", RiotTrophy: "暴乱"
+    PurifyWaterTrophy: "净化之水", RiotTrophy: "暴乱", DrawTwoTrophy: "双抽"
   });
+
+  const ELITE_FACE_TEN_DROP = 'DrawTwoTrophy';
 
   function formatDropSummary(rule) {
     if (!rule) return "";
@@ -258,12 +261,20 @@
     return null;
   }
 
-  function describeMonsterDrop(monsterName) {
+  function describeMonsterDrop(monsterName, opts) {
     const found = getDropRule(monsterName);
     if (!found) return "";
     const summary = formatDropSummary(found.rule);
-    if (!summary) return "";
-    return "击败后投掷12面骰。" + summary.replace(/^掉落，/, "");
+    const elite = !!(opts && opts.elite);
+    if (!summary && !elite) return "";
+    let text = summary
+      ? "击败后投掷12面骰。" + summary.replace(/^掉落，/, "")
+      : "击败后投掷12面骰。";
+    if (elite) {
+      const tag = TROPHY_TAGS[ELITE_FACE_TEN_DROP] || ELITE_FACE_TEN_DROP;
+      text += "投出10，掉落[" + tag + "]战利白卡；投出11-12与普通怪相同。";
+    }
+    return text;
   }
 
   function normalizeScene(scene) {
@@ -293,18 +304,21 @@
     return drops.concat(extra);
   }
 
-  function rollMonsterDrop(scene, monsterName, randomFn, selectedRoll) {
+  function rollMonsterDrop(scene, monsterName, randomFn, selectedRoll, opts) {
     const sceneKey = normalizeScene(scene);
     const rule = SCENE_RULES[sceneKey] && SCENE_RULES[sceneKey][monsterName];
     if (!rule) {
       return Object.freeze({ scene: sceneKey, monsterName, roll: null, threshold: 0, drops: Object.freeze([]), summary: "" });
     }
+    const elite = !!(opts && opts.elite);
     const roll = Number.isInteger(selectedRoll) && selectedRoll >= 1 && selectedRoll <= 12
       ? selectedRoll : rollD12(randomFn);
     const outcome = Array.isArray(rule.outcomes)
       ? rule.outcomes.find(item => roll <= item.threshold)
       : (roll <= rule.threshold ? rule : null);
-    const drops = attachUniversalHighFaces(roll, outcome ? outcome.drops.slice() : []);
+    let drops = outcome ? outcome.drops.slice() : [];
+    if (elite && roll === 10) drops = drops.concat([ELITE_FACE_TEN_DROP]);
+    drops = attachUniversalHighFaces(roll, drops);
     return Object.freeze({
       scene: sceneKey,
       monsterName,
@@ -317,12 +331,12 @@
 
   // Build the visible table from the same results used by combat, including
   // universal faces, so presentation cannot silently omit a granted card.
-  function getDropTable(monsterName) {
+  function getDropTable(monsterName, opts) {
     const found = getDropRule(monsterName);
     if (!found) return [];
     const rows = [];
     for (let face = 1; face <= 12; face++) {
-      const drops = rollMonsterDrop(found.scene, monsterName, null, face).drops;
+      const drops = rollMonsterDrop(found.scene, monsterName, null, face, opts).drops;
       const previous = rows[rows.length - 1];
       if (previous && previous.drops.length === drops.length && previous.drops.every((name, i) => name === drops[i])) {
         previous.last = face;
@@ -331,6 +345,18 @@
       }
     }
     return rows;
+  }
+
+  function isEliteMonster(monsterName) {
+    if (!monsterName) return false;
+    const pools = window.AdventureElitePool || {};
+    for (const sceneKey of Object.keys(pools)) {
+      const pool = pools[sceneKey];
+      if (!pool) continue;
+      const names = Array.isArray(pool) ? pool : Object.values(pool).flat();
+      if (names.includes(monsterName)) return true;
+    }
+    return false;
   }
 
   window.AdventureLoot = Object.freeze({
@@ -342,6 +368,7 @@
     getDropRule,
     getDropTable,
     describeMonsterDrop,
-    rollMonsterDrop
+    rollMonsterDrop,
+    isEliteMonster
   });
 })();

@@ -47,17 +47,14 @@
       eng.s.revealCards = [helpers.copy(drawn)];
       eng.emit('reveal', 'Blaze 4牌系统随机抽取玩家手牌', drawn, { who: 'player', from: 'hand' });
 
-      if (!drawn.isItemCard && drawn.value === 0) {
-        helpers.selfHand.push(drawn);
+      const special = !drawn.isNumberCard || drawn.value === 0;
+      const damage = (special ? 4 : drawn.value) + (a.burn ? 1 : 0);
+      if (special) {
         helpers.burnSelf(1);
         helpers.burnTarget(1);
-        eng.emit('desc', `Blaze AI保留${eng.cardText(drawn)}，双方灼伤+1并跳过防御`);
-        return { d: 0, skip: true, unblock: false };
       }
-
       eng.discardWithEvent(drawn, 'player', { from: 'reveal', faceUp: true, desc: `Blaze 4牌弃掉${eng.cardText(drawn)}` });
-      const damage = (drawn.isItemCard ? 4 : drawn.value) + (a.burn ? 1 : 0);
-      eng.emit('desc', `Blaze AI弃掉${eng.cardText(drawn)}，造成${damage}点伤害`);
+      eng.emit('desc', `Blaze AI弃掉${eng.cardText(drawn)}，造成${damage}点伤害${special ? '，双方灼伤+1' : ''}`);
       return { d: damage, skip: false, unblock: false };
     }
   });

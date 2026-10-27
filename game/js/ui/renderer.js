@@ -180,8 +180,20 @@ async _finishJudgmentAnimation(evt) {
     // A refresh/final snapshot may have cleared the DOM. Carry visible faces
     // at the boundary so judgment flights never remove innocent hand cards.
     if(box&&!box.querySelector('.card-canvas')&&(evt.cards||[]).length)this._paintJudgmentCards(evt.cards);
+    const grouped=[];
+    for(const move of evt.moves||[]){
+        const prev=grouped[grouped.length-1];
+        const canMerge=move&&move.type==='discard'&&prev&&(prev.type==='discard'||prev.type==='discardMany')
+            &&move.who===prev.who&&move.from===prev.from&&move.destination===prev.destination&&move.faceUp===prev.faceUp;
+        if(canMerge){
+            grouped[grouped.length-1]=Object.assign({},prev,{
+                type:'discardMany',card:null,
+                cards:[...(prev.cards||[prev.card]),move.card].filter(Boolean)
+            });
+        }else grouped.push(move);
+    }
     try {
-        for(const move of evt.moves||[]){
+        for(const move of grouped){
             if(move.type==='discardMany')await this._playDiscardManyAnimation(move);
             else await this._playDiscardAnimation(move);
         }
@@ -266,11 +278,36 @@ async _playDiscardManyAnimation(evt) {
         getBoundingClientRect: () => rects.get(source),
         remove() {} // Physical origins are removed together below, before flights begin.
     }));
+    const sharedOrigin = sources.length > 1 && sources.every(source => source && source === sources[0]);
     sources.forEach(source => { if (source && handCards.includes(source)) source.remove(); });
     try {
         await Promise.all(cards.map((card, index) =>
-            this.anim.discardCard(card, origins[index], discard, faceUp, { landsOnTop })));
+            this.anim.discardCard(card, origins[index], discard, faceUp, {
+                landsOnTop,
+                fanIndex: sharedOrigin ? index : 0,
+                fanCount: sharedOrigin ? cards.length : 1
+            })));
     } finally { this._repaintOwnerHand(owner); }
+},
+
+async _playAttackRecycleAnimation(evt) {
+    const card = evt && evt.card;
+    const discard = document.getElementById('discard-top');
+    const hand = document.getElementById('player-hand');
+    if (!card || !discard || !hand) {
+        await wait(120);
+        return;
+    }
+    this._renderPlayerHand({ hideTrailing: 1 });
+    this._renderDiscardTop();
+    await wait(30);
+    try {
+        await this.anim.flyCard(card, discard, hand, animDuration(this, 440), 52);
+    } finally {
+        this._renderPlayerHand();
+        this._renderDiscardTop();
+    }
+    await wait(80);
 },
 
 async _playHandSwapAnimation(evt) {

@@ -925,6 +925,51 @@ test('FlameFist triggers for Moze 2 defense in adventure 1v2', () => {
   assert.equal(engine.s.ai.burn, 1);
 });
 
+for (const defenseValue of [1, 2]) {
+  test(`FlameFist ${defenseValue === 2 ? 'triggers on a counter' : 'does not trigger on a non-counter defense'} even if the attacker has guard`, () => {
+    const engine = new AdventureBattleEngine();
+    engine.later = () => {};
+    engine.startAdventure1v2({player:'Moze', opponent1:'CastleWolf', opponent2:'CastleWolf', stage:1,
+      playerPile:{deck:[], hand:[number(defenseValue, 'RED')], discard:[], handLimit:5},
+      discardTop:number(defenseValue, 'RED'), discardTopOwner:'player'});
+    engine._adventureEngine = {hasAccessory:name => name === 'FlameFist', accessoryCount:() => 2};
+    engine.s.phase = 'PLAYER_DEFEND';
+    engine.s.pendingAttack = {damage:4, unblock:false};
+    engine.s.atkOwner = 'ai2'; engine.s.currentAITarget = 1; engine.s.selectedCard = 0;
+    engine.s.ai2.guard = 5;
+    engine.defend1v2();
+    assert.equal(engine.s.ai2.burn, defenseValue === 2 ? 2 : 0);
+    assert.equal(engine.s.ai.burn, 0);
+  });
+}
+
+for (const value of [0, 2]) {
+  test(`FreezeLaser ${value === 0 ? 'freezes on a non-damaging skill' : 'does not freeze on a damaging skill'} in a challenge`, () => {
+    const engine = new AdventureBattleEngine();
+    engine.later = () => {};
+    engine.startAdventure1v2({player:'Serenity', opponent1:'CastleWolf', opponent2:'CastleWolf', stage:1,
+      playerPile:{deck:[], hand:[number(value, 'RED')], discard:[], handLimit:5},
+      discardTop:number(value, 'RED'), discardTopOwner:'player'});
+    engine._adventureEngine = {hasAccessory:name => name === 'FreezeLaser', accessoryCount:() => 1};
+    engine.s.phase = 'PLAYER_PLAY'; engine.s.busy = false;
+    engine.s.lordPlayerTargetIdx = 1; engine.s.selectedCard = 0;
+    engine.dispatch('doPlay');
+    assert.equal(!!engine.s.ai.frozen, false);
+    assert.equal(!!engine.s.ai2.frozen, value === 0);
+  });
+}
+
+test('FreezeLaser ignores a missed skill and damage outside a skill', () => {
+  const engine = start();
+  engine._adventureEngine = {hasAccessory:name => name === 'FreezeLaser', accessoryCount:() => 1};
+  engine.s.atkOwner = 'player'; engine.s.atkCard = number(0);
+  engine._freezeLaserSkillMissed = true;
+  engine.gateAdventureAttackMod(engine.s.atkCard, 0, true, false);
+  assert.equal(!!engine.s.ai.frozen, false);
+  engine.hurt(engine.s.ai, 1, false);
+  assert.equal(!!engine.s.ai.frozen, false);
+});
+
 test('lord mode player discard ends turn with correct alternating AI attacker', () => {
   const engine = new AdventureBattleEngine();
   engine.later = () => {};
@@ -1210,11 +1255,13 @@ test('CastleEagle attack and defend skills', () => {
 
   engine.s.ai.fly = 0;
   const atk0 = engine.effect('CastleEagle', 0, number(0, 'RED', true), engine.s.ai, engine.s.player);
-  assert.equal(atk0.d, 4);
+  assert.equal(atk0.d, 3);
   assert.equal(engine.s.ai.fly, 0);
+  assert.equal(engine.s.ai.crit, 0);
   engine.s.atkCard=number(0,'RED',true);engine.s.pendingAttack={damage:atk0.d};
   engine.prepareAttackSettlement(atk0.d,'player');
   assert.equal(engine.s.ai.fly, 2);
+  assert.equal(engine.s.ai.crit, 2);
 
   const helpers = {
     heal: () => {},
@@ -1929,4 +1976,84 @@ test('GarbageRecycle returns the played attack card after settlement', () => {
   assert.equal(engine.h.player.length, before + 1);
   assert.ok(engine.h.player.some(c => c.uid === 'garbage-return'));
   assert.equal(engine.discardBottom.some(c => c.uid === 'garbage-return'), false);
+});
+
+test('GarbageRecycle restores discard top when the attack card was table top', () => {
+  const previous = number(1, 'RED');
+  previous.uid = 'prev-top';
+  const card = number(2, 'YELLOW');
+  card.uid = 'garbage-return';
+  const engine = start({ discard: [Object.assign({}, previous)] }, Object.assign({}, previous));
+  engine.piles.player.discard.push(Object.assign({}, card));
+  engine.s.discardTop = Object.assign({}, card);
+  engine.s.pendingAttack = {
+    damage: 2,
+    recycleAttackCard: Object.assign({}, card),
+    discardTopBeforeAttack: Object.assign({}, previous)
+  };
+  engine.s.atkOwner = 'player';
+  engine.afterAttack();
+  assert.ok(engine.h.player.some(c => c.uid === 'garbage-return'));
+  assert.equal(engine.s.discardTop.uid, 'prev-top');
+  assert.equal(engine.piles.player.discard.length, 1);
+});
+
+test('GarbageRecycle emits attackRecycle for UI flight back to hand', () => {
+  const engine = start();
+  const card = number(3, 'BLUE');
+  card.uid = 'garbage-flight';
+  engine.s.pendingAttack = { damage: 1, recycleAttackCard: Object.assign({}, card), discardTopBeforeAttack: null };
+  engine.s.atkOwner = 'player';
+  engine.s.discardTop = Object.assign({}, card);
+  engine.afterAttack();
+  const evt = engine.events.find(e => e.type === 'attackRecycle');
+  assert.ok(evt);
+  assert.equal(evt.card.uid, 'garbage-flight');
+});
+
+for (const zeroKind of ['number', 'trophy']) {
+  for (const targetIndex of [0, 1]) {
+    test('Blaze ' + zeroKind + ' zero damages both challenge opponents when targeting ' + targetIndex, () => {
+      const engine = new AdventureBattleEngine();
+      engine.later = () => {};
+      const zero = zeroKind === 'trophy' ? context.AdventureDeck.trophyWhite('ZeroTrophy') : number(0, 'WHITE', true);
+      engine.startAdventure1v2({
+        player: 'Blaze', opponent1: 'CastleFox', opponent2: 'CastleFox', stage: 1,
+        playerPile: {deck: [number(4)], hand: [zero], discard: [], handLimit: 5},
+        discardTop: number(1, 'RED')
+      });
+      for (const key of ['ai', 'ai2']) Object.assign(engine.s[key], {hp:20,maxHp:20,alive:true,guard:0,fly:0,harden:0,diving:false,burn:0});
+      engine.s.phase = 'PLAYER_PLAY'; engine.s.busy = false;
+      engine.s.lordPlayerTargetIdx = targetIndex; engine.s.selectedCard = 0;
+      engine.events = [];
+      engine.dispatch('doPlay');
+      if (engine.s.phase === 'ATTACK_MOD_CHOICE') engine.dispatch('resolveAttackModChoice', {bonus:0});
+      for (let i=0; i<6 && (engine.pendingSettlement || engine.s.pendingAIDefense); i++) engine.acknowledgeEvents(engine.ver);
+      assert.equal(engine.s.ai.hp,15,'opponent I receives the AOE exactly once');
+      assert.equal(engine.s.ai2.hp,15,'opponent II receives the AOE exactly once');
+      assert.equal(engine.s.ai.burn,2); assert.equal(engine.s.ai2.burn,2);
+      assert.equal(engine.s.player.hp,85,'the caster is excluded');
+    });
+  }
+}
+
+test('Blaze trophy zero still hits the other challenge opponent when the target is defeated', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({
+    player: 'Blaze', opponent1: 'CastleFox', opponent2: 'CastleFox', stage: 1,
+    playerPile: {deck: [number(4)], hand: [context.AdventureDeck.trophyWhite('ZeroTrophy')], discard: [], handLimit: 5},
+    discardTop: number(1, 'RED')
+  });
+  for (const key of ['ai', 'ai2']) Object.assign(engine.s[key], {hp:20,maxHp:20,alive:true,guard:0,fly:0,harden:0,diving:false,burn:0});
+  engine.s.ai.hp = 3;
+  engine.s.phase = 'PLAYER_PLAY'; engine.s.busy = false;
+  engine.s.lordPlayerTargetIdx = 0; engine.s.selectedCard = 0;
+  engine.events = [];
+  engine.dispatch('doPlay');
+  if (engine.s.phase === 'ATTACK_MOD_CHOICE') engine.dispatch('resolveAttackModChoice', {bonus:0});
+  for (let i=0; i<6 && (engine.pendingSettlement || engine.s.pendingAIDefense); i++) engine.acknowledgeEvents(engine.ver);
+  assert.equal(engine.s.ai.hp, 0);
+  assert.equal(engine.s.ai2.hp, 15);
+  assert.equal(engine.s.ai2.burn, 2);
 });

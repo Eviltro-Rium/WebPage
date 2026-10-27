@@ -168,6 +168,20 @@
   });
 
   R.registerItem({
+    name: 'DrawTwoTrophy',
+    displayName: '双抽战利白卡',
+    kind: 'trophyWhite',
+    trophyKind: 'both',
+    description: '抽2张牌，可继续搭桥。',
+    icon: '../icons/card_icons/draw_cards.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyDrawTwo',
+    trophyEffect: 'drawTwo',
+    beastTradeCost: ['wuneng']
+  });
+
+  R.registerItem({
     name: 'SmallPotionTrophy',
     displayName: '小药剂战利白卡',
     kind: 'trophyWhite',
@@ -640,7 +654,7 @@
     name: 'FlameFist',
     displayName: '火焰之拳',
     kind: 'accessory',
-    description: '防御阶段发动技能时施加1层灼伤（可叠加，最多3个）',
+    description: '释放有反击伤害的防御技能时，对攻击者施加1层灼伤（可叠加，最多3个）',
     icon: ICON + 'fire_gloves.webp',
     beastTradeCost: ['huo', 'huo', 'huo', 'huo', 'ben'],
     onDefendBurn: 1,
@@ -673,10 +687,10 @@
     name: 'FreezeLaser',
     displayName: '冷冻激光',
     kind: 'accessory',
-    description: '进攻造成伤害时对对手施加冷冻（最多1个）',
+    description: '释放没有伤害的攻击技能时，对当前目标施加冷冻（最多1个）',
     icon: ICON + 'freeze_laser.webp',
     beastTradeCost: ['shui', 'shui', 'shui', 'wuneng'],
-    onAttackDamageFreeze: 1,
+    onNonDamageAttackFreeze: 1,
     maxStacks: 1
   });
 

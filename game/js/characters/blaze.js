@@ -13,7 +13,7 @@
       if (v >= 1 && v <= 3) return [0,2,3,4][v] + (a.burn ? 1 : 0);
       return null;
     },
-    attackEffectTiming: {0: 'afterDamage', 1: 'afterDamage', 2: 'afterDamage'},
+    attackEffectTiming: {0: 'afterDamage', 1: 'afterDamage', 2: 'afterDamage', 4: 'afterDamage'},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, burnSelf, burnTarget, heal } = helpers;
       let d = 0;

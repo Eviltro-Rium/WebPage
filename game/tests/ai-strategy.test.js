@@ -315,19 +315,6 @@ test('Leon value 7 applies burn and really discards the stolen card', () => {
   assert.equal(engine.discardBottom.at(-1).value, 4);
 });
 
-test('Blaze value 4 keeps a stolen zero and converts it into burn setup', () => {
-  const engine = setup('Blaze');
-  engine.h.player = [number(0, 'GREEN')];
-  engine.s.atkOwner = 'ai';
-
-  const result = engine.aiSpecialEffect('Blaze', 4, number(4));
-
-  assert.equal(result.skip, true);
-  assert.equal(engine.h.ai[0].value, 0);
-  assert.equal(engine.s.ai.burn, 1);
-  assert.equal(engine.s.player.burn, 1);
-});
-
 test('Chan value 4 trades its weakest card for a valuable stolen card', () => {
   const engine = setup('Chan');
   engine.h.ai = [number(1)];

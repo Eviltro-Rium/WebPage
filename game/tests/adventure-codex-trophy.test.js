@@ -50,7 +50,7 @@ test('trophy codex groups drop/forge/both with real cards and shared rules', () 
   assert.ok(sections[1].querySelector('[data-codex-trophy="DisarmTrophy"]') || sections[1].querySelector('[data-codex-trophy="RiotTrophy"]'));
   assert.ok(sections[2].querySelector('[data-codex-trophy="SmallPotionTrophy"]'));
   assert.equal(screen.querySelectorAll('.codex-trophy-face').length, screen.querySelectorAll('.codex-trophy-entry').length);
-  assert.equal(screen.querySelector('.codex-trophy-intro-top').lastElementChild.textContent, '共 24 张');
+  assert.equal(screen.querySelector('.codex-trophy-intro-top').lastElementChild.textContent, '共 25 张');
   assert.equal(sections[0].querySelector('.codex-trophy-cost'), null, 'drop cards have no forge cost');
   const burn = screen.querySelector('[data-codex-trophy="BurnTrophy"]').closest('article');
   assert.equal(burn.querySelector('.codex-trophy-name').textContent, '灼伤');

@@ -327,17 +327,13 @@
       return perFist * count;
     },
 
-    _tryFlameFistOnDefend(skip) {
+    _tryFlameFistOnDefend(attacker) {
       if (!this.s || !this.s.isAdventure) return;
-      if (skip) return;
+      if (this._flameFistTriggeredForDefense) return;
       if (!this._hasAccessory('FlameFist')) return;
-      const i = this.s.selectedCard;
-      const c = this.h.player && this.h.player[i];
-      if (!c || c.isItemCard || (c.isBlack && !c.chosenColor)) return;
-      const attackerKey = (this.s.atkOwner && this.s.atkOwner !== 'player') ? this.s.atkOwner : 'ai';
-      const attacker = this.s[attackerKey];
       if (!attacker || !attacker.alive) return;
       const stacks = this._flameFistBurnAmount();
+      this._flameFistTriggeredForDefense = true;
       this._flashAccessory('FlameFist');
       this.burn(attacker, stacks);
     }

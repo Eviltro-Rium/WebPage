@@ -2663,6 +2663,24 @@ body.combat-sheet-open::after {
     color: var(--trophy-accent);
 }
 .codex-trophy-section-head p { margin-top: 5px; font-size: 0.75rem; color: #9eb4c3; }
+.codex-monster-page .char-detail-grid { margin-top: 0; }
+.codex-monster-section { --monster-accent: #83d9cb; margin-top: 28px; }
+.codex-monster-section[data-monster-tier="elite"] { --monster-accent: #a78bfa; }
+.codex-monster-section-head { margin-bottom: 14px; padding-left: 13px; border-left: 3px solid var(--monster-accent); }
+.codex-monster-section-head h2 { display: flex; align-items: center; gap: 12px; font-size: 1.1rem; color: #f1f5f7; }
+.codex-monster-section-head h2 span {
+    padding: 3px 8px;
+    border: 1px solid rgba(203,213,225,0.15);
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--monster-accent);
+}
+.codex-monster-section-head p { margin-top: 5px; font-size: 0.75rem; color: #9eb4c3; }
+.char-detail-card.codex-elite-card {
+    border-color: rgba(167, 139, 250, 0.35);
+    background: linear-gradient(145deg, rgba(167, 139, 250, 0.1), rgba(7, 27, 40, 0.72));
+}
 .codex-trophy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .codex-trophy-entry {
     display: grid;
@@ -3295,8 +3313,28 @@ body.combat-sheet-open::after {
     margin: 0;
     padding: 2px 0 4px;
 }
-#game-screen.adventure-combat-layout .controls + .adventure-item-bar {
-    margin-top: 0;
+.adventure-inventory-panel {
+    min-width: 0;
+    overflow: hidden;
+    background: rgba(15, 10, 30, 0.7);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: 10px;
+}
+.adventure-inventory-panel[hidden] { display: none; }
+.adventure-inventory-panel > .adventure-item-bar {
+    margin: 0;
+    padding: 8px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+.adventure-inventory-panel > .adventure-info-bar {
+    margin: 0;
+    padding: 7px 12px;
+    border: 0;
+    border-top: 1px solid rgba(168, 85, 247, 0.22);
+    border-radius: 0;
+    background: rgba(30, 25, 50, 0.4);
 }
 .adv-item-bar-title {
     font-size: 0.7rem; font-weight: 700; color: #c4b5fd;
@@ -3602,3 +3640,15 @@ body.combat-sheet-open #controls .ctrl-btn { cursor: not-allowed; }
     .npc-hp-section > .attacker-indicator, .npc-hp-section > .defender-indicator { grid-column:3; grid-row:1; }
 }
 @media(prefers-reduced-motion:reduce) { .hp-avatar.avatar-hit { animation:none; } }
+
+/* Loot dice and face adjustments share the reward settlement card. */
+.trophy-settle-die { display:flex; justify-content:center; align-items:center; min-height:96px; margin:0 0 10px; }
+.trophy-settle-die .d12-result, .trophy-settle-die .d12-die { width:80px; height:92px; }
+.trophy-settle-die .d12-result strong, .trophy-settle-die .d12-die-face { font-size:2rem; }
+.trophy-settle-actions[hidden] { display:none; }
+.trophy-dice-choice { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:14px; padding-top:14px; border-top:1px solid rgba(192,132,252,.25); }
+.trophy-dice-choice > h3, .trophy-dice-choice > p { flex-basis:100%; margin:0; }
+.trophy-dice-choice > p { font-size:.82rem; color:#c7d6df; }
+.trophy-dice-choice .dice-face-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); flex:1 1 320px; }
+.trophy-dice-choice .dice-magician-actions { display:flex; flex:1 1 320px; gap:8px; }
+.trophy-dice-choice .dice-magician-actions > .choice-row { flex:1; width:auto; min-width:0; }

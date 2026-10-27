@@ -88,6 +88,7 @@
       let label=who==='player'?'玩家':who==='ai2'?'AI2':'AI';
       this.emit('discardMany',extra.desc||`${label}弃掉${batch.length}张牌`,batch[0],Object.assign({who,from:'hand',destination:'bottom',cards:batch.map(c=>Object.assign({},c))},extra))
     }
+    _rememberDiscardTopBeforePlayerAttack(){this.s.discardTopBeforePlayerAttack=this.s.discardTop?cp(this.s.discardTop):null}
     setDiscardTop(card){if(this.s.discardTop&&!this._skipNextDiscardTop)this.discardToBottom(this.s.discardTop);this._skipNextDiscardTop=false;this.s.discardTop=Card.normalize(card)||Object.assign({},card);this.s.diceRoll=null;const actor=this.s.defOwner||this.s.atkOwner;const owner=actor==='ai2'?'ai2':actor==='ai'?'ai':null;if(owner)this._markBombPlay(owner);this._checkInvariants('setDiscardTop')}
     emit(type,desc,card,extra={}){
       // A revealed card has already reached its real pile/hand. Only its
@@ -600,7 +601,10 @@
       if(params.recycle){
         const source=this.s.pendingAttackMod&&this.s.pendingAttackMod.card||this.s.atkCard;
         if(!source||source.borrowedMonster)throw Error('无法收回该进攻牌');
-        if(this.s.pendingAttack)this.s.pendingAttack.recycleAttackCard=cp(source);
+        if(this.s.pendingAttack){
+          this.s.pendingAttack.recycleAttackCard=cp(source);
+          this.s.pendingAttack.discardTopBeforeAttack=this.s.discardTopBeforePlayerAttack!==undefined&&this.s.discardTopBeforePlayerAttack?cp(this.s.discardTopBeforePlayerAttack):null;
+        }
         this.emit('desc','垃圾回收：将在技能结算后收回打出的进攻牌');
       }
       if(params.evilRoulette){
@@ -915,7 +919,7 @@
     }
     itemKind(c){if(c.trophyWhite)return'trophyWhite';if(c.swapHand)return'swap';if(c.drawThree)return'drawThree';if(c.drawTwo)return'drawTwo';if(c.potion)return'potion';if(c.greenMagic||c.magicColor==='green')return'greenMagic';if(c.magic||c.magicColor==='purple')return'magic';if(c.superPurify)return'superPurify';if(c.purify)return'purify';if(c.shuffleToDeck)return'shuffle';return'wild'}
     _isAdventureBoss(x){if(!this.s.isAdventure||!window.AdventureRegistry)return false;return!!window.AdventureRegistry.getBoss(this.name(x))}
-    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}let label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='iceSeal'?'施加[冰封]':effect==='hypothermia'?'施加1层[失温]':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='purify'?'清除自身或对手至多1个buff':effect==='fly'?'获得1层飞翔':effect==='crit'?'获得1层暴击':effect==='magmaVein'?'获得1层[熔脉]':effect==='diving'?'获得[潜水]':effect==='scorch'?'施加[炙热]':effect==='lush'?'获得1层茂盛':effect==='parasite'?'获得1层寄生':effect==='poison'?'施加1层中毒':effect==='thorns'?'施加1层荆棘':effect==='sandblind'?'施加2层沙盲':effect==='quicksand'?'施加1层[流沙]，手牌上限-1':effect==='riot'?'对手负面层数翻倍（不超上限），定时炸弹立即引爆':effect==='smallPotion'?'恢复3点生命':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部可净化状态（印记保留），然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
+    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}if(effect==='drawTwo')return`${actor}打出${def&&def.displayName||'战利白卡'}：抽2张牌，然后继续搭桥`;let label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='iceSeal'?'施加[冰封]':effect==='hypothermia'?'施加1层[失温]':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='purify'?'清除自身或对手至多1个buff':effect==='fly'?'获得1层飞翔':effect==='crit'?'获得1层暴击':effect==='magmaVein'?'获得1层[熔脉]':effect==='diving'?'获得[潜水]':effect==='scorch'?'施加[炙热]':effect==='lush'?'获得1层茂盛':effect==='parasite'?'获得1层寄生':effect==='poison'?'施加1层中毒':effect==='thorns'?'施加1层荆棘':effect==='sandblind'?'施加2层沙盲':effect==='quicksand'?'施加1层[流沙]，手牌上限-1':effect==='riot'?'对手负面层数翻倍（不超上限），定时炸弹立即引爆':effect==='smallPotion'?'恢复3点生命':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部可净化状态（印记保留），然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
     useTrophyWhite(c, target, w='player'){
       if (!c || !c.trophyWhite) return false;
       // The caller resolves the target for the current card before entering
@@ -951,7 +955,13 @@
           }
           let r=this.effect(who,0,c,this.s.player,target);
           this.emit('desc',`${this.s.player.name} 0牌：${r.d}点伤害${(r.skip||r.unblock||r.d<=0)?'，跳过防御':''}`,c);
-          this.gateAdventureAttackMod(c,r.d,r.skip,r.unblock,0,{isDrain:!!(r.isDrain||r.drain)});
+          this.gateAdventureAttackMod(c,r.d,r.skip,r.unblock,0,{
+            isDrain:!!(r.isDrain||r.drain),
+            aoeTargets:r.aoeTargets,
+            aoeDamage:r.aoeDamage,
+            hypothermiaTarget:r.hypothermiaTarget,
+            hypothermiaAmount:r.hypothermiaAmount
+          });
         }
         return true;
       }
@@ -1086,7 +1096,10 @@
         this.s.busy = false;
         }
       }
-      if (w === 'player') this.draw('player', 1, true);
+      if (w === 'player') {
+        if (effect === 'drawTwo') this.draw('player', 2, true);
+        else this.draw('player', 1, true);
+      }
       return true;
     }
     chooseTrophyDisarm(targetKey, index) {
@@ -1290,7 +1303,7 @@
       if(c.isWhite)c.chosenColor=this.effective(this.s.discardTop);
       if(needsNumberFollowup&&!this.h.player.some((x,j)=>j!==i&&x.isNumberCard)){
         this.h.player.splice(i,1); this.s.selectedCard=-1; this.s.atkCard=cp(c); this.s.atkOwner='player';
-        this.setDiscardTop(c); this.s.hasPlayedThisTurn=true; this._markBombPlay('player'); this._tickBomb('player');
+        this._rememberDiscardTopBeforePlayerAttack(); this.setDiscardTop(c); this.s.hasPlayedThisTurn=true; this._markBombPlay('player'); this._tickBomb('player');
         this.emit('desc',`${who} ${c.value}牌：没有可用的追加数字牌，自动判定为0点`,c);
         this._onAttackSkillRelease(this.s.player);
         return this.gateAdventureAttackMod(c,0,true,false);
@@ -1299,6 +1312,7 @@
       this.s.selectedCard=-1;
       this.s.atkCard=cp(c);
       this.s.atkOwner='player';
+      this._rememberDiscardTopBeforePlayerAttack();
       this.setDiscardTop(c);
       this.s.hasPlayedThisTurn=true;
       this._markBombPlay('player'); this._tickBomb('player');
@@ -1503,7 +1517,7 @@
       if(p.name==='Saiki'&&p.value===5){if(this.s.isAdventure)this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Saiki 5牌弃掉${this.cardText(chosen)}`});else this.h.player.push(chosen);this.emit('desc',`Saiki 5牌：弃掉${this.cardText(chosen)}，造成4点伤害${this.s.isAdventure?'（冒险模式）':''}`);return this.finishOpponentAttack(p,4,false,false)}
       if(p.name==='Saiki'&&p.value===3){if(this.s.isAdventure){this.discardWithEvent(chosen,'player',{from:'reveal',faceUp:true,desc:`Saiki 3牌弃掉${this.cardText(chosen)}`});this.emit('desc',`Saiki 3牌：弃掉${this.cardText(chosen)}，造成2点伤害${this.effective(p.attackCard)==='YELLOW'?'并施加1层流血':''}`);return this.finishOpponentAttack(p,2,false,false)}this.s.saikiThreeDrawn=cp(chosen);this.s.phase='SAIKI_THREE_CHOICE';this.s.busy=false;this.emit('desc','Saiki 3牌：选择将抽到的牌加入手牌或弃掉');return this.state()}
       if(p.name==='Leon'&&p.value===7){this.burn(target,2);this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Leon 7牌弃掉${this.cardText(chosen)}`});this.emit('desc',`Leon 7牌：对手灼伤+2并弃掉${this.cardText(chosen)}，造成6点伤害`);return this.finishOpponentAttack(p,6,false,false)}
-      if(p.name==='Blaze'){if(chosen.isItemCard)d=4;else if(chosen.value===0){this.burn(this.s.player,1);this.burn(target,1);keep=true;skip=true}else d=chosen.value;if(!keep)this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Blaze 4牌弃掉${this.cardText(chosen)}`});if(d)d+=this.s.player.burn?1:0;this.emit('desc',`Blaze 4牌判定：${d}点伤害${skip?'，双方灼伤+1并跳过防御':''}`)}
+      if(p.name==='Blaze'){const special=!chosen.isNumberCard||chosen.value===0;d=(special?4:chosen.value)+(this.s.player.burn?1:0);if(special){const queued=this.s.pendingSkillStatuses||(this.s.pendingSkillStatuses=[]);for(const key of ['player',targetKey])queued.push({target:key,id:'burn',method:'burn',args:[1],timing:'afterDamage'})}this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Blaze 4牌弃掉${this.cardText(chosen)}`});this.emit('desc',`Blaze 4牌判定：${d}点伤害${special?'，双方灼伤+1':''}`)}
       if(p.name==='Moze'){keep=!this.s.isAdventure;if(this.s.isAdventure)this.discardWithEvent(chosen,'player',{from:'reveal',faceUp:true,desc:`Moze 5牌弃掉${this.cardText(chosen)}`});if(!chosen.isItemCard&&(chosen.isBlack||chosen.isWhite||this.effective(chosen)==='GREEN'))d=4;else{this.heal(this.s.player,2);this.addGuard(this.s.player,2);skip=true}this.emit('desc',(d?'Moze 5牌判定：4点伤害':'Moze 5牌判定：恢复2点并获得2层守护')+(this.s.isAdventure?'（弃掉）':''))}
       if(keep)this.h.player.push(chosen);return this.finishOpponentAttack(p,d,skip,unblock)}
     chanSevenChoice(keep){let p=this.s.pendingOpponentSkill,c=this.s.chanSevenChosenCard;if(!p||!this.s.chanSevenKeepMode||!c)throw Error('当前没有待处理的 Chan 7牌');if(keep)this.h.player.push(c);else this.discardWithEvent(c,'player',{from:'reveal',faceUp:true,desc:`Chan 7牌弃掉${this.cardText(c)}`});this.s.chanSevenKeepMode=false;this.s.chanSevenChosenCard=null;this.emit('desc',`Chan 7牌：${keep?'加入手牌':'弃掉'}${this.cardText(c)}`);return this.finishOpponentAttack(p,6,false,false)}
@@ -1570,22 +1584,47 @@
       if(!card||this.s.atkOwner!=='player'||card.borrowedMonster)return;
       pending.recycleAttackCard=null;
       const uid=card.uid;
-      const match=c=>c&&(uid?c.uid===uid:(c.value===card.value&&c.color===card.color&&!c.isItemCard));
-      const bottom=this.discardBottom||[];
+      const match=c=>{
+        if(!c)return false;
+        if(typeof this._sameCard==='function')return this._sameCard(c,card);
+        return uid?c.uid===uid:(c.value===card.value&&c.color===card.color&&!c.isItemCard);
+      };
+      const restoreTop=()=>{
+        const before=pending.discardTopBeforeAttack;
+        if(before!==undefined)return before?cp(before):null;
+        return null;
+      };
       let pulled=null;
-      for(let i=bottom.length-1;i>=0;i--){
-        if(match(bottom[i])){pulled=bottom.splice(i,1)[0];break;}
-      }
-      if(!pulled&&this.s.discardTop&&match(this.s.discardTop)){
-        pulled=cp(this.s.discardTop);
-        this.s.discardTop=null;
+      const pile=typeof this._pile==='function'?this._pile('player'):null;
+      if(pile&&Array.isArray(pile.discard)){
+        for(let i=pile.discard.length-1;i>=0;i--){
+          if(match(pile.discard[i])){pulled=pile.discard.splice(i,1)[0];break;}
+        }
+        if(!pulled&&this.s.discardTop&&match(this.s.discardTop)){
+          pulled=cp(this.s.discardTop);
+          for(let j=pile.discard.length-1;j>=0;j--){
+            if(match(pile.discard[j])){pile.discard.splice(j,1);break;}
+          }
+        }
+        if(pile.discard.length)this.s.discardTop=cp(pile.discard[pile.discard.length-1]);
+        else this.s.discardTop=restoreTop();
         this.s.diceRoll=null;
+      }else{
+        const bottom=this.discardBottom||[];
+        for(let i=bottom.length-1;i>=0;i--){
+          if(match(bottom[i])){pulled=bottom.splice(i,1)[0];break;}
+        }
+        if(!pulled&&this.s.discardTop&&match(this.s.discardTop)){
+          pulled=cp(this.s.discardTop);
+          this.s.discardTop=restoreTop();
+          this.s.diceRoll=null;
+        }
       }
       if(!pulled)return;
       this.h.player.push(pulled);
-      this.emit('desc','垃圾回收：收回'+this.cardText(pulled));
+      this.emit('attackRecycle','垃圾回收：收回'+this.cardText(pulled),pulled,{who:'player',card:pulled});
     }
-    afterAttack(){let target=this.s.attackTarget||'ai';this._tickBomb(target);this._tickBomb('player');if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();let optionalDiscard=!!this.s.mayDiscardAfterSkill;if(this.s.pendingAttack&&this.s.pendingAttack.recycleAttackCard)this._recycleAttackCardToHand();if(this.s.atkOwner)this._grantChaosIfKnight(this.s.atkOwner);this.s.pendingAttack=null;this.s.queuedCounterHits=[];this.s.counterAvoidance=false;this.s.pendingPlayerAttackRemaining=null;this.s.pendingPlayerAttackBleed=0;this.s.pendingSkillStatuses=[];this.s.pendingDamageFormula=null;this.s.pendingFiveChoice=false;this.s.fiveChoiceCard=null;this.s.pendingNumberJudge=null;this.s.pendingAttackMod=null;this.s.attackDebuffSnapshot=null;this.s.opponentHandTarget=null;this.s.defenseSkipped=false;this.s.unblockDefend=false;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];if(this.s.pendingKrakenDefendDiscard){if(this.s.player&&this.s.player.alive&&(this.h.player||[]).length){this.s.phase='PLAYER_DISCARD';this.s.busy=false;this.s.forcedDiscard=true;this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','防御0：请选择1张手牌弃掉');return}else{this.s.pendingKrakenDefendDiscard=false;if(!(this.h.player||[]).length)this.emit('desc','无手牌可弃')}}if(this._openSerenitySixDiscardIfPending())return;if(this._openHypothermiaDiscardIfPending(this.s.hypothermiaDiscardResume||'PLAYER_PLAY'))return;this.s.phase=optionalDiscard?'PLAYER_DISCARD':'PLAYER_PLAY';this.s.busy=false;if(optionalDiscard){this.s.forcedDiscard=false;this.s.selectedCard=-1;this.s.selectedCards=[]}}
+    afterAttack(){let target=this.s.attackTarget||'ai';this._tickBomb(target);this._tickBomb('player');if(typeof this.applyPendingVixrapsBurnSettle==='function')this.applyPendingVixrapsBurnSettle();let optionalDiscard=!!this.s.mayDiscardAfterSkill;if(this.s.pendingAttack&&this.s.pendingAttack.recycleAttackCard)this._recycleAttackCardToHand();delete this.s.discardTopBeforePlayerAttack;if(this.s.atkOwner)this._grantChaosIfKnight(this.s.atkOwner);this.s.pendingAttack=null;this.s.queuedCounterHits=[];this.s.counterAvoidance=false;this.s.pendingPlayerAttackRemaining=null;this.s.pendingPlayerAttackBleed=0;this.s.pendingSkillStatuses=[];this.s.pendingDamageFormula=null;this.s.pendingFiveChoice=false;this.s.fiveChoiceCard=null;this.s.pendingNumberJudge=null;this.s.pendingAttackMod=null;this.s.attackDebuffSnapshot=null;this.s.opponentHandTarget=null;this.s.defenseSkipped=false;this.s.unblockDefend=false;this.s.atkCard=this.s.defCard=null;this.s.atkOwner=this.s.defOwner=null;this.s.revealCards=[];if(this.s.pendingKrakenDefendDiscard){if(this.s.player&&this.s.player.alive&&(this.h.player||[]).length){this.s.phase='PLAYER_DISCARD';this.s.busy=false;this.s.forcedDiscard=true;this.s.selectedCard=-1;this.s.selectedCards=[];this.emit('desc','防御0：请选择1张手牌弃掉');return}else{this.s.pendingKrakenDefendDiscard=false;if(!(this.h.player||[]).length)this.emit('desc','无手牌可弃')}}if(this._openSerenitySixDiscardIfPending())return;if(this._openHypothermiaDiscardIfPending(this.s.hypothermiaDiscardResume||'PLAYER_PLAY'))return;this.s.phase=optionalDiscard?'PLAYER_DISCARD':'PLAYER_PLAY';this.s.busy=false;if(optionalDiscard){this.s.forcedDiscard=false;this.s.selectedCard=-1;this.s.selectedCards=[]}}
     _grantChaosForCard(ch,card){if(!ch||!ch.alive||this.name(ch)!=='Knight')return;if(!card)return;if(card.isItemCard&&!card.isWhite)return;let color=this.effective(card);if(!C.includes(color))return;let key='chaos_'+color.toLowerCase();if(ch[key])return;let S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.set(ch,key,true);else ch[key]=true;const who=this._who(ch);this.emit('buff','[混沌-'+this.colorName(color).replace('色','')+']',null,{who,kind:key,stacks:1});this.emit('desc',ch.name+'获得[混沌-'+this.colorName(color)+']',card)}
     _grantChaosIfKnight(who){this._grantChaosForCard(this.s[who],this.s.atkCard);let defWho=this.s.defOwner;if(defWho&&defWho!==who)this._grantChaosForCard(this.s[defWho],this.s.defCard)}
     _shouldDeferKnightChaos(){const d=this.s&&this.s.pendingDialog;return d==='purify'||d==='superPurify'||d==='trophyPurify'||d==='purifyCrystal'}

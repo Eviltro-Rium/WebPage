@@ -4,6 +4,7 @@
     empty:  { label: '', cls: 'room-empty', glyph: '', icon: null },
     start:  { label: '起点', cls: 'room-start', glyph: '', icon: ROOM_ICON_DIR + 'starting_room.webp' },
     normal: { label: '普通', cls: 'room-normal', glyph: '', icon: ROOM_ICON_DIR + 'common_room.webp' },
+    elite: { label: '精英', cls: 'room-elite', glyph: '', icon: ROOM_ICON_DIR + 'elite_room.png' },
     boss:   { label: 'Boss', cls: 'room-boss', glyph: '', icon: ROOM_ICON_DIR + 'boss_room.webp' },
     item:   { label: '奖励', cls: 'room-item', glyph: '', icon: ROOM_ICON_DIR + 'bonus_room.webp' },
     shop:   { label: '商店', cls: 'room-shop', glyph: '', icon: ROOM_ICON_DIR + 'shopping_room.webp' },

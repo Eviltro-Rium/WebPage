@@ -138,6 +138,7 @@
 .adv-cell.room-shop   { color: #60a5fa; background: rgba(96, 165, 250, 0.1); }
 .adv-cell.room-blacksmith { color: #f59e0b; background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); }
 .adv-cell.room-challenge { color: #c084fc; background: rgba(192, 132, 252, 0.12); border-color: rgba(192, 132, 252, 0.4); }
+.adv-cell.room-elite { color: #a78bfa; background: rgba(167, 139, 250, 0.14); border-color: rgba(167, 139, 250, 0.45); }
 .adv-cell.room-glitch { color: #67e8f9; background: rgba(34, 211, 238, .12); border-color: rgba(244, 114, 182, .5); }
 .adv-cell .adv-cell-merchant-icon { position: absolute; width: 32px; height: 32px; top: auto; left: auto; right: 2px; bottom: 2px; object-fit: contain; filter: drop-shadow(0 1px 2px #000) drop-shadow(0 0 4px #eab30890); image-rendering: pixelated; pointer-events: none; }
 .adv-merchant-heading { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
@@ -225,6 +226,7 @@
    击败怪物（cleared）后才显示绿色探索光效。未清除前恢复中性边框，
    可行动时仍保留金色 reachable 指引。 */
 .adv-cell.room-normal.visited:not(.cleared),
+.adv-cell.room-elite.visited:not(.cleared),
 .adv-cell.room-challenge.visited:not(.cleared),
 .adv-cell.room-boss.visited:not(.cleared) {
   border-color: rgba(120, 110, 180, 0.25);
@@ -232,6 +234,7 @@
   animation: none;
 }
 .adv-cell.room-normal.visited.reachable:not(.cleared),
+.adv-cell.room-elite.visited.reachable:not(.cleared),
 .adv-cell.room-challenge.visited.reachable:not(.cleared),
 .adv-cell.room-boss.visited.reachable:not(.cleared) {
   border-color: #fbbf24;
@@ -722,9 +725,22 @@
 }
 .adv-settle-sidebar {
   min-width: 0;
+  height: 320px;
+  max-height: 40vh;
+  max-height: 40dvh;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(167, 139, 250, 0.65) transparent;
   padding-left: 24px;
+  padding-right: 8px;
   border-left: 1px solid var(--glass-border, rgba(168, 85, 247, 0.25));
   text-align: left;
+}
+.adv-settle-sidebar:focus-visible {
+  outline: 2px solid rgba(167, 139, 250, 0.7);
+  outline-offset: 2px;
 }
 .adv-sidebar-title {
   font-size: 1rem; font-weight: 700; color: #c4b5fd;
@@ -755,6 +771,9 @@
   .game-over-box.adv-settle-wrapper { padding: 20px 16px; }
   .adv-settle-content { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .adv-settle-sidebar {
+    height: 200px;
+    max-height: 32vh;
+    max-height: 32dvh;
     padding: 16px 0 0;
     border-left: 0;
     border-top: 1px solid var(--glass-border, rgba(168, 85, 247, 0.25));

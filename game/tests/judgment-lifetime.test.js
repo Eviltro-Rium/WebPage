@@ -125,6 +125,20 @@ test('UI leaves cards during defense, then hurt feedback precedes a single match
  assert.deepEqual(calls,['hurt','exit:'+c.uid]);assert.equal(w.document.querySelectorAll('#reveal-cards canvas').length,0);
  dom.window.close();
 });
+test('judgment discards of the same pile fly together, one card per move',async()=>{
+ const {ui,dom}=uiHarness(),a=Card.number('RED',2),b=Card.number('GREEN',4),batches=[];
+ ui._paintJudgmentCards([a,b]);
+ ui._playDiscardManyAnimation=async evt=>batches.push(evt.cards.map(c=>c.uid));
+ ui._playDiscardAnimation=async()=>{throw Error('separate discards should fly together');};
+ await ui._finishJudgmentAnimation({cards:[a,b],moves:[
+  {type:'discard',card:a,from:'reveal',who:'player',destination:'bottom'},
+  {type:'discard',card:b,from:'reveal',who:'player',destination:'bottom'}
+ ]});
+ assert.equal(batches.length,1);
+ assert.equal(batches[0].length,2);
+ assert.equal(batches[0].join(','), [a.uid,b.uid].join(','));
+ dom.window.close();
+});
 test('UI multi-card exits match each card and never remove a hand card; refresh can restore faces',async()=>{
  const {ui,w,dom}=uiHarness(),a=Card.number('RED',2),b=Card.number('GREEN',4),hand=Card.number('BLUE',7),sources=[];
  w.document.getElementById('player-hand').appendChild(w.renderCard(hand));

@@ -197,10 +197,10 @@
         return null;
     };
 
-    /** Spin a D12 in the reveal zone, then land on `value`. */
+    /** Spin a D12 in its presentation surface, then land on `value`. */
     proto._playD12Animation = function (value, options = {}) {
         const finalValue = Math.max(1, Math.min(12, Number(value) || 1));
-        const box = document.getElementById('reveal-cards');
+        const box = options.target || document.getElementById('reveal-cards');
         if (!box) return Promise.resolve();
 
         const outcome = options.outcome || this._inferD12Outcome(options.desc, finalValue);

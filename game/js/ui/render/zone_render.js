@@ -83,7 +83,8 @@
             // animated; the reveal event itself owns the judgment area meanwhile.
             if (this._isConsumingEvents || (this.state.events||[]).some(evt=>evt.type==='reveal'||evt.type==='judgmentEnd')) return;
             const cards = this.state.revealCards || [];
-            const dice = this.state.diceRoll && this.state.diceRoll.purpose !== 'trophyDrop' ? this.state.diceRoll : null;
+            const pendingLoot = this.state.pendingDiceControl && this.state.pendingDiceControl.purpose === 'trophyDrop';
+            const dice = !pendingLoot && this.state.diceRoll && this.state.diceRoll.purpose !== 'trophyDrop' ? this.state.diceRoll : null;
             this._judgmentCards=cards;
             const key = JSON.stringify({ cards, dice });
             if (box.dataset.cardKey === key) return;
@@ -109,17 +110,34 @@
             const zone = document.getElementById('reveal-cards')?.closest('.reveal-zone');
             let panel = document.getElementById('dice-control-dialog');
             const pending = this.state && this.state.pendingDiceControl;
-            if (!pending || !zone) { if (panel) panel.remove(); return; }
-            if (!panel) {
-                panel = document.createElement('div');
-                panel.id = 'dice-control-dialog';
+            const isLoot = pending && pending.purpose === 'trophyDrop';
+            if (!pending || (!zone && !isLoot)) {
+                if (panel) panel.remove();
+                this._trophyControlEvent = null;
+                return;
+            }
+            const mode = pending.mode || 'remote';
+            const key = pending.presentedThrough + ':' + pending.diceIndex + ':' + mode + ':' + pending.value;
+            if (panel && panel.dataset.key === key && !!panel.closest('.trophy-settle-sheet') === !!isLoot) return;
+            if (panel) panel.remove();
+            panel = document.createElement('div');
+            panel.id = 'dice-control-dialog';
+            if (isLoot) {
+                // The saved presentation restores monster rules and roll progress
+                // even after the pending event has already been acknowledged.
+                const evt = Object.assign({}, this._trophyControlEvent || {}, pending.presentation || {}, {
+                    purpose: 'trophyDrop', value: pending.value, roll: pending.value, awaitControl: true
+                });
+                const overlay = this._showTrophySettlement(evt, true);
+                panel.className = 'trophy-dice-control';
+                overlay.querySelector('.trophy-settle-sheet').appendChild(panel);
+            } else {
                 panel.className = 'dialog-overlay dialog-sheet-overlay';
                 document.body.appendChild(panel);
             }
-            const mode = pending.mode || 'remote';
-            const key = pending.presentedThrough + ':' + pending.diceIndex + ':' + mode;
-            if (panel.dataset.key === key) return;
             panel.dataset.key = key;
+            const boxClass = isLoot ? 'dice-choice-box trophy-dice-choice' : 'dialog-box dialog-bottom-sheet dice-choice-box';
+            const faceRoot = isLoot ? panel.closest('.trophy-settle-sheet').querySelector('.trophy-settle-die') : zone;
             const currentFace = Math.max(1, Math.min(12, Number(pending.value) || 1));
             let submitting = false;
 
@@ -129,7 +147,7 @@
                 const canMinus = currentFace > 1 && canPayHp;
                 const canPlus = currentFace < 12 && canPayHp;
                 const hpNote = canPayHp ? '每次 ±1 消耗 3 点生命。' : '生命 ≤3，只能保留原结果。';
-                panel.innerHTML = '<div class="dialog-box dialog-bottom-sheet dice-choice-box"><h3>魔术师</h3>' +
+                panel.innerHTML = '<div class="' + boxClass + '"><h3>魔术师</h3>' +
                     '<p>当前骰面：' + currentFace + '。可将结果 ±1（' + hpNote + '）</p>' +
                     '<div class="dice-magician-actions" aria-label="魔术师调整">' +
                     '<button type="button" class="choice-row" data-adjust="-1"' + (canMinus ? '' : ' disabled aria-disabled="true"') +
@@ -138,14 +156,14 @@
                     '>' + (canPlus ? '+1 → ' + (currentFace + 1) + '（−3❤️）' : (canPayHp ? '+1（已到上限）' : '+1（生命不足）')) + '</button>' +
                     '</div><button type="button" class="choice-row choice-secondary" data-keep>保留 ' + currentFace + '</button></div>';
                 const submitAdjust = async (adjust) => {
-                    if (submitting || this._isHandlingAction) return;
+                    if (submitting || this._isHandlingAction || this._isConsumingEvents) return;
                     if (adjust !== 0) {
                         const next = currentFace + adjust;
                         if (next < 1 || next > 12) return;
                     }
                     submitting = true;
-                    if (adjust !== 0) {
-                        const face = zone.querySelector('.d12-result strong, .d12-die-face');
+                    if (adjust !== 0 && !isLoot) {
+                        const face = faceRoot.querySelector('.d12-result strong, .d12-die-face');
                         if (face) face.textContent = String(currentFace + adjust);
                     }
                     panel.querySelectorAll('button').forEach(button => button.disabled = true);
@@ -153,6 +171,9 @@
                         await this._apiAction('chooseDiceControl', { adjust });
                     } finally {
                         submitting = false;
+                        if (panel.isConnected) panel.querySelectorAll('button').forEach(button => {
+                            button.disabled = button.getAttribute('aria-disabled') === 'true';
+                        });
                     }
                 };
                 panel.querySelector('[data-keep]').onclick = () => submitAdjust(0);
@@ -162,7 +183,7 @@
                 return;
             }
 
-            panel.innerHTML = '<div class="dialog-box dialog-bottom-sheet dice-choice-box"><h3>遥控骰子</h3>' +
+            panel.innerHTML = '<div class="' + boxClass + '"><h3>遥控骰子</h3>' +
                 '<p>当前骰面：' + currentFace + '。选择新骰面会消耗 1 个遥控骰子。</p>' +
                 '<div class="dice-face-grid" aria-label="选择骰面">' +
                 Array.from({length:12},(_,i)=>{
@@ -173,12 +194,12 @@
                 }).join('') +
                 '</div><button type="button" class="choice-row choice-secondary" data-keep>保留 ' + currentFace + ' · 不使用</button></div>';
             const submit = async (use,value) => {
-                // Allow choose while D12 anim plays — pendingDiceControl is already live.
-                if (submitting || this._isHandlingAction) return;
+                // Wait for event playback to release the action lock before submitting.
+                if (submitting || this._isHandlingAction || this._isConsumingEvents) return;
                 if (use && Number(value) === currentFace) return;
                 submitting = true;
-                if (use) {
-                    const face = zone.querySelector('.d12-result strong, .d12-die-face');
+                if (use && !isLoot) {
+                    const face = faceRoot.querySelector('.d12-result strong, .d12-die-face');
                     if (face) face.textContent = String(value);
                 }
                 panel.querySelectorAll('button').forEach(button => button.disabled = true);

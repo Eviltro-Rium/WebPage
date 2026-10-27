@@ -9,9 +9,10 @@
  *   BLACKSMITH 铁匠铺房间：支付金币开门后，用兽元交易配饰
  *   CHALLENGE  挑战房间：1v2对战，胜利后获得挑战房奖励+兽元全选
  *   GLITCH     故障房间：每房一次 D12 事件
+ *   ELITE      精英房间：1v1 精英怪，奖励结算同普通房，战利品骰投 2 次
  * 另有 EMPTY 表示地图外空房间（不可进入）。
  *
- * CSV 编码：-1=地图外 0=起点 1=普通 2=boss 3=奖励 4=商店 5=铁匠铺 6=挑战 7=故障
+ * CSV 编码：-1=地图外 0=起点 1=普通 2=boss 3=奖励 4=商店 5=铁匠铺 6=挑战 7=故障 9=精英
  * 奖励房（3）与铁匠铺（5）应放在支路，不在起点→Boss 最短路径上；
  * 奖励房进入需消耗两个随机普通兽元开门（万能可替代）。
  * 开门后本层只滚动一次奖励（领取后不可再刷）；未领时可留在房间，再次进入领取同一份。
@@ -26,7 +27,8 @@
     SHOP:   'shop',
     BLACKSMITH: 'blacksmith',
     CHALLENGE: 'challenge',
-    GLITCH: 'glitch'
+    GLITCH: 'glitch',
+    ELITE: 'elite'
   };
 
   const CODE_TO_TYPE = {
@@ -38,7 +40,8 @@
     4: RoomType.SHOP,
     5: RoomType.BLACKSMITH,
     6: RoomType.CHALLENGE,
-    7: RoomType.GLITCH
+    7: RoomType.GLITCH,
+    9: RoomType.ELITE
   };
 
   const TYPE_TO_CODE = {};
@@ -53,7 +56,8 @@
     shop:   '商店',
     blacksmith: '铁匠铺',
     challenge: '挑战',
-    glitch: '故障'
+    glitch: '故障',
+    elite: '精英'
   };
 
   class Room {
@@ -96,7 +100,8 @@
     }
 
     isCombatRoom() {
-      return this.type === RoomType.NORMAL || this.type === RoomType.BOSS || this.type === RoomType.CHALLENGE;
+      return this.type === RoomType.NORMAL || this.type === RoomType.ELITE ||
+        this.type === RoomType.BOSS || this.type === RoomType.CHALLENGE;
     }
 
     // Selecting a room is not exploration. Only completed fights or an

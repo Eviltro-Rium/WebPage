@@ -437,7 +437,7 @@
       this.s.beastDiscardReturnPhase = null;
     },
     _beginDedicatedBeastSettlement(room) {
-      if (!room || room.type !== window.RoomType.NORMAL || room.beastTokenClaimed) {
+      if (!room || (room.type !== window.RoomType.NORMAL && room.type !== window.RoomType.ELITE) || room.beastTokenClaimed) {
         this.s.pendingCombatReward = null;
         this.s.beastReward = null;
         this.s.phase = Phase.MAP;
@@ -585,7 +585,7 @@
       if (!scenario || scenario.auto) return scenario;
       const slots = this._offeredSlotTypes(scenario);
       const room = typeof this.currentRoom === 'function' ? this.currentRoom() : null;
-      const isNormalRoom = room && room.type === window.RoomType.NORMAL;
+      const isNormalRoom = room && (room.type === window.RoomType.NORMAL || room.type === window.RoomType.ELITE);
       if (isNormalRoom && slots.length === 4 &&
           typeof this.hasAccessory === 'function' && this.hasAccessory('Magnet')) {
         scenario.pickCount = 3;

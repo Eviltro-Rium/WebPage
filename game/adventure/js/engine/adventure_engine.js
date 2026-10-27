@@ -63,13 +63,17 @@
   }
 
   function sceneEncounterNames(scene, stage, kind) {
-    const pools = kind === 'boss' ? window.AdventureBossPool : window.AdventureMonsterPool;
+    const pools = kind === 'boss' ? window.AdventureBossPool
+      : kind === 'elite' ? window.AdventureElitePool
+        : window.AdventureMonsterPool;
     const pool = pools && pools[scene];
     if (!pool) return [];
     if (Array.isArray(pool)) return pool;
-    const configured = pool[stage] || pool['*'];
-    // Missing stage entries may only use registered names from this same scene.
-    return Array.isArray(configured) ? configured : [...new Set(Object.values(pool).flat())];
+    const configured = pool[stage] ?? pool['*'];
+    if (Array.isArray(configured)) return configured;
+    if (configured == null) return [];
+    // Legacy pools may omit per-stage keys and rely on flattening every entry.
+    return [...new Set(Object.values(pool).flat())];
   }
 
   class AdventureEngine {
@@ -407,7 +411,8 @@
         ? this.s.combat.enemy2
         : this.s.combat.enemy2 && this.s.combat.enemy2.name)) || null;
       if (room) {
-        if (enemy && (room.type === window.RoomType.NORMAL || room.type === window.RoomType.CHALLENGE || room.type === window.RoomType.GLITCH)) {
+        if (enemy && (room.type === window.RoomType.NORMAL || room.type === window.RoomType.ELITE ||
+          room.type === window.RoomType.CHALLENGE || room.type === window.RoomType.GLITCH)) {
           room.monsterName = enemy;
         }
         if (enemy && room.type === window.RoomType.BOSS) room.bossName = enemy;
@@ -493,7 +498,8 @@
       this.emit('enterRoom', '进入' + room.label() + '房间', {r:this.s.pos.r, c:this.s.pos.c, roomType:room.type});
       this._log('进入 ' + room.label() + ' 房间');
       const handlers = {
-        [window.RoomType.NORMAL]:'_handleNormal', [window.RoomType.BOSS]:'_handleBoss',
+        [window.RoomType.NORMAL]:'_handleNormal', [window.RoomType.ELITE]:'_handleElite',
+        [window.RoomType.BOSS]:'_handleBoss',
         [window.RoomType.ITEM]:'_handleItem', [window.RoomType.SHOP]:'_handleShop',
         [window.RoomType.BLACKSMITH]:'_handleBlacksmith', [window.RoomType.CHALLENGE]:'_handleChallenge',
         [window.RoomType.GLITCH]:'_handleGlitch'
@@ -523,7 +529,8 @@
     }
 
     _pickMonsterName(room, opts = {}) {
-      const list = this._encounterNames('monster');
+      const poolKind = room && room.type === window.RoomType.ELITE && !opts.ignoreRoom ? 'elite' : 'monster';
+      const list = this._encounterNames(poolKind);
       if (room && !opts.ignoreRoom && list.includes(room.monsterName)) return room.monsterName;
       const distinct = opts.exclude ? list.filter(name => name !== opts.exclude) : list;
       const choices = distinct.length ? distinct : list;
@@ -618,15 +625,22 @@
       return removed;
     }
 
+    _handleElite(room) {
+      if ((this.s.stage || 1) < 3) {
+        return this._encounterUnavailable('精英');
+      }
+      return this._handleNormal(room);
+    }
+
     _handleNormal(room) {
       if (room.cleared) {
         if (room.stashedLoot) {
           const merchant = room.stashedLoot.kind === 'merchant';
-          this._log(merchant ? '流浪商人仍在房间等待交易' : '普通房间已清除，可领取留在房间的基础奖励');
+          this._log(merchant ? '流浪商人仍在房间等待交易' : room.label() + '房间已清除，可领取留在房间的基础奖励');
           this.s.phase = Phase.REWARD;
           this.emit('rewardPending', merchant ? '可与流浪商人交易' : '可领取保留的奖励', { roomType: room.type, stashed: room.stashedLoot });
         } else {
-          this._log('普通房间已清除且无待领奖励');
+          this._log(room.label() + '房间已清除且无待领奖励');
           this.s.phase = Phase.MAP;
         }
         return;

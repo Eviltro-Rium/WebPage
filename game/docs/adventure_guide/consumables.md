@@ -277,7 +277,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 - **细分类**（按卡面图标来源；图标已从 `items_icons` 迁出的以现行路径为准）：
   - **掉落白卡**：图标来自 `buff_icons`。主要来自怪物 D12 掉落；**不可**铁匠锻造。定稿 **drop-only**（其余 buff 战利）。
   - **锻造白卡（仅锻造）**：图标来自 `card_icons`。只进铁匠池、**不进**怪物掉落：俄盘 / 缴械 / **暴乱**。
-  - **双源白卡**：小药剂 / 净化之水 / 零技能 —— **掉落与铁匠均可获得**（铁匠池按可锻收录；也可写进怪物掉落表）。小药剂/净化图标暂留 `buff_icons`，零技能为 `card_icons`。
+  - **双源白卡**：小药剂 / 净化之水 / 零技能 / 双抽 —— **掉落与铁匠均可获得**（铁匠池按可锻收录；也可写进怪物掉落表）。小药剂/净化图标暂留 `buff_icons`，零技能与双抽为 `card_icons`（双抽图标同白卡 +3）。
 - **定稿字段**：`trophyKind: 'drop' | 'forge' | 'both'`（铁匠槽 = `forge` ∪ `both`；掉落表可含 `drop` ∪ `both`）。铁匠进店随机 1 槽，选中后 **2** 金币刷新。
 
 ### 掉落白卡（`buff_icons` · 不可锻造）
@@ -314,6 +314,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 - **零技能**（`ZeroTrophy`）：释放角色对应的 0 技能；不抽牌、不搭桥；锻造 **2 万能**。`card_icons`
 - **小药剂**（`SmallPotionTrophy`）：恢复 **3❤️**；锻造 **1 草 + 1 火**。图标暂留 `buff_icons`（亦有 `card_icons/small_potion.webp` 可迁）。
 - **净化之水**（`PurifyWaterTrophy`）：清除自身至多 1 个状态（可选，含正面；对战可选对手）；锻造 **1 水 + 1 本**。图标暂留 `buff_icons`。
+- **双抽**（`DrawTwoTrophy`）：抽 **2** 张牌，可继续搭桥；精英击败投出 **10** 掉落；锻造 **1 万能**。图标 `card_icons/draw_cards.webp`（同白卡 +3）。
 
 
 Boss 房（含 Stage 4）按该 Boss 专属 D12 表独立投 3 次；成功掉落自动入手。铁匠铺战利槽**仅**从锻造白卡池抽取。

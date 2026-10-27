@@ -48,7 +48,7 @@ const FORGE_ONLY = [
   'RussianRouletteTrophy', 'DisarmTrophy', 'RiotTrophy'
 ];
 const BOTH = [
-  'ZeroTrophy', 'SmallPotionTrophy', 'PurifyWaterTrophy'
+  'ZeroTrophy', 'SmallPotionTrophy', 'PurifyWaterTrophy', 'DrawTwoTrophy'
 ];
 const FORGE_POOL = FORGE_ONLY.concat(BOTH);
 
@@ -89,6 +89,10 @@ test('trophyKind: both (SmallPotion/Purify/Zero) keep costs and stay forge-eligi
   assert.equal(potion.healAmount, 3);
   assert.deepEqual(Array.from(potion.beastTradeCost), ['cao', 'huo']);
   assert.deepEqual(Array.from(AdventureRegistry.getItem('PurifyWaterTrophy').beastTradeCost), ['shui', 'ben']);
+  const drawTwo = AdventureRegistry.getItem('DrawTwoTrophy');
+  assert.equal(drawTwo.trophyKind, 'both');
+  assert.deepEqual(Array.from(drawTwo.beastTradeCost), ['wuneng']);
+  assert.match(drawTwo.icon, /draw_cards/);
 });
 
 test('forge pool = forge ∪ both', () => {

@@ -225,7 +225,7 @@
     if(c.isWhite)c.chosenColor=this.effective(this.s.discardTop);
     if(needsNumberFollowup&&!this.h.player.some((x,j)=>j!==i&&x.isNumberCard)){
       this.h.player.splice(i,1); this.s.selectedCard=-1; this.s.atkCard=cp(c); this.s.atkOwner='player';
-      this.setDiscardTop(c,'player'); this.s.hasPlayedThisTurn=true; this._markBombPlay('player'); this._tickBomb('player');
+      this._rememberDiscardTopBeforePlayerAttack(); this.setDiscardTop(c,'player'); this.s.hasPlayedThisTurn=true; this._markBombPlay('player'); this._tickBomb('player');
       this.emit('desc',who+' '+c.value+'牌：没有可用的追加数字牌，自动判定为0点',c);
       this._onAttackSkillRelease(this.s.player);
       return this.gateAdventureAttackMod(c,0,true,false);
@@ -237,6 +237,7 @@
     // Keep the exact attack-card reference used by emit(). A cloned object makes
     // the automatic animation guard treat the same play as a second new card.
     this._animatedPlayerAttack=this.s.atkCard;
+    this._rememberDiscardTopBeforePlayerAttack();
     this.setDiscardTop(c,'player');this._markBombPlay('player'); this._tickBomb('player');let _buffBefore={bleed:targetChar.bleed||0,burn:targetChar.burn||0,poison:targetChar.poison||0,blind:targetChar.blind||0,iceSeal:targetChar.iceSeal||0,frozen:!!targetChar.frozen,sandblind:targetChar.sandblind||0,thorns:targetChar.thorns||0,quicksand:targetChar.quicksand||0};if(!c.borrowedMonster){this.rememberAttackDebuffs(target);this.applySaikiPassive(this.s.player,targetChar,c);}
     this.emit('playerPlay','玩家打出进攻牌',c);
     if(c.isBlack)this.emit('colorChoice','黑牌指定'+this.colorName(c.chosenColor),c);

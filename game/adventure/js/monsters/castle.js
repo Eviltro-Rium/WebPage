@@ -13,17 +13,22 @@
   window.AdventureBossPool = window.AdventureBossPool || {};
   window.AdventureBossPool.castle = {
     '*': ['CastleChameleon', 'CastleEagle'],
-    2: ['CastleChameleon', 'CastleEagle', 'CastleGargoyle'],
     3: ['CastleChameleon', 'CastleEagle', 'CastleGargoyle'],
     4: ['CastleChameleon', 'CastleEagle', 'CastleGargoyle']
   };
 
+  window.AdventureElitePool = window.AdventureElitePool || {};
+  window.AdventureElitePool.castle = {
+    3: ['CastleBat', 'CastleGhost', 'DungeonGoblin'],
+    4: ['CastleBat', 'CastleGhost', 'DungeonGoblin']
+  };
+
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.castle = {
-    '*': ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly'],
-    2: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly', 'DungeonGoblin', 'CastleGhost'],
-    3: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly', 'DungeonGoblin', 'CastleGhost'],
-    4: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleBat', 'CastleFirefly', 'DungeonGoblin', 'CastleGhost']
+    '*': ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleFirefly'],
+    2: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleFirefly'],
+    3: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleFirefly'],
+    4: ['CastleWolf', 'CastleFox', 'CastleBear', 'CastleTiger', 'CastleCrow', 'CastleFirefly']
   };
 
   /** 萤火虫（CastleFirefly）
@@ -34,19 +39,18 @@
     name: 'CastleGhost',
     kind: '夜巡幽魂',
     minStage: 2,
-    hp: 24,
-    attack: 3,
+    hp: 32,
+    attack: 4,
     defense: 1,
     icon: '../icons/npc_icons/castle_ghost.webp',
 
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 3;
+      if (card.value >= 1 && card.value <= 3) return 4;
       if (card.value >= 4 && card.value <= 6 && ctx && ctx.attackerHandSize === 1) {
         const remaining = ctx.attackerHand && ctx.attackerHand[0];
         const value = remaining && remaining.isNumberCard ? Number(remaining.value) || 0 : 0;
-        const multiplier = Number(ctx.stage) >= 3 ? 2 : 1.5;
-        return Math.ceil(multiplier * value);
+        return value + 4;
       }
       return 0;
     },
@@ -65,11 +69,7 @@
     },
 
     stageMods: {
-      3: orig => ({
-        attackDamage(card, ctx) { return orig.attackDamage(card, Object.assign({}, ctx, { stage: 3 })); }
-      }),
       4: orig => ({
-        attackDamage(card, ctx) { return orig.attackDamage(card, Object.assign({}, ctx, { stage: 4 })); },
         defendRollImmune(card, eng) {
           if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return false;
           if (!eng || typeof eng.rollD12 !== 'function') return true;
@@ -79,7 +79,7 @@
     }
   });
 
-  /** 夜巡幽魂（CastleGhost）
+  /** 廊灯萤（CastleFirefly）
    * Stage 2 起出现；4/5/6 技能会根据打出后剩余手牌决定是否造成伤害。
    */
   R.registerMonster({
@@ -380,7 +380,7 @@
       return 0;
     },
 
-    defendPoison(card) {
+    defendCounter(card) {
       if (!card || !card.isNumberCard) return 0;
       if (card.value === 0) return 2;
       return 0;
@@ -409,7 +409,7 @@
    * Boss · 自由之鹰（CastleEagle）
    * HP 35。被动：进攻开始前对玩家施加1层流血。
    * 进攻：1/2/3 → 4/5/6伤；4/5/6 → 清除正面buff + 3不可防御；0 → 2层飞翔 + 4伤
-   * 防御：1/2/3 → 反击3；0 → 免疫所有伤害
+   * 防御：1/2/3 → 反击2并获得飞翔；0 → 免疫所有伤害并施加2层流血
    * 强化：(2)+10生命 (3)伤害+1 (4)反击+1
    */
   R.registerBoss({
@@ -433,7 +433,7 @@
       if (card.value === 2) return 5;
       if (card.value === 3) return 6;
       if (card.value >= 4 && card.value <= 6) return 3;
-      if (card.value === 0) return 4;
+      if (card.value === 0) return 3;
       return 0;
     },
 
@@ -450,9 +450,26 @@
       return card.value === 0 ? 2 : 0;
     },
 
+    attackGainCrit(card) {
+      if (!card || !card.isNumberCard) return 0;
+      return card.value === 0 ? 2 : 0;
+    },
+
     defendCounter(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 3;
+      if (card.value >= 1 && card.value <= 3) return 2;
+      return 0;
+    },
+
+    defendFly(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value >= 1 && card.value <= 3) return 1;
+      return 0;
+    },
+
+    defendBleed(card) {
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value === 0) return 2;
       return 0;
     },
 
@@ -479,7 +496,7 @@
      name: 'DungeonGoblin',
      kind: '盗宝哥布林',
      minStage: 2,
-     hp: 27,
+     hp: 35,
      attack: 4,
      defense: 1,
      icon: '../icons/npc_icons/castle_goblin.webp',
@@ -487,7 +504,7 @@
      attackDamage(card) {
        if (!card || !card.isNumberCard) return 0;
        if (card.value >= 1 && card.value <= 3) return 2;
-       if (card.value >= 4 && card.value <= 6) return 5;
+       if (card.value >= 4 && card.value <= 6) return 6;
        return 0;
      },
 
@@ -508,13 +525,22 @@
        return 0;
      },
 
+     defendCounter(card) {
+       if (!card || !card.isNumberCard) return 0;
+       if (card.value >= 1 && card.value <= 3) return 2;
+       return 0;
+     },
+
      stageMods: {
-       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
        4: orig => ({
          defendHeal: (card) => {
            if (!card || !card.isNumberCard) return 0;
            if (card.value >= 1 && card.value <= 3) return card.value + 1;
            return 0;
+         },
+         defendCounter: (card) => {
+           const base = orig.defendCounter(card);
+           return base > 0 ? base + 1 : 0;
          }
        })
      }
@@ -577,24 +603,22 @@
 
   /**
    * 蝠（CastleBat）
-   * 进攻：1/2/3牌造成2点伤害并施加1层流血；4/5/6牌吸血2+玩家流血层数（不可防御）
+   * 进攻：1/2/3牌造成3点伤害并施加1层流血；4/5/6牌吸血3+玩家流血层数（不可防御）
    * 防御：1/2/3牌格挡至多2点伤害并施加1层流血
-   * 强化：(2)+5生命 (3)吸血+1 (4)格挡+1
+   * 强化：(4)格挡+1（至多3点）
    */
   R.registerMonster({
     name: 'CastleBat',
     kind: '钟楼蝠',
-    hp: 15,
+    hp: 30,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/castle_bat.webp',
 
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 2;
-      if (card.value >= 4 && card.value <= 6) {
-        return 2 + ((ctx && ctx.playerBleed) || 0);
-      }
+      if (card.value >= 1 && card.value <= 3) return 3;
+      if (card.value >= 4 && card.value <= 6) return 0;
       return 0;
     },
 
@@ -612,7 +636,7 @@
     attackDrain(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
       if (card.value >= 4 && card.value <= 6) {
-        return 2 + ((ctx && ctx.playerBleed) || 0);
+        return 3 + ((ctx && ctx.playerBleed) || 0);
       }
       return 0;
     },
@@ -630,17 +654,6 @@
     },
 
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
-      3: orig => ({
-        attackDamage: (card, ctx) => {
-          if (!card || card.value < 4 || card.value > 6) return orig.attackDamage(card, ctx);
-          return orig.attackDamage(card, ctx) + 1;
-        },
-        attackDrain: (card, ctx) => {
-          const base = orig.attackDrain(card, ctx);
-          return base > 0 ? base + 1 : 0;
-        }
-      }),
       4: orig => ({
         defendBlock: (card, incoming) => {
           const base = orig.defendBlock(card, incoming);
@@ -660,7 +673,7 @@
   R.registerBoss({
     name: 'CastleGargoyle',
     kind: '石像鬼',
-    minStage: 2,
+    minStage: 3,
     hp: 50,
     attack: 4,
     defense: 2,
@@ -670,9 +683,9 @@
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 3;
-      if (card.value >= 4 && card.value <= 6) return 3;
-      if (card.value === 0) return 3;
+      if (card.value >= 1 && card.value <= 3) return 4;
+      if (card.value >= 4 && card.value <= 6) return 4;
+      if (card.value === 0) return 4;
       return 0;
     },
 
@@ -724,9 +737,8 @@
     },
 
     stageMods: {
-      3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
-        defendHeal: (card) => {
+        defendCounter: (card) => {
           if (!card || !card.isNumberCard) return 0;
           if (card.value >= 1 && card.value <= 3) return 1;
           return 0;

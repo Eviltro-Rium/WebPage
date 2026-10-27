@@ -260,22 +260,56 @@
     return html;
   }
 
+  function isCodexEliteMonster(name) {
+    const loot = window.AdventureLoot;
+    return !!(name && loot && typeof loot.isEliteMonster === 'function' && loot.isEliteMonster(name));
+  }
+
+  function sortCodexMonsters(list) {
+    return list.slice().sort((a, b) => String(a.kind || a.name || '').localeCompare(String(b.kind || b.name || ''), 'zh'));
+  }
+
+  function monsterCardMarkup(m, tier) {
+    const isElite = tier === 'elite';
+    const tierLabel = isElite ? '精英怪物' : '普通怪物';
+    const icon = resolveIcon(m.icon);
+    const iconHtml = icon
+      ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${m.name}">`
+      : `<div class="char-detail-avatar codex-no-icon">${m.name[0]}</div>`;
+    const extraClass = isElite ? ' codex-elite-card' : '';
+    return `<button type="button" class="char-detail-card codex-creature-card${extraClass}" data-name="${m.name}">${iconHtml}` +
+      `<span class="char-detail-name">${m.kind || m.name}</span>` +
+      `<span class="char-detail-type">${tierLabel} · HP ${m.hp}</span>` +
+      '<span class="char-detail-open">查看技能 <span aria-hidden="true">›</span></span></button>';
+  }
+
   function buildMonsterList() {
     const monsters = window.AdventureRegistry ? window.AdventureRegistry.allMonsters() : [];
-    let html = '<div class="char-detail-page">';
+    const normal = sortCodexMonsters(monsters.filter(m => !isCodexEliteMonster(m.name)));
+    const elite = sortCodexMonsters(monsters.filter(m => isCodexEliteMonster(m.name)));
+    const sections = [
+      { tier: 'normal', title: '普通怪物', hint: '普通房、挑战房等常见遭遇', list: normal },
+      { tier: 'elite', title: '精英怪物', hint: '精英房遭遇（Stage 3–4）· 战利品骰投 2 次', list: elite }
+    ];
+    let html = '<div class="char-detail-page codex-monster-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">怪物图鉴</h1></div>';
-    html += collectionSubhead(monsters.length, '查看怪物技能、特殊规则与战斗后的战利品掉落。');
-    html += '<div class="char-detail-grid">';
-    for (const m of monsters) {
-      const icon = resolveIcon(m.icon);
-      const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${m.name}">` : `<div class="char-detail-avatar codex-no-icon">${m.name[0]}</div>`;
-      html += `<button type="button" class="char-detail-card codex-creature-card" data-name="${m.name}">${iconHtml}<span class="char-detail-name">${m.kind || m.name}</span><span class="char-detail-type">普通怪物 · HP ${m.hp}</span><span class="char-detail-open">查看技能 <span aria-hidden="true">›</span></span></button>`;
+    html += collectionSubhead(monsters.length, '按类别浏览怪物技能、特殊规则与战利品掉落。');
+    for (const section of sections) {
+      html += `<section class="codex-monster-section" data-monster-tier="${section.tier}" aria-labelledby="codex-monster-${section.tier}">`;
+      html += '<header class="codex-monster-section-head">';
+      html += `<div><h2 id="codex-monster-${section.tier}">${section.title}<span>${section.list.length} 种</span></h2>`;
+      html += `<p>${section.hint}</p></div></header>`;
+      html += '<div class="char-detail-grid">';
+      html += section.list.length
+        ? section.list.map(m => monsterCardMarkup(m, section.tier)).join('')
+        : '<div class="codex-empty">暂无</div>';
+      html += '</div></section>';
     }
-    html += '</div></div>';
+    html += '</div>';
     return html;
   }
 
-  function collectSpecialNotes(entity, name) {
+  function collectSpecialNotes(entity, name, opts) {
     const fromMd = (window.AdventureMonsterNotes && window.AdventureMonsterNotes[name]) || [];
     const notes = [];
     const dropNotes = [];
@@ -327,7 +361,8 @@
       pushAuto('被动', '手牌上限 ' + entity.handLimit + ' 张');
     }
     if (window.AdventureLoot && typeof window.AdventureLoot.describeMonsterDrop === 'function' && !hasTitle(/掉落/)) {
-      const dropLine = window.AdventureLoot.describeMonsterDrop(name);
+      const eliteDrop = !!(opts && opts.elite);
+      const dropLine = window.AdventureLoot.describeMonsterDrop(name, eliteDrop ? { elite: true } : undefined);
       if (dropLine) pushAuto('掉落', dropLine, dropNotes);
     }
     return { notes, dropNotes };
@@ -388,14 +423,16 @@
     const skills = adventureSkillArrays(name, 1);
     const icon = resolveIcon(m.icon);
     const iconHtml = icon ? `<img class="char-detail-hero-avatar" src="${icon}" onerror="this.style.display='none'" alt="${m.name}">` : `<div class="char-detail-hero-avatar codex-no-icon">${m.name[0]}</div>`;
-    const { notes, dropNotes } = collectSpecialNotes(m, name);
+    const elite = isCodexEliteMonster(name);
+    const { notes, dropNotes } = collectSpecialNotes(m, name, elite ? { elite: true } : undefined);
+    const tierLabel = elite ? '精英怪物' : '普通怪物';
 
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; 怪物列表</button><h1 class="rules-title">怪物图鉴</h1></div>';
-    html += '<div class="codex-detail-kicker">冒险图鉴 <span>普通怪物</span></div>';
+    html += `<div class="codex-detail-kicker">冒险图鉴 <span>${tierLabel}</span></div>`;
     html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
     html += `<div class="char-detail-hero-name">${m.kind || m.name}</div>`;
-    html += `<div class="char-detail-hero-type">普通怪物 · HP ${m.hp}${m.handLimit ? ' · 手牌' + m.handLimit : ''}</div>`;
+    html += `<div class="char-detail-hero-type">${tierLabel} · HP ${m.hp}${m.handLimit ? ' · 手牌' + m.handLimit : ''}</div>`;
     html += `</div></div>`;
 
     html += buildSpecialNotesFromList(notes);

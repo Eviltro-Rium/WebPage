@@ -225,7 +225,8 @@
       const dropSummary = lootService.formatDropSummary(found.rule);
       const label = monsterName || defeatedKey;
       const boss = window.AdventureRegistry && window.AdventureRegistry.getBoss(monsterName);
-      const rollCount = boss ? 3 : 1;
+      const elite = lootService && typeof lootService.isEliteMonster === 'function' && lootService.isEliteMonster(monsterName);
+      const rollCount = boss ? 3 : (elite ? 2 : 1);
       const battleContinues = !!(this.s.is1v2 && ['ai', 'ai2'].some(key => key !== defeatedKey && this.s[key] && this.s[key].alive));
       let lastLoot = null;
       for (let rollIndex = 1; rollIndex <= rollCount; rollIndex++) {
@@ -234,7 +235,7 @@
           who: 'player', purpose: 'trophyDrop', monsterName: label, dropSummary, rollIndex, rollCount, battleContinues
         });
         // Rules belong to the defeated NPC, not the map (legacy/test encounters can differ).
-        const loot = lootService.rollMonsterDrop(found.scene, monsterName, null, roll);
+        const loot = lootService.rollMonsterDrop(found.scene, monsterName, null, roll, { elite });
         if (!loot || loot.roll == null) continue;
         if (this.s.diceRoll) this.s.diceRoll.purpose = 'trophyDrop';
         lastLoot = loot;
@@ -981,15 +982,21 @@
     }
 
    defend(skip = false) {
-      this._tryFlameFistOnDefend(skip);
+      this._flameFistTriggeredForDefense = false;
       return super.defend(skip);
     }
 
     // 1v2 的 dispatch 会直接调用 defend1v2，绕过上面的 defend 包装。
-    // 在这里补上同一条配饰触发链，确保 Moze 2 等反击型防御技能也能触发火焰之拳。
     defend1v2(skip = false) {
-      this._tryFlameFistOnDefend(skip);
+      this._flameFistTriggeredForDefense = false;
       return super.defend1v2(skip);
+    }
+
+    counterAttack(attacker, target, damage, opts) {
+      if (this.s && this.s.phase === 'PLAYER_DEFEND' && attacker === this.s.player && Number(damage) > 0) {
+        this._tryFlameFistOnDefend(target);
+      }
+      return super.counterAttack(attacker, target, damage, opts);
     }
 
     _accessoryCount(name) {
@@ -1145,16 +1152,10 @@
       return null;
     }
 
-    _tryFreezeLaserOnAttackDamage(target, amount, kind) {
-      if (!this.s || !this.s.isAdventure) return;
-      if (this.s.phase === 'PLAYER_DEFEND') return;
-      if (!(amount > 0) || kind) return;
-      if (!target || target === this.s.player) return;
-      if (this._freezeLaserAppliedThisAttack) return;
-      if (!this._hasAccessory('FreezeLaser')) return;
-      this._freezeLaserAppliedThisAttack = true;
-      this._flashAccessory('FreezeLaser');
-      this.freeze(target);
+    _onAttackSkillRelease(actor) {
+      const missed = super._onAttackSkillRelease(actor);
+      if (actor === this.s.player) this._freezeLaserSkillMissed = missed;
+      return missed;
     }
 
     _tryEnergyShieldOnAttack() {
@@ -1221,7 +1222,6 @@
       // 保留 silent 等选项，避免流血结算在合并飘字之外又产生一条重复伤害事件。
       const beforeHp = x && Number(x.hp);
       super.hurt(x, n, kind, opts);
-      this._tryFreezeLaserOnAttackDamage(x, n, kind);
       this._tryRevivalCross(x, beforeHp);
       this._tryDesertSobekFertility(x, beforeHp);
       this._tryCinderPhoenixRevival(x, beforeHp);
@@ -1299,6 +1299,7 @@
     afterAttack() {
 
       this._freezeLaserAppliedThisAttack = false;
+      this._freezeLaserSkillMissed = false;
       if (this.s) this.s.pendingPurifyCrystal = null;
       return super.afterAttack();
     }
@@ -1367,6 +1368,14 @@
 
     gateAdventureAttackMod(card, damage, skip = false, unblock = false, delay = 0, opts = {}) {
       const skillDamage=damage;
+      const attackCard = this.s && this.s.atkCard;
+      const isSkill = attackCard && (attackCard.isNumberCard || (attackCard.trophyWhite && attackCard.trophyEffect === 'zero'));
+      const target = this.s && this.s[this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai'];
+      if (this.s && this.s.isAdventure && this.s.atkOwner === 'player' && isSkill && !this._freezeLaserSkillMissed && !(Number(damage) > 0) && !(Number(opts.aoeDamage) > 0) && target && target.alive && !this._freezeLaserAppliedThisAttack && this._hasAccessory('FreezeLaser')) {
+        this._freezeLaserAppliedThisAttack = true;
+        this._flashAccessory('FreezeLaser');
+        this.freeze(target);
+      }
       if (this.s && this.s.isAdventure && damage > 0 && this._hasAccessory('JusticeHammer')) {
         const bonus = this._accessoryCount('JusticeHammer');
         damage += bonus;

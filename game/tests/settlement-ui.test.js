@@ -232,7 +232,7 @@ test('challenge loot closes and clears its die before subsequent battle feedback
   }
 });
 
-test('controllable loot dice open their decision without a premature loot confirmation', async () => {
+test('controllable loot dice keep their result in settlement without a premature loot confirmation', async () => {
   const {dom,w,document}=setup();
   try {
     document.getElementById('adv-settle-overlay').remove();
@@ -245,7 +245,10 @@ test('controllable loot dice open their decision without a premature loot confir
     let choices=0;ui._renderDiceControl=()=>choices++;
     ui._waitForTrophyConfirmation=()=>assert.fail('unresolved die must not ask for loot confirmation');
     await ui._playEvents([{id:1,type:'diceRoll',purpose:'trophyDrop',value:11,awaitControl:true}],true);
-    assert.equal(choices,1);assert.equal(document.getElementById('adv-settle-overlay'),null);
+    assert.equal(choices,1);
+    const overlay=document.getElementById('adv-settle-overlay');
+    assert.equal(overlay.querySelector('.trophy-settle-die strong').textContent,'11');
+    assert.equal(overlay.querySelector('.trophy-settle-actions').hidden,true);
   } finally {dom.window.close();}
 });
 
@@ -286,13 +289,16 @@ test('beast selection rerenders one card and keeps claim enabled only at the pic
   } finally { dom.window.close(); }
 });
 
-test('settlement uses shrinkable grid columns with a shared scroll surface and narrow-screen stacking', () => {
+test('settlement bounds the resource sidebar with independent scrolling and narrow-screen stacking', () => {
   const css = fs.readFileSync(path.join(root, 'adventure/css/adventure.css'), 'utf8');
   assert.ok(/\.game-over-box\.adv-settle-wrapper[\s\S]*?overflow-y: auto/.test(css));
   assert.ok(/grid-template-columns: minmax\(0, 1fr\) minmax\(180px, 240px\)/.test(css));
   assert.ok(/@media \(max-width: 700px\)[\s\S]*?\.adv-settle-content \{ grid-template-columns: minmax\(0, 1fr\)/.test(css));
   const sidebar = css.match(/\.adv-settle-sidebar \{([^}]+)\}/)[1];
-  assert.doesNotMatch(sidebar, /background:|box-shadow:|border-radius:|backdrop-filter:|overflow-y:/);
+  assert.match(sidebar, /height: 320px/);
+  assert.match(sidebar, /overflow-y: auto/);
+  assert.match(sidebar, /overscroll-behavior: contain/);
+  assert.doesNotMatch(sidebar, /background:|box-shadow:|border-radius:|backdrop-filter:/);
 });
 
 

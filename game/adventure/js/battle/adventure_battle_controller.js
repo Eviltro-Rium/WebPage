@@ -448,7 +448,7 @@
     const cur = snap.currency || {};
     const tokens = cur.tokens || {};
     const goldIcon = AC && AC.GOLD_ICON ? '<img src="' + AC.GOLD_ICON + '" class="adv-sidebar-icon" alt="金币">' : '';
-    let html = '<div class="adv-settle-sidebar">';
+    let html = '<div class="adv-settle-sidebar" tabindex="0" role="region" aria-label="当前持有的资源">';
     html += '<div class="adv-sidebar-title">当前持有</div>';
 
     html += '<div class="adv-sidebar-section">';
