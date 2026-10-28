@@ -149,11 +149,17 @@
     }
 
     _restoreAdventureDefense() {
-      if (this.s.phase !== 'AI_DEFEND' || this.s.pendingAIDefense || this.pendingSettlement ||
-          this.s.pendingAIBridge || this.s.defCard || this.s.defenseSkipped ||
-          !this.s.atkCard || this.s.atkOwner !== 'player' || !(this.s.pendingAttack && this.s.pendingAttack.damage > 0)) return;
+      if (!this.s || this.s.phase !== 'AI_DEFEND' || this.s.pendingAIDefense || this.pendingSettlement ||
+          this.s.pendingAIBridge || this.s.pendingDiceControl || this.s.defCard ||
+          !this.s.atkCard || this.s.atkOwner !== 'player' || !this.s.pendingAttack) return;
+      const attack = this.s.pendingAttack;
+      if (this.s.defenseSkipped || attack.unblock || !(attack.damage > 0)) {
+        this.s.defenseSkipped = true;
+        this.deferSettlement('PLAYER_ATTACK', Math.max(0, Number(attack.damage) || 0), 0);
+        return;
+      }
       this.s.pendingAIDefense = {
-        card: clone(this.s.atkCard), damage: this.s.pendingAttack.damage, afterEventId: this.ver
+        card: clone(this.s.atkCard), damage: attack.damage, afterEventId: this.ver
       };
     }
 
@@ -176,6 +182,9 @@
     }
 
     acknowledgeEvents(through) {
+      // Older/interrupted snapshots can retain AI_DEFEND without its queue.
+      // Unblockable attacks need settlement, never a newly requested defense.
+      this._restoreAdventureDefense();
       super.acknowledgeEvents(through);
       const pending = this.s.pendingAIDefense;
       if (pending && through >= pending.afterEventId && !this.s.pendingDiceControl) {
@@ -1414,6 +1423,7 @@
 
     gateAdventureAttackMod(card, damage, skip = false, unblock = false, delay = 0, opts = {}) {
       const skillDamage=damage;
+      const attackOpts = Object.assign({}, opts, {skillDamage});
       const attackCard = this.s && this.s.atkCard;
       const isSkill = attackCard && (attackCard.isNumberCard || (attackCard.trophyWhite && attackCard.trophyEffect === 'zero'));
       const target = this.s && this.s[this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai'];
@@ -1425,10 +1435,14 @@
       if (this.s && this.s.isAdventure && damage > 0 && this._hasAccessory('JusticeHammer')) {
         const bonus = this._accessoryCount('JusticeHammer');
         damage += bonus;
+        if (attackOpts.aoeDamage > 0) {
+          attackOpts.aoeDamage += bonus;
+          attackOpts.aoeFlatBonus = (Number(attackOpts.aoeFlatBonus) || 0) + bonus;
+        }
         this._flashAccessory('JusticeHammer');
         this.emit('desc', '正义之锤：伤害+' + bonus);
       }
-      return super.gateAdventureAttackMod(card, damage, skip, unblock, delay, Object.assign({},opts,{skillDamage}));
+      return super.gateAdventureAttackMod(card, damage, skip, unblock, delay, attackOpts);
     }
 
     continueAfterAttackMod() {
@@ -1588,7 +1602,7 @@
         return this.useAdventureCombatItem(params.itemIndex || 0, choice);
       }
       if (method === 'selectReserveCard') {
-        if (!this.s || this.s.busy || this.s.needColorChoice || !['PLAYER_PLAY','PLAYER_DEFEND'].includes(this.s.phase) || this.s.unblockDefend) throw Error('当前不能选择储备牌');
+        if (!this.s || this.s.busy || this.s.needColorChoice || !['PLAYER_PLAY','PLAYER_DEFEND'].includes(this.s.phase) || (this.s.phase === 'PLAYER_DEFEND' && this.s.unblockDefend)) throw Error('当前不能选择储备牌');
         const index = Number(params.index), cards = this.s.reserveCards || [];
         if (!Number.isInteger(index) || index < 0 || !cards[index] || !this.legal(cards[index], this.s.phase === 'PLAYER_DEFEND')) throw Error('该储备牌不能打出');
         this.s.selectedReserveIndex = this.s.selectedReserveIndex === index ? null : index;

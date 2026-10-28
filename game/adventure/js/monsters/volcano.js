@@ -16,34 +16,34 @@
   const defenseText = (mod, c) => '格挡至多' + mod.defendBlock(c, 99) + '🛡️';
 
   R.registerMonster({
-    name: 'VolcanoSalamander', kind: '火山蝾螈', hp: 20, attack: 3, defense: 2,
+    name: 'VolcanoSalamander', kind: '火山蝾螈', hp: 18, attack: 3, defense: 2,
     minStage: 1, icon: '../icons/npc_icons/volcano_salamander.webp',
     attackDamage: c => low(c) ? 3 : high(c) ? 5 : 0,
     attackBurn: c => numeric(c) ? 1 : 0,
     defendBlock: block(2),
     defendScorch: low,
-    stageMods: standardStages(5),
+    stageMods: standardStages(6),
     skillDescription(c, defend) {
       if (defend) return low(c) ? defenseText(this, c) + '，施加[炙热]' : '无防御效果';
       return numeric(c) ? damageText(this, c) + '，施加[灼伤]' : '无进攻效果';
     }
   });
   R.registerMonster({
-    name: 'VolcanoCrab', kind: '熔岩蟹', hp: 24, attack: 2, defense: 2,
+    name: 'VolcanoCrab', kind: '熔岩蟹', hp: 20, attack: 2, defense: 2,
     minStage: 1, icon: '../icons/npc_icons/volcano_crab.webp',
     attackDamage: c => low(c) ? 2 : high(c) ? 5 : 0,
     attackGuard: c => low(c) ? 2 : 0,
     attackGainMagma: c => high(c) ? 1 : 0,
     defendBlock: block(2),
     defendBurn: c => low(c) ? 2 : 0,
-    stageMods: standardStages(6),
+    stageMods: standardStages(5),
     skillDescription(c, defend) {
       if (defend) return low(c) ? defenseText(this, c) + '，施加2层[灼伤]' : '无防御效果';
       return numeric(c) ? damageText(this, c) + (low(c) ? '，获得2层[守护]' : '，获得[熔脉]') : '无进攻效果';
     }
   });
   R.registerMonster({
-    name: 'VolcanoAshWolf', kind: '灰烬狼', hp: 20, attack: 4, defense: 0,
+    name: 'VolcanoAshWolf', kind: '灰烬狼', hp: 18, attack: 4, defense: 0,
     minStage: 1, icon: '../icons/npc_icons/volcano_wolf.webp', firstStrike: true,
     attackDamage: c => low(c) ? 4 : high(c) ? 3 : 0,
     attackUnblockable: high,
@@ -52,7 +52,7 @@
     defendBurn: c => low(c) ? 1 : 0,
     defendBurnSettle: low,
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
+      2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({ attackDamage(c, ctx) { return numeric(c) ? orig.attackDamage(c, ctx) + 1 : 0; } }),
       4: () => ({ defendScorch: low })
     },
@@ -62,7 +62,7 @@
     }
   });
   R.registerMonster({
-    name: 'VolcanoObsidianBoar', kind: '黑曜野猪', hp: 26, attack: 4, defense: 2,
+    name: 'VolcanoObsidianBoar', kind: '黑曜野猪', hp: 20, attack: 4, defense: 2,
     minStage: 1, icon: '../icons/npc_icons/volcano_boar.webp',
     attackDamage: (c, ctx) => low(c) ? Math.max(0, Number(ctx && ctx.playerBurn) || 0) : high(c) ? 4 : 0,
     attackBleed: c => high(c) ? 1 : 0,
@@ -70,7 +70,7 @@
     defendBlock: block(2),
     defendBurn: c => low(c) ? 2 : 0,
     stageMods: {
-      2: orig => ({ hp: orig.hp + 6 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: () => ({ attackUnblockableBelow: c => numeric(c) ? 3 : 0 }),
       4: () => ({ defendBlock: block(3) })
     },
@@ -82,7 +82,7 @@
     }
   });
   R.registerMonster({
-    name: 'VolcanoCinderBadger', kind: '熔渣獾', hp: 20, attack: 3, defense: 2,
+    name: 'VolcanoCinderBadger', kind: '熔渣獾', hp: 18, attack: 3, defense: 2,
     icon: '../icons/npc_icons/volcano_badger.webp', poisonImmune: true,
     attackDamage: c => low(c) ? 3 : high(c) ? 4 : 0,
     attackPoison: low,
@@ -91,7 +91,7 @@
     defendGuard: c => low(c) ? 1 : 0,
     defendBurn: c => low(c) ? 1 : 0,
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
+      2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({ stageDamageBonus: true, attackDamage(c, ctx) { const d = orig.attackDamage(c, ctx); return d > 0 ? d + 1 : 0; } }),
       4: orig => ({ defendBlock(c, incoming) { return low(c) ? Math.min((incoming || 0), orig.defendBlock(c, incoming) + 1) : 0; } })
     },
@@ -103,9 +103,9 @@
     }
   });
   R.registerMonster({
-    name: 'VolcanoObsidianArmadillo', kind: '黑曜犰狳', hp: 32, attack: 3, defense: 2,
+    name: 'VolcanoObsidianArmadillo', kind: '黑曜犰狳', hp: 27, attack: 3, defense: 2,
     minStage: 2, icon: '../icons/npc_icons/volcano_armadillo.webp',
-    attackDamage: c => low(c) ? 3 : high(c) ? 4 : 0,
+    attackDamage: c => low(c) ? 3 : high(c) ? 5 : 0,
     attackBurn: low,
     attackScorch: low,
     attackGuard: c => high(c) ? 2 : 0,
@@ -137,7 +137,7 @@
     }
   });
   R.registerMonster({
-    name: 'VolcanoBasaltCentipede', kind: '玄岩蜈蚣', hp: 20, attack: 1, defense: 1,
+    name: 'VolcanoBasaltCentipede', kind: '玄岩蜈蚣', hp: 25, attack: 1, defense: 1,
     icon: '../icons/npc_icons/volcano_centipede.webp',
     attackDamage: (c, ctx) => low(c) ? Math.max(0, Number(ctx && ctx.playerBurn) || 0) : 0,
     attackScorch: low,
@@ -147,8 +147,6 @@
     defendCounter: c => low(c) ? 1 : 0,
     defendBurn: c => low(c) ? 1 : 0,
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
-      3: orig => ({ stageDamageBonus: true, attackDamage(c, ctx) { return low(c) ? orig.attackDamage(c, ctx) + 1 : 0; } }),
       4: orig => ({
         defendBlock(c, incoming) { return low(c) ? Math.min((incoming || 0), orig.defendBlock(c, incoming) + 1) : 0; },
         defendCounter(c, incoming, defender, opponent, eng) { return (orig.defendCounter(c, incoming, defender, opponent, eng) || 0) + (low(c) ? 1 : 0); }
@@ -162,7 +160,7 @@
     }
   });
   R.registerMonster({
-    name: 'VolcanoMagmaSlug', kind: '熔岩蛞蝓', hp: 25, attack: 2, defense: 2,
+    name: 'VolcanoMagmaSlug', kind: '熔岩蛞蝓', hp: 20, attack: 2, defense: 2,
     icon: '../icons/npc_icons/volcano_slug.webp',
     attackDamage: c => low(c) ? 2 : high(c) ? 4 : 0,
     attackGuard: c => low(c) ? 2 : 0,
@@ -182,7 +180,7 @@
     }
   });
   R.registerMonster({
-    name: 'VolcanoSulfurWeasel', kind: '硫晶鼬', hp: 24, attack: 3, defense: 2,
+    name: 'VolcanoSulfurWeasel', kind: '硫晶鼬', hp: 27, attack: 3, defense: 2,
     minStage: 2, icon: '../icons/npc_icons/volcano_weasel.webp',
     attackDamage: c => low(c) ? Number(c.value) || 0 : high(c) ? 5 : 0,
     attackBurn: c => low(c) ? Number(c.value) || 0 : 0,
@@ -190,7 +188,6 @@
     defendBlock: (c, incoming) => low(c) ? Math.min(Math.max(0, incoming || 0), Math.ceil(Math.max(0, incoming || 0) / 2)) : 0,
     defendBurn: c => low(c) ? 1 : 0,
     stageMods: {
-      2: orig => ({ hp: orig.hp + 6 }),
       3: () => ({
         attackUnblockableIfSelfBuff: (c, self) => low(c) && (Number(self && self.harden) || 0) > 0
       }),
@@ -207,7 +204,7 @@
     }
   });
   R.registerBoss({
-    name: 'VolcanoFlameLion', kind: '炎鬃狮', hp: 40, attack: 3, defense: 2,
+    name: 'VolcanoFlameLion', kind: '炎鬃狮', hp: 30, attack: 3, defense: 2,
     handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_lion.webp',
     attackDamage: c => low(c) ? 4 : high(c) ? 3 : 0,
     attackUnblockable: high,
@@ -215,7 +212,7 @@
     attackBurnSettle: zero,
     attackScorch: high,
     attackGainMagma: c => (high(c) || zero(c)) ? 1 : 0,
-    defendBlock: (c, incoming) => low(c) ? Math.min(2, Math.max(0, incoming || 0)) : 0,
+    defendBlock: (c, incoming) => low(c) ? Math.min(3, Math.max(0, incoming || 0)) : 0,
     defendBurn: c => low(c) ? 1 : 0,
     defendImmune: zero,
     defendScorch: zero,
@@ -247,7 +244,7 @@
     }
   });
   R.registerBoss({
-    name: 'VolcanoMagmaRhino', kind: '熔核犀', hp: 45, attack: 3, defense: 2,
+    name: 'VolcanoMagmaRhino', kind: '熔核犀', hp: 35, attack: 3, defense: 2,
     handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_rhino.webp',
     attackDamage: c => low(c) ? 3 : high(c) ? 5 : zero(c) ? 6 : 0,
     attackGuard: c => low(c) ? 1 : 0,
@@ -264,7 +261,7 @@
     defendBleed: c => zero(c) ? 2 : 0,
     defendCounter: (c, incoming) => zero(c) ? Math.max(0, Number(incoming) || 0) : 0,
     stageMods: {
-      2: orig => ({ hp: orig.hp + 10 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
         attackDamage(c, ctx) {
           const base = orig.attackDamage(c, ctx);
@@ -286,8 +283,8 @@
     }
   });
   R.registerBoss({
-    name: 'VolcanoCinderPhoenix', kind: '余烬凤凰', hp: 35, attack: 3, defense: 2,
-    minStage: 2, handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_phoenix.webp',
+    name: 'VolcanoCinderPhoenix', kind: '余烬凤凰', hp: 40, attack: 3, defense: 2,
+    minStage: 3, handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_phoenix.webp',
     attackTurnStart(eng, x) {
       if (!x || (Number(x.fly) || 0) > 0) return;
       const service = window.FurryGame && window.FurryGame.StatusService;
@@ -318,7 +315,7 @@
       }),
       4: orig => ({
         defendCounter: (c, incoming) => (orig.defendCounter(c, incoming) || 0) + (low(c) ? 1 : 0),
-        defendHeal: c => zero(c) ? 2 : 0
+        defendHeal: c => (low(c) || zero(c)) ? 2 : 0
       })
     },
     skillDescription(c, defend) {
@@ -339,19 +336,20 @@
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.volcano = {
-    1: ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar',
-      'VolcanoCinderBadger', 'VolcanoBasaltCentipede', 'VolcanoMagmaSlug'],
-    2: ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar',
-      'VolcanoCinderBadger', 'VolcanoObsidianArmadillo', 'VolcanoBasaltCentipede', 'VolcanoMagmaSlug', 'VolcanoSulfurWeasel'],
-    3: ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar',
-      'VolcanoCinderBadger', 'VolcanoObsidianArmadillo', 'VolcanoBasaltCentipede', 'VolcanoMagmaSlug', 'VolcanoSulfurWeasel'],
-    4: ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar',
-      'VolcanoCinderBadger', 'VolcanoObsidianArmadillo', 'VolcanoBasaltCentipede', 'VolcanoMagmaSlug', 'VolcanoSulfurWeasel']
+    1: ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar', 'VolcanoCinderBadger', 'VolcanoMagmaSlug'],
+    2: ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar', 'VolcanoCinderBadger', 'VolcanoMagmaSlug'],
+    3: ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar', 'VolcanoCinderBadger', 'VolcanoMagmaSlug'],
+    4: ['VolcanoSalamander', 'VolcanoCrab', 'VolcanoAshWolf', 'VolcanoObsidianBoar', 'VolcanoCinderBadger', 'VolcanoMagmaSlug']
+  };
+  window.AdventureElitePool = window.AdventureElitePool || {};
+  window.AdventureElitePool.volcano = {
+    3: ['VolcanoBasaltCentipede', 'VolcanoObsidianArmadillo', 'VolcanoSulfurWeasel'],
+    4: ['VolcanoBasaltCentipede', 'VolcanoObsidianArmadillo', 'VolcanoSulfurWeasel']
   };
   window.AdventureBossPool = window.AdventureBossPool || {};
   window.AdventureBossPool.volcano = {
     1: ['VolcanoFlameLion', 'VolcanoMagmaRhino'],
-    2: ['VolcanoFlameLion', 'VolcanoMagmaRhino', 'VolcanoCinderPhoenix'],
+    2: ['VolcanoFlameLion', 'VolcanoMagmaRhino'],
     3: ['VolcanoFlameLion', 'VolcanoMagmaRhino', 'VolcanoCinderPhoenix'],
     4: ['VolcanoFlameLion', 'VolcanoMagmaRhino', 'VolcanoCinderPhoenix']
   };

@@ -2,7 +2,7 @@
   const C = CharacterRegistry;
   C.register({
     name: 'Saiki',
-    hp: 80,
+    hp: 60,
     type: '猎手',
     passive: '进攻打出有效黄色牌时，防御结算后施加1层流血',
     init() { return {}; },
@@ -24,7 +24,7 @@
         d = 5;
         unblock = !!t.bleed;
       } else if (v === 5) {
-        if (a.hp <= 40) {
+        if (a.hp <= 30) {
           heal(a, 5);
           skip = true;
         } else {

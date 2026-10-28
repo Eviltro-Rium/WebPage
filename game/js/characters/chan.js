@@ -2,7 +2,7 @@
   const C = CharacterRegistry;
   C.register({
     name: 'Chan',
-    hp: 80,
+    hp: 60,
     type: '谋士',
     passive: '进攻回合开始前抽1张牌',
     init() { return {}; },

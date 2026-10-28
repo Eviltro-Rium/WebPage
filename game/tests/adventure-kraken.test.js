@@ -44,16 +44,17 @@ function blackCard() {
   return { value: -1, isNumberCard: false, isItemCard: true, color: 'BLACK', isBlack: true, isWhite: false };
 }
 
-test('FrozenKraken base stats, boss pool from stage 2', () => {
+test('FrozenKraken base stats, boss pool from stage 3', () => {
   const m = getMonster('FrozenKraken');
   assert.ok(m);
   assert.equal(m.kind, '克拉肯');
-  assert.equal(m.hp, 50);
+  assert.equal(m.hp, 40);
   assert.equal(m.handLimit, 3);
-  assert.equal(m.minStage, 2);
+  assert.equal(m.minStage, 3);
   const pool = context.AdventureBossPool.ocean;
   assert.ok(!pool['*'].includes('FrozenKraken'));
-  for (const stage of [2, 3, 4]) {
+  assert.ok(!pool[2].includes('FrozenKraken'));
+  for (const stage of [3, 4]) {
     assert.ok(pool[stage].includes('FrozenKraken'), 'stage ' + stage);
   }
 });
@@ -106,13 +107,13 @@ test('FrozenKraken defend hooks', () => {
 test('FrozenKraken stage mods', () => {
   const m = getMonster('FrozenKraken');
   const s2 = applyStageMods(m, 2);
-  assert.equal(s2.hp, 50, 'Stage 2 is the first appearance, without HP enhancement');
+  assert.equal(s2.hp, 40);
   const s3 = applyStageMods(m, 3);
-  assert.equal(s3.hp, 50);
+  assert.equal(s3.hp, 40);
   assert.equal(s3.attackUnblockableBelow(numCard(5)), 5);
   assert.equal(s3.attackUnblockableBelow(numCard(0)), 5);
   const s4 = applyStageMods(m, 4);
-  assert.equal(s4.hp, 50);
+  assert.equal(s4.hp, 40);
   assert.equal(s4.defendHeal(numCard(2)), 1);
   assert.equal(s4.defendHeal(numCard(0)), 1);
   assert.equal(s4.attackUnblockableBelow(numCard(5)), 5, 'stage4 keeps stage3 weak-unblock');
@@ -198,7 +199,7 @@ test('FrozenKraken 0 defense marks player discard choice', () => {
     eng, 'FrozenKraken', 0, 6, numCard(0), eng.s.ai, eng.s.player, 'ai', 'RED',
     { heal: (x, n) => { x.hp += n; }, hurt: (x, n) => { x.hp -= n; } }
   );
-  assert.equal(eng.s.player.hp, 70 - 6);
+  assert.equal(eng.s.player.hp, 50 - 6);
   assert.equal(eng.s.pendingKrakenDefendDiscard, true);
   assert.ok(eng.events.some(e => e.desc && e.desc.includes('弃掉')));
 });
@@ -229,8 +230,8 @@ test('defend-heal branch no longer throws and keeps counter (samoyed)', () => {
     eng, 'FrozenOceanSamoyed', 2, 6, numCard(2), eng.s.ai, frozenPlayer, 'ai', 'RED',
     { heal: (x, n) => { x.hp += n; }, hurt: (x, n) => { x.hp -= n; } }
   );
-  assert.equal(eng.s.ai.hp, 20 + 1);
-  assert.equal(frozenPlayer.hp, 70 - 3);
+  assert.equal(eng.s.ai.hp, 18 + 1);
+  assert.equal(frozenPlayer.hp, 50 - 3);
   assert.ok(out.desc.includes('反击'));
 });
 

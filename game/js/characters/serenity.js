@@ -2,16 +2,16 @@
   const C = CharacterRegistry;
   C.register({
     name: 'Serenity',
-    hp: 75,
+    hp: 50,
     type: '暗影',
-    passive: '免疫冷冻；生命低于30获得嗜血印记（不可净化，冒险离房时生命高于30则清除）；无印记时恢复额外+1',
+    passive: '免疫冷冻；生命低于25获得嗜血印记（不可净化，冒险离房时生命高于25则清除）；无印记时恢复额外+1',
     init() { return {}; },
-    turnStart(eng, ch) { if (ch.hp < 30) ch.bloodthirst = true; },
+    turnStart(eng, ch) { if (ch.hp < 25) ch.bloodthirst = true; },
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs, hurt } = helpers;
       let d = 0, skip = false, unblock = false;
-      let bt = !!a.bloodthirst || a.hp < 30;
-      if (a.hp < 30) a.bloodthirst = true;
+      let bt = !!a.bloodthirst || a.hp < 25;
+      if (a.hp < 25) a.bloodthirst = true;
       if (v === 1) {
         d = 2;
         if (bt) bleed(2);
@@ -101,8 +101,8 @@
       } else if (v === 3) {
         let b = Math.ceil(d / 2);
         remaining = Math.max(0, d - b);
-        let bt = !!defender.bloodthirst || defender.hp < 30;
-        if (defender.hp < 30) defender.bloodthirst = true;
+        let bt = !!defender.bloodthirst || defender.hp < 25;
+        if (defender.hp < 25) defender.bloodthirst = true;
         if (bt) counter(opponent, 2);
         desc = bt ? `Serenity 3牌：格挡${b}点+反击2点(嗜血)` : `Serenity 3牌：格挡${b}点`;
         // v===0 由 engine.js#defenseJudge 翻牌判定完成，这里不再处理。

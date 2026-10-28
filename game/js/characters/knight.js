@@ -2,7 +2,7 @@
   const C = CharacterRegistry;
   C.register({
     name: 'Knight',
-    hp: 80,
+    hp: 70,
     type: '混沌',
     passive: '进攻前清除混沌；打出数字/白道具牌获得对应颜色混沌',
     init() { return { chaos_red: false, chaos_yellow: false, chaos_blue: false, chaos_green: false }; },

@@ -268,7 +268,7 @@
     if(who==='Chan'&&c.value===5)return this.startChanFive();
     if(who==='Otto'&&c.value===6)return this.startOttoFour(c);
     if(who==='Otto'&&c.value===5)return this.startNumberJudge('Otto',c);
-     if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===5&&this.s.player.hp<=40)){
+     if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===5&&this.s.player.hp<=30)){
       let p={name:who,value:c.value,owner:'player',attackCard:cp(c)};
       return this.resolveOpponentHandSkill(p)
     }

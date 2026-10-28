@@ -5,7 +5,7 @@
   const C = CharacterRegistry;
   C.register({
     name: 'Leon',
-    hp: 90,
+    hp: 70,
     type: '骑士',
     passive: '免疫灼伤',
     init() { return {}; },

@@ -38,7 +38,7 @@
   R.registerMonster({
     name: 'DesertBison',
     kind: '沙暴蛮牛',
-    hp: 24,
+    hp: 20,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/desert_bison.webp',
@@ -70,7 +70,7 @@
       return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 6 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
         // 进攻1/2/3改为3×玩家[流血]层数伤害
         attackDamage(card, ctx) {
@@ -98,7 +98,7 @@
   R.registerMonster({
     name: 'DesertCamel',
     kind: '旱海驼',
-    hp: 32,
+    hp: 30,
     minStage: 3,
     attack: 3,
     defense: 2,
@@ -141,7 +141,7 @@
   R.registerMonster({
     name: 'DesertLizard',
     kind: '日光鬣蜥',
-    hp: 30,
+    hp: 25,
     minStage: 3,
     attack: 3,
     defense: 2,
@@ -179,7 +179,7 @@
   R.registerMonster({
     name: 'DesertSandworm',
     kind: '噬沙巨虫',
-    hp: 25,
+    hp: 20,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/desert_sandworm.webp',
@@ -218,7 +218,7 @@
   R.registerMonster({
     name: 'DesertScarab',
     kind: '日轮圣甲',
-    hp: 20,
+    hp: 18,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/desert_scarab.webp',
@@ -247,7 +247,7 @@
       return 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
+      2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({ defendBlock: (card, incoming) => Math.min(orig.defendBlock(card, incoming) + 1, incoming || 0) })
     }
@@ -260,7 +260,7 @@
   R.registerMonster({
     name: 'DesertScorpion',
     kind: '赤砂蝎',
-    hp: 18,
+    hp: 15,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/desert_scorpion.webp',
@@ -287,7 +287,7 @@
       return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? { poison: 1, drain: 0 } : null;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 6 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         defendPoisonDrain(card) {
@@ -297,14 +297,14 @@
     }
   });
 
-  // ===== 热砂蝰（Stage 2 起，基础生命 27，不额外强化生命） =====
+  // ===== 热砂蝰（Stage 2 起） =====
   // 进攻1/2/3：造成3点伤害，施加[中毒]
   // 进攻4/5/6：吸取 2+玩家[中毒]层数 生命（不可防御）
   // 防御1/2/3：格挡至多2点伤害，施加1层[中毒]
   R.registerMonster({
     name: 'DesertViper',
     kind: '热砂蝰',
-    hp: 27,
+    hp: 20,
     minStage: 2,
     attack: 3,
     defense: 2,
@@ -350,7 +350,7 @@
   R.registerMonster({
     name: 'DesertAntlion',
     kind: '漏斗蚁狮',
-    hp: 30,
+    hp: 27,
     minStage: 3,
     attack: 3,
     defense: 2,
@@ -390,7 +390,7 @@
   R.registerMonster({
     name: 'DesertVulture',
     kind: '腐风鹫',
-    hp: 24,
+    hp: 20,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/desert_vulture.webp',
@@ -428,7 +428,7 @@
       return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 6 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         defendCounter(card) {
@@ -454,7 +454,7 @@
     name: 'Pharaoh',
     kind: '法老',
     minStage: 3,
-    hp: 50,
+    hp: 40,
     attack: 3,
     defense: 2,
     handLimit: 3,
@@ -537,7 +537,7 @@
     name: 'DesertHyena',
     kind: '嘲风鬣狗',
     minStage: 1,
-    hp: 40,
+    hp: 35,
     attack: 3,
     defense: 2,
     handLimit: 3,
@@ -649,7 +649,7 @@
     name: 'DesertSobek',
     kind: '鳄神索贝克',
     minStage: 1,
-    hp: 35,
+    hp: 30,
     attack: 3,
     defense: 2,
     handLimit: 3,
@@ -709,7 +709,7 @@
       return 3;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 7 }),
+      2: orig => ({ hp: orig.hp + 10 }),
       3: orig => ({
         attackDamage(card, ctx) {
           const damage = orig.attackDamage(card, ctx);

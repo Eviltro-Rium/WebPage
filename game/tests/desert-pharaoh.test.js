@@ -55,7 +55,7 @@ test('Pharaoh base stats, boss pool and Stage 3 gate', () => {
   const m = getBoss('Pharaoh');
   assert.ok(m);
   assert.equal(m.kind, '法老');
-  assert.equal(m.hp, 50);
+  assert.equal(m.hp, 40);
   assert.equal(m.minStage, 3);
   assert.equal(m.whiteZeros, 1);
   assert.equal(m.icon, '../icons/npc_icons/pharaoh.webp');

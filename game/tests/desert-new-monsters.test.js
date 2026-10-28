@@ -49,7 +49,7 @@ test('DesertLizard base stats and pool', () => {
   const m = getMonster('DesertLizard');
   assert.ok(m);
   assert.equal(m.kind, '日光鬣蜥');
-  assert.equal(m.hp, 30);
+  assert.equal(m.hp, 25);
   assert.equal(m.icon, '../icons/npc_icons/desert_lizard.webp');
   assert.ok(!context.AdventureMonsterPool.desert['*'].includes('DesertLizard'));
   assert.ok(context.AdventureElitePool.desert[3].includes('DesertLizard'));
@@ -98,7 +98,7 @@ test('DesertLizard defend: block cap 2 + 2 sandblind', () => {
 test('DesertLizard stage mods', () => {
   const m = getMonster('DesertLizard');
   const s2 = applyStageMods(m, 2);
-  assert.equal(s2.hp, 30);
+  assert.equal(s2.hp, 25);
   const s3 = applyStageMods(m, 3);
   assert.equal(s3.attackSandblind(numCard(2)), 1);
   assert.equal(s3.attackSandblind(numCard(5)), 0);
@@ -135,7 +135,7 @@ test('DesertSandworm base stats', () => {
   const m = getMonster('DesertSandworm');
   assert.ok(m);
   assert.equal(m.kind, '噬沙巨虫');
-  assert.equal(m.hp, 25);
+  assert.equal(m.hp, 20);
 });
 
 test('DesertSandworm loot: 1-2 sandblind, 3-4 parasite', () => {
@@ -170,7 +170,7 @@ test('DesertSandworm defend: counter 2 + 1 sandblind', () => {
 
 test('DesertSandworm stage mods', () => {
   const m = getMonster('DesertSandworm');
-  assert.equal(applyStageMods(m, 2).hp, 30);
+  assert.equal(applyStageMods(m, 2).hp, 25);
   assert.equal(applyStageMods(m, 3).attackDamage(numCard(2)), 5);
   assert.equal(applyStageMods(m, 3).attackDamage(numCard(5)), 6);
   const s4 = applyStageMods(m, 4);
@@ -193,7 +193,7 @@ test('DesertScarab base stats', () => {
   const m = getMonster('DesertScarab');
   assert.ok(m);
   assert.equal(m.kind, '日轮圣甲');
-  assert.equal(m.hp, 20);
+  assert.equal(m.hp, 18);
 });
 
 test('DesertScarab loot: 1-2 crit, 3-4 fly', () => {
@@ -234,7 +234,7 @@ test('DesertScarab defend: block 3', () => {
 
 test('DesertScarab stage mods', () => {
   const m = getMonster('DesertScarab');
-  assert.equal(applyStageMods(m, 2).hp, 25);
+  assert.equal(applyStageMods(m, 2).hp, 24);
   assert.equal(applyStageMods(m, 3).attackDamage(numCard(2)), 4);
   assert.equal(applyStageMods(m, 4).defendBlock(numCard(2), 8), 4);
 });
@@ -266,7 +266,7 @@ test('DesertScorpion base stats', () => {
   const m = getMonster('DesertScorpion');
   assert.ok(m);
   assert.equal(m.kind, '赤砂蝎');
-  assert.equal(m.hp, 18);
+  assert.equal(m.hp, 15);
 });
 
 test('DesertScorpion loot: 1-3 poison, 4 thorns', () => {
@@ -303,7 +303,7 @@ test('DesertScorpion defend poison drain', () => {
 
 test('DesertScorpion stage mods', () => {
   const m = getMonster('DesertScorpion');
-  assert.equal(applyStageMods(m, 2).hp, 24);
+  assert.equal(applyStageMods(m, 2).hp, 20);
   assert.equal(applyStageMods(m, 3).attackDamage(numCard(2)), 4);
   const s4 = applyStageMods(m, 4);
   const pd = s4.defendPoisonDrain(numCard(2));
@@ -349,7 +349,7 @@ test('DesertViper base stats', () => {
   const m = getMonster('DesertViper');
   assert.ok(m);
   assert.equal(m.kind, '热砂蝰');
-  assert.equal(m.hp, 27);
+  assert.equal(m.hp, 20);
   assert.equal(m.minStage, 2);
 });
 
@@ -380,9 +380,9 @@ test('DesertViper defend: block cap 2 + 1 poison', () => {
 
 test('DesertViper stage mods', () => {
   const m = getMonster('DesertViper');
-  assert.equal(applyStageMods(m, 2).hp, 27);
-  assert.equal(applyStageMods(m, 3).hp, 27);
-  assert.equal(applyStageMods(m, 4).hp, 27);
+  assert.equal(applyStageMods(m, 2).hp, 20);
+  assert.equal(applyStageMods(m, 3).hp, 20);
+  assert.equal(applyStageMods(m, 4).hp, 20);
   const s3 = applyStageMods(m, 3);
   assert.equal(s3.attackDrain(numCard(5), { playerPoison: 0 }), 3);
   assert.equal(s3.attackDrain(numCard(5), { playerPoison: 2 }), 5);
@@ -406,7 +406,7 @@ test('DesertVulture base stats', () => {
   const m = getMonster('DesertVulture');
   assert.ok(m);
   assert.equal(m.kind, '腐风鹫');
-  assert.equal(m.hp, 24);
+  assert.equal(m.hp, 20);
 });
 
 test('DesertVulture loot: 1-2 fly, 3-4 sandblind', () => {
@@ -445,7 +445,7 @@ test('DesertVulture defend: block 1 + counter 1 + 1 sandblind', () => {
 
 test('DesertVulture stage mods', () => {
   const m = getMonster('DesertVulture');
-  assert.equal(applyStageMods(m, 2).hp, 30);
+  assert.equal(applyStageMods(m, 2).hp, 25);
   assert.equal(applyStageMods(m, 3).attackDamage(numCard(2)), 4);
   assert.equal(applyStageMods(m, 4).defendCounter(numCard(2)), 2);
 });
@@ -493,7 +493,7 @@ test('DesertVulture effect: 4/5/6 clears positive buffs', () => {
 test('DesertAntlion base stats, Stage gate, and WebP asset', () => {
   const m = getMonster('DesertAntlion');
   assert.equal(m.kind, '漏斗蚁狮');
-  assert.equal(m.hp, 30);
+  assert.equal(m.hp, 27);
   assert.equal(m.minStage, 3);
   assert.ok(context.AdventureElitePool.desert[3].includes(m.name));
   assert.equal(m.icon, '../icons/npc_icons/desert_antlion.webp');
@@ -505,7 +505,7 @@ test('DesertAntlion attacks and cumulative stages leave pass cards inert', () =>
   const m = getMonster('DesertAntlion');
   for (const stage of [2, 3, 4]) {
     const mod = applyStageMods(m, stage);
-    assert.equal(mod.hp, 30);
+    assert.equal(mod.hp, 27);
     for (const value of [1, 2, 3]) {
       assert.equal(mod.attackDamage(numCard(value)), 3);
       assert.equal(mod.attackUnblockableIfBuff(numCard(value), {quicksand:0}), false);

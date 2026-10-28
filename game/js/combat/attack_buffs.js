@@ -39,7 +39,7 @@
       attack.magmaFlatBonus=attack.damage-base;
       attack.damage=Math.ceil(base*1.5)+attack.magmaFlatBonus;
       attack.damageMultiplier=1.5;
-      if(attack.aoeDamage>0)attack.aoeDamage=Math.ceil(attack.aoeDamage*1.5);
+      if(attack.aoeDamage>0){const flat=Number(attack.aoeFlatBonus)||0;attack.aoeDamage=Math.ceil((attack.aoeDamage-flat)*1.5)+flat;}
     }else{attack.unblock=true;}
     engine.emit('buff','-1['+(kind==='magmaVein'?'熔脉':'暴击')+']',null,{who:owner,target:owner,kind,stacks:actor[kind]||0});
     engine.emit('desc',kind==='magmaVein'?'消耗[熔脉]：本次技能伤害×1.5（向上取整）':'消耗[暴击]：本次攻击不可防御');

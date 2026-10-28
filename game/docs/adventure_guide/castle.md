@@ -25,7 +25,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 廊灯萤（CastleFirefly）
 
-### 生命值：18
+### 生命值：15
 
 ### 进攻：
 
@@ -38,7 +38,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +6（24）
+- **Stage 2**：生命上限 +5（20）
 - **Stage 3**：所有进攻伤害 +1
 - **Stage 4**：防御格挡改为 `1 + 玩家当前一次性道具数量`
 
@@ -48,7 +48,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 城壕饿狼（CastleWolf）
 
-### 生命值：20
+### 生命值：18
 
 ### 进攻：
 
@@ -63,7 +63,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +5（25）
+- **Stage 2**：生命上限 +6（24）
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：格挡 +1
 
@@ -73,7 +73,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 廊影狐（CastleFox）
 
-### 生命值：18
+### 生命值：15
 
 ### 进攻：
 
@@ -86,7 +86,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +6（24）
+- **Stage 2**：生命上限 +5（20）
 - **Stage 3**：1/2/3 牌伤害 +1
 - **Stage 4**：恢复生命改为 3❤️
 
@@ -96,7 +96,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 石庭巨熊（CastleBear）
 
-### 生命值：25
+### 生命值：20
 
 ### 进攻：
 
@@ -109,7 +109,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +3（28）
+- **Stage 2**：生命上限 +5（25）
 - **Stage 3**：1/2/3 牌伤害 +1，4/5/6 牌伤害 +2
 - **Stage 4**：防御时增加 **反击 1🗡️**
 
@@ -119,7 +119,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 禁苑猛虎（CastleTiger）
 
-### 生命值：20
+### 生命值：18
 
 ### 被动：先手攻击
 
@@ -136,7 +136,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +4（24）
+- **Stage 2**：生命上限 +6（24）
 - **Stage 3**：1/2/3 牌伤害变为 **不可防御**
 - **Stage 4**：反击伤害 +1
 
@@ -146,7 +146,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 报丧鸦（CastleCrow）
 
-### 生命值：20
+### 生命值：18
 
 ### 进攻：
 
@@ -170,7 +170,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Elite · 钟楼蝠（CastleBat）
 
-### 生命值：30
+### 生命值：27
 
 ### 进攻：
 
@@ -191,7 +191,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Elite · 夜巡幽魂（CastleGhost）
 
-### 生命值：32
+### 生命值：30
 
 ### 进攻：
 
@@ -212,7 +212,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Elite · 盗宝哥布林（DungeonGoblin）
 
-### 生命值：35
+### 生命值：30
 
 ### 被动：哥布林在进攻阶段打出数字 **1** 卡牌时触发：
 
@@ -238,7 +238,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Boss · 隐之避役（CastleChameleon）
 
-### 生命值：40
+### 生命值：35
 
 ### 中毒：
 
@@ -259,7 +259,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +10（50）
+- **Stage 2**：生命上限 +5（40）
 - **Stage 3**：进攻 4/5/6/0 伤害 +1（变为 4/4/4/3）
 - **Stage 4**：防御 1/2/3 恢复生命 +1（变为 3❤️）
 
@@ -269,7 +269,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Boss · 自由之鹰（CastleEagle）
 
-### 生命值：35
+### 生命值：30
 
 ### 被动：Boss **进攻开始之前**，对玩家施加 **1** 层[流血]。
 
@@ -286,7 +286,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +10（45）
+- **Stage 2**：生命上限 +10（40）
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：反击伤害 +1
 
@@ -296,7 +296,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Boss · 石像鬼（CastleGargoyle）
 
-### 生命值：50
+### 生命值：40
 
 ### 出现条件：仅在 **Stage 3/4** 刷出
 

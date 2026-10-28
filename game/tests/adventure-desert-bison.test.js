@@ -88,7 +88,7 @@ test('DesertBison base stats', () => {
   const m = getMonster('DesertBison');
   assert.equal(m.name, 'DesertBison');
   assert.equal(m.kind, '沙暴蛮牛');
-  assert.equal(m.hp, 24);
+  assert.equal(m.hp, 20);
   assert.equal(m.attack, 3);
   assert.equal(m.defense, 2);
 });
@@ -166,16 +166,16 @@ test('DesertBison defendBleed: 1/2/3 applies 1 stack', () => {
 
 // ===== stageMods 测试 =====
 
-test('DesertBison stage2: hp +6 = 30', () => {
+test('DesertBison stage2: hp +5 = 25', () => {
   const m = getMonster('DesertBison');
   const s2 = applyStageMods(m, 2);
-  assert.equal(s2.hp, 30);
+  assert.equal(s2.hp, 25);
 });
 
 test('DesertBison stage3: 1/2/3 deals 3*playerBleed', () => {
   const m = getMonster('DesertBison');
   const s3 = applyStageMods(m, 3);
-  assert.equal(s3.hp, 30, 'stage3 should include stage2 hp bonus');
+  assert.equal(s3.hp, 25, 'stage3 should include stage2 hp bonus');
   assert.equal(s3.attackDamage(numCard(1), { playerBleed: 1 }), 3, '1/2/3 base 2 -> 3 per bleed');
   assert.equal(s3.attackDamage(numCard(3), { playerBleed: 2 }), 6);
   assert.equal(s3.attackDamage(numCard(4), { playerBleed: 3 }), 2, '4/5/6 unchanged');
@@ -184,7 +184,7 @@ test('DesertBison stage3: 1/2/3 deals 3*playerBleed', () => {
 test('DesertBison stage4: defendBleed applies 2 stacks', () => {
   const m = getMonster('DesertBison');
   const s4 = applyStageMods(m, 4);
-  assert.equal(s4.hp, 30, 'stage4 should include stage2 hp bonus');
+  assert.equal(s4.hp, 25, 'stage4 should include stage2 hp bonus');
   assert.equal(s4.defendBleed(numCard(2)), 2, 'defendBleed +1 = 2');
   assert.equal(s4.defendCounter(numCard(2), 8), 2, 'counter unchanged');
   assert.equal(s4.attackDamage(numCard(1), { playerBleed: 1 }), 3, 'attack unchanged');

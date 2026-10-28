@@ -39,7 +39,7 @@
     name: 'CastleGhost',
     kind: '夜巡幽魂',
     minStage: 2,
-    hp: 32,
+    hp: 30,
     attack: 4,
     defense: 1,
     icon: '../icons/npc_icons/castle_ghost.webp',
@@ -85,7 +85,7 @@
   R.registerMonster({
     name: 'CastleFirefly',
     kind: '廊灯萤',
-    hp: 18,
+    hp: 15,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/castle_firefly.webp',
@@ -130,12 +130,12 @@
    * 狼（CastleWolf）
    * 进攻：1/2/3牌造成4点伤害，4/5/6牌造成6点伤害
    * 防御：1/2/3牌分别格挡对应点数伤害
-   * 强化：(2)+5生命 (3)伤害+1 (4)格挡+1
+   * 强化：(2)+6生命 (3)伤害+1 (4)格挡+1
    */
   R.registerMonster({
     name: 'CastleWolf',
     kind: '城壕饿狼',
-    hp: 20,
+    hp: 18,
     attack: 4,
     defense: 1,
     icon: '../icons/npc_icons/castle_wolf.webp',
@@ -154,7 +154,7 @@
     },
 
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
+      2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({ defendBlock: (card, incoming) => orig.defendBlock(card, incoming) + 1 })
     }
@@ -169,7 +169,7 @@
   R.registerMonster({
     name: 'CastleFox',
     kind: '廊影狐',
-    hp: 18,
+    hp: 15,
     attack: 3,
     defense: 0,
     icon: '../icons/npc_icons/castle_fox.webp',
@@ -220,7 +220,7 @@
   R.registerMonster({
     name: 'CastleBear',
     kind: '石庭巨熊',
-    hp: 25,
+    hp: 20,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/castle_bear.webp',
@@ -251,7 +251,7 @@
     },
 
     stageMods: {
-      2: orig => ({ hp: orig.hp + 3 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
         attackDamage: (card, ctx) => {
           const base = orig.attackDamage(card, ctx);
@@ -280,7 +280,7 @@
   R.registerMonster({
     name: 'CastleTiger',
     kind: '禁苑猛虎',
-    hp: 20,
+    hp: 18,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/castle_tiger.webp',
@@ -333,7 +333,7 @@
   R.registerBoss({
     name: 'CastleChameleon',
     kind: '隐之避役',
-    hp: 40,
+    hp: 35,
     attack: 4,
     defense: 2,
     handLimit: 3,
@@ -415,7 +415,7 @@
   R.registerBoss({
     name: 'CastleEagle',
     kind: '自由之鹰',
-    hp: 35,
+    hp: 30,
     attack: 4,
     defense: 2,
     icon: '../icons/npc_icons/castle_eagle.webp',
@@ -496,7 +496,7 @@
      name: 'DungeonGoblin',
      kind: '盗宝哥布林',
      minStage: 2,
-     hp: 35,
+     hp: 30,
      attack: 4,
      defense: 1,
      icon: '../icons/npc_icons/castle_goblin.webp',
@@ -555,7 +555,7 @@
   R.registerMonster({
     name: 'CastleCrow',
     kind: '报丧鸦',
-    hp: 20,
+    hp: 18,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/castle_crow.webp',
@@ -610,7 +610,7 @@
   R.registerMonster({
     name: 'CastleBat',
     kind: '钟楼蝠',
-    hp: 30,
+    hp: 27,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/castle_bat.webp',
@@ -674,7 +674,7 @@
     name: 'CastleGargoyle',
     kind: '石像鬼',
     minStage: 3,
-    hp: 50,
+    hp: 40,
     attack: 4,
     defense: 2,
     handLimit: 3,

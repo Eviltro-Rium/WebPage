@@ -102,27 +102,28 @@ test('Magnet permits three actual selections in every four-token normal-room sce
 
 test('Serenity room completion does not heal and exit marks follow actual HP', () => {
   const eng = startEngine(undefined, 'Serenity'); enterNormalCombat(eng);
-  Object.assign(eng.s.player, {name:'Serenity',bloodthirst:true,hp:29});
+  Object.assign(eng.s.player, {name:'Serenity',bloodthirst:true,hp:24});
   eng.onCombatEnd('win');
-  assert.equal(eng.s.player.hp, 29);
+  assert.equal(eng.s.player.hp, 24);
   assert.equal(eng.s.player.bloodthirst, true, 'settlement remains inside the room');
   eng.s.phase = AdventurePhase.MAP;
   eng.onCombatReturnToMap();
-  assert.equal(eng.s.player.hp, 29);
+  assert.equal(eng.s.player.hp, 24);
   assert.equal(eng.s.player.bloodthirst, true);
   assert.equal(eng.takeMapRecoveryFeedback().length, 0, 'room exit emits no battle recovery');
-  Object.assign(eng.s.player, {bloodthirst:true,hp:31});
+  Object.assign(eng.s.player, {bloodthirst:true,hp:26});
   eng.onCombatReturnToMap(); assert.equal(eng.s.player.bloodthirst, false);
-  Object.assign(eng.s.player, {bloodthirst:true,hp:30});
+  Object.assign(eng.s.player, {bloodthirst:true,hp:25});
   eng.onCombatReturnToMap(); assert.equal(eng.s.player.bloodthirst, true);
   eng.addItem('LifeCore'); eng.s.pendingMapReturnEffects = {lifeCore:true};
+  Object.assign(eng.s.player, {bloodthirst:true,hp:24});
   eng.onCombatReturnToMap(); assert.equal(eng.s.player.bloodthirst, false);
-  assert.equal(eng.s.player.hp, 33);
+  assert.equal(eng.s.player.hp, 27);
   const feedback = eng.takeMapRecoveryFeedback();
   assert.equal(feedback.length, 1);
   assert.equal(feedback[0].label, '生命核心');
   assert.equal(feedback[0].heal, 3);
-  eng.onCombatReturnToMap(); assert.equal(eng.s.player.hp, 33);
+  eng.onCombatReturnToMap(); assert.equal(eng.s.player.hp, 27);
   assert.equal(eng.takeMapRecoveryFeedback().length, 0);
 });
 
@@ -142,12 +143,14 @@ test('Serenity never receives normal-room battle recovery with or without bloodt
   }
 });
 
-test('combat victory heals 3 HP in normal rooms', () => {
+test('normal-room victory does not apply 战斗恢复', () => {
   const eng = startEngine();
   enterNormalCombat(eng);
   eng.s.player.hp = 10;
   eng.onCombatEnd('win');
-  assert.equal(eng.s.player.hp, 13);
+  assert.equal(eng.s.player.hp, 10);
+  const feedback = eng.takeMapRecoveryFeedback().filter(ev => ev.label === '战斗恢复');
+  assert.equal(feedback.length, 0);
 });
 
 test('boss victory no longer heals; entering the next stage heals 10 HP', () => {
@@ -175,12 +178,12 @@ test('LifeCore defers extra 3 HP until map return after normal, challenge, and b
   enterNormalCombat(normalEng);
   normalEng.s.player.hp = 10;
   normalEng.onCombatEnd('win');
-  assert.equal(normalEng.s.player.hp, 13, 'only base heal during settlement');
+  assert.equal(normalEng.s.player.hp, 10, 'no 战斗恢复 during settlement');
   normalEng.onCombatReturnToMap();
-  assert.equal(normalEng.s.player.hp, 13, 'settlement phase cannot consume LifeCore');
+  assert.equal(normalEng.s.player.hp, 10, 'settlement phase cannot consume LifeCore');
   normalEng.returnToMap(); normalEng.onCombatReturnToMap();
-  assert.equal(normalEng.s.player.hp, 16);
-  normalEng.onCombatReturnToMap(); assert.equal(normalEng.s.player.hp, 16);
+  assert.equal(normalEng.s.player.hp, 13);
+  normalEng.onCombatReturnToMap(); assert.equal(normalEng.s.player.hp, 13);
 
   const challengeEng = startEngine([[0, 6]]);
   challengeEng.addItem('LifeCore');
@@ -203,7 +206,7 @@ test('LifeCore defers extra 3 HP until map return after normal, challenge, and b
   assert.equal(bossEng.s.player.hp, 23, 'boss wins only get LifeCore; the 10 HP moves to the next stage');
 });
 
-test('challenge win has no base heal after the second enemy; normal wins still heal 3', () => {
+test('challenge win has no base heal after the second enemy; normal wins also skip 战斗恢复', () => {
   const challengeEng = startEngine([[0, 6]]);
   assert.ok(challengeEng.move(0, 1));
   assert.equal(challengeEng.currentRoom().type, 'challenge');
@@ -216,7 +219,7 @@ test('challenge win has no base heal after the second enemy; normal wins still h
   enterNormalCombat(normalEng);
   normalEng.s.player.hp = 10;
   normalEng.onCombatEnd('win');
-  assert.equal(normalEng.s.player.hp, 13);
+  assert.equal(normalEng.s.player.hp, 10);
 });
 
 test('same beast token type can be selected twice when two are offered', () => {

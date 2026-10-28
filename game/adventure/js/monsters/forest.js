@@ -31,7 +31,7 @@
   R.registerMonster({
     name: 'ForestMonkey',
     kind: '藤噪顽猴',
-    hp: 18,
+    hp: 15,
     attack: 4,
     defense: 1,
     icon: '../icons/npc_icons/forest_monkey.webp',
@@ -52,7 +52,7 @@
       return 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 6 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({ defendHeal: (card) => orig.defendHeal(card) + 1 })
     }
@@ -62,7 +62,7 @@
   R.registerMonster({
     name: 'ForestDeer',
     kind: '翠影鹿',
-    hp: 20,
+    hp: 18,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/forest_deer.webp',
@@ -99,7 +99,7 @@
   R.registerMonster({
     name: 'ForestLeech',
     kind: '血沼蛭',
-    hp: 18,
+    hp: 15,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/forest_leech.webp',
@@ -153,7 +153,7 @@
   R.registerMonster({
     name: 'ForestCrocodile',
     kind: '暗潭鳄',
-    hp: 20,
+    hp: 18,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/forest_crocodile.webp',
@@ -191,7 +191,7 @@
   R.registerMonster({
     name: 'ForestDendrobatidFrog',
     kind: '箭毒蛙',
-    hp: 30,
+    hp: 25,
     minStage: 3,
     attack: 3,
     defense: 1,
@@ -224,7 +224,7 @@
   R.registerMonster({
     name: 'ForestLadybug',
     kind: '斑甲瓢虫',
-    hp: 18,
+    hp: 15,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/forest_ladybug.webp',
@@ -268,7 +268,7 @@
   R.registerMonster({
     name: 'ForestCapybara',
     kind: '静河水豚',
-    hp: 32,
+    hp: 27,
     minStage: 3,
     attack: 3,
     defense: 1,
@@ -356,7 +356,7 @@
     name: 'ForestPiranha',
     kind: '食人鱼',
     minStage: 3,
-    hp: 30,
+    hp: 25,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/forest_piranha.webp',
@@ -392,7 +392,7 @@
   R.registerBoss({
     name: 'ForestPanda',
     kind: '竹坞熊猫',
-    hp: 45,
+    hp: 35,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/forest_panda.webp',
@@ -440,7 +440,7 @@
       return card.value === 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 10 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({ defendBlock: (card, incoming, defender) => orig.defendBlock(card, incoming, defender) + 1 })
     }
@@ -450,7 +450,7 @@
   R.registerBoss({
     name: 'ForestPython',
     kind: '缠枝巨蟒',
-    hp: 35,
+    hp: 30,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/forest_python.webp',
@@ -514,7 +514,7 @@
     name: 'ForestDryad',
     kind: '树精',
     minStage: 2,
-    hp: 50,
+    hp: 40,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/dryad.webp',

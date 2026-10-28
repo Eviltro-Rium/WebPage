@@ -49,10 +49,14 @@ test('FrozenOceanOctopus base stats and pool', () => {
   const m = getMonster('FrozenOceanOctopus');
   assert.ok(m);
   assert.equal(m.kind, '墨潮章鱼');
-  assert.equal(m.hp, 24);
-  const pool = context.AdventureMonsterPool.ocean;
+  assert.equal(m.hp, 25);
+  const normal = context.AdventureMonsterPool.ocean;
   for (const stage of ['*', 2, 3, 4]) {
-    assert.ok(pool[stage].includes('FrozenOceanOctopus'), 'stage ' + stage);
+    assert.ok(!normal[stage].includes('FrozenOceanOctopus'), 'not in normal pool stage ' + stage);
+  }
+  const elite = context.AdventureElitePool.ocean;
+  for (const stage of [3, 4]) {
+    assert.ok(elite[stage].includes('FrozenOceanOctopus'), 'elite stage ' + stage);
   }
 });
 
@@ -79,7 +83,7 @@ test('FrozenOceanOctopus loot: 1-2 diving, 3-4 ice seal', () => {
 test('FrozenOceanOctopus attack hooks', () => {
   const m = getMonster('FrozenOceanOctopus');
   for (const v of [4, 5, 6]) {
-    assert.equal(m.attackDamage(numCard(v)), 5);
+    assert.equal(m.attackDamage(numCard(v)), 6);
     assert.equal(m.attackOctopusJudge(numCard(v)), false);
     assert.equal(m.attackGainDiving(numCard(v)), true);
   }
@@ -88,7 +92,7 @@ test('FrozenOceanOctopus attack hooks', () => {
     assert.equal(m.attackOctopusJudge(numCard(v)), true);
     assert.equal(m.attackGainDiving(numCard(v)), false);
   }
-  assert.equal(m.attackOctopusJudgeDamage(false), 3);
+  assert.equal(m.attackOctopusJudgeDamage(false), 4);
   assert.equal(m.attackOctopusJudgeDamage(true), 5);
 });
 
@@ -105,13 +109,13 @@ test('FrozenOceanOctopus defend 1/2/3: counter 2 + heal 1', () => {
 test('FrozenOceanOctopus stage mods', () => {
   const m = getMonster('FrozenOceanOctopus');
   const s2 = applyStageMods(m, 2);
-  assert.equal(s2.hp, 30);
+  assert.equal(s2.hp, 25);
   const s3 = applyStageMods(m, 3);
   assert.equal(s3.attackDamage(numCard(5)), 6);
   assert.equal(s3.attackOctopusJudgeDamage(false), 4);
-  assert.equal(s3.attackOctopusJudgeDamage(true), 6);
+  assert.equal(s3.attackOctopusJudgeDamage(true), 5);
   const s4 = applyStageMods(m, 4);
-  assert.equal(s4.defendHeal(numCard(2)), 2);
+  assert.equal(s4.defendHeal(numCard(2)), 3);
   assert.equal(s4.defendHeal(numCard(5)), 0);
 });
 
@@ -129,7 +133,7 @@ function judgedBattle(judgedCard) {
 test('FrozenOceanOctopus 1/2/3: normal color deals 3 and returns card to deck', () => {
   const eng = judgedBattle(numCard(5, 'GREEN'));
   const r = eng.effect('FrozenOceanOctopus', 2, numCard(2), eng.s.ai, eng.s.player);
-  assert.equal(r.d, 3);
+  assert.equal(r.d, 4);
   assert.equal(eng.piles.player.discard.length, 0);
   assert.equal(eng.piles.player.deck.length, 1);
   assert.equal(eng.piles.player.deck[0].value, 5);

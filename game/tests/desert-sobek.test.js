@@ -64,7 +64,7 @@ test('DesertSobek base stats, boss pool, icon, whiteZeros', () => {
   const m = getBoss('DesertSobek');
   assert.ok(m);
   assert.equal(m.kind, '鳄神索贝克');
-  assert.equal(m.hp, 35);
+  assert.equal(m.hp, 30);
   assert.equal(m.minStage, 1);
   assert.equal(m.whiteZeros, 1);
   assert.equal(m.handLimit, 3);
@@ -182,10 +182,10 @@ test('DesertSobek defend 0: immune; counter only with lush and consumes 1', (t) 
   assert.equal(eng.s.player.hp, playerHp - 3, 'counter 3');
 });
 
-test('DesertSobek stage mods: HP+7, attack+1, green defense lush', () => {
+test('DesertSobek stage mods: HP+10, attack+1, green defense lush', () => {
   const m = getBoss('DesertSobek');
   const s2 = applyStageMods(m, 2);
-  assert.equal(s2.hp, 42);
+  assert.equal(s2.hp, 40);
   const s3 = applyStageMods(m, 3);
   assert.equal(s3.attackDamage(numCard(1), {}), 5);
   assert.equal(s3.attackDamage(numCard(4), {}), 7);

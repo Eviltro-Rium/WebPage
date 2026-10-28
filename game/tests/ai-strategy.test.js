@@ -515,11 +515,11 @@ test('Leon, Saiki, and Blaze attack branches follow the updated character docs',
   result = saiki.effect('Saiki', 1, number(1), saiki.s.player, saiki.s.ai);
   assert.equal(result.d, 2);
   assert.equal(saiki.s.ai.bleed, 2);
-  saiki.s.player.hp = 40;
+  saiki.s.player.hp = 30;
   result = saiki.effect('Saiki', 5, number(5), saiki.s.player, saiki.s.ai);
   assert.equal(result.skip, true);
-  assert.equal(saiki.s.player.hp, 45);
-  saiki.s.player.hp = 41;
+  assert.equal(saiki.s.player.hp, 35);
+  saiki.s.player.hp = 31;
   result = saiki.effect('Saiki', 5, number(5), saiki.s.player, saiki.s.ai);
   assert.equal(result.d, 4);
 
@@ -684,11 +684,11 @@ test('Serenity attack 1 heals normally and applies bleed while bloodthirst', () 
     draw() {},
     clearDebuffs() {}
   };
-  engine.s.player.hp = 50;
+  engine.s.player.hp = 46;
   engine.s.ai.bleed = 0;
   const normal = mod.effect(engine, 1, number(1), engine.s.player, engine.s.ai, 'player', helpers);
   assert.equal(normal.d, 2);
-  assert.equal(engine.s.player.hp, 52);
+  assert.equal(engine.s.player.hp, 48);
   assert.equal(engine.s.ai.bleed, 0);
 
   engine.s.player.bloodthirst = true;

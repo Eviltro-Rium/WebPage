@@ -63,7 +63,7 @@ test('DesertHyena base stats, boss pool, icon, whiteZeros', () => {
   const m = getBoss('DesertHyena');
   assert.ok(m);
   assert.equal(m.kind, '嘲风鬣狗');
-  assert.equal(m.hp, 40);
+  assert.equal(m.hp, 35);
   assert.equal(m.minStage, 1);
   assert.equal(m.whiteZeros, 1);
   assert.equal(m.handLimit, 3);
@@ -135,15 +135,15 @@ test('DesertHyena defend hooks', () => {
 test('DesertHyena stage mods', () => {
   const m = getBoss('DesertHyena');
   const s2 = applyStageMods(m, 2);
-  assert.equal(s2.hp, 50);
+  assert.equal(s2.hp, 45);
   assert.equal(typeof s2.attackUnblockable, 'undefined');
   const s3 = applyStageMods(m, 3);
-  assert.equal(s3.hp, 50);
+  assert.equal(s3.hp, 45);
   assert.equal(s3.attackUnblockable(numCard(2, 'YELLOW')), true);
   assert.equal(s3.attackUnblockable(numCard(5, 'RED')), false);
   assert.equal(s3.attackUnblockable(Object.assign(numCard(4, 'WILD'), { chosenColor: 'YELLOW' })), true);
   const s4 = applyStageMods(m, 4);
-  assert.equal(s4.hp, 50);
+  assert.equal(s4.hp, 45);
   assert.equal(s4.defendHeal(numCard(2)), 1);
   assert.equal(s4.defendHeal(numCard(0)), 1);
   assert.equal(s4.attackUnblockable(numCard(1, 'YELLOW')), true);

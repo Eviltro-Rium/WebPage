@@ -71,19 +71,19 @@ function defend(e,value,damage) {
 }
 
 test('Mammoth is available in every ocean boss pool, with an existing icon',()=>{
-  const m=staged(1); assert.equal(m.hp,45); assert.equal(m.handLimit,3); assert.equal(m.whiteZeros,1);
+  const m=staged(1); assert.equal(m.hp,35); assert.equal(m.handLimit,3); assert.equal(m.whiteZeros,1);
   assert.equal(m.kind,'长牙猛犸');
   assert.ok(fs.existsSync(path.resolve(gameRoot,'adventure',m.icon)));
   for(const stage of ['*',2,3,4]) assert.ok(context.AdventureBossPool.ocean[stage].includes(bossName));
 });
-for(const v of [1,2,3])test('Mammoth attack '+v+' deals 3, then applies corresponding bleed',()=>{
+for(const v of [1,2,3])test('Mammoth attack '+v+' deals 2, then applies corresponding bleed',()=>{
   const e=battle(),hp=e.s.player.hp,r=attack(e,v);
-  assert.equal(r.d,3); assert.equal(e.s.ai.guard,0); assert.equal(e.s.player.bleed,0);
+  assert.equal(r.d,2); assert.equal(e.s.ai.guard,0); assert.equal(e.s.player.bleed,0);
   const damage=e.prepareAttackSettlement(r.d,'player');
   assert.equal(e.s.player.bleed,0);
   e.settlePreparedHit(e.s.ai,e.s.player,{damage,bleed:0});
   e.performAttack({type:'aoe',commitAttackEffects:true,target:'player'});
-  assert.equal(e.s.player.hp,hp-3); assert.equal(e.s.player.bleed,v); assert.equal(e.s.ai.guard,0);
+  assert.equal(e.s.player.hp,hp-2); assert.equal(e.s.player.bleed,v); assert.equal(e.s.ai.guard,0);
   const hit=e.events.findIndex(x=>x.type==='hit'),bleed=e.events.findIndex(x=>x.type==='buff'&&x.kind==='bleed');
   assert.ok(hit>=0&&bleed>hit);
 });
@@ -120,14 +120,14 @@ test('Mammoth 0 defense is fully immune, gains 2 guard and applies 2 bleed',()=>
 });
 test('Mammoth stages are cumulative; undefined attacks and defenses gain no effects',()=>{
   for(const stage of [1,2,3,4]) {
-    const m=staged(stage); assert.equal(m.hp,stage>=2?55:45);
-    for(const v of [0,1,2,3,4,5,6])assert.equal(m.attackDamage(numCard(v),{playerBleed:2}), (v===0?3:v<=3?3:5)+(stage>=3?1:0));
-    assert.equal(m.defendBleed(numCard(1)),stage>=4?2:1);
-    assert.equal(m.defendBleed(numCard(0)),stage>=4?3:2);
+    const m=staged(stage); assert.equal(m.hp,stage>=2?40:35);
+    for(const v of [0,1,2,3,4,5,6])assert.equal(m.attackDamage(numCard(v),{playerBleed:2}), (v===0?3:v<=3?2:5)+(stage>=3?1:0));
+    assert.equal(m.defendBleed(numCard(1)),1);
+    assert.equal(m.defendBleed(numCard(0)),2);
     for(const v of [4,5,6,7]) { assert.equal(m.defendBleed(numCard(v)),0); assert.equal(m.defendImmune(numCard(v)),false); }
     assert.equal(m.attackDamage(numCard(7),{}),0); assert.equal(m.attackDamage(blackCard(),{}),0);
   }
-  const e=battle(4),out=defend(e,0,6);assert.equal(out.remaining,0);assert.equal(e.s.player.bleed,3);
+  const e=battle(4),out=defend(e,0,6);assert.equal(out.remaining,0);assert.equal(e.s.player.bleed,2);
 });
 test('Mammoth all 12 loot faces match the documented outcomes',()=>{
   for(let roll=1;roll<=12;roll++) {
@@ -139,11 +139,11 @@ test('Mammoth all 12 loot faces match the documented outcomes',()=>{
 });
 test('Mammoth skill descriptions include scaling, hypothermia, guard, immunity and stage buffs',()=>{
   const desc=(v,def,stage=1)=>AdventureMonsterBridge.getAdventureNpcSkillDesc(bossName,numCard(v),def,{stage});
-  assert.match(desc(2,false),/2层\[流血\]/); assert.doesNotMatch(desc(2,false),/守护/); assert.match(desc(1,false),/3🗡️/);
+  assert.match(desc(2,false),/2层\[流血\]/); assert.doesNotMatch(desc(2,false),/守护/); assert.match(desc(1,false),/2🗡️/);
   assert.match(desc(4,false),/3\+/); assert.match(desc(4,false),/流血/);assert.match(desc(4,false),/失温/);
   assert.match(desc(0,false),/不可防御/); assert.match(desc(0,false),/4层\[守护\]/);
   assert.match(desc(0,true),/免疫所有伤害/);assert.match(desc(0,true),/2层\[守护\]/);
-  assert.match(desc(1,true,4),/2层\[流血\]/);assert.match(desc(0,true,4),/3层\[流血\]/);
+  assert.match(desc(1,true,4),/回1❤️/);assert.match(desc(0,true,4),/2层\[流血\]/);
   assert.match(desc(1,true),/半数伤害/);
 });
 
@@ -152,7 +152,7 @@ for(const testMode of [false,true])test('Mammoth starts in '+(testMode?'test':'n
   e.startAdventure({player:'Ryan',opponent:bossName,stage:3,testMode,
     playerPile:{deck:[numCard(1),numCard(2),numCard(3)],hand:[numCard(4)],discard:[],handLimit:5}});
   e.later=()=>{};
-  assert.equal(e.s.ai.maxHp,55);assert.equal(e.s.ai.hp,55);assert.equal(e.h.ai.length,3);
+  assert.equal(e.s.ai.maxHp,40);assert.equal(e.s.ai.hp,40);assert.equal(e.h.ai.length,3);
   const pile=e._npcPile || e.piles.ai;
   assert.ok(pile,'NPC has an isolated pile');
   const zeroCount=[...pile.deck,...pile.discard,...e.h.ai].filter(c=>c.isNumberCard&&c.value===0).length;

@@ -7,7 +7,7 @@
       if (v === 0) return x.oppBleed >= 2 ? 92 : x.oppBleed ? 76 : 58;
       if (v === 4) return x.oppBleed ? 88 : 54;
       if (v === 7) return 72 + Math.min(18, (x.oppBleed || 0) * 6);
-      if (v === 5) return x.self.hp <= 40 ? 82 : x.oppHand ? 66 : 54;
+      if (v === 5) return x.self.hp <= 30 ? 82 : x.oppHand ? 66 : 54;
       if (v === 6) {
         const judges = x.hand.filter(card => card !== c && card.isNumberCard);
         if (!judges.length) return -100;
@@ -54,7 +54,7 @@
       };
 
       if (v === 5) {
-        if (a.hp <= 40) {
+        if (a.hp <= 30) {
           helpers.healSelf(5);
           return { d: 0, skip: true, unblock: false };
         }

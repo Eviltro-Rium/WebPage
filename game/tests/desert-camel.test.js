@@ -44,7 +44,7 @@ test('DesertCamel base stats and pool', () => {
   const m = getMonster('DesertCamel');
   assert.ok(m);
   assert.equal(m.kind, '旱海驼');
-  assert.equal(m.hp, 32);
+  assert.equal(m.hp, 30);
   assert.equal(m.firstStrike, true);
   assert.equal(m.icon, '../icons/npc_icons/desert_camel.webp');
   const pool = context.AdventureMonsterPool.desert;
@@ -102,7 +102,7 @@ test('DesertCamel defend 1/2/3: half block, thorns only at stage 4', () => {
 test('DesertCamel stage mods', () => {
   const m = getMonster('DesertCamel');
   const s2 = applyStageMods(m, 2);
-  assert.equal(s2.hp, 32);
+  assert.equal(s2.hp, 30);
   const s3 = applyStageMods(m, 3);
   assert.equal(s3.attackDamage(numCard(2)), 3);
   assert.equal(s3.attackDamage(numCard(5)), 6);

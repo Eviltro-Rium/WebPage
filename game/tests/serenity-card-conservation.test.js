@@ -85,7 +85,7 @@ test('deck metadata generation and recovery do not consume reward randomness', (
 
 for (const bloodthirst of [false,true]) test('Serenity 0 conserves both isolated piles; bloodthirst=' + bloodthirst, () => {
   const ctx=setup(), engine=new ctx.AdventureBattleEngine();engine.later=()=>{};
-  engine.startAdventure({player:'Serenity',opponent:'CastleWolf',playerState:{hp:40,maxHp:75,bloodthirst}});
+  engine.startAdventure({player:'Serenity',opponent:'CastleWolf',playerState:{hp:40,maxHp:50,bloodthirst}});
   engine.draw('player',5);
   const playerCount=size(engine.piles.player), npcCount=size(engine.piles.ai), discarded=engine.h.player.length;
   engine.events=[];
@@ -101,7 +101,7 @@ for (const bloodthirst of [false,true]) test('Serenity 0 conserves both isolated
 for (const target of ['ai','ai2']) test('bloodthirst 0 in challenge rooms preserves the shared NPC pile and only changes '+target, () => {
   const ctx=setup(),engine=new ctx.AdventureBattleEngine();engine.later=()=>{};
   engine.startAdventure1v2({player:'Serenity',opponent1:'CastleWolf',opponent2:'CastleFox',
-    playerState:{hp:25,maxHp:75,bloodthirst:true}});
+    playerState:{hp:25,maxHp:50,bloodthirst:true}});
   engine.draw('player',5);
   const other=target==='ai'?'ai2':'ai';
   const otherHand=clone(engine.h[other]), count=size(engine.piles.ai)+engine.h.ai2.length;
@@ -123,7 +123,7 @@ test('repeated ZeroTrophy uses keep all player cards through three stages, room 
     for(let room=0;room<4;room++) {
       const engine=new ctx.AdventureBattleEngine();engine.later=()=>{};
       engine.startAdventure({player:'Serenity',opponent:'CastleWolf',stage,
-        playerState:{hp:25,maxHp:75,bloodthirst:true},playerPile:clone(adventure.s.playerPile)});
+        playerState:{hp:25,maxHp:50,bloodthirst:true},playerPile:clone(adventure.s.playerPile)});
       const pile=engine.piles.player;
       let zero;
       for(const list of [pile.hand,pile.deck,pile.discard]) {
@@ -148,7 +148,7 @@ test('repeated ZeroTrophy uses keep all player cards through three stages, room 
 test('Serenity 0 recycles an exhausted player deck instead of deleting the discarded hand', () => {
   const ctx=setup(),engine=new ctx.AdventureBattleEngine();engine.later=()=>{};
   const cards=[1,2,3,4,5].map(value=>ctx.AdventureDeck.num('RED',value));
-  engine.startAdventure({player:'Serenity',opponent:'CastleWolf',playerState:{hp:40,maxHp:75},
+  engine.startAdventure({player:'Serenity',opponent:'CastleWolf',playerState:{hp:40,maxHp:50},
     playerPile:{deck:[],hand:cards,discard:[],handLimit:5},discardTop:null});
   engine.effect('Serenity',0,ctx.AdventureDeck.num('RED',0),engine.s.player,engine.s.ai);
   assert.equal(size(engine.piles.player),5);

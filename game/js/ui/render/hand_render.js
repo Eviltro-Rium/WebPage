@@ -316,9 +316,29 @@
             cards.slice(0, 3).forEach((card, index) => {
                 const selected = s.selectedReserveIndex === index;
                 const canvas = renderCard(card, width, height, selected);
-                const enabled = !this._handDiscardPicker && !s.needColorChoice && s.onlineCanAct !== false && ['PLAYER_PLAY','PLAYER_DEFEND'].includes(s.phase) && !s.unblockDefend && (!s.legalReserve || s.legalReserve[index] !== false);
+                const enabled = !this._handDiscardPicker && !s.needColorChoice && s.onlineCanAct !== false && ['PLAYER_PLAY','PLAYER_DEFEND'].includes(s.phase) && !(s.phase === 'PLAYER_DEFEND' && s.unblockDefend) && (!s.legalReserve || s.legalReserve[index] !== false);
                 if (!enabled) canvas.classList.add('disabled');
-                if (enabled) canvas.addEventListener('click', () => { void this._apiAction('selectReserveCard', { index }); });
+                if (enabled) canvas.addEventListener('click', async event => {
+                    const now = Date.now(), key = cardMatchKey(card), previous = this._lastReserveCardClick;
+                    if (previous && previous.index === index && previous.key === key && now - previous.time < 600) {
+                        this._lastReserveCardClick = null;
+                        event.preventDefault();
+                        if (previous.promise) await previous.promise;
+                        const current = this.state;
+                        if (!current || current.needColorChoice || !['PLAYER_PLAY', 'PLAYER_DEFEND'].includes(current.phase) || (current.phase === 'PLAYER_DEFEND' && current.unblockDefend) || !current.reserveCards || !current.reserveCards[index] || cardMatchKey(current.reserveCards[index]) !== key || (current.legalReserve && current.legalReserve[index] === false)) return;
+                        if (current.selectedReserveIndex !== index) {
+                            const selected = await this._apiAction('selectReserveCard', { index });
+                            if (!selected) return;
+                        }
+                        await this._apiAction(current.phase === 'PLAYER_DEFEND' ? 'doDefend' : 'doPlay');
+                        return;
+                    }
+                    if (this._isHandlingAction || this._isConsumingEvents) return;
+                    const click = { index, key, time: now, promise: null };
+                    this._lastReserveCardClick = click;
+                    click.promise = this._apiAction('selectReserveCard', { index });
+                    await click.promise;
+                });
                 canvas.addEventListener('mouseenter', () => this._showTooltip(card, canvas, s.phase === 'PLAYER_DEFEND'));
                 canvas.addEventListener('mouseleave', () => this._hideTooltip());
                 slot.appendChild(canvas);

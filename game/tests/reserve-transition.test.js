@@ -10,6 +10,7 @@ function setup(reduced = false) {
   w.matchMedia = () => ({matches:reduced});
   w.GameUI = class {};
   w.currentCardSize = () => [70,100];
+  w.cardMatchKey = card => String(card.value);
   w.renderCard = () => { const node=w.document.createElement('canvas');node.className='card-canvas';return node; };
   w.eval(fs.readFileSync(path.resolve(__dirname,'../js/ui/render/hand_render.js'),'utf8'));
   const ui=new w.GameUI();ui._apiAction=()=>{};ui._showTooltip=()=>{};ui._hideTooltip=()=>{};
@@ -57,5 +58,39 @@ test('reduced motion closes the reserve immediately', () => {
     state.reserveCards=[];ui._renderReserveCards(hand,state);
     assert.equal(reserve.hidden,true);
     assert.equal(reserve.children.length,0);
+  } finally {dom.window.close();}
+});
+
+test('reserve card can be double-clicked across a rerender while selection is pending', async () => {
+  const {dom,ui,hand,reserve,state}=setup();
+  try {
+    ui.state=state;let finishSelection;const actions=[];
+    ui._apiAction=(method,params)=>{
+      actions.push(method);
+      if(method==='selectReserveCard'){
+        state.selectedReserveIndex=params.index;
+        ui._renderReserveCards(hand,state);
+        return new Promise(resolve=>{finishSelection=()=>resolve(true);});
+      }
+      return Promise.resolve(true);
+    };
+    ui._renderReserveCards(hand,state);
+    reserve.querySelector('canvas').click();
+    reserve.querySelector('canvas').click();
+    assert.deepEqual(actions,['selectReserveCard']);
+    finishSelection();
+    await new Promise(resolve=>setTimeout(resolve,0));
+    assert.deepEqual(actions,['selectReserveCard','doPlay']);
+  } finally {dom.window.close();}
+});
+
+test('stale unblockable flag does not disable reserve cards in attack phase', () => {
+  const {dom,ui,hand,reserve,state}=setup();
+  try {
+    ui.state=state;state.unblockDefend=true;state.legalReserve=[true];
+    ui._renderReserveCards(hand,state);
+    assert.equal(reserve.querySelector('canvas').classList.contains('disabled'),false);
+    state.phase='PLAYER_DEFEND';ui._renderReserveCards(hand,state);
+    assert.equal(reserve.querySelector('canvas').classList.contains('disabled'),true);
   } finally {dom.window.close();}
 });

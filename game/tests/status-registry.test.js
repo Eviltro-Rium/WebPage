@@ -78,18 +78,18 @@ test('scorch survives positive-buff clears', () => {
 
 test('Serenity bloodthirst is a persistent non-cleanseable mark', () => {
   const serenity = context.CharacterRegistry.get('Serenity');
-  const entity = { name: 'Serenity', hp: 29, maxHp: 75, alive: true, bloodthirst: false };
+  const entity = { name: 'Serenity', hp: 24, maxHp: 50, alive: true, bloodthirst: false };
   const engine = { name: () => 'Serenity', s: { player: entity }, emit() {} };
   context.FurryGame.EngineStatus.hurt(engine, entity, 1);
   assert.equal(entity.bloodthirst, true);
   context.FurryGame.EngineStatus.heal(engine, entity, 50);
-  assert.equal(entity.hp, 75);
+  assert.equal(entity.hp, 50);
   assert.equal(entity.bloodthirst, true);
   context.FurryGame.EngineStatus.clean(entity, true);
   assert.equal(entity.bloodthirst, true);
   assert.equal(context.FurryGame.StatusRegistry.clear(entity, 'bloodthirst'), false);
   assert.equal(serenity.passive.includes('印记'), true);
-  const crossing = { name: 'Serenity', hp: 29, maxHp: 75, alive: true, bloodthirst: false };
+  const crossing = { name: 'Serenity', hp: 24, maxHp: 50, alive: true, bloodthirst: false };
   context.FurryGame.EngineStatus.heal(engine, crossing, 50);
   assert.equal(crossing.bloodthirst, true);
 });

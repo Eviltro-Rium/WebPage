@@ -2,12 +2,16 @@
   const C = CharacterRegistry;
   C.register({
     name: 'Otto',
-    hp: 100,
+    hp: 80,
     type: '战士',
     passive: '进攻伤害>4时可消耗1层[暴击]使攻击不可防御',
     init() { return { crit: 0 }; },
     turnStart(eng, ch) {},
-    damageAtSettlement(eng, v, a, t) { return v === 7 ? Math.ceil(a.hp / (eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10)) : null; },
+    damageAtSettlement(eng, v, a, t) {
+      if (v !== 7) return null;
+      const divisor = eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8;
+      return Math.ceil(a.hp / divisor);
+    },
     attackEffectTiming: {1: 'afterDamage', 2: 'afterDamage', 4: 'immediate'},
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, heal, draw, clearDebuffs, hurt } = helpers;
@@ -32,11 +36,10 @@
       } else if (v === 6) {
         return null;
       } else if (v === 7) {
-        // Classic 1v2 doubles the starting HP, so it scales by /20. Adventure
-        // challenge rooms keep the normal 100 HP pool and therefore use /10.
-        const divisor = eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10;
+        // Classic 1v2 doubles starting HP, so Otto 7 scales by /16. Adventure
+        // (including challenge rooms) uses the normal pool and therefore /8.
+        const divisor = eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8;
         d = Math.ceil(a.hp / divisor);
-        // Small Otto 7 attacks cannot be defended against.
         unblock = d <= 3;
       } else if (v === 0) {
         d = 4;

@@ -11,7 +11,7 @@
       }
       if (v === 4) return x.opponent.hp <= 5 ? 88 : 68;
       if (v === 7) {
-        let divisor = eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10;
+        let divisor = eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8;
         let dmg = Math.ceil(x.self.hp / divisor);
         return dmg >= x.opponent.hp ? 92 : 50 + dmg * 4;
       }
@@ -40,7 +40,7 @@
     keepScore(eng, c, x) {
       if (!c.isNumberCard) return null;
       if (c.value === 0) return 78;
-      if (c.value === 7) return 55 + Math.ceil(x.self.hp / (eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10)) * 3;
+      if (c.value === 7) return 55 + Math.ceil(x.self.hp / (eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8)) * 3;
       if (c.value === 4) return 66;
       if (c.value === 5) return x.hand.filter(card => card !== c && card.isNumberCard).length ? 60 : 20;
       if (c.value === 6) return 48;
@@ -145,7 +145,7 @@
 
 
       if (v === 7) {
-        let divisor = eng.s.is1v2 && !eng.s.isAdventure ? 20 : 10;
+        let divisor = eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8;
         let dmg = Math.ceil(a.hp / divisor);
         let unblock = dmg <= 3;
         eng.emit('desc', `Otto 7牌：自身生命${a.hp}/${divisor}=${dmg}点伤害${unblock ? '（不可防御）' : ''}`);

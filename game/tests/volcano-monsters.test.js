@@ -21,10 +21,10 @@ function defense(e,v=2,incoming=7){
  });
 }
 test('volcano first four monsters register with cumulative stages, WebP icons and no foreign Boss fallback',()=>{
- const hp=[20,24,20,26],hp2=[25,30,25,32];
- assert.deepEqual(Array.from(w.AdventureMonsterPool.volcano['*']),names);
+ const hp=[18,20,18,20],hp2=[24,25,24,25];
+ for(const name of names) assert.ok(w.AdventureMonsterPool.volcano[1].includes(name));
  assert.deepEqual(Array.from(w.AdventureBossPool.volcano[1]),['VolcanoFlameLion','VolcanoMagmaRhino']);
- assert.ok(w.AdventureBossPool.volcano[2].includes('VolcanoCinderPhoenix'));
+ assert.equal(w.AdventureBossPool.volcano[2].includes('VolcanoCinderPhoenix'),false);
  names.forEach((name,i)=>{
   const base=w.AdventureRegistry.getMonster(name);
   assert.equal(base.hp,hp[i]);assert.equal(base.minStage,1);
@@ -90,6 +90,8 @@ test('all twelve loot faces match volcano.md and map names normalize correctly',
  ];
  const expectFace=(table,face)=>{
   if(face<=table.length) return [table[face-1]];
+  if(face===11) return ['SmallPotionTrophy'];
+  if(face===12) return ['PurifyWaterTrophy'];
   return [];
  };
  names.forEach((name,i)=>{for(let face=1;face<=12;face++){
@@ -106,9 +108,9 @@ test('volcano bosses register with pools, loot, icons and stage gates',()=>{
   assert.ok(w.AdventureEngine.availableScenes(stage).includes('volcano'));
   assert.ok(pool[stage].includes('VolcanoFlameLion'));
   assert.ok(pool[stage].includes('VolcanoMagmaRhino'));
-  assert.equal(pool[stage].includes('VolcanoCinderPhoenix'),stage>=2);
+  assert.equal(pool[stage].includes('VolcanoCinderPhoenix'),stage>=3);
  }
- const hp={VolcanoFlameLion:40,VolcanoMagmaRhino:45,VolcanoCinderPhoenix:50};
+ const hp={VolcanoFlameLion:30,VolcanoMagmaRhino:35,VolcanoCinderPhoenix:40};
  bosses.forEach(name=>{
   const base=w.AdventureRegistry.getBoss(name);
   assert.ok(base);assert.equal(base.hp,hp[name]);assert.equal(base.handLimit,3);assert.equal(base.whiteZeros,1);
@@ -127,7 +129,10 @@ test('volcano bosses register with pools, loot, icons and stage gates',()=>{
  bosses.forEach(name=>{for(let face=1;face<=12;face++){
   const loot=w.AdventureLoot.rollMonsterDrop('volcano',name,null,face);
   const table=faces[name];
-  const expected=face<=table.length?[table[face-1]]:[];
+  let expected=[];
+  if(face<=table.length) expected=[table[face-1]];
+  else if(face===11) expected=['SmallPotionTrophy'];
+  else if(face===12) expected=['PurifyWaterTrophy'];
   assert.deepEqual(Array.from(loot.drops),expected);
  }});
 });
@@ -138,17 +143,17 @@ test('volcano boss attack and defend hooks follow volcano.md',()=>{
  assert.equal(lion.attackDamage(C(0)),0);assert.equal(lion.attackBurn(C(0)),2);assert.equal(lion.attackBurnSettle(C(0)),true);
  assert.equal(lion.defendImmune(C(0)),true);assert.equal(lion.defendScorch(C(0)),true);
  const s4=bridge.applyStageMods(lion,4);
- assert.equal(s4.defendBlock(C(2),9),3);assert.equal(s4.defendClearDebuffs(C(0)),true);
+ assert.equal(s4.defendBlock(C(2),9),4);assert.equal(s4.defendBurn(C(0)),2);
  const rhino=w.AdventureRegistry.getBoss('VolcanoMagmaRhino');
- assert.equal(rhino.attackDamage(C(2)),3);assert.equal(rhino.attackGuard(C(2)),2);
+ assert.equal(rhino.attackDamage(C(2)),3);assert.equal(rhino.attackGuard(C(2)),1);
  assert.equal(rhino.attackGainMagma(C(5)),1);
  assert.equal(rhino.attackUnblockableIfSelfBuff(C(0),{magmaVein:0}),false);
  assert.equal(rhino.attackUnblockableIfSelfBuff(C(0),{magmaVein:1}),true);
- assert.equal(rhino.defendBlock(C(0),7),7);assert.equal(rhino.defendGainMagma(C(0)),1);
+ assert.equal(rhino.defendBlock(C(0),7),0);assert.equal(rhino.defendCounter(C(0),7),7);
  const r4=bridge.applyStageMods(rhino,4);
- assert.equal(r4.defendBlock(C(2),7),Math.ceil(7/2)+1);assert.equal(r4.defendGuard(C(0)),1);
+ assert.equal(r4.defendBlock(C(2),7),Math.ceil(7/2));assert.equal(r4.defendGainMagma(C(2)),1);
  const phoenix=w.AdventureRegistry.getBoss('VolcanoCinderPhoenix');
- assert.equal(phoenix.minStage,2);
+ assert.equal(phoenix.minStage,3);
  assert.equal(phoenix.attackDamage(C(0)),5);assert.equal(phoenix.attackUnblockable(C(0)),true);assert.equal(phoenix.attackHeal(C(0)),3);
  assert.equal(phoenix.defendImmuneBuff(C(0)),true);assert.equal(phoenix.defendFly(C(0)),1);
  const p4=bridge.applyStageMods(phoenix,4);
@@ -157,8 +162,8 @@ test('volcano boss attack and defend hooks follow volcano.md',()=>{
  const atk=C(0);e.s.atkCard=atk;e.s.atkOwner='ai';
  const res=e.effect('VolcanoFlameLion',0,atk,e.s.ai,e.s.player);
  assert.equal(res.d,0);assert.equal(e.s.player.burn,1);
- const pe=engine('VolcanoCinderPhoenix',2);
- assert.equal(pe.s.ai.maxHp,50);
+ const pe=engine('VolcanoCinderPhoenix',3);
+ assert.equal(pe.s.ai.maxHp,40);
  pe.s.ai.fly=0;w.CharacterRegistry.get('VolcanoCinderPhoenix').turnStart(pe,pe.s.ai,'ai');
  assert.equal(pe.s.ai.fly,1);
  const lionDef=engine('VolcanoFlameLion');

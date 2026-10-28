@@ -28,7 +28,7 @@
             entity.hp = Math.max(0, entity.hp - damage);
             entity.alive = entity.hp > 0;
             if (engine.name(entity) === 'Serenity') {
-                if (entity.hp < 30) { if (service) setStatus(entity, 'bloodthirst', true); else entity.bloodthirst = true; }
+                if (entity.hp < 25) { if (service) setStatus(entity, 'bloodthirst', true); else entity.bloodthirst = true; }
             }
             if (damage <= 0 || opts.silent) return;
 
@@ -74,13 +74,13 @@
             entity.hp = Math.min(entity.maxHp, entity.hp + amount);
             const actual = entity.hp - before;
             if (engine.name(entity) === 'Serenity') {
-                if (before < 30 || entity.hp < 30) { if (service) setStatus(entity, 'bloodthirst', true); else entity.bloodthirst = true; }
+                if (before < 25 || entity.hp < 25) { if (service) setStatus(entity, 'bloodthirst', true); else entity.bloodthirst = true; }
             }
             const target = targetKey(engine, entity);
             const healTag = kind === 'wake' ? '苏醒' : kind === 'drain' ? '吸血' : kind === 'passive' ? '被动' : kind === 'lush' ? '茂盛' : kind === 'rest' ? '休憩' : '';
             const desc = (healTag ? `[${healTag}]` : '') + `❤️${actual}`;
             engine.emit(eventTypes.HEAL || 'heal', desc, null, { who: target, target, amount: actual, hpBefore: before, hpAfter: entity.hp, kind });
-            if (kind !== 'drain' && kind !== 'wake' && engine.name(entity) === 'Serenity' && !entity.bloodthirst && entity.hp >= 30) {
+            if (kind !== 'drain' && kind !== 'wake' && engine.name(entity) === 'Serenity' && !entity.bloodthirst) {
                 const passiveBefore = entity.hp;
                 entity.hp = Math.min(entity.maxHp, entity.hp + 1);
                 if (entity.hp > passiveBefore) engine.emit(eventTypes.HEAL || 'heal', '[被动]❤️1', null, { who: target, target, amount: entity.hp-passiveBefore, hpBefore: passiveBefore, hpAfter: entity.hp, kind: 'passive' });

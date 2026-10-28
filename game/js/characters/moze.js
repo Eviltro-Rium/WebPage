@@ -2,7 +2,7 @@
   const C = CharacterRegistry;
   C.register({
     name: 'Moze',
-    hp: 100,
+    hp: 80,
     type: '守护',
     passive: '可消耗守护减免攻击与反击伤害（不含Buff伤害）',
     init() { return {}; },

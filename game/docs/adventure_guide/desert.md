@@ -27,7 +27,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 沙暴蛮牛（DesertBison）
 
-### 生命值：24
+### 生命值：20
 
 ### 进攻：
 
@@ -40,7 +40,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +6（30）
+- **Stage 2**：生命上限 +5（25）
 - **Stage 3**：进攻 1/2/3 技能改为：造成 **3 × [流血]层数🗡️**
 - **Stage 4**：防御技能施加[流血]层数 +1
 
@@ -50,7 +50,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 噬沙巨虫（DesertSandworm）
 
-### 生命值：25
+### 生命值：20
 
 ### 进攻：
 
@@ -63,7 +63,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +5（30）
+- **Stage 2**：生命上限 +5（25）
 - **Stage 3**：进攻技能伤害 **+1**
 - **Stage 4**：防御额外恢复 **2❤️**
 
@@ -73,7 +73,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 日轮圣甲（DesertScarab）
 
-### 生命值：20
+### 生命值：18
 
 ### 进攻：
 
@@ -86,7 +86,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +5（25）
+- **Stage 2**：生命上限 +6（24）
 - **Stage 3**：进攻技能伤害 **+1**
 - **Stage 4**：防御格挡 +1
 
@@ -96,7 +96,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 赤砂蝎（DesertScorpion）
 
-### 生命值：18
+### 生命值：15
 
 ### 进攻：
 
@@ -109,7 +109,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +6（24）
+- **Stage 2**：生命上限 +5（20）
 - **Stage 3**：进攻技能伤害 **+1**
 - **Stage 4**：防御额外吸取1点❤️
 
@@ -119,7 +119,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 热砂蝰（DesertViper）
 
-### 生命值：27
+### 生命值：20
 
 ### 出现条件：从stage2有概率出现
 
@@ -134,7 +134,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-
+- **Stage 2**：生命上限 +5（25）
 - **Stage 3**：进攻 4/5/6 吸取 **+1**
 - **Stage 4**：防御施加[中毒]层数 +1
 
@@ -144,7 +144,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 腐风鹫（DesertVulture）
 
-### 生命值：24
+### 生命值：20
 
 ### 进攻：
 
@@ -157,7 +157,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +6（30）
+- **Stage 2**：生命上限 +5（25）
 - **Stage 3**：进攻技能伤害 **+1**
 - **Stage 4**：防御反击 +1
 
@@ -169,7 +169,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### 被动：防御时打出 0，怪物立刻脱离战斗，玩家不会获得任何奖励，房间标记为已探索。
 
-### 生命值：30
+### 生命值：25
 
 ### 进攻：
 
@@ -182,7 +182,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 4**：防御额外反击 1 🗡️
+- **Stage 4**：防御额外反击 1 🗡️，格挡 +1
 
 ### 掉落：投出1-2，掉落[沙盲]战利白卡；投出3-4，掉落[流沙]战利白卡
 
@@ -190,7 +190,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Elite · 漏斗蚁狮（DesertAntlion）
 
-### 生命值：30
+### 生命值：27
 
 ### 进攻：
 
@@ -211,7 +211,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Elite · 旱海驼（DesertCamel）
 
-### 生命值：32
+### 生命值：30
 
 ### 被动：先手攻击
 
@@ -234,9 +234,9 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## BOSS·鳄神索贝克（DesertSobek）
 
-### 生命值：35
+### 生命值：30
 
-### 被动[丰饶]：被击败时若持有至少 1 层[茂盛]，立即清除自身**所有buff**（含[茂盛]），生命恢复至 **15**（复活，可多次）；无[茂盛]时正常被击败。
+### 被动[丰饶]：被击败时若持有至少 1 层[茂盛]，立即清除自身**所有buff**（含[茂盛]），生命恢复至 **10**（复活，可多次）；无[茂盛]时正常被击败。
 
 ### 进攻：
 
@@ -251,7 +251,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +7（42）
+- **Stage 2**：生命上限 +10（40）
 - **Stage 3**：所有进攻伤害 **+1**。
 - **Stage 4**：如果防御牌被指定为🟢，额外获得[茂盛]
 
@@ -261,7 +261,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 ---
 ## BOSS·嘲风鬣狗（DesertHyena）
 
-### 生命值：40
+### 生命值：35
 
 ### 被动[嘲弄]：鬣狗**进入防御阶段**时获得嘲弄印记（图标 `buff_icons/mock.webp`），投 12 面骰选色（1–3🔴 / 4–6🟡 / 7–9🔵 / 10–12🟢），以**卡片底色**标出本阶段失效的进攻颜色；该色进攻全空（无伤害、无附带效果），鬣狗也无需防御。鬣狗**进入进攻阶段**时清除印记；下次再进入防御阶段重新判定。
 
@@ -277,7 +277,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 - 出 0 牌：反击 **6🗡️**，获得[暴击]，攻击方选择 1🃏弃掉
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +10（50）
+- **Stage 2**：生命上限 +5（40）
 - **Stage 3**：进攻技能牌被指定为🟡，自动变成不可防御（不消耗暴击）。
 - **Stage 4**：防御恢复 **1❤️**
 
@@ -287,7 +287,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## BOSS·法老（Pharaoh）
 
-### 生命值：50
+### 生命值：40
 
 ### 出现条件：仅在 **Stage 3/4** 刷出
 

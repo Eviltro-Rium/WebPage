@@ -12,24 +12,30 @@
   window.AdventureBossPool = window.AdventureBossPool || {};
   window.AdventureBossPool.ocean = window.AdventureBossPool.ocean || {
     '*': ['FrozenOrca', 'FrozenMammoth'],
-    2: ['FrozenOrca', 'FrozenMammoth', 'FrozenKraken'],
+    2: ['FrozenOrca', 'FrozenMammoth'],
     3: ['FrozenOrca', 'FrozenMammoth', 'FrozenKraken'],
     4: ['FrozenOrca', 'FrozenMammoth', 'FrozenKraken']
   };
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.ocean = {
-    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanOctopus'],
-    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm', 'FrozenOceanOctopus'],
-    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm', 'FrozenOceanOctopus'],
-    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed', 'FrozenOceanTubeWorm', 'FrozenOceanOctopus']
+    '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
+    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
+    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
+    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed']
+  };
+
+  window.AdventureElitePool = window.AdventureElitePool || {};
+  window.AdventureElitePool.ocean = {
+    3: ['FrozenOceanOctopus', 'FrozenOceanTubeWorm'],
+    4: ['FrozenOceanOctopus', 'FrozenOceanTubeWorm']
   };
 
   // ===== 霜爪猞猁 =====
   R.registerMonster({
     name: 'FrozenOceanLynx',
     kind: '霜爪猞猁',
-    hp: 20,
+    hp: 18,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/frozen_ocean_lynx.webp',
@@ -60,7 +66,7 @@
       return 2;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
+      2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         defendBlock: (card, incoming) => {
@@ -79,7 +85,7 @@
   R.registerMonster({
     name: 'FrozenWhale',
     kind: '破冰蓝鲸',
-    hp: 25,
+    hp: 20,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/frozen_ocean_whale.webp',
@@ -160,20 +166,11 @@
       return v >= 1 && v <= 3 ? 1 : 0;
     },
     stageMods: {
-      3: orig => ({
-        attackDamage(card, ctx) {
-          const base = orig.attackDamage(card, ctx);
-          const v = card.value;
-          if (v >= 1 && v <= 3) {
-            const bleed = ctx.playerBleed || 0;
-            return 3 * bleed; // 流血层数 × 3
-          }
-          return base;
-        }
-      }),
       4: orig => ({
         defendBlock(card, incoming) {
-          return 2;
+          const v = card && card.value;
+          if (!(v >= 1 && v <= 3)) return 0;
+          return Math.min(2, Math.max(0, Number(incoming) || 0));
         }
       })
     }
@@ -183,7 +180,7 @@
   R.registerMonster({
     name: 'FrozenOceanSeal',
     kind: '冰原海豹',
-    hp: 20,
+    hp: 18,
     attack: 3,
     defense: 1,
     icon: '../icons/npc_icons/frozen_ocean_seal.webp',
@@ -215,7 +212,7 @@
       return 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
+      2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({ attackFreeze: () => true }),
       4: orig => ({
         defendBlock: (card, incoming) => {
@@ -230,7 +227,7 @@
   R.registerMonster({
     name: 'FrozenPolarBear',
     kind: '雪崩熊',
-    hp: 25,
+    hp: 20,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/frozen_ocean_polar_bear.webp',
@@ -304,7 +301,7 @@
   R.registerBoss({
     name: 'FrozenOrca',
     kind: '破浪虎鲸',
-    hp: 40,
+    hp: 35,
     attack: 3,
     defense: 2,
     handLimit: 3,
@@ -352,7 +349,7 @@
       return (card && card.isNumberCard && card.value === 0) ? (incoming || 0) : 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 10 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         // 防御0：额外免疫所有伤害（仍反击相同伤害并清除负面状态）
@@ -365,14 +362,14 @@
   R.registerMonster({
     name: 'FrozenOceanSnowyOwl',
     kind: '月影雪鸮',
-    hp: 24,
+    hp: 20,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/frozen_ocean_snowy_owl.webp',
     attackDamage(card) {
       const v = card.value;
-      if (v >= 1 && v <= 3) return 2;
-      if (v >= 4 && v <= 6) return 4;
+      if (v >= 1 && v <= 3) return 3;
+      if (v >= 4 && v <= 6) return 5;
       return 0;
     },
     // 进攻1/2/3：获得1层飞翔
@@ -396,7 +393,7 @@
       return v >= 1 && v <= 3 ? 1 : 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 6 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         defendBlock: (card, incoming) => {
@@ -415,7 +412,7 @@
   R.registerMonster({
     name: 'FrozenOceanSamoyed',
     kind: '暖绒萨摩',
-    hp: 20,
+    hp: 18,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/frozen_ocean_samoyed.webp',
@@ -444,7 +441,7 @@
       return (v >= 1 && v <= 3) ? 1 : 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
+      2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({
         attackUnblockable(card) {
           const v = card && card.value;
@@ -482,9 +479,13 @@
     },
     attackBurn(card) {
       const v = card && card.value;
-      if (v >= 1 && v <= 3) return 1;
+      if (v >= 1 && v <= 3) return 2;
       if (v >= 4 && v <= 6) return 2;
       return 0;
+    },
+    attackScorch(card) {
+      const v = card && card.value;
+      return !!(card && card.isNumberCard && v >= 4 && v <= 6);
     },
     attackBurnSettle(card) {
       const v = card && card.value;
@@ -500,16 +501,11 @@
       return !!(card && card.isNumberCard && v >= 1 && v <= 3);
     },
     stageMods: {
-      3: orig => ({
-        attackBurn(card) {
-          const base = orig.attackBurn(card) || 0;
-          return base > 0 ? base + 1 : 0;
-        }
-      }),
       4: orig => ({
-        defendBlock(card, incoming) {
-          const base = orig.defendBlock(card, incoming);
-          return base > 0 ? Math.min(base + 1, Math.max(0, Number(incoming) || 0)) : 0;
+        defendCounter(card, incoming, defender, opponent) {
+          const v = card && card.value;
+          if (!(v >= 1 && v <= 3)) return 0;
+          return 2;
         }
       })
     }
@@ -522,13 +518,13 @@
   R.registerMonster({
     name: 'FrozenOceanOctopus',
     kind: '墨潮章鱼',
-    hp: 24,
+    hp: 25,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/frozen_ocean_octopus.webp',
     attackDamage(card) {
       const v = card && card.value;
-      if (v >= 4 && v <= 6) return 5;
+      if (v >= 4 && v <= 6) return 6;
       return 0;
     },
     // 进攻1/2/3：抽取玩家牌库判定（桥接层结算伤害与判定牌去向）
@@ -538,7 +534,7 @@
     },
     // 判定伤害基数：黑/白牌5点，普通颜色3点（stage3 通过 stageMods +1）
     attackOctopusJudgeDamage(isBlackWhite) {
-      return isBlackWhite ? 5 : 3;
+      return isBlackWhite ? 5 : 4;
     },
     // 进攻4/5/6：获得潜水（上限1）
     attackGainDiving(card) {
@@ -557,15 +553,10 @@
       return (v >= 1 && v <= 3) ? 1 : 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 6 }),
-      3: orig => ({
-        attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1,
-        attackOctopusJudgeDamage: (isBlackWhite) => orig.attackOctopusJudgeDamage(isBlackWhite) + 1
-      }),
       4: orig => ({
         defendHeal(card) {
           const v = card && card.value;
-          return (v >= 1 && v <= 3) ? 2 : 0;
+          return (v >= 1 && v <= 3) ? 3 : 0;
         }
       })
     }
@@ -580,8 +571,8 @@
   R.registerBoss({
     name: 'FrozenKraken',
     kind: '克拉肯',
-    minStage: 2,
-    hp: 50,
+    minStage: 3,
+    hp: 40,
     attack: 3,
     defense: 2,
     handLimit: 3,
@@ -608,8 +599,12 @@
       const v = card && card.value;
       return (card && card.isNumberCard && v === 0) ? 5 : 0;
     },
-    // 进攻4/5/6：施加1层失温
+    // 进攻4/5/6：施加1层失温，获得暴击
     attackHypothermia(card) {
+      const v = card && card.value;
+      return (v >= 4 && v <= 6) ? 1 : 0;
+    },
+    attackGainCrit(card) {
       const v = card && card.value;
       return (v >= 4 && v <= 6) ? 1 : 0;
     },
@@ -648,7 +643,7 @@
   R.registerBoss({
     name: 'FrozenMammoth',
     kind: '长牙猛犸',
-    hp: 45,
+    hp: 35,
     attack: 2,
     defense: 2,
     handLimit: 3,
@@ -657,7 +652,7 @@
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
       const v = card.value;
-      if (v >= 1 && v <= 3) return 3;
+      if (v >= 1 && v <= 3) return 2;
       if (v >= 4 && v <= 6) return 3 + Math.max(0, Number(ctx && ctx.playerBleed) || 0);
       return v === 0 ? 3 : 0;
     },
@@ -684,7 +679,7 @@
       return card.value === 0 ? 2 : card.value >= 1 && card.value <= 3 ? 1 : 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 10 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
         attackDamage(card, ctx) {
           const damage = orig.attackDamage(card, ctx);
@@ -692,9 +687,9 @@
         }
       }),
       4: orig => ({
-        defendBleed(card) {
-          const stacks = orig.defendBleed(card);
-          return stacks > 0 ? stacks + 1 : 0;
+        defendHeal(card) {
+          const v = card && card.value;
+          return (card && card.isNumberCard && (v === 0 || (v >= 1 && v <= 3))) ? 1 : 0;
         }
       })
     }

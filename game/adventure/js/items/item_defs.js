@@ -523,7 +523,7 @@
     name: 'NaturalShield',
     displayName: '自然之盾',
     kind: 'consumable',
-    description: '仅防御出牌阶段使用：格挡本次攻击至多5点伤害，获得1层守护',
+    description: '仅防御出牌阶段使用：格挡本次攻击至多5点伤害，不消耗守护层数',
     icon: ICON + 'nature_shield.webp',
     useScene: 'combat',
     price: 5,

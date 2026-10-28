@@ -46,22 +46,22 @@
     { key: 'thorns', name: '荆棘', type: '负面状态', icon: 'icons/buff_icons/thorns.webp', desc: '堆叠上限：1\n维持效果：持续\n每个进攻回合最多触发2次：释放进攻技能时立即受到1点独立伤害（不可用守护/飞翔减免）；图标右上角数字为本回合剩余触发次数；可被净化。' },
     { key: 'quicksand', name: '流沙', type: '负面状态', icon: 'icons/buff_icons/quicksand.webp', desc: '堆叠上限：1\n维持效果：持续\n拥有流沙的角色手牌上限减少1张；回合结束时按降低后的上限弃牌和补牌。不会立即弃掉现有手牌；可被普通净化、超级净化清除，清除后恢复原上限。' },
     { key: 'sandblind', name: '沙盲', type: '负面状态', icon: 'icons/buff_icons/sandblind.webp', desc: '堆叠上限：6\n维持效果：持续\n进攻触发技能时立刻投掷12面骰：若结果≤2×层数则本次技能落空（对手跳过防御）。判定通过层数-1，判定失败层数-2（不足则扣至0）。6层时必定失败；可被净化（每次净化减1层）。' },
-    { key: 'bloodthirst', name: '嗜血', type: '印记', icon: 'icons/buff_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：永久\nSerenity专属嗜血印记。生命低于30时获得；获得后即使恢复到30以上也不会移除，且不能被净化或超级净化清除。未获得印记时，正常恢复额外+1生命；嗜血后技能按嗜血规则结算。' },
+    { key: 'bloodthirst', name: '嗜血', type: '印记', icon: 'icons/buff_icons/blood_thirsty.webp', desc: '堆叠上限：1\n维持效果：永久\nSerenity专属嗜血印记。生命低于25时获得；同场战斗内恢复不会移除；冒险离房结算后生命高于25则清除。不能被净化或超级净化清除。未获得印记时，正常恢复额外+1生命；嗜血后技能按嗜血规则结算。' },
     { key: 'taunt', name: '嘲弄', type: '印记', icon: 'icons/buff_icons/mock.webp', desc: '堆叠上限：1\n维持效果：整段防御阶段\n嘲风鬣狗印记。进入防御阶段获得并用12面骰选色（1–3红/4–6黄/7–9蓝/10–12绿），以🔴🟡🔵🟢标出本阶段失效进攻色；该色进攻全空，鬣狗无需防御。鬣狗进入进攻阶段时清除。不可被净化。' }
   ];
 
   // 主角图鉴：仅展示玩家可选择的角色（排除冒险 NPC、领主专属和测试用角色）。
   const PLAYER_CHARS = [
-    { name: 'Ryan', hp: 70, type: '战士', passive: '进攻回合开始前恢复1点生命', avatar: 'avatars/Ryan.webp', color: '#14eb5f' },
-    { name: 'Leon', hp: 90, type: '骑士', passive: '免疫灼伤', avatar: 'avatars/Leon.webp', color: '#ee1111' },
-    { name: 'Chan', hp: 80, type: '谋士', passive: '进攻回合开始前抽1张牌', avatar: 'avatars/Chan.webp', color: '#1399f2' },
-    { name: 'Saiki', hp: 80, type: '猎手', passive: '进攻打出有效黄色牌时，防御结算后施加1层流血', avatar: 'avatars/Saiki.webp', color: '#9b59b6' },
-    { name: 'Blaze', hp: 85, type: '狂战', passive: '自身有灼伤时，1至7牌的攻击伤害+1', avatar: 'avatars/Blaze.webp', color: '#e67e22' },
-    { name: 'Serenity', hp: 75, type: '暗影', passive: '免疫冷冻；生命低于30获得不可净化的嗜血印记；离房时生命高于30则清除；无印记时恢复额外+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
-    { name: 'Moze', hp: 100, type: '守护', passive: '可消耗守护减免攻击与反击伤害（不含Buff伤害）', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
-    { name: 'Knight', hp: 80, type: '混沌', passive: '进攻前清除混沌；打出数字/白道具牌获得对应颜色混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
-    { name: 'Otto', hp: 100, type: '战士', passive: '进攻伤害>4时可消耗1层[暴击]使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
-    { name: 'Vixraps', hp: 85, type: '灼热', passive: '打出黑牌后须弃1张（无手牌可免），然后回复2生命并对对手施加1层灼伤', avatar: 'avatars/Vixraps.webp', color: '#c0392b' }
+    { name: 'Ryan', hp: 50, type: '战士', passive: '进攻回合开始前恢复1点生命', avatar: 'avatars/Ryan.webp', color: '#14eb5f' },
+    { name: 'Leon', hp: 70, type: '骑士', passive: '免疫灼伤', avatar: 'avatars/Leon.webp', color: '#ee1111' },
+    { name: 'Chan', hp: 60, type: '谋士', passive: '进攻回合开始前抽1张牌', avatar: 'avatars/Chan.webp', color: '#1399f2' },
+    { name: 'Saiki', hp: 60, type: '猎手', passive: '进攻打出有效黄色牌时，防御结算后施加1层流血', avatar: 'avatars/Saiki.webp', color: '#9b59b6' },
+    { name: 'Blaze', hp: 65, type: '狂战', passive: '自身有灼伤时，1至7牌的攻击伤害+1', avatar: 'avatars/Blaze.webp', color: '#e67e22' },
+    { name: 'Serenity', hp: 50, type: '暗影', passive: '免疫冷冻；生命低于25获得不可净化的嗜血印记；离房时生命高于25则清除；无印记时恢复额外+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
+    { name: 'Moze', hp: 80, type: '守护', passive: '可消耗守护减免攻击与反击伤害（不含Buff伤害）', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
+    { name: 'Knight', hp: 70, type: '混沌', passive: '进攻前清除混沌；打出数字/白道具牌获得对应颜色混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
+    { name: 'Otto', hp: 80, type: '战士', passive: '进攻伤害>4时可消耗1层[暴击]使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
+    { name: 'Vixraps', hp: 65, type: '灼热', passive: '打出黑牌后须弃1张（无手牌可免），然后回复2生命并对对手施加1层灼伤', avatar: 'avatars/Vixraps.webp', color: '#c0392b' }
   ];
 
   const PLAYER_SKILL_GRID = [

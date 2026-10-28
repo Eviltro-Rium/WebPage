@@ -34,7 +34,9 @@ const sources = [
   'adventure/js/engine/combat_result.js',
   'adventure/js/monsters/castle.js',
   'adventure/js/monsters/desert.js',
-  'adventure/js/monsters/forest.js'
+  'adventure/js/monsters/forest.js',
+  'adventure/js/monsters/ocean.js',
+  'adventure/js/monsters/volcano.js'
 ];
 
 for (const relative of sources) {
@@ -164,17 +166,26 @@ test('forest normal rooms exclude elite monsters and elite encounters start at S
   }
 });
 
-test('all eighteen late castle/desert/forest CSVs and embedded maps have two reachable elite rooms', () => {
+test('all maps have enough reachable normal and elite rooms and match embedded data', () => {
   const maps = {window:{}};
   vm.runInNewContext(fs.readFileSync(path.join(gameRoot,'adventure/js/map/map_data.js'),'utf8'), maps);
-  for (const scene of ['castle','desert','forest']) for (const stage of [3,4]) for (const variant of [1,2,3]) {
+  for (const scene of ['castle','desert','forest','ocean','volcano']) for (const stage of [1,2,3,4]) for (const variant of [1,2,3]) {
     const name = `stage_0${stage}_${scene}_${variant}`;
     const csv = fs.readFileSync(path.join(gameRoot,'adventure/maps',name+'.csv'),'utf8').replace(/\r\n/g,'\n');
-    assert.equal(maps.window.AdventureMapData[name], csv);
+    assert.equal(maps.window.AdventureMapData[name], csv, name + ' embedded data');
     const grid = csv.trim().split('\n').filter(line=>!line.startsWith('#')).map(line=>line.split(',').map(Number));
-    const elites = []; let start;
-    grid.forEach((row,r)=>row.forEach((code,c)=>{if(code===8)elites.push([r,c]);if(code===0)start=[r,c];}));
-    assert.equal(elites.length,2,name);
+    const rooms = []; let start;
+    grid.forEach((row,r)=>row.forEach((code,c)=>{if(code!==-1)rooms.push([r,c,code]);if(code===0)start=[r,c];}));
+    assert.ok(start, name + ' start');
+    assert.ok(rooms.filter(([, , code])=>code===1).length >= 4, name + ' normal rooms');
+    const elites = rooms.filter(([, , code])=>code===8 || code===9);
+    if (stage < 3) assert.equal(elites.length, 0, name + ' early elite rooms');
+    else {
+      assert.ok(elites.length >= 2, name + ' elite rooms');
+      const pool = context.AdventureElitePool[scene]?.[stage];
+      assert.ok(pool?.length, name + ' elite pool');
+      for (const monster of pool) assert.ok(context.AdventureRegistry.getMonster(monster), name + ' missing elite ' + monster);
+    }
     const visited = new Set([start.join(',')]), queue = [start];
     for (let i=0;i<queue.length;i++) {
       const [r,c]=queue[i];
@@ -183,7 +194,7 @@ test('all eighteen late castle/desert/forest CSVs and embedded maps have two rea
         if(grid[nr] && grid[nr][nc] != null && grid[nr][nc] !== -1 && !visited.has(key)){visited.add(key);queue.push([nr,nc]);}
       }
     }
-    for (const pos of elites) assert.ok(visited.has(pos.join(',')),name+' elite reachable');
+    for (const [r,c] of rooms) assert.ok(visited.has([r,c].join(',')), name + ' unreachable room');
   }
 });
 

@@ -25,7 +25,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 藤噪顽猴（ForestMonkey）
 
-### 生命值：18
+### 生命值：15
 
 ### 进攻：
 
@@ -40,7 +40,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +6（24）
+- **Stage 2**：生命上限 +5（20）
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：防御恢复 +1
 
@@ -50,7 +50,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 翠影鹿（ForestDeer）
 
-### 生命值：20
+### 生命值：18
 
 ### 被动：先手攻击
 
@@ -65,7 +65,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +5（25）
+- **Stage 2**：生命上限 +6（24）
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：格挡 +1
 
@@ -75,7 +75,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 血沼蛭（ForestLeech）
 
-### 生命值：18
+### 生命值：15
 
 ### 进攻：
 
@@ -88,7 +88,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +5（23）
+- **Stage 2**：生命上限 +5（20）
 - **Stage 3**：进攻伤害 / 吸血 +1
 - **Stage 4**：防御恢复 +1
 
@@ -98,7 +98,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 暗潭鳄（ForestCrocodile）
 
-### 生命值：20
+### 生命值：18
 
 ### 进攻：
 
@@ -111,7 +111,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +5（25）
+- **Stage 2**：生命上限 +6（24）
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：防御额外施加 1 层[流血]
 
@@ -121,7 +121,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## 斑甲瓢虫（ForestLadybug）
 
-### 生命值：18
+### 生命值：15
 
 ### 被动：开局获得1层[茂盛]
 
@@ -136,7 +136,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +5（23）
+- **Stage 2**：生命上限 +5（20）
 - **Stage 3**：所有伤害 +1
 - **Stage 4**：格挡 +1
 
@@ -168,7 +168,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Elite · 箭毒蛙（ForestDendrobatidFrog）
 
-### 生命值：30
+### 生命值：25
 
 ### 进攻：
 
@@ -189,7 +189,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Elite · 静河水豚（ForestCapybara）
 
-### 生命值：32
+### 生命值：27
 
 ### 被动：手牌上限为 3 张
 
@@ -212,7 +212,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Elite · 食人鱼（ForestPiranha）
 
-### 生命值：30
+### 生命值：25
 
 ### 进攻：
 
@@ -233,7 +233,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Boss · 竹坞熊猫（ForestPanda）
 
-### 生命值：45
+### 生命值：35
 
 ### 进攻：
 
@@ -248,7 +248,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +10（55）
+- **Stage 2**：生命上限 +5（40）
 - **Stage 3**：进攻伤害 +1
 - **Stage 4**：格挡 +1
 
@@ -258,7 +258,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Boss · 缠枝巨蟒（ForestPython）
 
-### 生命值：35
+### 生命值：30
 
 ### 进攻：
 
@@ -273,7 +273,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### Stage 强化：
 
-- **Stage 2**：生命上限 +10（45）
+- **Stage 2**：生命上限 +10（40）
 - **Stage 3**：进攻 1/2/3/0 伤害 **+1**（4/5/6 倍率不变）
 - **Stage 4**：防御额外恢复 1 ❤️
 
@@ -283,7 +283,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ## Boss · 树精（ForestDryad）
 
-### 生命值：50　　手牌上限：3
+### 生命值：40
 
 ### 进攻：
 

@@ -2,7 +2,7 @@
   const C = CharacterRegistry;
   C.register({
     name: 'Blaze',
-    hp: 85,
+    hp: 65,
     type: '狂战',
     passive: '自身有灼伤时，1至7牌的攻击伤害+1',
     init() { return {}; },

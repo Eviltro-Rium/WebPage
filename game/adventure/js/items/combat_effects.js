@@ -170,19 +170,11 @@
   });
 
   register('naturalShield', (eng, def, ctx) => {
-    const player = ctx.player;
     const damage = Math.max(0, Number(eng.s.pendingAttack && eng.s.pendingAttack.damage) || 0);
     const blocked = Math.min(def.shieldAmount || 5, damage);
     if (eng.s.pendingAttack) eng.s.pendingAttack.damage = damage - blocked;
     eng.s.pendingDefenseDamage = Math.max(0, damage - blocked);
-    const before = player.guard || 0;
-    const status = window.FurryGame && window.FurryGame.StatusService;
-    if (status) status.add(player, 'guard', 1);
-    else player.guard = Math.min(5, before + 1);
-    if (player.guard > before) {
-      eng.emit('buff', '+1[守护]', null, { who: 'player', target: 'player', kind: 'guard', stacks: player.guard });
-    }
-    return { ok: true, message: '格挡本次攻击' + blocked + '点伤害，获得1层守护' };
+    return { ok: true, message: '格挡本次攻击' + blocked + '点伤害' };
   });
 
   register('heal', (eng, def, ctx) => {

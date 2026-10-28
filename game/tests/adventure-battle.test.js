@@ -655,7 +655,7 @@ test('Otto 6 challenge defense continues after an NPC magic bridge without repla
   assert.ok(engine.events.some(event => event.type === 'aiDefend' && event.card && event.card.value === 2));
 });
 
-test('Otto 7 keeps HP/10 in challenge rooms and makes small hits unblockable', () => {
+test('Otto 7 keeps HP/8 in challenge rooms and makes small hits unblockable', () => {
   const otto = CharacterRegistry.get('Otto');
   const emitted = [];
   const hurtCalls = [];
@@ -665,12 +665,12 @@ test('Otto 7 keeps HP/10 in challenge rooms and makes small hits unblockable', (
     hurt(...args) { hurtCalls.push(args); }
   };
 
-  const fullHealth = { hp: 100, crit: 0 };
+  const fullHealth = { hp: 80, crit: 0 };
   const normal = otto.effect(eng, 7, number(7), fullHealth, {}, 'player', helpers);
   assert.equal(normal.d, 10);
   assert.equal(normal.unblock, false);
 
-  const lowHealth = { hp: 30, crit: 0 };
+  const lowHealth = { hp: 24, crit: 0 };
   const small = otto.effect(eng, 7, number(7), lowHealth, {}, 'player', helpers);
   assert.equal(small.d, 3);
   assert.equal(small.unblock, true);
@@ -681,12 +681,12 @@ test('Otto 7 keeps HP/10 in challenge rooms and makes small hits unblockable', (
     { s: { is1v2: true, isAdventure: false }, emit() {} },
     7,
     number(7),
-    { hp: 200, crit: 0 },
+    { hp: 160, crit: 0 },
     {},
     'player',
     helpers
   );
-  assert.equal(classicDuo.d, 10, 'classic 1v2 doubles HP and scales Otto 7 by /20');
+  assert.equal(classicDuo.d, 10, 'classic 1v2 doubles HP and scales Otto 7 by /16');
 });
 
 test('restored Knight attack resumes the surviving snowy owl defense after the octopus is eliminated', () => {
@@ -886,7 +886,7 @@ test('lord mode NPC uses guard after defending in 1v2', () => {
     playerPile: { deck: [], hand: [number(4, 'RED')], discard: [], handLimit: 5 }
   });
   engine.s.ai.guard = 2;
-  engine.s.ai.hp = 25;
+  engine.s.ai.hp = 20;
   engine.s.attackTarget = 'ai';
   engine.pendingSettlement = { kind: 'PLAYER_ATTACK', damage: 3, bleed: 0, afterEventId: 0 };
   engine.events = [];
@@ -894,7 +894,7 @@ test('lord mode NPC uses guard after defending in 1v2', () => {
   engine.acknowledgeEvents(0);
 
   assert.equal(engine.s.ai.guard, 0);
-  assert.equal(engine.s.ai.hp, 24);
+  assert.equal(engine.s.ai.hp, 19);
 });
 
 test('FlameFist triggers for Moze 2 defense in adventure 1v2', () => {
@@ -1227,7 +1227,7 @@ test('boss room equally picks castle bosses and locks the name', () => {
 
 test('CastleEagle attack and defend skills', () => {
   const engine = startVs('CastleEagle');
-  assert.equal(engine.s.ai.maxHp, 35);
+  assert.equal(engine.s.ai.maxHp, 30);
 
   engine.s.player.bleed = 0;
   engine.turnStart('ai');
@@ -1782,7 +1782,7 @@ for (const opponent of ['FrozenKraken', 'CastleWolf']) {
         player: 'Vixraps', opponent, testMode, stage: 2,
         playerPile: { deck: [number(4)], hand: [number(2)], discard: [], handLimit: 5 }
       });
-      if (opponent === 'FrozenKraken') assert.equal(engine.s.ai.maxHp, 50);
+      if (opponent === 'FrozenKraken') assert.equal(engine.s.ai.maxHp, 40);
       engine.later = () => {};
       engine.applyHypnosis(engine.s.ai);
       assert.ok(engine.s.ai.hypnosis, 'application keeps hypnosis during the first defense');
@@ -2156,7 +2156,7 @@ for (const zeroKind of ['number', 'trophy']) {
       assert.equal(engine.s.ai.hp,15,'opponent I receives the AOE exactly once');
       assert.equal(engine.s.ai2.hp,15,'opponent II receives the AOE exactly once');
       assert.equal(engine.s.ai.burn,2); assert.equal(engine.s.ai2.burn,2);
-      assert.equal(engine.s.player.hp,85,'the caster is excluded');
+      assert.equal(engine.s.player.hp,65,'the caster is excluded');
     });
   }
 }
@@ -2355,3 +2355,81 @@ test('a defeated desert elite rolls twice and face ten grants DrawTwo each time'
   engine._resolveAdventureTrophyDrop('ai');
   assert.equal(engine.s.trophyRolls.length,2,'drop cannot be repeated');
 });
+
+for(const challenge of [false,true])test('reserve same color after trophy can play in '+(challenge?'challenge':'normal'),()=>{
+ const engine=new AdventureBattleEngine();engine.later=()=>{};
+ const trophy=context.AdventureDeck.trophyWhite('BurnTrophy');
+ const red=number(2,'RED');
+ const config={player:'Ryan',stage:1,playerPile:{deck:[],hand:[trophy,red],discard:[],handLimit:5},discardTop:number(1,'RED')};
+ if(challenge)engine.startAdventure1v2({...config,opponent1:'CastleWolf',opponent2:'CastleWolf'});else engine.startAdventure({...config,opponent:'CastleWolf'});
+ engine._adventureEngine={s:{consumables:['Magazine'],accessories:[]},snapshot(){return {consumables:this.s.consumables.map(name=>({name})),accessories:[]};},hasAccessory(){return false;}};
+ engine.s.phase='PLAYER_PLAY';engine.s.busy=false;engine.events=[];
+ engine.dispatch('useAdventureCombatItem',{itemIndex:0});engine.dispatch('selectCard',{index:1});engine.dispatch('doConfirmDiscard');
+ engine.s.selectedCard=0;engine.dispatch('doPlay');
+ assert.equal(engine.s.discardTop.chosenColor,'RED');assert.equal(engine.state().legalReserve[0],true);
+ engine.dispatch('selectReserveCard',{index:0});engine.dispatch('doPlay');
+ assert.equal(engine.s.reserveCards.length,0);assert.equal(engine.s.atkCard.value,2);
+});
+
+for(const challenge of [false,true]) for(const color of ['green','purple']) {
+ test(`VolcanoObsidianBoar uses ${color} magic before white 7 in ${challenge?'challenge':'normal'} combat`,()=>{
+  const engine=new AdventureBattleEngine();engine.later=()=>{};
+  const cfg={player:'Ryan',stage:1,playerPile:{deck:[],hand:[],discard:[],handLimit:5},discardTop:number(1,'RED')};
+  if(challenge)engine.startAdventure1v2({...cfg,opponent1:'CastleFox',opponent2:'VolcanoObsidianBoar'});else engine.startAdventure({...cfg,opponent:'VolcanoObsidianBoar'});
+  const key=challenge?'ai2':'ai';
+  const magic=context.AdventureDeck.makeNpcDeck().find(c=>c.magicColor===color);
+  const seven=number(7,'WHITE',true);
+  engine.h[key].splice(0,engine.h[key].length,seven,magic);
+  const chosen=challenge?engine._chooseAIPlay1v2(key,engine.s.discardTop):engine.chooseAIPlay(engine.s.discardTop);
+  assert.equal(chosen,magic);
+ });
+}
+
+test('reserve remains playable after an unblockable attack ends and a matching trophy is on top',()=>{
+ const engine=magazineBattle([number(2,'RED')]);storeMagazine(engine);
+ const top=context.AdventureDeck.trophyWhite('BurnTrophy');top.chosenColor='RED';engine.s.discardTop=top;
+ engine.s.phase='PLAYER_PLAY';engine.s.busy=false;engine.s.unblockDefend=true;
+ assert.equal(engine.state().legalReserve[0],true);
+ engine.dispatch('selectReserveCard',{index:0});
+ engine.dispatch('doPlay');
+ assert.equal(engine.s.reserveCards.length,0);assert.equal(engine.s.atkCard.value,2);
+});
+
+test('reserve remains unavailable while actually facing unblockable defense',()=>{
+ const engine=magazineBattle([number(2,'RED')]);storeMagazine(engine);
+ engine.s.phase='PLAYER_DEFEND';engine.s.busy=false;engine.s.unblockDefend=true;
+ assert.throws(()=>engine.dispatch('selectReserveCard',{index:0}),/不能选择储备牌/);
+});
+
+test('VolcanoObsidianBoar actually plays green magic before seven and continues its turn',()=>{
+ const e=new AdventureBattleEngine();const timers=[];e.later=fn=>timers.push(fn);
+ e.startAdventure({player:'Ryan',opponent:'VolcanoObsidianBoar',stage:1,
+  playerPile:{deck:[],hand:[],discard:[],handLimit:5},discardTop:number(1,'RED')});
+ const seven=number(7,'WHITE',true),magic=context.AdventureDeck.makeNpcDeck().find(c=>c.magicColor==='green');
+ e.h.ai.splice(0,e.h.ai.length,seven,magic);e.s.phase='AI_TURN';e.s.aiTurnStarted=true;e.s.aiHasPlayed=false;e.events=[];
+ e.aiTurn();
+ assert.equal(e.s.atkCard.magicColor,'green');assert.ok(e.s.pendingAIBridge);
+ e.acknowledgeEvents(e.ver);
+ assert.ok(timers.length);timers.shift()();
+ assert.equal(e.s.atkCard.value,7);
+});
+
+for (const incoming of [3, 7]) {
+  test(`NaturalShield blocks up to five of ${incoming} damage without granting or spending guard`, () => {
+    const engine = start();
+    engine._adventureEngine = {
+      s:{consumables:['NaturalShield'],accessories:[]},
+      snapshot() { return {consumables:this.s.consumables.map(name => ({name})),accessories:[]}; },
+      hasAccessory() { return false; }
+    };
+    engine.s.phase='PLAYER_DEFEND';engine.s.busy=false;
+    engine.s.player.guard=2;engine.s.pendingAttack={damage:incoming};engine.s.pendingDefenseDamage=incoming;
+    engine.events=[];
+    engine.useAdventureCombatItem(0);
+    assert.equal(engine.s.pendingAttack.damage,Math.max(0,incoming-5));
+    assert.equal(engine.s.pendingDefenseDamage,Math.max(0,incoming-5));
+    assert.equal(engine.s.player.guard,2);
+    assert.equal(engine._adventureEngine.s.consumables.length,0);
+    assert.ok(!engine.events.some(event=>event.type==='buff'&&event.kind==='guard'));
+  });
+}
