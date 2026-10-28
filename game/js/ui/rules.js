@@ -160,23 +160,23 @@
     let thumbSlots = [];
     const npcCard = card => Object.assign(card, { npcCard: true });
     const npcRows = [
-      ['白 1 / 2 / 3', '各 4 张', '各 4 张', '触发怪物对应的进攻、防御技能。', [1,2,3].map(v => npcCard(num('WHITE',v,true)))],
-      ['白 4 / 5 / 6', '各 2 张', '各 2 张', '一般用于进攻；特殊怪物可用高点数牌防御，以怪物技能为准。', [4,5,6].map(v => npcCard(num('WHITE',v,true)))],
-      ['白 7', '2 张', '2 张', '轮空牌，没有进攻或防御效果。', [npcCard(num('WHITE',7,true))]],
-      ['白 0', '无', '2 张', 'Boss 专属数字牌，触发对应的 0 技能。', [npcCard(num('WHITE',0,true))]],
-      ['紫魔法', '1 张', '1 张', '恢复 3 点生命（Boss 为 5 点），清除对手可清除的正面状态。', [npcCard(item('WHITE','magic'))]],
-      ['绿魔法', '1 张', '1 张', '恢复 3 点生命（Boss 为 5 点），清除自身可清除的负面状态。', [npcCard(item('WHITE','greenMagic'))]]
+      ['白 1 / 2 / 3', '各 4 张', '触发怪物对应的进攻、防御技能。', [1,2,3].map(v => npcCard(num('WHITE',v,true)))],
+      ['白 4 / 5 / 6', '各 2 张', '一般用于进攻；特殊怪物可用高点数牌防御，以怪物技能为准。', [4,5,6].map(v => npcCard(num('WHITE',v,true)))],
+      ['白 7', '2 张', '轮空牌，没有进攻或防御效果。', [npcCard(num('WHITE',7,true))]],
+      ['白 0', '1 张', '普通怪物打出后没有攻防效果；Boss 触发对应的 0 技能。', [npcCard(num('WHITE',0,true))]],
+      ['紫魔法', '1 张', '恢复 3 点生命（Boss 为 5 点），清除对手可清除的正面状态。', [npcCard(item('WHITE','magic'))]],
+      ['绿魔法', '1 张', '恢复 3 点生命（Boss 为 5 点），清除自身可清除的负面状态。', [npcCard(item('WHITE','greenMagic'))]]
     ];
-    html += '<section class="rules-section"><h2 class="rules-section-title">冒险怪物卡牌</h2><p class="rules-table-note">普通怪物牌组共 22 张，Boss 共 24 张。怪物牌面带紫色角标与骷髅标识。挑战房两个怪物共享怪物牌库与弃牌库，与玩家牌库完全隔离。</p>';
-    html += '<div class="rules-table-wrap" role="region" aria-label="怪物卡牌介绍" tabindex="0"><table class="rules-deck-table rules-npc-table"><thead><tr><th scope="col">卡牌</th><th scope="col">普通怪物</th><th scope="col">Boss</th><th scope="col">效果</th></tr></thead><tbody>';
-    for (const [label, normal, boss, effect, samples] of npcRows) {
+    html += '<section class="rules-section"><h2 class="rules-section-title">冒险怪物卡牌</h2><p class="rules-table-note">怪物牌组共 23 张，普通怪物与 Boss 使用相同的牌组构成。怪物牌面带紫色角标与骷髅标识。挑战房两个怪物共享怪物牌库与弃牌库，与玩家牌库完全隔离。</p>';
+    html += '<div class="rules-table-wrap" role="region" aria-label="怪物卡牌介绍" tabindex="0"><table class="rules-deck-table rules-npc-table"><thead><tr><th scope="col">卡牌</th><th scope="col">数量</th><th scope="col">效果</th></tr></thead><tbody>';
+    for (const [label, count, effect, samples] of npcRows) {
       let thumbs = '<div class="rule-card-row">';
       for (const card of samples) {
         const id = thumbPlaceholder();
         thumbs += '<span id="' + id + '"></span>';
         thumbSlots.push({ id, card });
       }
-      html += '<tr><th scope="row">' + label + thumbs + '</div></th><td>' + normal + '</td><td>' + boss + '</td><td>' + effect + '</td></tr>';
+      html += '<tr><th scope="row">' + label + thumbs + '</div></th><td>' + count + '</td><td>' + effect + '</td></tr>';
     }
     html += '</tbody></table></div><p class="rules-table-note">怪物牌库少于3张时回收怪物弃牌；战斗结束后全部怪物手牌与弃牌回收。挑战房一个怪物倒下时，其手牌进入怪物弃牌库，不改变当前弃牌库顶。</p></section>';
     for (const cat of CARD_DATA) {

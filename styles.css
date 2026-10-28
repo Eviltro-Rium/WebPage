@@ -599,6 +599,74 @@ main {
   text-shadow: 0 1px 8px rgba(20, 50, 80, 0.28);
 }
 
+/* Large, static lettering keeps the homepage introduction crisp and light. */
+body.page-home .hero-lettering {
+  --lettering-ink: #123e43;
+  --lettering-edge: #e4fff3;
+  --lettering-highlight: #7ee3bd;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12em;
+  margin: 1.75rem auto 2.75rem;
+  color: var(--lettering-ink);
+  font-family: "ZCOOL KuaiLe", "Yuanti SC", "Hiragino Maru Gothic ProN", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: clamp(2.75rem, 10.5vw, 5.25rem);
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: 0.025em;
+}
+
+.hero-lettering__intro {
+  font-size: 0.34em;
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  padding-left: 0.24em;
+  margin-bottom: 0.25em;
+}
+
+.hero-lettering__focus {
+  position: relative;
+  isolation: isolate;
+  display: inline-block;
+  padding: 0 0.12em 0.08em;
+  white-space: nowrap;
+  transform: rotate(-3deg);
+  text-shadow: 0.035em 0.035em 0 var(--lettering-edge), 0.065em 0.065em 0 rgba(18, 62, 67, 0.18);
+}
+
+.hero-lettering__focus::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: auto 0 0.12em;
+  height: 0.3em;
+  border-radius: 50% 30% 45% 25%;
+  background: var(--lettering-highlight);
+  transform: rotate(1deg);
+}
+
+.hero-lettering__ending {
+  display: flex;
+  align-items: center;
+  gap: 0.12em;
+  font-size: 0.57em;
+  margin-top: 0.15em;
+}
+
+.hero-lettering__panda {
+  display: inline-block;
+  font-size: 1.15em;
+  font-weight: 400;
+  transform: rotate(9deg);
+}
+
+html[data-theme="dark"] body.page-home .hero-lettering {
+  --lettering-ink: #edfff6;
+  --lettering-edge: #1b5255;
+  --lettering-highlight: #237e70;
+}
+
 .hero-actions {
   display: flex;
   flex-wrap: wrap;

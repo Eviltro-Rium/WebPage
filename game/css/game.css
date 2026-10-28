@@ -2321,9 +2321,10 @@ body.combat-sheet-open::after {
 .rules-deck-table td { width: 28%; }
 .rules-deck-table tbody tr:nth-child(even) { background: rgba(186,230,253,.035); }
 .rules-table-note { margin: 10px 0; font-size: .8rem; line-height: 1.65; color: var(--text-muted); }
-.rules-npc-table tbody th { width: 30%; }
+.rules-npc-table { min-width: 560px; }
+.rules-npc-table tbody th { width: 35%; }
 .rules-npc-table td { width: auto; }
-.rules-npc-table td:last-child { width: 40%; }
+.rules-npc-table td:last-child { width: 50%; }
 .rules-npc-table .rule-card-row { justify-content: flex-start; margin-top: 8px; }
 .rules-list {
     display: flex;
