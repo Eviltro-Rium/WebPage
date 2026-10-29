@@ -75,9 +75,8 @@
     return e.state();
   }
 
-  function applyFace(e, desc, extra, rawValue, chosen, label) {
+  function applyFace(e, event, desc, extra, rawValue, chosen, label) {
     e.s.diceRoll.value = chosen;
-    const event = e.events[e.events.length - 1];
     if (event) {
       event.value = chosen;
       event.originalValue = rawValue;
@@ -108,6 +107,7 @@
     if (!tx) return originalRoll.call(this,desc,extra);
     const index = tx.index++;
     const value = originalRoll.call(this,desc,extra);
+    const diceEvent = this.events[this.events.length - 1];
     let decision = tx.decisions[index] || null;
     if (!decision) decision = tx.decisions[index] = {};
 
@@ -124,7 +124,7 @@
       const items = inventory(this), itemIndex = items.findIndex(item => itemName(item) === 'DiceController');
       if (itemIndex < 0 || this.s.player.blind) throw new Error('遥控骰子不可用');
       items.splice(itemIndex, 1);
-      face = applyFace(this, desc, extra, value, decision.remote.value, '遥控骰子');
+      face = applyFace(this, diceEvent, desc, extra, value, decision.remote.value, '遥控骰子');
     }
 
     // --- magician stage (±1 costs 3 HP) ---
@@ -146,7 +146,7 @@
           this.emit('desc', '魔术师：消耗3点生命');
           decision.magician.hpPaid = true;
         }
-        face = applyFace(this, desc, extra, value, next, '魔术师');
+        face = applyFace(this, diceEvent, desc, extra, value, next, '魔术师');
       }
     }
 

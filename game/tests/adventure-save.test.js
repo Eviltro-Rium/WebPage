@@ -55,6 +55,7 @@ const SOURCES = [
   'adventure/js/monsters/desert.js',
   'adventure/js/monsters/volcano.js',
   'adventure/js/content/boss.js',
+  'adventure/js/monsters/corrupted_ryan.js',
   'adventure/js/content/monster_registry.js',
   'adventure/js/items/item_defs.js',
   'adventure/js/items/map_effects.js',
@@ -482,11 +483,16 @@ test('stage selection supports all scenes and map variants before exclusions', (
  assert.throws(()=>ctx.AdventureUI.selectStageMap(0),/1–4/);
 });
 
-test('final Boss victory is terminal and persists across refresh without another encounter', () => {
+test('final enemy victory is terminal and persists across refresh without another encounter', () => {
  const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]);
  eng.s.stage=4;eng.s.scene='ocean';eng.mapName='stage_04_ocean_1';
  eng.move(0,1);eng.s.combat={enemy:'FrozenMammoth',kind:'boss'};
  eng.s.activeCombat={enemy:'FrozenMammoth'};eng.s.pendingCombatReward={stage:'basic'};
+ eng.onCombatEnd('win');
+ assert.equal(eng.s.phase,ctx.AdventurePhase.COMBAT_SETTLE);
+ assert.equal(eng.completeAdventure(),false);
+ assert.equal(eng.awakenFinalEnemy(),true);
+ assert.equal(eng.s.combat.enemy.name,'CorruptedRyan');
  eng.onCombatEnd('win');
  assert.equal(eng.s.phase,ctx.AdventurePhase.CLEAR);
  assert.equal(eng.s.activeCombat,null);assert.equal(eng.s.combat,null);
@@ -504,14 +510,16 @@ test('final Boss victory is terminal and persists across refresh without another
  assert.equal(restored.s.phase,ctx.AdventurePhase.CLEAR);
 });
 
-test('advancing after stage 4 completes the run without loading another map', async () => {
+test('advancing after stage 4 awakens the final enemy without loading another map', async () => {
  const ctx=createContext();loadSources(ctx);const eng=mapRun(ctx,[[0,2]]),ui=mapUI(ctx,eng);
  eng.s.stage=4;eng.move(0,1);eng.currentRoom().cleared=true;
  ctx.AdventureMap.fromCsvUrl=()=>{throw Error('no map should load after stage 4');};
+ let starts=0;ui._startBridgeCombat=async()=>{starts++;return true;};
  await ui._advanceStage();
- assert.equal(eng.s.stage,4);assert.equal(eng.s.phase,ctx.AdventurePhase.CLEAR);
+ assert.equal(eng.s.stage,4);assert.equal(eng.s.finalEnemyAwakened,true);
+ assert.equal(eng.s.combat.enemy.name,'CorruptedRyan');assert.equal(starts,1);
  assert.equal(ui._advancingStage,false);
- assert.equal(ctx.AdventureSave.load().phase,ctx.AdventurePhase.CLEAR);
+ assert.equal(ctx.AdventureSave.load().activeCombat.enemy,'CorruptedRyan');
 });
 
 test('stage 4 non-Boss victories still use normal rewards', () => {

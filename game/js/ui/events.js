@@ -673,7 +673,7 @@ async _playEvents(events, fast = false) {
             const rollLabel = rollCount > 1 && rollIndex > 0 ? ' · 第' + rollIndex + '/' + rollCount + '次' : '';
             const desc = (evt.desc || ('12面骰：' + value)) + rollLabel;
             const pendingControl = !!(evt.awaitControl || !isLoot && this.state && this.state.pendingDiceControl);
-            this._showZoneDesc('reveal-desc', isLoot ? '' : '12面骰投掷中…' + rollLabel);
+            this._showZoneDesc('reveal-desc', isLoot ? '' : evt.controlled ? desc : '12面骰投掷中…' + rollLabel);
             let lootOverlay = null;
             if (isLoot) {
                 this._trophyControlEvent = evt;
@@ -682,7 +682,14 @@ async _playEvents(events, fast = false) {
             // Open remote-dice sheet ASAP; do not wait for the full tumble.
             if (pendingControl && typeof this._renderDiceControl === 'function') this._renderDiceControl();
             if (isLoot) lootOverlay = document.getElementById('adv-settle-overlay') || lootOverlay;
-            if (typeof this._playD12Animation === 'function') {
+            if (evt.controlled) {
+                // Editing a face changes this roll's result; it is not a new roll.
+                const target = isLoot && lootOverlay ? lootOverlay.querySelector('.trophy-settle-die') : document.getElementById('reveal-cards');
+                if (target) {
+                    target.innerHTML = '<div class="d12-die d12-die-landed" aria-label="12面骰结果 ' + value + '"><span class="d12-die-label">D12</span><strong class="d12-die-face">' + value + '</strong></div>';
+                    target.dataset.cardKey = 'd12-landed:' + value;
+                }
+            } else if (typeof this._playD12Animation === 'function') {
                 await this._playD12Animation(value, { desc, who: evt.who, outcome: evt.outcome, fast: pendingControl, awaitControl: pendingControl,
                     target: isLoot && lootOverlay ? lootOverlay.querySelector('.trophy-settle-die') : undefined });
             } else {

@@ -286,6 +286,7 @@ test('NPC decks include two white 7 pass cards with no skill effect', () => {
 test('all ordinary NPC zero/seven and boss seven have no attack or defense effects at every stage', () => {
   const registry = context.AdventureRegistry;
   for (const mod of [...registry.allMonsters(), ...registry.allBosses()]) {
+    if (mod.sevenSkill) continue; // Final enemy has an explicitly documented 7 skill.
     const values = registry.getBoss(mod.name) ? [7] : (mod.defendEscape ? [7] : [0, 7]);
     assert.equal(mod.whiteZeros, 1);
     for (const stage of [1, 2, 3, 4]) {

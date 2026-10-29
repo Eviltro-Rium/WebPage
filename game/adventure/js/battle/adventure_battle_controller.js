@@ -313,6 +313,13 @@
         if (eng.deferCombatReward()) refresh();
       } else if (button.id === 'adv-settle-next') {
         const current = eng.snapshot();
+        if (current.stage >= 4) {
+          if (!eng.awakenFinalEnemy()) return;
+          clearCombatSession();
+          saveAdventureProgress(eng);
+          leave();
+          return;
+        }
         const pending = current.pendingCombatReward;
         if (pending && pending.stage === 'basic' && !pending.applied && pending.roomType === 'boss') {
           if (!eng.deferCombatReward()) return;
@@ -505,12 +512,13 @@
     const playerWon = snap.phase !== Phase.GAME_OVER;
     const adventureWon = snap.phase === Phase.CLEAR && snap.stage >= 4;
     const pending = snap.pendingCombatReward;
+    const nextLabel = snap.stage >= 4 ? '唤醒堕落 Ryan' : '进入下一层';
 
     let html = '<div class="game-over-box adv-settle-wrapper dialog-bottom-sheet">';
     html += '<h2>' + (adventureWon ? '冒险胜利!' : playerWon ? '胜利!' : '败北...') + '</h2>';
     html += '<div class="adv-settle-content"><div class="adv-settle-box">';
     if (adventureWon) {
-      html += '<div class="winner-text">已通关全部四层，冒险完成！</div>' +
+      html += '<div class="winner-text">' + (snap.finalEnemyAwakened ? '堕落 Ryan 已被击败，冒险完成！' : '已通关全部四层，冒险完成！') + '</div>' +
         '<button id="adv-settle-victory-home">返回游戏主页</button>';
     } else if (!playerWon) {
       html += '<div class="winner-text">冒险失败</div>' +
@@ -545,16 +553,16 @@
         html += '<div class="adv-settle-actions">' +
           '<button id="adv-settle-claim">领取</button>' +
           (isBoss
-            ? '<button id="adv-settle-map" class="adv-settle-secondary">返回地图（奖励留在房间）</button><button id="adv-settle-next" class="adv-settle-secondary">直接进入下一层</button>'
+            ? '<button id="adv-settle-map" class="adv-settle-secondary">返回地图（奖励留在房间）</button><button id="adv-settle-next" class="adv-settle-secondary">' + nextLabel + '</button>'
             : '<button id="adv-settle-defer" class="adv-settle-secondary">留在房间</button>') +
           '</div>';
       } else if (snap.phase === Phase.COMBAT_SETTLE && pending && pending.stage === 'boss-exit') {
         html += '<div class="adv-settle-section-title">Boss已战胜</div>';
-        html += '<div class="adv-settle-row">已按Boss掉落规则独立投掷3次战利品骰，所得白卡已加入手牌。选择返回地图，或进入下一层。</div>';
+        html += '<div class="adv-settle-row">已按Boss掉落规则独立投掷3次战利品骰，所得白卡已加入手牌。' + (snap.stage >= 4 ? '唤醒堕落 Ryan，完成最后的战斗。' : '选择返回地图，或进入下一层。') + '</div>';
         html += '</div>';
         html += '<div class="adv-settle-actions">' +
           '<button id="adv-settle-map">返回地图</button>' +
-          '<button id="adv-settle-next" class="adv-settle-secondary">进入下一层</button>' +
+          '<button id="adv-settle-next" class="adv-settle-secondary">' + nextLabel + '</button>' +
           '</div>';
       } else if (snap.phase === Phase.COMBAT_SETTLE && pending && pending.stage === 'bonus') {
         html += '<div class="adv-settle-section-title">挑战房奖励</div>';

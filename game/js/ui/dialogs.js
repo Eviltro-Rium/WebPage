@@ -19,6 +19,8 @@ class DialogManager {
         this._apiAction = apiActionFn;
         this._chanFiveOrder = null;
         this._attackBuffSubmission = null;
+        this._avoidanceSubmission = null;
+        this._avoidanceNextChoice = null;
     }
 
     /**
@@ -40,6 +42,10 @@ class DialogManager {
             trophyPurify: 'purify-choice-dialog',
             attackBuff: 'attack-buff-choice-dialog'
         }[pendingDialog] || (phase === 'CHAN_FIVE_REORDER' ? 'chan-five-dialog' : null);
+        if (this._avoidanceSubmission && (!canAct || !['guard-choice-dialog', 'fly-retry-choice-dialog'].includes(desired))) {
+            this._avoidanceSubmission.cancelled = true;
+            this._avoidanceNextChoice = null;
+        }
         if (this._attackBuffSubmission && (!canAct || desired !== 'attack-buff-choice-dialog')) {
             this._attackBuffSubmission.cancelled = true;
             this._attackBuffSubmission = null;
@@ -496,6 +502,12 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
     }
 
     _showAvoidanceChoice(ch, damage, onChoose, retry) {
+        if (this._avoidanceSubmission) {
+            // Keep the latest decision (including a genuine failed-flight retry)
+            // until the current command and its event playback have finished.
+            this._avoidanceNextChoice = [ch, damage, onChoose, retry];
+            return;
+        }
         const id = retry ? 'fly-retry-choice-dialog' : 'guard-choice-dialog';
         if (document.getElementById(id)) return;
         const overlay = document.createElement('div');
@@ -513,7 +525,21 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
         let submitted = false;
         const submit = async payload => {
             if (submitted) return; submitted = true;
-            overlay.remove(); await onChoose(payload);
+            const submission = { cancelled: false };
+            this._avoidanceSubmission = submission;
+            this._avoidanceNextChoice = null;
+            overlay.remove();
+            let accepted = false;
+            try { accepted = (await onChoose(payload)) !== false; }
+            catch (_) { accepted = false; }
+            const next = this._avoidanceNextChoice;
+            this._avoidanceSubmission = null;
+            this._avoidanceNextChoice = null;
+            if (accepted && next) this._showAvoidanceChoice(...next);
+            else if (!accepted && !submission.cancelled && !document.getElementById(id)) {
+                submitted = false;
+                document.body.appendChild(overlay);
+            }
         };
         const icon = name => window.gameAssetUrl ? window.gameAssetUrl('icons/buff_icons/' + name + '.webp') : 'icons/buff_icons/' + name + '.webp';
         const addButton = (text, action, image, extraClass = '') => {

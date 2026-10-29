@@ -74,7 +74,7 @@ test('challenge first-kill loot pauses the survivor turn until acknowledged, inc
       playerState:{hp:70,maxHp:80},playerPile:{deck:[],hand:[numCard(2,'BLUE')],discard:[],handLimit:5}});
     e.events=[];timers.length=0;
     e.s.ai2.hp=0;e.check();
-    assert.equal(e.s.trophyRolls.length,1);assert.equal(e.s.trophyRolls[0].monsterName,'FrozenOceanOctopus');
+    assert.equal(e.s.trophyRolls.length,2);assert.equal(e.s.trophyRolls[0].monsterName,'FrozenOceanOctopus');
     const loot=e.events.find(evt=>evt.type==='trophyDrop');
     assert.equal(loot.battleContinues,true);
     const healIndex=e.events.findIndex(evt=>evt.type==='heal');
@@ -85,7 +85,7 @@ test('challenge first-kill loot pauses the survivor turn until acknowledged, inc
     assert.equal(typeof e._deferredLootTimer,'function');
     const saved=JSON.parse(JSON.stringify({s:e.s,piles:e.piles,events:e.events,ver:e.ver,tableTopOwner:e.tableTopOwner}));
     const restored=new context.AdventureBattleEngine();restored.restoreSession(saved);
-    assert.equal(restored.s.trophyRolls.length,1,'restore does not roll loot again');
+    assert.equal(restored.s.trophyRolls.length,2,'restore does not roll loot again');
     const beforeTimers=timers.length;
     restored.acknowledgeEvents(loot.id-1);
     assert.equal(timers.length,beforeTimers,'unconfirmed loot still blocks the resumed timer');
@@ -93,7 +93,7 @@ test('challenge first-kill loot pauses the survivor turn until acknowledged, inc
     assert.equal(timers.length,beforeTimers+1);
     timers.pop()();
     assert.ok(restored.events.some(evt=>evt.type==='aiPlay'&&evt.who==='ai'));
-    assert.equal(restored.s.trophyRolls.length,1);
+    assert.equal(restored.s.trophyRolls.length,2);
     e.acknowledgeEvents(e.ver);
     assert.equal(e._deferredLootTimer,null,'the live battle also releases its queued continuation');
   } finally {context.setTimeout=originalTimeout;runtime.resetRandomSource();}
@@ -346,4 +346,22 @@ test('Magician at face 1 cannot go −1', () => {
   e.dispatch('chooseDiceControl', { adjust: 0 });
   assert.ok(!e.s.pendingDiceControl);
   runtime.resetRandomSource();
+});
+
+test('face editing marks the original dice event instead of a later Magician HP or description event',()=>{
+ for(const mode of ['remote','magician']) {
+  const e=battle(mode==='remote'?['DiceController']:[]),emitted=[];
+  if(mode==='magician')e._adventureEngine.s.accessories=['Magician'];
+  const emit=e.emit;
+  e.emit=function(...args){const result=emit.apply(this,args);emitted.push(this.events[this.events.length-1]);return result;};
+  runtime.setRandomSource(()=>.9);
+  try {
+   e.dispatch('chooseFly');emitted.length=0;
+   e.dispatch('chooseDiceControl',mode==='remote'?{use:true,value:1}:{adjust:-1});
+   const die=emitted.find(evt=>evt.type==='diceRoll');
+   assert.ok(die.controlled);assert.equal(die.originalValue,11);assert.equal(die.value,mode==='remote'?1:10);
+   assert.ok(emitted.filter(evt=>evt.type!=='diceRoll').every(evt=>!evt.controlled),'only the die is a modified roll');
+   assert.ok(!e.events.some(evt=>evt.type==='diceRoll'),'already presented roll is not emitted again');
+  }finally{runtime.resetRandomSource();}
+ }
 });

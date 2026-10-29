@@ -49,6 +49,10 @@
       }
 
       if (result === 'win') {
+        const defeated = this.s.combat.enemy;
+        if ((typeof defeated === 'string' ? defeated : defeated && defeated.name) === 'CorruptedRyan') {
+          this.s.finalEnemyDefeated = true;
+        }
         this._log('战斗胜利');
         const isBoss = room && room.type === window.RoomType.BOSS;
         const isChallenge = room && room.type === window.RoomType.CHALLENGE;
@@ -95,10 +99,32 @@
       this.s.combat = null;
     },
 
-    /** A final Boss victory is a terminal, refresh-safe checkpoint. */
+    awakenFinalEnemy() {
+      const room = this.s && this.currentRoom();
+      if (!room || room.type !== window.RoomType.BOSS || !room.cleared || this.s.stage !== 4 ||
+          this.s.finalEnemyAwakened || this.s.finalEnemyDefeated || this.s.activeCombat ||
+          ![Phase.MAP, Phase.REWARD, Phase.COMBAT_SETTLE].includes(this.s.phase)) return false;
+      if (!window.AdventureRegistry.getBoss('CorruptedRyan')) return false;
+      this.s.finalEnemyAwakened = true;
+      this.s.pendingCombatReward = null;
+      this.s.pendingRoomReward = null;
+      this.s.pendingMapReturnEffects = null;
+      room.cleared = false;
+      room.stashedLoot = null;
+      room.bossName = 'CorruptedRyan';
+      this._handleBoss(room);
+      // A refresh between the awakening click and battle launch must resume
+      // this encounter, rather than re-awarding the scene Boss's loot.
+      this.markActiveCombat({enemy:'CorruptedRyan',kind:'boss'});
+      this.emit('finalEnemyAwakened', '堕落 Ryan 已苏醒，最终战开始', {});
+      return true;
+    },
+
+    /** Only defeating the awakened final enemy completes the adventure. */
     completeAdventure() {
       const room = this.s && this.currentRoom();
       if (!room || room.type !== window.RoomType.BOSS || !room.cleared || this.s.stage < 4) return false;
+      if (!this.s.finalEnemyDefeated) return false;
       if (this.s.phase === Phase.CLEAR) return true;
       this.s.pendingMapReturnEffects = null;
       this.s.activeCombat = null;

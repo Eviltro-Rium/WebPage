@@ -176,6 +176,8 @@
         log: [],
         turn: 0,
         stage: opts.stage || 1,
+        finalEnemyAwakened: false,
+        finalEnemyDefeated: false,
         scene: opts.scene || 'castle',
         usedScenes: [opts.scene || 'castle'],
         pendingMapReturnEffects: null,
@@ -263,6 +265,8 @@
         log: (save.log || []).slice(),
         turn: save.turn || 0,
         stage: save.stage || 1,
+        finalEnemyAwakened: !!save.finalEnemyAwakened,
+        finalEnemyDefeated: !!save.finalEnemyDefeated || (save.finalEnemyDefeated == null && save.phase === Phase.CLEAR && save.stage >= 4),
         scene: save.scene || 'castle',
         usedScenes: Array.from(new Set([...(save.usedScenes || []), save.scene || 'castle'])),
         pendingMapReturnEffects: clone(save.pendingMapReturnEffects) || null,
@@ -540,6 +544,7 @@
     }
 
     _pickBossName(room) {
+      if (this.s.stage === 4 && this.s.finalEnemyAwakened) return 'CorruptedRyan';
       const list = this._encounterNames('boss');
       if (room && list.includes(room.bossName)) return room.bossName;
       return list.length ? list[Math.floor(random() * list.length)] : null;
@@ -660,7 +665,7 @@
 
     _handleBoss(room) {
       if (room.cleared) {
-        this._log(room.stashedLoot
+        this._log(this.s.stage >= 4 ? '场景Boss已战胜，可唤醒堕落 Ryan' : room.stashedLoot
           ? 'Boss已战胜，可领取留在房间的奖励或进入下一层'
           : 'Boss已战胜，可进入下一层');
         // Re-entering a cleared Boss room should open the settlement-style page
@@ -1197,6 +1202,8 @@
             : null
         } : null,
         stageClear: this.isStageClear(),
+        finalEnemyAwakened: !!this.s.finalEnemyAwakened,
+        finalEnemyDefeated: !!this.s.finalEnemyDefeated,
         gameOver: this.isGameOver(),
         stage: this.s.stage,
         scene: this.s.scene

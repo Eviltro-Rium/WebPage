@@ -413,6 +413,9 @@
   };
   const flyContinue = Engine.prototype.chooseFlyContinue;
   Engine.prototype.chooseFlyContinue = function(again) {
+    const choice = again && typeof again === 'object' ? again : { again: !!again };
+    if (!choice.again && choice.skipGuard) return this.chooseGuard(0);
+    again = !!choice.again;
     if (this.s && this.s.counterAvoidance) {
       if (again) return this.chooseFly();
       return this.askGuard(this.s.pendingGuardDamage || 0, 0);

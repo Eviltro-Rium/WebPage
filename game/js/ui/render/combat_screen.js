@@ -154,7 +154,7 @@
                 if (s.ai && s.ai.alive) targets.push({ key: 'ai', label: s.ai.name + ' (对手)', ch: s.ai });
                 if (s.is1v2 && s.ai2 && s.ai2.alive) targets.push({ key: 'ai2', label: s.ai2.name + ' (对手)', ch: s.ai2 });
                 this.dialogs.showSuperPurifyChoice(targets, target => this._apiAction('chooseSuperPurifyTarget', { target }));
-            } else if (canShowDecisionDialog && s.pendingDialog === 'guard') {
+            } else if (canShowDecisionDialog && !this._isConsumingEvents && s.pendingDialog === 'guard') {
                 this.dialogs.showGuardChoice(s.player, s.pendingGuardDamage, choice => {
                     if (choice && typeof choice === 'object') {
                         if (choice.action === 'fly') return this._apiAction('chooseFly');
@@ -163,7 +163,7 @@
                     }
                     return this._apiAction('chooseGuard', { stacks: choice });
                 });
-            } else if (canShowDecisionDialog && s.pendingDialog === 'flyRetry') {
+            } else if (canShowDecisionDialog && !this._isConsumingEvents && s.pendingDialog === 'flyRetry') {
                 this.dialogs.showFlyRetryChoice(s.player, s.pendingGuardDamage, choice => {
                     if (choice && choice.action === 'guard') return this._apiAction('chooseGuard', { stacks: choice.stacks });
                     if (choice && choice.action === 'none') return this._apiAction('chooseFlyContinue', { again: false, skipGuard: true });

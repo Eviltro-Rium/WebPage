@@ -155,3 +155,14 @@ test('fly dice restore card reference before the next guard decision, including 
  await ui._playEvents([{type:'diceRoll',value:2,desc:'飞翔失败'}]);
  assert.equal(w.document.querySelectorAll('#reveal-cards canvas').length,1);dom.window.close();
 });
+
+for(const mode of ['1v1','1v2','lord'])test(mode+': declining further avoidance after failed flight settles without another prompt or die',()=>{
+ const e=setup(mode);let rolls=0;
+ e.s.player.fly=2;e.s.player.guard=3;e.s.pendingGuardDamage=4;e.s.pendingGuardBleed=0;
+ e.s.pendingAttack={damage:4};e.s.atkOwner='ai';e.s.pendingDialog='flyRetry';e.s.phase='GUARD_CHOICE';e.s.busy=false;
+ e.rollD12=()=>{rolls++;return 12;};
+ e.dispatch('chooseFlyContinue',{again:false,skipGuard:true});
+ assert.equal(e.s.pendingDialog,null);assert.notEqual(e.s.phase,'GUARD_CHOICE');
+ assert.equal(e.s.player.fly,2);assert.equal(e.s.player.guard,3);assert.equal(rolls,0);
+ assert.equal(e.pendingSettlement.damage,4);
+});

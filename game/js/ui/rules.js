@@ -162,7 +162,7 @@
     const npcRows = [
       ['白 1 / 2 / 3', '各 4 张', '触发怪物对应的进攻、防御技能。', [1,2,3].map(v => npcCard(num('WHITE',v,true)))],
       ['白 4 / 5 / 6', '各 2 张', '一般用于进攻；特殊怪物可用高点数牌防御，以怪物技能为准。', [4,5,6].map(v => npcCard(num('WHITE',v,true)))],
-      ['白 7', '2 张', '轮空牌，没有进攻或防御效果。', [npcCard(num('WHITE',7,true))]],
+      ['白 7', '2 张', '普通怪物与场景Boss的轮空牌，没有攻防效果；最终敌人堕落 Ryan 的7牌有专属进攻技能，详见图鉴。', [npcCard(num('WHITE',7,true))]],
       ['白 0', '1 张', '普通怪物打出后没有攻防效果；Boss 触发对应的 0 技能。', [npcCard(num('WHITE',0,true))]],
       ['紫魔法', '1 张', '恢复 3 点生命（Boss 为 5 点），清除对手可清除的正面状态。', [npcCard(item('WHITE','magic'))]],
       ['绿魔法', '1 张', '恢复 3 点生命（Boss 为 5 点），清除自身可清除的负面状态。', [npcCard(item('WHITE','greenMagic'))]]

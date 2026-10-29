@@ -12,7 +12,7 @@
 
   function isPassNumber(mod, card) {
     return !!(card && card.isNumberCard &&
-      (card.value === 7 || (card.value === 0 && !AdvR.getBoss(mod.name))));
+      (card.value === 7 && !mod.sevenSkill || (card.value === 0 && !AdvR.getBoss(mod.name))));
   }
 
   function applyStageMods(mod, stage) {
@@ -71,7 +71,7 @@
       name: mod.name,
       hp: mod.hp || 30,
       type: mod.kind || '怪物',
-      passive: '冒险模式怪物',
+      passive: mod.passive || '冒险模式怪物',
       adventureNpc: true,
       init() {
         return {
@@ -149,6 +149,7 @@
         if (isPassNumber(mod, c)) {
           return { d: 0, skip: false, unblock: false };
         }
+        if (typeof mod.attackSkill === 'function') return mod.attackSkill(eng, c, a, t, owner, helpers);
 
         const attackerKey = a === eng.s.ai2 ? 'ai2' : (a === eng.s.ai ? 'ai' : 'player');
         const buffTotal = (ent) =>
@@ -651,6 +652,7 @@
         if (isPassNumber(mod, c)) {
           return { remaining: d, desc: '无防御效果' };
         }
+        if (typeof mod.defendSkill === 'function') return mod.defendSkill(eng, c, d, defender, opponent, owner, helpers);
 
         // 克拉肯0牌：反击后玩家选择1张手牌弃掉（弃牌选择在本次防御结算后打开）
         if (typeof mod.defendPlayerDiscard === 'function' && mod.defendPlayerDiscard(c)

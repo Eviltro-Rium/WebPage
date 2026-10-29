@@ -782,6 +782,14 @@
       this.tableTopOwner = nextOwner;
       this.s.discardTopOwner = nextOwner;
       this.s.diceRoll = null;
+      if (card && card.isBlack && nextOwner === 'player') {
+        for (const key of ['ai', 'ai2']) {
+          const opponent = this.s[key];
+          if (!opponent || !opponent.alive) continue;
+          const def = this._getAdventureMod(this.name(opponent));
+          if (def && typeof def.onOpponentBlackCard === 'function') def.onOpponentBlackCard(this, opponent);
+        }
+      }
       const actor = this.s.defOwner || this.s.atkOwner;
       const bombOwner = actor === 'ai2' ? 'ai2' : actor === 'ai' ? 'ai' : null;
       if (bombOwner) this._markBombPlay(bombOwner);

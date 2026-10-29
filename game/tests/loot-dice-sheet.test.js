@@ -88,3 +88,19 @@ test('resolved loot replaces face editing with the final result and explicit rew
   overlay.querySelector('.trophy-settle-confirm').click();
   assert.equal(await confirmation,true);
 });
+
+test('changed dice faces update the result without replaying the tumble, including loot rolls',async t=>{
+ for(const isLoot of [false,true]) {
+  const {ui,w}=setup(t);let animations=0,landed;
+  ui.state.pendingDiceControl=null;ui.state.phase='PLAYER_PLAY';
+  ui._showZoneDesc=()=>{};ui._playD12Animation=async()=>{animations++;};
+  ui._waitForTrophyConfirmation=async()=>true;
+  ui._finishTrophySettlement=async()=>{landed=w.document.querySelector('.trophy-settle-die strong').textContent;};
+  ui.showError=message=>assert.fail(message);
+  await ui._playEvents([{type:'diceRoll',value:7,originalValue:11,controlled:true,...(isLoot?{purpose:'trophyDrop',drops:[]}:{} )}]);
+  assert.equal(animations,0);
+  assert.equal(isLoot?landed:w.document.querySelector('#reveal-cards strong').textContent,'7');
+  await ui._playEvents([{type:'diceRoll',value:4}]);
+  assert.equal(animations,1,'a genuine new roll still animates');
+ }
+});

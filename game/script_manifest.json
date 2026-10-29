@@ -90,6 +90,7 @@
     "adventure/js/monsters/desert.js",
     "adventure/js/monsters/volcano.js",
     "adventure/js/content/boss.js",
+    "adventure/js/monsters/corrupted_ryan.js",
     "adventure/js/content/monster_registry.js",
     "adventure/js/items/item_defs.js",
     "adventure/js/items/combat_effects.js",
@@ -133,6 +134,7 @@
     "adventure/js/content/stage_guide.js",
     "adventure/js/items/item_defs.js",
     "adventure/js/items/combat_effects.js",
+    "adventure/js/monsters/corrupted_ryan.js",
     "adventure/js/content/monster_registry.js",
     "adventure/js/engine/loot.js"
   ]

@@ -871,7 +871,7 @@
     _pendingBleedActive(){let defCard=this.s.defCard;return defCard&&defCard.isNumberCard&&defCard.value<=3?(this.s.pendingGuardBleed??0):0}
     _settleAvoidedAttack(remaining){const defenseBleed=this._pendingBleedActive();this.s.pendingDialog=null;this.s.pendingGuardDamage=0;this.s.pendingGuardBleed=0;this.s.phase='AI_TURN';this.deferSettlement('AI_ATTACK',Math.max(0,remaining),defenseBleed);return this.check()}
     chooseFly(){let incoming=this.s.pendingGuardDamage||0,p=this.s.player;if((p.fly||0)<=0)return this._settleAvoidedAttack(incoming);p.fly--;this.emit('desc','消耗1层[飞翔]尝试躲避');const roll=this.rollD12('飞翔判定',{who:'player'});if(roll<=6){this.emit('desc','飞翔躲避成功（'+roll+'，1-6成功）');return this._settleAvoidedAttack(0)}this.emit('desc','飞翔躲避失败（'+roll+'，7-12失败）');this.s.pendingDialog='flyRetry';this.s.phase='GUARD_CHOICE';this.s.busy=false;return this.state()}
-    chooseFlyContinue(again){if(again)return this.chooseFly();this.askGuard(this.s.pendingGuardDamage||0,this.s.pendingGuardBleed||0);return this.state()}
+    chooseFlyContinue(choice){const opts=choice&&typeof choice==='object'?choice:{again:!!choice};if(opts.again)return this.chooseFly();if(opts.skipGuard)return this.chooseGuard(0);this.askGuard(this.s.pendingGuardDamage||0,this.s.pendingGuardBleed||0);return this.state()}
     clearPositiveBuffs(x){const S=this._status();if(S&&S.clearPositiveBuffs){S.clearPositiveBuffs(x,this);return}if(!x)return;x.guard=0;x.fly=0;x.harden=0;x.crit=0;x.lush=0;x.parasite=0;x.diving=false;x.chaos_red=false;x.chaos_yellow=false;x.chaos_blue=false;x.chaos_green=false}
     _markBombPlay(owner){if(!this.s||!this.s[owner]||!(this.s[owner].bomb||0))return;this.s.bombPlayTokens=this.s.bombPlayTokens||{};this.s.bombPlayTokens[owner]=(this.s.bombPlayTokens[owner]||0)+1}
     _tickBomb(owner='ai'){const D=this._damage();if(D&&D.tickBomb){D.tickBomb(this,owner);return}let target=this.s&&this.s[owner],tokens=this.s&&this.s.bombPlayTokens;if(!target||!target.alive||(target.bomb||0)<=0||!tokens||!tokens[owner])return;if(--tokens[owner]<=0)delete tokens[owner];target.bomb--;const who=owner==='player'?'player':(owner==='ai2'?'ai2':'ai');if(target.bomb<=0){this.hurt(target,5,false,{silent:true});this.emit('bombExplode','[定时炸弹]🗡️5',null,{who,amount:5})}else{this.emit('buff','炸弹倒计时：'+target.bomb,null,{who,kind:'bomb',stacks:target.bomb})}}
@@ -1795,7 +1795,7 @@
       if(m==='chooseSuperPurifyTarget')return this.chooseSuperPurifyTarget(p.target);
       if(m==='chooseGuard')return this.chooseGuard(p.stacks);
       if(m==='chooseFly')return this.chooseFly();
-      if(m==='chooseFlyContinue')return this.chooseFlyContinue(!!p.again);
+      if(m==='chooseFlyContinue')return this.chooseFlyContinue(p);
       if(m==='chooseTrophyDisarm')return this.chooseTrophyDisarm(p.target,p.index);
       if(m==='chooseTrophyPurify')return this.chooseTrophyPurify(p);
       if(m==='doChanSevenKeep')return this.chanSevenChoice(true);

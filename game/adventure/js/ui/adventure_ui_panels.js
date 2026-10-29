@@ -307,11 +307,11 @@
       page.innerHTML =
         '<div class="adv-reward-page-title">Boss战结算</div>' +
         '<div class="adv-settle-section-title">' + (hasLoot ? 'Boss奖励' : 'Boss已战胜') + '</div>' +
-        '<div class="adv-settle-rewards">' + (hasLoot ? this._roomRewardRowHtml(loot) : '<div class="adv-settle-row">奖励已领取，可前往下一层</div>') + '</div>' +
+        '<div class="adv-settle-rewards">' + (hasLoot ? this._roomRewardRowHtml(loot) : '<div class="adv-settle-row">' + (snap.stage >= 4 ? '场景Boss已战胜，可唤醒堕落 Ryan 开始最终战' : '奖励已领取，可前往下一层') + '</div>') + '</div>' +
         '<div class="adv-shop-page-actions">' +
           (hasLoot ? '<button class="adv-btn adv-btn-primary" id="adv-boss-claim">领取奖励</button>' : '') +
           '<button class="adv-btn" id="adv-boss-return-map">返回地图</button>' +
-          '<button class="adv-btn adv-btn-primary" id="adv-next-stage">进入下一层</button>' +
+          '<button class="adv-btn adv-btn-primary" id="adv-next-stage">' + (snap.stage >= 4 ? '唤醒堕落 Ryan' : '进入下一层') + '</button>' +
         '</div>';
       this._mountTrophyCards(page);
       return page;

@@ -218,3 +218,36 @@ test('skill book opens a full-height side card on a separate panel', () => {
  assert.equal(w.document.querySelectorAll('#game-menu-overlay').length,1);
  dom.window.close();
 });
+
+test('avoidance submission blocks stale reopen and admits the next genuine fly retry only after completion',async()=>{
+ for(const retry of [false,true]) {
+  const {dom,w,dialogs}=setup();let finish,calls=0;
+  const show=retry?'showFlyRetryChoice':'showGuardChoice';
+  dialogs[show]({guard:2,fly:2},5,()=>{calls++;return new Promise(resolve=>finish=resolve);});
+  const buttons=[...w.document.querySelectorAll('.avoidance-choice-box button')];
+  buttons[0].click();buttons.forEach(button=>button.click());
+  dialogs.syncCombatDialog(retry?'flyRetry':'guard',true,'GUARD_CHOICE');
+  dialogs[show]({guard:2,fly:2},5,()=>{calls++;});
+  assert.equal(w.document.querySelector('.avoidance-choice-box'),null,'old snapshot cannot reopen while command is pending');
+  dialogs.syncCombatDialog(null,true,'DICE_CHOICE');
+  dialogs.syncCombatDialog('flyRetry',true,'GUARD_CHOICE');
+  dialogs.showFlyRetryChoice({guard:2,fly:1},5,()=>{calls++;});
+  assert.equal(w.document.querySelector('.avoidance-choice-box'),null,'retry waits for current playback');
+  finish(true);await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(calls,1);assert.equal(w.document.querySelectorAll('#fly-retry-choice-dialog').length,1);
+  assert.equal(dialogs._avoidanceSubmission,null);dom.window.close();
+ }
+});
+
+test('avoidance submission never restores an obsolete choice and permits rejected command retry',async()=>{
+ for(const cancel of [false,true]) {
+  const {dom,w,dialogs}=setup();let finish,calls=0;
+  dialogs.showGuardChoice({guard:1},4,()=>{calls++;return new Promise(resolve=>finish=resolve);});
+  w.document.querySelector('.choice-primary').click();
+  if(cancel)dialogs.syncCombatDialog(null,true,'AI_TURN');
+  finish(false);await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(!!w.document.getElementById('guard-choice-dialog'),!cancel);
+  if(!cancel){w.document.querySelector('.choice-primary').click();assert.equal(calls,2);finish(true);await Promise.resolve();}
+  dom.window.close();
+ }
+});

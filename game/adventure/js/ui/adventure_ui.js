@@ -257,7 +257,8 @@
      * restart that same locked encounter so the room cannot be farmed.
      */
     async _resumeLockedCombat(combatSession, characterName) {
-      const sessionMatches = !!(combatSession && combatSession.battle && (
+      const sessionMatches = !!(combatSession && combatSession.battle &&
+        (!this.eng.s.finalEnemyAwakened || combatSession.enemy === 'CorruptedRyan') && (
         window.AdventureBattleSession && typeof window.AdventureBattleSession.matches === 'function'
           ? window.AdventureBattleSession.matches(combatSession, characterName, this.eng.mapName)
           : combatSession.characterName === characterName
@@ -381,6 +382,10 @@
       this._persistAdventure(snap);
       if (snap.phase === window.AdventurePhase.CLEAR && snap.stage >= 4) {
         if (window.AdventureBattleController) window.AdventureBattleController.resumeSettlement(this.eng);
+        return;
+      }
+      if (snap.finalEnemyAwakened && !snap.finalEnemyDefeated && snap.combat) {
+        if (!this._bridgeCombatStarting && !this._bridgeCombatActive) this._startBridgeCombat();
         return;
       }
 
@@ -1317,8 +1322,13 @@
       this._advancingStage = true;
       try {
         if ((this.eng.s.stage || 1) >= 4) {
-          this.eng.completeAdventure();
-          this.render();
+          if (this.eng.awakenFinalEnemy()) {
+            if (window.AdventureBattleController && window.AdventureBattleController.clearCombatSession) {
+              window.AdventureBattleController.clearCombatSession();
+            }
+            this._forcePersistAdventure();
+            await this._startBridgeCombat();
+          } else this.render();
           return;
         }
         const { stage, scene, mapName, mapUrl } = AdventureUI.selectStageMap((this.eng.s.stage || 1) + 1, this.eng.s.usedScenes || [this.eng.s.scene]);

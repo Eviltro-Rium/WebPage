@@ -796,7 +796,7 @@
     enterNextStage() {
       const room = this.currentRoom();
       if (!room || room.type !== window.RoomType.BOSS || !room.cleared) return;
-      if (this.s.stage >= 4) return this.completeAdventure();
+      if (this.s.stage >= 4) return this.s.finalEnemyDefeated ? this.completeAdventure() : this.awakenFinalEnemy();
       this.s.pendingCombatReward = null;
       this.s.phase = Phase.CLEAR;
       this.emit('stageClear', '进入下一层', {});
