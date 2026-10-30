@@ -83,10 +83,19 @@
       this.shopSlots = opts.shopSlots || null;
       /** 铁匠铺 3 槽：配饰 itemName 或 null（空槽） */
       this.blacksmithSlots = opts.blacksmithSlots || null;
-      /** 铁匠铺独立战利白卡摊位：战利白卡 itemName 或 null（空槽） */
-      // Leave an omitted slot undefined so AdventureEngine can lazily stock the
-      // default trophy offer; an explicit null means the stall is sold out.
-      this.blacksmithTrophySlot = opts.blacksmithTrophySlot;
+      /** 铁匠铺 3 个白卡槽；undefined 尚未进货，null 为已售罄。 */
+      this.blacksmithTrophySlots = Array.isArray(opts.blacksmithTrophySlots) ? opts.blacksmithTrophySlots.slice() : undefined;
+      // Old saves / callers use a singular first slot. Keep it as an alias so
+      // migrating to three slots never restocks a previously sold-out offer.
+      let legacyTrophy = opts.blacksmithTrophySlot;
+      Object.defineProperty(this, 'blacksmithTrophySlot', {
+        enumerable: true,
+        get: () => Array.isArray(this.blacksmithTrophySlots) ? this.blacksmithTrophySlots[0] : legacyTrophy,
+        set: value => {
+          if (Array.isArray(this.blacksmithTrophySlots)) this.blacksmithTrophySlots[0] = value;
+          else legacyTrophy = value;
+        }
+      });
       this.shopItems = opts.shopItems || null;
       this.shopSold = {};
 

@@ -845,10 +845,6 @@
 .adv-shop-page-title {
   font-size: 1.15rem; font-weight: 700; color: #fbbf24; letter-spacing: 1px;
 }
-.adv-shop-page-gold {
-  display: flex; align-items: center; gap: 6px;
-  color: #e8e8f0; font-size: 0.9rem;
-}
 .adv-shop-slots {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -880,22 +876,42 @@
 .adv-shop-slot-icon { width: 40px; height: 40px; object-fit: contain; }
 .adv-shop-slot-name { font-weight: 700; font-size: 0.85rem; color: #e9d5ff; }
 .adv-shop-slot-desc { font-size: 0.68rem; color: rgba(196, 181, 253, 0.7); line-height: 1.3; }
-.adv-shop-slot-price { font-size: 0.75rem; color: #fbbf24; font-weight: 600; margin-top: 4px; }
+.adv-shop-slot-price { font-size: 0.75rem; color: #fbbf24; font-weight: 600; margin-top: auto; padding-top: 8px; width: 100%; display: flex; justify-content: center; }
+.adv-gold-price-token { display: inline-flex; align-items: center; gap: 4px; }
+.adv-gold-price-count { font-size: 0.82rem; font-weight: 700; color: #fde68a; line-height: 1; }
+.adv-gold-price-icon { width: 18px; height: 18px; object-fit: contain; display: block; }
+.adv-shop-page .adv-shop-slot {
+  align-items: center;
+  justify-content: flex-start;
+}
+.adv-shop-page .adv-shop-slot-tag {
+  align-self: center;
+}
+.adv-shop-page .adv-shop-slot-name,
+.adv-shop-page .adv-shop-slot-desc,
+.adv-shop-page .adv-shop-slot-hint,
+.adv-shop-page .adv-shop-slot-empty-label {
+  width: 100%;
+  text-align: center;
+}
+.adv-shop-page-actions .adv-btn { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
+.adv-shop-slot-trade-empty-label { font-size: 0.72rem; color: rgba(251, 191, 36, 0.85); margin-left: 2px; }
+.adv-merchant-price { display: inline-flex; margin-top: 6px; }
 .adv-shop-slot-trade {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
-  gap: 2px; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(168, 85, 247, 0.25);
+  gap: 6px; margin-top: 6px; padding-top: 8px; border-top: 1px solid rgba(168, 85, 247, 0.25);
+  width: 100%; box-sizing: border-box;
 }
-.adv-shop-slot-trade-empty { font-size: 0.65rem; color: rgba(196, 181, 253, 0.55); border-top: none; padding-top: 0; }
+.adv-shop-slot-trade-empty { font-size: 0.65rem; color: rgba(196, 181, 253, 0.55); border-top: none; padding-top: 0; margin-top: auto; }
 .adv-shop-slot-trade-text { font-size: 0.68rem; color: #fbbf24; font-weight: 600; margin-left: 2px; }
-.adv-trade-cost-icon { width: 16px; height: 16px; object-fit: contain; }
-.adv-blacksmith-page .adv-shop-slots { grid-template-columns: repeat(3, 1fr); }
-.adv-blacksmith-tokens {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-  font-size: 0.78rem; color: rgba(196, 181, 253, 0.85); margin-bottom: 8px;
+.adv-trade-cost-token { position: relative; display: inline-flex; flex: 0 0 auto; }
+.adv-trade-cost-count {
+  position: absolute; right: -5px; bottom: -3px; min-width: 11px; height: 11px; padding: 0 2px;
+  border-radius: 6px; background: rgba(15, 10, 30, 0.92); border: 1px solid rgba(251, 191, 36, 0.45);
+  font-size: 0.52rem; line-height: 9px; font-weight: 700; color: #fde68a; text-align: center;
 }
-.adv-bs-token { display: inline-flex; align-items: center; gap: 3px; }
-.adv-bs-token img { width: 18px; height: 18px; object-fit: contain; }
-.adv-bs-hint { font-size: 0.7rem; color: rgba(196, 181, 253, 0.55); }
+.adv-trade-cost-icon { width: 18px; height: 18px; object-fit: contain; display: block; }
+.adv-blacksmith-page .adv-shop-slots { grid-template-columns: repeat(3, 1fr); }
 .adv-shop-slot-empty-label { font-size: 0.95rem; color: rgba(255,255,255,0.45); font-weight: 600; letter-spacing: 0.04em; }
 .adv-shop-slot-hint { font-size: 0.65rem; color: rgba(251, 191, 36, 0.65); }
 .adv-shop-slot-accessory { border-color: rgba(168, 85, 247, 0.35); }
@@ -952,12 +968,15 @@
 .adv-trophy-pack-card small { display: block; color: rgba(255,238,180,.68); font-size: .68rem; line-height: 1.3; margin-top: 2px; }
 .adv-trophy-pack-discard { flex: 0 0 auto; padding: 4px 9px; font-size: .7rem; }
 .adv-trophy-pack-empty { color: rgba(255,255,255,.5); text-align: center; padding: 18px 8px; }
-.adv-blacksmith-trophy-stall { margin-top: 4px; padding: 10px; border: 1px solid rgba(212,167,44,.5); border-radius: 10px; background: rgba(62,44,16,.28); }
-.adv-blacksmith-stall-title { color: #fcd34d; font-size: .86rem; font-weight: 700; margin-bottom: 8px; }
-.adv-blacksmith-trophy-stall .adv-shop-slot { min-height: 120px; width: 100%; }
-.adv-shop-slot-trophy { border-color: rgba(212,167,44,.72); }
-.adv-shop-slot-trophy.selected { border-color: #fcd34d; box-shadow: 0 0 14px rgba(212,167,44,.32); }
-.adv-shop-slot-trophy .adv-shop-slot-tag { color: #fcd34d; background: rgba(212,167,44,.16); }
+.adv-blacksmith-stall { margin-top: 4px; padding: 12px; border: 1px solid rgba(196,181,253,.28); border-radius: 12px; background: rgba(30,25,50,.34); }
+.adv-blacksmith-stall-title { color: #e9d5ff; font-size: .86rem; font-weight: 700; margin-bottom: 10px; }
+.adv-blacksmith-page .adv-blacksmith-slot { min-height: 240px; width: 100%; justify-content: flex-start; align-items: stretch; border-color: rgba(168,85,247,.35); background: rgba(30,25,50,.7); }
+.adv-blacksmith-page .adv-blacksmith-slot.selected { border-color: #c4b5fd; box-shadow: 0 0 0 1px #a78bfa, 0 4px 16px rgba(139,92,246,.2); background: rgba(64,42,92,.75); }
+.adv-blacksmith-slot .adv-shop-slot-tag { color: #ddd6fe; background: rgba(168,85,247,.16); }
+.adv-blacksmith-art { height: 84px; display: flex; align-items: center; justify-content: center; }
+.adv-blacksmith-art .adv-shop-slot-icon { width: 60px; height: 60px; }
+.adv-blacksmith-slot .adv-shop-slot-desc { min-height: 2.6em; }
+.adv-blacksmith-slot .adv-shop-slot-trade { margin-top: auto; padding-top: 8px; min-height: 32px; align-content: center; }
 .adv-scene-trophy-card-canvas { display: block; flex: 0 0 auto; width: auto; height: auto; }
 .adv-settle-trophy-row { align-items: center; }
 .adv-settle-trophy-row .adv-scene-trophy-card-canvas { margin-right: 3px; }
@@ -1173,4 +1192,58 @@ div.adv-trophy-forge-fly { display: grid; place-items: center; background: #f8f4
   font-weight: 700;
   margin-left: 2px;
   opacity: 0.9;
+}
+
+/* Mobile rooms: keep offers compact and their actions within thumb reach. */
+.adv-inventory-toggle, .adv-mobile-offer-description { display: none; }
+@media (max-width: 760px) {
+  .adventure-wrap { gap: 8px; padding: 8px 8px max(12px, env(safe-area-inset-bottom)); }
+  .adventure-header { padding: 8px 10px; }
+  .adv-shop-page, .adv-blacksmith-page, .adv-reward-page { gap: 8px; padding: 10px; min-height: 0; }
+  .adv-shop-page .adv-shop-slots,
+  .adv-blacksmith-page .adv-shop-slots { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; flex: none; }
+  .adv-shop-page .adv-shop-slot,
+  .adv-blacksmith-page .adv-blacksmith-slot { min-height: 132px; padding: 7px 4px; gap: 4px; }
+  .adv-shop-slot .adv-shop-slot-desc { display: none; }
+  .adv-shop-slot-name { font-size: .76rem; overflow-wrap: anywhere; }
+  .adv-shop-slot-tag { font-size: .62rem; padding: 1px 5px; }
+  .adv-shop-slot-icon { width: 34px; height: 34px; }
+  .adv-blacksmith-stall { padding: 7px; margin: 0; }
+  .adv-blacksmith-stall-title { margin-bottom: 6px; font-size: .78rem; }
+  .adv-blacksmith-slot .adv-blacksmith-art { height: 62px; min-height: 62px; }
+  .adv-blacksmith-art .adv-shop-slot-icon { width: 44px; height: 44px; }
+  .adv-blacksmith-art .card-canvas { width: 40px !important; height: 58px !important; }
+  .adv-blacksmith-slot .adv-shop-slot-trade { gap: 5px; padding-top: 6px; min-height: 28px; }
+  .adv-mobile-offer-description { display: block; padding: 8px; min-height: 44px; font-size: .78rem; line-height: 1.5; color: #ddd6fe; background: #211a36; border-radius: 8px; overflow-wrap: anywhere; }
+  .adv-shop-page-hint { font-size: .68rem; line-height: 1.4; }
+  .adv-shop-page-actions { position: sticky; bottom: 0; z-index: 20; margin-top: 0; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); background: #161c30; border-top: 1px solid #8b72ac66; display: flex; flex-wrap: wrap; gap: 5px; }
+  .adv-shop-page-actions .adv-btn { flex: 1 1 auto; min-height: 44px; padding: 7px; font-size: .75rem; }
+  .adv-recycle-section { margin-top: 0; padding-top: 8px; }
+  .adv-recycle-list { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .adv-recycle-slot { flex: 0 0 94px; min-height: 80px; padding: 6px; }
+  .adv-inventory-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; margin-top: 6px; padding: 6px 8px; border: 1px solid #a78bfa66; border-radius: 8px; color: #ddd6fe; background: #302541; font: inherit; font-size: .78rem; text-align: left; }
+  .adv-inventory-toggle[aria-expanded="false"] + .adv-inventory-content { display: none; }
+  .adv-inventory-toggle[aria-expanded="true"] span { transform: rotate(180deg); }
+  .adv-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .adv-actions .adv-btn { min-height: 44px; }
+  .adv-hand-zone { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding: 5px 2px; }
+  .adv-hand-zone .card-canvas { flex: 0 0 44px; width: 44px !important; height: 63px !important; }
+  .adv-settle-content { gap: 10px; }
+  .adv-settle-sidebar { height: 112px; max-height: 20dvh; padding: 8px 0 0; }
+  .adv-sidebar-title { font-size: .8rem; padding-bottom: 4px; margin-bottom: 6px; }
+}
+@media (max-width: 350px) {
+  .adv-shop-page .adv-shop-slots,
+  .adv-blacksmith-page .adv-shop-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* The shopkeeper and smith share the NPC portrait frame. */
+.adv-shopkeeper-header { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.adv-shopkeeper-portrait { width: 80px; height: 80px; flex: 0 0 80px; object-fit: contain; image-rendering: pixelated; border: 1px solid rgba(196,181,253,.38); border-radius: 12px; background: rgba(30,25,50,.7); }
+.adv-shopkeeper-heading { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.adv-shopkeeper-name { font-size: .78rem; color: #c4b5fd; }
+@media (max-width: 760px) {
+  .adv-shopkeeper-portrait { width: 64px; height: 64px; flex-basis: 64px; border-radius: 10px; }
+  .adv-shopkeeper-header { gap: 8px; }
+  .adv-shopkeeper-heading { gap: 3px; }
 }

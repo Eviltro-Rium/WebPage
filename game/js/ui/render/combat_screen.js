@@ -142,7 +142,9 @@
             if (this.dialogs && typeof this.dialogs.syncCombatDialog === 'function') {
                 this.dialogs.syncCombatDialog(s.pendingDialog, canShowDecisionDialog, s.phase);
             }
-            if (canShowDecisionDialog && s.pendingDialog === 'purify') {
+            if (canShowDecisionDialog && !this._isConsumingEvents && s.pendingDialog === 'leonZeroDiscard') {
+                this.dialogs.showLeonZeroDiscardChoice(s.pendingLeonZeroDiscard, choice => this._apiAction('chooseLeonZeroDiscard', choice));
+            } else if (canShowDecisionDialog && s.pendingDialog === 'purify') {
                 this.dialogs.showPurifyChoice(s.player, picked => {
                     if (picked && picked.done) return this._apiAction('choosePurify', { done: true });
                     const kind = picked && picked.kind ? picked.kind : picked;
@@ -172,9 +174,9 @@
             } else if (canShowDecisionDialog && s.pendingDialog === 'purifyCrystal') {
                 const oppKey = s.is1v2 ? (s.attackTarget || 'ai') : 'ai';
                 const opponent = s[oppKey];
-                this.dialogs.showPurifyChoice(s.player, picked => {
-                    this._apiAction('choosePurifyCrystal', { choice: picked });
-             }, { opponent, allowOpponent: true });
+                this.dialogs.showPurifyChoice(s.player, picked =>
+                    this._apiAction('choosePurifyCrystal', { choice: picked }),
+                    { opponent, allowOpponent: true });
             } else if (canShowDecisionDialog && s.pendingDialog === 'mozeSeven') {
                 const targets = [{ key: 'player', label: '自己（清除负面）', ch: s.player }];
                 if (s.ai && s.ai.alive) targets.push({ key: 'ai', label: (s.ai.name || '对手') + '（清除正面）', ch: s.ai });

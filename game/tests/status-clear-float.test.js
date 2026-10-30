@@ -21,7 +21,7 @@ for (const relative of expand(['characters', 'ai', 'combat', 'adventure_content'
 
 function newEngine() {
   const eng = new context.Engine();
-  eng.start('Ryan', 'Pharaoh');
+  eng.start('Ryan', 'Anubis');
   eng.later = () => {};
   eng.events = [];
   return eng;
@@ -57,11 +57,11 @@ test('clearing with nothing to remove emits no float', () => {
   assert.equal(eng.events.filter(e => e.kind === 'clearDebuffs' || e.kind === 'clearBuffs').length, 0);
 });
 
-test('Pharaoh 0 attack shows the 清除负面状态 float', () => {
+test('Anubis 0 attack shows the 清除负面状态 float', () => {
   const eng = newEngine();
   eng.s.ai.burn = 2;
   const card = { value: 0, isNumberCard: true, isItemCard: false, color: 'WHITE' };
   eng.s.atkCard = card; eng.s.atkOwner = 'ai';
-  eng.effect('Pharaoh', 0, card, eng.s.ai, eng.s.player);
+  eng.effect('Anubis', 0, card, eng.s.ai, eng.s.player);
   assert.equal(eng.events.filter(e => e.kind === 'clearDebuffs' && e.who === 'ai').length, 1);
 });

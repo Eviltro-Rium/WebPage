@@ -200,7 +200,7 @@ function adventurePanelHarness(t, phase) {
  w.AdventureRegistry={getItem:name=>items.find(item=>item.name===name)};
  w.AdventureDeck={trophyWhite:name=>({trophyName:name,color:'WHITE'})};w.CardStyle={iconRevision:1};
  w.renderCard=(card,width,height)=>{const canvas=w.document.createElement('canvas');canvas.width=width;canvas.height=height;canvas._painted=JSON.stringify(card);return canvas;};
- const snap={phase,stage:2,scene:'forest',player:{name:'Ryan',type:'战士',hp:70,maxHp:70,buffs:{}},currency:{gold:20,tokens:{ben:3,cao:1,shui:1,huo:1,wuneng:0},totalBeast:6,maxBeast:8},roomInfo:{shopSlots:[...items,...items],blacksmithSlots:items,blacksmithTrophy:{name:'BurnTrophy',displayName:'灼伤',kind:'trophyWhite',beastCost:['ben','ben'],description:'灼伤'}},consumables:[items[0]],accessories:[items[1]],trophyWhiteCards:[],playerPile:{hand:[{value:3,color:'RED'}],handCount:1,deckCount:93,discardCount:0},blacksmithCanPay:{slots:[true,true,true],trophy:true},logEntries:[]};
+ const snap={phase,stage:2,scene:'forest',player:{name:'Ryan',type:'战士',hp:70,maxHp:70,buffs:{}},currency:{gold:20,tokens:{ben:3,cao:1,shui:1,huo:1,wuneng:0},totalBeast:6,maxBeast:8},roomInfo:{shopSlots:[...items,...items],blacksmithSlots:items,blacksmithTrophy:{name:'BurnTrophy',displayName:'灼伤',kind:'trophyWhite',beastCost:['ben','ben'],description:'灼伤'}},consumables:[items[0]],accessories:[items[1]],trophyWhiteCards:[],playerPile:{hand:[{value:3,color:'RED'}],handCount:1,deckCount:95,discardCount:0},blacksmithCanPay:{slots:[true,true,true],trophy:true},logEntries:[]};
  const ui=Object.create(w.AdventureUI.prototype);ui.container=w.document.getElementById('panels');ui._test=null;ui._toast=()=>{};
  let selections=0;
  ui.eng={s:snap,selectShopSlot(index){selections++;snap.shopSelectedSlot=index;},selectBlacksmithSlot(index){selections++;snap.blacksmithSelectedSlot=index;}};
@@ -245,4 +245,48 @@ test('tree patching retains duplicate icons and adopts new canvas pixels',t=>{
  for(let i=0;i<20;i++)dom.patchTree(host,[make()]);
  assert.deepEqual([...host.querySelectorAll('img')],images);assert.equal(images.length,2);
  assert.equal(host.querySelector('canvas'),canvas);assert.equal(canvas._pixels,'painted');
+});
+
+test('blacksmith uses the same slot structure for three accessories and three trophies and routes actions to the selected trophy index',t=>{
+ const env=adventurePanelHarness(t,'blacksmith');if(!env)return;
+ const {w,ui,snap}=env,host=ui.container;
+ const trophy=name=>({name,displayName:name,kind:'trophyWhite',description:'吸血3点，抽1张牌',beastCost:['cao','wuneng'],beastCostText:'1草+1万能'});
+ snap.roomInfo.blacksmithTrophies=[trophy('VampireTrophy'),null,trophy('DrawTwoTrophy')];snap.blacksmithCanPay.trophies=[true,false,true];
+ const bought=[],refreshed=[];
+ ui.eng.buyBlacksmithTrophy=index=>{bought.push(index);snap.roomInfo.blacksmithTrophies[index]=null;return {ok:true};};
+ ui.eng.refreshBlacksmithTrophy=index=>{refreshed.push(index);snap.roomInfo.blacksmithTrophies[index]=trophy('ZeroTrophy');return {ok:true};};
+ ui.render();assert.equal(host.querySelectorAll('[data-blacksmith-slot]').length,3);assert.equal(host.querySelectorAll('[data-blacksmith-trophy]').length,3);
+ assert.equal(host.querySelectorAll('.adv-blacksmith-stall').length,2);assert.equal(host.querySelectorAll('.adv-blacksmith-slot .adv-blacksmith-art').length,6);
+ host.querySelector('[data-blacksmith-trophy="2"]').click();assert.equal(snap.blacksmithSelectedSlot,'trophy:2');assert.equal(host.querySelector('#adv-blacksmith-trade').disabled,false);
+ host.querySelector('#adv-blacksmith-trade').click();assert.deepEqual(bought,[2]);assert.equal(host.querySelector('#adv-blacksmith-trade').disabled,true);
+ const first=host.querySelector('[data-blacksmith-trophy="0"] canvas');host.querySelector('#adv-blacksmith-refresh').click();assert.deepEqual(refreshed,[2]);
+ assert.equal(host.querySelector('[data-blacksmith-trophy="0"] canvas'),first,'refresh does not replace another slot face');
+ host.querySelector('[data-blacksmith-trophy="1"]').click();assert.equal(snap.blacksmithSelectedSlot,'trophy:1');assert.equal(host.querySelector('#adv-blacksmith-trade').disabled,true);assert.equal(host.querySelector('#adv-blacksmith-refresh').disabled,false);
+});
+
+test('room inventory expansion survives selection and page updates',t=>{
+ const env=adventurePanelHarness(t,'blacksmith');if(!env)return;
+ const {ui,w,snap}=env;
+ let toggle=ui.container.querySelector('.adv-inventory-toggle');
+ assert.equal(toggle.getAttribute('aria-expanded'),'false');
+ assert.ok(w.document.getElementById(toggle.getAttribute('aria-controls')).querySelector('#adv-trophy-pack'));
+ toggle.click();
+ assert.equal(toggle.getAttribute('aria-expanded'),'true');
+ ui.container.querySelector('[data-blacksmith-slot="1"]').click();
+ assert.equal(ui.container.querySelector('.adv-inventory-toggle').getAttribute('aria-expanded'),'true');
+ snap.phase='shop';ui.render();
+ assert.equal(ui.container.querySelector('.adv-inventory-toggle').getAttribute('aria-expanded'),'true');
+ ui.container.querySelector('.adv-inventory-toggle').click();ui.render();
+ assert.equal(ui.container.querySelector('.adv-inventory-toggle').getAttribute('aria-expanded'),'false');
+});
+
+test('compact offer summary follows selected slot and removes stale sold-out descriptions',t=>{
+ const env=adventurePanelHarness(t,'shop');if(!env)return;
+ const {ui,snap}=env;
+ ui.container.querySelector('[data-shop-slot="0"]').click();
+ assert.match(ui.container.querySelector('.adv-mobile-offer-description').textContent,/Potion：效果/);
+ snap.roomInfo.shopSlots[0]=null;ui.render();
+ assert.equal(ui.container.querySelector('.adv-mobile-offer-description').textContent,'选择商品，查看说明与交易费用');
+ snap.phase='blacksmith';snap.blacksmithSelectedSlot='trophy';ui.render();
+ assert.match(ui.container.querySelector('.adv-mobile-offer-description').textContent,/灼伤：灼伤/);
 });

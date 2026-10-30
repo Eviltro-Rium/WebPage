@@ -13,28 +13,14 @@
       color: '#86efac',
       cards: [
         {
-          name: '红/黄/蓝/绿 1~3',
-          desc: '基础进攻与防御牌。1~3点数字牌可用于防御（搭桥），也可用于进攻触发角色技能。出牌时需匹配弃牌库顶的颜色或数字。',
-          count: '每种颜色各3张，4色共36张',
-          samples: [num('RED', 1), num('YELLOW', 2), num('BLUE', 3), num('GREEN', 1)]
+          name: '四色数字牌 0~3',
+          desc: '可进攻，也可防御；触发角色对应的数字技能。',
+          samples: [num('RED', 0), num('YELLOW', 1), num('BLUE', 3)]
         },
         {
-          name: '红/黄/蓝/绿 4~6',
-          desc: '中高数字牌，只能用于进攻。出牌时需匹配弃牌库顶的颜色或数字，触发角色对应数字的技能效果。',
-          count: '每种颜色各2张，4色共24张',
-          samples: [num('RED', 4), num('YELLOW', 5), num('BLUE', 6)]
-        },
-        {
-          name: '红/黄/蓝/绿 7',
-          desc: '最高数字牌，只能用于进攻。出牌时需匹配弃牌库顶的颜色或数字，触发角色7牌技能。',
-          count: '每种颜色各1张，4色共4张',
-          samples: [num('RED', 7), num('GREEN', 7)]
-        },
-        {
-          name: '红/黄/蓝/绿 0',
-          desc: '特殊数字牌，可用于进攻或防御。0牌通常拥有强力技能效果，出牌时需匹配弃牌库顶的颜色或数字。',
-          count: '每种颜色各1张，4色共4张',
-          samples: [num('RED', 0), num('BLUE', 0)]
+          name: '四色数字牌 4~7',
+          desc: '仅用于进攻，触发角色对应的数字技能。',
+          samples: [num('RED', 4), num('YELLOW', 6), num('BLUE', 7)]
         }
       ]
     },
@@ -44,38 +30,32 @@
       cards: [
         {
           name: '白 1~7',
-          desc: '白色数字牌，可指定为弃牌库顶的有效颜色后出牌。1~3可用于防御（搭桥），其余只能进攻。白色数字牌出牌时自动继承弃牌库顶的有效颜色，无需手动选色。',
-          count: '各1张，共7张',
+          desc: '匹配任意牌，自动继承当前颜色。1~3可攻可守，4~7仅能进攻。',
           samples: [num('WHITE', 2, true), num('WHITE', 5, true), num('WHITE', 7, true)]
         },
         {
           name: '白色药水',
-          desc: '道具牌，搭桥使用。打出后立即恢复5点生命，然后继续选择下一张牌搭桥或防御。',
-          count: '4张',
+          desc: '恢复5点生命。',
           samples: [item('WHITE', 'potion')]
         },
         {
           name: '白色净化',
-          desc: '道具牌，搭桥使用。打出后立即净化1层buff（灼伤/流血/中毒/冷冻等负面，或守护/飞翔/暴击等正面，玩家自选），然后继续搭桥。',
-          count: '6张',
+          desc: '选择移除自身1层可净化状态，可选正面或负面状态。',
           samples: [item('WHITE', 'purify')]
         },
         {
           name: '白色超级净化',
-          desc: '道具牌，搭桥使用。打出后选择一名角色（自己或对手），清除其全部buff与debuff（含守护），然后继续搭桥。',
-          count: '4张',
+          desc: '选择自己或一名对手，移除其全部可净化状态。',
           samples: [item('WHITE', 'superPurify')]
         },
         {
           name: '白色+3',
-          desc: '道具牌，搭桥使用。打出后立即抽3张牌，然后继续搭桥。',
-          count: '2张',
+          desc: '抽3张牌。',
           samples: [item('WHITE', 'drawThree')]
         },
         {
           name: '白色交换',
-          desc: '道具牌，搭桥使用。打出后立即交换双方手牌，然后使用交换后的手牌继续搭桥。',
-          count: '2张',
+          desc: '与一名对手交换手牌。冒险模式的初始牌组不含此牌。',
           samples: [item('WHITE', 'swap')]
         }
       ]
@@ -86,20 +66,17 @@
       cards: [
         {
           name: '黑色（调色盘）',
-          desc: '道具牌，搭桥使用。打出时需手动指定一种颜色（红/黄/蓝/绿），然后继续搭桥。可匹配任何颜色，是最灵活的搭桥牌。',
-          count: '2张',
+          desc: '指定红、黄、蓝、绿中的一种颜色。',
           samples: [item('BLACK', 'black')]
         },
         {
           name: '黑色+2',
-          desc: '道具牌，搭桥使用。打出时需手动指定一种颜色，然后继续搭桥。与普通黑牌功能相同，需选色后搭桥。',
-          count: '2张',
+          desc: '指定颜色，并抽2张牌。',
           samples: [item('BLACK', 'drawTwo')]
         },
         {
           name: '黑色洗入',
-          desc: '道具牌，搭桥使用。打出时需手动指定一种颜色，然后将弃牌库洗回牌堆，继续搭桥。当牌库即将耗尽时尤为有用。',
-          count: '4张',
+          desc: '指定颜色，将弃牌库洗回牌堆。',
           samples: [item('BLACK', 'shuffle')]
         }
       ]
@@ -107,27 +84,20 @@
   ];
 
   const GAMEPLAY_RULES = [
-    { title: '出牌规则', desc: '打出的牌必须匹配弃牌库顶的颜色或数字。白色牌可匹配任意颜色（自动继承有效颜色），黑色牌可指定任意颜色后匹配。道具牌不受颜色限制，随时可出。' },
-    { title: '搭桥机制', desc: '打出道具牌或1~3点数字牌时，如果是在防御阶段，该牌只发挥道具效果/搭桥作用，然后继续选择下一张牌防御，直到打出4~7或0点数字牌触发防御技能。' },
-    { title: '进攻与防御', desc: '进攻方出牌后，防御方可以选择手牌进行防御。防御牌只能是1~3点数字牌或道具牌。防御成功可减免伤害或触发防御技能。也可以选择跳过防御，承受全部伤害。' },
-    { title: '回合流程', desc: '玩家回合：出牌进攻 → AI防御 → 结算伤害 → 回合结束补牌。AI回合：AI出牌进攻 → 玩家防御 → 结算伤害 → 回合结束补牌。' },
-    { title: '弃牌库', desc: '打出的牌会进入弃牌库，弃牌库顶决定下一张牌的匹配条件。单机对战共用牌堆与弃牌库；冒险中玩家与怪物各自回收自己的牌，不会混洗。' }
+    { title: '怎样出牌', desc: '数字牌需与弃牌库顶同色或同点数；白牌自动继承当前颜色，黑牌由你指定颜色。道具牌不受颜色、点数限制。' },
+    { title: '怎样防御', desc: '防御时可出0~3点数字牌或道具牌。数字牌触发防御技能并结算本次攻击；也可跳过防御。角色与怪物的特殊规则以技能说明为准。' },
+    { title: '什么是搭桥', desc: '在进攻或防御出牌阶段打出道具牌，先执行效果，再继续选牌。搭桥本身不会结束本次进攻或防御。' },
+    { title: '何时结束回合', desc: '一次进攻结算后可以继续出牌，或点击“结束回合”。补牌后换对手进攻；击败所有对手获胜。' }
   ];
 
   const DECK_COMPARISON = [
-    ['初始牌组总数', '101 张，所有参战角色共用', '93 张，独立于怪物牌组'],
-    ['四色数字牌 0~7', '68 张', '68 张，与单机配置相同'],
-    ['白色数字牌', '白 1~7 各 1 张，共 7 张', '白 1~7 各 1 张，共 7 张'],
-    ['普通黑牌 / 黑色 +2', '各 2 张', '各 2 张'],
-    ['黑色洗入', '4 张', '2 张'],
-    ['白色药水 / 白色 +3', '药水 4 张；+3 共 2 张', '药水 4 张；+3 共 2 张'],
-    ['白色净化', '6 张', '4 张'],
-    ['白色超级净化', '4 张', '2 张'],
-    ['白色交换手牌', '2 张', '无，避免玩家与怪物牌库混淆'],
-    ['战利白卡', '无', '初始不含；冒险获得后加入手牌，进入玩家牌组循环，不占一次性道具槽。打出后搭桥并抽 1 张牌'],
-    ['牌库与弃牌库归属', '所有角色共用一套牌库与弃牌库', '只从玩家牌库抽牌，只回收玩家弃牌'],
-    ['洗牌补充', '牌库耗尽时，保留弃牌库顶，将其余弃牌洗回牌库', '按玩家牌库规则回收玩家弃牌，不混入怪物牌'],
-    ['进入 / 结束房间', '每局重新初始化牌组', '进入战斗房间后翻开新牌初始化弃牌库顶；战斗结束保留手牌、牌库、弃牌库']
+    ['初始牌组', '101张 · 全体共用', '95张 · 玩家独立牌组'],
+    ['四色数字牌 / 白色数字牌', '68张 / 7张', '68张 / 7张'],
+    ['黑色指定颜色 / ＋2 / 洗入', '4张 / 2张 / 2张', '4张 / 2张 / 2张'],
+    ['药水 / 白色＋3', '4张 / 2张', '4张 / 2张'],
+    ['净化 / 超级净化', '6张 / 4张', '4张 / 2张'],
+    ['交换手牌', '2张', '不含'],
+    ['战利白卡', '不含', '冒险中获得，加入玩家牌组循环']
   ];
 
   let _thumbId = 0;
@@ -142,45 +112,18 @@
     let html = '<div class="rules-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="rules-back">&larr; 返回</button><h1 class="rules-title">规则介绍</h1></div>';
 
-    html += '<div class="rules-section"><h2 class="rules-section-title">基本规则</h2><div class="rules-list">';
+    html += '<p class="rules-lead">先掌握出牌与防御；角色技能可在战斗中点击技能书查看。</p>';
+    html += '<section class="rules-section" aria-label="核心规则"><div class="rules-quick-grid">';
     for (const rule of GAMEPLAY_RULES) {
-      html += `<div class="rule-item"><div class="rule-item-title">${rule.title}</div><div class="rule-item-desc">${window.descToEmoji ? window.descToEmoji(rule.desc) : rule.desc}</div></div>`;
+      html += `<div class="rule-item"><h2 class="rule-item-title">${rule.title}</h2><p class="rule-item-desc">${rule.desc}</p></div>`;
     }
-    html += '</div></div>';
-
-    html += '<section class="rules-section"><h2 class="rules-section-title">单机对战与冒险牌库对比</h2>';
-    html += '<p class="rules-table-note">牌组总数包含手牌、待抽牌和弃牌；弃牌库顶属于弃牌库，不额外占一张。冒险中的战利白卡会改变玩家牌组总数。</p>';
-    html += '<div class="rules-table-wrap" role="region" aria-label="两种模式牌库对照表" tabindex="0"><table class="rules-deck-table">';
-    html += '<caption>玩家牌组配置与循环规则</caption><thead><tr><th scope="col">对比项目</th><th scope="col">单机对战</th><th scope="col">冒险 · 玩家</th></tr></thead><tbody>';
-    for (const [label, classic, player] of DECK_COMPARISON) {
-      html += '<tr><th scope="row">' + label + '</th><td>' + classic + '</td><td>' + player + '</td></tr>';
-    }
-    html += '</tbody></table></div><p class="rules-table-note">窄屏可在表格内左右滑动。以下卡牌示例展示通用效果，数量以对应模式的配置为准；战利白卡与怪物技能详见冒险图鉴。</p></section>';
+    html += '</div><p class="rules-turn-flow">出牌进攻 <span>→</span> 对手防御 <span>→</span> 结算 <span>→</span> 继续出牌或结束回合</p></section>';
+    html += '<details class="rules-disclosure"><summary><span>卡牌效果速查</span><small>数字牌 · 白牌 · 黑牌</small></summary><div class="rules-disclosure-body">';
+    html += '<p class="rules-table-note">以下只列卡牌效果。道具牌执行后继续搭桥；数字牌触发角色技能。具体技能见战斗技能书。</p>';
 
     let thumbSlots = [];
-    const npcCard = card => Object.assign(card, { npcCard: true });
-    const npcRows = [
-      ['白 1 / 2 / 3', '各 4 张', '触发怪物对应的进攻、防御技能。', [1,2,3].map(v => npcCard(num('WHITE',v,true)))],
-      ['白 4 / 5 / 6', '各 2 张', '一般用于进攻；特殊怪物可用高点数牌防御，以怪物技能为准。', [4,5,6].map(v => npcCard(num('WHITE',v,true)))],
-      ['白 7', '2 张', '普通怪物与场景Boss的轮空牌，没有攻防效果；最终敌人堕落 Ryan 的7牌有专属进攻技能，详见图鉴。', [npcCard(num('WHITE',7,true))]],
-      ['白 0', '1 张', '普通怪物打出后没有攻防效果；Boss 触发对应的 0 技能。', [npcCard(num('WHITE',0,true))]],
-      ['紫魔法', '1 张', '恢复 3 点生命（Boss 为 5 点），清除对手可清除的正面状态。', [npcCard(item('WHITE','magic'))]],
-      ['绿魔法', '1 张', '恢复 3 点生命（Boss 为 5 点），清除自身可清除的负面状态。', [npcCard(item('WHITE','greenMagic'))]]
-    ];
-    html += '<section class="rules-section"><h2 class="rules-section-title">冒险怪物卡牌</h2><p class="rules-table-note">怪物牌组共 23 张，普通怪物与 Boss 使用相同的牌组构成。怪物牌面带紫色角标与骷髅标识。挑战房两个怪物共享怪物牌库与弃牌库，与玩家牌库完全隔离。</p>';
-    html += '<div class="rules-table-wrap" role="region" aria-label="怪物卡牌介绍" tabindex="0"><table class="rules-deck-table rules-npc-table"><thead><tr><th scope="col">卡牌</th><th scope="col">数量</th><th scope="col">效果</th></tr></thead><tbody>';
-    for (const [label, count, effect, samples] of npcRows) {
-      let thumbs = '<div class="rule-card-row">';
-      for (const card of samples) {
-        const id = thumbPlaceholder();
-        thumbs += '<span id="' + id + '"></span>';
-        thumbSlots.push({ id, card });
-      }
-      html += '<tr><th scope="row">' + label + thumbs + '</div></th><td>' + count + '</td><td>' + effect + '</td></tr>';
-    }
-    html += '</tbody></table></div><p class="rules-table-note">怪物牌库少于3张时回收怪物弃牌；战斗结束后全部怪物手牌与弃牌回收。挑战房一个怪物倒下时，其手牌进入怪物弃牌库，不改变当前弃牌库顶。</p></section>';
     for (const cat of CARD_DATA) {
-      html += `<div class="rules-section"><h2 class="rules-section-title" style="border-left:4px solid ${cat.color}">${cat.category}</h2><div class="rules-list">`;
+      html += `<section class="rules-section"><h3 class="rules-section-title" style="border-left:4px solid ${cat.color}">${cat.category}</h3><div class="rules-reference-grid">`;
       for (const card of cat.cards) {
         let thumbs = '';
         if (card.samples && card.samples.length) {
@@ -192,12 +135,36 @@
           }
           thumbs += '</div>';
         }
-        html += `<div class="rule-item">${thumbs}<div class="rule-item-title">${card.name}</div><div class="rule-item-desc">${window.descToEmoji ? window.descToEmoji(card.desc) : card.desc}</div><div class="rule-item-count">单机对战数量：${card.count}</div></div>`;
+        html += `<div class="rule-item">${thumbs}<div class="rule-item-title">${card.name}</div><div class="rule-item-desc">${window.descToEmoji ? window.descToEmoji(card.desc) : card.desc}</div></div>`;
       }
-      html += '</div></div>';
+      html += '</div></section>';
     }
 
-    html += '</div>';
+    html += '</div></details>';
+    html += '<details class="rules-disclosure"><summary><span>冒险模式补充</span><small>独立牌库 · 战利白卡 · 怪物牌</small></summary><div class="rules-disclosure-body">';
+    html += '<ul class="rules-adventure-notes"><li>玩家与怪物各用各的牌库、弃牌库；挑战房的两名怪物共享一套怪物牌组。</li><li>进入战斗时翻开新牌作为弃牌库顶；结束房间后保留玩家手牌和牌库。</li><li>战利白卡加入手牌，不占道具槽；打出后进入弃牌库，可循环抽到。抽牌数量、能否继续搭桥以卡片说明为准。</li></ul>';
+    const npcCard = card => Object.assign(card, { npcCard: true });
+    const npcRows = [
+      ['白 1 / 2 / 3', '各 4 张', '按怪物技能触发进攻或防御效果。', [1,2,3].map(v => npcCard(num('WHITE',v,true)))],
+      ['白 4 / 5 / 6', '各 2 张', '用于进攻；部分怪物可用高点数牌防御，详见技能。', [4,5,6].map(v => npcCard(num('WHITE',v,true)))],
+      ['白 7', '2 张', '普通怪物和场景Boss无效果；堕落Ryan例外，详见图鉴。', [npcCard(num('WHITE',7,true))]],
+      ['白 0', '1 张', '普通怪物打出后没有攻防效果；Boss 触发对应的 0 技能。', [npcCard(num('WHITE',0,true))]],
+      ['紫魔法', '1 张', '回复3点生命，清除对手可清除的正面状态。', [npcCard(item('WHITE','magic'))]],
+      ['绿魔法', '1 张', '回复3点生命，清除自身可清除的负面状态。', [npcCard(item('WHITE','greenMagic'))]]
+    ];
+    html += '<h3 class="rules-section-title">怪物牌组 · 共23张</h3><p class="rules-table-note">普通怪物与Boss使用相同的牌组构成，牌面带紫色标识。Boss魔法回复5点生命。</p><div class="rules-npc-reference">';
+    for (const [label, count, effect, samples] of npcRows) {
+      const id = thumbPlaceholder();
+      thumbSlots.push({ id, card: samples[0] });
+      html += '<div class="rule-item rules-npc-row"><span id="' + id + '"></span><div><h4 class="rule-item-title">' + label + ' <small>' + count + '</small></h4><p class="rule-item-desc">' + effect + '</p></div></div>';
+    }
+    html += '</div><p class="rules-table-note">怪物牌库少于3张时回收其弃牌。挑战房怪物出局后，手牌进入怪物弃牌库。</p></div></details>';
+    html += '<details class="rules-disclosure"><summary><span>牌组数量与回收</span><small>单机101张 · 冒险玩家95张</small></summary><div class="rules-disclosure-body">';
+    html += '<div class="rules-table-wrap" role="region" aria-label="两种模式牌库对照表" tabindex="0"><table class="rules-deck-table"><thead><tr><th scope="col">卡牌</th><th scope="col">单机对战</th><th scope="col">冒险玩家</th></tr></thead><tbody>';
+    for (const [label, classic, player] of DECK_COMPARISON) {
+      html += '<tr><th scope="row">' + label + '</th><td>' + classic + '</td><td>' + player + '</td></tr>';
+    }
+    html += '</tbody></table></div><p class="rules-table-note">牌组总数包含手牌、待抽牌和弃牌，弃牌库顶只计算一次。牌库不足时回收各自弃牌；单机回收时保留当前弃牌库顶。</p></div></details></div>';
     container.innerHTML = html;
 
     if (typeof renderCard === 'function') {

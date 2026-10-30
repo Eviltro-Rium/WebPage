@@ -44,7 +44,7 @@
       color: 'WHITE',
       trophyWhite: true,
       trophyName: name,
-      trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', IceSealTrophy: 'iceSeal', HypothermiaTrophy: 'hypothermia', RussianRouletteTrophy: 'roulette', FlyTrophy: 'fly', CritTrophy: 'crit', MagmaVeinTrophy: 'magmaVein', DivingTrophy: 'diving', ScorchTrophy: 'scorch', LushTrophy: 'lush', PoisonTrophy: 'poison', ParasiteTrophy: 'parasite', ThornsTrophy: 'thorns', SandblindTrophy: 'sandblind', QuicksandTrophy: 'quicksand', TimeBombTrophy: 'bomb', GuardTrophy: 'guard', DisarmTrophy: 'disarm', PurifyWaterTrophy: 'purify', ZeroTrophy: 'zero', SmallPotionTrophy: 'smallPotion', DrawTwoTrophy: 'drawTwo', RiotTrophy: 'riot' })[name] || null,
+      trophyEffect: ({ BurnTrophy: 'burn', PiercingTrophy: 'bleed', FreezeTrophy: 'freeze', IceSealTrophy: 'iceSeal', HypothermiaTrophy: 'hypothermia', RussianRouletteTrophy: 'roulette', FlyTrophy: 'fly', CritTrophy: 'crit', MagmaVeinTrophy: 'magmaVein', DivingTrophy: 'diving', ScorchTrophy: 'scorch', LushTrophy: 'lush', PoisonTrophy: 'poison', ParasiteTrophy: 'parasite', ThornsTrophy: 'thorns', SandblindTrophy: 'sandblind', QuicksandTrophy: 'quicksand', TimeBombTrophy: 'bomb', GuardTrophy: 'guard', DisarmTrophy: 'disarm', PurifyWaterTrophy: 'purify', ZeroTrophy: 'zero', SmallPotionTrophy: 'smallPotion', DrawTwoTrophy: 'drawTwo', VampireTrophy: 'drain', GreenMagicTrophy: 'greenMagic', PurpleMagicTrophy: 'purpleMagic', RiotTrophy: 'riot' })[name] || null,
       chosenColor: null,
       isBlack: false,
       isWhite: true,
@@ -74,9 +74,10 @@
     }
     for (let v = 1; v <= 7; v++) d.push(num('WHITE', v, true));
 
-    for (let i = 0; i < 2; i++) d.push(item('BLACK', 'black'), item('BLACK', 'drawTwo'), item('WHITE', 'drawThree'));
+    for (let i = 0; i < 4; i++) d.push(item('BLACK', 'black'));
+    for (let i = 0; i < 2; i++) d.push(item('BLACK', 'drawTwo'), item('WHITE', 'drawThree'));
     for (let i = 0; i < 4; i++) d.push(item('WHITE', 'potion'));
-    // 洗入 / 净化 / 超级净化各比对战标准组少 2 张。
+    // 净化 / 超级净化各比对战标准组少 2 张；洗入与对战同为 2 张。
     for (let i = 0; i < 2; i++) d.push(item('BLACK', 'shuffle'), item('WHITE', 'superPurify'));
     for (let i = 0; i < 4; i++) d.push(item('WHITE', 'purify'));
     return opts.shuffle === false ? d : shuffle(d);

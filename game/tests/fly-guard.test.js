@@ -203,6 +203,6 @@ test('a counter can consume fly then guard but leaves later buff damage intact',
   engine.s.player.burn=2;engine.settleBurn(engine.s.player);
   engine.s.player.bleed=1;engine.settleBleed(engine.s.player,1);
   engine.s.player.bomb=1;engine.s.bombPlayTokens={player:1};engine._tickBomb('player');
-  assert.equal(engine.s.player.hp,30);
+  assert.equal(engine.s.player.hp,25);
   assert.equal(engine.s.player.fly,1);assert.equal(engine.s.player.guard,3);
 });

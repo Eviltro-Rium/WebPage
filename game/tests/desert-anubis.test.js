@@ -33,17 +33,17 @@ function numCard(value, color = 'RED') {
 }
 
 function stagedEngine(t, stage = 2) {
-  const base = getBoss('Pharaoh');
+  const base = getBoss('Anubis');
   AdventureMonsterBridge.registerMonsterChar(applyStageMods(base, stage));
   t.after(() => AdventureMonsterBridge.registerMonsterChar(base));
   const eng = new Engine();
-  eng.start('Ryan', 'Pharaoh');
+  eng.start('Ryan', 'Anubis');
   eng.later = () => {};
   return eng;
 }
 
 function defendWith(eng, card, incoming) {
-  return context.CharacterRegistry.get('Pharaoh').defend(eng, 'Pharaoh', card.value, incoming, card, eng.s.ai, eng.s.player, 'ai', card.color, {
+  return context.CharacterRegistry.get('Anubis').defend(eng, 'Anubis', card.value, incoming, card, eng.s.ai, eng.s.player, 'ai', card.color, {
     heal: (x, n) => eng.heal(x, n), hurt: (x, n) => eng.hurt(x, n),
     counter: (x, n) => eng.counterAttack(eng.s.ai, x, n),
     clearDebuffs: x => eng.clearDebuffs(x),
@@ -51,54 +51,54 @@ function defendWith(eng, card, incoming) {
   });
 }
 
-test('Pharaoh base stats, boss pool and Stage 3 gate', () => {
-  const m = getBoss('Pharaoh');
+test('Anubis base stats, boss pool and Stage 3 gate', () => {
+  const m = getBoss('Anubis');
   assert.ok(m);
-  assert.equal(m.kind, '法老');
+  assert.equal(m.kind, '阿努比斯');
   assert.equal(m.hp, 40);
   assert.equal(m.minStage, 3);
   assert.equal(m.whiteZeros, 1);
-  assert.equal(m.icon, '../icons/npc_icons/pharaoh.webp');
+  assert.equal(m.icon, '../icons/npc_icons/desert_anubis.webp');
   const pool = context.AdventureBossPool.desert;
   assert.equal(pool['*'], undefined);
-  for (const stage of [3, 4]) assert.ok(pool[stage].includes('Pharaoh'));
+  for (const stage of [3, 4]) assert.ok(pool[stage].includes('Anubis'));
 });
 
-test('Pharaoh only appears from Stage 3 in desert boss picks', () => {
+test('Anubis only appears from Stage 3 in desert boss picks', () => {
   const file = path.join(gameRoot, 'adventure/js/engine/adventure_engine.js');
   vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
   const eng = new context.AdventureEngine();
   eng.s = { scene: 'desert', stage: 1 };
-  for (let i = 0; i < 50; i++) assert.ok(['DesertHyena','DesertSobek'].includes(eng._pickBossName({ bossName: 'Pharaoh' })));
+  for (let i = 0; i < 50; i++) assert.ok(['DesertHyena','DesertSobek'].includes(eng._pickBossName({ bossName: 'Anubis' })));
   eng.s.stage = 3;
   const desertBosses = new Set();
   for (let i = 0; i < 80; i++) desertBosses.add(eng._pickBossName({}));
-  assert.ok(desertBosses.has('Pharaoh'));
+  assert.ok(desertBosses.has('Anubis'));
   assert.ok(desertBosses.has('DesertHyena'));
-  for (const name of desertBosses) assert.ok(['Pharaoh', 'DesertHyena', 'DesertSobek'].includes(name));
+  for (const name of desertBosses) assert.ok(['Anubis', 'DesertHyena', 'DesertSobek'].includes(name));
   for (const scene of ['castle', 'forest', 'ocean']) {
     eng.s = { scene, stage: 3 };
-    for (let i = 0; i < 30; i++) assert.notEqual(eng._pickBossName({}), 'Pharaoh');
+    for (let i = 0; i < 30; i++) assert.notEqual(eng._pickBossName({}), 'Anubis');
   }
 });
 
-test('Pharaoh loot: Zero 1-6; 11/12 dual-source potions', () => {
+test('Anubis loot: Zero 1-6; 11/12 dual-source potions', () => {
   for (const roll of [1, 2, 3, 4, 5, 6]) {
-    const r = AdventureLoot.rollMonsterDrop('desert', 'Pharaoh', () => (roll - 1) / 12);
+    const r = AdventureLoot.rollMonsterDrop('desert', 'Anubis', () => (roll - 1) / 12);
     assert.deepEqual(Array.from(r.drops), ['ZeroTrophy']);
   }
   for (const roll of [7, 8, 9, 10]) {
-    const r = AdventureLoot.rollMonsterDrop('desert', 'Pharaoh', () => (roll - 1) / 12);
+    const r = AdventureLoot.rollMonsterDrop('desert', 'Anubis', () => (roll - 1) / 12);
     assert.deepEqual(Array.from(r.drops), []);
   }
-  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'Pharaoh', null, 11).drops),
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'Anubis', null, 11).drops),
     ['SmallPotionTrophy']);
-  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'Pharaoh', null, 12).drops),
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'Anubis', null, 12).drops),
     ['PurifyWaterTrophy']);
 });
 
-test('Pharaoh attack hooks follow card value and color', () => {
-  const m = getBoss('Pharaoh');
+test('Anubis attack hooks follow card value and color', () => {
+  const m = getBoss('Anubis');
   for (const v of [1, 2, 3]) {
     assert.equal(m.attackDamage(numCard(v)), 4);
     assert.equal(m.attackBurn(numCard(v, 'RED')), 2);
@@ -127,8 +127,8 @@ test('Pharaoh attack hooks follow card value and color', () => {
   assert.equal(m.attackDrawSelf(zero), 2);
 });
 
-test('Pharaoh defend hooks', () => {
-  const m = getBoss('Pharaoh');
+test('Anubis defend hooks', () => {
+  const m = getBoss('Anubis');
   for (const v of [1, 2, 3]) {
     assert.equal(m.defendCounter(numCard(v), 7), 3);
     assert.equal(m.defendHeal(numCard(v)), 1);
@@ -143,8 +143,8 @@ test('Pharaoh defend hooks', () => {
   assert.equal(m.defendClearDebuffs(numCard(0)), true);
 });
 
-test('Pharaoh stage mods: Stage 3 base attacks, Stage 4 defend heal +1', () => {
-  const m = getBoss('Pharaoh');
+test('Anubis stage mods: Stage 3 base attacks, Stage 4 defend heal +1', () => {
+  const m = getBoss('Anubis');
   const s2 = applyStageMods(m, 2);
   assert.equal(s2.attackDamage(numCard(2)), 4);
   assert.equal(s2.defendHeal(numCard(2)), 1);
@@ -159,7 +159,7 @@ test('Pharaoh stage mods: Stage 3 base attacks, Stage 4 defend heal +1', () => {
   assert.equal(s4.defendHeal(numCard(0)), 0);
 });
 
-test('Pharaoh 0 attack heals 3, clears own debuffs, draws 2, deals no damage', t => {
+test('Anubis 0 attack heals 3, clears own debuffs, draws 2, deals no damage', t => {
   const eng = stagedEngine(t, 2);
   eng.s.ai.hp = 30;
   eng.s.ai.burn = 2;
@@ -167,7 +167,7 @@ test('Pharaoh 0 attack heals 3, clears own debuffs, draws 2, deals no damage', t
   const handBefore = eng.h.ai.length;
   const card = numCard(0, 'WHITE');
   eng.s.atkCard = card; eng.s.atkOwner = 'ai';
-  const r = eng.effect('Pharaoh', 0, card, eng.s.ai, eng.s.player);
+  const r = eng.effect('Anubis', 0, card, eng.s.ai, eng.s.player);
   assert.ok(!r.d);
   assert.equal(eng.s.ai.hp, 33);
   assert.equal(eng.s.ai.burn, 0);
@@ -175,25 +175,25 @@ test('Pharaoh 0 attack heals 3, clears own debuffs, draws 2, deals no damage', t
   assert.equal(eng.h.ai.length, handBefore + 2);
 });
 
-test('Pharaoh 4/5/6 yellow attack is unblockable, other colors are not', t => {
+test('Anubis 4/5/6 yellow attack is unblockable, other colors are not', t => {
   const eng = stagedEngine(t, 2);
   const yellow = numCard(5, 'YELLOW');
   eng.s.atkCard = yellow; eng.s.atkOwner = 'ai';
-  const r = eng.effect('Pharaoh', 5, yellow, eng.s.ai, eng.s.player);
+  const r = eng.effect('Anubis', 5, yellow, eng.s.ai, eng.s.player);
   assert.equal(r.d, 6);
   assert.equal(r.unblock, true);
   const red = numCard(5, 'RED');
   eng.s.atkCard = red;
-  const r2 = eng.effect('Pharaoh', 5, red, eng.s.ai, eng.s.player);
+  const r2 = eng.effect('Anubis', 5, red, eng.s.ai, eng.s.player);
   assert.equal(r2.d, 6);
   assert.ok(!r2.unblock);
 });
 
-test('Pharaoh 1/2/3 green attack grants itself lush', t => {
+test('Anubis 1/2/3 green attack grants itself lush', t => {
   const eng = stagedEngine(t, 2);
   const card = numCard(2, 'GREEN');
   eng.s.atkCard = card; eng.s.atkOwner = 'ai';
-  const r = eng.effect('Pharaoh', 2, card, eng.s.ai, eng.s.player);
+  const r = eng.effect('Anubis', 2, card, eng.s.ai, eng.s.player);
   assert.equal(r.d, 4);
   eng.prepareAttackSettlement(r.d, 'player');
   eng.commitAttackStatuses('afterDamage');
@@ -201,11 +201,11 @@ test('Pharaoh 1/2/3 green attack grants itself lush', t => {
   assert.equal(eng.s.player.lush || 0, 0);
 });
 
-test('Pharaoh 1/2/3 red attack burns the target for 2 after damage', t => {
+test('Anubis 1/2/3 red attack burns the target for 2 after damage', t => {
   const eng = stagedEngine(t, 2);
   const card = numCard(2, 'RED');
   eng.s.atkCard = card; eng.s.atkOwner = 'ai';
-  const r = eng.effect('Pharaoh', 2, card, eng.s.ai, eng.s.player);
+  const r = eng.effect('Anubis', 2, card, eng.s.ai, eng.s.player);
   assert.equal(r.d, 4);
   eng.prepareAttackSettlement(r.d, 'player');
   eng.commitAttackStatuses('afterDamage');
@@ -213,7 +213,7 @@ test('Pharaoh 1/2/3 red attack burns the target for 2 after damage', t => {
   assert.equal(eng.s.ai.burn || 0, 0);
 });
 
-test('Pharaoh defend 1/2/3 heals 1 and counters 3; Stage 4 heals 2', t => {
+test('Anubis defend 1/2/3 heals 1 and counters 3; Stage 4 heals 2', t => {
   const eng = stagedEngine(t, 4);
   eng.s.ai.hp = 30;
   const playerHp = eng.s.player.hp;
@@ -223,7 +223,7 @@ test('Pharaoh defend 1/2/3 heals 1 and counters 3; Stage 4 heals 2', t => {
   assert.equal(eng.s.player.hp, playerHp - 3);
 });
 
-test('Pharaoh defend 0 clears own debuffs and counters the incoming damage', t => {
+test('Anubis defend 0 clears own debuffs and counters the incoming damage', t => {
   const eng = stagedEngine(t, 2);
   eng.s.ai.burn = 2;
   eng.s.ai.bleed = 1;
@@ -243,21 +243,21 @@ test('compactSkillText follows the panel shorthand rules', () => {
   assert.equal(c('反击相同点伤害，跳过防御'), '反击相同点伤害，跳过防御');
 });
 
-test('Pharaoh skill panel text', () => {
+test('Anubis skill panel text', () => {
   for (const stage of [2, 3, 4]) {
     const bonus = stage >= 3 ? 1 : 0;
-    assert.match(describe('Pharaoh', numCard(2), false, { stage }), new RegExp('^' + 4 + '🗡️，.*🔴施加2层\\[灼伤\\].*🟡施加\\[流沙\\].*🔵施加\\[失温\\].*🟢获得\\[茂盛\\]'));
-    assert.match(describe('Pharaoh', numCard(5), false, { stage }), new RegExp('^' + 6 + '🗡️，.*🟡则不可防御'));
-    assert.equal(describe('Pharaoh', numCard(0), false, { stage }), '回3❤️，清除自身所有负面状态，抽2🃏');
-    assert.equal(describe('Pharaoh', numCard(2), true, { stage }), '反击3🗡️，回' + (stage >= 4 ? 2 : 1) + '❤️');
-    assert.equal(describe('Pharaoh', numCard(0), true, { stage }), '清除自身所有负面状态，反击相同点伤害');
-    assert.equal(describe('Pharaoh', numCard(5), true, { stage }), '无防御效果');
+    assert.match(describe('Anubis', numCard(2), false, { stage }), new RegExp('^' + 4 + '🗡️，.*🔴施加2层\\[灼伤\\].*🟡施加\\[流沙\\].*🔵施加\\[失温\\].*🟢获得\\[茂盛\\]'));
+    assert.match(describe('Anubis', numCard(5), false, { stage }), new RegExp('^' + 6 + '🗡️，.*🟡则不可防御'));
+    assert.equal(describe('Anubis', numCard(0), false, { stage }), '回3❤️，清除自身所有负面状态，抽2🃏');
+    assert.equal(describe('Anubis', numCard(2), true, { stage }), '反击3🗡️，回' + (stage >= 4 ? 2 : 1) + '❤️');
+    assert.equal(describe('Anubis', numCard(0), true, { stage }), '清除自身所有负面状态，反击相同点伤害');
+    assert.equal(describe('Anubis', numCard(5), true, { stage }), '无防御效果');
   }
 });
 
-test('Pharaoh stage guide entries', () => {
-  assert.deepEqual(JSON.parse(JSON.stringify(context.AdventureStageGuide.Pharaoh)), [
+test('Anubis stage guide entries', () => {
+  assert.deepEqual(JSON.parse(JSON.stringify(context.AdventureStageGuide.Anubis)), [
     { stage: '4', text: '防御恢复 +1' }
   ]);
-  assert.match(JSON.stringify(context.AdventureMonsterNotes.Pharaoh), /Stage 3/);
+  assert.match(JSON.stringify(context.AdventureMonsterNotes.Anubis), /Stage 3/);
 });

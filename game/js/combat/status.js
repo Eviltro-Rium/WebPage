@@ -109,7 +109,7 @@
         },
 
         burn(engine, entity, amount, opts) {
-            if (amount <= 0 || engine.name(entity) === 'Leon') return;
+            if (amount <= 0) return;
             if (service) addStatus(entity, 'burn', amount); else entity.burn = Math.min(5, entity.burn + amount);
             if (!opts || opts.silent !== true) {
                 const target = targetKey(engine, entity);

@@ -29,14 +29,14 @@
             deck.push(Card.number(color, 0));
         }
         for (let value = 1; value <= 7; value++) deck.push(Card.number('WHITE', value, true));
+        for (let n = 0; n < 4; n++) deck.push(Card.item('BLACK', 'black'));
         for (let n = 0; n < 2; n++) {
-            deck.push(Card.item('BLACK', 'black'));
             deck.push(Card.item('BLACK', 'drawTwo'));
             deck.push(Card.item('WHITE', 'drawThree'));
             deck.push(Card.item('WHITE', 'swap'));
         }
+        for (let n = 0; n < 2; n++) deck.push(Card.item('BLACK', 'shuffle'));
         for (let n = 0; n < 4; n++) {
-            deck.push(Card.item('BLACK', 'shuffle'));
             deck.push(Card.item('WHITE', 'potion'));
             deck.push(Card.item('WHITE', 'superPurify'));
         }

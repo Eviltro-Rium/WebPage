@@ -112,13 +112,23 @@
       if (target.burn > 0) {
         const dmg = target.burn;
         const keep = !!target.scorch;
+        const leonImmune = target.name === 'Leon';
         if (!keep) {
           if (statusRegistry && statusRegistry.remove) statusRegistry.remove(target, 'burn', 1);
           else target.burn--;
         }
-        target.hp = Math.max(0, target.hp - dmg);
-        this._log(who + '灼伤结算：-' + dmg + '生命' + (keep ? '（炙热不消退）' : '，灼伤层数-1'));
-        this.emit('buffSettle', '[灼伤]🗡️' + dmg + (keep ? '（[炙热]不消退）' : '，层数-1'), null, { who: target === this.s.player ? 'player' : 'enemy', amount: dmg });
+        if (leonImmune) {
+          this._log(who + '灼伤结算：免疫' + (keep ? '（炙热不消退）' : '，灼伤层数-1'));
+          this.emit('buffSettle', keep ? '[灼伤]免疫（[炙热]不消退）' : '[灼伤]免疫，层数-1', null, {
+            who: target === this.s.player ? 'player' : 'enemy', amount: 0
+          });
+        } else {
+          target.hp = Math.max(0, target.hp - dmg);
+          this._log(who + '灼伤结算：-' + dmg + '生命' + (keep ? '（炙热不消退）' : '，灼伤层数-1'));
+          this.emit('buffSettle', '[灼伤]🗡️' + dmg + (keep ? '（[炙热]不消退）' : '，层数-1'), null, {
+            who: target === this.s.player ? 'player' : 'enemy', amount: dmg
+          });
+        }
       }
       if (target.bleed > 0) {
         const dmg = target.bleed;

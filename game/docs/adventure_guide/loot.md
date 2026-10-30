@@ -38,4 +38,4 @@
 - [沙漠](desert.md)
 - [火山](volcano.md)
 
-战利白卡：`drop` 仅掉落 · `forge` 仅铁匠（俄盘/缴械/暴乱/定时炸弹）· `both` 双源（小药剂/净化/零技能/双抽）。铁匠槽 = forge∪both。细则见 [consumables.md](consumables.md)。
+战利白卡：`drop` 仅掉落 · `forge` 仅铁匠（俄盘/缴械/暴乱/定时炸弹/吸血/绿魔法/紫魔法）· `both` 双源（小药剂/净化/零技能/双抽）。铁匠槽 = forge∪both。细则见 [consumables.md](consumables.md)。

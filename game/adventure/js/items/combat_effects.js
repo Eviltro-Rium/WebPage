@@ -223,7 +223,7 @@
   });
 
   register('vampire', (eng, def, ctx) => {
-    const amt = def.vampireAmount || 3;
+    const amt = def.vampireAmount || 5;
     const targetKey = ctx.targetKey || 'ai';
     // Vampire cannot open a defense phase, but existing guard/fly still
     // reduces the amount actually drained.

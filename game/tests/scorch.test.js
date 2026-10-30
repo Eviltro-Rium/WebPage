@@ -56,6 +56,19 @@ test('burn settlement keeps stacks while scorch is held', () => {
   assert.equal(eng.s.player.burn, 3);
 });
 
+test('Leon receives burn stacks but takes no burn damage on settlement', () => {
+  const eng = new Engine();
+  eng.start('Leon', 'Ryan');
+  eng.later = () => {};
+  const hp = eng.s.player.hp;
+  eng.burn(eng.s.player, 3);
+  assert.equal(eng.s.player.burn, 3);
+  const dmg = eng.settleBurn(eng.s.player);
+  assert.equal(dmg, 0);
+  assert.equal(eng.s.player.hp, hp);
+  assert.equal(eng.s.player.burn, 2);
+});
+
 test('burn settlement decays stacks without scorch', () => {
   const eng = new Engine();
   eng.start('Ryan', 'Saiki');

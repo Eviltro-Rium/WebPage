@@ -12,7 +12,7 @@
     { id: 'poison',      property: 'poison',      label: '中毒', icon: 'buff_icons/poison.webp',       polarity: 'debuff', stack: true,  max: 2, cleanse: 'decrement', trigger: 'turnEnd', transferable: true },
     { id: 'freeze',      property: 'frozen',      label: '冷冻', icon: 'buff_icons/freeze.webp',       polarity: 'debuff', stack: false, max: 1, cleanse: 'reset',     trigger: 'turnEnd', transferable: true },
     { id: 'blind',       property: 'blind',       label: '致盲', icon: 'buff_icons/blind.webp',        polarity: 'debuff', stack: false, max: 1, cleanse: 'reset',     trigger: 'persistent', transferable: true },
-    { id: 'bomb',        property: 'bomb',        label: '定时炸弹', icon: 'buff_icons/time_bomb.webp', polarity: 'debuff', stack: true, max: 5, cleanse: 'reset', trigger: 'onPlay', transferable: true },
+    { id: 'bomb',        property: 'bomb',        label: '定时炸弹', icon: 'buff_icons/time_bomb.webp', polarity: 'debuff', stack: true, max: 5, explodeDamage: 10, cleanse: 'reset', trigger: 'onPlay', transferable: true },
     { id: 'iceSeal',     property: 'iceSeal',     label: '冰封', icon: 'buff_icons/ice_seal.webp',    polarity: 'debuff', stack: false, max: 1, cleanse: 'reset',     trigger: 'onDraw', transferable: true },
     { id: 'hypothermia', property: 'hypothermia', label: '失温', icon: 'buff_icons/hypothermia.webp', polarity: 'debuff', stack: true, max: 2, cleanse: 'reset', trigger: 'onThreshold', transferable: true },
     { id: 'bind',        property: 'bindMark',   label: '捆缚', icon: 'buff_icons/binding.webp',     polarity: 'debuff', mark: true, stack: false, max: 1, cleanse: 'never', trigger: 'turnStart' },
@@ -78,6 +78,11 @@
     return removed;
   }
 
+  function bombExplodeDamage() {
+    const def = get('bomb');
+    return def && Number.isFinite(Number(def.explodeDamage)) ? Number(def.explodeDamage) : 10;
+  }
+
   const api = {
     all,
     get,
@@ -88,6 +93,7 @@
     list,
     clear,
     clearGroup,
+    bombExplodeDamage,
     buffs: Object.freeze(all.filter(def => def.polarity === 'buff')),
     debuffs: Object.freeze(all.filter(def => def.polarity === 'debuff'))
   };

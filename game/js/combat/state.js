@@ -14,7 +14,7 @@
         'CHAN_FIVE_REORDER',
         // Used by Adventure when a player chooses a visible opponent card.
         // Classic and online modes resolve the same skills through the RNG.
-        'OPPONENT_CARD_CHOICE', 'GUARD_CHOICE', 'DICE_CHOICE', 'ATTACK_BUFF_CHOICE',
+        'OPPONENT_CARD_CHOICE', 'LEON_ZERO_DISCARD', 'GUARD_CHOICE', 'DICE_CHOICE', 'ATTACK_BUFF_CHOICE',
         'AI_TURN', 'AI_DEFEND', 'AI2_TURN', 'GAME_OVER'
     ]);
 

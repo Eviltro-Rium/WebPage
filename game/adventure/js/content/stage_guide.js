@@ -481,7 +481,7 @@
       "text": "防御反击 +1"
     }
   ],
-  "Pharaoh": [{"stage": "4", "text": "防御恢复 +1"}],
+  "Anubis": [{"stage": "4", "text": "防御恢复 +1"}],
   "DesertHyena": [
     {
       "stage": "2",
@@ -741,7 +741,7 @@
     {
       "title": "出现条件",
       "lines": [
-        "仅从 Stage 2 开始出现"
+        "精英房遭遇（Stage 3 起）"
       ]
     }
   ],
@@ -781,7 +781,7 @@
   "DesertViper": [{ "title": "出现条件", "lines": ["仅从 Stage 2 开始出现"] }],
   "DesertAntlion": [{ "title": "出现条件", "lines": ["仅从 Stage 3 开始出现在精英房"] }],
   "DesertVulture": [],
-  "Pharaoh": [
+  "Anubis": [
     {
       "title": "出现条件",
       "lines": [

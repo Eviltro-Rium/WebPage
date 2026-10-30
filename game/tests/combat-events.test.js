@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const gameRoot = path.resolve(__dirname, '..');
 const context = vm.createContext({ console, Math, JSON });
 context.window = context;
-for (const file of ['js/combat/events.js', 'js/combat/status.js', 'js/combat/damage.js']) {
+for (const file of ['js/combat/events.js', 'js/combat/status.js', 'js/combat/status_registry.js', 'js/combat/damage.js']) {
   const fullPath = path.join(gameRoot, file);
   vm.runInContext(fs.readFileSync(fullPath, 'utf8'), context, { filename: fullPath });
 }
@@ -62,9 +62,9 @@ test('bomb settlement emits one typed event for every participant', () => {
     assert.equal(events.length, 1);
     assert.deepEqual(
       { type: events[0].type, target: events[0].target, kind: events[0].kind, amount: events[0].amount },
-      { type: 'bombExplode', target, kind: 'bomb', amount: 5 }
+      { type: 'bombExplode', target, kind: 'bomb', amount: 10 }
     );
-    assert.equal(state[target].hp, 15);
+    assert.equal(state[target].hp, 10);
   }
 });
 

@@ -7,7 +7,7 @@
     name: 'Leon',
     hp: 70,
     type: '骑士',
-    passive: '免疫灼伤',
+    passive: '可叠[灼伤]但不承受灼伤伤害',
     init() { return {}; },
     turnStart(eng, ch) {},
     damageAtSettlement(eng, v, a, t) { return v === 5 ? 4 + (t.burn ? 2 : 0) : null; },
@@ -51,7 +51,8 @@
           ? (typeof eng._who === 'function' ? eng._who(t) : 'ai')
           : 'player';
         let oh = eng.h[handKey];
-        if (oh) {
+        // Adventure's player chooses the discard before this damage branch.
+        if (oh && !(eng.s.isAdventure && owner === 'player')) {
           let dc = Math.min(2, oh.length);
           for (let i = 0; i < dc; i++) {
             if (!oh.length) break;

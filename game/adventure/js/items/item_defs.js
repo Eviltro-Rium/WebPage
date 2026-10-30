@@ -398,12 +398,53 @@
     name: 'Vampire',
     displayName: '吸血',
     kind: 'consumable',
-    description: '对对手造成至多3点伤害，并将实际造成的伤害转为自身生命恢复',
+    description: '对对手造成至多5点伤害，并将实际造成的伤害转为自身生命恢复',
     icon: ICON + 'vampire.webp',
     useScene: 'combat',
-    price: 5,
+    price: 7,
     combatUse: 'vampire',
-    vampireAmount: 3
+    vampireAmount: 5
+  });
+
+  R.registerItem({
+    name: 'GreenMagicTrophy',
+    displayName: '绿魔法战利白卡',
+    kind: 'trophyWhite',
+    trophyKind: 'forge',
+    description: '恢复3点生命，清除自身可清除的负面状态。不抽牌，可继续搭桥。',
+    icon: '../icons/card_icons/green_magic.webp',
+    useScene: 'combat',
+    trophyEffect: 'greenMagic',
+    drawCount: 0,
+    beastTradeCost: ['cao', 'ben']
+  });
+
+  R.registerItem({
+    name: 'PurpleMagicTrophy',
+    displayName: '紫魔法战利白卡',
+    kind: 'trophyWhite',
+    trophyKind: 'forge',
+    description: '恢复3点生命，清除当前对手可清除的正面状态。不抽牌，可继续搭桥。',
+    icon: '../icons/card_icons/purple_magic.webp',
+    useScene: 'combat',
+    trophyEffect: 'purpleMagic',
+    drawCount: 0,
+    beastTradeCost: ['shui', 'huo']
+  });
+
+  R.registerItem({
+    name: 'VampireTrophy',
+    displayName: '吸血战利白卡',
+    kind: 'trophyWhite',
+    trophyKind: 'forge',
+    description: '吸取对手至多3点生命，按实际伤害恢复自身生命。抽1张牌，可继续搭桥。',
+    icon: '../icons/card_icons/suck_blood.webp',
+    useScene: 'combat',
+    price: 5,
+    combatUse: 'trophyDrain',
+    trophyEffect: 'drain',
+    drainAmount: 3,
+    beastTradeCost: ['cao', 'wuneng']
   });
 
   R.registerItem({

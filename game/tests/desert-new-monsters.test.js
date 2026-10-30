@@ -380,9 +380,9 @@ test('DesertViper defend: block cap 2 + 1 poison', () => {
 
 test('DesertViper stage mods', () => {
   const m = getMonster('DesertViper');
-  assert.equal(applyStageMods(m, 2).hp, 20);
-  assert.equal(applyStageMods(m, 3).hp, 20);
-  assert.equal(applyStageMods(m, 4).hp, 20);
+  assert.equal(applyStageMods(m, 2).hp, 25);
+  assert.equal(applyStageMods(m, 3).hp, 25);
+  assert.equal(applyStageMods(m, 4).hp, 25);
   const s3 = applyStageMods(m, 3);
   assert.equal(s3.attackDrain(numCard(5), { playerPoison: 0 }), 3);
   assert.equal(s3.attackDrain(numCard(5), { playerPoison: 2 }), 5);

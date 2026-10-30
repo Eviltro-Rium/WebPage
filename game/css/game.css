@@ -1402,6 +1402,7 @@ body {
     user-select: none;
 }
 .d12-result { animation: d12Land .28s cubic-bezier(.2,.8,.2,1); }
+.d12-result-static { animation: none; }
 .d12-result .d12-label,
 .d12-die .d12-die-label {
     font-size: .58rem;
@@ -2326,6 +2327,9 @@ body.combat-sheet-open::after {
 .rules-npc-table td { width: auto; }
 .rules-npc-table td:last-child { width: 50%; }
 .rules-npc-table .rule-card-row { justify-content: flex-start; margin-top: 8px; }
+.leon-zero-groups { max-height: 42vh; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
+.leon-zero-groups .rule-card-row { justify-content: flex-start; }
+.leon-zero-card[aria-pressed="true"] { border-color: #c4b5fd; box-shadow: 0 0 0 2px #a78bfa; transform: translateY(-3px); }
 .rules-list {
     display: flex;
     flex-direction: column;
@@ -2702,11 +2706,26 @@ body.combat-sheet-open::after {
 }
 .codex-trophy-section-head p { margin-top: 5px; font-size: 0.75rem; color: #9eb4c3; }
 .codex-monster-page .char-detail-grid { margin-top: 0; }
-.codex-monster-section { --monster-accent: #83d9cb; margin-top: 28px; }
+.codex-monster-scene { margin-top: 36px; }
+.codex-monster-scene:first-of-type { margin-top: 8px; }
+.codex-monster-scene-head { margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid rgba(203,213,225,0.12); }
+.codex-monster-scene-head h2 { display: flex; align-items: center; gap: 12px; font-size: 1.25rem; color: #e8f4f8; }
+.codex-monster-scene-head h2 span {
+    padding: 3px 10px;
+    border: 1px solid rgba(203,213,225,0.18);
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #94b8c8;
+}
+.codex-monster-section { --monster-accent: #83d9cb; margin-top: 22px; }
 .codex-monster-section[data-monster-tier="elite"] { --monster-accent: #a78bfa; }
+.codex-monster-section[data-monster-tier="boss"] { --monster-accent: #fbbf24; }
 .codex-monster-section-head { margin-bottom: 14px; padding-left: 13px; border-left: 3px solid var(--monster-accent); }
-.codex-monster-section-head h2 { display: flex; align-items: center; gap: 12px; font-size: 1.1rem; color: #f1f5f7; }
-.codex-monster-section-head h2 span {
+.codex-monster-section-head h2,
+.codex-monster-section-head h3 { display: flex; align-items: center; gap: 12px; font-size: 1.05rem; color: #f1f5f7; }
+.codex-monster-section-head h2 span,
+.codex-monster-section-head h3 span {
     padding: 3px 8px;
     border: 1px solid rgba(203,213,225,0.15);
     border-radius: 20px;
@@ -3690,3 +3709,95 @@ body.combat-sheet-open #controls .ctrl-btn { cursor: not-allowed; }
 .trophy-dice-choice .dice-face-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); flex:1 1 320px; }
 .trophy-dice-choice .dice-magician-actions { display:flex; flex:1 1 320px; gap:8px; }
 .trophy-dice-choice .dice-magician-actions > .choice-row { flex:1; width:auto; min-width:0; }
+
+/* Compact phone battlefield; retain readable descriptions and tappable controls. */
+@media (max-width: 768px) {
+    #game-container { padding: 4px 6px; }
+    #game-screen > .game-title { font-size: 1.05rem; letter-spacing: 1px; padding: 2px 0; }
+    #game-screen .top-bar { flex-wrap: wrap; gap: 3px 6px; padding: 2px; }
+    #game-screen .deck-area canvas { width: 22px; height: 29px; }
+    #game-screen .deck-info, #game-screen .phase-info, #game-screen .turn-info { font-size: .65rem; }
+    #game-screen .npc-deck-info { font-size: .62rem; }
+    #game-screen .ai-area { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto 120px 82px; gap: 4px; margin-bottom: 3px; }
+    #game-screen .attack-zone { grid-column: 1; grid-row: 2; }
+    #game-screen .defend-zone { grid-column: 2; grid-row: 2; }
+    #game-screen .reveal-zone { grid-column: 1; grid-row: 3; }
+    #game-screen .discard-zone { grid-column: 2; grid-row: 3; }
+    #game-screen .attack-zone, #game-screen .defend-zone { height: 120px; min-height: 120px; max-height: 120px; padding: 4px; grid-template-columns: 40px minmax(0, 1fr); column-gap: 3px; }
+    #game-screen .reveal-zone, #game-screen .discard-zone { height: 82px; min-height: 82px; max-height: 82px; padding: 3px; }
+    #game-screen .reveal-card-area, #game-screen .discard-card-area { min-height: 0; flex: 1; gap: 4px; }
+    #game-screen .reveal-card-area .card-canvas, #game-screen .discard-card-area .card-canvas { width: 34px !important; height: 48px !important; flex-basis: 34px; }
+    #game-screen .zone-cards > .card-canvas { width: 40px !important; height: 57px !important; flex-basis: 40px; }
+    #game-screen .zone-desc { font-size: .7rem; padding: 2px; }
+    #game-screen .ai-hands-stack { flex-direction: row; gap: 4px; }
+    #game-screen .ai-hands-stack > .ai-hand-zone { flex: 1 1 0; min-width: 0; height: 52px; min-height: 52px; max-height: 52px; padding: 2px 4px; }
+    #game-screen .ai-hand-row { min-width: 0; overflow-x: auto; }
+    #game-screen .ai-hand-row .card-canvas { width: 28px !important; height: 40px !important; flex-basis: 28px; }
+    #game-screen .hp-name { font-size: .72rem; overflow-wrap: anywhere; min-width: 0; }
+    #game-screen .npc-passive { font-size: .64rem; line-height: 1.35; margin-top: 2px; }
+    #game-screen .npc-hp-section { grid-template-columns: 42px minmax(0, 1fr) auto; gap: 2px 5px; }
+    #game-screen .npc-avatar { width: 42px; height: 42px; }
+    #game-screen .player-hand-layout { flex-direction: row; align-items: stretch; gap: 4px; }
+    #game-screen #player-hand { flex: 1; min-width: 0; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding: 7px 3px; }
+    #game-screen .reserve-zone { flex: 0 0 62px; }
+    #game-screen .reserve-content { border-top: 0; border-left: 1px solid #bca6ff66; }
+    #game-screen .reserve-title { padding: 2px 0; margin: 0 0 3px; font-size: .62rem; }
+    #game-screen .reserve-slot { min-height: 0; }
+    #game-screen .player-hand-zone .card-canvas { width: 44px !important; height: 63px !important; flex-basis: 44px; }
+    #game-screen .controls { position: sticky; bottom: 0; z-index: 45; min-height: 48px; padding: 4px 2px max(4px, env(safe-area-inset-bottom)); background: #112337; border-radius: 8px; }
+    #game-screen .ctrl-btn { min-height: 44px; padding: 7px 10px; font-size: .75rem; }
+    #game-screen .adventure-inventory-panel > .adventure-item-bar { padding: 4px; gap: 4px; flex-wrap: nowrap; overflow-x: auto; }
+    #game-screen .adv-combat-item-slots { flex-wrap: nowrap; }
+    #game-screen .adv-combat-item-slot { width: 44px; min-height: 46px; flex-shrink: 0; }
+    #game-screen .adventure-inventory-panel > .adventure-info-bar { padding: 4px 8px; font-size: .72rem; }
+    #game-screen .action-desc { font-size: .76rem; height: auto; min-height: 22px; max-height: none; white-space: normal; }
+}
+@media (max-width: 768px) {
+    #game-screen.active { justify-content: flex-start; padding: 2px 0 8px; }
+    #game-screen > .game-title::after { display: none; }
+    #game-screen .hud-side-tools { flex-direction: row; gap: 4px; }
+    #game-screen .hud-side-tools button { min-width: 44px; min-height: 44px; padding: 4px; }
+    #game-screen .error-hint:empty, #game-screen .action-desc:empty { display: none; }
+    #game-screen .hp-section > .hp-bar-outer { flex: 1 1 80px; min-width: 64px; }
+    #game-screen .hp-section > .buff-icons { flex-wrap: wrap; max-width: 110px; }
+    #game-screen .npc-hp-section > .buff-icons { max-width: none; }
+    #game-screen .reveal-zone { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: 14px minmax(0, 1fr); gap: 2px; }
+    #game-screen .reveal-zone > .zone-title { grid-column: 1 / -1; margin: 0; }
+    #game-screen .reveal-card-area { height: 54px; max-height: 54px; grid-row: 2; }
+    #game-screen .reveal-desc { height: auto; min-height: 0; max-height: 54px; grid-row: 2; overflow-y: auto; font-size: .65rem; padding: 0; margin: 0; }
+    #game-screen .discard-card-area { height: 54px; min-height: 0; max-height: 54px; }
+}
+
+/* Rule overview stays short; detailed references expand on demand. */
+.rules-header { position: sticky; top: -16px; z-index: 5; padding: 12px 0; margin-bottom: 8px; background: #102638; }
+.rules-back-btn { min-height: 44px; }
+.rules-lead { margin-bottom: 14px; color: var(--text-muted); font-size: .84rem; line-height: 1.6; }
+.rules-quick-grid, .rules-reference-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.rules-turn-flow { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 12px; padding: 10px; border-radius: 8px; background: #a78bfa14; font-size: .78rem; color: #e9d5ff; line-height: 1.6; }
+.rules-turn-flow span { color: #a78bfa; }
+.rules-disclosure { margin: 10px 0; border: 1px solid var(--glass-border); border-radius: 12px; background: rgba(15, 31, 48, .68); }
+.rules-disclosure > summary { min-height: 58px; padding: 12px 14px; cursor: pointer; color: #e9d5ff; font-weight: 750; line-height: 1.5; }
+.rules-disclosure > summary small { display: block; margin-left: 18px; font-size: .74rem; font-weight: 400; color: #b8cadd; }
+.rules-disclosure > summary:focus-visible { outline: 2px solid #c4b5fd; outline-offset: 3px; border-radius: 10px; }
+.rules-disclosure[open] > summary { border-bottom: 1px solid rgba(186,230,253,.16); }
+.rules-disclosure-body { padding: 0 12px 12px; }
+.rules-disclosure-body > .rules-section { margin-bottom: 14px; }
+.rules-reference-grid .rule-card-row { justify-content: flex-start; gap: 5px; margin-bottom: 8px; }
+.rules-adventure-notes { padding: 12px 0 12px 20px; font-size: .82rem; line-height: 1.6; color: #cbd5e1; }
+.rules-adventure-notes li + li { margin-top: 7px; }
+.rules-npc-reference { display: grid; gap: 6px; }
+.rules-npc-row { display: flex; align-items: center; gap: 12px; }
+.rules-npc-row > .rule-card-thumb { flex: 0 0 42px; width: 42px; height: 60px; }
+.rules-npc-row .rule-item-title small { margin-left: 8px; font-size: .72rem; font-weight: 400; color: #a6bacd; }
+.rules-disclosure .rules-deck-table { min-width: 0; table-layout: fixed; font-size: .78rem; }
+.rules-disclosure .rules-deck-table tbody th { width: auto; }
+.rules-disclosure .rules-deck-table th, .rules-disclosure .rules-deck-table td { width: auto; padding: 8px; overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  #rules-screen { padding: 10px; max-height: 100dvh; }
+  .rules-header { top: -10px; padding: 8px 0; gap: 10px; }
+  .rules-title { font-size: 1.2rem; }
+  .rules-quick-grid, .rules-reference-grid { grid-template-columns: minmax(0, 1fr); }
+  .rules-quick-grid .rule-item { padding: 9px 11px; }
+  .rules-disclosure-body { padding-inline: 8px; }
+  .rules-npc-row { gap: 8px; padding: 8px; }
+}

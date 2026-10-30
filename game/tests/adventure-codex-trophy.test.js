@@ -50,8 +50,13 @@ test('trophy codex groups drop/forge/both with real cards and shared rules', () 
   assert.ok(sections[1].querySelector('[data-codex-trophy="DisarmTrophy"]') || sections[1].querySelector('[data-codex-trophy="RiotTrophy"]'));
   assert.ok(sections[2].querySelector('[data-codex-trophy="SmallPotionTrophy"]'));
   assert.equal(screen.querySelectorAll('.codex-trophy-face').length, screen.querySelectorAll('.codex-trophy-entry').length);
-  assert.equal(screen.querySelector('.codex-trophy-intro-top').lastElementChild.textContent, '共 25 张');
+  assert.equal(screen.querySelector('.codex-trophy-intro-top').lastElementChild.textContent, '共 28 张');
   assert.equal(sections[0].querySelector('.codex-trophy-cost'), null, 'drop cards have no forge cost');
+  for (const name of ['GreenMagicTrophy', 'PurpleMagicTrophy']) {
+    const card = screen.querySelector('[data-codex-trophy="' + name + '"]').closest('article');
+    assert.deepEqual([...card.querySelectorAll('.codex-trophy-play-rules span')].map(el => el.textContent), ['不抽牌', '可继续搭桥']);
+    assert.ok(card.querySelector('.codex-trophy-cost'));
+  }
   const burn = screen.querySelector('[data-codex-trophy="BurnTrophy"]').closest('article');
   assert.equal(burn.querySelector('.codex-trophy-name').textContent, '灼伤');
   assert.equal(burn.querySelector('.codex-trophy-effect').textContent, '对手获得1层[灼伤]');

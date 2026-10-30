@@ -74,7 +74,7 @@ test('DesertSobek base stats, boss pool, icon, whiteZeros', () => {
   const pool = context.AdventureBossPool.desert;
   for (const stage of [2, 3, 4]) {
     assert.ok(pool[stage].includes('DesertSobek'), 'stage ' + stage);
-    assert.equal(pool[stage].includes('Pharaoh'), stage >= 3);
+    assert.equal(pool[stage].includes('Anubis'), stage >= 3);
     assert.ok(pool[stage].includes('DesertHyena'));
   }
 });

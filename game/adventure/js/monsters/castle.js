@@ -113,7 +113,7 @@
     },
 
     stageMods: {
-      2: orig => ({ hp: orig.hp + 6 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         defendBlock: (card, incoming, defender, eng) => {
@@ -193,7 +193,7 @@
     },
 
     stageMods: {
-      2: orig => ({ hp: orig.hp + 6 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
         attackDamage: (card, ctx) => {
           const base = orig.attackDamage(card, ctx);
@@ -306,7 +306,7 @@
     },
 
     stageMods: {
-      2: orig => ({ hp: orig.hp + 4 }),
+      2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({
         attackUnblockable: (card) => {
           if (!card || !card.isNumberCard) return false;
@@ -387,7 +387,7 @@
     },
 
     stageMods: {
-      2: orig => ({ hp: orig.hp + 10 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
         attackDamage: (card, ctx) => {
           const base = orig.attackDamage(card, ctx);
@@ -589,7 +589,7 @@
     },
 
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
+      2: orig => ({ hp: 25 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         defendBlock: (card, incoming) => {

@@ -512,7 +512,7 @@
       return this.state();
     }
     finishOpponentAttack(p,d,skip=false,unblock=false){this.s.pendingOpponentSkill=null;this.s.opponentHandTarget=null;return this.gateAdventureAttackMod(p.attackCard,d,skip,unblock)}
-    opponentEmpty(p){let d=0,skip=false;const targetKey=this.opponentHandTarget(p||{}),target=this.s[targetKey];if(p.name==='Chan'&&p.value===4){d=2;skip=true}if(p.name==='Chan'&&p.value===7)d=6;if(p.name==='Saiki'&&p.value===5)d=4;if(p.name==='Leon'&&p.value===7){d=6;if(target)this.burn(target,2)}if(p.name==='Blaze')d=2+(this.s.player.burn?1:0);if(p.name==='Moze'){const before=this.s.player.hp;this.s.player.hp=Math.min(this.s.player.maxHp,this.s.player.hp+2);this.addGuard(this.s.player,2);skip=true;this.emit('desc',`Moze 5牌：对手无手牌，恢复${this.s.player.hp-before}点生命并获得2层守护，跳过防御`,p.attackCard);return this.finishOpponentAttack(p,0,skip,false)}this.emit('desc',`${p.name} ${p.value}牌：对手无手牌${d?`，造成${d}点伤害`:''}${skip?'并跳过防御':''}`,p.attackCard);return this.finishOpponentAttack(p,d,skip,false)}
+    opponentEmpty(p){let d=0,skip=false;const targetKey=this.opponentHandTarget(p||{}),target=this.s[targetKey];if(p.name==='Chan'&&p.value===4){d=2;skip=true}if(p.name==='Chan'&&p.value===7)d=6;if(p.name==='Saiki'&&p.value===5)d=4;if(p.name==='Leon'&&p.value===7){d=6;if(target)this.burn(target,2)}if(p.name==='Blaze'){d=4+(this.s.player.burn?1:0);const queued=this.s.pendingSkillStatuses||(this.s.pendingSkillStatuses=[]);for(const key of ['player',targetKey])queued.push({target:key,id:'burn',method:'burn',args:[1],timing:'afterDamage'});this.emit('desc',`Blaze 4牌：对手无手牌，造成${d}点伤害，双方灼伤+1`,p.attackCard);return this.finishOpponentAttack(p,d,false,false)}if(p.name==='Moze'){const before=this.s.player.hp;this.s.player.hp=Math.min(this.s.player.maxHp,this.s.player.hp+2);this.addGuard(this.s.player,2);skip=true;this.emit('desc',`Moze 5牌：对手无手牌，恢复${this.s.player.hp-before}点生命并获得2层守护，跳过防御`,p.attackCard);return this.finishOpponentAttack(p,0,skip,false)}this.emit('desc',`${p.name} ${p.value}牌：对手无手牌${d?`，造成${d}点伤害`:''}${skip?'并跳过防御':''}`,p.attackCard);return this.finishOpponentAttack(p,d,skip,false)}
     gateAdventureAttackMod(card,damage,skip=false,unblock=false,delay=0,opts={}){
       damage=Number(damage)||0;skip=!!skip;unblock=!!unblock;
       const isDrain=!!(opts&&(opts.isDrain||(opts.drain>0)));
@@ -681,7 +681,7 @@
       this.emit('desc',label+'的[催眠]转化为[沉睡]');
     }
     _drawNeedWithIceSeal(w,need){const ch=this.s[w];if(!ch||need<=0||(ch.iceSeal||0)<=0)return need;const S=window.FurryGame&&window.FurryGame.StatusService;if(S)S.remove(ch,'iceSeal',1);else ch.iceSeal=Math.max(0,(ch.iceSeal||0)-1);const who=w==='player'?'player':(w==='ai2'?'ai2':'ai');this.emit('buff','-[冰封]',null,{who,kind:'iceSeal',stacks:ch.iceSeal});this.emit('desc',(who==='player'?'玩家':(ch.name||'AI'))+'因[冰封]少补1张牌');return Math.max(0,need-1)}
-    burn(x,n,opts){const S=this._status();if(S&&S.burn){S.burn(this,x,n,opts);return}if(n>0&&this.name(x)!=='Leon'){x.burn=Math.min(5,x.burn+n);if(!opts||opts.silent!==true){let w=x===this.s.player?'player':'ai';this.emit('buff',`+${n}[灼伤]`,null,{who:w,kind:'burn',stacks:x.burn})}}}
+    burn(x,n,opts){const S=this._status();if(S&&S.burn){S.burn(this,x,n,opts);return}if(n>0){x.burn=Math.min(5,x.burn+n);if(!opts||opts.silent!==true){let w=x===this.s.player?'player':'ai';this.emit('buff',`+${n}[灼伤]`,null,{who:w,kind:'burn',stacks:x.burn})}}}
     bleed(x,n,opts){const S=this._status();if(S&&S.bleed){S.bleed(this,x,n,opts);return}if(n>0){x.bleed=Math.min(3,x.bleed+n);if(!opts||opts.silent!==true){let w=x===this.s.player?'player':'ai';this.emit('buff',`${n>1?n:''}[流血]`,null,{who:w,kind:'bleed',stacks:x.bleed})}}}
     _hasPurifyableBuff(ch){
       if(!ch)return false;
@@ -874,7 +874,7 @@
     chooseFlyContinue(choice){const opts=choice&&typeof choice==='object'?choice:{again:!!choice};if(opts.again)return this.chooseFly();if(opts.skipGuard)return this.chooseGuard(0);this.askGuard(this.s.pendingGuardDamage||0,this.s.pendingGuardBleed||0);return this.state()}
     clearPositiveBuffs(x){const S=this._status();if(S&&S.clearPositiveBuffs){S.clearPositiveBuffs(x,this);return}if(!x)return;x.guard=0;x.fly=0;x.harden=0;x.crit=0;x.lush=0;x.parasite=0;x.diving=false;x.chaos_red=false;x.chaos_yellow=false;x.chaos_blue=false;x.chaos_green=false}
     _markBombPlay(owner){if(!this.s||!this.s[owner]||!(this.s[owner].bomb||0))return;this.s.bombPlayTokens=this.s.bombPlayTokens||{};this.s.bombPlayTokens[owner]=(this.s.bombPlayTokens[owner]||0)+1}
-    _tickBomb(owner='ai'){const D=this._damage();if(D&&D.tickBomb){D.tickBomb(this,owner);return}let target=this.s&&this.s[owner],tokens=this.s&&this.s.bombPlayTokens;if(!target||!target.alive||(target.bomb||0)<=0||!tokens||!tokens[owner])return;if(--tokens[owner]<=0)delete tokens[owner];target.bomb--;const who=owner==='player'?'player':(owner==='ai2'?'ai2':'ai');if(target.bomb<=0){this.hurt(target,5,false,{silent:true});this.emit('bombExplode','[定时炸弹]🗡️5',null,{who,amount:5})}else{this.emit('buff','炸弹倒计时：'+target.bomb,null,{who,kind:'bomb',stacks:target.bomb})}}
+    _tickBomb(owner='ai'){const D=this._damage();if(D&&D.tickBomb){D.tickBomb(this,owner);return}let target=this.s&&this.s[owner],tokens=this.s&&this.s.bombPlayTokens;if(!target||!target.alive||(target.bomb||0)<=0||!tokens||!tokens[owner])return;if(--tokens[owner]<=0)delete tokens[owner];target.bomb--;const who=owner==='player'?'player':(owner==='ai2'?'ai2':'ai');if(target.bomb<=0){const bd=(window.StatusRegistry&&window.StatusRegistry.bombExplodeDamage())||10;this.hurt(target,bd,false,{silent:true});this.emit('bombExplode','[定时炸弹]🗡️'+bd,null,{who,amount:bd})}else{this.emit('buff','炸弹倒计时：'+target.bomb,null,{who,kind:'bomb',stacks:target.bomb})}}
     deferSettlement(kind,damage,bleed=0){const T=this._turnMachine();if(T&&T.deferSettlement){T.deferSettlement(this,kind,damage,bleed);return}damage=Math.max(0,Number(damage)||0);bleed=Math.max(0,Number(bleed)||0);this.s.pendingDefenseDamage=damage;this.s.busy=true;this.pendingSettlement={kind,damage,bleed,isDrain:!!(this.s.pendingAttack&&this.s.pendingAttack.isDrain),afterEventId:this.ver};if(!this.events.length)this.acknowledgeEvents(this.ver)}
     _deferAttackBuffs(targetKey,before){let target=this.s[targetKey];if(!target)return;let now={bleed:target.bleed||0,burn:target.burn||0,poison:target.poison||0,frozen:!!target.frozen,blind:target.blind||0,iceSeal:target.iceSeal||0,sandblind:target.sandblind||0,thorns:target.thorns||0,quicksand:target.quicksand||0};let changed=now.bleed!==(before.bleed||0)||now.burn!==(before.burn||0)||now.poison!==(before.poison||0)||now.frozen!==!!before.frozen||now.blind!==(before.blind||0)||now.iceSeal!==(before.iceSeal||0)||now.sandblind!==(before.sandblind||0)||now.thorns!==(before.thorns||0)||now.quicksand!==(before.quicksand||0);if(!changed)return;this.s.pendingBuffRestore={target:targetKey,after:now,before:{bleed:before.bleed||0,burn:before.burn||0,poison:before.poison||0,frozen:!!before.frozen,blind:before.blind||0,iceSeal:before.iceSeal||0,sandblind:before.sandblind||0,thorns:before.thorns||0,quicksand:before.quicksand||0}};target.bleed=before.bleed||0;target.burn=before.burn||0;target.poison=before.poison||0;target.frozen=!!before.frozen;target.blind=before.blind||0;target.iceSeal=before.iceSeal||0;target.sandblind=before.sandblind||0;target.thorns=before.thorns||0;target.quicksand=before.quicksand||0}
     _restoreAttackBuffs(){if(!this.s.pendingBuffRestore)return;let r=this.s.pendingBuffRestore,target=this.s[r.target];if(target){let w=r.target==='player'?'player':(r.target==='ai2'?'ai2':'ai'),add=r.after.bleed-r.before.bleed;if(add){target.bleed=Math.min(3,Math.max(0,(target.bleed||0)+add));this.emit('buff',`${add>0?(add>1?add:''):add}[流血]`,null,{who:w,kind:'bleed',stacks:target.bleed})}add=r.after.burn-r.before.burn;if(add){target.burn=Math.min(5,Math.max(0,(target.burn||0)+add));this.emit('buff',`${add>0?'+':''}${add}[灼伤]`,null,{who:w,kind:'burn',stacks:target.burn})}add=r.after.poison-r.before.poison;if(add){target.poison=Math.min(2,Math.max(0,(target.poison||0)+add));this.emit('buff',`${add>0?'+':''}${add}[中毒]`,null,{who:w,kind:'poison',stacks:target.poison})}if(r.after.frozen&&!r.before.frozen&&!target.frozen){target.frozen=true;this.emit('buff','[冷冻]',null,{who:w,kind:'freeze',stacks:1})}if((r.after.blind||0)>(r.before.blind||0)){target.blind=1;this.emit('buff','[致盲]',null,{who:w,kind:'blind',stacks:1})}if((r.after.iceSeal||0)>(r.before.iceSeal||0)){target.iceSeal=Math.min(1,r.after.iceSeal);this.emit('buff','[冰封]',null,{who:w,kind:'iceSeal',stacks:target.iceSeal})}add=r.after.sandblind-r.before.sandblind;if(add>0){target.sandblind=Math.min(6,(target.sandblind||0)+add);this.emit('buff',`+${add}[沙盲]`,null,{who:w,kind:'sandblind',stacks:target.sandblind})}add=r.after.thorns-r.before.thorns;if(add>0){const tb=target.thorns||0;target.thorns=Math.min(1,tb+add);if(tb<=0||target.thornsTriggersLeft==null)target.thornsTriggersLeft=2;this.emit('buff',`+${add}[荆棘]`,null,{who:w,kind:'thorns',stacks:target.thorns})}add=r.after.quicksand-r.before.quicksand;if(add>0){target.quicksand=Math.min(1,(target.quicksand||0)+add);this.emit('buff','+1[流沙]',null,{who:w,kind:'quicksand',stacks:target.quicksand})}}this.s.pendingBuffRestore=null}
@@ -929,7 +929,7 @@
     }
     itemKind(c){if(c.trophyWhite)return'trophyWhite';if(c.swapHand)return'swap';if(c.drawThree)return'drawThree';if(c.drawTwo)return'drawTwo';if(c.potion)return'potion';if(c.greenMagic||c.magicColor==='green')return'greenMagic';if(c.magic||c.magicColor==='purple')return'magic';if(c.superPurify)return'superPurify';if(c.purify)return'purify';if(c.shuffleToDeck)return'shuffle';return'wild'}
     _isAdventureBoss(x){if(!this.s.isAdventure||!window.AdventureRegistry)return false;return!!window.AdventureRegistry.getBoss(this.name(x))}
-    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}if(effect==='drawTwo')return`${actor}打出${def&&def.displayName||'战利白卡'}：抽2张牌，然后继续搭桥`;let label=effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='iceSeal'?'施加[冰封]':effect==='hypothermia'?'施加1层[失温]':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='purify'?'清除自身或对手至多1个buff':effect==='fly'?'获得1层飞翔':effect==='crit'?'获得1层暴击':effect==='magmaVein'?'获得1层[熔脉]':effect==='diving'?'获得[潜水]':effect==='scorch'?'施加[炙热]':effect==='lush'?'获得1层茂盛':effect==='parasite'?'获得1层寄生':effect==='poison'?'施加1层中毒':effect==='thorns'?'施加1层荆棘':effect==='sandblind'?'施加2层沙盲':effect==='quicksand'?'施加1层[流沙]，手牌上限-1':effect==='riot'?'对手负面层数翻倍（不超上限），定时炸弹立即引爆':effect==='smallPotion'?'恢复'+Math.max(0,Number(def&&def.healAmount)||2)+'点生命':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部可净化状态（印记保留），然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
+    itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}if(effect==='drawTwo')return`${actor}打出${def&&def.displayName||'战利白卡'}：抽2张牌，然后继续搭桥`;if(effect==='greenMagic'||effect==='purpleMagic')return`${actor}打出${def&&def.displayName||'战利白卡'}：恢复3点生命，${effect==='greenMagic'?'清除自身可清除的负面状态':'清除当前对手可清除的正面状态'}，不抽牌，继续搭桥`;let label=effect==='drain'?'吸取对手至多'+Math.max(0,Number(def&&def.drainAmount)||3)+'点生命':effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='iceSeal'?'施加[冰封]':effect==='hypothermia'?'施加1层[失温]':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='purify'?'清除自身或对手至多1个buff':effect==='fly'?'获得1层飞翔':effect==='crit'?'获得1层暴击':effect==='magmaVein'?'获得1层[熔脉]':effect==='diving'?'获得[潜水]':effect==='scorch'?'施加[炙热]':effect==='lush'?'获得1层茂盛':effect==='parasite'?'获得1层寄生':effect==='poison'?'施加1层中毒':effect==='thorns'?'施加1层荆棘':effect==='sandblind'?'施加2层沙盲':effect==='quicksand'?'施加1层[流沙]，手牌上限-1':effect==='riot'?'对手负面层数翻倍（不超上限），定时炸弹立即引爆':effect==='smallPotion'?'恢复'+Math.max(0,Number(def&&def.healAmount)||2)+'点生命':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部可净化状态（印记保留），然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
     useTrophyWhite(c, target, w='player'){
       if (!c || !c.trophyWhite) return false;
       // The caller resolves the target for the current card before entering
@@ -961,6 +961,10 @@
           if (this._onAttackSkillRelease(this.s.player)) {
             this.emit('desc', `${this.s.player.name} 0牌：技能落空，跳过防御`, c);
             this.gateAdventureAttackMod(c, 0, true, false);
+            return true;
+          }
+          if(who==='Leon'&&this.s.isAdventure){
+            if(this.s.is1v2)this.leonZero1v2(c);else this.beginLeonZeroDiscard(c);
             return true;
           }
           let r=this.effect(who,0,c,this.s.player,target);
@@ -1046,8 +1050,11 @@
           if (bombAmt > 0) {
             if (status && status.clear) status.clear(target, 'bomb', 'all');
             else target.bomb = 0;
-            this.hurt(target, 5, false, { silent: true });
-            this.emit('bombExplode', '[定时炸弹]🗡️5', null, { who: targetKey, amount: 5 });
+            const bombDamage = (window.StatusRegistry && window.StatusRegistry.bombExplodeDamage)
+              ? window.StatusRegistry.bombExplodeDamage()
+              : 10;
+            this.hurt(target, bombDamage, false, { silent: true });
+            this.emit('bombExplode', '[定时炸弹]🗡️' + bombDamage, null, { who: targetKey, amount: bombDamage });
           }
           const parts = [];
           if (doubled.length) parts.push('负面翻倍至' + doubled.join('、'));
@@ -1055,6 +1062,10 @@
           if (bombAmt > 0) parts.push('炸弹引爆');
           this.emit('desc', '暴乱：' + parts.join('，'));
         }
+      } else if (effect === 'drain') {
+        this.performAttack({type:'drain',attacker:w,target:this._who(target),damage:Math.max(0,Number(def && def.drainAmount)||3),allowAvoidance:true,direct:true});
+      } else if (effect === 'greenMagic' || effect === 'purpleMagic') {
+        this.useItem(effect === 'greenMagic' ? { greenMagic: true } : { magic: true }, this.s[w] || this.s.player, target, w);
       } else if (effect === 'smallPotion') {
         const healAmt = Math.max(0, Number(def && def.healAmount) || 2);
         if (healAmt > 0) this.heal(this.s.player, healAmt);
@@ -1108,7 +1119,7 @@
       }
       if (w === 'player') {
         if (effect === 'drawTwo') this.draw('player', 2, true);
-        else this.draw('player', 1, true);
+        else if (!def || def.drawCount !== 0) this.draw('player', 1, true);
       }
       return true;
     }
@@ -1347,6 +1358,7 @@
       this._deferAttackBuffs('ai',_buffBefore);
       if(who==='Moze'&&c.value===7){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc','Moze 7牌：请选择自己或一名对手作为清除目标',c);return this.state()}
       if(who==='Ryan'&&c.value===5)return this.startRyanFive(c);
+      if(who==='Leon'&&c.value===0&&this.s.isAdventure)return this.beginLeonZeroDiscard(c);
       if(who==='Saiki'&&c.value===6)return this.startNumberJudge('Saiki',c);
       if(who==='Moze'&&c.value===4)return this.startNumberJudge('Moze',c);
       if(who==='Chan'&&c.value===5)return this.startChanFive();
@@ -1755,6 +1767,7 @@
     }
     later(f,ms=550){clearTimeout(this.timer);this.timer=setTimeout(()=>{try{f()}catch(e){console.error(e)}},ms)}
     dispatch(m,p={}){
+      if(m==='chooseLeonZeroDiscard')return this.chooseLeonZeroDiscard(p.cards);
       if(m==='characters')return this.chars();
       if(m==='selectMode'){this.mode=!!p.mode1v2;return{status:'ok'}}
       if(m==='selectCharacters')return this.start(p.player,p.ai);

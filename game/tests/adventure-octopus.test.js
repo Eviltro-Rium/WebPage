@@ -60,6 +60,21 @@ test('FrozenOceanOctopus base stats and pool', () => {
   }
 });
 
+test('FrozenOceanShark is elite only (not normal pool)', () => {
+  const m = getMonster('FrozenOceanShark');
+  assert.ok(m);
+  assert.equal(m.kind, '裂冰鲨');
+  const normal = context.AdventureMonsterPool.ocean;
+  for (const stage of ['*', 2, 3, 4]) {
+    assert.ok(!normal[stage].includes('FrozenOceanShark'), 'not in normal pool stage ' + stage);
+  }
+  const elite = context.AdventureElitePool.ocean;
+  for (const stage of [3, 4]) {
+    assert.ok(elite[stage].includes('FrozenOceanShark'), 'elite stage ' + stage);
+  }
+  assert.equal(context.AdventureLoot.isEliteMonster('FrozenOceanShark'), true);
+});
+
 test('FrozenOceanOctopus loot: 1-2 diving, 3-4 ice seal', () => {
   for (const roll of [1, 2]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenOceanOctopus', () => (roll - 1) / 12);

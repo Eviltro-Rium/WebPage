@@ -167,7 +167,8 @@
     }
     const canShowDecisionDialog=s.onlineCanAct!==false;
     if(this.dialogs&&typeof this.dialogs.syncCombatDialog==='function')this.dialogs.syncCombatDialog(s.pendingDialog,canShowDecisionDialog,s.phase);
-    if(canShowDecisionDialog&&s.pendingDialog==='purify')this.dialogs.showPurifyChoice(s.player,picked=>{if(picked&&picked.done)return this._apiAction('choosePurify',{done:true});const kind=picked&&picked.kind?picked.kind:picked;if(typeof kind!=='string')return Promise.resolve();return this._apiAction('choosePurify',{kind})});
+    if(canShowDecisionDialog&&!this._isConsumingEvents&&s.pendingDialog==='leonZeroDiscard')this.dialogs.showLeonZeroDiscardChoice(s.pendingLeonZeroDiscard,choice=>this._apiAction('chooseLeonZeroDiscard',choice));
+    else if(canShowDecisionDialog&&s.pendingDialog==='purify')this.dialogs.showPurifyChoice(s.player,picked=>{if(picked&&picked.done)return this._apiAction('choosePurify',{done:true});const kind=picked&&picked.kind?picked.kind:picked;if(typeof kind!=='string')return Promise.resolve();return this._apiAction('choosePurify',{kind})});
     else if(canShowDecisionDialog&&s.pendingDialog==='superPurify'){const targets=[{key:'player',label:'自己',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+' (对手)',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+' (对手)',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseSuperPurifyTarget',{target}))}
     else if(canShowDecisionDialog&&s.pendingDialog==='mozeSeven'){const targets=[{key:'player',label:'自己（清除负面）',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+'（清除正面）',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+'（清除正面）',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseMozeSeven',{choice:{target}}),'Moze 7牌 · 选择目标')}
     else if(canShowDecisionDialog&&!this._isConsumingEvents&&s.pendingDialog==='guard')this.dialogs.showGuardChoice(s.player,s.pendingGuardDamage,choice=>{
@@ -183,6 +184,10 @@
       if(choice&&choice.action==='none')return this._apiAction('chooseFlyContinue',{again:false,skipGuard:true});
       return this._apiAction('chooseFlyContinue',{again:true});
     });
+    else if(canShowDecisionDialog&&s.pendingDialog==='purifyCrystal'){
+      const opponentKey=s.attackTarget||'ai';
+      this.dialogs.showPurifyChoice(s.player,picked=>this._apiAction('choosePurifyCrystal',{choice:picked}),{opponent:s[opponentKey],allowOpponent:true});
+    }
     else if(canShowDecisionDialog&&s.pendingDialog==='trophyDisarm'){const pending=s.pendingTrophyDisarm||{};this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s,pending.targetKey),choice=>this._apiAction('chooseTrophyDisarm',choice),'缴械 · 选择要弃掉的手牌');}
     else if(canShowDecisionDialog&&s.pendingDialog==='trophyPurify'){const pending=s.pendingTrophyPurify||{};const oppKey=pending.targetKey||s.attackTarget||'ai';const opponent=s[oppKey]&&s[oppKey].alive?s[oppKey]:(s.ai&&s.ai.alive?s.ai:null);this.dialogs.collectPurifyChoices(s.player,Math.max(1,Number(pending.count)||1),choices=>{if(!choices.length)return this._apiAction('chooseTrophyPurify',{done:true});return this._apiAction('chooseTrophyPurify',{choices});},{opponent});}
     if(s.phase==='ATTACK_MOD_CHOICE')this._ensureAttackModChoicePrompt(s);

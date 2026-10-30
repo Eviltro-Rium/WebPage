@@ -158,6 +158,34 @@ test('Blaze 4 applies burn only to the selected challenge opponent', () => {
   assert.equal(engine.h.ai2.length, 0);
 });
 
+test('Blaze 4 opponent empty hand matches no-number branch', () => {
+  const engine = new Engine();
+  engine.start('Blaze', 'Ryan');
+  engine.s.player.burn = 1;
+  engine.h.ai = [];
+  engine.s.pendingOpponentSkill = { name: 'Blaze', value: 4, attackCard: number(4) };
+  engine.finishOpponentAttack = (_p, damage) => ({ damage, skip: false });
+  const result = engine.resolveOpponentHandSkill(engine.s.pendingOpponentSkill);
+  assert.equal(result.damage, 5);
+  engine.commitAttackStatuses('afterDamage');
+  assert.equal(engine.s.player.burn, 2);
+  assert.equal(engine.s.ai.burn, 1);
+});
+
+test('Blaze 4 AI empty opponent hand', () => {
+  const engine = setup('Blaze');
+  engine.h.player = [];
+  engine.s.atkOwner = 'ai';
+  engine.s.ai.burn = 0;
+  const result = engine.aiSpecialEffect('Blaze', 4, number(4));
+  assert.equal(result.d, 4);
+  assert.equal(engine.s.ai.burn, 0);
+  assert.equal(engine.s.player.burn, 0);
+  engine.commitAttackStatuses('afterDamage');
+  assert.equal(engine.s.ai.burn, 1);
+  assert.equal(engine.s.player.burn, 1);
+});
+
 for (const [label, card, baseDamage, burns] of [
   ['zero', number(0), 4, true], ['item', item('potion'), 4, true], ['number', number(6), 6, false]
 ]) {

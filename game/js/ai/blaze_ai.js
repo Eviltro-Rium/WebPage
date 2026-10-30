@@ -40,7 +40,10 @@
     specialEffect(eng, n, v, c, a, t, owner, helpers) {
       if (v !== 4) return null;
       if (!helpers.targetHand.length) {
-        return { d: 2 + (a.burn ? 1 : 0), skip: false, unblock: false };
+        const damage = 4 + (a.burn ? 1 : 0);
+        helpers.burnSelf(1);
+        helpers.burnTarget(1);
+        return { d: damage, skip: false, unblock: false };
       }
 
       const drawn = helpers.targetHand.splice(Math.floor(random() * helpers.targetHand.length), 1)[0];

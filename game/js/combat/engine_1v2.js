@@ -285,6 +285,7 @@
   };
 
   Engine.prototype.leonZero1v2=function(card){
+    if(this.s.isAdventure)return this.beginLeonZeroDiscard(card,true);
     this._restoreAttackBuffs();
     let targets=['ai','ai2'].filter(key=>this.s[key]&&this.s[key].alive);
      for(const key of targets)this.burn(this.s[key],2);
@@ -314,6 +315,51 @@
      this.emit('desc','Leon 0牌：对所有对手+2层灼伤、随机弃掉对手至多2张手牌、7点不可防御伤害；自身受到'+(targets.length*2)+'点伤害',card);
     this.s.pendingAttack=null;this.s.defenseSkipped=true;this.s.phase='AI_DEFEND';this.s.busy=true;
     this.later(()=>{this.afterAttack();this.check()},1700);return this.check()
+  };
+
+  Engine.prototype.beginLeonZeroDiscard=function(card,aoe=false){
+    const targets=(aoe?['ai','ai2']:['ai']).filter(key=>this.s[key]&&this.s[key].alive);
+    const groups=targets.map(key=>({key,label:(key==='ai2'?'对手 II':'对手 I')+' · '+this.name(this.s[key]),cards:cp(this.h[key]||[])}));
+    const count=Math.min(2,groups.reduce((total,group)=>total+group.cards.length,0));
+    this.s.pendingLeonZeroDiscard={card:cp(card),targets,groups,count,aoe};
+    this.s.phase='LEON_ZERO_DISCARD';this.s.pendingDialog='leonZeroDiscard';this.s.busy=false;
+    this.emit('desc','Leon 0牌：从所有存活对手的手牌中选择合计'+count+'张弃掉，再结算伤害',card);
+    if(!count)return this.chooseLeonZeroDiscard([]);
+    return this.state();
+  };
+
+  Engine.prototype.chooseLeonZeroDiscard=function(cards){
+    const pending=this.s&&this.s.pendingLeonZeroDiscard;
+    if(!this.s||!this.s.isAdventure||this.s.phase!=='LEON_ZERO_DISCARD'||!pending)throw Error('当前没有Leon 0牌弃牌选择');
+    if(!Array.isArray(cards)||cards.length!==pending.count)throw Error('请选择恰好'+pending.count+'张对手手牌');
+    const seen=new Set();
+    for(const choice of cards){
+      const group=choice&&pending.groups.find(group=>group.key===choice.target);
+      const index=choice&&choice.index,hand=group&&this.h[group.key],saved=group&&group.cards[index];
+      const key=choice&&choice.target+':'+index;
+      if(!group||!Number.isInteger(index)||!hand[index]||!saved||seen.has(key)||
+          saved.uid&&hand[index].uid!==saved.uid)throw Error('无效或重复的对手手牌选择');
+      seen.add(key);
+    }
+    // Validate the whole selection before removing anything. Discard batches
+    // remain owned by the source NPC, including the shared challenge pile.
+    for(const target of pending.targets){
+      const indices=cards.filter(choice=>choice.target===target).map(choice=>choice.index).sort((a,b)=>b-a);
+      const discarded=indices.map(index=>this.h[target].splice(index,1)[0]);
+      if(discarded.length)this.discardManyWithEvent(discarded,target,{from:'hand',faceUp:true,handIndices:indices,desc:'Leon 0牌：弃掉玩家选择的'+discarded.length+'张手牌'});
+    }
+    this.s.pendingLeonZeroDiscard=null;this.s.pendingDialog=null;
+    if(!pending.aoe){
+      const r=this.effect('Leon',0,pending.card,this.s.player,this.s.ai);
+      return this.gateAdventureAttackMod(pending.card,r.d,r.skip,r.unblock);
+    }
+    this._restoreAttackBuffs();
+    for(const target of pending.targets)this.burn(this.s[target],2);
+    for(const target of pending.targets)this.hurt(this.s[target],7);
+    this.hurt(this.s.player,pending.targets.length*2);
+    this.emit('desc','Leon 0牌：已弃掉玩家选择的'+pending.count+'张手牌，对所有对手施加2层灼伤并造成7点不可防御伤害；自身受到'+(pending.targets.length*2)+'点伤害',pending.card);
+    this.s.pendingAttack=null;this.s.defenseSkipped=true;this.s.phase='AI_DEFEND';this.s.busy=true;
+    this.later(()=>{this.afterAttack();this.check()},1700);return this.check();
   };
 
   Engine.prototype.aiDefend1v2=function(atk,d){

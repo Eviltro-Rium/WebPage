@@ -66,7 +66,7 @@
       this.eng.on('itemAcquired', (ev) => {
         const effect = ev && ev.extra;
         if (!effect || effect.kind !== 'trophyWhite' || !effect.itemName) return;
-        const origin = this.container.querySelector('.adv-blacksmith-trophy-stall');
+        const origin = this.container.querySelector('[data-blacksmith-trophy].selected') || this.container.querySelector('.adv-blacksmith-trophy-stall');
         const rect = origin ? origin.getBoundingClientRect() : null;
         schedule(() => this._playTrophyForgeAnimation(effect.itemName, rect), 60);
       });
@@ -394,7 +394,8 @@
         logEntries: (this.eng.s.log || []).slice(-12).map(entry => ({ msg: entry.msg })),
         blacksmithCanPay: {
           slots: ((snap.roomInfo && snap.roomInfo.blacksmithSlots) || []).map(item => !!item && this.eng.s.currency.canPayBeastCost(item.beastCost || [])),
-          trophy: !!(snap.roomInfo && snap.roomInfo.blacksmithTrophy && this.eng.s.currency.canPayBeastCost(snap.roomInfo.blacksmithTrophy.beastCost || []))
+          trophy: !!(snap.roomInfo && snap.roomInfo.blacksmithTrophy && this.eng.s.currency.canPayBeastCost(snap.roomInfo.blacksmithTrophy.beastCost || [])),
+          trophies: ((snap.roomInfo && snap.roomInfo.blacksmithTrophies) || []).map(item => !!item && this.eng.s.currency.canPayBeastCost(item.beastCost || []))
         }
       });
       if (window.AdventureUIViews && typeof window.AdventureUIViews.render === 'function') {
@@ -535,6 +536,12 @@
         this._onCellDoubleClick(Number(cell.dataset.r), Number(cell.dataset.c));
       });
       this.container.addEventListener('click', (e) => {
+        const inventoryToggle = e.target.closest('.adv-inventory-toggle');
+        if (inventoryToggle) {
+          this._inventoryExpanded = inventoryToggle.getAttribute('aria-expanded') !== 'true';
+          inventoryToggle.setAttribute('aria-expanded', String(this._inventoryExpanded));
+          return;
+        }
         const mapCell = e.target.closest && e.target.closest('[data-map-cell]');
         if (mapCell) {
           if (e.detail > 1) return;
@@ -725,8 +732,8 @@
           const sel = this.eng.s.blacksmithSelectedSlot;
           if (sel == null) { this._toast('请先选择槽位'); return; }
           let result;
-          if (sel === 'trophy') {
-            result = this.eng.buyBlacksmithTrophy();
+          if (this._blacksmithTrophySlotIndex(sel) >= 0) {
+            result = this.eng.buyBlacksmithTrophy(this._blacksmithTrophySlotIndex(sel));
           } else {
             result = this.eng.buyBlacksmithSlot(sel);
           }
@@ -736,15 +743,15 @@
           }
           if (result && !result.ok) {
             if (result.reason === 'accessoryFull') this._showAlertDialog('无法拾取', result.message || '配饰已达上限');
-            else this._toast(result.message || (sel === 'trophy' ? '锻造失败' : '兑换失败'));
+            else this._toast(result.message || (this._blacksmithTrophySlotIndex(sel) >= 0 ? '锻造失败' : '兑换失败'));
           }
           this.render();
         }
         else if (id === 'adv-blacksmith-refresh') {
           const sel = this.eng.s.blacksmithSelectedSlot;
           if (sel == null) { this._toast('请先选择槽位'); return; }
-          if (sel === 'trophy') {
-            const result = this.eng.refreshBlacksmithTrophy();
+          if (this._blacksmithTrophySlotIndex(sel) >= 0) {
+            const result = this.eng.refreshBlacksmithTrophy(this._blacksmithTrophySlotIndex(sel));
             if (!result.ok) this._toast(result.message || '刷新失败');
           } else {
             const result = this.eng.refreshBlacksmithSlot(sel);
@@ -765,7 +772,8 @@
           this.render();
         }
         else if (e.target.closest('[data-blacksmith-trophy]')) {
-          this.eng.s.blacksmithSelectedSlot = 'trophy';
+          const index = Number(e.target.closest('[data-blacksmith-trophy]').getAttribute('data-blacksmith-trophy'));
+          this.eng.s.blacksmithSelectedSlot = index === 0 ? 'trophy' : 'trophy:' + index;
           this.render();
         }
 
@@ -1382,11 +1390,17 @@
       overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
     }
 
+    _blacksmithTrophySlotIndex(sel) {
+      if (sel === 'trophy') return 0;
+      return typeof sel === 'string' && /^trophy:[012]$/.test(sel) ? Number(sel.slice(7)) : -1;
+    }
+
     _blacksmithTradeCost(sel) {
       const room = this.eng.currentRoom();
       if (!room) return [];
-      if (sel === 'trophy') {
-        const name = room.blacksmithTrophySlot;
+      const trophyIndex = this._blacksmithTrophySlotIndex(sel);
+      if (trophyIndex >= 0) {
+        const name = Array.isArray(room.blacksmithTrophySlots) ? room.blacksmithTrophySlots[trophyIndex] : room.blacksmithTrophySlot;
         const def = name && window.AdventureRegistry.getItem(name);
         return def && Array.isArray(def.beastTradeCost) ? def.beastTradeCost.slice() : [];
       }

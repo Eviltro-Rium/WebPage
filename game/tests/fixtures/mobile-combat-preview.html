@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="../../"><title>手机战斗布局预览</title><link rel="stylesheet" href="css/game.css?v=20261030-mobile-compact-2"></head>
+<body><main id="game-container"><div id="game-screen" class="active adventure-combat-layout"></div></main>
+<script src="js/ui/ui_core.js"></script><script src="js/ui/render/combat_screen.js"></script><script src="js/ui/card_style.js"></script><script src="js/ui/render/adventure_bar.js"></script>
+<script>
+const ui=Object.create(GameUI.prototype);ui.state={isAdventure:true};ui.gameScreen=document.getElementById('game-screen');ui._buildGameScreen();
+const card=(n,color)=>CardStyle.renderCard({value:n,color,isNumberCard:true},70,100,false);
+const npc=document.getElementById('ai-hp-section');npc.classList.add('npc-hp-section');
+npc.querySelector('.hp-name').textContent='霜爪猞猁';npc.querySelector('.hp-avatar').src='icons/npc_icons/frozen_ocean_lynx.webp';npc.querySelector('.hp-avatar').classList.add('npc-avatar');
+const detail=document.createElement('div');detail.className='npc-hp-details';detail.append(npc.querySelector('.hp-bar-outer'));detail.insertAdjacentHTML('beforeend','<p class="npc-passive">冰爪：攻击时附加冷冻；受击后获得守护。</p>');npc.append(detail);
+const second=npc.cloneNode(true);second.id='ai2-hp-section';second.querySelectorAll('[id]').forEach(el=>el.id=el.id.replace(/^ai-/, 'ai2-'));second.querySelector('.hp-name').textContent='破冰蓝鲸';second.querySelector('.hp-avatar').src='icons/npc_icons/frozen_ocean_whale.webp';npc.after(second);
+const secondHand=document.querySelector('[data-owner="ai2"]');secondHand.hidden=false;
+for(const id of ['ai-hand','ai2-hand'])for(let i=0;i<3;i++)document.getElementById(id).append(card(i,'BLUE'));
+for(let i=0;i<8;i++)document.getElementById('player-hand').append(card(i%7,'GREEN'));
+document.getElementById('player-avatar').src='icons/npc_icons/frozen_ocean_lynx.webp';
+document.getElementById('atk-cards').replaceChildren(card(3,'RED'));document.getElementById('atk-desc').textContent='造成4点伤害，并对目标施加1层灼伤。';document.getElementById('def-desc').textContent='选择防御牌，结算后显示格挡与反击。';document.getElementById('discard-top').append(card(5,'BLUE'));
+document.getElementById('player-reserve').hidden=false;document.getElementById('player-reserve').classList.add('is-open');document.getElementById('player-reserve').innerHTML='<div class="reserve-content"><div class="reserve-title">储备区</div><div class="reserve-slot"></div></div>';document.querySelector('.reserve-slot').append(card(2,'RED'));
+document.getElementById('adventure-info-bar').remove();
+const inventory=document.createElement('div');inventory.className='adventure-inventory-panel';inventory.innerHTML='<div id="adventure-item-bar" class="adventure-item-bar"><span class="adv-item-bar-title">道具</span><div class="adv-combat-item-slots">'+Array.from({length:6},()=>'<button class="adv-combat-item-slot filled">🧲</button>').join('')+'</div><span class="adv-item-bar-title">配饰</span>🛡️</div><div id="adventure-info-bar" class="adventure-info-bar">🪙 27　🟩 3　🟦 2　🔴 2　🟪 1</div>';document.getElementById('adventure-item-bar').replaceWith(inventory);
+document.getElementById('controls').innerHTML=['出牌','使用道具','弃牌','结束回合'].map(label=>'<button class="ctrl-btn">'+label+'</button>').join('');
+ui._syncAdventureActionLayout({isAdventure:true});
+</script></body></html>

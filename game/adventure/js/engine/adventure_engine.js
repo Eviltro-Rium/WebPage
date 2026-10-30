@@ -315,6 +315,7 @@
           room.shopSlots = d.shopSlots ? clone(d.shopSlots) : null;
           if (Array.isArray(d.blacksmithSlots)) room.blacksmithSlots = clone(d.blacksmithSlots);
           if ('blacksmithTrophySlot' in d) room.blacksmithTrophySlot = d.blacksmithTrophySlot == null ? null : clone(d.blacksmithTrophySlot);
+          if (Array.isArray(d.blacksmithTrophySlots)) room.blacksmithTrophySlots = clone(d.blacksmithTrophySlots);
           room.shopItems = d.shopItems ? clone(d.shopItems) : null;
           room.shopSold = clone(d.shopSold) || {};
           if (Array.isArray(d.doorCost) && d.doorCost.length === 2) room.doorCost = d.doorCost.slice(0, 2);
@@ -331,6 +332,9 @@
       this._syncBeastCap();
       this._syncHandLimit();
       this._initItemDoorCosts(map);
+      if (this.s.phase === Phase.BLACKSMITH && this.currentRoom() && this.currentRoom().type === window.RoomType.BLACKSMITH) {
+        this._ensureBlacksmithSlots(this.currentRoom());
+      }
       if (this.s.phase === Phase.MAP && !this.s.activeCombat &&
           (!this.s.pos || !map.explorablePositions().has(this.s.pos.r + ',' + this.s.pos.c))) {
         this.s.pos = map.start ? {r:map.start.r, c:map.start.c} : null;
@@ -969,7 +973,7 @@
       }
       if (kind === 'door') return this._completeDoorPay(spend);
       if (kind === 'blacksmithTrophy') {
-        return this._completeBlacksmithTrophyBuy(context.itemName, need, spend);
+        return this._completeBlacksmithTrophyBuy(context.itemName, need, spend, context.index == null ? 0 : context.index);
       }
       if (kind === 'blacksmithSlot') {
         return this._completeBlacksmithSlotBuy(context.index, context.itemName, need, spend);
@@ -1155,6 +1159,8 @@
             ? room.blacksmithSlots.map(name => this._blacksmithSlotDetail(name))
             : null,
           blacksmithTrophy: this._blacksmithTrophyDetail(room.blacksmithTrophySlot),
+          blacksmithTrophies: Array.isArray(room.blacksmithTrophySlots)
+            ? room.blacksmithTrophySlots.map(name => this._blacksmithTrophyDetail(name)) : null,
           shopSlots: Array.isArray(room.shopSlots)
             ? room.shopSlots.slice(0, SHOP_SLOT_COUNT).map((slot, index) => {
                 if (!slot) return null;

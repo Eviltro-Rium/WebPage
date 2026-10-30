@@ -40,6 +40,7 @@
       this.emit('blacksmithEnter', '进入铁匠铺', {
         slots: room.blacksmithSlots.slice(),
         trophySlot: room.blacksmithTrophySlot,
+        trophySlots: room.blacksmithTrophySlots.slice(),
         currency: this.s.currency
       });
       this._log('进入铁匠铺');
@@ -55,10 +56,17 @@
       }
       // undefined means this room has never been stocked (or comes from an
       // older save); null is an intentionally sold-out slot and must persist.
-      if (room.blacksmithTrophySlot === undefined ||
-          (room.blacksmithTrophySlot !== null && !this._isForgeTrophy(room.blacksmithTrophySlot))) {
-        room.blacksmithTrophySlot = this._rollTrophyWhiteSlot();
+      if (!Array.isArray(room.blacksmithTrophySlots)) {
+        const legacy = room.blacksmithTrophySlot;
+        room.blacksmithTrophySlots = [legacy];
       }
+      for (let i = 0; i < 3; i++) {
+        const offer = room.blacksmithTrophySlots[i];
+        if (offer === undefined || offer !== null && !this._isForgeTrophy(offer)) {
+          room.blacksmithTrophySlots[i] = this._rollTrophyWhiteSlot();
+        }
+      }
+      room.blacksmithTrophySlots.length = 3;
     },
     _isForgeTrophy(itemName) {
       const def = window.AdventureRegistry.getItem(itemName);
@@ -114,11 +122,13 @@
         refreshable: true
       };
     },
-    buyBlacksmithTrophy(opts) {
+    buyBlacksmithTrophy(index = 0, opts) {
+      if (index && typeof index === 'object') { opts = index; index = 0; }
       if (this.s.phase !== Phase.BLACKSMITH) return { ok: false, message: '不在铁匠铺' };
+      if (!Number.isInteger(index) || index < 0 || index > 2) return { ok: false, message: '无效槽位' };
       const room = this.currentRoom();
       this._ensureBlacksmithSlots(room);
-      const itemName = room && room.blacksmithTrophySlot;
+      const itemName = room && room.blacksmithTrophySlots[index];
       if (!itemName) return { ok: false, message: 'sold-out' };
       const def = window.AdventureRegistry.getItem(itemName);
       if (!def || def.kind !== 'trophyWhite' || (def.trophyKind !== 'forge' && def.trophyKind !== 'both')) {
@@ -129,21 +139,21 @@
         return { ok: false, message: '兽元不足，需要：' + this._beastTradeCostText(need) };
       }
       const payment = opts && opts.beastPayment;
-      const pay = this._applyBeastPayment(need, { kind: 'blacksmithTrophy', itemName }, payment || null);
+      const pay = this._applyBeastPayment(need, { kind: 'blacksmithTrophy', index, itemName }, payment || null);
       if (!pay.ok) {
         if (pay.needBeastChoice) return pay;
         return { ok: false, message: pay.message || ('兽元不足，需要：' + this._beastTradeCostText(need)) };
       }
-      return this._completeBlacksmithTrophyBuy(itemName, need, pay.spend);
+      return this._completeBlacksmithTrophyBuy(itemName, need, pay.spend, index);
     },
-    _completeBlacksmithTrophyBuy(itemName, need, spend) {
+    _completeBlacksmithTrophyBuy(itemName, need, spend, index = 0) {
       const room = this.currentRoom();
       const def = window.AdventureRegistry.getItem(itemName);
       if (!def || def.kind !== 'trophyWhite' || (def.trophyKind !== 'forge' && def.trophyKind !== 'both')) {
         if (spend) this.s.currency.addTokens(spend);
         return { ok: false, message: '无效战利白卡' };
       }
-      if (!room || room.blacksmithTrophySlot !== itemName) {
+      if (!room || !room.blacksmithTrophySlots || room.blacksmithTrophySlots[index] !== itemName) {
         if (spend) this.s.currency.addTokens(spend);
         return { ok: false, message: 'sold-out' };
       }
@@ -152,22 +162,23 @@
         else this.s.currency.addTokens(this._countTokensFromCost(need));
         return { ok: false, message: '无法获得战利白卡' };
       }
-      room.blacksmithTrophySlot = null;
-      this.s.blacksmithSelectedSlot = 'trophy';
+      room.blacksmithTrophySlots[index] = null;
+      this.s.blacksmithSelectedSlot = index === 0 ? 'trophy' : 'trophy:' + index;
       this._log('锻造战利白卡：' + def.displayName + '（' + this._beastTradeCostText(need) + '）');
       this.emit('buy', '锻造战利白卡成功', { itemName, kind: 'trophyWhite', beastCost: need.slice(), payment: spend || null });
       return { ok: true };
     },
-    refreshBlacksmithTrophy() {
+    refreshBlacksmithTrophy(index = 0) {
       if (this.s.phase !== Phase.BLACKSMITH) return { ok: false, message: '不在铁匠铺' };
+      if (!Number.isInteger(index) || index < 0 || index > 2) return { ok: false, message: '无效槽位' };
       const room = this.currentRoom();
       this._ensureBlacksmithSlots(room);
       const price = 2;
       if (!this.s.currency.spendGold(price)) return { ok: false, message: '金币不足（需要2）' };
-      room.blacksmithTrophySlot = this._rollTrophyWhiteSlot();
-      this.s.blacksmithSelectedSlot = 'trophy';
-      this.emit('blacksmithRefresh', '刷新战利白卡摊位', { trophy: room.blacksmithTrophySlot, price, gold: this.s.currency.gold });
-      return { ok: true, itemName: room.blacksmithTrophySlot };
+      room.blacksmithTrophySlots[index] = this._rollTrophyWhiteSlot();
+      this.s.blacksmithSelectedSlot = index === 0 ? 'trophy' : 'trophy:' + index;
+      this.emit('blacksmithRefresh', '刷新战利白卡摊位', { slot: index, trophy: room.blacksmithTrophySlots[index], price, gold: this.s.currency.gold });
+      return { ok: true, itemName: room.blacksmithTrophySlots[index] };
     },
     selectBlacksmithSlot(index) {
       if (this.s.phase !== Phase.BLACKSMITH) return false;

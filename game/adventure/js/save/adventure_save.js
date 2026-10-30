@@ -50,11 +50,33 @@
     } catch (e) { return false; }
   }
 
+  function migrateLegacySave(data) {
+    if (!data || typeof data !== 'object') return data;
+    const swapEnemy = value => (value === 'Pharaoh' ? 'Anubis' : value);
+    if (data.activeCombat && data.activeCombat.enemy) {
+      data.activeCombat.enemy = swapEnemy(data.activeCombat.enemy);
+    }
+    if (data.rooms) {
+      for (const key of Object.keys(data.rooms)) {
+        const room = data.rooms[key];
+        if (!room) continue;
+        if (room.bossName) room.bossName = swapEnemy(room.bossName);
+        if (room.monsterName) room.monsterName = swapEnemy(room.monsterName);
+      }
+    }
+    if (data.combat && data.combat.enemy) {
+      const enemy = data.combat.enemy;
+      if (typeof enemy === 'string') data.combat.enemy = swapEnemy(enemy);
+      else if (enemy && typeof enemy.name === 'string') enemy.name = swapEnemy(enemy.name);
+    }
+    return data;
+  }
+
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
       if (!raw) return null;
-      const data = JSON.parse(raw);
+      const data = migrateLegacySave(JSON.parse(raw));
       if (!data || data.version !== VERSION) return null;
       if (!data.characterName || !data.mapName) return null;
       if (data.phase === 'ADVENTURE_GAME_OVER' ||
@@ -100,6 +122,7 @@
           doorUnlocked: !!room.doorUnlocked
         };
         if (room.blacksmithTrophySlot !== undefined) entry.blacksmithTrophySlot = CLONE(room.blacksmithTrophySlot);
+        if (Array.isArray(room.blacksmithTrophySlots)) entry.blacksmithTrophySlots = CLONE(room.blacksmithTrophySlots);
         rooms[r + ',' + c] = entry;
       }
     }

@@ -623,7 +623,7 @@ test('entering a restored room repairs its cross-scene Boss assignment', () => {
  const save=ctx.AdventureSave.serialize(eng),restored=new ctx.AdventureEngine();
  restored.restoreFromSave(save,ctx.AdventureMap.fromGrid(save.mapLayout));
  restored.enterCurrent();
- assert.ok(['Pharaoh','DesertHyena','DesertSobek'].includes(restored.currentRoom().bossName));
+ assert.ok(['Anubis','DesertHyena','DesertSobek'].includes(restored.currentRoom().bossName));
  assert.equal(restored.s.combat.enemy.name,restored.currentRoom().bossName);
 });
 

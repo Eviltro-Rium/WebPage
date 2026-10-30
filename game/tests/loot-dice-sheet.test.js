@@ -104,3 +104,33 @@ test('changed dice faces update the result without replaying the tumble, includi
   assert.equal(animations,1,'a genuine new roll still animates');
  }
 });
+
+test('keeping a loot roll reuses its result without a second landing animation', async t => {
+  const {ui,w}=setup(t);
+  const css=w.document.createElement('style');css.textContent=fs.readFileSync(path.join(root,'css/game.css'),'utf8');w.document.head.append(css);
+  let spins=0;ui._playD12Animation=async()=>{spins++;};
+  ui._apiAction=async(method,params)=>{
+    assert.equal(method,'chooseDiceControl');assert.equal(params.use,false);
+    ui.state.pendingDiceControl=null;
+    ui._showTrophySettlement({roll:11,drops:[]},true);
+    ui._renderDiceControl();
+    return true;
+  };
+  ui._renderDiceControl();
+  let face=w.document.querySelector('.trophy-settle-die .d12-result');
+  assert.equal(face.querySelector('strong').textContent,'11');
+  assert.equal(w.getComputedStyle(face).animation,'none');
+  w.document.querySelector('#dice-control-dialog [data-keep]').click();await Promise.resolve();
+  face=w.document.querySelector('.trophy-settle-die .d12-result');
+  assert.equal(face.querySelector('strong').textContent,'11');
+  assert.equal(w.getComputedStyle(face).animation,'none');
+  assert.equal(spins,0);assert.equal(w.document.querySelector('.trophy-settle-actions').hidden,false);
+});
+
+test('a completed non-loot dice result stays still when the judgment area rerenders', t=>{
+  const {ui,w}=setup(t);const css=w.document.createElement('style');css.textContent=fs.readFileSync(path.join(root,'css/game.css'),'utf8');w.document.head.append(css);
+  ui.state={events:[],diceRoll:{value:8},pendingDiceControl:null,revealCards:[]};
+  ui._renderReveal();
+  const result=w.document.querySelector('#reveal-cards .d12-result');
+  assert.equal(result.querySelector('strong').textContent,'8');assert.equal(w.getComputedStyle(result).animation,'none');
+});

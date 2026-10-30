@@ -74,7 +74,7 @@ const TAG_COLORS = {
 };
 
 const PHASE_NAMES = {
-    PLAYER_PLAY: '出牌阶段', PLAYER_DISCARD: '弃牌阶段',
+    PLAYER_PLAY: '出牌阶段', PLAYER_DISCARD: '弃牌阶段', LEON_ZERO_DISCARD: '选择对手弃牌',
     PLAYER_DEFEND: '防御阶段', ATTACK_MOD_CHOICE: '攻击修正', CRIT_CHOICE: '暴击选择', PLAYER_FIVE_CHOICE: '选择5效果',
     PLAYER_SEVEN_CHOICE: '处理抽取牌', SAIKI_THREE_CHOICE: '处理抽取牌', OPPONENT_CARD_CHOICE: '选择对手手牌',
     SAIKI_SIX_JUDGE: '判定选择', AI_TURN: 'AI回合', AI2_TURN: 'AI2回合',

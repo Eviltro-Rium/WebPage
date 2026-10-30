@@ -251,3 +251,50 @@ test('avoidance submission never restores an obsolete choice and permits rejecte
   dom.window.close();
  }
 });
+
+test('Leon AOE dialog selects across both opponent hands and submits exactly two cards once',async()=>{
+ const {dom,w,dialogs}=setup();let finish,calls=0,payload;
+ const pending={count:2,groups:[{key:'ai',label:'对手 I',cards:[{value:0},{value:2}]},{key:'ai2',label:'对手 II',cards:[{value:3},{value:4}]}]};
+ const submit=p=>{calls++;payload=p;return new Promise(resolve=>finish=resolve);};
+ dialogs.showLeonZeroDiscardChoice(pending,submit);const overlay=w.document.getElementById('leon-zero-discard-dialog');
+ const buttons=[...overlay.querySelectorAll('.leon-zero-card')],confirm=overlay.querySelector('.start-btn');
+ assert.equal(buttons.length,4);assert.equal(buttons[0].textContent,'0');assert.equal(confirm.disabled,true);
+ buttons[0].click();buttons[3].click();assert.equal(confirm.disabled,false);assert.equal(buttons[1].disabled,true);
+ buttons[3].click();assert.equal(confirm.disabled,true);buttons[2].click();confirm.click();confirm.click();
+ dialogs.showLeonZeroDiscardChoice(pending,submit);assert.equal(w.document.querySelectorAll('#leon-zero-discard-dialog').length,1);assert.equal(calls,1);
+ assert.equal(JSON.stringify(payload.cards),JSON.stringify([{target:'ai',index:0},{target:'ai2',index:0}]));
+ finish(true);await new Promise(resolve=>setImmediate(resolve));assert.equal(w.document.getElementById('leon-zero-discard-dialog'),null);dom.window.close();
+});
+
+test('Leon AOE dialog preserves chosen cards after rejection and sync removes an obsolete dialog',async()=>{
+ const {dom,w,dialogs}=setup();let calls=0;
+ dialogs.showLeonZeroDiscardChoice({count:1,groups:[{key:'ai2',label:'对手 II',cards:[{value:4}]}]},async()=>{calls++;return false;});
+ w.document.querySelector('.leon-zero-card').click();w.document.querySelector('.start-btn').click();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(calls,1);assert.equal(w.document.querySelector('.leon-zero-card').getAttribute('aria-pressed'),'true');assert.equal(w.document.querySelector('.start-btn').disabled,false);
+ dialogs.syncCombatDialog(null,true,'AI_DEFEND');assert.equal(w.document.getElementById('leon-zero-discard-dialog'),null);dom.window.close();
+});
+
+test('challenge PurifyCrystal opens a choice for self and the current opponent, including after reload',async()=>{
+ for(const target of ['ai','ai2'])for(const done of [false,true]){
+  const {dom,w,dialogs}=setup();
+  try{
+   w.eval('window.GameUI=class {}; window.PHASE_NAMES={PURIFY_CRYSTAL_CHOICE:"净化水晶"};');
+   w.eval(fs.readFileSync(path.join(__dirname,'../js/ui/mode_1v2.js'),'utf8'));
+   const ui=new w.GameUI();ui.dialogs=dialogs;ui.gameScreen=w.document.createElement('main');w.document.body.append(ui.gameScreen);
+   for(const method of ['_drawDeckIcon','_updateHpBar','_updateBuffs','_updateAvatar','_updateAttackerIndicator','_renderPlayerHand','_renderAIHand1v2','_renderDiscardTop','_renderZones','_renderReveal','_renderDiceControl','_renderControls','_updateAdventureInfo','_renderAdventureItemBar'])ui[method]=()=>{};
+   ui._handRenderingLocked=()=>false;
+   ui.state=JSON.parse(JSON.stringify({is1v2:true,isAdventure:true,isLord:true,phase:'PURIFY_CRYSTAL_CHOICE',pendingDialog:'purifyCrystal',attackTarget:target,
+    player:{name:'Saiki',burn:3},ai:{name:'VolcanoAshWolf',guard:1},ai2:{name:'VolcanoSalamander',bleed:2},turn:2}));
+   let call;ui._apiAction=async(method,params)=>{call={method,params};return true;};
+   ui._buildGameScreen1v2();ui.updateDisplay();
+   const dialog=w.document.getElementById('purify-choice-dialog');assert.ok(dialog,'saved pending choice is visible');
+   assert.match(dialog.textContent,/自己.*灼伤/);assert.match(dialog.textContent,target==='ai'?/对手.*守护/:/对手.*流血/);
+   assert.doesNotMatch(dialog.textContent,target==='ai'?/流血/:/守护/,'only the current defender is included');
+   const button=done?dialog.querySelector('.choice-done-btn'):[...dialog.querySelectorAll('button')].find(btn=>btn.textContent.includes('对手'));
+   button.click();await Promise.resolve();
+   assert.equal(call.method,'choosePurifyCrystal');
+   assert.equal(done?call.params.choice.done:call.params.choice.who,done?true:'opp');
+   assert.equal(w.document.getElementById('purify-choice-dialog'),null);
+  }finally{dom.window.close();}
+ }
+});

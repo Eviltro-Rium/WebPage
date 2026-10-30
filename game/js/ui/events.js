@@ -237,7 +237,7 @@ _showTrophySettlement(evt, landed = false) {
     const face = Number(evt.roll ?? evt.value);
     if (landed && Number.isFinite(face)) {
         die.setAttribute('aria-label', '战利品骰面 ' + face);
-        die.innerHTML = '<div class="d12-result"><span class="d12-label">D12</span><strong>' + face + '</strong></div>';
+        die.innerHTML = '<div class="d12-result d12-result-static"><span class="d12-label">D12</span><strong>' + face + '</strong></div>';
     }
     sheet.append(heading, die, status);
     const rules = document.createElement('div');
@@ -686,7 +686,7 @@ async _playEvents(events, fast = false) {
                 // Editing a face changes this roll's result; it is not a new roll.
                 const target = isLoot && lootOverlay ? lootOverlay.querySelector('.trophy-settle-die') : document.getElementById('reveal-cards');
                 if (target) {
-                    target.innerHTML = '<div class="d12-die d12-die-landed" aria-label="12面骰结果 ' + value + '"><span class="d12-die-label">D12</span><strong class="d12-die-face">' + value + '</strong></div>';
+                    target.innerHTML = '<div class="d12-die d12-result-static" aria-label="12面骰结果 ' + value + '"><span class="d12-die-label">D12</span><strong class="d12-die-face">' + value + '</strong></div>';
                     target.dataset.cardKey = 'd12-landed:' + value;
                 }
             } else if (typeof this._playD12Animation === 'function') {

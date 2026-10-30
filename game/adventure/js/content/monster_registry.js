@@ -552,13 +552,13 @@
             eng.emit('buff', '[潜水]', null, { who, kind: 'diving', stacks: 1 });
           }
         }
-        // 进攻清除自身所有负面状态（法老0牌）
+        // 进攻清除自身所有负面状态（阿努比斯0牌）
         if (typeof mod.attackClearSelfDebuffs === 'function' && mod.attackClearSelfDebuffs(c)) {
           if (typeof eng.clearDebuffs === 'function') eng.clearDebuffs(a);
           else { a.burn = 0; a.bleed = 0; a.poison = 0; a.frozen = false; }
           eng.emit('desc', a.name + '清除自身所有负面状态');
         }
-        // 进攻抽牌：返回 true 视为1张，返回数字为抽取张数（蟒蛇条件抽1张、石像鬼0牌抽1张、法老0牌抽2张）
+        // 进攻抽牌：返回 true 视为1张，返回数字为抽取张数（蟒蛇条件抽1张、石像鬼0牌抽1张、阿努比斯0牌抽2张）
         if (typeof mod.attackDrawSelf === 'function') {
           const drawSelfAmt = attackDrawCount(mod.attackDrawSelf(c, ctx));
           if (drawSelfAmt > 0) {
@@ -1106,8 +1106,8 @@
       }
       return '无防御效果';
     }
-    // Pharaoh defend copy (desert.md): keep doc order (clear first, then counter on 0).
-    if (mod.name === 'Pharaoh' && card.isNumberCard) {
+    // Anubis defend copy (desert.md): keep doc order (clear first, then counter on 0).
+    if (mod.name === 'Anubis' && card.isNumberCard) {
       const v = card.value;
       if (v >= 1 && v <= 3) {
         const heal = typeof mod.defendHeal === 'function' ? mod.defendHeal(card) : 0;
@@ -1515,8 +1515,8 @@
       }
       return '无进攻效果';
     }
-    // Pharaoh: color-based effect on 1/2/3, yellow-unblockable 4/5/6, self-restore 0 (desert.md).
-    if (mod.name === 'Pharaoh' && card.isNumberCard) {
+    // Anubis: color-based effect on 1/2/3, yellow-unblockable 4/5/6, self-restore 0 (desert.md).
+    if (mod.name === 'Anubis' && card.isNumberCard) {
       const v = card.value;
       if (v >= 1 && v <= 3) {
         return '造成' + 4 + '点[伤害]，按技能牌颜色：🔴施加2层[灼伤]、🟡施加[流沙]、🔵施加[失温]、🟢获得[茂盛]';

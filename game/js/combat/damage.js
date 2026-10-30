@@ -62,9 +62,12 @@
             const target = owner === 'player' ? 'player' : owner === 'ai2' ? 'ai2' : 'ai';
             if (entity.bomb <= 0) {
                 const hpBefore = entity.hp;
-                this.apply(engine, entity, 5, 'bomb', { silent: true, damageSource: 'buff' });
-                engine.emit(eventTypes.BOMB_EXPLODE || 'bombExplode', '[定时炸弹]🗡️5', null, {
-                    who: target, target, amount: 5, hpBefore, hpAfter: entity.hp, kind: 'bomb'
+                const bombDamage = root.StatusRegistry && root.StatusRegistry.bombExplodeDamage
+                    ? root.StatusRegistry.bombExplodeDamage()
+                    : 10;
+                this.apply(engine, entity, bombDamage, 'bomb', { silent: true, damageSource: 'buff' });
+                engine.emit(eventTypes.BOMB_EXPLODE || 'bombExplode', '[定时炸弹]🗡️' + bombDamage, null, {
+                    who: target, target, amount: bombDamage, hpBefore, hpAfter: entity.hp, kind: 'bomb'
                 });
             } else {
                 engine.emit(eventTypes.BUFF || 'buff', '炸弹倒计时：' + entity.bomb, null, {

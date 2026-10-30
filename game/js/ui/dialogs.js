@@ -38,6 +38,7 @@ class DialogManager {
             mozeSeven: 'super-purify-choice-dialog',
             guard: 'guard-choice-dialog',
             flyRetry: 'fly-retry-choice-dialog',
+            leonZeroDiscard: 'leon-zero-discard-dialog',
             trophyDisarm: 'opponent-card-choice-dialog',
             trophyPurify: 'purify-choice-dialog',
             attackBuff: 'attack-buff-choice-dialog'
@@ -53,7 +54,7 @@ class DialogManager {
         const ids = [
             'purify-choice-dialog', 'super-purify-choice-dialog',
             'guard-choice-dialog', 'fly-retry-choice-dialog',
-            'opponent-card-choice-dialog', 'chan-five-dialog', 'attack-buff-choice-dialog'
+            'opponent-card-choice-dialog', 'chan-five-dialog', 'attack-buff-choice-dialog', 'leon-zero-discard-dialog'
         ];
         ids.forEach(id => {
             const el = document.getElementById(id);
@@ -192,6 +193,61 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
         };
         if (online) document.getElementById('btn-online-room-overlay').addEventListener('click', () => closeFn('room'));
         document.getElementById('btn-back-select-overlay').addEventListener('click', () => closeFn('home'));
+    }
+
+    showLeonZeroDiscardChoice(pending, onChoose) {
+        const id = 'leon-zero-discard-dialog';
+        if (!pending || document.getElementById(id)) return;
+        const overlay = document.createElement('div'); overlay.id = id; overlay.className = 'dialog-overlay';
+        overlay.dataset.combatDecision = 'leonZeroDiscard';
+        const box = document.createElement('div'); box.className = 'dialog-box';
+        const title = document.createElement('h3'); title.textContent = 'Leon 0牌 · 选择对手弃牌';
+        const summary = document.createElement('p'); summary.className = 'dialog-summary'; summary.setAttribute('aria-live', 'polite');
+        const list = document.createElement('div'); list.className = 'opponent-card-groups leon-zero-groups';
+        const selected = new Map(), buttons = [];
+        const confirm = document.createElement('button'); confirm.type = 'button'; confirm.className = 'start-btn';
+        let submitting = false;
+        const update = () => {
+            summary.textContent = '从两名对手的手牌中合计选择' + pending.count + '张（可来自同一对手） · 已选 ' + selected.size + '/' + pending.count;
+            if ((pending.groups || []).length === 1) summary.textContent = '选择对手的' + pending.count + '张手牌 · 已选 ' + selected.size + '/' + pending.count;
+            confirm.textContent = '确认弃掉所选牌（' + selected.size + '/' + pending.count + '）';
+            confirm.disabled = submitting || selected.size !== pending.count;
+            buttons.forEach(({button, key}) => {
+                button.setAttribute('aria-pressed', String(selected.has(key)));
+                button.disabled = submitting || (!selected.has(key) && selected.size >= pending.count);
+            });
+        };
+        for (const group of pending.groups || []) {
+            const section = document.createElement('section');
+            const heading = document.createElement('h4'); heading.textContent = group.label;
+            const row = document.createElement('div'); row.className = 'rule-card-row';
+            group.cards.forEach((card, index) => {
+                const key = group.key + ':' + index;
+                const button = document.createElement('button'); button.type = 'button'; button.className = 'card-choice leon-zero-card';
+                button.setAttribute('aria-label', group.label + ' 第' + (index + 1) + '张牌');
+                button.dataset.target = group.key; button.dataset.index = String(index);
+                if (typeof renderCard === 'function') button.appendChild(renderCard(card, 54, 78, false, {isNpc:true}));
+                else button.textContent = String(card.value);
+                button.onclick = () => {
+                    if (submitting) return;
+                    if (selected.has(key)) selected.delete(key);
+                    else if (selected.size < pending.count) selected.set(key, {target:group.key, index});
+                    update();
+                };
+                buttons.push({button, key}); row.appendChild(button);
+            });
+            section.append(heading, row); list.appendChild(section);
+        }
+        confirm.onclick = async () => {
+            if (submitting || selected.size !== pending.count) return;
+            submitting = true; update();
+            // Retain this disabled sheet until the command returns, so stale
+            // renders cannot open another copy while discard events play.
+            try { if ((await onChoose({cards:Array.from(selected.values())})) !== false) overlay.remove(); }
+            catch (_) { /* The command failed; retain the same selection for retry. */ }
+            finally { submitting = false; update(); }
+        };
+        update(); box.append(title, summary, list, confirm); overlay.appendChild(box); document.body.appendChild(overlay);
     }
 
     showOpponentCardChoice(groups, onChoose, title = '选择一张对手手牌') {

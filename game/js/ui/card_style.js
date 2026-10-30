@@ -71,6 +71,9 @@
     trophy_ZeroTrophy: cardAssetUrl('icons/card_icons/zero.webp'),
     trophy_RiotTrophy: cardAssetUrl('icons/card_icons/riot.png'),
     trophy_DrawTwoTrophy: cardAssetUrl('icons/card_icons/draw_cards.webp'),
+    trophy_VampireTrophy: cardAssetUrl('icons/card_icons/suck_blood.webp'),
+    trophy_GreenMagicTrophy: cardAssetUrl('icons/card_icons/green_magic.webp'),
+    trophy_PurpleMagicTrophy: cardAssetUrl('icons/card_icons/purple_magic.webp'),
     trophy_SmallPotionTrophy: cardAssetUrl('icons/buff_icons/small_potion.webp'),
     trophy_PurifyWaterTrophy: cardAssetUrl('icons/buff_icons/purify_water.webp')
   };

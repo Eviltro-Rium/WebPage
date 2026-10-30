@@ -14,12 +14,12 @@
   if (!R) return;
 
   window.AdventureBossPool = window.AdventureBossPool || {};
-  // 鬣狗和索贝克从 Stage 1 出现，只有法老从 Stage 3 起出现。
+  // 鬣狗和索贝克从 Stage 1 出现，只有阿努比斯从 Stage 3 起出现。
   window.AdventureBossPool.desert = {
     1: ['DesertHyena', 'DesertSobek'],
     2: ['DesertHyena', 'DesertSobek'],
-    3: ['Pharaoh', 'DesertHyena', 'DesertSobek'],
-    4: ['Pharaoh', 'DesertHyena', 'DesertSobek']
+    3: ['Anubis', 'DesertHyena', 'DesertSobek'],
+    4: ['Anubis', 'DesertHyena', 'DesertSobek']
   };
 
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
@@ -331,6 +331,7 @@
       return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
     },
     stageMods: {
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
         attackDrain(card, ctx) {
           const v = card && card.value;
@@ -439,76 +440,76 @@
     }
   });
 
-  // ===== 法老（Boss，Stage 3 起） =====
+  // ===== 阿努比斯（Boss，Stage 3 起） =====
   // 进攻1/2/3：造成3点伤害，按技能牌颜色：🔴施加2层[灼伤] / 🟡施加[流沙] / 🔵施加[失温] / 🟢自身获得[茂盛]
   // 进攻4/5/6：造成6点伤害，技能牌为🟡时不可防御
   // 进攻0：恢复3点生命，清除自身所有负面状态，抽取2张牌（不造成伤害，跳过玩家防御）
   // 防御1/2/3：反击3点伤害，恢复1点生命
   // 防御0：清除自身所有负面状态，反击相同点数伤害
   // Stage 3：进攻伤害 +1；Stage 4：防御恢复 +1
-  const pharaohColor = card => (card && (card.chosenColor || card.color)) || '';
-  const isPharaohLow = card => !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3);
-  const isPharaohHigh = card => !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
-  const isPharaohZero = card => !!(card && card.isNumberCard && card.value === 0);
+  const anubisColor = card => (card && (card.chosenColor || card.color)) || '';
+  const isAnubisLow = card => !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3);
+  const isAnubisHigh = card => !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
+  const isAnubisZero = card => !!(card && card.isNumberCard && card.value === 0);
   R.registerBoss({
-    name: 'Pharaoh',
-    kind: '法老',
+    name: 'Anubis',
+    kind: '阿努比斯',
     minStage: 3,
     hp: 40,
     attack: 3,
     defense: 2,
     handLimit: 3,
     whiteZeros: 2,
-    icon: '../icons/npc_icons/pharaoh.webp',
+    icon: '../icons/npc_icons/desert_anubis.webp',
     attackDamage(card) {
-      if (isPharaohLow(card)) return 4;
-      if (isPharaohHigh(card)) return 6;
+      if (isAnubisLow(card)) return 4;
+      if (isAnubisHigh(card)) return 6;
       return 0;
     },
     // 进攻1/2/3 🔴：施加2层灼伤
     attackBurn(card) {
-      return isPharaohLow(card) && pharaohColor(card) === 'RED' ? 2 : 0;
+      return isAnubisLow(card) && anubisColor(card) === 'RED' ? 2 : 0;
     },
     // 进攻1/2/3 🟡：施加1层流沙
     attackQuicksand(card) {
-      return isPharaohLow(card) && pharaohColor(card) === 'YELLOW' ? 1 : 0;
+      return isAnubisLow(card) && anubisColor(card) === 'YELLOW' ? 1 : 0;
     },
     // 进攻1/2/3 🔵：防御结束后施加1层失温
     attackHypothermia(card) {
-      return isPharaohLow(card) && pharaohColor(card) === 'BLUE' ? 1 : 0;
+      return isAnubisLow(card) && anubisColor(card) === 'BLUE' ? 1 : 0;
     },
     // 进攻1/2/3 🟢：自身获得1层茂盛
     attackLush(card) {
-      return isPharaohLow(card) && pharaohColor(card) === 'GREEN' ? 1 : 0;
+      return isAnubisLow(card) && anubisColor(card) === 'GREEN' ? 1 : 0;
     },
     // 进攻4/5/6 🟡：不可防御
     attackUnblockable(card) {
-      return isPharaohHigh(card) && pharaohColor(card) === 'YELLOW';
+      return isAnubisHigh(card) && anubisColor(card) === 'YELLOW';
     },
     // 进攻0：恢复3点生命
     attackHeal(card) {
-      return isPharaohZero(card) ? 3 : 0;
+      return isAnubisZero(card) ? 3 : 0;
     },
     // 进攻0：清除自身所有负面状态
     attackClearSelfDebuffs(card) {
-      return isPharaohZero(card);
+      return isAnubisZero(card);
     },
     // 进攻0：抽取2张牌
     attackDrawSelf(card) {
-      return isPharaohZero(card) ? 2 : 0;
+      return isAnubisZero(card) ? 2 : 0;
     },
     // 防御1/2/3：反击3点；防御0：反击相同点数伤害
     defendCounter(card, incoming) {
-      if (isPharaohZero(card)) return Math.max(0, Number(incoming) || 0);
-      return isPharaohLow(card) ? 3 : 0;
+      if (isAnubisZero(card)) return Math.max(0, Number(incoming) || 0);
+      return isAnubisLow(card) ? 3 : 0;
     },
     // 防御1/2/3：恢复1点生命
     defendHeal(card) {
-      return isPharaohLow(card) ? 1 : 0;
+      return isAnubisLow(card) ? 1 : 0;
     },
     // 防御0：清除自身所有负面状态
     defendClearDebuffs(card) {
-      return isPharaohZero(card);
+      return isAnubisZero(card);
     },
     stageMods: {
       4: orig => ({
@@ -528,7 +529,7 @@
   // 进攻4/5/6：施加1层流血，获得暴击；造成玩家手牌数点伤害
   // 进攻0：翻开玩家牌库顶判定（始终入弃牌堆）；数字>0 则 ceil(点数×1.5) 伤害，否则施加2层流血+[荆棘]并抽1张
   // 防御1/2/3：反击 ceil(incoming/2)；防御0：反击6，获得暴击，玩家弃1张手牌
-  // Stage2 HP+10；Stage3 🟡进攻不可防御（不耗暴击）；Stage4 防御回1❤️
+  // Stage2 HP+5；Stage3 🟡进攻不可防御（不耗暴击）；Stage4 防御回1❤️
   const hyenaColor = card => (card && (card.chosenColor || card.color)) || '';
   const isHyenaLow = card => !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3);
   const isHyenaHigh = card => !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
@@ -617,7 +618,7 @@
       return isHyenaZero(card);
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 10 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
         // 进攻技能牌为🟡时不可防御（不消耗暴击；走 attackUnblockable，非 attackUseCrit）
         attackUnblockable(card) {

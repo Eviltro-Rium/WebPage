@@ -89,7 +89,7 @@
       return 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
+      2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({ defendBlock: (card, incoming) => orig.defendBlock(card, incoming) + 1 })
     }
@@ -181,7 +181,7 @@
       return 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
+      2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({ defendBleed: () => 1 })
     }

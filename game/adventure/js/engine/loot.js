@@ -150,8 +150,8 @@
       Object.freeze({ threshold: 2, drops: Object.freeze(['FlyTrophy']) }),
       Object.freeze({ threshold: 4, drops: Object.freeze(['SandblindTrophy']) })
     ]) }),
-    // Pharaoh: Zero 1-6 (both).
-    Pharaoh: Object.freeze({ threshold: 6, drops: Object.freeze(['ZeroTrophy']) }),
+    // Anubis: Zero 1-6 (both).
+    Anubis: Object.freeze({ threshold: 6, drops: Object.freeze(['ZeroTrophy']) }),
     DesertHyena: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 4, drops: Object.freeze(['PiercingTrophy']) }),
       Object.freeze({ threshold: 5, drops: Object.freeze(['CritTrophy']) }),

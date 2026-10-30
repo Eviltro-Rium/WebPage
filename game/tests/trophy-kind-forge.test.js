@@ -45,7 +45,7 @@ const DROP = [
   'GuardTrophy'
 ];
 const FORGE_ONLY = [
-  'RussianRouletteTrophy', 'DisarmTrophy', 'RiotTrophy', 'TimeBombTrophy'
+  'RussianRouletteTrophy', 'DisarmTrophy', 'RiotTrophy', 'TimeBombTrophy', 'VampireTrophy', 'GreenMagicTrophy', 'PurpleMagicTrophy'
 ];
 const BOTH = [
   'ZeroTrophy', 'SmallPotionTrophy', 'PurifyWaterTrophy', 'DrawTwoTrophy'
@@ -169,7 +169,7 @@ test('docs loot: Goblin potion+guard; Boss Zero; universal 11/12', () => {
   assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('castle', 'CastleGargoyle', null, 6).drops), ['ZeroTrophy']);
   assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('forest', 'ForestDryad', null, 6).drops), ['ZeroTrophy']);
   assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('ocean', 'FrozenKraken', null, 6).drops), ['ZeroTrophy']);
-  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'Pharaoh', null, 6).drops), ['ZeroTrophy']);
+  assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'Anubis', null, 6).drops), ['ZeroTrophy']);
   assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('castle', 'CastleGargoyle', null, 11).drops),
     ['SmallPotionTrophy']);
 });

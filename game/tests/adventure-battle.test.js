@@ -2434,3 +2434,25 @@ for (const incoming of [3, 7]) {
     assert.ok(!engine.events.some(event=>event.type==='buff'&&event.kind==='guard'));
   });
 }
+
+test('Saiki blue 1 with PurifyCrystal settles a skipped defense against the second volcano opponent', () => {
+  const engine = new AdventureBattleEngine();engine.later=()=>{};
+  engine.startAdventure1v2({player:'Saiki',opponent1:'VolcanoAshWolf',opponent2:'VolcanoSalamander',stage:1,
+    testMode:true,discardTop:number(1,'BLUE'),playerPile:{deck:[],hand:[number(1,'BLUE'),number(6,'GREEN')],discard:[],handLimit:5}});
+  engine._adventureEngine={s:{consumables:[],accessories:['EnergyShield','PurifyCrystal']},hasAccessory:name=>['EnergyShield','PurifyCrystal'].includes(name),accessoryCount:name=>['EnergyShield','PurifyCrystal'].includes(name)?1:0};
+  engine.s.phase='PLAYER_PLAY';engine.s.busy=false;engine.s.lordPlayerTargetIdx=1;engine.s.player.hp=19;engine.s.player.burn=3;engine.s.player.scorch=true;
+  engine.s.ai2.hp=3;engine.s.ai2.burn=3;engine.h.ai2.length=0;engine.events=[];engine._invariantBaseline=null;
+  engine.dispatch('selectCard',{index:0});engine.dispatch('doPlay');
+  if(engine.s.phase==='ATTACK_MOD_CHOICE')engine.dispatch('resolveAttackModChoice',{bonus:0});
+  assert.equal(engine.s.phase,'PURIFY_CRYSTAL_CHOICE');
+  for(let i=0;i<8&&engine.events.length;i++)engine.acknowledgeEvents(engine.ver);
+  assert.equal(engine.s.phase,'PURIFY_CRYSTAL_CHOICE');
+  assert.equal(engine.pendingSettlement,null);
+  engine.dispatch('choosePurifyCrystal',{choice:{who:'self',kind:'burn'}});
+  for(let i=0;i<8&&engine.events.length;i++)engine.acknowledgeEvents(engine.ver);
+  assert.equal(engine.s.pendingPurifyCrystal,null);
+  assert.equal(engine.s.pendingDialog,null);
+  assert.equal(engine.pendingSettlement,null);
+  assert.notEqual(engine.s.phase,'AI_DEFEND');
+  assert.equal(engine.s.ai2.hp,1);
+});

@@ -1,5 +1,5 @@
 /**
- * 图鉴 —— 展示主角（玩家角色）/怪物/Boss/道具/饰品/Buff图鉴。
+ * 图鉴 —— 展示主角（玩家角色）/怪物（含首领）/道具/饰品/Buff图鉴。
  */
 (function () {
   // 怪物/Boss NPC 牌堆：白1~3×4、白4~6×2、白7×2；Boss 另加白0。
@@ -25,7 +25,7 @@
     { key: 'freeze', name: '冷冻', type: '负面状态', icon: 'icons/buff_icons/freeze.webp', desc: '堆叠上限：1\n维持效果：持续\n无法防御蓝色攻击。受到蓝色攻击时只能跳过防御并承受全部伤害。' },
     { key: 'blind', name: '致盲', type: '负面状态', icon: 'icons/buff_icons/blind.webp', desc: '堆叠上限：1\n维持效果：持续\n持续期间不能在战斗中使用一次性道具，只能等待被净化。' },
     { key: 'iceSeal', name: '冰封', type: '负面状态', icon: 'icons/buff_icons/ice_seal.webp', desc: '堆叠上限：1\n维持效果：衰减\n有冰封的角色在下一次补牌时少补1张牌，随后移除1层冰封；可被净化。' },
-    { key: 'bomb', name: '定时炸弹', type: '负面状态', icon: 'icons/buff_icons/time_bomb.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n初始倒计时为5。被施加者每打出1张牌倒计时减少1，归零时爆炸并受到5点伤害；图标右上角数字为当前倒计时；可被净化。' },
+    { key: 'bomb', name: '定时炸弹', type: '负面状态', icon: 'icons/buff_icons/time_bomb.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n初始倒计时为5。被施加者每打出1张牌倒计时减少1，归零时爆炸并受到10点伤害；图标右上角数字为当前倒计时；可被净化。' },
     { key: 'guard', name: '守护', type: '正面状态', icon: 'icons/buff_icons/guard.webp', desc: '堆叠上限：5\n维持效果：持续\n受到攻击或反击伤害时可消耗守护层数等额减免；不能减免灼伤、流血、中毒、炸弹、荆棘、寄生等Buff伤害。' },
     { key: 'fly', name: '飞翔', type: '正面状态', icon: 'icons/buff_icons/fly.webp', desc: '堆叠上限：2\n维持效果：持续\n受到攻击或反击伤害时可消耗1层投掷12面骰，1~6成功躲避、7~12失败；失败后可继续尝试或使用守护。不能减免Buff伤害，也不能躲避攻击附带的状态。' },
     { key: 'harden', name: '硬化', type: '正面状态', icon: 'icons/buff_icons/harden.webp', desc: '堆叠上限：2\n维持效果：持续\n每层使真正标记为不可防御的攻击伤害减免1点，最多减至0；层数不消耗。该减免先于守护和飞翔结算，不减免灼伤、流血、中毒、炸弹等Buff独立伤害，可被净化。' },
@@ -178,10 +178,12 @@
     const consumables = registry ? registry.allItems().filter(it => it.kind === 'consumable').length : 0;
     const accessories = registry ? registry.allItems().filter(it => it.kind === 'accessory').length : 0;
     const trophies = registry ? registry.allItems().filter(it => it.kind === 'trophyWhite').length : 0;
+    const monsterCount = registry
+      ? registry.allMonsters().length + registry.allBosses().length
+      : 0;
     const counts = {
       player: PLAYER_CHARS.length,
-      monster: registry ? registry.allMonsters().length : 0,
-      boss: registry ? registry.allBosses().length : 0,
+      monster: monsterCount,
       consumable: consumables,
       accessory: accessories,
       trophyWhite: trophies,
@@ -189,8 +191,7 @@
     };
     const categories = [
       ['player', '🎭', '主角图鉴', '角色技能与被动'],
-      ['monster', '👹', '怪物图鉴', '敌人技能与战利品'],
-      ['boss', '👑', 'Boss图鉴', '首领技能与阶段强化'],
+      ['monster', '👹', '怪物图鉴', '按场景浏览普通、精英与首领'],
       ['consumable', '🧪', '道具图鉴', '冒险中可用的消耗品'],
       ['accessory', '💍', '饰品图鉴', '持续生效的冒险装备'],
       ['trophyWhite', '🃏', '战利白卡', '掉落、锻造与双源卡牌'],
@@ -265,45 +266,111 @@
     return !!(name && loot && typeof loot.isEliteMonster === 'function' && loot.isEliteMonster(name));
   }
 
+  const CODEX_SCENES = [
+    { key: 'castle', label: '城堡' },
+    { key: 'forest', label: '森林' },
+    { key: 'ocean', label: '冻洋' },
+    { key: 'desert', label: '沙漠' },
+    { key: 'volcano', label: '火山' },
+    { key: 'final', label: '终局' }
+  ];
+
+  function buildMonsterSceneMap() {
+    const map = Object.create(null);
+    const add = (scene, names) => {
+      for (const name of names) {
+        if (name && !map[name]) map[name] = scene;
+      }
+    };
+    for (const [scene, pool] of Object.entries(window.AdventureMonsterPool || {})) {
+      const names = [];
+      if (pool['*']) names.push(...pool['*']);
+      for (const [stage, list] of Object.entries(pool)) {
+        if (stage !== '*') names.push(...list);
+      }
+      add(scene, names);
+    }
+    for (const [scene, pool] of Object.entries(window.AdventureElitePool || {})) {
+      add(scene, Object.values(pool).flat());
+    }
+    for (const [scene, pool] of Object.entries(window.AdventureBossPool || {})) {
+      add(scene, Object.values(pool).flat());
+    }
+    map.CorruptedRyan = 'final';
+    return map;
+  }
+
   function sortCodexMonsters(list) {
     return list.slice().sort((a, b) => String(a.kind || a.name || '').localeCompare(String(b.kind || b.name || ''), 'zh'));
   }
 
+  function codexTierLabel(tier) {
+    if (tier === 'elite') return '精英怪物';
+    if (tier === 'boss') return '首领';
+    return '普通怪物';
+  }
+
   function monsterCardMarkup(m, tier) {
-    const isElite = tier === 'elite';
-    const tierLabel = isElite ? '精英怪物' : '普通怪物';
+    const tierLabel = codexTierLabel(tier);
     const icon = resolveIcon(m.icon);
     const iconHtml = icon
       ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${m.name}">`
       : `<div class="char-detail-avatar codex-no-icon">${m.name[0]}</div>`;
-    const extraClass = isElite ? ' codex-elite-card' : '';
+    let extraClass = '';
+    if (tier === 'elite') extraClass = ' codex-elite-card';
+    else if (tier === 'boss') extraClass = ' codex-boss-card';
     return `<button type="button" class="char-detail-card codex-creature-card${extraClass}" data-name="${m.name}">${iconHtml}` +
       `<span class="char-detail-name">${m.kind || m.name}</span>` +
       `<span class="char-detail-type">${tierLabel} · HP ${m.hp}</span>` +
       '<span class="char-detail-open">查看技能 <span aria-hidden="true">›</span></span></button>';
   }
 
+  function getCodexCreature(name) {
+    const registry = window.AdventureRegistry;
+    if (!registry || !name) return null;
+    const monster = registry.getMonster(name);
+    if (monster) {
+      return { entity: monster, tier: isCodexEliteMonster(name) ? 'elite' : 'normal' };
+    }
+    const boss = registry.getBoss(name);
+    if (boss) return { entity: boss, tier: 'boss' };
+    return null;
+  }
+
   function buildMonsterList() {
-    const monsters = window.AdventureRegistry ? window.AdventureRegistry.allMonsters() : [];
-    const normal = sortCodexMonsters(monsters.filter(m => !isCodexEliteMonster(m.name)));
-    const elite = sortCodexMonsters(monsters.filter(m => isCodexEliteMonster(m.name)));
-    const sections = [
-      { tier: 'normal', title: '普通怪物', hint: '普通房、挑战房等常见遭遇', list: normal },
-      { tier: 'elite', title: '精英怪物', hint: '精英房遭遇（Stage 3–4）· 战利品骰投 2 次', list: elite }
+    const registry = window.AdventureRegistry;
+    const monsters = registry ? registry.allMonsters() : [];
+    const bosses = registry ? registry.allBosses() : [];
+    const total = monsters.length + bosses.length;
+    const sceneMap = buildMonsterSceneMap();
+    const tierSections = [
+      { tier: 'normal', title: '普通', hint: '普通房、挑战房等', pick: sceneKey =>
+        sortCodexMonsters(monsters.filter(m => sceneMap[m.name] === sceneKey && !isCodexEliteMonster(m.name))) },
+      { tier: 'elite', title: '精英', hint: '精英房（Stage 3–4）· 战利骰投 2 次', pick: sceneKey =>
+        sortCodexMonsters(monsters.filter(m => sceneMap[m.name] === sceneKey && isCodexEliteMonster(m.name))) },
+      { tier: 'boss', title: '首领', hint: 'Boss 房', pick: sceneKey =>
+        sortCodexMonsters(bosses.filter(b => sceneMap[b.name] === sceneKey)) }
     ];
     let html = '<div class="char-detail-page codex-monster-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">怪物图鉴</h1></div>';
-    html += collectionSubhead(monsters.length, '按类别浏览怪物技能、特殊规则与战利品掉落。');
-    for (const section of sections) {
-      html += `<section class="codex-monster-section" data-monster-tier="${section.tier}" aria-labelledby="codex-monster-${section.tier}">`;
-      html += '<header class="codex-monster-section-head">';
-      html += `<div><h2 id="codex-monster-${section.tier}">${section.title}<span>${section.list.length} 种</span></h2>`;
-      html += `<p>${section.hint}</p></div></header>`;
-      html += '<div class="char-detail-grid">';
-      html += section.list.length
-        ? section.list.map(m => monsterCardMarkup(m, section.tier)).join('')
-        : '<div class="codex-empty">暂无</div>';
-      html += '</div></section>';
+    html += collectionSubhead(total, '按场景浏览普通、精英与首领的技能、规则与战利品。');
+    for (const scene of CODEX_SCENES) {
+      const sceneCount = monsters.filter(m => sceneMap[m.name] === scene.key).length
+        + bosses.filter(b => sceneMap[b.name] === scene.key).length;
+      if (!sceneCount) continue;
+      html += `<section class="codex-monster-scene" data-codex-scene="${scene.key}" aria-labelledby="codex-scene-${scene.key}">`;
+      html += `<header class="codex-monster-scene-head"><h2 id="codex-scene-${scene.key}">${scene.label}<span>${sceneCount} 种</span></h2></header>`;
+      for (const section of tierSections) {
+        const list = section.pick(scene.key);
+        if (!list.length) continue;
+        html += `<div class="codex-monster-section" data-monster-tier="${section.tier}">`;
+        html += '<header class="codex-monster-section-head">';
+        html += `<div><h3>${section.title}<span>${list.length} 种</span></h3><p>${section.hint}</p></div></header>`;
+        html += '<div class="char-detail-grid">';
+        html += list.map(m => monsterCardMarkup(m, section.tier)).join('');
+        html += '</div></div>';
+      }
+      html += '</section>';
     }
     html += '</div>';
     return html;
@@ -354,7 +421,7 @@
     if (entity.canDefendHigh && !hasTitle(/高牌|4\/5\/6/)) {
       pushAuto('被动', '可用高牌（4/5/6/7）防御');
     }
-    // Boss 手牌上限是牌库注册配置，不是被动（desert.md：鬣狗/法老等）
+    // Boss 手牌上限是牌库注册配置，不是被动（desert.md：鬣狗/阿努比斯等）
     const isBoss = !!(window.AdventureRegistry && typeof window.AdventureRegistry.getBoss === 'function'
       && window.AdventureRegistry.getBoss(name));
     if (!isBoss && entity.handLimit && entity.handLimit < 4 && !hasTitle(/手牌/)) {
@@ -418,14 +485,15 @@
   }
 
   function buildMonsterDetail(name) {
-    const m = window.AdventureRegistry ? window.AdventureRegistry.getMonster(name) : null;
-    if (!m) return '';
+    const found = getCodexCreature(name);
+    if (!found) return '';
+    const { entity: m, tier } = found;
     const skills = adventureSkillArrays(name, 1);
     const icon = resolveIcon(m.icon);
     const iconHtml = icon ? `<img class="char-detail-hero-avatar" src="${icon}" onerror="this.style.display='none'" alt="${m.name}">` : `<div class="char-detail-hero-avatar codex-no-icon">${m.name[0]}</div>`;
-    const elite = isCodexEliteMonster(name);
+    const elite = tier === 'elite';
     const { notes, dropNotes } = collectSpecialNotes(m, name, elite ? { elite: true } : undefined);
-    const tierLabel = elite ? '精英怪物' : '普通怪物';
+    const tierLabel = codexTierLabel(tier);
 
     let html = '<div class="char-detail-page">';
     html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; 怪物列表</button><h1 class="rules-title">怪物图鉴</h1></div>';
@@ -437,57 +505,20 @@
 
     html += buildSpecialNotesFromList(notes);
     html += buildDropNotesFromList(dropNotes);
-    html += buildSkillGrid(skills.atk, skills.def, !!m.canDefendHigh, !!m.whiteZeros);
+    if (skills.atk.length || skills.def.length) {
+      html += buildSkillGrid(skills.atk, skills.def, !!m.canDefendHigh, !!m.whiteZeros);
+    }
     html += buildStageMods(name);
     html += '</div>';
     return html;
   }
 
   function buildBossList() {
-    const bosses = window.AdventureRegistry ? window.AdventureRegistry.allBosses() : [];
-    let html = '<div class="char-detail-page">';
-    html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">Boss图鉴</h1></div>';
-    html += collectionSubhead(bosses.length, '查看首领技能、专属掉落与各阶段强化。');
-    if (!bosses.length) {
-      html += '<div class="codex-empty">暂无Boss数据</div>';
-    } else {
-      html += '<div class="char-detail-grid">';
-      for (const b of bosses) {
-        const icon = resolveIcon(b.icon);
-        const iconHtml = icon ? `<img class="char-detail-avatar" src="${icon}" onerror="this.style.display='none'" alt="${b.name}">` : `<div class="char-detail-avatar codex-no-icon">${b.name[0]}</div>`;
-        html += `<button type="button" class="char-detail-card codex-creature-card codex-boss-card" data-name="${b.name}">${iconHtml}<span class="char-detail-name">${b.kind || b.name}</span><span class="char-detail-type">Boss · HP ${b.hp}</span><span class="char-detail-open">查看技能 <span aria-hidden="true">›</span></span></button>`;
-      }
-      html += '</div>';
-    }
-    html += '</div>';
-    return html;
+    return buildMonsterList();
   }
 
   function buildBossDetail(name) {
-    const b = window.AdventureRegistry ? window.AdventureRegistry.getBoss(name) : null;
-    if (!b) return '';
-    const skills = adventureSkillArrays(name, 1);
-    const icon = resolveIcon(b.icon);
-    const iconHtml = icon ? `<img class="char-detail-hero-avatar" src="${icon}" onerror="this.style.display='none'" alt="${b.name}">` : `<div class="char-detail-hero-avatar codex-no-icon">${b.name[0]}</div>`;
-
-    const { notes, dropNotes } = collectSpecialNotes(b, name);
-
-    let html = '<div class="char-detail-page">';
-    html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-list">&larr; Boss列表</button><h1 class="rules-title">Boss图鉴</h1></div>';
-    html += '<div class="codex-detail-kicker">冒险图鉴 <span>首领</span></div>';
-    html += `<div class="char-detail-hero">${iconHtml}<div class="char-detail-hero-info">`;
-    html += `<div class="char-detail-hero-name">${b.kind || b.name}</div>`;
-    html += `<div class="char-detail-hero-type">Boss · HP ${b.hp}${b.handLimit ? ' · 手牌' + b.handLimit : ''}</div>`;
-    html += `</div></div>`;
-
-    html += buildSpecialNotesFromList(notes);
-    html += buildDropNotesFromList(dropNotes);
-    if (skills.atk.length || skills.def.length) {
-      html += buildSkillGrid(skills.atk, skills.def, !!b.canDefendHigh, !!b.whiteZeros);
-    }
-    html += buildStageMods(name);
-    html += '</div>';
-    return html;
+    return buildMonsterDetail(name);
   }
 
   function buildItemList(kind) {
@@ -586,15 +617,17 @@
   function trophyEntryMarkup(it) {
     // Shared cycling rules sit below the direct card action; buff mechanics are
     // intentionally left to the separate buff codex.
-    const effectText = String(it.description || '').replace(/(?:抽1张牌，可继续搭桥|不抽牌，不继续搭桥)。?$/, '').replace(/。$/, '');
+    const effectText = String(it.description || '').replace(/(?:抽1张牌，可继续搭桥|不抽牌，可继续搭桥|不抽牌，不继续搭桥)。?$/, '').replace(/。$/, '');
     const zero = it.trophyEffect === 'zero';
+    const noDraw = zero || it.drawCount === 0;
+    const drawLabel = noDraw ? '不抽牌' : it.trophyEffect === 'drawTwo' ? '抽牌 +2' : '抽牌 +1';
     const name = it.displayName.replace(/战利白卡$/, '');
     return `<article class="codex-trophy-entry" aria-label="${it.displayName}">` +
       `<span class="codex-trophy-face-slot" data-codex-trophy="${it.name}" data-codex-kind="${it.trophyKind || ''}"></span>` +
       '<div class="codex-trophy-copy">' +
       `<h3 class="codex-trophy-name">${name}</h3>` +
       `<p class="codex-trophy-effect">${formatCodexRichText(effectText)}</p>` +
-      `<div class="codex-trophy-play-rules${zero ? ' is-exception' : ''}"><span>${zero ? '不抽牌' : '抽牌 +1'}</span><span>${zero ? '不继续搭桥' : '可继续搭桥'}</span></div>` +
+      `<div class="codex-trophy-play-rules${zero ? ' is-exception' : ''}"><span>${drawLabel}</span><span>${zero ? '不继续搭桥' : '可继续搭桥'}</span></div>` +
       trophyCostMarkup(it) + '</div></article>';
   }
 
@@ -737,7 +770,6 @@
         const cat = el.dataset.cat;
         if (cat === 'player') showPlayerCharList(container);
         else if (cat === 'monster') showMonsterList(container);
-        else if (cat === 'boss') showBossList(container);
         else if (cat === 'consumable') showItemList(container, 'consumable');
         else if (cat === 'accessory') showItemList(container, 'accessory');
         else if (cat === 'trophyWhite') showTrophyList(container);

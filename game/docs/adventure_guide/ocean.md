@@ -193,7 +193,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 裂冰鲨（FrozenOceanShark）
+## Elite · 裂冰鲨（FrozenOceanShark）
 
 ### 生命值：27
 
@@ -262,7 +262,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ---
 
-## 长牙猛犸（FrozenMammoth）· Boss
+## Boss · 长牙猛犸（FrozenMammoth）
 
 ### 生命值：35
 
@@ -284,7 +284,7 @@ Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
 
 ### 掉落：投出1-3，掉落[流血]战利白卡；投出4-5，掉落[守护]战利白卡；投出6，掉落[失温]战利白卡
 ---
-## 克拉肯（FrozenKraken）· Boss
+## Boss · 克拉肯（FrozenKraken）
 
 ### 生命值：40
 

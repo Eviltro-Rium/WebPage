@@ -91,7 +91,7 @@
             box.innerHTML = '';
             box.classList.toggle('reveal-multi', !dice && cards.length > 1);
             if (!cards.length && dice && Number.isFinite(Number(dice.value))) {
-                box.innerHTML = '<div class="d12-result" aria-label="12面骰结果"><span class="d12-label">D12</span><strong>' + dice.value + '</strong></div>';
+                box.innerHTML = '<div class="d12-result d12-result-static" aria-label="12面骰结果"><span class="d12-label">D12</span><strong>' + dice.value + '</strong></div>';
             } else {
                 if (!cards.length) box.innerHTML = '<span class="reveal-empty">等待判定</span>';
                 const cw = cards.length > 1 ? 52 : 60;

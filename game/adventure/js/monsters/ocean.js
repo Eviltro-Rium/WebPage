@@ -20,15 +20,15 @@
   window.AdventureMonsterPool = window.AdventureMonsterPool || {};
   window.AdventureMonsterPool.ocean = {
     '*': ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
-    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
-    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
-    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanShark', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed']
+    2: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
+    3: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed'],
+    4: ['FrozenOceanLynx', 'FrozenWhale', 'FrozenOceanSeal', 'FrozenPolarBear', 'FrozenOceanSnowyOwl', 'FrozenOceanSamoyed']
   };
 
   window.AdventureElitePool = window.AdventureElitePool || {};
   window.AdventureElitePool.ocean = {
-    3: ['FrozenOceanOctopus', 'FrozenOceanTubeWorm'],
-    4: ['FrozenOceanOctopus', 'FrozenOceanTubeWorm']
+    3: ['FrozenOceanOctopus', 'FrozenOceanShark', 'FrozenOceanTubeWorm'],
+    4: ['FrozenOceanOctopus', 'FrozenOceanShark', 'FrozenOceanTubeWorm']
   };
 
   // ===== 霜爪猞猁 =====
@@ -349,7 +349,6 @@
       return (card && card.isNumberCard && card.value === 0) ? (incoming || 0) : 0;
     },
     stageMods: {
-      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         // 防御0：额外免疫所有伤害（仍反击相同伤害并清除负面状态）

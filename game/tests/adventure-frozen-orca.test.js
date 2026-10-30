@@ -204,16 +204,16 @@ test('FrozenOrca defendCounter: 0 counters same damage', () => {
 
 // ===== stageMods 测试 =====
 
-test('FrozenOrca stage2: hp +5 = 40', () => {
+test('FrozenOrca stage2: hp stays 35', () => {
   const boss = getBoss('FrozenOrca');
   const s2 = applyStageMods(boss, 2);
-  assert.equal(s2.hp, 40);
+  assert.equal(s2.hp, 35);
 });
 
 test('FrozenOrca stage3: attackDamage +1 (0 card → 3+2×stacks, max 9)', () => {
   const boss = getBoss('FrozenOrca');
   const s3 = applyStageMods(boss, 3);
-  assert.equal(s3.hp, 40, 'stage3 should include stage2 hp bonus');
+  assert.equal(s3.hp, 35, 'stage3 should keep stage2 max hp');
   assert.equal(s3.attackDamage(numCard(1), {}), 4, '1/2/3 base 3 +1 = 4');
   assert.equal(s3.attackDamage(numCard(4), {}), 6, '4/5/6 base 5 +1 = 6');
   assert.equal(s3.attackDamage(numCard(0), { playerBleed: 0 }), 3, '0: 2+0 +1 = 3');
@@ -225,7 +225,7 @@ test('FrozenOrca stage3: attackDamage +1 (0 card → 3+2×stacks, max 9)', () =>
 test('FrozenOrca stage4: defendImmune on 0', () => {
   const boss = getBoss('FrozenOrca');
   const s4 = applyStageMods(boss, 4);
-  assert.equal(s4.hp, 40, 'stage4 should include stage2 hp bonus');
+  assert.equal(s4.hp, 35, 'stage4 should keep base max hp');
   assert.equal(s4.attackDamage(numCard(1), {}), 4, 'stage4 should include stage3 damage bonus');
   assert.equal(s4.defendImmune(numCard(0)), true, 'stage4 defendImmune on 0');
   assert.equal(s4.defendImmune(numCard(1)), false, 'stage4 defendImmune only on 0');

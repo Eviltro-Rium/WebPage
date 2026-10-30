@@ -153,6 +153,8 @@ _renderControls() {
             const canCancelDiscard = !s.forcedDiscard && !s.pendingVixrapsPassive && !s.pendingDiscardBeforeDefend && !s.pendingHypothermiaDiscard && !s.pendingSerenitySixDiscard && !s.pendingKrakenDefendDiscard;
             if (canCancelDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
         }
+    } else if (phase === 'LEON_ZERO_DISCARD') {
+        html += '<span class="ctrl-hint">请在下方选择对手要弃掉的手牌</span>';
     } else if (phase === 'OPPONENT_CARD_CHOICE' && canAct && s.isAdventure) {
         const targetKey = s.opponentHandTarget || (s.is1v2 ? (s.attackTarget || 'ai') : 'ai');
         const target = s[targetKey];
@@ -637,7 +639,7 @@ _isDecisionAction(method) {
         'doSaikiThreeDiscard', 'doChanFourDiscard', 'doChanFourSwap',
         'doSaikiSixConfirm', 'resolveAttackModChoice', 'resolveCritChoice', 'resolveAttackBuffChoice', 'chooseTarget', 'chooseColor', 'choosePurify',
         'chooseSuperPurifyTarget', 'chooseGuard', 'chanFiveReorder', 'choosePurifyCrystal', 'chooseMozeSeven',
-        'chooseAICard', 'doOpponentCardConfirm', 'chooseTrophyDisarm', 'chooseTrophyPurify', 'chooseDiceControl'
+        'chooseAICard', 'doOpponentCardConfirm', 'chooseTrophyDisarm', 'chooseTrophyPurify', 'chooseDiceControl', 'chooseLeonZeroDiscard'
     ]).has(method);
 },
 
@@ -646,7 +648,7 @@ _isInteractiveDecisionPhase(phase) {
         'PLAYER_FIVE_CHOICE', 'PLAYER_SEVEN_CHOICE',
         'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'ATTACK_MOD_CHOICE', 'CRIT_CHOICE', 'ATTACK_BUFF_CHOICE', 'PLAYER_DISCARD',
         'CHAN_FIVE_REORDER', 'GUARD_CHOICE', 'TARGET_CHOICE', 'PURIFY_CRYSTAL_CHOICE', 'OPPONENT_CARD_CHOICE',
-        'TROPHY_DISARM_CHOICE', 'TROPHY_PURIFY_CHOICE', 'DICE_CHOICE'
+        'TROPHY_DISARM_CHOICE', 'TROPHY_PURIFY_CHOICE', 'DICE_CHOICE', 'LEON_ZERO_DISCARD'
     ]).has(phase);
 },
 
