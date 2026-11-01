@@ -47,41 +47,51 @@
       // Commit before applying any resources or launching combat.
       event.status = 'done';
       room.cleared = true;
-      const group = Math.floor((event.roll - 1) / 2);
-      if (group === 0) {
+      const roll = event.roll;
+      if (roll === 1 || roll === 2) {
+        const elite = roll === 2;
+        const encounterStage = elite ? 3 : this.s.stage;
+        const pools = elite ? window.AdventureElitePool : window.AdventureMonsterPool;
         const candidates = [];
-        for (const [scene, pool] of Object.entries(window.AdventureMonsterPool || {})) {
+        for (const [scene, pool] of Object.entries(pools || {})) {
           if (scene === this.s.scene) continue;
-          const names = Array.isArray(pool) ? pool : pool[this.s.stage] || pool['*'] || Object.values(pool).flat();
-          this._availableNames([...new Set(names)], this.s.stage, 'monster').forEach(name => candidates.push({ name, scene }));
+          const names = Array.isArray(pool) ? pool : pool[encounterStage] || pool['*'] || [];
+          this._availableNames([...new Set(names)], encounterStage, 'monster').forEach(name => candidates.push({ name, scene }));
         }
         const chosen = candidates[Math.floor(random() * candidates.length)];
         if (chosen) {
           event.monsterName = chosen.name;
           event.scene = chosen.scene;
+          event.opponentStage = encounterStage;
+          event.elite = elite;
           event.status = 'combat';
           room.cleared = false;
           return this._startGlitchCombat(room);
         }
-        event.message = '没有可出现的异场景怪物，异常已平息。';
-      } else if (group === 1) {
+        event.message = elite ? '没有可出现的异场景精英，异常已平息。' : '没有可出现的异场景怪物，异常已平息。';
+      } else if (roll === 3) {
         event.status = this.s.consumables.length ? 'discard' : 'done';
         event.message = this.s.consumables.length ? '请选择一个一次性道具丢弃。' : '没有可丢弃的一次性道具，事件结束。';
-      } else if (group === 2) {
+      } else if (roll === 4) {
+        const lost = Math.ceil(this.s.currency.gold / 2);
+        this.s.currency.spendGold(lost);
+        event.goldLost = lost;
+        event.message = '损失' + lost + '金币。';
+      } else if (roll <= 6) {
         const status = window.FurryGame && window.FurryGame.StatusService;
         if (status && status.clearAll) status.clearAll(this.s.player);
         else Object.entries(this.playerBuffs()).forEach(([key, value]) => { this.s.player[key] = typeof value === 'boolean' ? false : 0; });
         this.s.player.buffs = {};
         event.message = '已清除自身所有状态（包含正面与负面）。';
-      } else if (group === 3) {
+      } else if (roll <= 8) {
         const pile = this.s.playerPile;
         while (pile.hand.length) pile.discardFromHand(0);
         const count = pile.draw(3).length;
-        this.queueMapRecovery({ drawn: count, label: '故障房重整' });
+        // The event page presents this reset; it must not replay on map return.
         this.s.discardTop = new window.AdventureDeck.DiscardTop(null);
         this.s.discardTopOwner = null;
         event.message = '所有手牌已放入弃牌库，重新抽取' + count + '张牌。';
-      } else if (group === 4) {
+      } else if (roll <= 10) {
         const before = this.s.player.hp;
         this.s.player.hp = Math.min(this.s.player.maxHp, before + 10);
         const count = this.s.playerPile.drawToLimit().length;
@@ -89,7 +99,7 @@
         this.s.discardTop = new window.AdventureDeck.DiscardTop(null);
         this.s.discardTopOwner = null;
         event.message = '恢复' + (this.s.player.hp - before) + '点生命，手牌补至上限（抽取' + count + '张）。';
-      } else {
+      } else if (roll === 11) {
         const pool = window.AdventureRegistry.itemsByKind('consumable').filter(def => {
           const check = this._canAddItem(def.name);
           return check.ok || check.reason === 'full';
@@ -103,6 +113,10 @@
             event.message += '。道具槽已满，请舍弃多余道具。';
           }
         } else event.message = '暂无可获得的一次性道具。';
+      } else {
+        this.s.currency.addGold(10);
+        event.goldGained = 10;
+        event.message = '获得10金币。';
       }
       this._log('故障房：' + event.message);
       this.emit('glitchResolved', event.message, { roll: event.roll });
@@ -137,6 +151,8 @@
       const room = this._currentGlitchRoom();
       if (this.s.phase !== Phase.GLITCH || !room || (room.glitchEvent && room.glitchEvent.status !== 'done')) return false;
       room.visited = true;
+      // Discard presentation queued by older saves, which already show the reset hand.
+      this.s.pendingMapRecoveries = (this.s.pendingMapRecoveries || []).filter(effect => effect.label !== '故障房重整');
       this.s.phase = Phase.MAP;
       return true;
     }

@@ -311,7 +311,7 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
             else if (kind === 'blind') snap.blind = 0;
             else if (kind === 'bomb') snap.bomb = 0;
             else if (kind === 'freeze') snap.frozen = false;
-            else if (kind === 'iceSeal') snap.iceSeal = 0;
+            else if (kind === 'iceSeal') snap.iceSeal = Math.max(0, (snap.iceSeal || 0) - 1);
             else if (kind === 'guard') snap.guard = Math.max(0, snap.guard - 1);
             else if (kind === 'fly') snap.fly = Math.max(0, snap.fly - 1);
             else if (kind === 'crit') snap.crit = Math.max(0, snap.crit - 1);

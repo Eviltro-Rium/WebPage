@@ -53,6 +53,13 @@
     }
   );
 
+  // Keep the trophy effect family and identity intact; only its color policy changes.
+  function upgradeTrophy(card) {
+    if (!card || !card.trophyWhite || card.isBlack || !card.isWhite || card.borrowedMonster) return false;
+    Object.assign(card, { trophyBlack: true, color: 'BLACK', isBlack: true, isWhite: false, chosenColor: null });
+    return true;
+  }
+
   function shuffle(arr) {
     const random = window.FurryGame && window.FurryGame.CombatRuntime
       ? window.FurryGame.CombatRuntime.random : Math.random;
@@ -157,6 +164,7 @@
         discardCount: this.discard.length,
         handLimit: this.handLimit,
         hand: this.hand.map(c => ({
+          uid: c.uid,
           color: c.color,
           value: c.value,
           potion: c.potion,
@@ -170,6 +178,7 @@
           swapHand: c.swapHand,
           shuffleToDeck: c.shuffleToDeck,
           trophyWhite: !!c.trophyWhite,
+          trophyBlack: !!c.trophyBlack,
           trophyName: c.trophyName || null,
           trophyEffect: c.trophyEffect || null,
           borrowedMonster: !!c.borrowedMonster,
@@ -228,7 +237,7 @@
   }
 
   window.AdventureDeck = {
-    COLORS, num, item, trophyWhite, shuffle, clone,
+    COLORS, num, item, trophyWhite, upgradeTrophy, shuffle, clone,
     makePlayerDeck, makeNpcDeck,
     AdventurePile, DiscardTop,
     drawInitialTop

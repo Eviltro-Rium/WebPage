@@ -282,20 +282,32 @@
       }
       return { ok: true };
     },
+    _trophyInventory() {
+      const pile = this.s.playerPile;
+      const byName = new Map();
+      const physical = pile ? [...pile.hand, ...pile.deck, ...pile.discard, ...(this.s.magazineReserve || [])] : [];
+      for (const card of physical) {
+        if (!card || !card.trophyWhite) continue;
+        if (!byName.has(card.trophyName)) byName.set(card.trophyName, []);
+        byName.get(card.trophyName).push(card);
+      }
+      return (this.s.trophyWhiteCards || []).map(name => ({name, card: (byName.get(name) || []).shift() || window.AdventureDeck.trophyWhite(name)}));
+    },
     discardTrophyWhiteCard(index) {
       if (!this.s || !Array.isArray(this.s.trophyWhiteCards)) return { ok: false, message: '没有战利白卡' };
-      if (index < 0 || index >= this.s.trophyWhiteCards.length) return { ok: false, message: '无效卡牌' };
-      const itemName = this.s.trophyWhiteCards[index];
+      if (!Number.isInteger(index) || index < 0 || index >= this.s.trophyWhiteCards.length) return { ok: false, message: '无效卡牌' };
+      const entry = this._trophyInventory()[index];
+      const itemName = entry.name;
       this.s.trophyWhiteCards.splice(index, 1);
       const pile = this.s.playerPile;
       if (pile) {
         const removeOne = list => {
-          const at = list.findIndex(card => card && card.trophyWhite && card.trophyName === itemName);
+          const at = list.indexOf(entry.card);
           if (at < 0) return false;
           list.splice(at, 1);
           return true;
         };
-        removeOne(pile.hand) || removeOne(pile.deck) || removeOne(pile.discard);
+        removeOne(pile.hand) || removeOne(pile.deck) || removeOne(pile.discard) || removeOne(this.s.magazineReserve || []);
       }
       const def = window.AdventureRegistry.getItem(itemName);
       this._log('丢弃战利白卡：' + (def ? def.displayName : itemName));
@@ -370,15 +382,15 @@
       // Unified hand-discard pending (Vixraps-style). Confirm via confirmHandDiscard.
       const combatUse = def.combatUse || def.mapUse || null;
       const hasIndex = useCtx.discardIndex != null || (useCtx.choice && useCtx.choice.index != null);
-      if ((combatUse === 'discardTalisman' || combatUse === 'furnace') && !hasIndex && !this.s.pendingHandDiscard) {
+      if ((combatUse === 'discardTalisman' || combatUse === 'furnace' || combatUse === 'obsidian') && !hasIndex && !this.s.pendingHandDiscard) {
         return this.beginHandDiscard({
           kind: combatUse,
           itemIndex: index,
           itemName: def.name,
           count: 1,
-          filter: combatUse === 'furnace' ? 'colorNumber' : null,
+          filter: combatUse === 'furnace' ? 'colorNumber' : combatUse === 'obsidian' ? 'trophyWhite' : null,
           cancelable: true,
-          hint: combatUse === 'furnace'
+          hint: combatUse === 'obsidian' ? '黑曜石：请选择1张战利白卡升级' : combatUse === 'furnace'
             ? '熔炉：请选择1张红/黄/蓝/绿点数牌弃掉'
             : '弃牌符：请选择1张手牌弃掉（然后抽2张）'
         });
@@ -421,6 +433,9 @@
         if (legalIndices.length < count) {
           return { ok: false, message: opts.emptyMessage || '没有可弃的手牌' };
         }
+      } else if (opts.filter === 'trophyWhite') {
+        legalIndices = hand.map((card, i) => card && card.trophyWhite && card.isWhite && !card.isBlack && !card.borrowedMonster ? i : -1).filter(i => i >= 0);
+        if (!legalIndices.length) return { ok: false, message: '手牌中没有可升级的战利白卡' };
       } else if (!hand.length) {
         return { ok: false, message: opts.emptyMessage || '手牌为空，无法弃牌' };
       }
@@ -479,7 +494,8 @@
       const itemIndex = pending.itemIndex;
       const kind = pending.kind;
       this.s.pendingHandDiscard = null;
-      if ((kind === 'discardTalisman' || kind === 'furnace') && itemIndex != null) {
+      if (kind === 'obsidian' && this.s.consumables[itemIndex] !== pending.itemName) return { ok: false, message: '黑曜石已不在原道具槽' };
+      if ((kind === 'discardTalisman' || kind === 'furnace' || kind === 'obsidian') && itemIndex != null) {
         return this.useConsumable(itemIndex, { discardIndex: selected[0] });
       }
       return { ok: false, message: '未知弃牌类型' };
@@ -550,7 +566,7 @@
         return true;
       }
       if (kind === 'iceSeal' && (player.iceSeal || 0) > 0) {
-        player.iceSeal = 0;
+        player.iceSeal = Math.max(0, player.iceSeal - 1);
         return true;
       }
       if (kind === 'freeze' && player.frozen) {

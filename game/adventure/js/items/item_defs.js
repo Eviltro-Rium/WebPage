@@ -3,7 +3,7 @@
  *
  * 一次性道具（consumable）：放入6槽，使用后消耗
  * 战利白卡（trophyWhite）：不占道具槽，进入玩家牌库循环抽取
- * 配饰（accessory）：无数量限制，放入即自动生效
+ * 配饰（accessory）：受各自携带上限限制，获得后自动生效
  */
 
 (function () {
@@ -28,12 +28,12 @@
 
   R.registerItem({
     name: 'PurifyWater1',
-    displayName: '净化之水',
+    displayName: '净化之水I',
     kind: 'consumable',
     description: '清除自身至多1个负面状态；对战中也可清除对手buff（含正面）',
     icon: ICON + 'purify_water.webp',
     useScene: 'both',
-    price: 3,
+    price: 2,
     combatUse: 'purify',
     purifyCount: 1,
     needsChoice: true
@@ -46,7 +46,7 @@
     description: '清除自身至多3个负面状态；对战中也可清除对手buff（含正面）',
     icon: ICON + 'purify_water.webp',
     useScene: 'both',
-    price: 6,
+    price: 4,
     combatUse: 'purify',
     purifyCount: 3,
     needsChoice: true
@@ -56,24 +56,24 @@
     name: 'FirstAidKit',
     displayName: '急救箱',
     kind: 'consumable',
-    description: '恢复7点生命',
+    description: '恢复10点生命',
     icon: ICON + 'first_aid_kit.webp',
     useScene: 'both',
     price: 7,
     combatUse: 'heal',
-    healAmount: 7
+    healAmount: 10
   });
 
   R.registerItem({
     name: 'GhostFire',
     displayName: '鬼火',
     kind: 'consumable',
-    description: '对对手施加3层灼伤',
+    description: '对对手施加5层灼伤',
     icon: ICON + 'ghost_fire.webp',
     useScene: 'combat',
     price: 4,
     combatUse: 'burn',
-    burnAmount: 3
+    burnAmount: 5
   });
 
   R.registerItem({
@@ -375,12 +375,12 @@
     name: 'Piercing',
     displayName: '刺伤',
     kind: 'consumable',
-    description: '对对手施加2层流血',
+    description: '对对手施加3层流血',
     icon: ICON + 'pierce.webp',
     useScene: 'combat',
     price: 4,
     combatUse: 'bleed',
-    bleedAmount: 2
+    bleedAmount: 3
   });
 
   R.registerItem({
@@ -466,7 +466,7 @@
     description: '查看自己牌库顶3张牌并调整顺序放回，然后抽取1张牌；地图、进攻和防御阶段均可使用',
     icon: ICON + 'crystal_ball.webp',
     useScene: 'both',
-    price: 6,
+    price: 4,
     combatUse: 'crystalBall'
   });
 
@@ -477,7 +477,7 @@
     description: '查看NPC牌库顶3张牌：不可调序，可选择哪些放回牌库、哪些进入NPC弃牌堆',
     icon: ICON + 'chaos_orb.webp',
     useScene: 'combat',
-    price: 6,
+    price: 4,
     combatUse: 'chaosOrb',
     needsChoice: true
   });
@@ -489,8 +489,20 @@
     description: '抽2张，或弃光手牌后重抽同等数量',
     icon: ICON + 'card_master.webp',
     useScene: 'both',
-    price: 7,
+    price: 5,
     combatUse: 'cardMaster',
+    needsChoice: true
+  });
+
+  R.registerItem({
+    name: 'Obsidian',
+    displayName: '黑曜石',
+    kind: 'consumable',
+    description: '选择手牌中一张战利白卡，升级为战利黑卡；原效果不变，打出时可指定颜色',
+    icon: ICON + 'obsidian.webp',
+    useScene: 'both',
+    price: 5,
+    combatUse: 'obsidian',
     needsChoice: true
   });
 
@@ -526,7 +538,7 @@
     description: '弃掉1张普通颜色手牌：红→炙热战利白卡，黄→沙盲战利白卡，蓝→潜水战利白卡，绿→茂盛战利白卡',
     icon: ICON + 'furnace.webp',
     useScene: 'both',
-    price: 7,
+    price: 5,
     combatUse: 'furnace',
     needsChoice: true,
     furnaceByColor: {
@@ -556,7 +568,7 @@
     description: '战斗中使用：立即退出当前房间，手牌补至上限；下次进入重新抽取怪物（故障房事件不重置）',
     icon: ICON + 'hourglass.webp',
     useScene: 'combat',
-    price: 8,
+    price: 5,
     combatUse: 'rewindHourglass'
   });
 
@@ -605,7 +617,7 @@
     displayName: '暴乱战利白卡',
     kind: 'trophyWhite',
     trophyKind: 'forge',
-    description: '对手所有负面状态层数翻倍；若其持有[定时炸弹]，立即引爆。抽1张牌，可继续搭桥。',
+    description: '对手所有负面状态层数翻倍（各不超过上限）；若有[定时炸弹]立即引爆；随后各触发一次[灼伤]/[流血]/[中毒]伤害结算（有层数时）。抽1张牌，可继续搭桥。',
     icon: '../icons/card_icons/riot.png',
     useScene: 'combat',
     price: 5,
@@ -650,7 +662,7 @@
     description: '选择自己或对手一层 buff 转移给另一方（嗜血/捆缚印记除外）',
     icon: ICON + 'magic_transfer.webp',
     useScene: 'combat',
-    price: 5,
+    price: 3,
     combatUse: 'buffTransfer',
     needsChoice: true
   });
@@ -662,7 +674,7 @@
     description: '进攻出牌阶段使用：选择对手1张牌暂借入手牌，可按规则打出并释放该怪物技能',
     icon: ICON + 'chameleon_pigment.webp',
     useScene: 'combat',
-    price: 8,
+    price: 5,
     combatUse: 'chameleonPaint',
     needsChoice: true
   });
@@ -686,7 +698,7 @@
     description: '攻击修正：投掷12面骰；1–8本次伤害翻倍，9–12伤害降为0并跳过防御（与其他攻击修正共用选择，同一技能只能选用一种）',
     icon: ICON + 'evil_wheel.webp',
     useScene: 'combat',
-    price: 5,
+    price: 3,
     combatUse: 'attackMod',
     attackModEvilRoulette: true
   });
@@ -707,7 +719,7 @@
     name: 'FlameFist',
     displayName: '火焰之拳',
     kind: 'accessory',
-    description: '释放有反击伤害的防御技能时，对攻击者施加1层灼伤（可叠加，最多3个）',
+    description: '释放有反击伤害的防御技能时，对攻击者施加1层灼伤',
     icon: ICON + 'fire_gloves.webp',
     beastTradeCost: ['huo', 'huo', 'huo', 'huo', 'ben'],
     onDefendBurn: 1,
@@ -718,7 +730,7 @@
     name: 'BeastBag',
     displayName: '兽元袋',
     kind: 'accessory',
-    description: '兽元上限+3（可叠加，最多2个）',
+    description: '兽元上限+3',
     icon: ICON + 'beast_core_sack.webp',
     beastTradeCost: ['ben', 'ben', 'ben', 'cao', 'cao'],
     beastCapBonus: 3,
@@ -729,7 +741,7 @@
     name: 'LifeCore',
     displayName: '生命核心',
     kind: 'accessory',
-    description: '战斗胜利返回地图时恢复3点生命（可叠加，最多3个）',
+    description: '战斗胜利返回地图时恢复3点生命',
     icon: ICON + 'core_of_life.webp',
     beastTradeCost: ['cao', 'cao', 'cao', 'shui', 'ben'],
     onCombatWinHeal: 3,
@@ -740,7 +752,7 @@
     name: 'FreezeLaser',
     displayName: '冷冻激光',
     kind: 'accessory',
-    description: '释放没有伤害的攻击技能时，对当前目标施加冷冻（最多1个）',
+    description: '释放没有伤害的攻击技能时，对当前目标施加冷冻',
     icon: ICON + 'freeze_laser.webp',
     beastTradeCost: ['shui', 'shui', 'shui', 'wuneng'],
     onNonDamageAttackFreeze: 1,
@@ -751,7 +763,7 @@
     name: 'EnergyShield',
     displayName: '能量盾',
     kind: 'accessory',
-    description: '进攻开始前获得1层守护（可叠加，最多2个）',
+    description: '进攻开始前获得1层守护',
     icon: ICON + 'energy_shield.webp',
     beastTradeCost: ['cao', 'cao', 'cao', 'ben', 'ben'],
     onAttackStartGuard: 1,
@@ -762,7 +774,7 @@
     name: 'JusticeHammer',
     displayName: '正义之锤',
     kind: 'accessory',
-    description: '所有有伤害的技能伤害+1（最多1个）',
+    description: '所有有伤害的技能伤害+1',
     icon: ICON + 'justice_hammer.webp',
     beastTradeCost: ['huo', 'huo', 'shui', 'shui', 'ben'],
     onDamageBonus: 1,
@@ -794,12 +806,12 @@
     name: 'RevivalCross',
     displayName: '复活十字',
     kind: 'accessory',
-    description: '血条清零时立刻恢复5点生命，随后该配饰损坏消失（最多1个）',
+    description: '血条清零时立刻恢复10点生命，随后该配饰损坏消失',
     icon: ICON + 'revival_cross.webp',
     beastTradeCost: ['ben', 'ben', 'ben', 'wuneng'],
     price: 15,
     maxStacks: 1,
-    onLethalHeal: 5,
+    onLethalHeal: 10,
     breaksOnTrigger: true
   });
 
@@ -819,7 +831,7 @@
     name: 'MagicBook',
     displayName: '魔法书',
     kind: 'accessory',
-    description: '手牌上限+1（最多1个；不影响 Chan 进攻前额外抽牌被动）',
+    description: '手牌上限+1',
     icon: ICON + 'magic_book.webp',
     beastTradeCost: ['huo', 'shui', 'cao', 'ben', 'ben'],
     price: 15,
@@ -850,6 +862,19 @@
     beastTradeCost: ['cao', 'huo', 'huo', 'shui', 'shui'],
     price: 15,
     maxStacks: 1
+  });
+
+  R.registerItem({
+    name: 'EnvenomedBlade',
+    displayName: '淬毒之刃',
+    kind: 'accessory',
+    description: '进攻打出绿色卡牌且伤害达到4点时，对命中的对手施加1层[中毒]',
+    icon: ICON + 'envenomed_blade.webp',
+    beastTradeCost: ['cao', 'cao', 'cao', 'huo', 'huo'],
+    price: 15,
+    maxStacks: 1,
+    greenAttackPoisonThreshold: 4,
+    onGreenAttackPoison: 1
   });
 
   R.registerItem({

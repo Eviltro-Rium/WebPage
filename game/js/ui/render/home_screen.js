@@ -64,7 +64,7 @@
             }
 
             html += `<div class="home-panel home-panel-select">`;
-            html += `<button class="back-to-mode-btn" id="back-to-mode" type="button"><span aria-hidden="true">←</span> 返回主页</button>`;
+            html += `<button class="back-to-mode-btn" id="back-to-mode" type="button"><span aria-hidden="true">←</span> 返回模式选择</button>`;
             if (this._isAdventure) {
                 html += `<div class="game-subtitle home-assign-status" id="assign-status">选择主角</div>`;
             } else {

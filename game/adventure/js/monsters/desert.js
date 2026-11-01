@@ -32,7 +32,7 @@
   };
 
   // ===== 沙暴蛮牛 =====
-  // 进攻1/2/3：造成2×玩家[流血]层数伤害
+  // 进攻1/2/3：先施加1层流血，再造成2×[流血]层数伤害
   // 进攻4/5/6：2点不可防御伤害，施加1层流血，获得1层暴击
   // 防御1/2/3：反击卡面点数伤害，施加1层流血
   R.registerMonster({
@@ -42,19 +42,23 @@
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/desert_bison.webp',
+    attackEffectTiming(v) {
+      return (v >= 1 && v <= 3) ? 'beforeDamage' : 'afterDamage';
+    },
     attackDamage(card, ctx) {
       const v = card && card.value;
       if (v >= 1 && v <= 3) return 2 * ((ctx && ctx.playerBleed) || 0);
       if (v >= 4 && v <= 6) return 2;
       return 0;
     },
-    // 进攻4/5/6：不可防御
+    // 进攻1/2/3：不可防御
     attackUnblockable(card) {
       return !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
     },
-    // 进攻4/5/6：施加1层流血
+    // 进攻1/2/3 先施加；4/5/6 伤害后施加
     attackBleed(card) {
-      return (card && card.isNumberCard && card.value >= 4 && card.value <= 6) ? 1 : 0;
+      const v = card && card.value;
+      return (card && card.isNumberCard && v >= 1 && v <= 6) ? 1 : 0;
     },
     // 进攻4/5/6：获得1层暴击（上限2）
     attackGainCrit(card) {
@@ -72,7 +76,7 @@
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
-        // 进攻1/2/3改为3×玩家[流血]层数伤害
+        // 进攻1/2/3：先流血，再3×[流血]层数伤害
         attackDamage(card, ctx) {
           const v = card && card.value;
           if (v >= 1 && v <= 3) return 3 * ((ctx && ctx.playerBleed) || 0);
@@ -525,7 +529,7 @@
   // ===== 嘲风鬣狗（Boss，Stage 2 起） =====
   // 被动[嘲弄]：每次进入整段防御阶段（非单次防御牌）掷12面骰选色并挂嘲弄印记，
   // 本阶段该颜色玩家进攻技能变为空（无伤害/效果，跳过防御）；进入进攻阶段时清除。
-  // 进攻1/2/3：造成 2+2×玩家[流血]层数 伤害
+  // 进攻1/2/3：造成 2×玩家[流血]层数 伤害
   // 进攻4/5/6：施加1层流血，获得暴击；造成玩家手牌数点伤害
   // 进攻0：翻开玩家牌库顶判定（始终入弃牌堆）；数字>0 则 ceil(点数×1.5) 伤害，否则施加2层流血+[荆棘]并抽1张
   // 防御1/2/3：反击 ceil(incoming/2)；防御0：反击6，获得暴击，玩家弃1张手牌
@@ -587,7 +591,7 @@
       return !!(mocked && atkColor === mocked);
     },
     attackDamage(card, ctx) {
-      if (isHyenaLow(card)) return 2 + 2 * ((ctx && ctx.playerBleed) || 0);
+      if (isHyenaLow(card)) return 2 * ((ctx && ctx.playerBleed) || 0);
       if (isHyenaHigh(card)) return (ctx && ctx.playerHandSize) || 0;
       return 0;
     },

@@ -1247,3 +1247,32 @@ div.adv-trophy-forge-fly { display: grid; place-items: center; background: #f8f4
   .adv-shopkeeper-header { gap: 8px; }
   .adv-shopkeeper-heading { gap: 3px; }
 }
+
+/* Sacrifice altar: life costs and the selected physical hand card stay visible. */
+.adv-cell.room-sacrifice { color: #fca5a5; background: rgba(127,29,29,.23); border-color: rgba(248,113,113,.45); }
+.adv-sacrifice-page { gap: 16px; }
+.adv-sacrifice-heading { display: flex; align-items: center; gap: 16px; }
+.adv-sacrifice-heading > img { width: 88px; height: 88px; object-fit: contain; image-rendering: pixelated; border: 1px solid rgba(248,113,113,.4); border-radius: 16px; background: rgba(25,12,22,.65); }
+.adv-sacrifice-heading h2 { margin: 0 0 8px; color: #fecaca; }
+.adv-sacrifice-heading p, .adv-sacrifice-offer p { color: #c4b5ce; line-height: 1.65; margin: 0 0 12px; }
+.adv-sacrifice-offers { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.adv-sacrifice-offer { min-width: 0; border: 1px solid rgba(248,113,113,.3); border-radius: 14px; background: rgba(32,13,26,.72); padding: 18px; }
+.adv-sacrifice-offer h3 { color: #fecaca; margin: 0 0 12px; }
+.adv-sacrifice-hand { display: flex; gap: 12px; overflow-x: auto; padding: 8px 4px 14px; }
+.adv-sacrifice-card { flex: 0 0 auto; padding: 4px; border: 2px solid transparent; border-radius: 10px; background: transparent; cursor: pointer; }
+.adv-sacrifice-card canvas { display: block; }
+.adv-sacrifice-card.selected, .adv-sacrifice-card:focus-visible { border-color: #f87171; box-shadow: 0 0 14px rgba(239,68,68,.4); }
+.adv-sacrifice-result { display: flex; align-items: center; gap: 14px; color: #fde68a; min-height: 36px; }
+.adv-sacrifice-result > img { width: 52px; height: 52px; object-fit: contain; }
+.adv-sacrifice-result.revealing { animation: adv-sacrifice-reveal .65s ease both; }
+.adv-sacrifice-note, .adv-sacrifice-empty { color: #b4a3bd; font-size: .82rem; }
+@keyframes adv-sacrifice-reveal { from { opacity: .2; transform: translateY(9px) scale(.96); filter: brightness(1.8); } to { opacity: 1; transform: none; filter: none; } }
+@media (max-width: 700px) {
+  .adv-sacrifice-offers { grid-template-columns: minmax(0,1fr); gap: 10px; }
+  .adv-sacrifice-offer { padding: 12px; }
+  .adv-sacrifice-heading > img { width: 64px; height: 64px; }
+  .adv-sacrifice-page { gap: 10px; }
+  .adv-sacrifice-offer p { font-size: .84rem; }
+}
+@media (prefers-reduced-motion: reduce) { .adv-sacrifice-result.revealing { animation: none; } }
+.adv-sacrifice-health { display: inline-block; padding: 3px 9px; border-radius: 7px; color: #fecaca; background: rgba(185,28,28,.2); font-weight: 700; }

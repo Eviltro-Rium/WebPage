@@ -170,7 +170,7 @@
       // them in target selection so burn/bleed/freeze/poison/bomb/disarm and
       // Russian roulette use the currently selected opponent instead of
       // silently falling back to opponent I.
-      let needsTarget=(!c.isItemCard||c.swapHand||c.trophyWhite)&&!c.isBlack;
+      let needsTarget=(!c.isItemCard||c.swapHand||c.trophyWhite)&&(!c.isBlack||c.trophyWhite);
       if(needsTarget){
         let alive1=this.s.ai.alive,alive2=this.s.ai2&&this.s.ai2.alive;
         if (alive1&&alive2){

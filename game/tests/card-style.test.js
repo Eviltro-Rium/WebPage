@@ -140,7 +140,7 @@ test('white cards keep the ivory face while chosen colors fill the central oval'
     const canvas = context.CardStyle.renderCard(card, 70, 100, false);
     assert.ok(canvas.context.fills.includes(punch));
     assert.ok(canvas.context.fills.includes(glassFill));
-    assert.ok(canvas.context.strokes.includes('rgba(255,255,255,0.55)'));
+    assert.ok(canvas.context.strokes.includes('rgba(255,255,255,0.72)'));
   }
   const chosen = context.CardStyle.renderCard(
     Object.assign(number(3, 'WHITE', true), { chosenColor: 'RED' }),
@@ -232,4 +232,14 @@ test('all trophy faces keep their names and descriptions outside the card artwor
     const canvas = context.CardStyle.renderCard(item('WHITE', { trophyWhite: true, trophyName: def.name }), 104, 151, false);
     assert.deepEqual(canvas.context.texts, [], def.name + ' must have no painted text');
   }
+});
+
+// Upgraded trophies share their original art/effect metadata, but must not use the ivory face.
+test('upgraded trophies render as black cards and retain their original trophy identity', () => {
+  const card = item('BLACK', {trophyWhite:true,trophyBlack:true,trophyName:'BurnTrophy'});
+  assert.equal(context.CardStyle.isWhiteFace(card), false);
+  const canvas = context.CardStyle.renderCard(card, 70, 100, false);
+  assert.equal(canvas.context.fills.includes('rgba(0,0,0,0.62)'), false);
+  assert.equal(canvas.context.fills.includes('rgba(255,255,255,0.16)'), false);
+  assert.match(canvas.getAttribute('aria-label'), /黑色.*黑卡/);
 });

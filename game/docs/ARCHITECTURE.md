@@ -1,10 +1,12 @@
 # Furry Trial 游戏架构
 
-> 文档版本：2026-10-02
+> 文档版本：2026-11-01
 > 适用范围：单机 1v1、单机 1v2、领主模式、冒险模式、在线对决。
 > 运行方式：静态网页、原生浏览器脚本，无构建器也可以通过 `file://` 加载。
 
 这份文档描述**当前代码真正采用的边界**，并把仍在迁移中的部分单独列出。项目已经统一了牌、状态、事件、牌堆和战斗会话的公共协议，但 `Engine` 和 `AdventureBattleEngine` 仍是通过原型扩展逐步拆分的“大模块”，不能把它们误认为已经完全模块化。
+
+文档中的行数和体积是 2026-11-01 的实测值，只用于判断模块规模；代码变动后以实际文件为准。
 
 ## 1. 总体分层
 
@@ -37,7 +39,7 @@
                                │
 ┌──────────────────────────────▼───────────────────────────────┐
 │ 冒险内容 / 在线基础设施                                        │
-│ AdventureEngine、地图、房间、奖励、商店、存档                  │
+│ AdventureEngine、地图、房间、奖励、商店、献祭、故障房、存档    │
 │ Cloudflare Worker Durable Object、WebRTC DataChannel、Relay     │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -52,7 +54,7 @@
 | `game/adventure/adventure.html` | `AdventureUI` | 地图、房间、奖励、商店、铁匠铺 | `AdventureBattleController` → `AdventureBattleEngine`，再注入共享 `GameUI` |
 | `game/online_game/index.html` | `OnlineUI` | 创建/加入房间、准备、选角、连接状态 | `OnlineHostSession` / `OnlineGuestSession` → 共享 `GameUI` |
 
-页面使用原生 `<script>` 顺序加载。 `game/script_manifest.json` 是脚本清单，`game/scripts/verify-load-order.js` 会验证三张页面的路径、顺序、缺失文件和旧的单体 `ui.js`。
+页面使用原生 `<script>` 顺序加载。`game/script_manifest.json` 是共享脚本清单：`index.html` 和 `adventure/adventure.html` 直接按清单分组校验，`online_game/index.html` 由 `game/scripts/verify-load-order.js` 单独校验共享 UI 子集、缺失文件和旧的单体 `ui.js`。
 
 ## 3. 公共协议（唯一数据词汇）
 
@@ -141,11 +143,17 @@ close()
 | `damage.js` | 伤害门面、炸弹倒计时 | 不决定目标拓扑 |
 | `modes.js` | 1v1/1v2/lord/adventure 的参与者、目标和不变量视图 | 模式差异集中在这里 |
 | `opponent_hand_policy.js` | 抽取/弃掉对手手牌的交互策略 | 冒险可选牌，经典/在线自动随机 |
+| `attack_buffs.js` | 攻击修正 Buff 的可用性、互斥、消耗顺序和可序列化选择 | 只产出决策策略，UI/模式不能自行改伤害 |
 | `invariants.js` | 牌堆隔离、共享关系、顶牌归属、牌数守恒 | 只观察，不修复状态 |
 
 ### 4.1 状态注册表
 
-`StatusRegistry` 是状态的唯一元数据入口。当前状态包括灼伤、炙热、流血、中毒、冷冻、致盲、定时炸弹、冰封、失温、捆缚、守护、飞翔、暴击、茂盛、寄生、潜水、嗜血和四种混沌。
+`StatusRegistry` 是状态的唯一元数据入口。当前状态包括：
+
+- Debuff：灼伤、炙热、流血、中毒、冷冻、致盲、定时炸弹、冰封、失温、捆缚、嘲弄、催眠、沉睡、荆棘、沙盲、流沙。
+- Buff：守护、飞翔、硬化、暴击、熔脉、茂盛、寄生、潜水、嗜血、四种混沌（红/黄/蓝/绿）。
+
+`StatusRegistry.handLimitDelta` 还会表达持续状态对手牌上限的修正（例如流沙 -1）；牌堆和存档始终保存基础上限。
 
 每个定义至少包含：`id`、`property`、`label`、`icon`、`polarity`、`stack`、`max`、`cleanse`、`trigger`。注册表已经是状态元数据主来源；`StatusService` 覆盖了主要写入路径，但 `status.js` 和 `engine.js` 仍保留兼容回退、批量恢复等直接字段写入。下一轮应先消除这些旁路，再把“唯一状态入口”作为已完成架构约束。
 
@@ -153,18 +161,18 @@ close()
 
 `CardEffects.resolve(card)` 能把历史字段转换成 `id/kind/family`，`apply(engine, card, context)` 集中了多类通用牌效果；目前 1v2 等路径已有局部调用，但主引擎中仍有重复的卡牌分支，尚未形成所有模式共用的唯一结算入口。下一轮迁移要逐类完成并删除重复路径，不能只把新卡登记到注册表就视为接入完成。复杂效果仍由引擎/适配器提供稳定能力，不让注册表持有回合状态。
 
-攻击结算顺序及扩展协议见 [统一攻击与伤害结算](COMBAT_SETTLEMENT.md)。
+攻击结算顺序及扩展协议见 [统一攻击与伤害结算](reference/COMBAT_SETTLEMENT.md)。
 
 ## 5. 引擎与模式适配器
 
 ### 5.1 当前引擎拆分状态
 
-`js/combat/engine.js` 当前约 118.8 KB、约 1,195 行，仍混合状态与合法性、牌效果兼容分支、AI 决策、状态结算、事件确认和经典 1v1 主流程。若干职责已移至下表文件，但这些文件主要通过 `Engine.prototype` 扩展/覆盖协作，不等于已完成服务化拆分：
+`js/combat/engine.js` 当前约 164 KB、1,878 行，仍混合状态与合法性、牌效果兼容分支、状态结算、事件确认和经典 1v1 主流程。若干职责已移至下表文件，但这些文件主要通过 `Engine.prototype` 扩展/覆盖协作，不等于已完成服务化拆分：
 
 | 文件 | 作用 |
 | --- | --- |
 | `engine_turns.js` | 回合开始/结束、弃牌阶段、手牌补齐 |
-| `engine_attack.js` | 统一攻击效果暂存、状态公式重算、特殊减伤与命中入口 |
+| `engine_attack.js` | 统一攻击效果暂存、状态公式重算、潜水/飞翔/守护减伤与命中入口 |
 | `engine_ai.js` | AI 上下文和角色策略入口；具体策略在 `js/ai/*` |
 | `engine_snapshot.js` | 战斗快照 capture/restore |
 | `engine_1v2.js` | 1v2 参与者、AI 轮换、死亡和共享牌库流程 |
@@ -209,16 +217,32 @@ close()
 
 | 文件 | 职责 |
 | --- | --- |
-| `adventure/js/engine/adventure_engine.js` | 地图位置、房间、货币、库存、奖励、商店、铁匠铺和跨房间玩家状态 |
+| `adventure/js/content/registry.js` | 怪物、Boss、道具的注册表；普通怪与 Boss 的 NPC 牌组各含 1 张白 0 |
+| `adventure/js/content/monster.js` / `boss.js` | 怪物/Boss 基础类与阶段强化 |
+| `adventure/js/monsters/castle.js` / `forest.js` / `ocean.js` / `desert.js` / `volcano.js` | 各场景普通怪、精英怪、Boss 和遭遇池；规则镜像 `docs/adventure_guide/*.md` |
+| `adventure/js/content/monster_registry.js` | 怪物技能到共享战斗引擎的桥接、阶段修正和技能文本 |
+| `adventure/js/content/stage_guide.js` | 图鉴文案、出现条件和阶段强化说明 |
+| `adventure/js/content/room.js` | 房间类型、CSV 编码和房间基础数据 |
+| `adventure/js/engine/adventure_engine.js` | 地图位置、房间、货币、库存、奖励、商店、铁匠铺、场景历史和跨房间玩家状态 |
+| `adventure/js/engine/glitch.js` | 故障房的一次性 D12 事件和检查点；离开/刷新不会重复投掷 |
+| `adventure/js/engine/sacrifice.js` | 献祭房：同步扣除生命并发放道具或升级战利白卡 |
 | `adventure/js/engine/loot.js` | 按场景和怪物集中管理 D12 战利白卡掉落规则；不参与商店或普通奖励池 |
+| `adventure/js/engine/rewards.js` / `shop.js` / `inventory.js` | 奖励池、商店与背包/道具槽 |
+| `adventure/js/items/item_defs.js` | 一次性道具、战利白卡、配饰定义 |
+| `adventure/js/items/combat_effects.js` | 战斗内道具效果注册表；新道具按 `combatUse` 注册，不扩引擎 switch |
+| `adventure/js/items/map_effects.js` | 地图场景道具效果注册表；与战斗内效果分离 |
+| `adventure/js/deck/adventure_deck.js` / `npc_strategy.js` | 冒险牌库和 NPC 出牌策略 |
 | `adventure/js/battle/battle_engine.js` | `AdventureBattleEngine`，唯一的冒险战斗规则和双牌堆实现 |
 | `adventure/js/battle/adventure_battle_items.js` | 冒险配饰、道具和战斗 Buff 扩展 |
+| `adventure/js/battle/dice_controller.js` | 冒险 D12 决策边界；等待遥控骰子/魔术师时用 JSON 检查点恢复 |
 | `adventure/js/engine/combat_result.js` | 把战斗结果写回地图、房间清理和结算阶段 |
 | `adventure/js/battle/adventure_battle_controller.js` | 挂载/卸载共享 `GameUI`、开始/结束、刷新恢复和结算交接 |
 | `adventure/js/battle/adventure_battle_session.js` | `sessionStorage` 战斗快照边界；引擎不直接访问 storage |
+| `adventure/js/save/adventure_save.js` | 地图存档（localStorage），与战斗快照生命周期分离 |
 | `adventure/js/ui/adventure_ui.js` | 冒险状态协调、动作处理、存档和战斗交接 |
 | `adventure/js/ui/adventure_ui_map_view.js` | 地图/标题渲染；地图以纯投影数据输入，交互属性由控制器委派 |
 | `adventure/js/ui/adventure_ui_panels.js` | 侧栏、背包、商店、铁匠铺、奖励和弃置页的渲染方法 |
+| `adventure/js/ui/adventure_ui_glitch.js` / `adventure_ui_sacrifice.js` | 故障房与献祭房的界面流程 |
 | `adventure/js/ui/adventure_ui_views.js` | 按阶段组合页面；不负责游戏规则和用户动作 |
 
 `AdventureBattleEngine` 的牌堆规则：
@@ -229,6 +253,24 @@ close()
 4. NPC 牌库少于三张时，先把 NPC 弃牌库（保留当前顶牌）洗回 NPC 牌库。
 5. 房间结束时 NPC 手牌全部回收到 NPC 牌库并重洗；玩家牌库、手牌和弃牌库返回地图后继续保持。
 
+### 6.1 场景、房间与遭遇池
+
+- 场景池为 `castle`、`forest`、`ocean`、`desert`、`volcano`；每层从可用场景中无放回抽取，已用场景记入 `s.usedScenes`。
+- 普通怪、精英怪和 Boss 分别来自 `AdventureMonsterPool`、`AdventureElitePool`、`AdventureBossPool`。缺该层配置时只能回退到本场景其他层，禁止全局怪物/Boss 池兜底。
+- 房间编码：`-1` 空、`0` 起点、`1` 普通、`2` Boss、`3` 奖励、`4` 商店、`5` 铁匠铺、`6` 挑战、`7` 故障、`8` 精英、`10` 献祭；`9` 作为旧精英存档兼容。
+- 故障房每房只投一次 D12，检查点随房间保存；献祭房在保存/播放动画前同步提交扣血，避免刷新重刷。
+- 精英房是 1v1 精英怪，奖励同普通房，但战利品骰投 2 次；Boss 投 3 次，普通怪投 1 次。
+
+### 6.2 战利白卡掉落
+
+`AdventureLoot` 只负责“场景 + 怪物 + D12 → 战利白卡”的映射，调用方决定何时投骰和如何持久化：
+
+- 普通怪最多 4/12 中签，Boss 最多 6/12；判定使用包含等号的 `roll <= threshold`。
+- 多个 `outcomes` 按阈值从小到大匹配，区间不重叠。
+- 精英怪第 10 面额外掉落 `DrawTwoTrophy`；所有表的 11/12 仍为通用 `SmallPotionTrophy` / `PurifyWaterTrophy`。
+- 仅铁匠可获得的战利白卡（俄盘、缴械、暴乱等）不出现在普通/Boss 掉落表。
+- 掉落显示与实际发牌必须查同一张表；`trophyRolls`、`trophyDropHandled` 和录像随机带保证刷新恢复时不重复发牌。
+
 地图存档（`AdventureSave`，localStorage）和战斗快照（`AdventureBattleSession`，sessionStorage）是两种不同生命周期：主动退出清除二者，安全结算点只保存地图状态，测试战斗不写入正式冒险存档。
 
 ## 7. UI 结构与约束
@@ -237,6 +279,12 @@ close()
 
 `ui_core.js` 定义 `GameUI`、常量、卡牌/动画基础工具；其余功能按职责拆分：
 
+- `skills.js`：角色/怪物技能说明文案；改技能后必须与规则同步。
+- `rules.js`：规则页静态内容。
+- `card_style.js`：卡面颜色、图标和白卡/魔法牌样式。
+- `adventure_codex.js`：冒险图鉴查询和展示。
+- `dialogs.js`：净化、选色、守卫/飞翔、骰子等通用弹窗。
+- `hand_discard_picker.js`：统一手牌弃牌选择器（Vixraps、失温、超限、克拉肯、道具弃牌）。
 - `render/runtime.js`：稳定图片 DOM、图标入退场生命周期、共用动画 RAF 调度。
 - `render/home_screen.js`：模式和角色选择页。
 - `render/combat_screen.js`：战斗 DOM 骨架和标题/参与者区域。
@@ -244,18 +292,18 @@ close()
 - `render/hand_render.js`：手牌、合法高亮、悬停说明、双击出牌。
 - `render/status_render.js`：状态图标和触发闪烁。
 - `render/adventure_bar.js`：冒险货币、道具、配饰和牌堆信息。
-- `particles.js`：背景粒子和性能受控的动画层。
+- `render/particles.js`：背景粒子和性能受控的动画层。
 - `renderer.js`：卡牌飞行、弃牌/抽牌/交换牌动画、区域说明展开收回。
 - `events.js`：`CombatEvent` 播放和事件去重。
 - `feedback.js`：飘字、受伤闪烁、命中反馈。
-- `controls.js`：按钮、对话框动作和在线结算按钮。
+- `controls.js`：按钮、对话框动作、冒险道具和在线结算按钮。
 - `mode_1v2.js` / `mode_lord.js`：多目标 UI 组合，不承载战斗规则。
 
 `GameUI.mountBattle(session, state, gameScreen)` 是单机、冒险、在线共用的装配入口。在线 UI 通过 `_onlineResultSink` 把本地/远端结果送入同一个版本队列；在线页面不应再创建一套卡牌渲染器。
 
 卡牌能否出牌由快照中的 `legalHand` 决定。不可出的牌应不可选中，但悬停仍可显示技能说明；选中、动画和状态反馈只能影响 DOM/CSS，不能直接修改 `engine.s`。
 
-渲染稳定性、位图缓存与动画算法详见 [RENDER_PERFORMANCE.md](RENDER_PERFORMANCE.md)。
+渲染稳定性、位图缓存与动画算法详见 [RENDER_PERFORMANCE.md](reference/RENDER_PERFORMANCE.md)。
 
 ### 7.2 冒险 UI 与战斗 UI 的关系
 
@@ -316,11 +364,13 @@ close()
 1. **协议**：使用 `Card.number/item`，不要手写另一种牌对象。
 2. **卡牌效果**：在 `CardEffects` 注册匹配规则和稳定 `id/kind`；复杂效果暴露一个引擎门面。
 3. **状态**：先在 `StatusRegistry` 定义元数据和图标，再通过 `StatusService` 修改；同步净化、状态 UI 和测试。
-4. **角色**：在 `characters/*` 登记角色基础数据，在 `ai/*` 登记独立 AI 策略；冒险怪物通过 `AdventureRegistry/AdventureMonsterBridge` 注入。
-5. **目标**：使用 `EngineModes`/ `attackTarget` 的 owner key，不从描述文本或 DOM 顺序推断目标。
-6. **UI**：只添加技能描述、渲染和交互，不把业务结算写进 UI。
-7. **测试**：至少覆盖 `player/ai/ai2 × normal/bleed/poison/bomb`，并增加牌堆归属、私有投影、重复命令和动画事件回归。
-8. **发布**：新增脚本加入 `script_manifest.json`，运行 `verify-load-order.js` 和统一检查后再更新 HTML cache query。
+4. **角色**：在 `characters/*` 登记角色基础数据，在 `ai/*` 登记独立 AI 策略；冒险怪物通过 `AdventureRegistry/AdventureMonsterBridge` 注入 `monsters/<scene>.js` 与 `content/monster_registry.js`。
+5. **冒险道具**：定义放 `items/item_defs.js`；战斗内效果注册到 `items/combat_effects.js`，地图效果注册到 `items/map_effects.js`，不要在 `AdventureBattleEngine` 里继续加分支。
+6. **场景/房间**：新增怪物池、Boss 池、精英池和掉落表；同步 `docs/adventure_guide/<scene>.md`、`loot.md` 和图鉴文案。
+7. **目标**：使用 `EngineModes`/ `attackTarget` 的 owner key，不从描述文本或 DOM 顺序推断目标。
+8. **UI**：只添加技能描述、渲染和交互，不把业务结算写进 UI。技能文案在 `skills.js`，规则页在 `rules.js`。
+9. **测试**：至少覆盖 `player/ai/ai2 × normal/bleed/poison/bomb`，并增加牌堆归属、私有投影、重复命令和动画事件回归。
+10. **发布**：新增脚本加入 `script_manifest.json` 和对应 HTML（含 `?v=` cache query），运行 `verify-load-order.js` 与统一检查；文档变动同步更新本文件、`docs/README.md` 和 `docs/reference/README.md`。
 
 ## 11. 检查和测试入口
 
@@ -342,6 +392,8 @@ node game/scripts/check.js
 node game/scripts/check.js --all
 ```
 
+当前 `game/tests/` 共 73 个 `*.test.js`。默认检查运行 25 个稳定测试，`--all` 运行全部；部分旧冒险测试依赖随机掉落或历史牌数，可能单独失败。
+
 重点测试文件：
 
 | 测试 | 覆盖内容 |
@@ -349,10 +401,15 @@ node game/scripts/check.js --all
 | `combat-protocol.test.js` | Card/State/Event 协议和纯投影 |
 | `combat-events.test.js`、`ui-feedback.test.js` | 结构化伤害事件、飘字和命中特效 |
 | `turn-machine.test.js`、`fly-guard.test.js` | 延迟结算、飞翔失败后守护 |
-| `card-effects.test.js`、`status-registry.test.js` | 注册表和唯一状态入口 |
+| `attack-timing.test.js`、`defense-effects.test.js` | 攻击后置效果、防御同步结算和在线目标投影 |
+| `hypnosis-sleep.test.js` | 催眠/沉睡、Vixraps 技能和被动 |
+| `card-effects.test.js`、`status-registry.test.js` | 卡牌/状态注册表与净化 |
+| `magma-vein.test.js`、`scorch.test.js`、`thorns.test.js`、`sandblind.test.js`、`quicksand.test.js` | 攻击修正与新增 Debuff |
 | `engine-modules.test.js`、`runtime-invariants.test.js` | 模块边界、随机/定时器、牌堆不变量 |
 | `adventure-battle.test.js`、`adventure-save.test.js`、`adventure-reward.test.js` | 冒险战斗、存档和结算 |
-| `online-match.test.js`、`signaling-room.test.js` | 私有投影、幂等、刷新、重连、Worker 房间 |
+| `adventure-kraken.test.js`、`adventure-octopus.test.js`、`desert-*.test.js`、`volcano-monsters.test.js` | 场景怪物、Boss、阶段修正和掉落 |
+| `dice-controller.test.js`、`loot-dice-sheet.test.js` | D12 决策边界、遥控骰子和掉落展示 |
+| `online-match.test.js`、`online-transport.test.js`、`signaling-room.test.js` | 私有投影、幂等、刷新、重连、Worker 房间 |
 
 自动化通过只代表代码路径通过；在线发布前仍需两台独立浏览器、跨 Wi-Fi/手机网络和信令中继实测。
 
@@ -365,9 +422,10 @@ node game/scripts/check.js --all
 | 区域 | 已有基础 | 尚未完成的结构问题 |
 | --- | --- | --- |
 | 共享战斗 UI | `GameUI` 已拆为核心、渲染、事件、反馈、控制等模块，单机/冒险/在线复用 | 部分多模式 UI 与历史脚本全局仍需继续收敛 |
-| 冒险主界面 | 地图视图、面板视图和阶段组合器已分开；地图模型/日志/锻造可支付状态从快照投影 | `adventure_ui.js` 约 54.6 KB / 1,023 行；测试界面与弹窗仍在控制器；部分视图 builder 仍通过原型 helper 协作 |
-| 通用战斗引擎 | 回合、攻击、AI、快照、1v2、领主等已有扩展文件 | `engine.js` 约 118.8 KB / 1,195 行；仍混合牌效果、状态回退、AI、结算及事件推进；扩展间有原型覆盖耦合 |
-| 冒险战斗引擎 | 地图运行时、战斗会话、牌堆服务、掉落和战斗结果已有边界 | `AdventureBattleEngine` 约 60.2 KB / 1,319 行；牌堆所有权/回收、战斗阶段钩子、道具和模式生命周期仍较集中 |
+| 冒险主界面 | 地图、面板、故障房、献祭房和阶段组合器已分开；地图模型/日志/锻造可支付状态从快照投影 | `adventure_ui.js` 约 82.6 KB / 1,638 行；测试界面与部分弹窗仍在控制器；部分视图 builder 仍通过原型 helper 协作 |
+| 通用战斗引擎 | 回合、攻击、AI、快照、1v2、领主等已有扩展文件 | `engine.js` 约 164 KB / 1,878 行；仍混合牌效果、状态回退、AI、结算及事件推进；扩展间有原型覆盖耦合 |
+| 冒险战斗引擎 | 地图运行时、战斗会话、牌堆服务、掉落、骰子决策和战斗结果已有边界 | `AdventureBattleEngine` 约 77.7 KB / 1,695 行；牌堆所有权/回收、战斗阶段钩子、道具和模式生命周期仍较集中 |
+| 冒险内容 | 五场景怪物/Boss/精英池、图鉴文案、道具效果注册表、故障房和献祭房已拆分 | `monster_registry.js` 约 88.2 KB / 1,730 行，仍是怪物技能桥接的主要集中点 |
 | 卡牌效果 | `CardEffects.resolve/apply` 和注册定义已存在，部分路径已接入 | 并非所有模式统一调用；核心中仍有重复布尔字段分支 |
 | 状态系统 | `StatusRegistry` 管元数据，`StatusService` 覆盖主要写入操作 | 兼容回退和状态快照/攻击 buff 暂存恢复仍有直接写字段旁路 |
 | 页面装载 | 维持原生脚本、静态部署和 `file://` 兼容 | 模块依赖脚本顺序及全局命名空间；新增文件必须同步维护入口顺序 |
@@ -392,7 +450,7 @@ node game/scripts/check.js --all
 - 点击、双击、弹层关闭和刷新恢复的现有行为保持一致；已有 DOM 选择器和委派动作不变。
 - 冒险 UI 样式/移动端布局不回退；共享战斗 UI 和在线页面不受影响。
 - 视图模块不包含奖励结算、购买扣款、存档写入或战斗逻辑；控制器保留这些动作的唯一入口。
-- 第一批已让 `adventure_ui.js` 从约 88.7 KB 降至约 54.6 KB（缩减约 38%）；后续维持清晰分层，不按小面板过度拆文件。
+- 第一批拆分时 `adventure_ui.js` 曾从约 88.7 KB 降至约 54.6 KB；后续新增故障房、献祭房、图鉴和测试流程又增长到约 82.6 KB。判断标准是职责边界和回归覆盖，不是单纯追求文件更小；不要按小面板过度拆文件。
 - 同步更新静态脚本入口顺序、架构文档和相应的 UI 回归覆盖。
 
 ### 12.3 后续阶段（按依赖顺序）
@@ -427,7 +485,7 @@ node game/scripts/check.js --all
 
 ### 持续状态与手牌上限
 
-手牌弃牌交互统一见 `docs/small_rules.md`「统一手牌弃牌交互」：`pendingHandDiscard` + 战斗 `confirmDiscard`/`cancelDiscard`、地图 `selectHandDiscardIndex`→`confirmHandDiscard`/`cancelHandDiscard`；弃牌符/熔炉无 index 自动 `beginHandDiscard`。
+手牌弃牌交互统一见 `docs/reference/small_rules.md`「统一手牌弃牌交互」：`pendingHandDiscard` + 战斗 `confirmDiscard`/`cancelDiscard`、地图 `selectHandDiscardIndex`→`confirmHandDiscard`/`cancelHandDiscard`；弃牌符/熔炉无 index 自动 `beginHandDiscard`。
 
 `StatusRegistry.handLimitDelta` 定义持续状态对手牌上限的修正；`StatusService.handLimit(entity, base)` 纯计算有效上限，`EngineModes.handLimit()` / `Engine.getHandLimit(owner)` 统一用于补牌、AI 弃牌和玩家回合结束检查。流沙（`quicksand`）上限为 1，修正为 -1。牌堆和存档里的 `handLimit` 始终保存基础上限，避免刷新、净化和配饰同步造成重复扣减。
 
@@ -441,17 +499,17 @@ node game/scripts/check.js --all
 
 - s.pendingMapReturnEffects 保存生命核心、智慧项链和新层回血的待结算标记；onCombatReturnToMap() 仅在 MAP 阶段消费一次。UI render() 在投影与存档前结算，奖励/溢出弹窗不消费，恢复存档后沿用同一入口。
 - 地图回血事件携带 extra.amount/hpBefore/hpAfter/timing，UI 从 extra 读取并依次播放饰品闪烁、血条发光和回复飘字；满血仍闪烁但不显示 +0。
-- s.usedScenes 记录本局场景历史；地图入口和战斗结算入口均传给 selectStageMap(stage, usedScenes)。只有成功载入下一层才追加历史，四层从四场景无放回抽取，Stage 4 胜利终止冒险。
+- s.usedScenes 记录本局场景历史；地图入口和战斗结算入口均传给 selectStageMap(stage, usedScenes)。只有成功载入下一层才追加历史，四层从五场景无放回抽取，Stage 4 胜利终止冒险。
 
 ### Boss 战利品骰
 
-- Boss 出局统一由 AdventureBattleEngine._resolveAdventureTrophyDrop() 按其 AdventureLoot 掉落表独立投掷 3 次 D12；普通怪物仍投 1 次。每次中签即时创建玩家战利白卡并排入 trophyDrop 动画，落空不补偿，不增加第四次普通掉落。
+- 普通怪出局投 1 次 D12，精英怪投 2 次，Boss 投 3 次；统一由 AdventureBattleEngine._resolveAdventureTrophyDrop() 按其 AdventureLoot 掉落表结算。每次中签即时创建玩家战利白卡并排入 trophyDrop 动画，落空不补偿，不额外增加普通掉落。
 - 每颗骰子仍通过 rollD12() 的遥控骰子边界；trophyDropHandled、trophyRolls 与录像随机带支持中途存档恢复、避免重复发牌。Stage 4 同样先播放三次骰子和获取动画，再展示通关。
 - 冒险奖励层不再滚动 Boss 饰品。Boss 结算直接进入 boss-exit，白卡已入手，无需领取/暂存。战斗 trophyDrop 和地图 itemAcquired(kind=trophyWhite) 统一负责各自的小动画，不二次创建实体牌。
 
 ### 冒险场景与遭遇池边界
 
-- AdventureEngine.availableScenes(stage) 使用与遭遇选择相同的场景池和 minStage 条件，第一层可抽城堡、丛林、冻洋或沙漠；沙漠第一层仅鬣狗、索贝克，阿努比斯从第二层起加入。
+- AdventureEngine.availableScenes(stage) 使用与遭遇选择相同的场景池和 minStage 条件；城堡、丛林、冻洋、沙漠、火山按各自 Boss 的 `minStage` 参与对应层抽取。
 - 普通怪物与 Boss 仅从当前场景池选取；缺少该层配置时仅查看本场景其他层的名字，再过滤出现条件。禁止全局怪物/Boss 池兜底。
 - 房间预设或存档缓存的敌人须属于当前场景的可用池；不合法时进入前重选。无可用敌人时拒绝进入并保留未清除状态，不能自动通关。已开始战斗的会话仍保留其原始敌人以确保可恢复。
 
@@ -460,3 +518,29 @@ node game/scripts/check.js --all
 - 掉落表以被击败 NPC 的 AdventureLoot.getDropRule() 返回场景为准，显示与发牌始终查同一张表；地图场景只负责选择遭遇，旧跨场景会话及冒险测试仍可正确发放对应掉落。
 - 骰子事件携带 drops 结果，trophyDrop 同时携带 dropSummary。每次显示骰面与获得内容/无收获，保持可读停留后播放白卡入手动画，再进入下一次投掷；快进模式不压缩掉落结果停留时间。
 - 胜利事件在掉落播放之后呈现，控制器在待播放事件或遥控骰子决定未结束前不保存最终奖励、不打开结算页。结束兜底新生成的掉落队列也必须先播放，防止刷新跳过动画。
+
+### 故障房与献祭房
+
+- 故障房（`GLITCH`）每房只允许投一次 D12；`room.glitchEvent` 保存 `status/roll/originalRoll/adjusted` 等检查点。离开、刷新或重进不会补投。异常战斗结束后只把事件标记为 `done`，不再重复结算奖励。
+- 献祭房（`SACRIFICE`）的扣血在 UI 保存或播放动画前同步提交，且必须至少保留 1 点生命。献祭 1 点生命换随机道具，献祭 5 点生命升级 1 张战利白卡；结果写入 `room.sacrificeResult`，刷新后不能重刷。
+- 精英房（`ELITE`）使用 `AdventureElitePool` 的 1v1 精英怪，奖励结算同普通房，但战利品骰投 2 次，并在第 10 面额外给 `DrawTwoTrophy`。
+
+### 冒险道具效果注册表
+
+- 道具定义统一在 `items/item_defs.js`：`consumable` 占 6 格道具槽，`trophyWhite` 进入玩家牌库循环，`accessory` 获得后自动生效并受携带上限限制。
+- 战斗内效果按 `combatUse` 注册在 `items/combat_effects.js`；地图效果注册在 `items/map_effects.js`。处理器返回 `{ok:true,message,...}`、`{ok:false,message}` 或 `{pending:true}`；失败/待决策不得消耗道具。
+- 黑曜石、弃牌符、熔炉等“从手牌选牌”的道具统一走 `pendingHandDiscard` 和 `HandDiscardPicker`，不要新增一套弹窗选择器。
+- 新道具需要同步图标、图鉴 `docs/adventure_guide/consumables.md`、商店/奖励池和回归测试。
+
+### D12 判定边界
+
+- `adventure/js/battle/dice_controller.js` 是冒险模式唯一允许“暂停后恢复”的骰子决策边界。等待遥控骰子或魔术师时只保存 JSON 检查点并重放单次入口动作，不提前提交计时器或完成结果。
+- 遥控骰子与魔术师配饰互斥；若同次判定两者都可用，顺序固定为“先遥控骰子，再魔术师 ±1”。致盲时不能使用遥控骰子。
+- 掉落骰、致盲判定、技能判定和 BOSS 多次掉落都必须走 `rollD12()`；不要直接调用 `Math.random()` 绕过遥控/录像随机带。
+
+### 近期状态与技能时机
+
+- 灼伤在 `turnEnd` 结算；`炙热`（scorch）在灼伤结算后触发额外效果；`沙盲`（sandblind）在攻击技能后按层数触发；`荆棘`（thorns）在受击/攻击技能路径上反伤；`流沙`（quicksand）把有效手牌上限压到 1。
+- 攻击效果通过 `attackEffectTiming` 明确声明 `beforeDamage` / `afterDamage`，禁止根据技能描述文本猜测时机。攻击方增益在整批命中结束后提交，不能提前清空当前攻击的后置状态。
+- 防御技能在该次防御内同步执行：状态、反击、恢复 → 重算伤害 → 潜水/飞翔/守护 → 扣血。防御效果不进入攻击后置队列。
+- 潜水只免疫蓝色攻击伤害，不取消目标状态；飞翔失败后仍可选择守护；一次命中只处理一次特殊减伤。相关快照字段 `divingHandled`、`divingBlocked`、`avoidanceHandled` 必须随存档恢复。

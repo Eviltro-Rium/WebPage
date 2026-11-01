@@ -598,6 +598,12 @@ async _playEvents(events, fast = false) {
             this._showZoneDesc('reveal-desc', evt.desc || '暂借对手手牌');
             drawRemaining.player = Math.max(0, drawRemaining.player - 1);
             await this._playBorrowedCardAnimation(evt, drawRemaining.player);
+        } else if (evt.type === 'trophyUpgrade' && evt.card) {
+            this._renderPlayerHand();
+            const target = document.querySelector('#player-hand [data-index="' + Number(evt.handIndex) + '"]');
+            if (target) target.classList.add('trophy-upgrade-flash');
+            this._showZoneDesc('reveal-desc', evt.desc || '战利白卡升级为黑卡');
+            await wait(500);
         } else if (evt.type === 'attackRecycle' && evt.card) {
             this._showZoneDesc('reveal-desc', evt.desc || '垃圾回收：收回进攻牌');
             drawRemaining.player = Math.max(0, drawRemaining.player - 1);

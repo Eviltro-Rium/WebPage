@@ -27,12 +27,12 @@
   };
 
   E.prototype._lordNeedsTarget=function(c){
-    if(c.isBlack)return false;
-    // Trophy white cards are item-shaped cards. Only the opponent-targeting
+    if(c.isBlack&&!c.trophyWhite)return false;
+    // Trophy cards keep their target policy when upgraded to black. Only the opponent-targeting
     // effects need the alternating target selector; self buffs (guard/fly/
     // lush) should not rotate the target just to play a bridge card.
     const trophyTargetsOpponent = c.trophyWhite &&
-      ['burn','bleed','freeze','poison','bomb','disarm','roulette','zero','thorns','sandblind','quicksand','iceSeal','hypothermia','riot','scorch','purpleMagic'].includes(c.trophyEffect);
+      ['burn','bleed','freeze','poison','bomb','disarm','roulette','zero','thorns','sandblind','quicksand','iceSeal','hypothermia','riot','scorch','purpleMagic','drain'].includes(c.trophyEffect);
     if(c.isItemCard&&!c.swapHand&&!trophyTargetsOpponent)return false;
     let who=this.name(this.s.player);
     if(who==='Leon'&&c.value===0)return false;

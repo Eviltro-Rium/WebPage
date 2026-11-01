@@ -95,12 +95,20 @@ test('DesertBison base stats', () => {
 
 // ===== 进攻测试 =====
 
-test('DesertBison attackDamage: 1/2/3 deals 2*playerBleed', () => {
+test('DesertBison attackEffectTiming: 1/2/3 beforeDamage', () => {
+  const m = getMonster('DesertBison');
+  for (const v of [1, 2, 3]) {
+    assert.equal(m.attackEffectTiming(v), 'beforeDamage');
+  }
+  assert.equal(m.attackEffectTiming(4), 'afterDamage');
+});
+
+test('DesertBison attackDamage: 1/2/3 deals 2*bleed stacks (after bleed apply)', () => {
   const m = getMonster('DesertBison');
   for (const v of [1, 2, 3]) {
     assert.equal(m.attackDamage(numCard(v), { playerBleed: 0 }), 0);
-    assert.equal(m.attackDamage(numCard(v), { playerBleed: 1 }), 2);
-    assert.equal(m.attackDamage(numCard(v), { playerBleed: 3 }), 6);
+    assert.equal(m.attackDamage(numCard(v), { playerBleed: 1 }), 2, '0 bleed +1 then 2×1');
+    assert.equal(m.attackDamage(numCard(v), { playerBleed: 3 }), 6, '2 bleed +1 then 2×3');
     assert.equal(m.attackDamage(numCard(v), {}), 0);
   }
 });
@@ -122,12 +130,12 @@ test('DesertBison attackUnblockable: 4/5/6', () => {
   }
 });
 
-test('DesertBison attackBleed: 4/5/6 applies 1 stack', () => {
+test('DesertBison attackBleed: 1/2/3 and 4/5/6 apply 1 stack', () => {
   const m = getMonster('DesertBison');
-  for (const v of [4, 5, 6]) {
+  for (const v of [1, 2, 3, 4, 5, 6]) {
     assert.equal(m.attackBleed(numCard(v)), 1);
   }
-  for (const v of [0, 1, 2, 3]) {
+  for (const v of [0, 7]) {
     assert.equal(m.attackBleed(numCard(v)), 0);
   }
 });
@@ -172,12 +180,12 @@ test('DesertBison stage2: hp +5 = 25', () => {
   assert.equal(s2.hp, 25);
 });
 
-test('DesertBison stage3: 1/2/3 deals 3*playerBleed', () => {
+test('DesertBison stage3: 1/2/3 deals 3*bleed after apply', () => {
   const m = getMonster('DesertBison');
   const s3 = applyStageMods(m, 3);
   assert.equal(s3.hp, 25, 'stage3 should include stage2 hp bonus');
-  assert.equal(s3.attackDamage(numCard(1), { playerBleed: 1 }), 3, '1/2/3 base 2 -> 3 per bleed');
-  assert.equal(s3.attackDamage(numCard(3), { playerBleed: 2 }), 6);
+  assert.equal(s3.attackDamage(numCard(1), { playerBleed: 1 }), 3, 'after +1 bleed, 3×1');
+  assert.equal(s3.attackDamage(numCard(3), { playerBleed: 3 }), 9);
   assert.equal(s3.attackDamage(numCard(4), { playerBleed: 3 }), 2, '4/5/6 unchanged');
 });
 
@@ -196,11 +204,12 @@ test('DesertBison skill desc: attack and defend match desert.md', () => {
   const { getAdventureNpcSkillDesc } = AdventureMonsterBridge;
 
   const atk123 = getAdventureNpcSkillDesc('DesertBison', numCard(2), false, { stage: 1 });
-  assert.ok(atk123.includes('玩家[流血]层数×2'), 'attack 1/2/3 should scale with bleed x2');
+  assert.ok(atk123.includes('施加[流血]'), 'attack 1/2/3 applies bleed first');
+  assert.ok(atk123.includes('2×[流血]层数'), 'attack 1/2/3 scales 2× bleed stacks');
   assert.ok(!atk123.includes('不可防御'), 'attack 1/2/3 should be blockable');
 
   const atk123s3 = getAdventureNpcSkillDesc('DesertBison', numCard(2), false, { stage: 3 });
-  assert.ok(atk123s3.includes('玩家[流血]层数×3'), 'stage3 attack scales with bleed x3');
+  assert.ok(atk123s3.includes('3×[流血]层数'), 'stage3 attack scales 3× bleed stacks');
 
   const atk456 = getAdventureNpcSkillDesc('DesertBison', numCard(5), false, { stage: 1 });
   assert.ok(atk456.includes('2🗡️') || atk456.includes('2点伤害'), 'attack 4/5/6 deals 2');

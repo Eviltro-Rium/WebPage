@@ -47,7 +47,7 @@ test('Magician accessory: max 1, 2 water + 1 ben + 1 wild, exclusive DiceControl
   assert.equal(def.maxStacks, 1);
   assert.deepEqual(Array.from(def.beastTradeCost), ['shui', 'shui', 'ben', 'wuneng']);
   assert.ok(def.exclusiveWith.includes('DiceController'));
-  assert.match(def.icon, /magician\.png$/);
+  assert.match(def.icon, /magician\.webp$/);
 });
 
 test('cannot hold Magician and DiceController together', () => {

@@ -125,6 +125,14 @@
     return { ok: true, drawn: redrawn.length, message: '弃掉' + n + '张并重抽' + redrawn.length + '张' };
   });
 
+  register('obsidian', (eng, def, ctx) => {
+    const index = Number(ctx.discardIndex);
+    const hand = eng.s.playerPile && eng.s.playerPile.hand;
+    const card = Number.isInteger(index) && hand && hand[index];
+    if (!window.AdventureDeck.upgradeTrophy(card)) return { ok: false, message: '请选择手牌中的战利白卡' };
+    return { ok: true, upgradedIndex: index, message: '战利白卡已升级为黑卡，效果不变，打出时可指定颜色' };
+  });
+
   register('discardTalisman', (eng, def, ctx) => {
     const pile = eng.s.playerPile;
     if (!pile) return { ok: false, message: '牌库尚未初始化' };

@@ -24,7 +24,7 @@
     { key: 'poison', name: '中毒', type: '负面状态', icon: 'icons/buff_icons/poison.webp', desc: '堆叠上限：2\n维持效果：持续\n拥有中毒的角色在自己的进攻回合开始前受到等同于层数的伤害；层数不会自然减少，可被净化。' },
     { key: 'freeze', name: '冷冻', type: '负面状态', icon: 'icons/buff_icons/freeze.webp', desc: '堆叠上限：1\n维持效果：持续\n无法防御蓝色攻击。受到蓝色攻击时只能跳过防御并承受全部伤害。' },
     { key: 'blind', name: '致盲', type: '负面状态', icon: 'icons/buff_icons/blind.webp', desc: '堆叠上限：1\n维持效果：持续\n持续期间不能在战斗中使用一次性道具，只能等待被净化。' },
-    { key: 'iceSeal', name: '冰封', type: '负面状态', icon: 'icons/buff_icons/ice_seal.webp', desc: '堆叠上限：1\n维持效果：衰减\n有冰封的角色在下一次补牌时少补1张牌，随后移除1层冰封；可被净化。' },
+    { key: 'iceSeal', name: '冰封', type: '负面状态', icon: 'icons/buff_icons/ice_seal.webp', desc: '堆叠上限：3\n维持效果：衰减\n有冰封的角色在下一次补牌时少补1张牌，随后移除1层冰封；可被净化。' },
     { key: 'bomb', name: '定时炸弹', type: '负面状态', icon: 'icons/buff_icons/time_bomb.webp', desc: '堆叠上限：1\n维持效果：瞬爆\n初始倒计时为5。被施加者每打出1张牌倒计时减少1，归零时爆炸并受到10点伤害；图标右上角数字为当前倒计时；可被净化。' },
     { key: 'guard', name: '守护', type: '正面状态', icon: 'icons/buff_icons/guard.webp', desc: '堆叠上限：5\n维持效果：持续\n受到攻击或反击伤害时可消耗守护层数等额减免；不能减免灼伤、流血、中毒、炸弹、荆棘、寄生等Buff伤害。' },
     { key: 'fly', name: '飞翔', type: '正面状态', icon: 'icons/buff_icons/fly.webp', desc: '堆叠上限：2\n维持效果：持续\n受到攻击或反击伤害时可消耗1层投掷12面骰，1~6成功躲避、7~12失败；失败后可继续尝试或使用守护。不能减免Buff伤害，也不能躲避攻击附带的状态。' },
@@ -76,7 +76,8 @@
   ];
 
   function stripPrefix(s) {
-    return (s || '').replace(/^\d+\s*/, '');
+    // Only strip SKILL_DATA row prefixes like "1 造成…", not formulas like "2×[流血]".
+    return (s || '').replace(/^\d+\s+/, '');
   }
 
   const BUFF_BY_NAME = (() => {
@@ -194,7 +195,7 @@
       ['monster', '👹', '怪物图鉴', '按场景浏览普通、精英与首领'],
       ['consumable', '🧪', '道具图鉴', '冒险中可用的消耗品'],
       ['accessory', '💍', '饰品图鉴', '持续生效的冒险装备'],
-      ['trophyWhite', '🃏', '战利白卡', '掉落、锻造与双源卡牌'],
+      ['trophyWhite', '🃏', '战利卡', '白卡与黑卡 · 掉落与锻造'],
       ['buff', '✨', 'Buff图鉴', '状态、层数与持续方式']
     ];
     html += '<div class="codex-category-grid">';
@@ -581,8 +582,39 @@
     return html;
   }
 
-  function trophyCardObject(name, kind) {
-    return {
+  const TROPHY_CODEX_BLURB = {
+    burn: '对手 +1[灼伤]',
+    bleed: '对手 +1[流血]',
+    freeze: '对手 [冷冻]',
+    iceSeal: '对手 [冰封]',
+    hypothermia: '对手 +1[失温]',
+    roulette: '赌盘 10 伤（1–5 自担，6–12 对手）',
+    fly: '自身 +1[飞翔]',
+    drawTwo: '抽 2 张牌',
+    smallPotion: '自身 +2 生命',
+    crit: '自身 +1[暴击]',
+    magmaVein: '自身 +1[熔脉]',
+    diving: '自身 [潜水]',
+    scorch: '对手 [炙热]',
+    lush: '自身 +1[茂盛]',
+    poison: '对手 +1[中毒]',
+    parasite: '自身 +1[寄生]',
+    thorns: '对手 [荆棘]',
+    quicksand: '对手 [流沙]',
+    sandblind: '对手 +2[沙盲]',
+    greenMagic: '自身 +3 生命，清 debuff',
+    purpleMagic: '自身 +3 生命，清对手正面',
+    drain: '吸血至多 3',
+    guard: '自身 [守护]',
+    disarm: '弃对手 1 张手牌',
+    riot: '对手 debuff 翻倍，炸弹即爆，DOT 各结算 1 次',
+    purify: '净化任选 1 状态',
+    zero: '释放当前阶段 0 技能',
+    bomb: '对手 [定时炸弹]'
+  };
+
+  function trophyCardObject(name, kind, variant) {
+    const base = {
       value: -1,
       color: 'WHITE',
       isWhite: true,
@@ -593,6 +625,23 @@
       trophyName: name,
       trophyKind: kind || ''
     };
+    if (variant === 'black') {
+      return Object.assign({}, base, {
+        color: 'BLACK',
+        isWhite: false,
+        isBlack: true,
+        trophyBlack: true
+      });
+    }
+    return base;
+  }
+
+  function trophyEffectSummary(it) {
+    const key = it && it.trophyEffect;
+    if (key && TROPHY_CODEX_BLURB[key]) return TROPHY_CODEX_BLURB[key];
+    return String(it.description || '')
+      .replace(/(?:抽1张牌，可继续搭桥|抽2张牌，可继续搭桥|不抽牌，可继续搭桥|不抽牌，不继续搭桥)。?$/, '')
+      .replace(/。$/, '');
   }
 
   function trophyCostMarkup(it) {
@@ -604,7 +653,7 @@
     for (const [k, v] of Object.entries(costMap)) {
       parts.push(`<span class="codex-trophy-token" data-beast="${k}">${beastNames[k] || k}<b>×${v}</b></span>`);
     }
-    return '<div class="codex-trophy-cost"><span class="codex-trophy-cost-label">锻造消耗</span><div class="codex-trophy-tokens">' + parts.join('') + '</div></div>';
+    return '<div class="codex-trophy-cost"><span class="codex-trophy-cost-label">白卡锻造消耗</span><div class="codex-trophy-tokens">' + parts.join('') + '</div></div>';
   }
 
   function trophySourceSymbol(kind) {
@@ -615,18 +664,22 @@
   }
 
   function trophyEntryMarkup(it) {
-    // Shared cycling rules sit below the direct card action; buff mechanics are
-    // intentionally left to the separate buff codex.
-    const effectText = String(it.description || '').replace(/(?:抽1张牌，可继续搭桥|不抽牌，可继续搭桥|不抽牌，不继续搭桥)。?$/, '').replace(/。$/, '');
+    const effectText = trophyEffectSummary(it);
     const zero = it.trophyEffect === 'zero';
     const noDraw = zero || it.drawCount === 0;
     const drawLabel = noDraw ? '不抽牌' : it.trophyEffect === 'drawTwo' ? '抽牌 +2' : '抽牌 +1';
     const name = it.displayName.replace(/战利白卡$/, '');
-    return `<article class="codex-trophy-entry" aria-label="${it.displayName}">` +
-      `<span class="codex-trophy-face-slot" data-codex-trophy="${it.name}" data-codex-kind="${it.trophyKind || ''}"></span>` +
+    const faces =
+      '<div class="codex-trophy-faces" aria-hidden="false">' +
+      `<span class="codex-trophy-face-slot" data-codex-trophy="${it.name}" data-codex-kind="${it.trophyKind || ''}" data-codex-variant="white" title="战利白卡"></span>` +
+      `<span class="codex-trophy-face-slot" data-codex-trophy="${it.name}" data-codex-kind="${it.trophyKind || ''}" data-codex-variant="black" title="战利黑卡"></span>` +
+      '</div>';
+    return `<article class="codex-trophy-entry" aria-label="${name}">` +
+      faces +
       '<div class="codex-trophy-copy">' +
       `<h3 class="codex-trophy-name">${name}</h3>` +
       `<p class="codex-trophy-effect">${formatCodexRichText(effectText)}</p>` +
+      '<p class="codex-trophy-variant-note">黑卡效果相同，打出可指定颜色（献祭房升级）</p>' +
       `<div class="codex-trophy-play-rules${zero ? ' is-exception' : ''}"><span>${drawLabel}</span><span>${zero ? '不继续搭桥' : '可继续搭桥'}</span></div>` +
       trophyCostMarkup(it) + '</div></article>';
   }
@@ -635,25 +688,25 @@
     const allItems = window.AdventureRegistry ? window.AdventureRegistry.allItems() : [];
     const items = allItems.filter(it => it.kind === 'trophyWhite');
     const sections = [
-      { kind: 'drop', title: '掉落白卡', hint: '怪物战利品 · 左上角标' },
-      { kind: 'forge', title: '锻造白卡', hint: '铁匠铺制作 · 右上角标' },
-      { kind: 'both', title: '双源白卡', hint: '掉落与锻造均可获得 · 双角标' }
+      { kind: 'drop', title: '掉落获得', hint: '怪物掉落 · 白卡左上角标' },
+      { kind: 'forge', title: '铁匠锻造', hint: '仅白卡可锻造 · 右上角标与下方「白卡锻造消耗」' },
+      { kind: 'both', title: '掉落或锻造', hint: '白卡双角标 · 锻造条件见各卡「白卡锻造消耗」' }
     ];
     let html = '<div class="char-detail-page codex-trophy-page">';
-    html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">战利白卡</h1></div>';
+    html += '<div class="rules-header"><button class="rules-back-btn" id="codex-back-cat">&larr; 图鉴分类</button><h1 class="rules-title">战利卡图鉴</h1></div>';
     if (!items.length) {
       html += '<div class="codex-empty">暂无数据</div>';
     } else {
-      html += '<section class="codex-trophy-intro" aria-label="战利白卡使用规则">';
-      html += `<div class="codex-trophy-intro-top"><span>冒险牌组收藏</span><span>共 ${items.length} 张</span></div>`;
-      html += '<h2>加入牌组，循环使用</h2><p>获得后加入手牌，不占道具槽。打出后进入弃牌库，洗回后可再次抽到。</p>';
-      html += '<div class="codex-trophy-legend"><span class="is-drop">' + trophySourceSymbol('drop') + '左上 · 掉落</span><span class="is-forge">' + trophySourceSymbol('forge') + '右上 · 锻造</span><span>' + trophySourceSymbol('drop') + trophySourceSymbol('forge') + '双角标 · 双源</span></div>';
+      html += '<section class="codex-trophy-intro" aria-label="战利卡使用规则">';
+      html += `<div class="codex-trophy-intro-top"><span>牌组循环卡</span><span>共 ${items.length} 种</span></div>`;
+      html += '<h2>白卡与黑卡</h2><p>白卡不占道具槽，洗入牌组循环使用。献祭房可将手牌白卡升级为黑卡：效果不变，每次打出可指定颜色。</p>';
+      html += '<div class="codex-trophy-legend"><span class="is-drop">' + trophySourceSymbol('drop') + '掉落</span><span class="is-forge">' + trophySourceSymbol('forge') + '白卡锻造</span><span>' + trophySourceSymbol('drop') + trophySourceSymbol('forge') + '双源白卡</span></div>';
       html += '</section>';
       sections.forEach((section) => {
         const list = items.filter(it => it.trophyKind === section.kind)
           .sort((a, b) => String(a.displayName || '').localeCompare(String(b.displayName || ''), 'zh'));
         html += `<section class="codex-trophy-section" data-trophy-kind="${section.kind}" aria-labelledby="codex-trophy-${section.kind}">`;
-        html += `<header class="codex-trophy-section-head"><div><h2 id="codex-trophy-${section.kind}">${section.title}<span>${list.length} 张</span></h2><p>${section.hint}</p></div></header>`;
+        html += `<header class="codex-trophy-section-head"><div><h2 id="codex-trophy-${section.kind}">${section.title}<span>${list.length} 种</span></h2><p>${section.hint}</p></div></header>`;
         html += '<div class="codex-trophy-grid">';
         html += list.map(it => trophyEntryMarkup(it)).join('') || '<div class="codex-empty">暂无</div>';
         html += '</div></section>';
@@ -669,7 +722,7 @@
     root.querySelectorAll('.codex-trophy-face-slot').forEach(slot => {
       try {
         const name = slot.getAttribute('data-codex-trophy');
-        const card = trophyCardObject(name, slot.getAttribute('data-codex-kind'));
+        const card = trophyCardObject(name, slot.getAttribute('data-codex-kind'), slot.getAttribute('data-codex-variant'));
         const canvas = window.renderCard(card, width, height, false);
         canvas.classList.add('codex-trophy-face');
         slot.replaceChildren(canvas);

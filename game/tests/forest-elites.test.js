@@ -32,7 +32,7 @@ function defend(engine,name,value,damage) {
 
 for (const stage of [3,4]) {
   test('forest elite stats and attacks follow Stage '+stage+' without old stage bonuses',()=>{
-    const expected=[['ForestDendrobatidFrog',30,4,6],['ForestCapybara',32,2,4],['ForestPiranha',30,4,4]];
+    const expected=[['ForestDendrobatidFrog',25,4,6],['ForestCapybara',27,2,4],['ForestPiranha',25,4,4]];
     for(const [name,hp,low,high] of expected){
       const mod=bridge.applyStageMods(registry.getMonster(name),stage);
       assert.equal(mod.hp,hp);assert.equal(mod.minStage,3);

@@ -14,5 +14,5 @@
 
 - 配饰，上限 1；与一次性道具「遥控骰子」**互斥**（不能同时生效/持有）。
 - 在 D12 出结果后可将骰面 **±1**（夹紧 1–12）；每次调整消耗 **3 点生命**（保留原结果不扣血）。
-- 顺序：**先遥控骰子，再魔术师**。详见 [adventure_guide/accessories.md](adventure_guide/accessories.md)。
+- 顺序：**先遥控骰子，再魔术师**。详见 [adventure_guide/accessories.md](../adventure_guide/accessories.md)。
 

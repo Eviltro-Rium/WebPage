@@ -46,9 +46,11 @@ test('FrozenOceanTubeWorm base stats and pool', () => {
   assert.equal(m.kind, '热泉管虫');
   assert.equal(m.hp, 25);
   assert.equal(m.handLimit, 3);
-  assert.equal(m.minStage, 2);
+  assert.equal(m.minStage, 3);
   const pool = context.AdventureMonsterPool.ocean;
-  assert.ok(pool[2].includes('FrozenOceanTubeWorm'));
+  assert.ok(!pool[2].includes('FrozenOceanTubeWorm'));
+  assert.ok(context.AdventureElitePool.ocean[3].includes('FrozenOceanTubeWorm'));
+  assert.ok(context.AdventureElitePool.ocean[4].includes('FrozenOceanTubeWorm'));
   assert.ok(!pool['*'].includes('FrozenOceanTubeWorm'));
 });
 
@@ -77,7 +79,7 @@ test('FrozenOceanTubeWorm attack 1/2/3: damage + burn', () => {
   const m = getMonster('FrozenOceanTubeWorm');
   for (const v of [1, 2, 3]) {
     assert.equal(m.attackDamage(numCard(v)), v);
-    assert.equal(m.attackBurn(numCard(v)), 1);
+    assert.equal(m.attackBurn(numCard(v)), 2);
     assert.equal(m.attackBurnSettle(numCard(v)), false);
   }
 });
@@ -102,14 +104,15 @@ test('FrozenOceanTubeWorm defend 1/2/3: block up to 2 + diving', () => {
   assert.equal(m.defendGainDiving(numCard(4)), false);
 });
 
-test('FrozenOceanTubeWorm stage3 burn +1, stage4 block +1', () => {
+test('FrozenOceanTubeWorm stage3 keeps elite burn and stage4 adds a two-point counter', () => {
   const m = getMonster('FrozenOceanTubeWorm');
   const s3 = applyStageMods(m, 3);
   assert.equal(s3.attackBurn(numCard(1)), 2);
-  assert.equal(s3.attackBurn(numCard(4)), 3);
+  assert.equal(s3.attackBurn(numCard(4)), 2);
   const s4 = applyStageMods(m, 4);
-  assert.equal(s4.attackBurn(numCard(1)), 2, 'stage4 keeps stage3 burn bonus');
-  assert.equal(s4.defendBlock(numCard(1), 5), 3);
+  assert.equal(s4.attackBurn(numCard(1)), 2);
+  assert.equal(s4.defendCounter(numCard(1), 5), 2);
+  assert.equal(s4.defendBlock(numCard(1), 5), 2);
   assert.equal(s4.defendBlock(numCard(1), 2), 2);
 });
 
@@ -122,7 +125,8 @@ test('FrozenOceanTubeWorm effect: 4 settles burn with immediateBuffs', () => {
   assert.equal(r.d, 0);
   assert.equal(r.immediateBuffs, true);
   assert.equal(eng.s.player.hp, 48, 'settle deals current burn stacks as damage');
-  assert.equal(eng.s.player.burn, 1, 'one layer remains after settle');
+  assert.equal(eng.s.player.burn, 2, 'scorch prevents burn decay');
+  assert.equal(eng.s.player.scorch, true);
 });
 
 test('FrozenOceanTubeWorm skill desc', () => {
@@ -140,5 +144,7 @@ test('FrozenOceanTubeWorm skill desc', () => {
   assert.ok(def2.includes('潜水'));
 
   const atk5s3 = getAdventureNpcSkillDesc('FrozenOceanTubeWorm', numCard(5), false, { stage: 3 });
-  assert.ok(atk5s3.includes('3层'));
+  assert.ok(atk5s3.includes('2层'));
+  assert.ok(atk5s3.includes('炙热'));
+  assert.match(getAdventureNpcSkillDesc('FrozenOceanTubeWorm', numCard(2), true, {stage:4}), /反击2/);
 });

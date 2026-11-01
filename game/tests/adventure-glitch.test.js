@@ -55,9 +55,10 @@ test('entering opens exploration; leaving before the roll preserves the one-shot
   assert.equal(eng.rollGlitchEvent(), false);
 });
 
-test('all twelve faces execute the six documented outcomes exactly once', async t => {
+test('all twelve faces execute the documented outcomes exactly once', async t => {
   for (let face = 1; face <= 12; face++) await t.test('face ' + face, () => {
     const ctx = context(), eng = engine(ctx, { consumables: ['FirstAidKit'] });
+    eng.s.currency.gold = 9;
     eng.s.player.hp = eng.s.player.maxHp - 20;
     eng.s.player.burn = 2; eng.s.player.guard = 2; eng.s.player.crit = 1;
     const pile = eng.s.playerPile, count = total(pile), oldHand = pile.hand.slice();
@@ -72,12 +73,18 @@ test('all twelve faces execute the six documented outcomes exactly once', async 
       assert.equal(eng.s.combat.kind, 'glitch');
       assert.equal(eng.s.stage, 3);
       assert.ok(ctx.AdventureRegistry.getMonster(event.monsterName));
-    } else if (face <= 4) {
+      assert.equal(event.elite, face === 2);
+      assert.equal(event.opponentStage, 3);
+      if (face === 2) assert.ok(ctx.AdventureElitePool[event.scene][3].includes(event.monsterName));
+    } else if (face === 3) {
       assert.equal(event.status, 'discard');
       assert.equal(eng.leaveGlitchRoom(), false);
       assert.equal(eng.discardGlitchItem(0), true);
       assert.equal(eng.s.consumables.length, 0);
       assert.equal(eng.discardGlitchItem(0), false);
+    } else if (face === 4) {
+      assert.equal(eng.s.currency.gold, 4);
+      assert.equal(event.goldLost, 5);
     } else if (face <= 6) {
       assert.equal(eng.s.player.burn, 0);
       assert.equal(eng.s.player.guard, 0);
@@ -89,9 +96,12 @@ test('all twelve faces execute the six documented outcomes exactly once', async 
     } else if (face <= 10) {
       assert.equal(eng.s.player.hp, eng.s.player.maxHp - 10);
       assert.equal(pile.hand.length, pile.handLimit);
-    } else {
+    } else if (face === 11) {
       assert.equal(eng.s.consumables.length, 2);
       assert.equal(ctx.AdventureRegistry.getItem(event.itemName).kind, 'consumable');
+    } else {
+      assert.equal(eng.s.currency.gold, 19);
+      assert.equal(event.goldGained, 10);
     }
     assert.equal(total(pile), count, 'events conserve the physical deck');
   });
@@ -146,7 +156,7 @@ test('saved outcomes never grant resources again; pending discard survives reloa
   next.discardGlitchItem(0); next.leaveGlitchRoom(); next.enterCurrent();
   assert.equal(next.resolveGlitchEvent(), false);
   assert.equal(next.rollGlitchEvent(), false);
-  const gift = engine(ctx); roll(ctx, gift, 12); gift.resolveGlitchEvent();
+  const gift = engine(ctx); roll(ctx, gift, 11); gift.resolveGlitchEvent();
   const savedGift = restore(ctx, gift);
   assert.equal(savedGift.s.consumables.length, 1);
   assert.equal(savedGift.resolveGlitchEvent(), false);
@@ -271,10 +281,97 @@ test('real glitch page buttons honor dice control, mandatory discard and combat 
   ctx.FurryGame.CombatRuntime.resetRandomSource();
   await new Promise(resolve => globalThis.setTimeout(resolve, 0));
   assert.equal(ui.container.querySelector('#adv-glitch-leave'), null);
+  assert.ok(ui.container.querySelector('#adv-glitch-plus'));
+  ui.container.querySelector('#adv-glitch-keep').click();
   ui.container.querySelector('[data-glitch-discard] img').click();
   assert.ok(ui.container.querySelector('#adv-glitch-leave'));
   ui.eng = engine(ctx); roll(ctx, ui.eng, 1); ui.render();
   await ui._finishGlitchRoll();
   assert.equal(launches, 1);
+  dom.window.close();
+});
+
+test('hand reset waits for its exit animation, arrives in the event page once and never queues a second map arrival', async () => {
+  const ctx=context(),eng=engine(ctx),oldHand=eng.s.playerPile.hand.slice();roll(ctx,eng,7);
+  ctx.AdventureUI=class {};vm.runInContext(fs.readFileSync(path.join(root,'adventure/js/ui/adventure_ui_glitch.js'),'utf8'),ctx);
+  const ui=new ctx.AdventureUI();ui.eng=eng;ui.render=()=>{};
+  const calls=[];let finishExit;
+  ui._animateGlitchHand=arriving=>{calls.push(arriving);return arriving?Promise.resolve():new Promise(resolve=>{finishExit=resolve;});};
+  const playing=ui._finishGlitchRoll();assert.equal(ui._glitchResolving,true);assert.equal(eng.currentRoom().glitchEvent.status,'rolled');assert.deepEqual(eng.s.playerPile.hand,oldHand);
+  finishExit();await playing;
+  assert.deepEqual(calls,[false,true]);assert.equal(eng.s.playerPile.hand.length,3);assert.equal(eng.takeMapRecoveryFeedback().length,0);
+  await ui._finishGlitchRoll();assert.deepEqual(calls,[false,true]);
+  eng.s.pendingMapRecoveries=[{label:'故障房重整',drawn:3},{label:'其他补牌',drawn:1}];
+  eng.leaveGlitchRoom();assert.deepEqual(Array.from(eng.takeMapRecoveryFeedback(),ev=>ev.label),['其他补牌']);
+});
+
+
+test('elite encounters use stage 3 from every scene and persist their stage', () => {
+  const ctx = context();
+  for (const scene of Object.keys(ctx.AdventureElitePool)) for (const stage of [1, 2, 3, 4]) {
+    const eng = engine(ctx, { scene, stage });
+    roll(ctx, eng, 2); eng.resolveGlitchEvent();
+    const event = eng.currentRoom().glitchEvent;
+    assert.equal(event.status, 'combat', `${scene} stage ${stage}`);
+    assert.notEqual(event.scene, scene);
+    assert.equal(event.opponentStage, 3);
+    assert.ok(ctx.AdventureElitePool[event.scene][3].includes(event.monsterName));
+    eng.markActiveCombat();
+    assert.equal(restore(ctx, eng).currentRoom().glitchEvent.opponentStage, 3);
+  }
+});
+
+test('gold outcomes are rounded correctly and cannot repeat after reload', () => {
+  const ctx = context();
+  for (const gold of [0, 1, 8, 9]) {
+    const eng = engine(ctx); eng.s.currency.gold = gold;
+    roll(ctx, eng, 4); eng.resolveGlitchEvent();
+    const next = restore(ctx, eng);
+    assert.equal(next.s.currency.gold, gold - Math.ceil(gold / 2));
+    assert.equal(next.resolveGlitchEvent(), false);
+  }
+  const eng = engine(ctx); eng.s.currency.gold = 2;
+  roll(ctx, eng, 12); eng.resolveGlitchEvent();
+  const next = restore(ctx, eng);
+  assert.equal(next.s.currency.gold, 12);
+  assert.equal(next.resolveGlitchEvent(), false);
+});
+
+test('Magician choice expires automatically and adjustment resolves only once', async () => {
+  const dom = new JSDOM('<div id="app"></div>'), ctx = context(dom);
+  const timers = new Map(); let nextTimer = 0;
+  ctx.setTimeout = (fn, delay) => { const id = ++nextTimer; timers.set(id, { fn, delay }); return id; };
+  ctx.clearTimeout = id => timers.delete(id);
+  for (const file of ['adventure/js/ui/adventure_ui.js', 'adventure/js/ui/adventure_ui_glitch.js'])
+    vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), ctx, { filename: file });
+  const ui = new ctx.AdventureUI(dom.window.document.getElementById('app'));
+  ui.eng = engine(ctx, { accessories: ['Magician'] }); ui.eng.s.currency.gold = 0;
+  ui.render = () => ui.container.replaceChildren(ui._buildGlitchPage(ui.eng.snapshot()));
+  ui.bindActions(); roll(ctx, ui.eng, 12); ui.render(); ui._maybeAutoResolvePendingGlitchRoll();
+  assert.equal([...timers.values()][0].delay, 5000);
+  [...timers.values()][0].fn();
+  assert.equal(ui.eng.s.currency.gold, 10);
+  assert.equal(ui.eng.currentRoom().glitchEvent.status, 'done');
+  ui.eng = engine(ctx, { accessories: ['Magician'] }); ui.eng.s.currency.gold = 9;
+  roll(ctx, ui.eng, 3); ui.render(); ui._maybeAutoResolvePendingGlitchRoll();
+  const hp = ui.eng.s.player.hp;
+  ui.container.querySelector('#adv-glitch-plus').click();
+  assert.equal(ui.eng.s.player.hp, hp - 3);
+  assert.equal(ui.eng.s.currency.gold, 4);
+  assert.equal(ui.eng.currentRoom().glitchEvent.status, 'done');
+  dom.window.close();
+});
+
+test('bridge starts a stage 3 elite encounter without changing the map stage', async () => {
+  const dom = new JSDOM('<div id="app"></div>'), ctx = context(dom);
+  vm.runInContext(fs.readFileSync(path.join(root, 'adventure/js/ui/adventure_ui.js'), 'utf8'), ctx);
+  const ui = new ctx.AdventureUI(dom.window.document.getElementById('app'));
+  ui.eng = engine(ctx, { stage: 1 }); roll(ctx, ui.eng, 2); ui.eng.resolveGlitchEvent();
+  ui._forcePersistAdventure = () => {};
+  let initial;
+  ctx.AdventureBattleController = { startCombat: async (_player, _enemy, _end, state) => { initial = state; } };
+  assert.equal(await ui._startBridgeCombat(), true);
+  assert.equal(initial.stage, 3);
+  assert.equal(ui.eng.s.stage, 1);
   dom.window.close();
 });

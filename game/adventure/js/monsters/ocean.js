@@ -235,7 +235,7 @@
     attackDamage(card, ctx) {
       const v = card.value;
       if (v >= 1 && v <= 3) return ctx.playerBuffTotal || 0;
-      if (v >= 4 && v <= 6) return 5;
+      if (v >= 4 && v <= 6) return 4;
       return 0;
     },
     // 进攻1/2/3：有暴击时消耗1层使攻击不可防御
@@ -272,11 +272,6 @@
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
-        attackDamage: (card, ctx) => {
-          const v = card.value;
-          if (v >= 4 && v <= 6) return 4;
-          return orig.attackDamage(card, ctx);
-        },
         attackBleed: (card) => {
           const v = card.value;
           if (v >= 4 && v <= 6) return 2;
@@ -457,15 +452,15 @@
   });
 
   // ===== 热泉管虫 =====
-  // Stage2+；手牌上限3
-  // 进攻1/2/3：造成1/2/3点伤害，施加1层灼伤
-  // 进攻4/5/6：先施加2层灼伤，再对玩家进行一次灼伤结算（无卡面伤害）
+  // Stage3+ 精英；手牌上限3
+  // 进攻1/2/3：造成1/2/3点伤害，施加2层灼伤
+  // 进攻4/5/6：先施加2层灼伤和炙热，再对玩家进行一次灼伤结算（无卡面伤害）
   // 防御1/2/3：格挡至多2点，获得潜水
-  // Stage3：进攻灼伤层数+1；Stage4：格挡+1
+  // Stage4：防御额外反击2点伤害
   R.registerMonster({
     name: 'FrozenOceanTubeWorm',
     kind: '热泉管虫',
-    minStage: 2,
+    minStage: 3,
     hp: 25,
     handLimit: 3,
     attack: 3,

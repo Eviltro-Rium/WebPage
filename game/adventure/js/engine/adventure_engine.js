@@ -34,6 +34,7 @@
     SHOP:        'ADVENTURE_SHOP',
     BLACKSMITH:  'ADVENTURE_BLACKSMITH',
     GLITCH:      'ADVENTURE_GLITCH',
+    SACRIFICE:   'ADVENTURE_SACRIFICE',
     CLEAR:       'ADVENTURE_CLEAR',
     GAME_OVER:   'ADVENTURE_GAME_OVER'
   };
@@ -54,6 +55,7 @@
     ADVENTURE_SHOP:        '商店',
     ADVENTURE_BLACKSMITH:  '铁匠铺',
     ADVENTURE_GLITCH:      '故障房',
+    ADVENTURE_SACRIFICE:   '献祭房',
     ADVENTURE_CLEAR:       '通关',
     ADVENTURE_GAME_OVER:   '游戏结束'
   };
@@ -176,6 +178,7 @@
         log: [],
         turn: 0,
         stage: opts.stage || 1,
+        sacrificeUpgradesByStage: {},
         finalEnemyAwakened: false,
         finalEnemyDefeated: false,
         scene: opts.scene || 'castle',
@@ -265,6 +268,7 @@
         log: (save.log || []).slice(),
         turn: save.turn || 0,
         stage: save.stage || 1,
+        sacrificeUpgradesByStage: clone(save.sacrificeUpgradesByStage) || {},
         finalEnemyAwakened: !!save.finalEnemyAwakened,
         finalEnemyDefeated: !!save.finalEnemyDefeated || (save.finalEnemyDefeated == null && save.phase === Phase.CLEAR && save.stage >= 4),
         scene: save.scene || 'castle',
@@ -309,6 +313,7 @@
           room.locked = !!d.locked;
           room.stashedLoot = d.stashedLoot ? clone(d.stashedLoot) : null;
           room.glitchEvent = d.glitchEvent ? clone(d.glitchEvent) : null;
+          room.sacrificeResult = d.sacrificeResult ? clone(d.sacrificeResult) : null;
           if (d.monsterName != null) room.monsterName = d.monsterName;
           if (d.bossName != null) room.bossName = d.bossName;
           room.reward = d.reward ? clone(d.reward) : null;
@@ -386,7 +391,7 @@
     explorableRooms() {
       if (!this.s || this.s.activeCombat) return new Set();
       const blocked = [Phase.PLAYER_PLAY, Phase.PLAYER_DEFEND, Phase.NPC_TURN,
-        Phase.BEAST_CHOICE, Phase.BEAST_DISCARD, Phase.ITEM_DISCARD, Phase.COMBAT_SETTLE, Phase.GLITCH, Phase.GAME_OVER];
+        Phase.BEAST_CHOICE, Phase.BEAST_DISCARD, Phase.ITEM_DISCARD, Phase.COMBAT_SETTLE, Phase.GLITCH, Phase.SACRIFICE, Phase.GAME_OVER];
       if (blocked.includes(this.s.phase)) return new Set();
       return this.s.map.explorablePositions();
     }
@@ -498,7 +503,7 @@
     }
 
     enterCurrent(opts) {
-      if (this.s.phase === Phase.GLITCH) return { ok: false, message: '请先完成故障房事件' };
+      if ([Phase.GLITCH, Phase.SACRIFICE].includes(this.s.phase)) return { ok: false, message: '请先离开当前房间' };
       const room = this.currentRoom();
       if (!room || !room.isEnterable()) return {ok:false, message:'无法进入此房间'};
       if (this.s.phase === Phase.MAP && !this.s.activeCombat && !this.canMoveTo(this.s.pos.r, this.s.pos.c)) {
@@ -512,7 +517,8 @@
         [window.RoomType.BOSS]:'_handleBoss',
         [window.RoomType.ITEM]:'_handleItem', [window.RoomType.SHOP]:'_handleShop',
         [window.RoomType.BLACKSMITH]:'_handleBlacksmith', [window.RoomType.CHALLENGE]:'_handleChallenge',
-        [window.RoomType.GLITCH]:'_handleGlitch'
+        [window.RoomType.GLITCH]:'_handleGlitch',
+        [window.RoomType.SACRIFICE]:'_handleSacrifice'
       };
       const handler = handlers[room.type];
       let result;
@@ -1022,6 +1028,7 @@
         chosenColor: topCard.chosenColor || null,
         magicColor: topCard.magicColor || null,
         trophyWhite: !!topCard.trophyWhite,
+        trophyBlack: !!topCard.trophyBlack,
         trophyName: topCard.trophyName || null,
         trophyEffect: topCard.trophyEffect || null
       } : null;
@@ -1039,7 +1046,11 @@
         player: { name: this.s.player.name, hp: this.s.player.hp, maxHp: this.s.player.maxHp, type: this.s.player.type, buffs: this.playerBuffs() },
         currency: this.s.currency.summary(),
         inventory: this.s.inventory.slice(),
-        trophyWhiteCards: (this.s.trophyWhiteCards || []).map((name, index) => Object.assign(itemDetail(name), { index })),
+        trophyWhiteCards: this._trophyInventory().map(({name, card}, index) => {
+          const detail = itemDetail(name);
+          if (card.trophyBlack) { detail.displayName = detail.displayName.replace('白卡', '黑卡'); detail.description = '可指定颜色；' + detail.description; }
+          return Object.assign(detail, { index, trophyBlack: !!card.trophyBlack });
+        }),
         consumables: this.s.consumables.map(itemDetail),
         consumableSlots: CONSUMABLE_SLOT_COUNT,
         accessories: this.s.accessories.map(itemDetail),
@@ -1148,6 +1159,7 @@
         roomInfo: room ? {
           type: room.type,
           glitchEvent: room.glitchEvent ? JSON.parse(JSON.stringify(room.glitchEvent)) : null,
+          sacrificeResult: room.sacrificeResult ? JSON.parse(JSON.stringify(room.sacrificeResult)) : null,
           cleared: room.cleared,
           rewardClaimed: room.rewardClaimed,
           beastTokenClaimed: room.beastTokenClaimed,
@@ -1211,6 +1223,7 @@
         finalEnemyAwakened: !!this.s.finalEnemyAwakened,
         finalEnemyDefeated: !!this.s.finalEnemyDefeated,
         gameOver: this.isGameOver(),
+        sacrificeUpgradesRemaining: this.sacrificeUpgradesRemaining ? this.sacrificeUpgradesRemaining() : 3,
         stage: this.s.stage,
         scene: this.s.scene
       };

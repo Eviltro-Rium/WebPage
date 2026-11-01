@@ -49,8 +49,9 @@ test('trophy codex groups drop/forge/both with real cards and shared rules', () 
   assert.ok(sections[0].querySelector('[data-codex-trophy="BurnTrophy"]'));
   assert.ok(sections[1].querySelector('[data-codex-trophy="DisarmTrophy"]') || sections[1].querySelector('[data-codex-trophy="RiotTrophy"]'));
   assert.ok(sections[2].querySelector('[data-codex-trophy="SmallPotionTrophy"]'));
-  assert.equal(screen.querySelectorAll('.codex-trophy-face').length, screen.querySelectorAll('.codex-trophy-entry').length);
-  assert.equal(screen.querySelector('.codex-trophy-intro-top').lastElementChild.textContent, '共 28 张');
+  assert.equal(screen.querySelectorAll('.codex-trophy-face').length, screen.querySelectorAll('.codex-trophy-entry').length * 2);
+  assert.equal(screen.querySelector('.rules-title').textContent, '战利卡图鉴');
+  assert.equal(screen.querySelector('.codex-trophy-intro-top').lastElementChild.textContent, '共 28 种');
   assert.equal(sections[0].querySelector('.codex-trophy-cost'), null, 'drop cards have no forge cost');
   for (const name of ['GreenMagicTrophy', 'PurpleMagicTrophy']) {
     const card = screen.querySelector('[data-codex-trophy="' + name + '"]').closest('article');
@@ -59,10 +60,13 @@ test('trophy codex groups drop/forge/both with real cards and shared rules', () 
   }
   const burn = screen.querySelector('[data-codex-trophy="BurnTrophy"]').closest('article');
   assert.equal(burn.querySelector('.codex-trophy-name').textContent, '灼伤');
-  assert.equal(burn.querySelector('.codex-trophy-effect').textContent, '对手获得1层[灼伤]');
+  assert.equal(burn.querySelector('.codex-trophy-effect').textContent, '对手 +1[灼伤]');
+  assert.ok(burn.querySelector('[data-codex-variant="white"]'));
+  assert.ok(burn.querySelector('[data-codex-variant="black"]'));
   assert.equal(burn.querySelectorAll('.codex-trophy-play-rules span').length, 2);
   const zero = screen.querySelector('[data-codex-trophy="ZeroTrophy"]').closest('article');
-  assert.equal(zero.querySelector('.codex-trophy-effect').textContent, '释放角色当前阶段的0技能');
+  assert.equal(zero.querySelector('.codex-trophy-effect').textContent, '释放当前阶段 0 技能');
+  assert.ok(zero.querySelector('.codex-trophy-cost-label').textContent.includes('白卡锻造'));
   assert.equal(zero.querySelector('.is-exception').textContent, '不抽牌不继续搭桥');
   assert.equal(zero.querySelector('[data-beast="wuneng"]').textContent, '万能兽元×2');
   assert.doesNotMatch(screen.textContent, /堆叠上限|维持效果|无法防御蓝色|归零爆炸造成|每有1层/);

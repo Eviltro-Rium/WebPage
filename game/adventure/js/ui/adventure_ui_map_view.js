@@ -10,6 +10,7 @@
     shop:   { label: '商店', cls: 'room-shop', glyph: '', icon: ROOM_ICON_DIR + 'shopping_room.webp' },
     blacksmith: { label: '铁匠铺', cls: 'room-blacksmith', glyph: '', icon: ROOM_ICON_DIR + 'smith_room.webp' },
     challenge: { label: '挑战', cls: 'room-challenge', glyph: '', icon: ROOM_ICON_DIR + 'challenge_room.webp' },
+    sacrifice: { label: '献祭', cls: 'room-sacrifice', glyph: '', icon: ROOM_ICON_DIR + 'sacrifice_room.webp' },
     glitch: { label: '故障', cls: 'room-glitch', glyph: '', icon: ROOM_ICON_DIR + 'glitch_room.webp' }
   };
 

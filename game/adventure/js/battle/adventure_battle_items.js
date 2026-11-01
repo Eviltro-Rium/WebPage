@@ -29,6 +29,12 @@
         return this.state();
       }
 
+      if (def.combatUse === 'obsidian' && !(choice && choice.index != null)) {
+        const legalIndices = (this.h.player || []).map((card, i) => card && card.trophyWhite && card.isWhite && !card.isBlack && !card.borrowedMonster ? i : -1).filter(i => i >= 0);
+        if (!legalIndices.length) { this.emit('desc', '手牌中没有可升级的战利白卡'); return this.state(); }
+        return this.beginHandDiscard({kind:'obsidian', itemIndex, itemName:def.name, count:1, legalIndices, cancelable:true, resumePhase:this.s.phase, hint:'黑曜石：请选择1张战利白卡升级'});
+      }
+
       if (def.combatUse === 'magazine') {
         const reserveMax = 3;
         if ((this.s.reserveCards || []).length >= reserveMax) {
@@ -230,7 +236,7 @@
         case 'freeze':
           from.frozen = false; this.freeze(to); break;
         case 'iceSeal':
-          from.iceSeal = 0; this.iceSeal(to); break;
+          from.iceSeal = Math.max(0, (from.iceSeal || 0) - 1); this.iceSeal(to); break;
         case 'blind':
           from.blind = 0; to.blind = 1; break;
         case 'bomb':
@@ -443,7 +449,8 @@
       return this.state();
     }
 
-    if ((kind === 'discardTalisman' || kind === 'furnace') && itemIndex != null) {
+    if (kind === 'obsidian' && (!this._adventureEngine || this._adventureEngine.s.consumables[itemIndex] !== pending.itemName)) throw Error('黑曜石已不在原道具槽');
+    if ((kind === 'discardTalisman' || kind === 'furnace' || kind === 'obsidian') && itemIndex != null) {
       // Re-enter item use with the chosen hand index; consumes on success.
       return this.useAdventureCombatItem(itemIndex, { index: selected[0] });
     }

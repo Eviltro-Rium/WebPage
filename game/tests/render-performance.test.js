@@ -212,12 +212,14 @@ test('shop and blacksmith clicks update in place without disconnecting icons or 
  for(const phase of ['shop','blacksmith']) {
   const env=adventurePanelHarness(t,phase);if(!env)return;
   const {w,ui,snap}=env,host=ui.container;
-  const images=[...host.querySelectorAll('img')],canvases=[...host.querySelectorAll('canvas')];
+  // 首次选购会创建购买按钮中的金币图标；先完成该有效状态变化再检查节点复用。
   const attr=phase==='shop'?'data-shop-slot':'data-blacksmith-slot';
   const buttons=[...host.querySelectorAll('['+attr+']')];
+  buttons[0].click();
+  const images=[...host.querySelectorAll('img')],canvases=[...host.querySelectorAll('canvas')];
   const observer=new w.MutationObserver(()=>{});observer.observe(host,{subtree:true,childList:true,attributes:true,attributeFilter:['src','width','height']});
   for(let i=0;i<30;i++)buttons[i%3].click();
-  assert.equal(env.selections(),30);
+  assert.equal(env.selections(),31);
   assert.deepEqual([...host.querySelectorAll('img')],images);
   assert.deepEqual([...host.querySelectorAll('canvas')],canvases);
   assert.ok(canvases.every(canvas=>canvas._painted),'painted canvases are never replaced by blank clones');

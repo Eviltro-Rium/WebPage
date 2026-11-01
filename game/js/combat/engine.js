@@ -954,7 +954,7 @@
         let who=this.name(this.s.player);
         if (this.s.phase==='PLAYER_DEFEND') {
           let d=Math.max(0,Number(this.s.pendingAttack&&this.s.pendingAttack.damage)||0);
-          let incomingCard=this.s.discardTop||this.s.atkCard,inheritedColor=this.effective(incomingCard);
+          let incomingCard=this.s.atkCard||this.s.discardTop,inheritedColor=this.effective(this.s.discardTop||incomingCard);
           let m=CharacterRegistry.get(who);
           if(m){let r=m.defend(this,who,0,d,c,this.s.player,target,'player',inheritedColor,{hurt:(x,n,b)=>this.hurt(x,n,b),heal:(x,n,k)=>this.heal(x,n,k),draw:(w2,n,an)=>this.draw(w2,n,an),burn:(x,n)=>this.burn(x,n),bleed:(x,n)=>this.bleed(x,n),poison:(x,n)=>this.poison(x,n),counter:(x,n)=>this.counterAttack(this.s.player,x,n),cancelAttackDebuffs:(o,r)=>this.cancelAttackDebuffs(o,r),clearDebuffs:x=>this.clearDebuffs(x),addGuard:(x,n)=>this.addGuard(x,n)});if(r){this.s.pendingAttack.damage=Math.max(0,r.remaining);this.s.pendingDefenseDamage=this.s.pendingAttack.damage;if(r.desc)this.emit('desc',r.desc)}}
         } else {
@@ -1055,6 +1055,15 @@
               : 10;
             this.hurt(target, bombDamage, false, { silent: true });
             this.emit('bombExplode', '[定时炸弹]🗡️' + bombDamage, null, { who: targetKey, amount: bombDamage });
+          }
+          // 暴乱触发一次即时状态结算，不推进对手回合。
+          if (target.alive && target.burn > 0) this.settleBurn(target);
+          if (target.alive && target.bleed > 0) this.settleBleed(target, target.bleed);
+          if (target.alive && target.poison > 0) {
+            const amount = target.poison;
+            const hpBefore = target.hp;
+            this.hurt(target, amount, 'poison', { silent: true });
+            this.emit('poisonSettle', '[中毒]🗡️' + amount, null, { who: targetKey, amount, hpBefore, hpAfter: target.hp });
           }
           const parts = [];
           if (doubled.length) parts.push('负面翻倍至' + doubled.join('、'));
@@ -1553,7 +1562,7 @@
         let i=this.s.selectedCard,c=this.h.player[i];
         if(!c)throw Error('请选择防御牌');
         if(!this.legal(c,true))throw Error('该牌不能用于防御');
-        let incomingCard=this.s.discardTop||this.s.atkCard,inheritedColor=this.effective(incomingCard);
+        let incomingCard=this.s.atkCard||this.s.discardTop,inheritedColor=this.effective(this.s.discardTop||incomingCard);
         if(this._freezeBlocksDefend(this.s.player,incomingCard))throw Error('冷冻状态无法防御蓝色攻击');
         if(c.isBlack&&!c.chosenColor)return this._stagePendingBlackCard(i,c,'defend');
         if(c.isWhite)c.chosenColor=inheritedColor;

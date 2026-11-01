@@ -1327,7 +1327,7 @@
       if (!(beforeHp > 0) || entity.hp > 0) return;
       if (!this._hasAccessory('RevivalCross')) return;
       const def = window.AdventureRegistry && window.AdventureRegistry.getItem('RevivalCross');
-      const healAmt = Math.max(1, Number(def && def.onLethalHeal) || 5);
+      const healAmt = Math.max(1, Number(def && def.onLethalHeal) || 10);
       this._flashAccessory('RevivalCross');
       this._consumeAccessory('RevivalCross');
       // Lethal damage already set hp to 0 / alive false; heal then re-mark alive.
@@ -1457,7 +1457,36 @@
       return super.continueAfterAttackMod();
     }
 
+    _queueEnvenomedBladePoison(d, card) {
+      if (!this.s || !this.s.isAdventure || this.s.atkOwner !== 'player' || !this._hasAccessory('EnvenomedBlade')) return;
+      const attackCard = this.s.atkCard || card;
+      if (!attackCard || !attackCard.isNumberCard || this.effective(attackCard) !== 'GREEN') return;
+
+      const def = window.AdventureRegistry && window.AdventureRegistry.getItem('EnvenomedBlade');
+      const threshold = Math.max(1, Number(def && def.greenAttackPoisonThreshold) || 4);
+      const amount = Math.max(1, Number(def && def.onGreenAttackPoison) || 1) * this._accessoryCount('EnvenomedBlade');
+      const primaryTarget = this.s.is1v2 ? (this.s.attackTarget || 'ai') : 'ai';
+      const targets = new Set();
+      if (Number(d) >= threshold && this.s[primaryTarget] && this.s[primaryTarget].alive) targets.add(primaryTarget);
+
+      const attack = this.s.pendingAttack || {};
+      if (Number(attack.aoeDamage) >= threshold && Array.isArray(attack.aoeTargets)) {
+        for (const key of attack.aoeTargets) {
+          if (key !== primaryTarget && this.s[key] && this.s[key].alive) targets.add(key);
+        }
+      }
+      if (!targets.size) return;
+
+      const effects = this.s.pendingSkillStatuses || (this.s.pendingSkillStatuses = []);
+      for (const target of targets) {
+        effects.push({ target, id: 'poison', method: 'poison', args: [amount], timing: 'afterDamage' });
+      }
+      this._flashAccessory('EnvenomedBlade');
+      this.emit('desc', '淬毒之刃：对命中目标施加' + amount + '层[中毒]');
+    }
+
     _finishAfterCritChoice(d, skip, unblock, card, delay) {
+      this._queueEnvenomedBladePoison(d, card);
       if (this._shouldTriggerPurifyCrystal(card)) {
         this.s.pendingDialog = 'purifyCrystal';
         this.s.pendingPurifyCrystal = { damage: d, skip, unblock, card: card, delay };

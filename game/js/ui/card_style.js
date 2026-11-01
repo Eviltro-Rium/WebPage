@@ -170,7 +170,7 @@
   }
 
   function isWhiteFace(card) {
-    return !!(card && (card.isWhite || card.color === 'WHITE' || card.trophyWhite));
+    return !!(card && !card.isBlack && !card.trophyBlack && (card.isWhite || card.color === 'WHITE' || card.trophyWhite));
   }
 
   function trophyKind(card) {
@@ -228,7 +228,7 @@
     const color = { RED: '红色', YELLOW: '黄色', BLUE: '蓝色', GREEN: '绿色', BLACK: '黑色', WHITE: '白色' }[card.color] || '';
     const trophy = card.trophyWhite && typeof window !== 'undefined' && window.AdventureRegistry && card.trophyName
       ? window.AdventureRegistry.getItem(card.trophyName) : null;
-    const content = card.isNumberCard ? `${card.value}点数字牌` : (trophy ? trophy.displayName : ITEM_META[itemKind(card)].aria + '牌');
+    const content = card.isNumberCard ? `${card.value}点数字牌` : (trophy ? trophy.displayName.replace('白卡', card.trophyBlack ? '黑卡' : '白卡') : ITEM_META[itemKind(card)].aria + '牌');
     const chosen = card.chosenColor && COLOR_SHORT[card.chosenColor] ? `，指定${COLOR_SHORT[card.chosenColor]}色` : '';
     const npc = isNpcWhiteCard(card, opts) ? '（怪物）' : '';
     const source = { drop: '，获取途径：怪物掉落', forge: '，获取途径：铁匠锻造', both: '，获取途径：怪物掉落、铁匠锻造' }[trophyKind(card)] || '';

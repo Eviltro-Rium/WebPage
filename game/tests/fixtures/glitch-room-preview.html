@@ -8,7 +8,7 @@
   const manifest = await (await fetch('../script_manifest.json')).json();
   for (const file of ['characters', 'ai', 'combat', 'ui_shell', 'adventure_content', 'adventure_runtime'].flatMap(key => manifest[key])) {
     await new Promise((resolve, reject) => {
-      const script = document.createElement('script'); script.src = '../' + file + '?v=20261021-glitch-preview';
+      const script = document.createElement('script'); script.src = '../' + file + '?v=20261101-defense-room-fix';
       script.onload = resolve; script.onerror = reject; document.head.appendChild(script);
     });
   }

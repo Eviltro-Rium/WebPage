@@ -439,10 +439,10 @@
       let i=this.s.selectedCard,c=this.h.player[i];
       if(!c)throw Error('请选择防御牌');
       if(!this.legal(c,true))throw Error('该牌不能用于防御');
-      let inheritedColor=this.effective(this.s.discardTop||this.s.atkCard);
-      if(this._freezeBlocksDefend(this.s.player,this.s.discardTop||this.s.atkCard))throw Error('冷冻状态无法防御蓝色攻击');
+      let incomingCard=this.s.atkCard||this.s.discardTop,inheritedColor=this.effective(incomingCard);
+      if(this._freezeBlocksDefend(this.s.player,incomingCard))throw Error('冷冻状态无法防御蓝色攻击');
       if(c.isBlack&&!c.chosenColor)return this._stagePendingBlackCard(i,c,'defend');
-      if(c.isWhite)c.chosenColor=inheritedColor;
+      if(c.isWhite)c.chosenColor=this.effective(this.s.discardTop||incomingCard);
       this.h.player.splice(i,1);this.s.selectedCard=-1;
       this.s.defCard=cp(c);this.s.defOwner='player';this.setDiscardTop(c,'player');this._markBombPlay('player'); this._tickBomb('player');
       this._animatedPlayerAttack=this.s.atkCard;

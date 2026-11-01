@@ -103,7 +103,7 @@
       '<span class="hand-discard-picker-hint">' + a.title +
       (a.max > 1 ? '（' + n + '/' + a.max + '）' : '') + '</span>' +
       '<button type="button" class="ctrl-btn btn-discard" id="hand-discard-confirm"' +
-      (n < 1 || n > a.max ? ' disabled' : '') + '>' + (a.title.indexOf('弹夹') >= 0 ? '确认储备' : '确认弃牌') +
+      (n < 1 || n > a.max ? ' disabled' : '') + '>' + (a.title.indexOf('黑曜石') >= 0 ? '确认升级' : a.title.indexOf('弹夹') >= 0 ? '确认储备' : '确认弃牌') +
       (n ? ' (' + n + ')' : '') + '</button>' +
       (a.allowCancel
         ? '<button type="button" class="ctrl-btn btn-skip" id="hand-discard-cancel">取消</button>'

@@ -222,7 +222,7 @@ test('Leon attack 1 applies burn after skip-defense attack resolves', () => {
   assert.equal(engine.s.ai.burn, 3);
 });
 
-test('GhostFire applies three burn stacks in adventure combat', () => {
+test('GhostFire applies five burn stacks in adventure combat', () => {
   const engine = start({ hand: [number(2, 'YELLOW')] }, number(2, 'RED'));
   engine._adventureEngine = {
     snapshot: () => ({ consumables: [{ name: 'GhostFire', displayName: '鬼火', combatUse: 'burn', burnAmount: 3 }] }),
@@ -232,7 +232,7 @@ test('GhostFire applies three burn stacks in adventure combat', () => {
   engine.s.busy = false;
 
   engine.useAdventureCombatItem(0);
-  assert.equal(engine.s.ai.burn, 3);
+  assert.equal(engine.s.ai.burn, 5);
 });
 
 test('adventure opponent is registered for the ordinary 1v1 character and AI interfaces', () => {

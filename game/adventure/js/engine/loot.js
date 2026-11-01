@@ -199,6 +199,7 @@
     ]) }),
     VolcanoMagmaRhino: Object.freeze({ outcomes: Object.freeze([
       Object.freeze({ threshold: 3, drops: Object.freeze(['MagmaVeinTrophy']) }),
+      Object.freeze({ threshold: 5, drops: Object.freeze(['PiercingTrophy']) }),
       Object.freeze({ threshold: 6, drops: Object.freeze(['GuardTrophy']) })
     ]) }),
     VolcanoCinderPhoenix: Object.freeze({ outcomes: Object.freeze([

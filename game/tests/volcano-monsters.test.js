@@ -123,7 +123,7 @@ test('volcano bosses register with pools, loot, icons and stage gates',()=>{
  });
  const faces={
   VolcanoFlameLion:['BurnTrophy','BurnTrophy','BurnTrophy','BurnTrophy','ScorchTrophy','ScorchTrophy'],
-  VolcanoMagmaRhino:['MagmaVeinTrophy','MagmaVeinTrophy','MagmaVeinTrophy','GuardTrophy','GuardTrophy','GuardTrophy'],
+  VolcanoMagmaRhino:['MagmaVeinTrophy','MagmaVeinTrophy','MagmaVeinTrophy','PiercingTrophy','PiercingTrophy','GuardTrophy'],
   VolcanoCinderPhoenix:['FlyTrophy','FlyTrophy','FlyTrophy','ScorchTrophy','ScorchTrophy','BurnTrophy']
  };
  bosses.forEach(name=>{for(let face=1;face<=12;face++){

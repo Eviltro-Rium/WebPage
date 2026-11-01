@@ -3801,3 +3801,19 @@ body.combat-sheet-open #controls .ctrl-btn { cursor: not-allowed; }
   .rules-disclosure-body { padding-inline: 8px; }
   .rules-npc-row { gap: 8px; padding: 8px; }
 }
+
+/* 战利黑卡沿用白卡的布局；并排预览与升级反馈使用相同牌面。 */
+.codex-trophy-entry { grid-template-columns: 132px minmax(0, 1fr); }
+.codex-trophy-faces { display: flex; gap: 8px; align-items: flex-start; }
+.codex-trophy-faces .codex-trophy-face { width: 62px; height: auto; }
+.codex-trophy-variant-note { color: #a8bac8; font-size: .72rem; line-height: 1.5; }
+.trophy-upgrade-flash { animation: trophyUpgradeFlash .65s ease-out; }
+@keyframes trophyUpgradeFlash {
+  35% { filter: brightness(1.7); box-shadow: 0 0 18px rgba(167,139,250,.75); }
+}
+@media (max-width: 400px) {
+  .codex-trophy-entry { grid-template-columns: 106px minmax(0, 1fr); gap: 12px; }
+  .codex-trophy-faces { gap: 6px; }
+  .codex-trophy-faces .codex-trophy-face { width: 50px; }
+}
+@media (prefers-reduced-motion: reduce) { .trophy-upgrade-flash { animation: none; } }

@@ -9,7 +9,7 @@
 | 3 | 增加伤害 |
 | 4 | 加强防御 |
 
-Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
+Buff 与 Debuff 详细说明见 [buff_guide.md](../reference/buff_guide.md)。
 
 
 ## Emoji 说明

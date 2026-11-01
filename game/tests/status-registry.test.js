@@ -33,6 +33,8 @@ test('status registry describes and clears every current status', () => {
   assert.equal(registry.get('scorch').max, 1);
   assert.equal(registry.get('scorch').cleanse, 'reset');
   assert.equal(registry.get('scorch').trigger, 'onBurnSettle');
+  assert.equal(registry.get('iceSeal').max, 3);
+  assert.equal(registry.get('iceSeal').stack, true);
   registry.all.forEach(def => {
     assert.ok(def.icon, `${def.id} needs an icon`);
     assert.ok(def.polarity === 'buff' || def.polarity === 'debuff', `${def.id} needs polarity`);
@@ -100,9 +102,11 @@ test('StatusService is the single clamped mutation boundary', () => {
   service.add(entity, 'burn', 99);
   service.add(entity, 'guard', 99);
   service.add(entity, 'poison', 99);
+  service.add(entity, 'iceSeal', 99);
   service.add(entity, 'freeze', 1);
   assert.equal(entity.burn, 5);
   assert.equal(entity.guard, 5);
+  assert.equal(entity.iceSeal, 3);
   assert.equal(entity.frozen, true);
   service.remove(entity, 'burn', 2);
   service.clear(entity, 'freeze');

@@ -50,19 +50,20 @@
       return '无';
     }
     
-    _trophyCardMarkup(name, width = 54, height = 78) {
-      return '<span class="adv-scene-trophy-card" data-trophy-card="' + name + '" data-trophy-card-width="' + width + '" data-trophy-card-height="' + height + '"></span>';
+    _trophyCardMarkup(name, width = 54, height = 78, black = false) {
+      return '<span class="adv-scene-trophy-card" data-trophy-card="' + name + '" data-trophy-black="' + (black ? '1' : '0') + '" data-trophy-card-width="' + width + '" data-trophy-card-height="' + height + '"></span>';
     }
     
     _mountTrophyCards(root) {
       if (!root || !window.renderCard || !window.AdventureDeck) return;
       root.querySelectorAll('[data-trophy-card]').forEach(slot => {
         const card = window.AdventureDeck.trophyWhite(slot.getAttribute('data-trophy-card'));
+        if (slot.getAttribute('data-trophy-black') === '1') window.AdventureDeck.upgradeTrophy(card);
         const width = Number(slot.getAttribute('data-trophy-card-width')) || 54;
         const height = Number(slot.getAttribute('data-trophy-card-height')) || 78;
         const canvas = window.renderCard(card, width, height, false);
         canvas.classList.add('adv-scene-trophy-card-canvas');
-        canvas.dataset.renderKey = ['trophy', card.trophyName, width, height, window.CardStyle && window.CardStyle.iconRevision || 0].join(':');
+        canvas.dataset.renderKey = ['trophy', card.trophyName, card.trophyBlack ? 'black' : 'white', width, height, window.CardStyle && window.CardStyle.iconRevision || 0].join(':');
         slot.replaceWith(canvas);
       });
     }
@@ -154,7 +155,7 @@
         this._buildBuffBar(snap) +
         '<div class="adv-currency"><img src="' + AC.GOLD_ICON + '" class="adv-gold-icon" alt="金币"><b>' + snap.currency.gold + '</b></div>' +
         this._buildBeastTokenDisplay(snap) +
-        '<button type="button" class="adv-inventory-toggle" aria-expanded="' + !!this._inventoryExpanded + '" aria-controls="adv-inventory-content">背包 · 道具 / 配饰 / 白卡 <span aria-hidden="true">⌄</span></button>' +
+        '<button type="button" class="adv-inventory-toggle" aria-expanded="' + !!this._inventoryExpanded + '" aria-controls="adv-inventory-content">背包 · 道具 / 配饰 / 战利卡 <span aria-hidden="true">⌄</span></button>' +
         '<div class="adv-inventory-content" id="adv-inventory-content">' +
         this._buildItemPanel(snap) +
         this._buildTrophyBackpack(snap) +
@@ -323,7 +324,7 @@
       const cards = snap.trophyWhiteCards || [];
       return '<div class="adv-trophy-backpack-section">' +
         '<button type="button" class="adv-trophy-backpack-btn" id="adv-trophy-pack" title="查看和丢弃已获得的战利白卡">' +
-        '<span class="adv-trophy-backpack-icon">◇</span><span>战利白卡背包</span><b>' + cards.length + '</b></button></div>';
+        '<span class="adv-trophy-backpack-icon">◇</span><span>战利卡背包</span><b>' + cards.length + '</b></button></div>';
     }
     
     _buildAccessoryPanel(snap) {
@@ -571,6 +572,8 @@
         btns += '<div class="adv-action-hint">请在商店页操作</div>';
       } else if (snap.phase === Phase.BLACKSMITH) {
         btns += '<div class="adv-action-hint">请在铁匠铺页操作</div>';
+      } else if (snap.phase === Phase.SACRIFICE) {
+        btns += '<div class="adv-action-hint">请在献祭祭坛操作</div>';
       } else if (snap.phase === Phase.GLITCH) {
         btns += '<div class="adv-action-hint">请在故障事件页操作</div>';
       } else if (snap.phase === Phase.CLEAR) {

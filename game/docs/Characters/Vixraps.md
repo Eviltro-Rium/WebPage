@@ -27,7 +27,7 @@
 
 ## [催眠]与[沉睡]机制
 
-Vixraps 专属的两阶段 debuff，详见 [buff_guide.md](../buff_guide.md)。
+Vixraps 专属的两阶段 debuff，详见 [buff_guide.md](../reference/buff_guide.md)。
 
 - **[催眠]**（阶段一）：纯标记。持有者自己的进攻阶段结束、对手进攻阶段开始时立即转化为[沉睡]；施加后的当前攻击不会立即转化。重复施加无效。
 - **[沉睡]**（阶段二）：由[催眠]转化。持有者无法打出防御牌（强制跳过防御，全额承伤）；免疫新催眠；进入自己攻击回合时苏醒并恢复 10❤️（受 maxHp 上限）。
@@ -41,4 +41,4 @@ Vixraps 专属的两阶段 debuff，详见 [buff_guide.md](../buff_guide.md)。
 | 🛡️ | 格挡/防御 |
 | 🃏 | 卡牌 |
 
-Buff 与 Debuff 详细说明见 [buff_guide.md](../buff_guide.md)。
+Buff 与 Debuff 详细说明见 [buff_guide.md](../reference/buff_guide.md)。

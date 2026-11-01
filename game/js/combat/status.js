@@ -339,7 +339,7 @@
             else if (kind === 'freeze') entity.frozen = false;
             else if (kind === 'bomb') entity.bomb = 0;
             else if (kind === 'blind') entity.blind = 0;
-            else if (kind === 'iceSeal') entity.iceSeal = 0;
+            else if (kind === 'iceSeal' && entity.iceSeal) entity.iceSeal--;
             else if (kind === 'hypothermia' && entity.hypothermia) entity.hypothermia = 0;
             else if (kind === 'diving') entity.diving = false;
             else if (kind === 'scorch') entity.scorch = false;

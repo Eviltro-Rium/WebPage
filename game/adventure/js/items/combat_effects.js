@@ -257,6 +257,16 @@
     return { ok: true, message: applied.message };
   });
 
+  register('obsidian', (eng, def, ctx) => {
+    const index = Number(ctx.choice && ctx.choice.index);
+    const card = Number.isInteger(index) && eng.h.player && eng.h.player[index];
+    if (!window.AdventureDeck.upgradeTrophy(card)) return { ok: false, message: '请选择手牌中的战利白卡' };
+    eng._invariantBaseline = null;
+    if (typeof eng._checkInvariants === 'function') eng._checkInvariants('obsidian');
+    eng.emit('trophyUpgrade', '黑曜石：战利白卡升级为黑卡', card, { who:'player', handIndex:index });
+    return { ok: true, message: '战利白卡升级为黑卡，效果不变，打出时可指定颜色' };
+  });
+
   register('discardTalisman', (eng, def, ctx) => {
     const hand = eng.h.player || [];
     if (!hand.length) return { ok: false, message: '手牌为空，无法使用弃牌符' };

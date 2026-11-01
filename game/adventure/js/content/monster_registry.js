@@ -290,7 +290,7 @@
                   eng.emit('buff', '[潜水]', null, { who: diveWho, kind: 'diving', stacks: 1 });
                 }
                 if (typeof eng.iceSeal === 'function') eng.iceSeal(t);
-                else t.iceSeal = Math.min(1, (t.iceSeal || 0) + 1);
+                else t.iceSeal = Math.min(3, (t.iceSeal || 0) + 1);
               } else {
                 d = judgeDmg;
                 pp.deck.unshift(drawn);
@@ -474,7 +474,7 @@
         }
         if (typeof mod.attackIceSeal === 'function' && mod.attackIceSeal(c)) {
           if (typeof eng.iceSeal === 'function') eng.iceSeal(t, { silent: true });
-          else t.iceSeal = Math.min(1, (t.iceSeal || 0) + 1);
+          else t.iceSeal = Math.min(3, (t.iceSeal || 0) + 1);
         }
         // 沙漠骆驼：进攻1/2/3施加沙盲（层数，与攻击debuff一致延迟到防御结算后）
         if (typeof mod.attackSandblind === 'function') {
@@ -1402,9 +1402,8 @@
         return '造成对手buff总层数点[伤害]';
       }
       if (v >= 4 && v <= 6) {
-        const dmg = stage3 ? 4 : 3;
         const bleed = stage3 ? 2 : 1;
-        return '造成' + dmg + '点[伤害]，获得1层[暴击]，施加' + bleed + '层[流血]';
+        return '造成4点[伤害]，获得1层[暴击]（上限2），施加' + bleed + '层[流血]';
       }
       return '无进攻效果';
     }
@@ -1499,7 +1498,7 @@
     if (mod.name === 'DesertHyena' && card.isNumberCard) {
       const v = card.value;
       if (v >= 1 && v <= 3) {
-        return '造成2+玩家[流血]层数×2点[伤害]';
+        return '造成2×[流血]层数点[伤害]';
       }
       if (v >= 4 && v <= 6) {
         let line = '施加1层[流血]，获得[暴击]，造成玩家手牌数点[伤害]';
@@ -1543,6 +1542,18 @@
         // After compact: 双方获得[茂盛]，对手每层正面buff→3🗡️（≤3不可防御）
         // Stage3 +1 is applied to the computed damage, not restated here.
         return '双方获得[茂盛]，对手每层正面buff→3点[伤害]（≤3不可防御）';
+      }
+      return '无进攻效果';
+    }
+    // DesertBison attack: bleed before 2×/3× bleed-stack damage (desert.md).
+    if (mod.name === 'DesertBison' && card.isNumberCard) {
+      const v = card.value;
+      const mult = (Number(opts.stage) || 1) >= 3 ? 3 : 2;
+      if (v >= 1 && v <= 3) {
+        return '施加1层[流血]，造成' + mult + '×[流血]层数点[伤害]';
+      }
+      if (v >= 4 && v <= 6) {
+        return '造成2点[伤害]（不可防御），施加1层[流血]，获得1层[暴击]';
       }
       return '无进攻效果';
     }

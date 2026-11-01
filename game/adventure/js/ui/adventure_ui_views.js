@@ -25,7 +25,9 @@
       const wrap = document.createElement('div');
       wrap.className = 'adventure-wrap';
       wrap.appendChild(ui._buildHeader(snap));
-      if (snap.phase === Phase.GLITCH) {
+      if (snap.phase === Phase.SACRIFICE) {
+        wrap.appendChild(ui._buildSacrificePage(snap));
+      } else if (snap.phase === Phase.GLITCH) {
         wrap.appendChild(ui._buildGlitchPage(snap));
       } else if (snap.phase === Phase.SHOP) {
         wrap.appendChild(ui._buildShopPage(snap));

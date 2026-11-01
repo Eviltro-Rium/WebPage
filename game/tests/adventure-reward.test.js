@@ -431,7 +431,7 @@ test('map-usable consumables apply heal and purify outside combat', () => {
 
   const heal = eng.useConsumable(0);
   assert.equal(heal.ok, true);
-  assert.equal(eng.s.player.hp, 47);
+  assert.equal(eng.s.player.hp, 50);
   assert.deepEqual(Array.from(eng.s.consumables), ['PurifyWater2']);
 
   const purify = eng.useConsumable(0, { purifyChoices: ['burn', 'burn', 'bleed'] });

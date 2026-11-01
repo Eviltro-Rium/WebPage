@@ -490,11 +490,11 @@ test('state damage keeps attack modifiers and doubling uses post-defense stacks'
   second.settlePreparedHit(second.s.player,second.s.ai,{damage:remaining,bleed:0});assert.equal(second.s.ai.burn,2);
 });
 test('manual guard reduces life steal only once', () => {
-  const eng=new Engine();eng.start('Ryan','Otto');eng.s.player.guard=3;eng.s.ai.hp=50;
+  const eng=new Engine();eng.start('Ryan','Otto');eng.s.player.guard=3;eng.s.ai.hp=50;const beforeHp=eng.s.player.hp;
   eng.s.pendingAttack={damage:5,isDrain:true};eng.s.atkOwner='ai';eng.s.atkCard=number(4);
   eng.askGuard(5);eng.chooseGuard(1);assert.equal(eng.s.player.guard,2);
   eng.acknowledgeEvents(eng.ver);
-  assert.equal(eng.s.player.guard,2);assert.equal(eng.s.player.hp,66);assert.equal(eng.s.ai.hp,54);
+  assert.equal(eng.s.player.guard,2);assert.equal(eng.s.player.hp,beforeHp-4);assert.equal(eng.s.ai.hp,54);
 });
 test('queued effects survive refresh snapshots', () => {
   const eng=new Engine();eng.start('Vixraps','Ryan');const r=setupAttack(eng,'Vixraps',7);
@@ -502,9 +502,9 @@ test('queued effects survive refresh snapshots', () => {
   assert.equal(restored.prepareAttackSettlement(r.d,'ai'),4);assert.equal(restored.s.ai.burn,2);assert.ok(restored.s.ai.hypnosis);
 });
 test('HP events carry the values needed for sequential animations', () => {
-  const eng=new Engine();eng.start('Ryan','Leon');eng.events=[];eng.hurt(eng.s.ai,3);eng.heal(eng.s.ai,2);
+  const eng=new Engine();eng.start('Ryan','Leon');const beforeHp=eng.s.ai.hp;eng.events=[];eng.hurt(eng.s.ai,3);eng.heal(eng.s.ai,2);
   const hit=eng.events.find(e=>e.type==='hit'), heal=eng.events.find(e=>e.type==='heal');
-  assert.equal(hit.hpBefore,90);assert.equal(hit.hpAfter,87);assert.equal(heal.hpBefore,87);assert.equal(heal.hpAfter,89);
+  assert.equal(hit.hpBefore,beforeHp);assert.equal(hit.hpAfter,beforeHp-3);assert.equal(heal.hpBefore,beforeHp-3);assert.equal(heal.hpAfter,beforeHp-1);
 });
 
 test('status-only hypothermia commits its forced discard once', () => {
@@ -527,10 +527,10 @@ test('damage modifiers multiply the live formula and a failed roulette stays zer
   assert.equal(missed.prepareAttackSettlement(0,'ai'),0);
 });
 test('guard blocks the main hit but does not erase existing defense bleed', () => {
-  const eng=new Engine();eng.start('Ryan','Otto');eng.s.player.bleed=2;eng.s.player.guard=5;
+  const eng=new Engine();eng.start('Ryan','Otto');eng.s.player.bleed=2;eng.s.player.guard=5;const beforeHp=eng.s.player.hp;
   eng.s.atkOwner='ai';eng.s.atkCard=number(3);eng.s.defCard=number(1);eng.s.defOwner='player';eng.s.pendingAttack={damage:2};
   eng.askGuard(2,2);eng.chooseGuard(2);eng.acknowledgeEvents(eng.ver);
-  assert.equal(eng.s.player.hp,68);assert.equal(eng.s.player.bleed,1);
+  assert.equal(eng.s.player.hp,beforeHp-2);assert.equal(eng.s.player.bleed,1);
 });
 
 test('attack resource consumption stays committed before defense', () => {

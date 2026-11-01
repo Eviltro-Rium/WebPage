@@ -392,7 +392,7 @@ _showSkillOverlay() {
         { atkKey: 3, defKey: -1, label: '4' }, { atkKey: 4, defKey: -1, label: '5' },
         { atkKey: 5, defKey: -1, label: '6' }, { atkKey: 6, defKey: -1, label: '7' }
     ];
-    const stripPrefix = t => (t || '').replace(/^\d+\s*/, '');
+    const stripPrefix = t => (t || '').replace(/^\d+\s+/, '');
     const tagifySkill = t => {
         let out = String(t || '');
         const names = ['熔脉', '丰饶', '嘲弄', '失温', '炙热', '冰封', '定时炸弹', '流沙', '沙盲', '荆棘', '催眠', '沉睡', '捆缚', '嗜血', '寄生', '茂盛', '潜水', '飞翔', '守护', '硬化', '暴击', '致盲', '中毒', '流血', '冷冻', '灼伤'];

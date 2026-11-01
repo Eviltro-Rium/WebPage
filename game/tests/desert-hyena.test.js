@@ -90,12 +90,12 @@ test('DesertHyena loot: 1-4 piercing, 5 crit, 6 thorns', () => {
   assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertHyena', null, 12).drops), ['PurifyWaterTrophy']);
 });
 
-test('DesertHyena attack 1/2/3 scales with bleed (base 2)', () => {
+test('DesertHyena attack 1/2/3 scales with bleed (2× layers)', () => {
   const m = getBoss('DesertHyena');
   for (const v of [1, 2, 3]) {
-    assert.equal(m.attackDamage(numCard(v), { playerBleed: 0 }), 2);
-    assert.equal(m.attackDamage(numCard(v), { playerBleed: 1 }), 4);
-    assert.equal(m.attackDamage(numCard(v), { playerBleed: 3 }), 8);
+    assert.equal(m.attackDamage(numCard(v), { playerBleed: 0 }), 0);
+    assert.equal(m.attackDamage(numCard(v), { playerBleed: 1 }), 2);
+    assert.equal(m.attackDamage(numCard(v), { playerBleed: 3 }), 6);
     assert.equal(m.attackBleed(numCard(v)), 0);
     assert.equal(m.attackGainCrit(numCard(v)), 0);
     assert.equal(m.attackHyenaJudge(numCard(v)), false);
@@ -198,6 +198,7 @@ test('DesertHyena 0: number 0 card fails like non-number', () => {
 test('DesertHyena stage3 yellow attack is unblockable without spending crit', (t) => {
   const eng = stagedEngine(t, 3);
   eng.s.ai.crit = 2;
+  eng.s.player.bleed = 1;
   const r = eng.effect('DesertHyena', 2, numCard(2, 'YELLOW'), eng.s.ai, eng.s.player);
   assert.equal(r.d, 2);
   assert.equal(r.unblock, true);
@@ -226,7 +227,7 @@ test('DesertHyena defend 1/2/3 counters half incoming', (t) => {
 
 test('DesertHyena skill panel text (compact)', () => {
   const low = describe('DesertHyena', numCard(2), false, { stage: 2 });
-  assert.match(low, /2\+玩家\[流血\]层数×2🗡️/);
+  assert.match(low, /2×\[流血\]层数🗡️/);
   const high = describe('DesertHyena', numCard(5), false, { stage: 2 });
   assert.match(high, /施加\[流血\]/);
   assert.match(high, /获得\[暴击\]/);

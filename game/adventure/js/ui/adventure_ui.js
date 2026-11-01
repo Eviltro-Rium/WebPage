@@ -662,6 +662,11 @@
           this._renderTestMode();
           return;
         }
+        if ((id && id.startsWith('adv-sacrifice-')) || e.target.closest('[data-sacrifice-card]')) {
+          const button = e.target.closest('button');
+          if (button && !button.disabled) void this._handleSacrificeAction(button);
+          return;
+        }
         if ((id && id.startsWith('adv-glitch-')) || e.target.closest('[data-glitch-discard]')) {
           const button = e.target.closest('button');
           if (button && !button.disabled) void this._handleGlitchAction(button);
@@ -799,7 +804,7 @@
             });
             return;
           }
-          if (def && (def.combatUse === 'discardTalisman' || def.combatUse === 'furnace')) {
+          if (def && (def.combatUse === 'discardTalisman' || def.combatUse === 'furnace' || def.combatUse === 'obsidian')) {
             // Engine beginHandDiscard → pendingHandDiscard; picker eats snapshot.
             const result = this.eng.useConsumable(useIndex);
             if (result && result.message) this._toast(result.message);
@@ -915,7 +920,7 @@
         discardTop: this.eng.s.discardTop ? clone(this.eng.s.discardTop.get()) : null,
         discardTopOwner: this.eng.s.discardTopOwner || null,
         adventureCurrency: this.eng.s.currency,
-        stage: snap.stage || 1,
+        stage: (snap.combat.kind === 'glitch' && snap.roomInfo && snap.roomInfo.glitchEvent && snap.roomInfo.glitchEvent.opponentStage) || snap.stage || 1,
         scene: this.eng.s.scene || 'castle',
         resumeBattle: resumeSession && resumeSession.battle ? resumeSession.battle : null,
         adventureEngine: this.eng
@@ -1244,6 +1249,10 @@
           const result = this.eng.confirmHandDiscard();
           if (result && result.message) this._toast(result.message);
           this.render();
+          if (result && Number.isInteger(result.upgradedIndex)) {
+            const card = this.container.querySelector('#adv-hand-zone [data-index="' + result.upgradedIndex + '"]');
+            if (card) card.classList.add('trophy-upgrade-flash');
+          }
         },
         onCancel: () => {
           const result = this.eng.cancelHandDiscard();
@@ -1368,14 +1377,14 @@
       const groups = [];
       const byName = {};
       cards.forEach((card, index) => {
-        const key = card.name;
+        const key = card.name + (card.trophyBlack ? ':black' : ':white');
         if (!byName[key]) { byName[key] = { card, firstIndex: index, count: 0 }; groups.push(byName[key]); }
         byName[key].count++;
       });
       const rows = groups.length ? groups.map(g =>
-        '<div class="adv-trophy-pack-row"><div class="adv-trophy-pack-card"><span class="adv-trophy-pack-thumb">' + this._trophyCardMarkup(g.card.name, 46, 68) + (g.count > 1 ? '<span class="adv-trophy-pack-count">×' + g.count + '</span>' : '') + '</span><div><b>' + g.card.displayName + (g.count > 1 ? ' ×' + g.count : '') + '</b><small>' + (g.card.description || '') + '</small></div></div><button class="adv-btn adv-trophy-pack-discard" data-trophy-discard="' + g.firstIndex + '">' + (g.count > 1 ? '丢弃1张' : '丢弃') + '</button></div>'
+        '<div class="adv-trophy-pack-row"><div class="adv-trophy-pack-card"><span class="adv-trophy-pack-thumb">' + this._trophyCardMarkup(g.card.name, 46, 68, g.card.trophyBlack) + (g.count > 1 ? '<span class="adv-trophy-pack-count">×' + g.count + '</span>' : '') + '</span><div><b>' + g.card.displayName + (g.count > 1 ? ' ×' + g.count : '') + '</b><small>' + (g.card.description || '') + '</small></div></div><button class="adv-btn adv-trophy-pack-discard" data-trophy-discard="' + g.firstIndex + '">' + (g.count > 1 ? '丢弃1张' : '丢弃') + '</button></div>'
       ).join('') : '<div class="adv-trophy-pack-empty">尚未获得战利白卡</div>';
-      overlay.innerHTML = '<div class="dialog-box adv-trophy-pack-dialog"><div class="dialog-title">战利白卡背包</div><div class="dialog-body adv-trophy-pack-list">' + rows + '</div><div class="dialog-buttons"><button class="adv-btn adv-btn-primary" id="adv-trophy-pack-close">关闭</button></div></div>';
+      overlay.innerHTML = '<div class="dialog-box adv-trophy-pack-dialog"><div class="dialog-title">战利卡背包</div><div class="dialog-body adv-trophy-pack-list">' + rows + '</div><div class="dialog-buttons"><button class="adv-btn adv-btn-primary" id="adv-trophy-pack-close">关闭</button></div></div>';
       document.body.appendChild(overlay);
       this._mountTrophyCards(overlay);
       const close = () => overlay.remove();

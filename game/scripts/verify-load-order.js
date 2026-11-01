@@ -58,6 +58,7 @@ const adventureExpected = expand(['characters', 'ai', 'combat']).concat([
   'adventure/js/engine/rewards.js',
   'adventure/js/engine/inventory.js',
   'adventure/js/engine/combat_result.js',
+  'adventure/js/engine/sacrifice.js',
   'adventure/js/engine/glitch.js',
   'adventure/js/battle/battle_engine.js',
   'adventure/js/battle/adventure_battle_items.js',
@@ -69,6 +70,7 @@ const adventureExpected = expand(['characters', 'ai', 'combat']).concat([
   'adventure/js/ui/adventure_ui.js',
   'adventure/js/ui/adventure_ui_map_view.js',
   'adventure/js/ui/adventure_ui_panels.js',
+  'adventure/js/ui/adventure_ui_sacrifice.js',
   'adventure/js/ui/adventure_ui_glitch.js',
   'adventure/js/ui/adventure_ui_views.js', 'js/version.js'
 ]);
