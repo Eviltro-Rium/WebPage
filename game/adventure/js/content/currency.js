@@ -2,7 +2,7 @@
  * 货币系统 AdventureCurrency
  * 金币：通用货币，无上限。
  * 兽元：5种——本兽元(ben)、草兽元(cao)、水兽元(shui)、火兽元(huo)、万能兽元(wuneng)。
- *   默认上限 8；持有「兽元袋」时上限 12。超过需舍弃（类似桌游璀璨宝石）。
+ *   默认上限 9；每件「兽元袋」增加 3（最多两件）。超过需舍弃（类似桌游璀璨宝石）。
  *
  * 兽元奖励8种等可能情况（普通房间完成后结算）：
  *   情况0：4种普通兽元各1个 → 玩家选2个
@@ -15,7 +15,7 @@
   const BEAST_TYPES = ['ben', 'cao', 'shui', 'huo'];
   const UNIVERSAL_TYPE = 'wuneng';
   const ALL_BEAST_TYPES = ['ben', 'cao', 'shui', 'huo', 'wuneng'];
-  const DEFAULT_MAX_BEAST_TOKENS = 8;
+  const DEFAULT_MAX_BEAST_TOKENS = 9;
   const BOOSTED_MAX_BEAST_TOKENS = 12;
   /** @deprecated 兼容旧引用：表示默认上限 */
   const MAX_BEAST_TOKENS = DEFAULT_MAX_BEAST_TOKENS;

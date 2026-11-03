@@ -70,6 +70,10 @@ test('CombatInvariants reports ownership, conservation, and end-of-room violatio
   sharedCard.piles.player.deck[0] = sharedCard.piles.ai.deck[0];
   assert.throws(() => CombatInvariants.check(sharedCard, 'draw', { throw: true }), /共享同一张牌对象/);
 
+  const foreignNpc = adventureEngine();
+  foreignNpc.piles.player.discard.push(Card.number('WHITE', 1, true, {npcCard:true}));
+  assert.throws(() => CombatInvariants.check(foreignNpc, 'discard', {throw:true}), /NPC牌混入玩家牌堆/);
+
   const duplicated = adventureEngine();
   CombatInvariants.check(duplicated, 'start');
   duplicated.piles.ai.hand.push(Card.number('RED', 1));

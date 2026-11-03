@@ -146,7 +146,7 @@ Leon 0牌对所有存活对手 +2层灼伤、7点不可防御伤害，自身受�
 
 ## 16. 抽取对手手牌 — 按模式选择策略
 
-Chan 4/7、Saiki 5、Blaze 4、Moze 5、Leon 7 等会检查攻击目标手牌的技能，统一通过 `OpponentHandPolicy` 选择策略：冒险模式（包括测试房）因 NPC 手牌明牌，由玩家点击目标手牌后确认；经典 1v1/1v2 及在线模式继续使用共享随机源自动抽取。1v2 始终只从当前攻击目标的手牌中处理，不能选择另一名 NPC 的牌。抽到后仍按角色原规则进入判定区、玩家手牌或对应弃牌库。
+Chan 4/7、Saiki 5、Blaze 4、Moze 5、Leon 7 等会检查攻击目标手牌的技能，统一通过 `OpponentHandPolicy` 选择策略：冒险模式（包括测试房）因 NPC 手牌明牌，由玩家点击目标手牌后确认；经典 1v1/1v2 及在线模式继续使用共享随机源自动抽取。1v2 始终只从当前攻击目标的手牌中处理，不能选择另一名 NPC 的牌。冒险模式从 NPC 手牌抽取的实体牌，判定或弃牌后必须回到 NPC 弃牌库，不能放入玩家弃牌库（Chan 7、Saiki 3/5、Moze 5 等使用同一归属规则）；变色龙颜料的暂借牌保留借用来源并按原规则归还。经典和在线模式仍按角色原规则决定保留或弃掉。
 
 - 代码：`js/combat/opponent_hand_policy.js`、`engine.js` `resolveOpponentHandSkill()` / `chooseOpponentCard()`；`engine_1v2.js` `play1v2()`
 

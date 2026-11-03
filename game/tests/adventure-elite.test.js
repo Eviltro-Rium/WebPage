@@ -177,7 +177,8 @@ test('all maps have enough reachable normal and elite rooms and match embedded d
     const rooms = []; let start;
     grid.forEach((row,r)=>row.forEach((code,c)=>{if(code!==-1)rooms.push([r,c,code]);if(code===0)start=[r,c];}));
     assert.ok(start, name + ' start');
-    assert.ok(rooms.filter(([, , code])=>code===1).length >= 4, name + ' normal rooms');
+    const normalCount = rooms.filter(([, , code])=>code===1).length;
+    assert.ok(normalCount >= (stage < 3 ? 3 : 4) && normalCount <= (stage < 3 ? 5 : 6), name + ' normal rooms');
     const elites = rooms.filter(([, , code])=>code===8 || code===9);
     if (stage < 3) assert.equal(elites.length, 0, name + ' early elite rooms');
     else {

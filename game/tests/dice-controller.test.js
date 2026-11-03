@@ -112,9 +112,9 @@ test('fly result pauses before HP settlement; changing a failed die to success c
   assert.ok(!e.s.pendingDialog);choose(e,true,12);assert.equal(itemCount(e),0);
   runtime.resetRandomSource();
 });
-test('keeping a failed fly result costs nothing and restores the retry decision',()=>{
+test('keeping a failed fly result costs nothing and settles when avoidance is exhausted',()=>{
   let randomCalls=0;runtime.setRandomSource(()=>{randomCalls++;return .9;});const e=battle();randomCalls=0;e.dispatch('chooseFly');
-  choose(e,false);assert.equal(e.s.pendingDialog,'flyRetry');assert.equal(e.s.phase,'GUARD_CHOICE');assert.equal(itemCount(e),1);assert.equal(randomCalls,1);
+  choose(e,false);assert.equal(e.s.pendingDialog,null);assert.equal(e.s.phase,'AI_TURN');assert.equal(e.pendingSettlement.damage,5);assert.equal(itemCount(e),1);assert.equal(randomCalls,1);
   runtime.resetRandomSource();
 });
 test('remote dice rejects choosing the original face and leaves inventory untouched',()=>{
@@ -135,7 +135,7 @@ test('remote dice rejects choosing the original face and leaves inventory untouc
 test('invalid faces do not advance the roll or consume inventory; input is range-checked',()=>{
   runtime.setRandomSource(()=>.9);const e=battle();e.dispatch('chooseFly');
   for(const value of [0,13,1.5,'bad']) {choose(e,true,value);assert.equal(e.s.phase,'DICE_CHOICE');assert.equal(itemCount(e),1);}
-  choose(e,true,7);assert.equal(itemCount(e),0);assert.equal(e.s.pendingDialog,'flyRetry');runtime.resetRandomSource();
+  choose(e,true,7);assert.equal(itemCount(e),0);assert.equal(e.s.pendingDialog,null);assert.equal(e.pendingSettlement.damage,5);runtime.resetRandomSource();
 });
 test('dice choice rejects play/end/discard commands; animation acknowledgment cannot resume settlement',()=>{
   runtime.setRandomSource(()=>.9);const e=battle();e.dispatch('chooseFly');const hand=e.h.player.length;
@@ -154,7 +154,7 @@ test('pending dice choice survives a JSON battle restore and does not re-roll ra
 });
 test('blindness blocks remote dice but does not stop ordinary rolling',()=>{
   runtime.setRandomSource(()=>.9);const e=battle();e.s.player.blind=1;e.dispatch('chooseFly');
-  assert.ok(!e.s.pendingDiceControl);assert.equal(e.s.pendingDialog,'flyRetry');assert.equal(itemCount(e),1);runtime.resetRandomSource();
+  assert.ok(!e.s.pendingDiceControl);assert.equal(e.s.pendingDialog,null);assert.equal(e.pendingSettlement.damage,5);assert.equal(itemCount(e),1);runtime.resetRandomSource();
 });
 test('loot pauses before trophy creation, choosing a face selects the documented drop exactly once',()=>{
   runtime.setRandomSource(()=>.9);const e=battle(),hand=e.h.player.length;e.s.ai.alive=false;e.s.ai.hp=0;
@@ -364,4 +364,23 @@ test('face editing marks the original dice event instead of a later Magician HP 
    assert.ok(!e.events.some(evt=>evt.type==='diceRoll'),'already presented roll is not emitted again');
   }finally{runtime.resetRandomSource();}
  }
+});
+
+
+test('confirming remote or Magician dice marks replayed rolls before observers receive them', () => {
+  for (const mode of ['remote', 'magician']) for (const edited of [false, true]) {
+    const e=battle(mode==='remote'?['DiceController']:[]);
+    if(mode==='magician')e._adventureEngine.s.accessories=['Magician'];
+    const emitted=[],emit=e.emit;
+    e.emit=function(...args){const value=emit.apply(this,args);const event=this.events.at(-1);if(event&&event.type==='diceRoll')emitted.push(JSON.parse(JSON.stringify(event)));return value;};
+    runtime.setRandomSource(()=>.9);
+    try {
+      e.dispatch('chooseFly');
+      assert.equal(emitted.length,1);assert.ok(!emitted[0].replayed);emitted.length=0;
+      e.dispatch('chooseDiceControl',mode==='remote'?{use:edited,value:1}:{adjust:edited?-1:0});
+      assert.equal(emitted.length,1);assert.equal(emitted[0].replayed,true,mode+' edited='+edited);
+      assert.equal(e.s.player.fly,0,'replaying does not consume fly twice');
+      assert.equal(e.s.pendingDialog,null);
+    } finally {runtime.resetRandomSource();}
+  }
 });

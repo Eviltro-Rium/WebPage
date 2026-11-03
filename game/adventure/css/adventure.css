@@ -22,11 +22,11 @@
 }
 .adventure-wrap {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   grid-template-rows: auto 1fr;
   gap: 16px;
   padding: 20px;
-  max-width: 960px;
+  max-width: 1180px;
   margin: 0 auto;
   color: #e8e8f0;
   font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -53,6 +53,7 @@
 }
 
 .adventure-board {
+  --adv-map-cell-max: 112px;
   display: grid;
   gap: 8px;
   padding: 16px;
@@ -60,10 +61,11 @@
   background: rgba(20, 18, 34, 0.6);
   border: 1px solid rgba(120, 110, 180, 0.2);
   border-radius: 12px;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: auto;
   overflow: visible;
-  max-width: 100%;
+  max-width: min(100%, calc(var(--adv-map-cols, 5) * var(--adv-map-cell-max) + 32px));
   width: 100%;
+  margin-inline: auto;
   min-width: 0;
   align-self: start;
 }
@@ -86,8 +88,8 @@
   overflow: visible;
 }
 .adv-cell.room-empty { background: transparent; border-color: transparent; cursor: default; }
-.adv-room-icon { width: 52%; height: 52%; object-fit: contain; }
-.adv-cell.has-door-cost .adv-room-icon { width: 44%; height: 44%; }
+.adv-room-icon { width: 60%; height: 60%; object-fit: contain; }
+.adv-cell.has-door-cost .adv-room-icon { width: 52%; height: 52%; }
 .adv-door-cost {
   display: flex;
   align-items: center;
@@ -1044,6 +1046,7 @@
     gap: 8px;
   }
   .adventure-board {
+    --adv-map-cell-max: 84px;
     width: min(100%, 520px);
     margin-inline: auto;
     padding: 10px;
@@ -1064,8 +1067,8 @@
     -webkit-mask-size: 16px 16px;
     mask-size: 16px 16px;
   }
-  .adv-room-icon { width: 58%; height: 58%; }
-  .adv-cell.has-door-cost .adv-room-icon { width: 48%; height: 48%; }
+  .adv-room-icon { width: 62%; height: 62%; }
+  .adv-cell.has-door-cost .adv-room-icon { width: 52%; height: 52%; }
   .adv-cell-loot-icon { top: 2px; left: 2px; width: 15px; height: 15px; }
   .adv-door-cost-icon { width: 11px; height: 11px; }
   .adv-door-hint { margin-top: 3px; font-size: 10px; }
@@ -1117,8 +1120,8 @@
   .adventure-wrap { padding-inline: 8px; }
   .adventure-board { padding-inline: 7px; gap: 4px; }
   .adv-cell { font-size: 11px; }
-  .adv-room-icon { width: 55%; height: 55%; }
-  .adv-cell.has-door-cost .adv-room-icon { width: 45%; height: 45%; }
+  .adv-room-icon { width: 60%; height: 60%; }
+  .adv-cell.has-door-cost .adv-room-icon { width: 50%; height: 50%; }
   .adv-actions { grid-template-columns: 1fr; }
   .adv-shop-slots,
   .adv-blacksmith-page .adv-shop-slots { grid-template-columns: 1fr; }

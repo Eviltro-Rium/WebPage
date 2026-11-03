@@ -41,6 +41,7 @@
       board.className = 'adventure-board';
       if (!model) return board;
       board.style.gridTemplateColumns = 'repeat(' + model.cols + ', 1fr)';
+      board.style.setProperty('--adv-map-cols', String(model.cols));
     
       for (const cellModel of model.cells) {
         const cell = document.createElement('button');

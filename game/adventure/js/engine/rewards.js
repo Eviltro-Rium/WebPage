@@ -151,20 +151,45 @@
       }
       return '无奖励';
     },
-    _applyBasicLoot(loot) {
+    _applyBasicLoot(loot, opts = {}) {
       if (!loot || loot.kind === 'none') return { ok: true, empty: true };
       if (loot.kind === 'merchant') return { ok: true, empty: true }; // 购买走 buyMerchantAccessory；领取=离开商人
       if (loot.kind === 'gold') {
         this.s.currency.addGold(loot.gold);
         return { ok: true };
       }
-      if (loot.kind === 'items') {
-        const list = Array.isArray(loot.items) ? loot.items : [];
+      if (loot.kind === 'items' || loot.kind === 'item') {
+        const list = loot.kind === 'item' ? [loot.item] : (Array.isArray(loot.items) ? loot.items : []);
         if (!list.length) return { ok: true, empty: true };
-        for (let i = 0; i < list.length; i++) {
-          if (!this.addItem(list[i], { allowConsumableOverflow: true })) return { ok: false, reason: 'full' };
+        const remaining = [];
+        const granted = [];
+        let blocked = null;
+        // 先校验整份奖励，避免重试时重复发放已经入包的道具。
+        const checks = list.map(name => this._canAddItem(name, { allowConsumableOverflow: true }));
+        if (!opts.keepBlockedInRoom) {
+          const failure = checks.find(check => !check.ok);
+          if (failure) return failure;
         }
-        return { ok: true, itemOverflow: Math.max(0, this.s.consumables.length - CONSUMABLE_SLOT_COUNT) };
+        for (let i = 0; i < list.length; i++) {
+          const check = checks[i];
+          if (!check.ok) {
+            remaining.push(list[i]);
+            if (!blocked) blocked = check;
+          } else if (this.addItem(list[i], { allowConsumableOverflow: true })) {
+            granted.push(list[i]);
+          } else {
+            remaining.push(list[i]);
+            if (!blocked) blocked = this._canAddItem(list[i], { allowConsumableOverflow: true });
+          }
+        }
+        if (!granted.length && blocked) return { ok: false, reason: blocked.reason, message: blocked.message };
+        return {
+          ok: true,
+          itemOverflow: Math.max(0, this.s.consumables.length - CONSUMABLE_SLOT_COUNT),
+          remaining: remaining.length ? { kind: 'items', items: remaining } : null,
+          granted: { kind: 'items', items: granted },
+          message: remaining.length ? blocked.message + '；未领取的道具已留在房间' : null
+        };
       }
       if (loot.kind === 'accessory') {
         const name = loot.accessory || loot.item;
@@ -173,12 +198,6 @@
         if (!check.ok) return { ok: false, reason: check.reason, message: check.message };
         if (!this.addItem(name)) return { ok: false, reason: 'full' };
         return { ok: true };
-      }
-      if (loot.kind === 'item') {
-        const check = this._canAddItem(loot.item);
-        if (!check.ok) return { ok: false, reason: check.reason, message: check.message };
-        if (!this.addItem(loot.item, { allowConsumableOverflow: true })) return { ok: false, reason: 'full' };
-        return { ok: true, itemOverflow: Math.max(0, this.s.consumables.length - CONSUMABLE_SLOT_COUNT) };
       }
       if (loot.kind === 'beast') {
         const map = {};
@@ -238,18 +257,22 @@
       if (!room || room.type !== window.RoomType.ITEM) return false;
       const loot = this.s.pendingRoomReward || room.stashedLoot;
       if (!loot) return false;
-      const result = this._applyBasicLoot(loot);
+      this._lastRewardNotice = null;
+      const result = this._applyBasicLoot(loot, { keepBlockedInRoom: true });
       if (!result.ok) {
         this._lastRewardError = { reason: result.reason || 'full', message: result.message || '道具槽已满，无法领取该奖励' };
         this._log(this._lastRewardError.message);
         return false;
       }
       this._lastRewardError = null;
-      this._clearStashedLoot(room);
+      if (result.remaining) this._stashBasicLoot(room, result.remaining);
+      else this._clearStashedLoot(room);
       this.s.pendingRoomReward = null;
       room.visited = true;
-      this._log('领取奖励房奖励：' + this._roomLootText(loot));
-      this.emit('reward', '领取奖励房奖励', { loot });
+      this._log('领取奖励房奖励：' + this._roomLootText(result.granted || loot));
+      this._lastRewardNotice = result.message || null;
+      if (result.message) this._log(result.message);
+      this.emit('reward', '领取奖励房奖励', { loot: result.granted || loot, remaining: result.remaining || null });
       if (result.itemOverflow) {
         this._beginItemDiscard('map');
         return true;

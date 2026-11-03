@@ -10,6 +10,6 @@
 - [配饰图鉴](accessories.md)
 - [一次性道具图鉴](consumables.md)（含战利白卡）
 - [战利白卡掉落规则](loot.md)
-- [房间类型](rooms.md)（普通 / Boss / 挑战 / 精英 / 奖励 / 商店 / 铁匠铺 / 故障 / 献祭）
+- [房间类型](rooms.md)（含各层普通房数量、可变地图形状、奖励/铁匠支路与 Boss 后献祭房）
 
 通用规则见上一级：[Buff 图鉴](../reference/buff_guide.md)、[卡牌介绍](../reference/Cards_deck.md)、[小规则汇总](../reference/small_rules.md)。

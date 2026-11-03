@@ -692,7 +692,9 @@
           if (!this.eng.claimRoomReward()) {
             const err = this.eng._lastRewardError;
             if (err && err.reason === 'accessoryFull') this._showAlertDialog('无法拾取', err.message);
-            else this._toast('领取失败');
+            else this._toast((err && err.message) || '领取失败');
+          } else if (this.eng._lastRewardNotice) {
+            this._toast(this.eng._lastRewardNotice);
           }
           this.render();
         }

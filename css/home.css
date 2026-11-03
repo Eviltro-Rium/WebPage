@@ -1,0 +1,254 @@
+/* 个人网站收藏册样式，由 site-collection 显式启用，不影响游戏。 */
+body.site-collection {
+  --home-ground: #f5f9f6;
+  --home-paper: #ffffff;
+  --home-panel: rgba(245, 249, 246, .50);
+  --home-panel-paper: rgba(255, 255, 255, .58);
+  --home-panel-field: rgba(228, 239, 231, .48);
+  --home-field: #e4efe7;
+  --home-ink: #173c32;
+  --home-soft: #3c5d52;
+  --home-accent: #17684b;
+  --home-on-accent: #ffffff;
+  --home-card-radius: 24px;
+  --home-inner-radius: 16px;
+  --home-gutter: clamp(20px, 4vw, 56px);
+  --text-main: var(--home-ink);
+  --text-muted-light: var(--home-soft);
+  --font-body: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-display: var(--font-body);
+  color: var(--home-ink);
+  background: var(--home-field);
+}
+html[data-theme="dark"] body.site-collection {
+  --home-ground: #172c29;
+  --home-paper: #203a34;
+  --home-panel: rgba(23, 44, 41, .55);
+  --home-panel-paper: rgba(32, 58, 52, .58);
+  --home-panel-field: rgba(42, 72, 64, .50);
+  --home-field: #2a4840;
+  --home-ink: #f0f7f2;
+  --home-soft: #c0d7c9;
+  --home-accent: #b7e6c7;
+  --home-on-accent: #163b2c;
+}
+body.site-collection::before, body.site-collection::after { display: none; }
+body.site-collection a { color: inherit; }
+body.site-collection a:hover { color: var(--home-accent); }
+body.site-collection :focus-visible { outline: 3px solid var(--home-accent); outline-offset: 5px; }
+body.site-collection .home-skip { position: fixed; top: 12px; left: 20px; z-index: 100; padding: 12px 20px; background: var(--home-paper); transform: translateY(-180%); }
+body.site-collection .home-skip:focus { transform: translateY(0); }
+body.site-collection .site-header {
+  max-width: 1280px; margin: 24px auto 0; padding: 20px var(--home-gutter);
+  background: var(--home-panel); background-image: none; border: 0; border-radius: 0;
+  box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+  gap: 28px; flex-wrap: wrap; flex-direction: row; align-items: center;
+}
+body.site-collection .logo { font-size: 28px; letter-spacing: -.05em; }
+body.site-collection .nav { flex: 1; justify-content: center; gap: clamp(16px, 2.2vw, 30px); }
+body.site-collection .nav a { color: var(--home-ink); font-size: 16px; }
+body.site-collection .nav a:hover { text-decoration: underline; text-underline-offset: 6px; }
+body.site-collection .theme-toggle {
+  padding: 10px 14px; min-height: 44px; color: var(--home-ink); background: var(--home-field);
+  border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+}
+body.site-collection .theme-toggle-icon { display: none; }
+body.site-collection .theme-toggle-label { display: inline; font-size: 16px; }
+body.site-collection main { max-width: 1280px; margin: 0 auto; padding: 0; background: transparent; }
+body.site-collection .hero { padding: 48px var(--home-gutter) 64px; text-align: left; background: var(--home-panel); }
+body.site-collection .home-hero-heading { display: grid; grid-template-columns: .85fr 1.15fr; gap: 36px; align-items: center; }
+body.site-collection .hero-title {
+  font-size: clamp(96px, 12vw, 172px); font-weight: 600; letter-spacing: -.07em;
+  line-height: 1; margin: 0; color: var(--home-ink); text-shadow: none; filter: none; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+}
+body.site-collection .hero-lettering {
+  display: block; margin: 0; max-width: none;
+  font-family: "ZCOOL KuaiLe", "Yuanti SC", "PingFang SC", sans-serif;
+  font-size: clamp(32px, 4.2vw, 56px); font-weight: 400;
+  line-height: 1.3; letter-spacing: 0; color: var(--home-ink); text-shadow: none; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+}
+body.site-collection .home-hero-intro { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin: 32px 0 0; }
+body.site-collection .home-hero-intro p { margin: 0; font-size: 18px; line-height: 1.65; }
+body.site-collection .hero-actions { align-items: center; justify-content: flex-start; gap: 28px; }
+body.site-collection .btn.btn-primary {
+  display: inline-flex; justify-content: center; align-items: center; min-height: 48px; padding: 14px 26px;
+  color: var(--home-on-accent); background: var(--home-accent); background-image: none;
+  border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+  font-size: 16px; transform: none; transition: transform .18s ease, opacity .18s ease;
+}
+body.site-collection .btn.btn-primary:hover { color: var(--home-on-accent); background: var(--home-accent); opacity: .88; transform: translateY(-2px); }
+body.site-collection .btn:active { transform: translateY(1px); }
+body.site-collection .home-text-link { padding: 12px 0; font-size: 16px; text-decoration: underline; text-underline-offset: 6px; }
+body.site-collection .section {
+  margin: 0; padding: 80px var(--home-gutter); border: 0; border-radius: 0;
+  color: var(--home-ink); background: var(--home-panel); box-shadow: none; text-align: left; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+}
+body.site-collection .section-title { margin: 0 0 32px; color: var(--home-ink); font-size: clamp(30px, 3vw, 42px); font-weight: 500; line-height: 1.2; letter-spacing: -.04em; text-align: left; }
+body.site-collection #about { display: grid; grid-template-columns: .65fr 1.35fr; gap: 44px; background: var(--home-panel-paper); }
+body.site-collection .section-content p { margin: 0 0 20px; color: var(--home-ink); font-size: 18px; line-height: 1.8; }
+body.site-collection .section-content p:nth-child(2) { font-size: 16px; color: var(--home-soft); }
+body.site-collection .section-content .puzzle-card {
+  position: relative; margin: 24px 0 0; padding: 0; background: var(--home-panel-field); background-image: none;
+  border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+}
+body.site-collection .puzzle-card::after, body.site-collection .section-alt::after { display: none; }
+body.site-collection .section-content .puzzle-summary { display: block; padding: 18px 22px; font-size: 16px; font-weight: 500; color: var(--home-ink); }
+body.site-collection .section-content .puzzle-summary::before { content: "+"; margin-right: 12px; }
+body.site-collection .section-content .puzzle-card[open] .puzzle-summary::before { content: "−"; }
+body.site-collection .section-content .puzzle-code {
+  margin: 0; padding: 8px 22px 24px; max-height: 420px; overflow: auto;
+  color: var(--home-ink); background: var(--home-panel-field); background-image: none;
+  border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; font-size: 14px; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+}
+body.site-collection .home-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+body.site-collection .home-section-heading .section-title { margin-bottom: 20px; }
+body.site-collection .gallery-intro { margin-bottom: 0; font-size: 16px; color: var(--home-soft); }
+body.site-collection .section-gallery { overflow: hidden; background: var(--home-panel); }
+body.site-collection .home-gallery-toggle { min-height: 44px; padding: 10px 16px; border: 0; border-radius: 0; color: var(--home-ink); background: var(--home-field); font: inherit; cursor: pointer; }
+body.site-collection .gallery-cylinder { margin-top: 20px; }
+body.site-collection .gallery-cylinder-viewport { --viewport-pad: 70px; }
+body.site-collection .gallery-cylinder.is-paused .gallery-cylinder-ring { animation-play-state: paused; }
+body.site-collection .gallery-panel, body.site-collection .gallery-cylinder-glass {
+  border: 0; border-radius: 0; background: var(--home-paper); background-image: none;
+  box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+}
+body.site-collection #projects { background: var(--home-panel-field); background-image: none; backdrop-filter: none; -webkit-backdrop-filter: none; } /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+body.site-collection .home-work-list { display: flex; flex-direction: column; gap: 8px; }
+body.site-collection .home-work {
+  display: grid; grid-template-columns: 1fr 1.2fr auto; align-items: center; gap: 24px;
+  padding: 24px; background: var(--home-panel); transition: transform .2s ease;
+}
+body.site-collection .home-work:hover { transform: translateX(5px); color: var(--home-ink); }
+body.site-collection .home-work h3 { font-size: clamp(22px, 2vw, 28px); line-height: 1.2; font-weight: 500; margin: 0; letter-spacing: -.03em; }
+body.site-collection .home-work p { margin: 0; font-size: 16px; color: var(--home-soft); }
+body.site-collection .home-work span { font-size: 16px; color: var(--home-accent); text-decoration: underline; text-underline-offset: 5px; }
+body.site-collection #contact { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; background: var(--home-panel-field); color: var(--home-ink); }
+body.site-collection #contact .section-title { color: inherit; margin-bottom: 16px; }
+body.site-collection .contact-intro { grid-column: 1; margin: 0; color: inherit; font-size: 18px; }
+body.site-collection .contact-list { grid-column: 2; grid-row: 1 / 3; margin: 0; padding: 0; color: inherit; list-style: none; display: flex; flex-direction: column; gap: 16px; }
+body.site-collection .contact-list li { margin: 0; padding: 0; background: none; border: 0; box-shadow: none; } /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+body.site-collection .contact-list a { display: block; padding: 6px 0; color: inherit; font-size: 26px; text-decoration: underline; text-underline-offset: 7px; }
+body.site-collection .contact-list a:hover { color: inherit; opacity: .8; }
+body.site-collection .home-thanks-note { margin: -12px 0 32px; color: var(--home-soft); font-size: 16px; }
+body.site-collection .thanks-subtitle { margin: 32px 0 16px; font-size: 18px; font-weight: 600; }
+body.site-collection .thanks-list--stack { grid-template-columns: repeat(6,minmax(0,1fr)); gap: 14px 18px; font-size: 16px; color: var(--home-ink); }
+body.site-collection .thanks-list--stack li { white-space: normal; }
+body.site-collection .site-footer { max-width: 1280px; padding: 36px var(--home-gutter); border: 0; background: var(--home-panel-field); text-align: left; }
+body.site-collection .home-footer-name { display: inline-block; font-size: 20px; line-height: 1; font-weight: 600; letter-spacing: -.07em; margin-bottom: 24px; }
+body.site-collection .site-footer p { color: var(--home-ink); font-size: 14px; }
+body.site-collection .home-reveal { animation: home-enter .65s both; animation-delay: var(--home-delay, 0ms); }
+@keyframes home-enter { from { opacity: .2; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@media (min-width: 1600px) { body.site-collection .site-header { margin-top: 48px; } }
+@media (max-width: 850px) {
+  body.site-collection .site-header { margin-top: 0; gap: 16px; }
+  body.site-collection .nav { order: 3; flex-basis: 100%; justify-content: flex-start; gap: 12px 24px; }
+  body.site-collection .theme-toggle { margin-left: auto; }
+  body.site-collection .hero { padding-top: 36px; }
+  body.site-collection .home-hero-heading { grid-template-columns: .8fr 1.2fr; gap: 24px; }
+  body.site-collection .hero-title { font-size: clamp(80px, 13vw, 112px); }
+  body.site-collection .hero-lettering { font-size: clamp(28px, 4.3vw, 38px); }
+  body.site-collection .section { padding-top: 56px; padding-bottom: 56px; }
+  body.site-collection #about { grid-template-columns: 1fr 2fr; gap: 28px; }
+  body.site-collection .home-work { grid-template-columns: 1fr auto; gap: 12px; }
+  body.site-collection .home-work p { grid-column: 1; }
+  body.site-collection .home-work span { grid-column: 2; grid-row: 1 / 3; }
+  body.site-collection .thanks-list--stack { grid-template-columns: repeat(4,minmax(0,1fr)); }
+}
+@media (max-width: 560px) {
+  body.site-collection .site-header { padding-top: 16px; padding-bottom: 16px; }
+  body.site-collection .nav { gap: 12px 18px; }
+  body.site-collection .nav a { font-size: 14px; }
+  body.site-collection .hero { padding-top: 24px; padding-bottom: 40px; }
+  body.site-collection .home-hero-heading { grid-template-columns: 1fr; gap: 24px; }
+  body.site-collection .hero-title { font-size: clamp(84px, 24vw, 130px); }
+  body.site-collection .hero-lettering { font-size: clamp(28px, 7.7vw, 40px); line-height: 1.35; }
+  body.site-collection .home-hero-intro { align-items: flex-start; flex-direction: column; gap: 22px; margin: 24px 0 0; }
+  body.site-collection .home-hero-intro p { font-size: 18px; }
+  body.site-collection .section { padding-top: 40px; padding-bottom: 40px; }
+  body.site-collection #about, body.site-collection #contact { display: block; }
+  body.site-collection .section-title { margin-bottom: 24px; }
+  body.site-collection .section-content p { font-size: 16px; }
+  body.site-collection .home-section-heading { align-items: flex-start; }
+  body.site-collection .home-gallery-toggle { font-size: 14px; white-space: nowrap; }
+  body.site-collection .home-work { padding: 20px 16px; }
+  body.site-collection .home-work h3 { font-size: 22px; }
+  body.site-collection .home-work p { font-size: 15px; }
+  body.site-collection .home-work span { font-size: 14px; }
+  body.site-collection .contact-list { margin-top: 28px; gap: 12px; }
+  body.site-collection .contact-list a { font-size: 24px; }
+  body.site-collection .thanks-list--stack { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px 12px; }
+  body.site-collection .site-footer { padding-top: 28px; padding-bottom: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.site-collection { scroll-behavior: auto; }
+  body.site-collection *, body.site-collection *::before, body.site-collection *::after { animation: none !important; transition: none !important; }
+}
+
+/* 圆柱条带使用原素材，边框清零，避免平板出现横向滚动。 */
+body.site-collection .gallery-glass { border: 0; border-radius: 0; background: var(--home-paper); }
+body.site-collection .gallery-photo { border-radius: 0; }
+
+/* 小型文字区直接排版，避免异步可见性估高导致滚动跳动。 */
+body.site-collection .section:not(.hero):not(.section-gallery) { content-visibility: visible; contain-intrinsic-size: none; }
+/* 减少动态效果时默认暂停；只有明确按下播放才重新启用相册。 */
+@media (prefers-reduced-motion: reduce) {
+  body.site-collection .gallery-cylinder.user-started:not(.is-paused) .gallery-cylinder-ring { animation: galleryCylinderSpin 68s linear infinite !important; }
+  body.site-collection .gallery-cylinder.user-started:not(.is-paused) .gallery-cylinder-ring--reverse { animation-direction: reverse !important; }
+}
+
+/* 场景先完成首帧再淡入；加载提示不拦截阅读与点击。 */
+body.site-collection #hill-bg-canvas { opacity: 0; transition: opacity .85s ease; }
+html.home-scene-ready body.site-collection #hill-bg-canvas { opacity: 1; }
+body.site-collection .home-scene-status {
+  display: none; position: fixed; inset: 0 0 auto; z-index: 10;
+  height: 3px; pointer-events: none; overflow: hidden; color: var(--home-ink);
+}
+html.home-scene-loading body.site-collection .home-scene-status { display: block; }
+body.site-collection .home-scene-status::before {
+  content: ""; display: block; width: 35%; height: 100%; background: var(--home-accent);
+  transform-origin: left; animation: home-loading-pass 1.5s ease-in-out infinite;
+}
+body.site-collection .home-scene-status span {
+  position: fixed; right: 20px; bottom: 20px; padding: 10px 16px;
+  background: var(--home-panel-paper); font-size: 14px;
+}
+html.home-scene-finishing body.site-collection .home-scene-status { display: block; animation: home-loading-exit .6s ease forwards; }
+html.home-scene-finishing body.site-collection .home-scene-status::before { width: 100%; animation: none; transform: none; }
+@keyframes home-loading-pass { from { transform: translateX(-110%); } to { transform: translateX(390%); } }
+@keyframes home-loading-exit { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  body.site-collection #hill-bg-canvas { transition: none; }
+  body.site-collection .home-scene-status::before { animation: none; width: 100%; }
+}
+
+/* 半透明内容卡片统一圆角；区块间留缝让背景自然透出。 */
+body.site-collection .hero,
+body.site-collection .section,
+body.site-collection .site-header,
+body.site-collection .site-footer { border-radius: var(--home-card-radius); }
+body.site-collection .hero,
+body.site-collection .section { margin-bottom: 16px; }
+body.site-collection .home-work,
+body.site-collection .section-content .puzzle-card { border-radius: var(--home-inner-radius); }
+body.site-collection .section-content .puzzle-card { overflow: hidden; }
+@media (max-width: 560px) {
+  body.site-collection { --home-card-radius: 20px; --home-inner-radius: 14px; }
+}
+
+/* 沿用旧留言页的月亮 / 太阳胶囊按钮，颜色适配收藏册主题。 */
+body.site-collection .theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 10px 16px; border-radius: 999px;
+  border: 1px solid rgba(116, 157, 139, .5);
+  background: var(--home-panel-paper); color: var(--home-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3);
+  transition: transform .18s ease, background-color .18s ease;
+}
+body.site-collection .theme-toggle-icon { display: inline; font-size: 18px; line-height: 1; }
+body.site-collection .theme-toggle-label { display: inline; font-size: 14px; }
+body.site-collection .theme-toggle:hover { background: var(--home-panel-paper); transform: translateY(-1px); }
+body.site-collection .theme-toggle:active { transform: scale(.97); }
+body.site-collection .btn,
+body.site-collection .btn.btn-primary,
+body.site-collection .home-gallery-toggle { border-radius: 14px; }
+body.site-collection .home-scene-status span { border-radius: 14px; }

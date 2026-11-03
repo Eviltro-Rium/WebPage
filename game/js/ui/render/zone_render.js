@@ -117,7 +117,8 @@
                 return;
             }
             const mode = pending.mode || 'remote';
-            const key = pending.presentedThrough + ':' + pending.diceIndex + ':' + mode + ':' + pending.value;
+            const playerHp = this.state && this.state.player ? Number(this.state.player.hp) : 0;
+            const key = pending.presentedThrough + ':' + pending.diceIndex + ':' + mode + ':' + pending.value + (mode === 'magician' ? ':' + playerHp : '');
             if (panel && panel.dataset.key === key && !!panel.closest('.trophy-settle-sheet') === !!isLoot) return;
             if (panel) panel.remove();
             panel = document.createElement('div');
@@ -142,19 +143,20 @@
             let submitting = false;
 
             if (mode === 'magician') {
-                const playerHp = this.state && this.state.player ? Number(this.state.player.hp) : 0;
                 const canPayHp = playerHp > 3;
                 const canMinus = currentFace > 1 && canPayHp;
                 const canPlus = currentFace < 12 && canPayHp;
-                const hpNote = canPayHp ? '每次 ±1 消耗 3 点生命。' : '生命 ≤3，只能保留原结果。';
-                panel.innerHTML = '<div class="' + boxClass + '"><h3>魔术师</h3>' +
-                    '<p>当前骰面：' + currentFace + '。可将结果 ±1（' + hpNote + '）</p>' +
-                    '<div class="dice-magician-actions" aria-label="魔术师调整">' +
-                    '<button type="button" class="choice-row" data-adjust="-1"' + (canMinus ? '' : ' disabled aria-disabled="true"') +
-                    '>' + (canMinus ? '−1 → ' + (currentFace - 1) + '（−3❤️）' : (canPayHp ? '−1（已到下限）' : '−1（生命不足）')) + '</button>' +
-                    '<button type="button" class="choice-row" data-adjust="1"' + (canPlus ? '' : ' disabled aria-disabled="true"') +
-                    '>' + (canPlus ? '+1 → ' + (currentFace + 1) + '（−3❤️）' : (canPayHp ? '+1（已到上限）' : '+1（生命不足）')) + '</button>' +
-                    '</div><button type="button" class="choice-row choice-secondary" data-keep>保留 ' + currentFace + '</button></div>';
+                const hpNote = canPayHp ? '调整一次，消耗 3 点生命' : '生命不足，无法调整';
+                const icon = typeof global.gameAssetUrl === 'function' ? global.gameAssetUrl('icons/items_icons/magician.webp') : '../icons/items_icons/magician.webp';
+                panel.innerHTML = '<div class="' + boxClass + ' magician-choice">' +
+                    '<div class="magician-choice-head"><img src="' + icon + '" alt="" width="32" height="32"><div><h3>魔术师</h3><p>' + hpNote + '</p></div></div>' +
+                    '<div class="dice-magician-actions" role="group" aria-label="调整骰面">' +
+                    '<button type="button" class="magician-option" data-adjust="-1"' + (canMinus ? '' : ' disabled aria-disabled="true"') +
+                    '><b>−1</b><small>' + (canMinus ? '改为 ' + (currentFace - 1) : canPayHp ? '已到下限' : '生命不足') + '</small></button>' +
+                    '<button type="button" class="magician-option magician-keep" data-keep><b>保留</b><small>不消耗生命</small></button>' +
+                    '<button type="button" class="magician-option" data-adjust="1"' + (canPlus ? '' : ' disabled aria-disabled="true"') +
+                    '><b>+1</b><small>' + (canPlus ? '改为 ' + (currentFace + 1) : canPayHp ? '已到上限' : '生命不足') + '</small></button>' +
+                    '</div></div>';
                 const submitAdjust = async (adjust) => {
                     if (submitting || this._isHandlingAction || this._isConsumingEvents) return;
                     if (adjust !== 0) {

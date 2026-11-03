@@ -8,9 +8,31 @@
     <link rel="icon" href="favicon-ryan.webp" type="image/webp" />
     <link rel="apple-touch-icon" href="favicon-ryan.webp" />
     <script>
-      document.documentElement.classList.add("subpage-is-booting");
       (function () {
         var root = document.documentElement;
+        root.classList.add("home-scene-loading");
+        var sceneFinished = false;
+        var fallbackTimer;
+        function finishScene(ready) {
+          if (sceneFinished) return;
+          sceneFinished = true;
+          window.clearTimeout(fallbackTimer);
+          root.classList.remove("home-scene-loading");
+          root.classList.add("home-scene-finishing");
+          if (ready) root.classList.add("home-scene-ready");
+          var status = document.getElementById("home-scene-status");
+          if (status) status.setAttribute("aria-hidden", "true");
+          window.setTimeout(function () {
+            root.classList.remove("home-scene-finishing");
+            if (status) status.remove();
+          }, 650);
+        }
+        document.addEventListener("rium-scene-ready", function () {
+          // 即使超时后背景才就绪，也要允许完成首帧的画布淡入。
+          root.classList.add("home-scene-ready");
+          finishScene(true);
+        }, { once: true });
+        fallbackTimer = window.setTimeout(function () { finishScene(false); }, 8000);
         var theme = "light";
         try {
           theme = window.localStorage.getItem("rium-theme") === "dark" ? "dark" : "light";
@@ -38,39 +60,14 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=20261027-recovered" />
+    <link rel="stylesheet" href="css/home.css?v=20261103-rounded-controls" />
+    <link rel="stylesheet" href="css/collection-pages.css?v=20261103-rounded-controls" />
   </head>
-  <body class="page-materials">
-    <div id="home-loading" class="home-loading" role="status" aria-live="polite">
-      <div class="home-loading__cinema" aria-hidden="true">
-        <div class="home-loading__vignette"></div>
-        <div class="home-loading__letterbox"></div>
-        <div class="home-loading__horizon"></div>
-        <div class="home-loading__flare"></div>
-      </div>
-      <div class="home-loading__hud">
-        <div class="home-loading__eyebrow">RIUM · PERSONAL HOME</div>
-        <div class="home-loading__title">
-          <span class="home-loading__mark" aria-hidden="true">R</span>
-          <span>
-            <strong>Rium</strong>
-            <small>正在衔接学习资料场景</small>
-          </span>
-        </div>
-        <div class="home-loading__status">
-          <span id="home-loading-label">正在衔接学习资料页…</span>
-          <span id="home-loading-percent">0%</span>
-        </div>
-        <div class="home-loading__stages" aria-hidden="true">
-          <span data-loading-stage="scene">场景</span>
-          <span data-loading-stage="assets">资源</span>
-          <span data-loading-stage="page">页面</span>
-          <span data-loading-stage="enter">进入</span>
-        </div>
-        <div class="home-loading__bar" aria-hidden="true">
-          <span id="home-loading-bar"></span>
-        </div>
-      </div>
+  <body class="site-collection page-materials">
+    <div id="home-scene-status" class="home-scene-status" role="status" aria-live="polite">
+      <span>山丘场景加载中…</span>
     </div>
+    <a class="home-skip" href="#main-content">跳到正文</a>
     <header class="site-header">
       <a class="logo" href="index.html?v=20261027-recovered">Rium</a>
       <nav class="nav" aria-label="主导航">
@@ -94,16 +91,16 @@
       </button>
     </header>
 
-    <main class="main-materials">
+    <main id="main-content" class="main-materials">
       <section
         id="materials"
         class="section section-alt"
         aria-labelledby="materials-title"
       >
         <p class="guestbook-back">
-          <a href="index.html?v=20261027-recovered">⬅️返回主页</a>
+          <a href="index.html?v=20261027-recovered">返回主页</a>
         </p>
-        <h2 id="materials-title" class="section-title">学习资料</h2>
+        <h1 id="materials-title" class="section-title">学习资料</h1>
         <p class="page-intro">
           主包和朋友们自己写的一些学习资料，仅供学习参考。
         </p>

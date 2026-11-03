@@ -636,3 +636,36 @@ test('a Stage 1 desert room repairs a foreign Boss without blocking the run', ()
  assert.equal(eng.s.combat.enemy.name,eng.currentRoom().bossName);
  assert.equal(eng.s.phase,ctx.AdventurePhase.PLAYER_PLAY);
 });
+
+
+test('legacy beast caps are recomputed as 9 plus 3 per bag on restore', () => {
+  const ctx = createContext(); loadSources(ctx);
+  for (let bags = 0; bags <= 2; bags++) {
+    const eng = new ctx.AdventureEngine(); eng.start(makeMap(ctx), 'Ryan');
+    for (let i = 0; i < bags; i++) eng.addItem('BeastBag');
+    const saved = ctx.AdventureSave.serialize(eng);
+    saved.currency.maxBeast = 8 + 3 * bags;
+    const restored = new ctx.AdventureEngine(); restored.restoreFromSave(saved, makeMap(ctx));
+    assert.equal(restored.s.currency.maxBeast, 9 + 3 * bags);
+  }
+});
+
+test('partially claimed room reward survives save without duplicating granted items', () => {
+  const ctx = createContext(); loadSources(ctx);
+  const map = new ctx.AdventureMap([[0, 3]]);
+  const eng = new ctx.AdventureEngine(); eng.start(map, 'Ryan');
+  const room = map.get(0, 1);
+  room.doorUnlocked = true;
+  room.stashedLoot = {kind: 'items', items: ['DiceController', 'RewindHourglass']};
+  eng.addItem('Magician');
+  eng.move(0, 1); eng.enterCurrent();
+  assert.equal(eng.claimRoomReward(), true);
+  const saved = ctx.AdventureSave.serialize(eng);
+  const restored = new ctx.AdventureEngine();
+  restored.restoreFromSave(saved, new ctx.AdventureMap([[0, 3]]));
+  assert.equal(JSON.stringify(restored.s.consumables), '["RewindHourglass"]');
+  assert.equal(JSON.stringify(restored.currentRoom().stashedLoot.items), '["DiceController"]');
+  restored.enterCurrent();
+  assert.equal(restored.claimRoomReward(), false);
+  assert.equal(restored.s.consumables.length, 1);
+});

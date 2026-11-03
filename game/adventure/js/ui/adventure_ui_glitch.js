@@ -36,7 +36,11 @@
         html += '<div class="adv-glitch-actions"><button class="adv-btn adv-btn-primary" id="adv-glitch-roll">投掷事件骰</button><button class="adv-btn" id="adv-glitch-leave">暂时离开</button></div>';
       } else if (rolled) {
         if (!busy && this.eng.hasAccessory('Magician') && this.eng.canAdjustGlitchDice()) {
-          html += '<div class="adv-glitch-actions"><button class="adv-btn" id="adv-glitch-minus"' + (event.roll > 1 ? '' : ' disabled') + '>−1</button><span>魔术师 · 5秒内可消耗3点生命调整</span><button class="adv-btn" id="adv-glitch-plus"' + (event.roll < 12 ? '' : ' disabled') + '>+1</button><button class="adv-btn" id="adv-glitch-keep">保留</button></div>';
+          html += '<section class="magician-choice"><div class="magician-choice-head"><img src="../icons/items_icons/magician.webp" alt="" width="32" height="32"><div><h3>魔术师</h3><p>消耗 3 点生命 · 5秒内可调整</p></div></div>' +
+            '<div class="dice-magician-actions" role="group" aria-label="调整骰面">' +
+            '<button type="button" class="magician-option" id="adv-glitch-minus"' + (event.roll > 1 ? '' : ' disabled') + '><b>−1</b><small>' + (event.roll > 1 ? '改为 ' + (event.roll - 1) : '已到下限') + '</small></button>' +
+            '<button type="button" class="magician-option magician-keep" id="adv-glitch-keep"><b>保留</b><small>不消耗生命</small></button>' +
+            '<button type="button" class="magician-option" id="adv-glitch-plus"' + (event.roll < 12 ? '' : ' disabled') + '><b>+1</b><small>' + (event.roll < 12 ? '改为 ' + (event.roll + 1) : '已到上限') + '</small></button></div></section>';
         } else if (busy) {
           html += '<p class="adv-glitch-note">骰子判定中…</p>';
         }

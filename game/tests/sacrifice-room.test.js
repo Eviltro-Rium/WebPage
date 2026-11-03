@@ -87,12 +87,13 @@ for(const challenge of [false,true])for(const defend of [false,true])test('upgra
   assert.equal(e.s[target].burn,burn+1);assert.equal(e.h.player.length,length,'one played and one drawn');
   if(challenge)assert.equal(e.s.ai.burn||0,0);
 });
-test('all map variants add a reachable sacrifice room without reducing ordinary or elite rooms',()=>{
+test('all map variants keep ordinary counts within their stage range and contain sacrifice and elite rooms',()=>{
   const c=context();
   for(const file of fs.readdirSync(path.join(root,'adventure/maps')).filter(name=>/^stage_.*\.csv$/.test(name))){
     const map=c.AdventureMap.fromCsvText(fs.readFileSync(path.join(root,'adventure/maps',file),'utf8')),counts=map.summary().counts;
-    assert.equal(counts.sacrifice,1,file);assert.ok(counts.normal>=4,file);
-    if(Number(file.slice(6,8))>=3)assert.ok(counts.elite>=2,file);
+    const late=Number(file.slice(6,8))>=3;
+    assert.equal(counts.sacrifice,1,file);assert.ok(counts.normal>=(late?4:3)&&counts.normal<=(late?6:5),file);
+    if(late)assert.ok(counts.elite>=2,file);
     assert.ok(map.reachableFromStart().some(({room})=>room.type==='sacrifice'),file);
   }
 });

@@ -121,6 +121,8 @@ node --test game/tests/defense-effects.test.js game/tests/hypnosis-sleep.test.js
 node game/scripts/verify-load-order.js
 ```
 
+地图重新生成：`node game/adventure/generate_maps.js`（固定种子生成60张 CSV 并同步内嵌地图）；仅同步已编辑的 CSV：`node game/adventure/regen_maps.js`。生成器不加入浏览器脚本清单。
+
 ### 4.5 在线信令 Worker
 
 ```bash

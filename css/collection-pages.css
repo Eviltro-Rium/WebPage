@@ -1,0 +1,77 @@
+/* 作品、资料和音乐工具沿用主页的颜色、透明度与圆角变量。 */
+body.site-collection:not(.page-home) main { padding-top: 16px; }
+body.site-collection:not(.page-home) .section { padding: 48px var(--home-gutter); }
+body.site-collection:not(.page-home) .guestbook-back { margin: 0 0 24px; font-size: 16px; }
+body.site-collection:not(.page-home) .section-title { font-size: clamp(38px, 5vw, 64px); margin-bottom: 32px; }
+body.site-collection:not(.page-home) .page-intro { font-size: 18px; color: var(--home-ink); max-width: 48em; }
+body.site-collection .nav a[aria-current="page"] { font-weight: 700; text-decoration: underline; text-underline-offset: 7px; }
+body.site-collection .content-list { gap: 16px; }
+body.site-collection .content-block,
+body.site-collection .download-list--flat .download-item {
+  padding: 28px; border: 0; border-radius: var(--home-inner-radius);
+  background: var(--home-panel-paper); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+body.site-collection .content-title { font-size: 28px; line-height: 1.25; overflow-wrap: anywhere; }
+body.site-collection .content-desc { font-size: 18px; color: var(--home-ink); }
+body.site-collection .content-link, body.site-collection .download-link { font-size: 16px; color: var(--home-ink); text-decoration: underline; text-underline-offset: 5px; }
+body.site-collection .content-link:hover, body.site-collection .download-link:hover { color: var(--home-accent); }
+body.site-collection .audio-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
+body.site-collection .audio-item { display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin: 0; min-width: 0; }
+body.site-collection .audio-label { font-size: 16px; color: var(--home-ink); }
+body.site-collection .audio-item audio { display: block; width: 100%; max-width: 100%; min-width: 0; }
+body.site-collection .download-list--flat { gap: 12px; }
+body.site-collection .download-link { display: block; overflow-wrap: anywhere; }
+body.site-collection .launch-pad-groups { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+body.site-collection .launch-pad-group-block { padding: 24px; border-radius: var(--home-inner-radius); background: var(--home-panel-paper); min-width: 0; }
+body.site-collection .launch-pad-group-title { margin: 0 0 20px; font-size: 26px; color: var(--home-ink); }
+body.site-collection .launch-pad-group { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+body.site-collection .launch-pad-btn {
+  min-width: 0; min-height: 76px; padding: 18px 12px; border: 0; border-radius: 14px;
+  background: var(--home-panel-field); color: var(--home-ink); font-size: 16px;
+  box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+body.site-collection .launch-pad-btn--active { background: var(--home-accent); color: var(--home-on-accent); }
+body.site-collection .launch-pad-btn__fill { background: var(--home-accent); opacity: .3; box-shadow: none; }
+body.site-collection .launch-pad-btn__fill::before { display: none; }
+body.site-collection .metronome-float { background: var(--home-panel-paper); border: 0; border-radius: var(--home-card-radius); box-shadow: none; backdrop-filter: none; }
+body.site-collection.page-launchpad main { padding-bottom: 160px; }
+body.site-collection .launchpad-clear { background: var(--home-field); color: var(--home-ink); border: 0; box-shadow: none; min-height: 44px; }
+body.site-collection .beat-pad { background: var(--home-field); color: var(--home-ink); box-shadow: none; border: 0; }
+body.site-collection .beat-pad span { color: inherit; }
+body.site-collection .beat-pad--on, body.site-collection .beat-pad--alt { background: var(--home-accent); color: var(--home-on-accent); }
+@media (max-width: 760px) {
+  body.site-collection .launch-pad-groups, body.site-collection .audio-list { grid-template-columns: 1fr; }
+  body.site-collection:not(.page-home) .section { padding: 32px var(--home-gutter); }
+  body.site-collection .content-block, body.site-collection .download-list--flat .download-item, body.site-collection .launch-pad-group-block { padding: 20px; }
+  body.site-collection .content-title { font-size: 24px; }
+  body.site-collection .content-desc, body.site-collection:not(.page-home) .page-intro { font-size: 16px; }
+}
+/* 覆盖旧版强制透明规则，保留半透明表面与按钮的可辨识边界。 */
+body.site-collection:not(.page-home) .section-alt { background: var(--home-panel-field) !important; }
+body.site-collection .download-list--flat .download-item,
+body.site-collection .metronome-float { background: var(--home-panel-paper) !important; }
+body.site-collection .launch-pad-btn, body.site-collection .beat-pad { background: var(--home-panel-field) !important; }
+body.site-collection .launch-pad-btn--active,
+body.site-collection .beat-pad--on, body.site-collection .beat-pad--alt { background: var(--home-accent) !important; color: var(--home-on-accent); }
+body.site-collection .launchpad-clear { background: var(--home-field) !important; }
+body.site-collection .metronome-float__meta { color: var(--home-ink); font-size: 14px; text-align: center; }
+body.site-collection .launchpad-audio-status { color: var(--home-ink); font-size: 16px; }
+body.site-collection .status-badge { color: var(--home-ink); background: var(--home-panel-paper); border: 0; padding: 8px 14px; }
+body.site-collection .launchpad-intro { text-align: left; margin-left: 0; }
+body.site-collection.page-launchpad .beat-pad-grid { display: grid; grid-template-columns: repeat(8,minmax(0,1fr)); gap: 4px; min-width: 0; }
+body.site-collection .beat-pad { min-width: 0; width: auto; height: 28px; border-radius: 6px; }
+body.site-collection .launchpad-clear { padding: 8px 10px; }
+@media (max-width: 760px) {
+  /* 手机将节拍器放到音源卡片下方，避免浮条遮住播放按钮。 */
+  body.site-collection.page-launchpad main { padding-bottom: 0; }
+  body.site-collection.page-launchpad .metronome-float {
+    position: relative; left: auto; bottom: auto; transform: none;
+    width: calc(100% - 40px); margin: 0 auto 20px;
+  }
+}
+
+body.site-collection .launchpad-clear { border-radius: 14px; }
+body.site-collection .guestbook-intro { color: var(--home-ink); font-size: 18px; line-height: 1.7; margin-bottom: 28px; }
+body.site-collection .giscus { min-height: 320px; border-radius: var(--home-inner-radius); overflow: hidden; }
+body.site-collection iframe.giscus-frame { border-radius: var(--home-inner-radius); }
+@media (max-width: 760px) { body.site-collection .guestbook-intro { font-size: 16px; } }

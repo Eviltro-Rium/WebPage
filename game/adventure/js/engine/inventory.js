@@ -202,7 +202,7 @@
       }
       return null;
     },
-    _canAddItem(itemName) {
+    _canAddItem(itemName, opts = {}) {
       const def = window.AdventureRegistry.getItem(itemName);
       if (!def) return { ok: false, reason: 'unknown', message: '未知道具' };
       if (def.kind === 'trophyWhite') return { ok: true };
@@ -214,7 +214,7 @@
         return { ok: false, reason: 'exclusive', message: '已持有魔术师，不能同时持有遥控骰子' };
       }
       if (def.kind === 'consumable') {
-        if (this.s.consumables.length >= CONSUMABLE_SLOT_COUNT) return { ok: false, reason: 'full', message: '道具槽已满' };
+        if (this.s.consumables.length >= CONSUMABLE_SLOT_COUNT && !opts.allowConsumableOverflow) return { ok: false, reason: 'full', message: '道具槽已满' };
         return { ok: true };
       }
       if (def.maxStacks) {
@@ -659,7 +659,8 @@
     _rollItemDrop() {
       // 普通奖励/掉落池只包含一次性道具；战利白卡由 AdventureLoot
       // 在击败怪物时单独结算，避免混入商店和房间奖励。
-      const consumables = window.AdventureRegistry.itemsByKind('consumable');
+      const consumables = window.AdventureRegistry.itemsByKind('consumable')
+        .filter(item => this._canAddItem(item.name, { allowConsumableOverflow: true }).ok);
       if (!consumables.length) return null;
       return consumables[Math.floor(random() * consumables.length)].name;
     },

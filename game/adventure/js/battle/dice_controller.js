@@ -106,7 +106,9 @@
     const tx = this._diceTransaction;
     if (!tx) return originalRoll.call(this,desc,extra);
     const index = tx.index++;
-    const value = originalRoll.call(this,desc,extra);
+    // 续算已展示的骰子时，在 emit 前标记，订阅者也不会重播动画。
+    const replayed = Number.isInteger(tx.diceIndex) && index <= tx.diceIndex;
+    const value = originalRoll.call(this,desc,replayed ? Object.assign({},extra,{replayed:true}) : extra);
     const diceEvent = this.events[this.events.length - 1];
     let decision = tx.decisions[index] || null;
     if (!decision) decision = tx.decisions[index] = {};

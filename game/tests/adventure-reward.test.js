@@ -1020,15 +1020,20 @@ test('returnToMap exits boss-exit settlement to MAP phase', () => {
   }
 });
 
-test('beast token cap is 8 by default and +3 with BeastBag', () => {
+test('beast token cap is 9 by default and +3 with BeastBag', () => {
   const eng = startEngine();
-  assert.equal(eng.s.currency.maxBeast, 8);
-  assert.equal(context.AdventureCurrency.DEFAULT_MAX_BEAST_TOKENS, 8);
+  assert.equal(eng.s.currency.maxBeast, 9);
+  assert.equal(context.AdventureCurrency.DEFAULT_MAX_BEAST_TOKENS, 9);
   assert.ok(eng.addItem('BeastBag'));
-  assert.equal(eng.s.currency.maxBeast, 11);
+  assert.equal(eng.s.currency.maxBeast, 12);
   const bag = context.AdventureRegistry.getItem('BeastBag');
   assert.equal(bag.beastCapBonus, 3);
   assert.ok(bag.icon.indexOf('beast_core_sack') >= 0);
+  assert.ok(eng.addItem('BeastBag'));
+  assert.equal(eng.s.currency.maxBeast, 15);
+  eng.s.currency.setMaxBeast(8);
+  eng._syncBeastCap();
+  assert.equal(eng.s.currency.maxBeast, 15);
 });
 
 test('reward rooms are not on a shortest start-to-boss path in CSV maps', () => {
@@ -1114,4 +1119,77 @@ test('basic reward 1/12 is wandering merchant selling one accessory', () => {
   } finally {
     Math.random = origRandom;
   }
+});
+
+
+test('reward room grants screenshot bundle before discarding overflow, exactly once', () => {
+  const eng = startEngine([[0, 3]]);
+  const room = eng.s.map.get(0, 1);
+  room.doorUnlocked = true;
+  room.stashedLoot = { kind: 'items', items: ['DiceController', 'RewindHourglass'] };
+  eng.s.consumables = ['ArmorBreakSpear', 'ArmorBreakSpear', 'GhostFire', 'BuffTransfer', 'AttackMod1'];
+  eng.move(0, 1); eng.enterCurrent();
+  assert.equal(eng.claimRoomReward(), true);
+  assert.equal(eng.s.consumables.length, 7);
+  assert.equal(eng.s.phase, AdventurePhase.ITEM_DISCARD);
+  assert.equal(eng.s.pendingItemDiscard, 1);
+  assert.equal(eng.claimRoomReward(), false);
+  eng.discardConsumable(0);
+  assert.equal(eng.s.phase, AdventurePhase.MAP);
+  eng.enterCurrent();
+  assert.equal(eng.s.consumables.length, 6);
+  assert.equal(room.rewardClaimed, true);
+});
+
+test('reward room keeps incompatible dice but grants the other item without duplication', () => {
+  const eng = startEngine([[0, 3]]);
+  const room = eng.s.map.get(0, 1);
+  room.doorUnlocked = true;
+  room.stashedLoot = { kind: 'items', items: ['RewindHourglass', 'DiceController'] };
+  eng.addItem('Magician');
+  eng.move(0, 1); eng.enterCurrent();
+  assert.equal(eng.claimRoomReward(), true);
+  assert.equal(JSON.stringify(eng.s.consumables), '["RewindHourglass"]');
+  assert.equal(JSON.stringify(room.stashedLoot.items), '["DiceController"]');
+  assert.equal(room.rewardClaimed, false);
+  eng.enterCurrent();
+  assert.equal(eng.claimRoomReward(), false);
+  assert.equal(eng._lastRewardError.reason, 'exclusive');
+  assert.equal(eng.s.consumables.length, 1);
+  eng.deferRoomReward();
+  eng.s.accessories = [];
+  eng.enterCurrent();
+  assert.equal(eng.claimRoomReward(), true);
+  assert.equal(eng.s.consumables.length, 2);
+  assert.equal(room.rewardClaimed, true);
+});
+
+test('single-item rewards and three-item rewards permit full inventory then discard', () => {
+  for (const loot of [{kind: 'item', item: 'RewindHourglass'}, {kind: 'items', items: ['RewindHourglass', 'DiceController', 'RewindHourglass']}]) {
+    const eng = startEngine([[0, 3]]);
+    const room = eng.s.map.get(0, 1);
+    room.doorUnlocked = true;
+    room.stashedLoot = loot;
+    eng.s.consumables = Array(6).fill('GhostFire');
+    eng.move(0, 1); eng.enterCurrent();
+    assert.equal(eng.claimRoomReward(), true);
+    const count = loot.items ? 3 : 1;
+    assert.equal(eng.s.consumables.length, 6 + count);
+    assert.equal(eng.s.pendingItemDiscard, count);
+    for (let i = 0; i < count; i++) eng.discardConsumable(0);
+    assert.equal(eng.s.phase, AdventurePhase.MAP);
+    assert.equal(eng.s.consumables.length, 6);
+  }
+});
+
+test('item drop pool excludes mutually exclusive dice without excluding full-slot rewards', () => {
+  const eng = startEngine();
+  eng.addItem('Magician');
+  eng.s.consumables = Array(6).fill('GhostFire');
+  const random = context.Math.random;
+  try {
+    context.Math.random = () => 0;
+    assert.notEqual(eng._rollItemDrop(), 'DiceController');
+    assert.ok(eng._rollItemDrop());
+  } finally { context.Math.random = random; }
 });

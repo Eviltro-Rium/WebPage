@@ -299,6 +299,11 @@
       // Keep the DiscardTop wrapper even when the map has no revealed card;
       // callers can safely continue using .get() and receive null.
       this.s.discardTop = new AD.DiscardTop(savedTop);
+      AD.extractForeignNpcCards(this.s.playerPile, this.s.magazineReserve);
+      if (AD.isForeignNpcCard(savedTop)) {
+        this.s.discardTop = new AD.DiscardTop(null);
+        this.s.discardTopOwner = null;
+      }
       this._normalizePlayerPileCount();
 
       for (let r = 0; r < map.rows; r++) {

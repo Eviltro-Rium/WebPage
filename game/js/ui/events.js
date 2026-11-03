@@ -231,7 +231,7 @@ _showTrophySettlement(evt, landed = false) {
     status.setAttribute('role', 'status');
     const progress = evt.rollCount > 1 ? '第 ' + evt.rollIndex + ' / ' + evt.rollCount + ' 次 · ' : '';
     const result = !evt.awaitControl && Array.isArray(evt.drops) ? (evt.drops.length ? '获得白卡' : '无掉落') : '等待确认骰面';
-    status.textContent = progress + (landed ? '投出 ' + (evt.roll ?? evt.value) + ' · ' + result : '投掷中…');
+    status.textContent = progress + (landed ? result : '投掷中…');
     const die = document.createElement('div');
     die.className = 'trophy-settle-die';
     const face = Number(evt.roll ?? evt.value);
@@ -679,17 +679,18 @@ async _playEvents(events, fast = false) {
             const rollLabel = rollCount > 1 && rollIndex > 0 ? ' · 第' + rollIndex + '/' + rollCount + '次' : '';
             const desc = (evt.desc || ('12面骰：' + value)) + rollLabel;
             const pendingControl = !!(evt.awaitControl || !isLoot && this.state && this.state.pendingDiceControl);
-            this._showZoneDesc('reveal-desc', isLoot ? '' : evt.controlled ? desc : '12面骰投掷中…' + rollLabel);
+            const alreadyPresented = !!(evt.controlled || evt.replayed);
+            this._showZoneDesc('reveal-desc', isLoot ? '' : alreadyPresented ? desc : '12面骰投掷中…' + rollLabel);
             let lootOverlay = null;
             if (isLoot) {
                 this._trophyControlEvent = evt;
-                lootOverlay = this._showTrophySettlement(evt, pendingControl);
+                lootOverlay = this._showTrophySettlement(evt, pendingControl || alreadyPresented);
             }
             // Open remote-dice sheet ASAP; do not wait for the full tumble.
             if (pendingControl && typeof this._renderDiceControl === 'function') this._renderDiceControl();
             if (isLoot) lootOverlay = document.getElementById('adv-settle-overlay') || lootOverlay;
-            if (evt.controlled) {
-                // Editing a face changes this roll's result; it is not a new roll.
+            if (alreadyPresented) {
+                // 修改或保留都属于同一次骰子，只更新静态结果。
                 const target = isLoot && lootOverlay ? lootOverlay.querySelector('.trophy-settle-die') : document.getElementById('reveal-cards');
                 if (target) {
                     target.innerHTML = '<div class="d12-die d12-result-static" aria-label="12面骰结果 ' + value + '"><span class="d12-die-label">D12</span><strong class="d12-die-face">' + value + '</strong></div>';

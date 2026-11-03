@@ -78,6 +78,43 @@ test('failed fly keeps the defense open so guard can be chosen', () => {
   assert.equal(engine.pendingSettlement.damage, 2);
 });
 
+test('the final failed fly settles directly when neither fly nor guard remains', () => {
+  const engine = guardHarness();
+  engine.s.player.guard = 0;
+  engine.chooseFly();
+  assert.equal(engine.s.player.fly, 0);
+  assert.equal(engine.s.pendingDialog, null);
+  assert.equal(engine.s.phase, 'AI_TURN');
+  assert.equal(engine.pendingSettlement.damage, 4);
+});
+
+test('fly can retry only while a real avoidance choice remains', () => {
+  const engine = guardHarness();
+  engine.s.player.guard = 0; engine.s.player.fly = 2;
+  engine.chooseFly();
+  assert.equal(engine.s.pendingDialog, 'flyRetry');
+  engine.chooseFlyContinue(true);
+  assert.equal(engine.s.pendingDialog, null);
+  assert.equal(engine.pendingSettlement.damage, 4);
+});
+
+test('empty avoidance and fully spent guard never open a follow-up dialog and preserve defense bleed', () => {
+  const engine = guardHarness();
+  engine.s.player.fly = 0; engine.s.player.guard = 0;
+  engine.s.defCard = {isNumberCard:true,value:2};
+  engine._pendingBleedActive = Engine.prototype._pendingBleedActive;
+  engine.askGuard(4, 2);
+  assert.equal(engine.s.pendingDialog, null);
+  assert.equal(engine.pendingSettlement.damage, 4);
+  assert.equal(engine.pendingSettlement.bleed, 2);
+  engine.s.player.guard = 2;
+  engine.askGuard(4, 2); engine.chooseGuard(2);
+  assert.equal(engine.s.player.guard, 0);
+  assert.equal(engine.s.pendingDialog, null);
+  assert.equal(engine.pendingSettlement.damage, 2);
+  assert.equal(engine.pendingSettlement.bleed, 2);
+});
+
 test('super purify clears purgeable statuses but preserves marks', () => {
   const entity = {
     burn: 2, bleed: 2, poison: 2, frozen: true, bomb: 4, blind: 1, iceSeal: 1,

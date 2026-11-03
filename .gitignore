@@ -6,3 +6,5 @@ tmp/
 .claude/
 .codeartsdoer/
 .wrangler/
+# Local design inspection artifacts
+.taste-skill/

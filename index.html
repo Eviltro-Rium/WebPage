@@ -3,14 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="个人主页" />
+    <meta name="description" content="Rium 的个人主页。一只正在艰难学习的熊猫，分享代码、音乐、学习笔记和 furry 角色相册。" />
     <title>Rium · 个人主页</title>
     <link rel="icon" href="favicon-ryan.webp" type="image/webp" />
     <link rel="apple-touch-icon" href="favicon-ryan.webp" />
     <script>
-      document.documentElement.classList.add("home-is-booting");
       (function () {
         var root = document.documentElement;
+        root.classList.add("home-scene-loading");
+        var sceneFinished = false;
+        var fallbackTimer;
+        function finishScene(ready) {
+          if (sceneFinished) return;
+          sceneFinished = true;
+          window.clearTimeout(fallbackTimer);
+          root.classList.remove("home-scene-loading");
+          root.classList.add("home-scene-finishing");
+          if (ready) root.classList.add("home-scene-ready");
+          var status = document.getElementById("home-scene-status");
+          if (status) status.setAttribute("aria-hidden", "true");
+          window.setTimeout(function () {
+            root.classList.remove("home-scene-finishing");
+            if (status) status.remove();
+          }, 650);
+        }
+        document.addEventListener("rium-scene-ready", function () {
+          // 即使超时后背景才就绪，也要允许完成首帧的画布淡入。
+          root.classList.add("home-scene-ready");
+          finishScene(true);
+        }, { once: true });
+        fallbackTimer = window.setTimeout(function () { finishScene(false); }, 8000);
         var theme = "light";
         try {
           theme = window.localStorage.getItem("rium-theme") === "dark" ? "dark" : "light";
@@ -19,18 +41,6 @@
         root.style.colorScheme = theme;
       })();
     </script>
-    <noscript>
-      <style>
-        html.home-is-booting body.page-home > .site-header,
-        html.home-is-booting body.page-home > main,
-        html.home-is-booting body.page-home > .site-footer {
-          opacity: 1;
-          visibility: visible;
-          pointer-events: auto;
-        }
-        .home-loading { display: none !important; }
-      </style>
-    </noscript>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -43,47 +53,20 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css?v=20261028-playful-font" />
+    <link rel="stylesheet" href="css/home.css?v=20261103-rounded-controls" />
   </head>
-  <body class="page-home">
-    <div id="home-loading" class="home-loading" role="status" aria-live="polite">
-      <div class="home-loading__cinema" aria-hidden="true">
-        <div class="home-loading__vignette"></div>
-        <div class="home-loading__letterbox"></div>
-        <div class="home-loading__horizon"></div>
-        <div class="home-loading__flare"></div>
-      </div>
-      <div class="home-loading__hud">
-        <div class="home-loading__eyebrow">RIUM · PERSONAL HOME</div>
-        <div class="home-loading__title">
-          <span class="home-loading__mark" aria-hidden="true">R</span>
-          <span>
-            <strong>Rium</strong>
-            <small>正在展开主页场景</small>
-          </span>
-        </div>
-        <div class="home-loading__status">
-          <span id="home-loading-label">正在靠近地平线…</span>
-          <span id="home-loading-percent">0%</span>
-        </div>
-        <div class="home-loading__stages" aria-hidden="true">
-          <span data-loading-stage="scene">场景</span>
-          <span data-loading-stage="assets">资源</span>
-          <span data-loading-stage="page">页面</span>
-          <span data-loading-stage="enter">进入</span>
-        </div>
-        <div class="home-loading__bar" aria-hidden="true">
-          <span id="home-loading-bar"></span>
-        </div>
-      </div>
+  <body class="site-collection page-home">
+    <div id="home-scene-status" class="home-scene-status" role="status" aria-live="polite">
+      <span>山丘场景加载中…</span>
     </div>
+    <a class="home-skip" href="#main-content">跳到正文</a>
     <header class="site-header">
       <a class="logo" href="index.html?v=20261027-recovered">Rium</a>
       <nav class="nav" aria-label="主导航">
-        <a href="index.html?v=20261027-recovered" aria-current="page">主页</a>
         <a href="projects.html?v=20261027-recovered">作品</a>
         <a href="materials.html?v=20261027-recovered">学习资料</a>
-        <a href="launchpad.html?v=20261027-recovered">Launch Pad <span class="nav-badge">测试</span></a>
-        <a href="game/index.html?v=20261027-recovered">游戏 <span class="nav-badge">测试</span></a>
+        <a href="launchpad.html?v=20261027-recovered">Launch Pad</a>
+        <a href="game/index.html?v=20261027-recovered">游戏</a>
         <a href="guestbook.html?v=20261027-recovered">留言</a>
       </nav>
       <button
@@ -99,35 +82,35 @@
       </button>
     </header>
 
-    <main>
+    <main id="main-content">
       <section class="hero" aria-labelledby="hero-title">
-        <p class="hero-kicker">你好，我是</p>
-        <h1 id="hero-title" class="hero-title">Rium</h1>
-        <p class="hero-lead hero-lettering" aria-label="一只正在艰难学习的熊猫🐼">
-          <span class="hero-lettering__intro" aria-hidden="true">一只正在</span>
-          <span class="hero-lettering__focus" aria-hidden="true">艰难学习</span>
-          <span class="hero-lettering__ending" aria-hidden="true">的熊猫<span class="hero-lettering__panda">🐼</span></span>
-        </p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="#contact">联系我</a>
-          <a class="btn btn-ghost" href="projects.html?v=20261027-recovered">查看作品</a>
+        <div class="home-hero-heading">
+          <h1 id="hero-title" class="hero-title">Rium</h1>
+          <p class="hero-lead hero-lettering">一只正在<br>艰难学习的熊猫</p>
+        </div>
+        <div class="home-hero-intro">
+          <p>我的个人主页，<br>放着代码、音乐，还有我的崽子。</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="projects.html?v=20261027-recovered">查看作品</a>
+            <a class="home-text-link" href="#contact">联系我</a>
+          </div>
         </div>
       </section>
 
       <section id="about" class="section" aria-labelledby="about-title">
-        <h2 id="about-title" class="section-title">关于</h2>
+        <h2 id="about-title" class="section-title">关于我</h2>
         <div class="section-content">
           <p>
-            爱好：编程，游泳，打羽毛球，国际象棋♟️（真的捞），电子音乐，剪视频，洛克王国（UID：476610）
+            喜欢编程，也喜欢游泳、羽毛球和国际象棋（真的捞）。听电子音乐，剪视频，偶尔回洛克王国看看。
           </p>
           <p>
-            MBTI：INFP-T
+            INFP-T。洛克王国 UID：476610。
           </p>
           <p>
-            生产日期：读懂下面代码/注释，求出正整数 Y、M、D，再写成「YYYY年MM月DD日」。
+            生日藏在下面的 C++ 代码里。求出 Y、M、D，就能找到答案。
           </p>
           <details class="puzzle-card">
-            <summary class="puzzle-summary">展开 C++ 代码谜题</summary>
+            <summary class="puzzle-summary">猜猜我的生日</summary>
             <pre class="puzzle-code" tabindex="0"><code>// C++ 伪代码
 // 年 Y：4020025 为完全平方数
 int Y = static_cast&lt;int&gt;(sqrt(4020025));
@@ -171,9 +154,12 @@ int D = first_perfect();</code></pre>
         class="section section-gallery"
         aria-labelledby="gallery-title"
       >
-        <h2 id="gallery-title" class="section-title">相册</h2>
+        <div class="home-section-heading">
+          <h2 id="gallery-title" class="section-title">我的崽子</h2>
+          <button class="home-gallery-toggle" type="button" aria-pressed="false">暂停相册</button>
+        </div>
         <p class="gallery-intro">
-          我的崽子，不可以放大截图，或者下载私用哦。uwu
+          留在这里看看就好，请不要放大截图、下载或私用。uwu
         </p>
         <div class="gallery-cylinder" data-gallery-protect role="list">
           <div class="gallery-cylinder-viewport">
@@ -224,24 +210,29 @@ int D = first_perfect();</code></pre>
       </section>
 
       <section id="projects" class="section section-alt" aria-labelledby="projects-title">
-        <h2 id="projects-title" class="section-title">作品与学习资料</h2>
-        <div class="section-content">
-          <p class="projects-teaser">
-            项目与音乐、笔记 PDF 已分别放在单独页面，便于浏览与更新。
-          </p>
-        </div>
-        <div class="hero-actions projects-teaser-actions">
-          <a class="btn btn-primary" href="projects.html?v=20261027-recovered">浏览作品</a>
-          <a class="btn btn-ghost" href="materials.html?v=20261027-recovered">学习资料下载</a>
+        <h2 id="projects-title" class="section-title">作品与学习</h2>
+        <div class="home-work-list">
+          <a class="home-work" href="game/index.html?v=20261027-recovered">
+            <h3>Furry Trial</h3><p>浏览器里的回合制卡牌游戏。</p><span>开始游玩</span>
+          </a>
+          <a class="home-work" href="https://github.com/Eviltro-Rium/MedSAM2-MoSE" target="_blank" rel="noopener noreferrer">
+            <h3>MedSAM2-MoSE</h3><p>医学图像项目，快做好了。</p><span>查看 GitHub</span>
+          </a>
+          <a class="home-work" href="projects.html?v=20261027-recovered">
+            <h3>音乐作品</h3><p>自己做的音乐，还有一些 Remix。</p><span>去听听</span>
+          </a>
+          <a class="home-work" href="materials.html?v=20261027-recovered">
+            <h3>学习资料</h3><p>整理在这里的笔记与 PDF。</p><span>浏览资料</span>
+          </a>
         </div>
       </section>
 
       <section id="contact" class="section" aria-labelledby="contact-title">
-        <h2 id="contact-title" class="section-title">联系</h2>
-        <p class="contact-intro">欢迎通过以下方式来找我。</p>
+        <h2 id="contact-title" class="section-title">来找我玩</h2>
+        <p class="contact-intro">聊代码、聊音乐，或者打个招呼。</p>
         <ul class="contact-list">
           <li>
-            <a href="mailto:2138365644@qq.com">尻尻邮箱</a>
+            <a href="mailto:2138365644@qq.com">发邮件</a>
           </li>
           <li>         
             <a href="https://space.bilibili.com/436522619?spm_id_from=333.1007.0.0">Bilibili</a>
@@ -253,7 +244,8 @@ int D = first_perfect();</code></pre>
       </section>
 
       <section id="thanks" class="section section-thanks" aria-labelledby="thanks-title">
-        <h2 id="thanks-title" class="section-title">Acknowledgments（排名不分先后）</h2>
+        <h2 id="thanks-title" class="section-title">谢谢你们</h2>
+        <p class="home-thanks-note">排名不分先后。还有很多名字，慢慢补上。</p>
         <h3 class="thanks-subtitle">技术顾问</h3>
         <ul class="thanks-list thanks-list--stack">
           <li>颉文shellwen</li>
@@ -303,87 +295,19 @@ int D = first_perfect();</code></pre>
     </main>
 
     <footer class="site-footer">
+      <a class="home-footer-name" href="#hero-title">Rium</a>
       <p>© <span id="year"></span> Rium. AI帮我保留所有权利。（雾）</p>
     </footer>
 
     <script>
       document.getElementById("year").textContent = new Date().getFullYear();
-
-      (function () {
-        var body = document.body;
-        var tx = window.innerWidth * 0.5;
-        var ty = window.innerHeight * 0.5;
-        var x = tx;
-        var y = ty;
-        var ticking = false;
-
-        function paint() {
-          x += (tx - x) * 0.5;
-          y += (ty - y) * 0.5;
-          body.style.setProperty("--gx", x + "px");
-          body.style.setProperty("--gy", y + "px");
-          body.style.setProperty("--lx", x + "px");
-          body.style.setProperty("--ly", y + "px");
-
-          if (Math.abs(tx - x) > 0.2 || Math.abs(ty - y) > 0.2) {
-            requestAnimationFrame(paint);
-          } else {
-            ticking = false;
-          }
-        }
-
-        function onPointer(e) {
-          tx = e.clientX;
-          ty = e.clientY;
-          body.classList.add("liquid-global-active");
-          if (!ticking) {
-            ticking = true;
-            requestAnimationFrame(paint);
-          }
-        }
-
-        window.addEventListener("pointermove", onPointer, { passive: true });
-
-        window.addEventListener("pointerleave", function () {
-          body.classList.remove("liquid-global-active");
-        });
-      })();
-
-      (function () {
-        var root = document.querySelector("[data-gallery-protect]");
-        if (!root) return;
-        root.addEventListener("contextmenu", function (e) {
-          e.preventDefault();
-        });
-        root.addEventListener("dragstart", function (e) {
-          e.preventDefault();
-        });
-      })();
-
-      // WebGL/CDN 失败时也要释放主页，不让加载层永久遮挡内容。
-      window.setTimeout(function () {
-        var doc = document.documentElement;
-        var loader = document.getElementById("home-loading");
-        if (!doc.classList.contains("home-is-booting")) return;
-        // Mobile Safari/WebViews can create the WebGL renderer successfully
-        // but never finish a gallery/image callback. Do not leave the whole
-        // page (including the theme switcher) hidden in that case; the CSS
-        // gradient remains as a safe background fallback.
-        if (!window.__hillBackgroundActive) {
-          document.body.classList.add("hill-background-fallback");
-        }
-        doc.classList.remove("home-is-booting");
-        if (loader) {
-          loader.classList.add("is-done");
-          window.setTimeout(function () { loader.remove(); }, 850);
-        }
-      }, 5000);
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="js/home-loading-progress.js?v=20261007-loading-camera"></script>
-    <script src="js/hill-scene-runtime.js?v=20261027-recovered"></script>
-    <script src="js/hill-background.js?v=20261027-recovered"></script>
-    <script src="js/theme.js"></script>
-    <script src="js/gallery-cylinder.js?v=20261027-recovered"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script defer src="js/home-loading-progress.js?v=20261007-loading-camera"></script>
+    <script defer src="js/hill-scene-runtime.js?v=20261027-recovered"></script>
+    <script defer src="js/hill-background.js?v=20261027-recovered"></script>
+    <script defer src="js/theme.js"></script>
+    <script defer src="js/home.js?v=20261103-translucent-scene"></script>
+    <script defer src="js/gallery-cylinder.js?v=20261027-recovered"></script>
   </body>
 </html>

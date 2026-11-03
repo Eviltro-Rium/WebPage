@@ -111,6 +111,9 @@
         }
       }
       const playerObjects = new Set(collections.player);
+      if (collections.player.some(card => card && card.npcCard && !card.borrowedFrom && !card.borrowedMonster && !card.trophyWhite)) {
+        errors.push('NPC牌混入玩家牌堆');
+      }
       if (collections.npc.some(card => playerObjects.has(card))) {
         errors.push('玩家与NPC共享同一张牌对象');
       }

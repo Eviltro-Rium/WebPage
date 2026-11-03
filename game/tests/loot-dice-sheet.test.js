@@ -63,6 +63,37 @@ test('magician adjustments stay in settlement, respect HP and face bounds, and p
   assert.equal(panel.querySelector('[data-adjust="1"]').disabled,false);
 });
 
+test('magician presents one cost and one set of ordered controls without repeating the die result', t => {
+  const {ui,w}=setup(t,'magician');
+  ui._renderDiceControl();
+  const panel=w.document.getElementById('dice-control-dialog');
+  const buttons=[...panel.querySelector('.dice-magician-actions').children];
+  assert.equal(buttons.length,3);
+  assert.equal(buttons[0].dataset.adjust,'-1');
+  assert.ok(buttons[1].hasAttribute('data-keep'));
+  assert.equal(buttons[2].dataset.adjust,'1');
+  assert.equal((panel.textContent.match(/消耗 3 点生命/g)||[]).length,1);
+  assert.ok(!panel.textContent.includes('当前骰面'));
+  assert.ok(!w.document.querySelector('.trophy-settle-status').textContent.includes('投出 11'));
+  assert.equal(w.document.querySelectorAll('.trophy-settle-die strong').length,1);
+  for(let i=0;i<10;i++)ui._renderDiceControl();
+  assert.equal(w.document.getElementById('dice-control-dialog'),panel);
+  assert.equal(w.document.querySelectorAll('.dice-magician-actions').length,1);
+});
+
+test('magician button availability refreshes when HP changes during the same roll', t => {
+  const {ui,w}=setup(t,'magician');
+  ui.state.pendingDiceControl.value=12;
+  ui._renderDiceControl();
+  assert.equal(w.document.querySelector('[data-adjust="-1"]').disabled,false);
+  assert.equal(w.document.querySelector('[data-adjust="1"]').disabled,true);
+  ui.state.player.hp=3;
+  ui._renderDiceControl();
+  assert.equal(w.document.querySelector('[data-adjust="-1"]').disabled,true);
+  assert.equal(w.document.querySelector('[data-keep]').disabled,false);
+  assert.equal(w.document.querySelectorAll('#adv-settle-overlay').length,1);
+});
+
 test('D12 animation lands on the settlement surface without overwriting the judgment area', async t => {
   const {ui,w,tasks}=setup(t);
   ui._renderDiceControl();
@@ -90,17 +121,17 @@ test('resolved loot replaces face editing with the final result and explicit rew
 });
 
 test('changed dice faces update the result without replaying the tumble, including loot rolls',async t=>{
- for(const isLoot of [false,true]) {
+ for(const isLoot of [false,true]) for(const marker of ['controlled','replayed']) {
   const {ui,w}=setup(t);let animations=0,landed;
   ui.state.pendingDiceControl=null;ui.state.phase='PLAYER_PLAY';
   ui._showZoneDesc=()=>{};ui._playD12Animation=async()=>{animations++;};
   ui._waitForTrophyConfirmation=async()=>true;
   ui._finishTrophySettlement=async()=>{landed=w.document.querySelector('.trophy-settle-die strong').textContent;};
   ui.showError=message=>assert.fail(message);
-  await ui._playEvents([{type:'diceRoll',value:7,originalValue:11,controlled:true,...(isLoot?{purpose:'trophyDrop',drops:[]}:{} )}]);
+  await ui._playEvents([{type:'diceRoll',value:7,originalValue:11,[marker]:true,...(isLoot?{purpose:'trophyDrop',drops:[]}:{} )}]);
   assert.equal(animations,0);
   assert.equal(isLoot?landed:w.document.querySelector('#reveal-cards strong').textContent,'7');
-  await ui._playEvents([{type:'diceRoll',value:4}]);
+  await ui._playEvents([{type:'diceRoll',value:7}]);
   assert.equal(animations,1,'a genuine new roll still animates');
  }
 });

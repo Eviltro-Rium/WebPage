@@ -12,13 +12,15 @@
 
   function normalizePile(owner, source, fallbackDeck, handLimit) {
     const pile = source || {};
-    return {
+    const normalized = {
       owner,
       deck: clone(Array.isArray(pile.deck) ? pile.deck : fallbackDeck || []),
       hand: clone(Array.isArray(pile.hand) ? pile.hand : []),
       discard: clone(Array.isArray(pile.discard) ? pile.discard : []),
       handLimit: Number.isFinite(Number(pile.handLimit)) ? Number(pile.handLimit) : handLimit
     };
+    if (owner === 'player') window.AdventureDeck.extractForeignNpcCards(normalized);
+    return normalized;
   }
 
   function resolveNpcPileSpec(name) {
@@ -62,6 +64,7 @@
       const fromAdv = adv && adv.s && adv.s.magazineReserve;
       const src = config.magazineReserve || config.reserveCards || fromAdv || [];
       this.s.reserveCards = clone(Array.isArray(src) ? src.slice(0, MAGAZINE_RESERVE_MAX) : []);
+      window.AdventureDeck.extractForeignNpcCards(null, this.s.reserveCards);
     }
 
     restoreSession(snapshot, adventureEngine = null, resume = true) {
@@ -106,6 +109,16 @@
         this.piles.ai2.deck = this.piles.ai.deck;
         this.piles.ai2.discard = this.piles.ai.discard;
         this.h.ai2 = this.piles.ai2.hand;
+      }
+      const AD = window.AdventureDeck;
+      const misplaced = AD.extractForeignNpcCards(this.piles.player, this.s.reserveCards);
+      this.piles.ai.discard.push(...misplaced);
+      if (this.tableTopOwner === 'player' && AD.isForeignNpcCard(this.s.discardTop)) {
+        const top = this.s.discardTop;
+        const index = this.piles.ai.discard.findIndex(card => card.uid && top.uid ? card.uid === top.uid : this._sameCard(card, top));
+        const physical = index >= 0 ? this.piles.ai.discard.splice(index, 1)[0] : clone(top);
+        this.piles.ai.discard.push(physical);
+        this.tableTopOwner = this.s.discardTopOwner = 'ai';
       }
       // Battle snapshots carry the live inventory. Write it back onto the
       // adventure engine so a refresh cannot resurrect spent items from an
@@ -745,7 +758,7 @@
 
     discardToBottom(card, owner) {
       if (!card) return;
-      const targetOwner = card.borrowedFrom || this._activeOwner(owner);
+      const targetOwner = card.borrowedFrom || (window.AdventureDeck.isForeignNpcCard(card) ? 'ai' : this._activeOwner(owner));
       const pile = this._pile(targetOwner);
       if (!pile) return;
       const saved = clone(card);

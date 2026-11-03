@@ -104,7 +104,8 @@ test('loot sheet shows numeric conditions with card faces and becomes the reward
     assert.equal(overlay.querySelectorAll('.trophy-loot-caption').length,0);
     assert.equal(overlay.querySelectorAll('.is-hit').length,0);
     assert.equal(ui._showTrophySettlement(evt,true),overlay);
-    assert.match(overlay.querySelector('.trophy-settle-status').textContent,/第 2 \/ 3 次 · 投出 4 · 获得白卡/);
+    assert.match(overlay.querySelector('.trophy-settle-status').textContent,/第 2 \/ 3 次 · 获得白卡/);
+    assert.equal(overlay.querySelector('.trophy-settle-die strong').textContent,'4');
     assert.equal(overlay.querySelector('.is-hit canvas').dataset.trophy,'GuardTrophy');
     engine.s.phase=w.AdventurePhase.COMBAT_SETTLE;
     engine.s.pendingCombatReward={stage:'basic',basic:{kind:'gold',gold:3}};

@@ -72,6 +72,22 @@
 
   function clone(card) { return JSON.parse(JSON.stringify(card)); }
 
+  function isForeignNpcCard(card) {
+    return !!(card && card.npcCard && !card.borrowedFrom && !card.borrowedMonster && !card.trophyWhite);
+  }
+
+  // 仅回收明确带 NPC 身份的误入牌，不按白色牌面推测归属。
+  function extractForeignNpcCards(pile, reserve = []) {
+    const removed = [];
+    for (const list of new Set([pile && pile.deck, pile && pile.hand, pile && pile.discard, reserve])) {
+      if (!Array.isArray(list)) continue;
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (isForeignNpcCard(list[i])) removed.push(...list.splice(i, 1));
+      }
+    }
+    return removed;
+  }
+
   function makePlayerDeck(opts = {}) {
     const d = [];
     for (const c of COLORS) {
@@ -238,6 +254,7 @@
 
   window.AdventureDeck = {
     COLORS, num, item, trophyWhite, upgradeTrophy, shuffle, clone,
+    isForeignNpcCard, extractForeignNpcCards,
     makePlayerDeck, makeNpcDeck,
     AdventurePile, DiscardTop,
     drawInitialTop
