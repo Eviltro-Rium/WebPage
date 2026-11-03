@@ -17,6 +17,7 @@ body.site-collection {
   --text-muted-light: var(--home-soft);
   --font-body: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-display: var(--font-body);
+  --font-playful: "ZCOOL KuaiLe", "Yuanti SC", "PingFang SC", sans-serif;
   color: var(--home-ink);
   background: var(--home-field);
 }
@@ -44,7 +45,16 @@ body.site-collection .site-header {
   box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
   gap: 28px; flex-wrap: wrap; flex-direction: row; align-items: center;
 }
-body.site-collection .logo { font-size: 28px; letter-spacing: -.05em; }
+body.site-collection .logo {
+  font-family: var(--font-playful);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+body.site-collection .logo-emoji {
+  font-family: inherit;
+  font-size: .92em;
+}
 body.site-collection .nav { flex: 1; justify-content: center; gap: clamp(16px, 2.2vw, 30px); }
 body.site-collection .nav a { color: var(--home-ink); font-size: 16px; }
 body.site-collection .nav a:hover { text-decoration: underline; text-underline-offset: 6px; }
@@ -58,17 +68,43 @@ body.site-collection main { max-width: 1280px; margin: 0 auto; padding: 0; backg
 body.site-collection .hero { padding: 48px var(--home-gutter) 64px; text-align: left; background: var(--home-panel); }
 body.site-collection .home-hero-heading { display: grid; grid-template-columns: .85fr 1.15fr; gap: 36px; align-items: center; }
 body.site-collection .hero-title {
-  font-size: clamp(96px, 12vw, 172px); font-weight: 600; letter-spacing: -.07em;
-  line-height: 1; margin: 0; color: var(--home-ink); text-shadow: none; filter: none; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+  font-family: var(--font-playful);
+  font-size: clamp(96px, 12vw, 172px);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1;
+  margin: 0;
+  color: var(--home-ink);
+  text-shadow: none;
+  filter: none; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+}
+body.site-collection .hero-title-word { letter-spacing: 0; }
+body.site-collection .hero-emoji {
+  font-family: inherit;
+  font-weight: 400;
 }
 body.site-collection .hero-lettering {
-  display: block; margin: 0; max-width: none;
-  font-family: "ZCOOL KuaiLe", "Yuanti SC", "PingFang SC", sans-serif;
-  font-size: clamp(32px, 4.2vw, 56px); font-weight: 400;
-  line-height: 1.3; letter-spacing: 0; color: var(--home-ink); text-shadow: none; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
+  display: block;
+  margin: 0;
+  max-width: none;
+  font-family: var(--font-playful);
+  font-size: clamp(32px, 4.2vw, 56px);
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0;
+  color: var(--home-ink);
+  text-shadow: none; /* taste-skill-ignore: 清除共享旧样式的阴影与模糊，并未添加效果。 */
 }
 body.site-collection .home-hero-intro { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin: 32px 0 0; }
-body.site-collection .home-hero-intro p { margin: 0; font-size: 18px; line-height: 1.65; }
+body.site-collection .home-hero-intro p,
+body.site-collection .hero-tagline {
+  margin: 0;
+  font-family: var(--font-playful);
+  font-size: clamp(17px, 2.1vw, 20px);
+  line-height: 1.65;
+  letter-spacing: 0;
+  color: var(--home-soft);
+}
 body.site-collection .hero-actions { align-items: center; justify-content: flex-start; gap: 28px; }
 body.site-collection .btn.btn-primary {
   display: inline-flex; justify-content: center; align-items: center; min-height: 48px; padding: 14px 26px;

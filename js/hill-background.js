@@ -16,10 +16,10 @@
   });
   if (!isScenePage) return;
 
-  // 暖黄地平线配低饱和天顶；skyGlow 同时控制日夜状态，保持 1，仅降低着色器中的光晕增益。
+  // 暖黄地平线配明亮浅米黄天顶；skyGlow 同时控制日夜状态，保持 1，仅降低着色器中的光晕增益。
   var LIGHT_PALETTE = {
-    sky: 0xc9b986,
-    zenith: 0x829eac,
+    sky: 0xead6a5,
+    zenith: 0xf4e4be,
     horizon: 0xe8c77e,
     fog: 0xd7c69d,
     fogNear: 38,
@@ -34,7 +34,7 @@
     flower: 0xfbfaf6,
     flowerHead: 0xf2c84a,
     particle: 0xffe9a0,
-    sun: 0xfff1cc,
+    sun: 0xff9a3a,
     cloud: 0xe5d4af,
     cloudOpacity: 0.72,
     ambient: 0.58,
@@ -118,21 +118,12 @@
     "  col = mix(col, uHaze, band * mix(0.12, 0.38, uSunGlow));",
     "  col += uHaze * exp(-pow(dir.y * 4.4, 2.0)) * mix(0.04, 0.14, uSunGlow);",
     "  float sunDot = max(dot(dir, normalize(uSunDir)), 0.0);",
-    "  float sunWash = pow(sunDot, 4.8) * uSunGlow;",
-    "  col = mix(col, vec3(1.0, 0.76, 0.4), sunWash * 0.16);",
-    "  float sunBloom = pow(sunDot, 14.0) * uSunGlow;",
-    "  col += vec3(1.0, 0.62, 0.2) * sunBloom * 0.07;",
+    // 像月亮一样叠加发光，而非用实色覆盖天空；暖白核心向橘金光晕自然散开。
     "  float sunDisk = smoothstep(0.993, 0.9997, sunDot) * uSunGlow;",
-    "  col = mix(col, vec3(1.0, 0.8, 0.42), sunDisk);",
-    "  col += vec3(1.0, 0.68, 0.26) * pow(sunDot, 6.0) * uSunGlow * 0.07;",
-    "  col += vec3(1.0, 0.78, 0.42) * pow(sunDot, 20.0) * uSunGlow * 0.05;",
-    "  col += vec3(1.0, 0.88, 0.58) * pow(sunDot, 90.0) * uSunGlow * 0.06;",
-    "  col += vec3(1.0, 0.92, 0.7) * pow(sunDot, 240.0) * uSunGlow * 0.04;",
-    "  float ang = atan(dir.x, dir.z);",
-    "  float shafts = pow(sunDot, 9.0) * (0.5 + 0.5 * sin(ang * 14.0 + dir.y * 6.0));",
-    "  col += vec3(1.0, 0.76, 0.38) * shafts * uSunGlow * 0.035;",
-    "  float aniso = pow(sunDot, 24.0) * abs(dir.x) * (1.0 - abs(dir.y));",
-    "  col += vec3(1.0, 0.84, 0.5) * aniso * uSunGlow * 0.04;",
+    "  col += vec3(1.0, 0.84, 0.60) * sunDisk * 0.85;",
+    "  col += vec3(1.0, 0.55, 0.12) * pow(sunDot, 48.0) * uSunGlow * 0.12;",
+    "  col += vec3(1.0, 0.65, 0.20) * pow(sunDot, 180.0) * uSunGlow * 0.10;",
+    "  col += vec3(1.0, 0.60, 0.22) * pow(sunDot, 14.0) * uSunGlow * 0.035;",
     "  float moonDot = max(dot(dir, normalize(uMoonDir)), 0.0);",
     "  float moonDisk = smoothstep(0.993, 0.9997, moonDot) * uMoonGlow;",
     "  col += vec3(0.94, 0.96, 1.0) * moonDisk;",
@@ -848,7 +839,7 @@
       return point;
     }
 
-    var sunPeak = pointFromCamera(CELESTIAL_PEAK);
+    var sunPeak = pointFromCamera({ x: mobile ? 7 : CELESTIAL_PEAK.x, y: CELESTIAL_PEAK.y, z: CELESTIAL_PEAK.z });
     var moonPeak = pointFromCamera(MOON_PEAK);
     var sunExit = sunPeak.clone();
     var moonExit = moonPeak.clone();
