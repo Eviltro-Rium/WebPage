@@ -36,9 +36,17 @@ test('progress is frame-rate independent and clamps tab-resume jumps', () => {
   assert.ok(model.step(2, 16) <= 1);
 });
 
-test('homepage bar and camera consume the same progress; subpages keep original timing', () => {
-  const html = fs.readFileSync(path.join(root,'index.html'),'utf8');
+test('shared background host loads progress before the only scene; content pages do not recreate it', () => {
+  const html = fs.readFileSync(path.join(root,'site-shell.html'),'utf8');
   const source = fs.readFileSync(path.join(root,'js/hill-background.js'),'utf8');
+  assert.ok(html.includes('src="js/home-loading-progress.js'));
+  assert.ok(html.includes('src="js/hill-background.js'));
+  for (const page of ['index.html','projects.html','materials.html','launchpad.html','guestbook.html']) {
+    const content = fs.readFileSync(path.join(root,page),'utf8');
+    assert.match(content, /src="js\/site-navigation.js/);
+    assert.doesNotMatch(content, /src="(?:js\/hill-background.js|https:\/\/cdnjs[^"]*three)/);
+  }
+  assert.equal((html.match(/src="js\/hill-background.js/g) || []).length, 1);
   assert.ok(html.indexOf('src="js/home-loading-progress.js') < html.indexOf('src="js/hill-background.js'));
   assert.match(source, /homeLoadingProgress = isHomePage && window.RiumHomeLoadingProgress/);
   assert.match(source, /cameraProgress = homeLoadingProgress \? displayedProgress : bootProgress/);

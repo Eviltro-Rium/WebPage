@@ -252,3 +252,8 @@ body.site-collection .btn,
 body.site-collection .btn.btn-primary,
 body.site-collection .home-gallery-toggle { border-radius: 14px; }
 body.site-collection .home-scene-status span { border-radius: 14px; }
+
+/* 正文视图不绘制第二层背景；背景由外层常驻宿主提供。 */
+html.shared-background-view,
+html.shared-background-view body.site-collection { background: transparent !important; }
+html.shared-background-view .home-scene-status { display: none !important; }

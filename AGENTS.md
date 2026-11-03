@@ -332,3 +332,7 @@ game/docs/
 - [ ] 涉及冒险/在线/全量规则时运行 `node game/scripts/check.js --all`，并说明既有失败。
 - [ ] 没有把临时文件、调试输出或第二套规则实现带进仓库。
 - [ ] 如果改了架构边界或新增模块，更新 `ARCHITECTURE.md` 和本文件的目录/流程说明。
+
+## 个人网站共享背景补充
+
+非游戏的五个 HTML 入口通过 `js/site-navigation.js` 使用 `site-shell.html` 常驻背景宿主；Three.js / 山丘只在宿主加载，正文视图不再单独创建背景。涉及导航时检查 HTTP 与 file://、刷新/后退、主题同步，以及游戏链接退出宿主。维护说明见 `docs/homepage.md`，不要把宿主脚本加入游戏加载清单。
