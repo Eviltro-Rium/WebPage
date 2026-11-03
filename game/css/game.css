@@ -731,7 +731,7 @@ body {
     flex: 0 0 auto; min-width: 140px; max-width: 320px;
     height: 68px; min-height: 68px; max-height: 68px;
     box-sizing: border-box;
-    background: var(--glass-fill);
+    background: #102334;
     border: 1px solid var(--glass-border);
     border-radius: var(--radius); padding: 4px 6px;
     display: flex; align-items: center; gap: 6px;
@@ -780,12 +780,12 @@ body {
     -webkit-backdrop-filter: blur(22px) saturate(145%);
 }
 .attack-zone {
-    background: linear-gradient(145deg, rgba(63,21,25,0.9), rgba(28,25,39,0.92));
+    background: linear-gradient(145deg, #3f1519, #1c1927);
     border: 1px solid rgba(253,164,175,0.62);
     box-shadow: inset 0 1px 0 var(--glass-highlight), 0 0 14px rgba(244,63,94,0.16);
 }
 .defend-zone {
-    background: linear-gradient(145deg, rgba(15,42,72,0.94), rgba(20,29,53,0.92));
+    background: linear-gradient(145deg, #0f2a48, #141d35);
     border: 1px solid rgba(147,197,253,0.66);
     box-shadow: inset 0 1px 0 var(--glass-highlight), 0 0 14px rgba(59,130,246,0.17);
 }
@@ -965,7 +965,7 @@ body {
     min-height: 162px;
     max-height: 162px;
     overflow: visible;
-    background: linear-gradient(145deg, rgba(45,35,12,0.94) 0%, rgba(38,34,25,0.92) 55%, rgba(19,31,43,0.94) 100%);
+    background: linear-gradient(145deg, #2d230c 0%, #262219 55%, #131f2b 100%);
     border: 1.5px solid rgba(253,224,71,0.62);
     border-radius: var(--radius); padding: 4px 6px;
     backdrop-filter: blur(22px) saturate(145%);
@@ -1310,7 +1310,7 @@ body {
 
 
 .player-hand-zone {
-    background: var(--glass-fill);
+    background: #102334;
     border: 1px solid var(--glass-border);
     border-radius: var(--radius); padding: 6px; margin-top: 4px;
     backdrop-filter: blur(22px) saturate(145%);
@@ -1519,8 +1519,8 @@ body {
     box-shadow: 0 0 0 3px rgba(124,58,237,0.34), 0 8px 18px rgba(15,23,42,0.24);
     z-index: 1;
 }
-.card-canvas.disabled { opacity: 0.5; cursor: not-allowed; }
-.card-canvas.disabled:hover { transform: none; filter: none; box-shadow: 0 1px 2px rgba(15,23,42,0.24), 0 5px 14px rgba(15,23,42,0.18); }
+.card-canvas.disabled { opacity: 1; filter: brightness(0.65) saturate(0.65); cursor: not-allowed; }
+.card-canvas.disabled:hover { transform: none; filter: brightness(0.65) saturate(0.65); box-shadow: 0 1px 2px rgba(15,23,42,0.24), 0 5px 14px rgba(15,23,42,0.18); }
 .card-canvas.card-playable {
     outline: 3px solid rgba(192,132,252,0.98);
     outline-offset: 2px;
@@ -1534,8 +1534,8 @@ body {
     filter: none;
     box-shadow: 0 0 0 2px rgba(17,24,39,0.9), 0 0 18px rgba(192,132,252,1), 0 0 34px rgba(168,85,247,0.9), 0 10px 24px rgba(15,23,42,0.34);
 }
-.card-canvas.card-unplayable { opacity: 0.62; cursor: not-allowed; }
-.card-canvas.card-unplayable:hover { transform: none; filter: none; box-shadow: 0 1px 2px rgba(15,23,42,0.24), 0 5px 14px rgba(15,23,42,0.18); }
+.card-canvas.card-unplayable { opacity: 1; filter: brightness(0.72) saturate(0.7); cursor: not-allowed; }
+.card-canvas.card-unplayable:hover { transform: none; filter: brightness(0.72) saturate(0.7); box-shadow: 0 1px 2px rgba(15,23,42,0.24), 0 5px 14px rgba(15,23,42,0.18); }
 .card-canvas.card-playable.selected {
     transform: scale(1.035);
     outline: 3px solid rgba(216,180,254,0.98);
@@ -1574,17 +1574,16 @@ body {
 @keyframes ctrl-spin { to { transform: rotate(360deg); } }
 
 .ctrl-btn {
-    padding: 5px 14px; font-size: 0.8rem; font-weight: 700;
-    border: 1px solid rgba(255,255,255,0.4); border-radius: 10px; cursor: pointer;
-    transition: all 0.12s; white-space: nowrap;
-    backdrop-filter: blur(12px) saturate(140%);
-    -webkit-backdrop-filter: blur(12px) saturate(140%);
-    color: var(--text-main);
+    min-height: 38px; padding: 7px 16px; font-size: 0.8rem; font-weight: 700;
+    border: 1px solid #8291ab; border-radius: 10px; cursor: pointer;
+    transition: transform 0.12s, border-color 0.12s, filter 0.12s, box-shadow 0.12s; white-space: nowrap;
+    background: #334155; color: #f8fafc;
     font-family: var(--font-body);
     text-shadow: 0 1px 2px rgba(0,0,0,0.85);
 }
 .ctrl-btn:hover { transform: translateY(-1px); border-color: rgba(255,255,255,0.8); filter: brightness(1.18); }
 .ctrl-btn:active { transform: translateY(0); }
+.ctrl-btn:focus-visible { outline: 2px solid #ddd6fe; outline-offset: 3px; }
 .ctrl-btn:disabled { opacity: 0.58; cursor: not-allowed; transform: none; filter: saturate(0.35); }
 
 @keyframes hand-swap-pulse {
@@ -1616,14 +1615,14 @@ body {
     100% { transform: scale(1); filter: brightness(1); }
 }
 
-.btn-play { background: rgba(190,24,93,0.78); border-color: #fda4af; }
-.btn-defend { background: rgba(29,78,216,0.78); border-color: #93c5fd; }
+.btn-play { background: #9d174d; border-color: #fda4af; }
+.btn-defend { background: #1e40af; border-color: #93c5fd; }
 .color-btn { min-width: 36px; text-shadow: 0 1px 2px rgba(0,0,0,0.3); font-weight: 900; }
 #btn-color-YELLOW,
 #btn-color-GREEN { color: #111827; text-shadow: 0 1px 1px rgba(255,255,255,0.55); }
-.btn-skip { background: rgba(51,65,85,0.92); border-color: #94a3b8; }
-.btn-end { background: rgba(109,40,217,0.78); border-color: #c4b5fd; }
-.btn-discard { background: rgba(161,98,7,0.86); border-color: #fde68a; }
+.btn-skip { background: #334155; border-color: #94a3b8; }
+.btn-end { background: #5b21b6; border-color: #c4b5fd; }
+.btn-discard { background: #854d0e; border-color: #fde68a; }
 
 .floating-text {
     position: fixed; pointer-events: none;
@@ -1932,7 +1931,7 @@ body.combat-sheet-open::after {
     min-height: 126px;
     max-height: 126px;
     overflow: hidden;
-    background: var(--glass-fill);
+    background: #102334;
     border: 1px solid rgba(255,255,255,0.4);
     border-radius: var(--radius); padding: 4px; text-align: center;
     backdrop-filter: blur(22px) saturate(145%);
@@ -3439,18 +3438,18 @@ body.combat-sheet-open::after {
     box-shadow: 0 0 12px rgba(168, 85, 247, 0.6);
 }
 .ctrl-btn.btn-use-item {
-    background: rgba(168, 85, 247, 0.25); border-color: rgba(168, 85, 247, 0.5);
-    color: #e9d5ff;
+    background: #4c1d95; border-color: #a78bfa;
+    color: #f5f3ff;
 }
 .ctrl-btn.btn-use-item:hover:not(:disabled) {
-    background: rgba(168, 85, 247, 0.45); border-color: rgba(168, 85, 247, 0.7);
+    background: #5b21b6; border-color: #c4b5fd;
 }
 .ctrl-btn.btn-demon-pact {
-    background: rgba(220, 38, 38, 0.3); border-color: rgba(239, 68, 68, 0.6);
-    color: #fca5a5;
+    background: #991b1b; border-color: #f87171;
+    color: #fff1f2;
 }
 .ctrl-btn.btn-demon-pact:hover:not(:disabled) {
-    background: rgba(220, 38, 38, 0.5); border-color: rgba(239, 68, 68, 0.8);
+    background: #b91c1c; border-color: #fca5a5;
 }
 
 @keyframes attackModPulse {
