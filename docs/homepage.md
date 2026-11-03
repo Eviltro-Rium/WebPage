@@ -105,3 +105,7 @@ Top three problems checked after fixes:
 ## 主题表面过渡
 
 旧主题规则未覆盖新版 hero / 普通 section，且按钮存在 0.18 秒覆盖，导致背景渐变时正文先跳色。`css/home.css` 在 `theme-animating` 期间统一正文背景、文字、边框等颜色为 1.5 秒，匹配主题脚本与背景的正弦缓动，保留短时交互位移。减少动态效果时沿用即时切换。
+
+## 线上无后缀地址兼容
+
+Cloudflare 将 `site-shell.html` / `projects.html` 等地址重定向为无后缀地址，并将 `index.html` 转为 `/`。导航需统一识别两种路径；就绪消息比较同目录、同页面、同查询和锚点的规范化地址，避免实际重定向后的正文被误判为过期页面。宿主仍只接受五个正文页面，跨目录和外部目标继续拒绝。线上故障已在真实浏览器定位为 `/site-shell` 未被识别、iframe 停留 `about:blank`。

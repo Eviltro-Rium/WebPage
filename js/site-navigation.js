@@ -3,7 +3,19 @@
   'use strict';
   var pages = ['index.html', 'projects.html', 'materials.html', 'launchpad.html', 'guestbook.html'];
   var current = new URL(location.href);
-  var filename = current.pathname.split('/').pop() || 'index.html';
+  // Cloudflare / Pages 会将 foo.html 规范化为 foo，首页规范化为目录根。
+  function pageName(url) {
+    var name = url.pathname.split('/').pop() || 'index.html';
+    return name.includes('.') ? name : name + '.html';
+  }
+  function sameView(left, right) {
+    try {
+      var a = new URL(left), b = new URL(right);
+      return a.origin === b.origin && new URL('.', a).pathname === new URL('.', b).pathname &&
+        pageName(a) === pageName(b) && a.search === b.search && a.hash === b.hash;
+    } catch (error) { return false; }
+  }
+  var filename = pageName(current);
   var inView = window.parent !== window && window.name === 'rium-site-content';
   if (inView) {
     window.RiumSiteView = true;
@@ -24,7 +36,7 @@
         if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.hasAttribute('download') || (link.target && link.target !== '_self')) return;
         var url = new URL(link.href, location.href);
         if (url.pathname === location.pathname && url.hash && url.search === location.search) return;
-        if (url.origin === current.origin && url.pathname.slice(0, url.pathname.lastIndexOf('/')) === current.pathname.slice(0, current.pathname.lastIndexOf('/')) && pages.includes(url.pathname.split('/').pop())) {
+        if (url.origin === current.origin && url.pathname.slice(0, url.pathname.lastIndexOf('/')) === current.pathname.slice(0, current.pathname.lastIndexOf('/')) && pages.includes(pageName(url))) {
           event.preventDefault();
           parent.postMessage({ type: 'rium-navigate', url: url.href }, '*');
         } else { link.target = '_top'; }
@@ -42,7 +54,7 @@
     var frame = document.getElementById('site-content');
     var base = new URL('.', current);
     function allowed(url) {
-      return url.origin === base.origin && new URL('.', url).pathname === base.pathname && pages.includes(url.pathname.split('/').pop());
+      return url.origin === base.origin && new URL('.', url).pathname === base.pathname && pages.includes(pageName(url));
     }
     var desiredHref = null;
     var pendingHref = null;
@@ -61,7 +73,7 @@
       }
     }
     function load(url, historyMode) {
-      if (!allowed(url) || url.href === desiredHref) return;
+      if (!allowed(url) || sameView(url.href, desiredHref)) return;
       var first = desiredHref === null;
       desiredHref = url.href;
       var request = ++generation;
@@ -95,7 +107,7 @@
       if (event.source !== frame.contentWindow || !event.data) return;
       var data = event.data;
       if (data.type === 'rium-view-ready') {
-        if (data.url === pendingHref && data.url === desiredHref) {
+        if (sameView(data.url, pendingHref) && sameView(data.url, desiredHref)) {
           if (typeof data.title === 'string') document.title = data.title;
           reveal();
         }
