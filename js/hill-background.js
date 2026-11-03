@@ -1,6 +1,6 @@
 /**
  * 主页 3D 背景：日夜主题下的青翠小山丘。
- * 白天使用晴空与软云，夜间切换为月光、星点和低照度的山坡。
+ * 白天使用暖黄暮空与软云，夜间切换为月光、星点和低照度的山坡。
  */
 (function () {
   if (typeof THREE === "undefined") return;
@@ -16,11 +16,12 @@
   });
   if (!isScenePage) return;
 
+  // 暖黄地平线配低饱和天顶；skyGlow 同时控制日夜状态，保持 1，仅降低着色器中的光晕增益。
   var LIGHT_PALETTE = {
-    sky: 0x58a8ee,
-    zenith: 0x2880d8,
-    horizon: 0x9ed0f5,
-    fog: 0xb0daf5,
+    sky: 0xc9b986,
+    zenith: 0x829eac,
+    horizon: 0xe8c77e,
+    fog: 0xd7c69d,
     fogNear: 38,
     fogFar: 92,
     soil: 0xc4a878,
@@ -34,17 +35,17 @@
     flowerHead: 0xf2c84a,
     particle: 0xffe9a0,
     sun: 0xfff1cc,
-    cloud: 0xf7f3ec,
-    cloudOpacity: 0.88,
+    cloud: 0xe5d4af,
+    cloudOpacity: 0.72,
     ambient: 0.58,
-    sunIntensity: 1.48,
+    sunIntensity: 1.28,
     fill: 0x7eb8f0,
     fillIntensity: 0.28,
     rim: 0xffd080,
     rimIntensity: 0.46,
     haze: 0xf0b45a,
     hemi: 0.52,
-    exposure: 1.12,
+    exposure: 1.04,
     skyGlow: 1.0,
     moonGlow: 0
   };
@@ -120,18 +121,18 @@
     "  float sunWash = pow(sunDot, 4.8) * uSunGlow;",
     "  col = mix(col, vec3(1.0, 0.76, 0.4), sunWash * 0.16);",
     "  float sunBloom = pow(sunDot, 14.0) * uSunGlow;",
-    "  col += vec3(1.0, 0.62, 0.2) * sunBloom * 0.2;",
+    "  col += vec3(1.0, 0.62, 0.2) * sunBloom * 0.07;",
     "  float sunDisk = smoothstep(0.993, 0.9997, sunDot) * uSunGlow;",
     "  col = mix(col, vec3(1.0, 0.8, 0.42), sunDisk);",
-    "  col += vec3(1.0, 0.68, 0.26) * pow(sunDot, 6.0) * uSunGlow * 0.2;",
-    "  col += vec3(1.0, 0.78, 0.42) * pow(sunDot, 20.0) * uSunGlow * 0.14;",
-    "  col += vec3(1.0, 0.88, 0.58) * pow(sunDot, 90.0) * uSunGlow * 0.16;",
-    "  col += vec3(1.0, 0.92, 0.7) * pow(sunDot, 240.0) * uSunGlow * 0.12;",
+    "  col += vec3(1.0, 0.68, 0.26) * pow(sunDot, 6.0) * uSunGlow * 0.07;",
+    "  col += vec3(1.0, 0.78, 0.42) * pow(sunDot, 20.0) * uSunGlow * 0.05;",
+    "  col += vec3(1.0, 0.88, 0.58) * pow(sunDot, 90.0) * uSunGlow * 0.06;",
+    "  col += vec3(1.0, 0.92, 0.7) * pow(sunDot, 240.0) * uSunGlow * 0.04;",
     "  float ang = atan(dir.x, dir.z);",
     "  float shafts = pow(sunDot, 9.0) * (0.5 + 0.5 * sin(ang * 14.0 + dir.y * 6.0));",
-    "  col += vec3(1.0, 0.76, 0.38) * shafts * uSunGlow * 0.1;",
+    "  col += vec3(1.0, 0.76, 0.38) * shafts * uSunGlow * 0.035;",
     "  float aniso = pow(sunDot, 24.0) * abs(dir.x) * (1.0 - abs(dir.y));",
-    "  col += vec3(1.0, 0.84, 0.5) * aniso * uSunGlow * 0.12;",
+    "  col += vec3(1.0, 0.84, 0.5) * aniso * uSunGlow * 0.04;",
     "  float moonDot = max(dot(dir, normalize(uMoonDir)), 0.0);",
     "  float moonDisk = smoothstep(0.993, 0.9997, moonDot) * uMoonGlow;",
     "  col += vec3(0.94, 0.96, 1.0) * moonDisk;",
@@ -172,10 +173,10 @@
     "  if (a < 0.02) discard;",
     "  vec3 sky = mix(uHorizon, uZenith, smoothstep(0.18, 0.88, vUv.y));",
     "  vec3 col = mix(sky, uTint, 0.72);",
-    "  col = mix(col, vec3(1.0, 0.99, 0.96), 0.38);",
+    "  col = mix(col, vec3(1.0, 0.93, 0.78), 0.16);",
     "  float belly = smoothstep(0.72, 0.22, vUv.y);",
     "  col = mix(col, mix(uTint, uHaze, 0.28), belly * 0.16 * uSunGlow);",
-    "  col += vec3(1.0, 0.96, 0.88) * smoothstep(0.35, 0.95, vUv.y) * uSunGlow * 0.06;",
+    "  col += vec3(1.0, 0.96, 0.88) * smoothstep(0.35, 0.95, vUv.y) * uSunGlow * 0.025;",
     "  float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);",
     "  col = mix(col, fogColor, fogFactor * 0.35);",
     "  a *= uOpacity * (1.0 - fogFactor * 0.28);",
@@ -1086,6 +1087,108 @@
     );
     world.add(pollen);
 
+    // 日间蝶翼与夜间萤火都复用已有渲染循环，实例化后总共只增加三个绘制批次。
+    var butterflyCount = mobile ? 3 : 6;
+    var wingShape = new THREE.Shape();
+    wingShape.moveTo(0, 0);
+    wingShape.bezierCurveTo(0.16, 0.36, 0.47, 0.34, 0.38, 0.08);
+    wingShape.bezierCurveTo(0.5, -0.2, 0.14, -0.26, 0, 0);
+    var wingMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, side: THREE.DoubleSide, transparent: true, depthWrite: false
+    });
+    var butterflyWings = new THREE.InstancedMesh(new THREE.ShapeGeometry(wingShape, 8), wingMat, butterflyCount * 2);
+    var butterflyBodyMat = new THREE.MeshBasicMaterial({ color: 0x554b30, transparent: true });
+    var butterflyBodies = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 6, 4), butterflyBodyMat, butterflyCount);
+    butterflyWings.name = 'day-butterfly-wings';
+    butterflyBodies.name = 'day-butterfly-bodies';
+    butterflyWings.frustumCulled = butterflyBodies.frustumCulled = false;
+    butterflyWings.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    butterflyBodies.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    var butterflyColors = [0xf3d18a, 0xe8e5cf, 0xd49d61];
+    var butterflyTransform = new THREE.Object3D();
+    for (var bi = 0; bi < butterflyCount; bi++) {
+      var wingColor = new THREE.Color(butterflyColors[bi % butterflyColors.length]);
+      butterflyWings.setColorAt(bi * 2, wingColor);
+      butterflyWings.setColorAt(bi * 2 + 1, wingColor);
+    }
+    world.add(butterflyWings, butterflyBodies);
+
+    var fireflyCount = mobile ? 22 : 42;
+    var fireflyPositions = new Float32Array(fireflyCount * 3);
+    var fireflyPhases = new Float32Array(fireflyCount);
+    for (var fi = 0; fi < fireflyCount; fi++) {
+      // 固定分布，刷新和主题切换不会重新撒点；保持在草面上方。
+      var fx = Math.sin(fi * 2.399) * (5 + (fi % 7) * 1.8);
+      var fz = 8 - (fi % 11) * 2.1;
+      fireflyPositions[fi * 3] = fx;
+      fireflyPositions[fi * 3 + 1] = terrainHeight(fx, fz) + 1.6 + (fi % 4) * 0.38;
+      fireflyPositions[fi * 3 + 2] = fz;
+      fireflyPhases[fi] = fi * 2.399;
+    }
+    var fireflyGeo = new THREE.BufferGeometry();
+    fireflyGeo.setAttribute('position', new THREE.BufferAttribute(fireflyPositions, 3));
+    fireflyGeo.setAttribute('aPhase', new THREE.BufferAttribute(fireflyPhases, 1));
+    var fireflyMat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uNight: { value: 0 }, uPixelRatio: { value: renderer.getPixelRatio() } },
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: [
+        'attribute float aPhase;',
+        'uniform float uTime;',
+        'uniform float uPixelRatio;',
+        'varying float vGlow;',
+        'void main() {',
+        '  vec3 p = position;',
+        '  p.x += sin(uTime * 0.23 + aPhase) * 0.5;',
+        '  p.y += sin(uTime * 0.41 + aPhase) * 0.25;',
+        '  p.z += cos(uTime * 0.19 + aPhase) * 0.4;',
+        '  vec4 view = modelViewMatrix * vec4(p, 1.0);',
+        '  vGlow = 0.22 + 0.65 * pow(0.5 + 0.5 * sin(uTime * 0.85 + aPhase), 2.0);',
+        '  gl_PointSize = clamp(130.0 / max(1.0, -view.z), 3.0, 10.0) * uPixelRatio;',
+        '  gl_Position = projectionMatrix * view;',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'uniform float uNight;',
+        'varying float vGlow;',
+        'void main() {',
+        '  float d = length(gl_PointCoord - 0.5) * 2.0;',
+        '  if (d > 1.0) discard;',
+        '  float glow = exp(-d * d * 6.0) * (1.0 - smoothstep(0.7, 1.0, d));',
+        '  gl_FragColor = vec4(0.76, 0.92, 0.36, glow * vGlow * uNight);',
+        '}'
+      ].join('\n')
+    });
+    var fireflies = new THREE.Points(fireflyGeo, fireflyMat);
+    fireflies.name = 'night-fireflies';
+    fireflies.frustumCulled = false;
+    world.add(fireflies);
+
+    function updateNature(time) {
+      if (fireflies.visible) fireflyMat.uniforms.uTime.value = time;
+      if (!butterflyWings.visible) return;
+      for (var i = 0; i < butterflyCount; i++) {
+        var phase = i * 2.399;
+        var x = (i % 2 ? 1 : -1) * ((mobile ? 1.6 : 5.5) + i * (mobile ? 0.35 : 0.75)) + Math.sin(time * 0.2 + phase) * (mobile ? 0.6 : 1.4);
+        var z = 5 - i * 2.6 + Math.cos(time * 0.16 + phase) * 0.8;
+        var y = terrainHeight(x, z) + 2 + Math.sin(time * 0.7 + phase) * 0.3;
+        var flap = 0.35 + (0.5 + 0.5 * Math.sin(time * 16 + phase)) * 0.9;
+        butterflyTransform.position.set(x, y, z);
+        butterflyTransform.scale.setScalar(0.8);
+        for (var side = 0; side < 2; side++) {
+          butterflyTransform.rotation.set(0.2, side ? Math.PI - flap : flap, Math.sin(time * 0.4 + phase) * 0.15);
+          butterflyTransform.updateMatrix();
+          butterflyWings.setMatrixAt(i * 2 + side, butterflyTransform.matrix);
+        }
+        butterflyTransform.rotation.set(0.2, 0, 0);
+        butterflyTransform.scale.set(0.025, 0.15, 0.025);
+        butterflyTransform.updateMatrix();
+        butterflyBodies.setMatrixAt(i, butterflyTransform.matrix);
+      }
+      butterflyWings.instanceMatrix.needsUpdate = true;
+      butterflyBodies.instanceMatrix.needsUpdate = true;
+    }
+    updateNature(0);
+
     var sunDirWorld = new THREE.Vector3();
     var moonDirWorld = new THREE.Vector3();
     var lightDirWorld = new THREE.Vector3();
@@ -1214,6 +1317,11 @@
 
       pollen.material.color.setHex(palette.particle);
       pollen.material.opacity = 0.55 * palette.skyGlow;
+      wingMat.opacity = 0.88 * palette.skyGlow;
+      butterflyBodyMat.opacity = palette.skyGlow;
+      butterflyWings.visible = butterflyBodies.visible = palette.skyGlow > 0.01;
+      fireflyMat.uniforms.uNight.value = palette.moonGlow;
+      fireflies.visible = palette.moonGlow > 0.01;
       stars.material.color.setHex(palette.particle);
       stars.material.opacity = 0.78 * palette.moonGlow;
       stars.visible = palette.moonGlow > 0.01;
@@ -1389,6 +1497,7 @@
       if (!visible) return;
       var time = t * 0.001;
       if (!reducedMotion) {
+        updateNature(time);
         grassMat.uniforms.uTime.value = time;
         clouds.position.x = Math.sin(time * 0.03) * 2.4;
         pollen.rotation.y = time * 0.02;

@@ -257,3 +257,18 @@ body.site-collection .home-scene-status span { border-radius: 14px; }
 html.shared-background-view,
 html.shared-background-view body.site-collection { background: transparent !important; }
 html.shared-background-view .home-scene-status { display: none !important; }
+
+/* 与 theme.js 的 1500ms 正弦日夜过渡同步，覆盖新版表面及其独立文字颜色。 */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-animating body.site-collection,
+  html.theme-animating body.site-collection *:not(#hill-bg-canvas):not(iframe),
+  html.theme-animating body.site-collection *::before,
+  html.theme-animating body.site-collection *::after {
+    transition: background-color 1.5s cubic-bezier(.37, 0, .63, 1),
+      color 1.5s cubic-bezier(.37, 0, .63, 1),
+      border-color 1.5s cubic-bezier(.37, 0, .63, 1),
+      box-shadow 1.5s cubic-bezier(.37, 0, .63, 1),
+      text-decoration-color 1.5s cubic-bezier(.37, 0, .63, 1),
+      transform .18s ease, opacity .18s ease;
+  }
+}
