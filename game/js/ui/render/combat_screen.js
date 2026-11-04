@@ -74,7 +74,7 @@
                 </div>
                 <div class="error-hint" id="error-hint"></div>
                 <div class="adventure-info-bar" id="adventure-info-bar" style="display:none"></div>
-                <div class="player-hand-zone"><div class="zone-title">你的</div>
+                <div class="player-hand-zone"><div class="zone-title">你的手牌</div>
                     <div class="player-hand-layout">
                     <div class="hand-row" id="player-hand"></div>
                     <div class="reserve-zone" id="player-reserve" hidden></div>

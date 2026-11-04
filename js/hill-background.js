@@ -965,6 +965,70 @@
     });
     world.add(new THREE.Mesh(terrainGeo, terrainMat));
 
+    // 风化岩块共用低面数几何与材质；埋入地形让草遮住接缝，不增加动态阴影。
+    var rockGeo = new THREE.IcosahedronGeometry(1, 2);
+    var rockPos = rockGeo.attributes.position;
+    var rockColors = new Float32Array(rockPos.count * 3);
+    var rockStone = new THREE.Color(0x3b3930);
+    var rockTint = new THREE.Color();
+    for (var ri = 0; ri < rockPos.count; ri++) {
+      var rx = rockPos.getX(ri), ry = rockPos.getY(ri), rz = rockPos.getZ(ri);
+      var weathering = 1 + 0.13 * Math.sin(rx * 5.7 + rz * 3.1) + 0.08 * Math.cos(ry * 8.3 - rx * 2.8);
+      var ridge = Math.sin(ry * 13 + rx * 2 + rz * 4);
+      rockPos.setXYZ(ri, rx * weathering + ry * 0.12, Math.max(-0.65, ry * weathering), rz * weathering);
+      rockTint.copy(rockStone).multiplyScalar(0.58 + (ry + 1) * 0.2 + ridge * 0.06);
+      rockColors[ri * 3] = rockTint.r;
+      rockColors[ri * 3 + 1] = rockTint.g;
+      rockColors[ri * 3 + 2] = rockTint.b;
+    }
+    rockGeo.setAttribute('color', new THREE.BufferAttribute(rockColors, 3));
+    rockGeo.computeVertexNormals();
+    var rockMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    // 苔藓画在露出的岩面上，避免只有埋进草里的底部略微偏绿。
+    // 局部坐标让斑块随岩块一起旋转；程序纹理不增加贴图请求或绘制批次。
+    rockMat.onBeforeCompile = function (shader) {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vRockPosition;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRockPosition = position;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vRockPosition;')
+        .replace('#include <color_fragment>', [
+          '#include <color_fragment>',
+          'vec3 p = vRockPosition;',
+          'float patches = 0.5 + 0.23 * sin(p.x * 5.0 + p.z * 3.0) * cos(p.y * 6.0 - p.z * 4.0)',
+          '  + 0.14 * sin(p.z * 9.0 - p.y * 7.0 + p.x * 3.0)',
+          '  + 0.07 * sin(p.x * 23.0 + p.y * 19.0 + p.z * 17.0);',
+          'float moss = smoothstep(0.52, 0.64, patches + 0.10 - 0.30 * smoothstep(0.1, 0.85, p.y));',
+          'float grain = fract(sin(dot(floor(p * 95.0), vec3(127.1, 311.7, 74.7))) * 43758.5453);',
+          'vec3 mossColor = mix(vec3(0.045, 0.11, 0.014), vec3(0.075, 0.16, 0.024), grain);',
+          'diffuseColor.rgb = mix(diffuseColor.rgb, mossColor, moss * 0.95);'
+        ].join('\n'));
+    };
+    // x、z、横向/高度/纵深、朝向；近处成簇，远处留一两块孤石。
+    var rockLayout = [
+      [-10, 1, 2.5, 2.2, 1.8, 0.4], [-7.8, 2.2, 1.2, 1.0, 1.1, 1.8],
+      [-12.1, -1.3, 1.5, 1.5, 1.5, 2.7],
+      [11, -10, 3.0, 3.1, 2.0, 1.2], [8.6, -8, 1.4, 1.3, 1.2, 2.4],
+      [13.1, -7.5, 1.8, 1.2, 1.5, 0.2],
+      [-5.2, -24, 2.0, 2.6, 1.6, 2.1], [-3.4, -23, 1.1, 1.3, 1.0, 0.8],
+      [18, -27, 2.4, 2.1, 1.6, 1.7]
+    ];
+    var rocks = new THREE.InstancedMesh(rockGeo, rockMat, rockLayout.length);
+    rocks.name = 'wilderness-boulders';
+    rocks.frustumCulled = false;
+    var rockTransform = new THREE.Object3D();
+    rockLayout.forEach(function (rock, index) {
+      var x = rock[0] * (mobile ? 0.48 : 1);
+      var z = rock[1];
+      rockTransform.position.set(x, terrainHeight(x, z) + rock[3] * 0.3, z);
+      rockTransform.rotation.set(0, rock[5], 0);
+      rockTransform.scale.set(rock[2], rock[3], rock[4]);
+      rockTransform.updateMatrix();
+      rocks.setMatrixAt(index, rockTransform.matrix);
+    });
+    rocks.instanceMatrix.needsUpdate = true;
+    world.add(rocks);
+
     var grassGeo = createGrassClumpGeometry();
     var underGeo = createUndergrowthGeometry();
     var carpetGeo = createCarpetGeometry();

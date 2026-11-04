@@ -3843,3 +3843,105 @@ body.combat-sheet-open #controls .ctrl-btn { cursor: not-allowed; }
   .codex-trophy-faces .codex-trophy-face { width: 50px; }
 }
 @media (prefers-reduced-motion: reduce) { .trophy-upgrade-flash { animation: none; } }
+
+/* 战斗阅读层级：只作用于共享战场，保持卡牌与事件动画的定位契约。 */
+#game-screen.active { justify-content: flex-start; padding: 10px 0 24px; }
+#game-screen > .game-title {
+  margin: 0 0 10px; padding: 0; font-size: 1.3rem; letter-spacing: .04em;
+  background: none; -webkit-text-fill-color: currentColor; text-shadow: none;
+}
+#game-screen > .game-title::after { display: none; }
+#game-screen .top-bar {
+  flex-wrap: wrap; gap: 8px 12px; padding: 8px 10px; margin-bottom: 10px;
+  border-radius: 14px; background: rgba(10, 26, 41, .78);
+}
+#game-screen .hud-side-tools { flex-direction: row; gap: 6px; margin-left: auto; }
+#game-screen .hud-side-tools button { min-width: 44px; min-height: 44px; border-radius: 10px; }
+#game-screen .deck-info, #game-screen .turn-info { font-size: .78rem; font-variant-numeric: tabular-nums; }
+#game-screen .phase-info { padding: 6px 10px; font-size: .8rem; color: #d8f5ff; background: #193d50; border: 0; }
+#game-screen .npc-deck-info { margin: 0; background: transparent; border: 0; }
+#game-screen .hp-section {
+  padding: 8px 10px; margin-bottom: 6px; gap: 8px;
+  background: rgba(12, 30, 45, .72); border-color: rgba(170, 206, 224, .18); border-radius: 14px;
+}
+#game-screen .hp-name { font-size: .9rem; }
+#game-screen .hp-avatar { width: 44px; height: 44px; }
+#game-screen .npc-avatar { width: 52px; height: 52px; }
+#game-screen .npc-hp-section { grid-template-columns: 52px minmax(0, 1fr) auto; row-gap: 2px; }
+#game-screen .hp-section > .buff-icons:empty { display: none; }
+#game-screen .ai-hand-row { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; justify-content: flex-start; }
+#game-screen .deck-area canvas { width: 30px; height: 39px; }
+#game-screen .npc-passive { font-size: .76rem; line-height: 1.5; color: #c2d1de; }
+#game-screen .hp-bar-outer { height: 18px; border: 0; background: #081725; }
+#game-screen .hp-text { font-size: .75rem; font-variant-numeric: tabular-nums; }
+#game-screen .hp-section:not(.npc-hp-section) > .hp-bar-outer { flex: 1 1 180px; max-width: 400px; }
+#game-screen .hp-section.active-attacker { border-color: #e5bb62; background: rgba(75, 58, 26, .6); }
+#game-screen .hp-section.active-attacker:not(.combatant-hit) { animation: none; box-shadow: none; }
+#game-screen .hp-section.selected-target:not(.active-attacker) { box-shadow: none; outline: 2px solid #7dd3fc; outline-offset: 1px; }
+#game-screen .ai-area { gap: 8px; margin: 4px 0 8px; }
+#game-screen :is(.attack-zone, .defend-zone, .reveal-zone, .discard-zone, .ai-hand-zone, .player-hand-zone) {
+  border-radius: 14px; box-shadow: none; border-width: 1px;
+}
+#game-screen .attack-zone { background: rgba(49, 27, 35, .9); border-color: #ad6875; }
+#game-screen .defend-zone { background: rgba(19, 39, 60, .9); border-color: #6095ba; }
+#game-screen .reveal-zone { background: rgba(44, 39, 24, .88); border-color: #ab945d; }
+#game-screen :is(.discard-zone, .ai-hand-zone, .player-hand-zone) { background: rgba(12, 30, 45, .84); border-color: rgba(170, 206, 224, .28); }
+#game-screen .zone-title { font-size: .76rem; letter-spacing: .03em; text-shadow: none; }
+#game-screen :is(.attack-zone, .defend-zone) { padding: 10px; column-gap: 10px; }
+#game-screen .zone-desc { font-size: .9rem; line-height: 1.55; color: #edf3f8; }
+#game-screen .reveal-desc { font-size: .78rem; line-height: 1.45; }
+#game-screen .player-hand-zone { padding: 8px 10px; margin-top: 4px; }
+#game-screen .player-hand-zone > .zone-title { text-align: left; color: #c2d1de; }
+#game-screen .player-hand-layout { flex-direction: row; align-items: stretch; gap: 10px; }
+#game-screen #player-hand { flex: 1; min-width: 0; padding: 12px 6px; }
+#game-screen .reserve-zone { flex: 0 0 94px; }
+#game-screen .reserve-content { border-top: 0; border-left: 1px solid #7592ab55; padding-left: 10px; }
+#game-screen .reserve-title { margin: 0 0 6px; padding: 2px 0; color: #c2d1de; }
+#game-screen .controls,
+#game-screen.adventure-combat-layout .player-hand-zone + .controls {
+  gap: 8px; padding: 8px 0; margin: 0;
+}
+#game-screen .ctrl-btn { min-height: 44px; padding: 10px 20px; border-radius: 10px; text-shadow: none; font-size: .84rem; }
+#game-screen .ctrl-btn:is(.btn-play, .btn-defend) { background: #95dfeb; color: #0a2b37; border-color: #bceff6; }
+#game-screen .ctrl-btn:is(.btn-use-item, .btn-discard, .btn-skip) { background: #22384c; color: #e3ecf5; border-color: #567088; }
+#game-screen .ctrl-btn.btn-end { background: #3e3526; border-color: #b69b67; color: #ffe4aa; }
+#game-screen .ctrl-btn:disabled { opacity: .42; box-shadow: none; }
+#game-screen .ctrl-btn:focus-visible { outline: 2px solid #bceff6; outline-offset: 3px; }
+#game-screen .adventure-inventory-panel { border-radius: 14px; background: rgba(16, 27, 44, .86); border-color: rgba(170, 206, 224, .24); }
+#game-screen .adventure-inventory-panel > .adventure-info-bar { margin: 0; background: rgba(5, 16, 28, .35); padding: 7px 12px; font-variant-numeric: tabular-nums; }
+#game-screen .action-desc:empty, #game-screen .error-hint:empty { display: none; }
+#game-screen :is(.zone-desc, .reveal-desc, .ai-hand-row, #player-hand) { scrollbar-width: thin; scrollbar-color: #69839b #102334; }
+@media (min-width: 769px) {
+  #game-screen .ai-hands-stack { flex: 0 1 184px; min-width: 130px; }
+  #game-screen .ai-hand-row { min-width: 0; overflow-x: auto; }
+  #game-screen .discard-zone { height: 162px; min-height: 162px; max-height: 162px; display: flex; flex-direction: column; }
+  #game-screen .discard-card-area { flex: 1; min-height: 0; max-height: none; }
+}
+@media (max-width: 768px) {
+  #game-screen.active { padding: 4px 0 12px; }
+  #game-screen > .game-title { font-size: 1rem; margin-bottom: 6px; }
+  #game-screen .top-bar { padding: 4px 6px; gap: 4px 6px; margin-bottom: 6px; }
+  #game-screen .deck-info, #game-screen .turn-info, #game-screen .npc-deck-info { font-size: .7rem; }
+  #game-screen .phase-info { font-size: .72rem; padding: 5px 7px; }
+  #game-screen .hp-section { padding: 6px; gap: 5px; }
+  #game-screen .hp-name { font-size: .8rem; }
+  #game-screen .npc-hp-section { grid-template-columns: 42px minmax(0, 1fr) auto; }
+  #game-screen .hp-avatar, #game-screen .npc-avatar { width: 42px; height: 42px; }
+  #game-screen .npc-passive { font-size: .72rem; line-height: 1.4; }
+  #game-screen .ai-area { gap: 6px; grid-template-rows: auto 130px 82px; }
+  #game-screen :is(.attack-zone, .defend-zone) { height: 130px; min-height: 130px; max-height: 130px; padding: 6px; column-gap: 5px; }
+  #game-screen .zone-desc { font-size: .78rem; line-height: 1.5; }
+  #game-screen .zone-title { font-size: .72rem; }
+  #game-screen .reveal-desc { font-size: .72rem; }
+  #game-screen .player-hand-zone { padding: 6px; }
+  #game-screen .player-hand-layout { gap: 6px; }
+  #game-screen #player-hand { padding: 10px 3px; }
+  #game-screen .player-hand-zone .card-canvas { width: 50px !important; height: 71px !important; flex-basis: 50px; }
+  #game-screen .reserve-zone { flex-basis: 64px; }
+  #game-screen .reserve-content { padding-left: 5px; }
+  #game-screen .controls,
+  #game-screen.adventure-combat-layout .player-hand-zone + .controls {
+    padding: 6px 4px max(6px, env(safe-area-inset-bottom)); gap: 5px; background: #102537;
+  }
+  #game-screen .ctrl-btn { flex: 1 1 auto; padding: 9px 8px; font-size: .78rem; min-width: 44px; }
+}
