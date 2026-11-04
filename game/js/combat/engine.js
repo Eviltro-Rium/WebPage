@@ -1305,6 +1305,21 @@
       return this.state();
     }
 
+    cancelColorChoice() {
+      const s = this.s;
+      if (!s || !s.needColorChoice || s.pendingDialog !== 'color' ||
+          !['PLAYER_PLAY', 'PLAYER_DEFEND'].includes(s.phase)) throw Error('当前没有可取消的选色');
+      // 选色前卡牌仍在手牌/储备区，仅撤销决策，不移动牌或触发技能。
+      s.pendingBlackPlay = null;
+      s.pendingReserveColor = false;
+      s.needColorChoice = false;
+      s.pendingDialog = null;
+      s.selectedCard = -1;
+      s.selectedReserveIndex = null;
+      s.selectedCards = [];
+      return this.state();
+    }
+
     _resumePendingBlackCard(color) {
       const pending = this.s && this.s.pendingBlackPlay;
       if (!pending || !pending.card) return null;
@@ -1806,6 +1821,7 @@
       if(m==='doEnterDiscard')return this.enterDiscard();
       if(m==='doCancelDiscard')return this.cancelDiscard();
       if(m==='doConfirmDiscard')return this.confirmDiscard();
+      if(m==='cancelColorChoice')return this.cancelColorChoice();
       if(m==='chooseColor'){
         let card=this.h.player[this.s.selectedCard];
         if(!card)throw Error('请选择要指定颜色的牌');

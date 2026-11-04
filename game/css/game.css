@@ -1991,11 +1991,29 @@ body.combat-sheet-open::after {
 }
 
 .ctrl-hint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.8rem; font-weight: 600;
     color: var(--text-muted); padding: 5px 14px;
     background: rgba(2,12,27,0.72);
     border-radius: 10px; border: 1px solid rgba(186,230,253,0.36);
     text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    line-height: 1.25;
+    text-align: center;
+}
+
+.ctrl-hint-color-label {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 44px;
+    height: 44px;
+    padding: 0 10px;
+    box-sizing: border-box;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    line-height: 1;
+    white-space: nowrap;
 }
 
 .zone-cards > span,
@@ -3900,6 +3918,7 @@ body.combat-sheet-open #controls .ctrl-btn { cursor: not-allowed; }
 #game-screen .controls,
 #game-screen.adventure-combat-layout .player-hand-zone + .controls {
   gap: 8px; padding: 8px 0; margin: 0;
+  align-items: center;
 }
 #game-screen .ctrl-btn { min-height: 44px; padding: 10px 20px; border-radius: 10px; text-shadow: none; font-size: .84rem; }
 #game-screen .ctrl-btn:is(.btn-play, .btn-defend) { background: #95dfeb; color: #0a2b37; border-color: #bceff6; }
@@ -3944,4 +3963,31 @@ body.combat-sheet-open #controls .ctrl-btn { cursor: not-allowed; }
     padding: 6px 4px max(6px, env(safe-area-inset-bottom)); gap: 5px; background: #102537;
   }
   #game-screen .ctrl-btn { flex: 1 1 auto; padding: 9px 8px; font-size: .78rem; min-width: 44px; }
+}
+
+/* 固定选色按钮不能继承普通按钮的横向 padding，否则单字会被挤偏。 */
+#game-screen #controls .ctrl-hint-color-label {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+#game-screen #controls .color-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  padding: 0;
+  line-height: 1;
+  text-align: center;
+}
+#game-screen .ctrl-btn.btn-cancel-color {
+  background: #22384c;
+  color: #e3ecf5;
+  border-color: #567088;
 }

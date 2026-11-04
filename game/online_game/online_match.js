@@ -15,7 +15,7 @@
         'doEnterDiscard', 'doCancelDiscard', 'doConfirmDiscard',
         'doFiveHeal', 'doFiveDamage', 'doSaikiSixConfirm',
         'resolveAttackModChoice', 'resolveCritChoice', 'resolveAttackBuffChoice', 'chooseTarget',
-        'chooseColor', 'choosePurify', 'choosePurifyCrystal',
+        'chooseColor', 'cancelColorChoice', 'choosePurify', 'choosePurifyCrystal',
         'chooseSuperPurifyTarget', 'chooseMozeSeven', 'chooseGuard',
         'chooseFly', 'chooseFlyContinue', 'chooseTrophyDisarm', 'chooseTrophyPurify',
         'doChanSevenKeep', 'doChanSevenDiscard', 'doSaikiThreeKeep',
@@ -426,6 +426,8 @@
                 if (s.phase !== 'TARGET_CHOICE') return '当前没有目标选择';
                 if (![0, 1].includes(Number(params.target))) return '无效的攻击目标';
             }
+            if (method === 'cancelColorChoice' && (!s.needColorChoice || s.pendingDialog !== 'color' ||
+                !['PLAYER_PLAY', 'PLAYER_DEFEND'].includes(s.phase))) return '当前没有可取消的选色';
             if (method === 'chooseColor') {
                 if (!s.needColorChoice || selected < 0 || selected >= hand.length) return '当前没有待指定颜色的牌';
                 if (!['RED', 'YELLOW', 'BLUE', 'GREEN'].includes(String(params.color || ''))) return '无效的颜色';

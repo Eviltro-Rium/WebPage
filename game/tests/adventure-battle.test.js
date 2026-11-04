@@ -2456,3 +2456,58 @@ test('Saiki blue 1 with PurifyCrystal settles a skipped defense against the seco
   assert.notEqual(engine.s.phase,'AI_DEFEND');
   assert.equal(engine.s.ai2.hp,1);
 });
+
+for (const mode of ['classic', '1v2', 'lord', 'adventure', 'challenge', 'reserve']) {
+  for (const phase of ['PLAYER_PLAY', 'PLAYER_DEFEND']) {
+    test(`cancel black color preserves card and combat state: ${mode} ${phase}`, () => {
+      let engine;
+      const card = black();
+      if (mode === 'reserve') {
+        engine = magazineBattle([card]);
+        storeMagazine(engine);
+      } else if (mode === 'adventure') {
+        engine = start({hand:[card]});
+      } else if (mode === 'challenge') {
+        engine = bindChallenge();
+        engine.h.player = [card];
+      } else {
+        engine = new context.Engine();
+        engine.later = () => {};
+        if (mode === 'classic') engine.start('Ryan', 'Leon');
+        else if (mode === 'lord') engine.startLord('Ryan', 'Leon', 'Chan');
+        else engine.start1v2('Ryan', 'Leon', 'Chan');
+        engine.h.player = [card];
+      }
+      engine.later = () => {};
+      engine.s.phase = phase;
+      engine.s.busy = false;
+      engine.s.atkOwner = phase === 'PLAYER_DEFEND' ? 'ai' : null;
+      engine.s.atkCard = phase === 'PLAYER_DEFEND' ? number(1, 'RED') : null;
+      engine.s.pendingAttack = phase === 'PLAYER_DEFEND' ? {damage:4, unblock:false} : null;
+      engine.s.discardTop = number(1, 'RED');
+      engine.dispatch(mode === 'reserve' ? 'selectReserveCard' : 'selectCard', {index:0});
+      engine.dispatch(phase === 'PLAYER_DEFEND' ? 'doDefend' : 'doPlay');
+      assert.equal(engine.s.needColorChoice, true);
+      const preserved = () => JSON.stringify({h:engine.h, piles:engine.piles, reserve:engine.s.reserveCards,
+        player:engine.s.player, ai:engine.s.ai, top:engine.s.discardTop,
+        attack:engine.s.pendingAttack, atkCard:engine.s.atkCard, defCard:engine.s.defCard,
+        played:engine.s.hasPlayedThisTurn, events:engine.events});
+      const before = preserved();
+      engine.dispatch('cancelColorChoice');
+      assert.equal(engine.s.needColorChoice, false);
+      assert.equal(engine.s.pendingDialog, null);
+      assert.equal(engine.s.pendingBlackPlay, null);
+      assert.equal(engine.s.pendingReserveColor, false);
+      assert.equal(engine.s.selectedCard, -1);
+      assert.equal(engine.s.selectedReserveIndex, null);
+      assert.equal(engine.s.phase, phase);
+      assert.equal(preserved(), before, 'cancel must not move cards, apply effects or emit play events');
+      assert.throws(() => engine.dispatch('cancelColorChoice'), /当前没有可取消/);
+      engine.dispatch(mode === 'reserve' ? 'selectReserveCard' : 'selectCard', {index:0});
+      engine.dispatch(phase === 'PLAYER_DEFEND' ? 'doDefend' : 'doPlay');
+      engine.dispatch('chooseColor', {color:'GREEN'});
+      assert.equal(engine.s.needColorChoice, false);
+      assert.equal(engine.s.discardTop.chosenColor, 'GREEN');
+    });
+  }
+}

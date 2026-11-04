@@ -928,3 +928,23 @@ test('online match keeps selected emoji avatars in both projections and after ac
   assert.equal(match.project('host').onlineAvatar, '🦊');
   assert.equal(match.project('guest').onlineOpponentAvatar, '🦊');
 });
+test('online color cancellation is authorized only for the active actor and preserves their hand', () => {
+  for (const actor of ['host', 'guest']) {
+    const match = new context.OnlineMatchHost('Leon', 'Ryan', 'host');
+    match.setStarted(true);
+    if (actor === 'guest') assert.equal(match.dispatch('host', 'doEndTurn').ok, true);
+    const owner = actor === 'host' ? 'player' : 'ai';
+    match.engine.h[owner] = [{uid:'cancel-black', color:'BLACK', value:-1, isBlack:true, isItemCard:true, isNumberCard:false}];
+    match.engine.s.discardTop = {color:'RED', value:1, isNumberCard:true};
+    assert.equal(match.dispatch(actor, 'selectCard', {index:0}).ok, true);
+    assert.equal(match.dispatch(actor, 'doPlay').ok, true);
+    assert.equal(match.project(actor).needColorChoice, true);
+    const before = JSON.stringify(match.engine.h);
+    assert.equal(match.dispatch(actor === 'host' ? 'guest' : 'host', 'cancelColorChoice').ok, false);
+    const result = match.dispatch(actor, 'cancelColorChoice');
+    assert.equal(result.ok, true, result.error);
+    assert.equal(match.project(actor).needColorChoice, false);
+    assert.equal(JSON.stringify(match.engine.h), before);
+    assert.equal(match.dispatch(actor, 'cancelColorChoice').ok, false);
+  }
+});

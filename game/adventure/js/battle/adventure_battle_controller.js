@@ -24,7 +24,7 @@
   };
 
   function saveCombatSession(engine) {
-    if (abandonRequested) return false;
+    if (abandonRequested || !engine || engine !== battleEngine) return false;
     const player = engine && engine.s && engine.s.player;
     if (engine && !engine.testMode && engine.s && engine.s.phase === 'GAME_OVER' &&
         player && (player.alive === false || Number(player.hp) <= 0)) {
@@ -79,6 +79,7 @@
   }
 
   function abandonAdventure() {
+    disposeBattlePresentation();
     invalidateAdventureProgress();
     battleEngine = null;
     completing = false;
@@ -89,6 +90,7 @@
     const originalLater = engine.later;
     engine.later = function (fn, ms) {
       return originalLater.call(this, () => {
+        if (this !== battleEngine) return;
         try { return fn(); }
         finally { saveCombatSession(this); }
       }, ms);
@@ -102,6 +104,7 @@
   function localApi(engine) {
     return {
       dispatch(method, params) {
+        if (engine !== battleEngine) return null;
         try {
           const result = engine.dispatch(method, params || {});
           saveCombatSession(engine);
@@ -111,7 +114,8 @@
           throw error;
         }
       },
-      getState() { return engine.state(); }
+      getState() { return engine === battleEngine ? engine.state() : null; },
+      acknowledgeEvents(throughId) { return this.dispatch('clearEvents', { throughId }); }
     };
   }
 
@@ -131,7 +135,24 @@
     if (!visible && window.GameSideMenu) window.GameSideMenu.close(document.getElementById('game-menu-overlay'));
   }
 
+  function disposeBattlePresentation() {
+    // 旧动作可能还停在 await；标记失效，防止恢复后重绘新房间或确认新引擎的事件。
+    if (gameUI) {
+      gameUI._disposed = true;
+      if (gameUI._pollInterval) clearInterval(gameUI._pollInterval);
+      gameUI._pollInterval = null;
+    }
+    if (battleEngine) {
+      const runtime = window.FurryGame && window.FurryGame.CombatRuntime;
+      if (runtime) runtime.cancel(battleEngine, 'engine');
+      clearTimeout(battleEngine.timer);
+      battleEngine.timer = null;
+      battleEngine._deferredLootTimer = null;
+    }
+  }
+
   function leaveBattleToMap(finalState, persistentState, playerWon) {
+    disposeBattlePresentation();
     if (gameUI) {
       if (typeof gameUI._clearTrophySettlement === 'function') gameUI._clearTrophySettlement();
       if (typeof gameUI._hideTooltip === 'function') gameUI._hideTooltip();
@@ -163,6 +184,7 @@
   }
 
   function leaveBattleRewind(finalState, persistentState, leaveOptions) {
+    disposeBattlePresentation();
     if (gameUI) {
       if (typeof gameUI._hideTooltip === 'function') gameUI._hideTooltip();
       if (gameUI.gameScreen) gameUI.gameScreen.classList.remove('active');
@@ -217,6 +239,7 @@
   }
 
   function leaveTestBattle(finalState, persistentState, playerWon) {
+    disposeBattlePresentation();
     if (gameUI) {
       if (typeof gameUI._clearTrophySettlement === 'function') gameUI._clearTrophySettlement();
       if (typeof gameUI._hideTooltip === 'function') gameUI._hideTooltip();
@@ -674,7 +697,7 @@
   }
 
   function ensureGameUI() {
-    if (gameUI) return gameUI;
+    if (gameUI && !gameUI._disposed) return gameUI;
     gameUI = new GameUI();
     gameUI.selectScreen = document.getElementById('select-screen');
     gameUI.gameScreen = document.getElementById('game-screen');
@@ -769,6 +792,7 @@
     if (initialState.adventureEngine) battleEngine._adventureEngine = initialState.adventureEngine;
     if (initialState.adventureCurrency) battleEngine.adventureCurrency = initialState.adventureCurrency;
     window.furryBattle = localApi(battleEngine);
+    ui.session = window.furryBattle;
     if (window.Bridge) Bridge._mode = 'local';
 
     let result;
@@ -841,6 +865,7 @@
     if (initialState.adventureEngine) battleEngine._adventureEngine = initialState.adventureEngine;
     if (initialState.adventureCurrency) battleEngine.adventureCurrency = initialState.adventureCurrency;
     window.furryBattle = localApi(battleEngine);
+    ui.session = window.furryBattle;
     if (window.Bridge) Bridge._mode = 'local';
 
     let result;

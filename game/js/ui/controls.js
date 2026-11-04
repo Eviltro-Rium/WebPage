@@ -93,11 +93,12 @@ _renderControls() {
 
     if (phase === 'PLAYER_PLAY' && canAct) {
         if (s.needColorChoice) {
-            html += `<span class="ctrl-hint">选择颜色</span>`;
+            html += `<span class="ctrl-hint ctrl-hint-color-label">选择颜色</span>`;
             html += `<button class="ctrl-btn color-btn" id="btn-color-RED" style="background:#ff1e28">红</button>`;
             html += `<button class="ctrl-btn color-btn" id="btn-color-YELLOW" style="background:#ffc300">黄</button>`;
             html += `<button class="ctrl-btn color-btn" id="btn-color-BLUE" style="background:#0082ff">蓝</button>`;
             html += `<button class="ctrl-btn color-btn" id="btn-color-GREEN" style="background:#00c83c">绿</button>`;
+            html += `<button class="ctrl-btn btn-cancel-color" id="btn-cancel-color">取消出牌</button>`;
 
         } else {
             html += `<button class="ctrl-btn btn-play" id="btn-play" ${!hasCard ? 'disabled' : ''}>出牌</button>`;
@@ -108,11 +109,12 @@ _renderControls() {
         }
     } else if (phase === 'PLAYER_DEFEND' && canAct) {
         if (s.needColorChoice) {
-            html += `<span class="ctrl-hint">黑牌选色</span>`;
+            html += `<span class="ctrl-hint ctrl-hint-color-label">黑牌选色</span>`;
             html += `<button class="ctrl-btn color-btn" id="btn-color-RED" style="background:#ff1e28">红</button>`;
             html += `<button class="ctrl-btn color-btn" id="btn-color-YELLOW" style="background:#ffc300">黄</button>`;
             html += `<button class="ctrl-btn color-btn" id="btn-color-BLUE" style="background:#0082ff">蓝</button>`;
             html += `<button class="ctrl-btn color-btn" id="btn-color-GREEN" style="background:#00c83c">绿</button>`;
+            html += `<button class="ctrl-btn btn-cancel-color" id="btn-cancel-color">取消出牌</button>`;
         } else {
             if (s.unblockDefend) {
                 html += `<span class="ctrl-hint" style="color:#fca5a5">无法防御！</span>`;
@@ -283,6 +285,7 @@ async _bindControls() {
     bind('btn-saiki-six', async () => { await this._apiAction('doSaikiSixConfirm'); });
     bind('btn-target-0', async () => { await this._apiAction('chooseTarget', { target: 0 }); });
     bind('btn-target-1', async () => { await this._apiAction('chooseTarget', { target: 1 }); });
+    bind('btn-cancel-color', async () => { await this._apiAction('cancelColorChoice'); });
     ['RED','YELLOW','BLUE','GREEN'].forEach(c => {
         bind('btn-color-' + c, async () => { await this._apiAction('chooseColor', { color: c }); });
     });
@@ -569,7 +572,7 @@ _skipAttackMod() {
 },
 
 async _apiAction(method, params) {
-    if (this._isHandlingAction || this._isSelectingCard || this._isConsumingEvents) return false;
+    if (this._disposed || this._isHandlingAction || this._isSelectingCard || this._isConsumingEvents) return false;
     this._isHandlingAction = true;
     let shouldPollAI = false;
     let ok = false;
@@ -596,6 +599,7 @@ async _apiAction(method, params) {
         const result = typeof this._sessionDispatch === 'function'
             ? await this._sessionDispatch(dispatchMethod, dispatchParams)
             : await Bridge.call(dispatchMethod, dispatchParams);
+        if (this._disposed) return false;
         if (result && !result.error) {
             this.state = result;
             const hasEvents = result.events && result.events.length > 0;
@@ -637,7 +641,7 @@ _isDecisionAction(method) {
         'doFiveHeal', 'doFiveDamage',
         'doChanSevenKeep', 'doChanSevenDiscard', 'doSaikiThreeKeep',
         'doSaikiThreeDiscard', 'doChanFourDiscard', 'doChanFourSwap',
-        'doSaikiSixConfirm', 'resolveAttackModChoice', 'resolveCritChoice', 'resolveAttackBuffChoice', 'chooseTarget', 'chooseColor', 'choosePurify',
+        'doSaikiSixConfirm', 'resolveAttackModChoice', 'resolveCritChoice', 'resolveAttackBuffChoice', 'chooseTarget', 'chooseColor', 'cancelColorChoice', 'choosePurify',
         'chooseSuperPurifyTarget', 'chooseGuard', 'chanFiveReorder', 'choosePurifyCrystal', 'chooseMozeSeven',
         'chooseAICard', 'doOpponentCardConfirm', 'chooseTrophyDisarm', 'chooseTrophyPurify', 'chooseDiceControl', 'chooseLeonZeroDiscard'
     ]).has(method);
@@ -694,18 +698,19 @@ _showActionPending(method) {
 },
 
 async _pollAI() {
-    if (this._isPollingAI || this._isConsumingEvents || this._isHandlingAction) return;
+    if (this._disposed || this._isPollingAI || this._isConsumingEvents || this._isHandlingAction) return;
     this._isPollingAI = true;
     try {
       for (let i = 0; i < 80; i++) {
-        if (this._isConsumingEvents || this._isHandlingAction) break;
+        if (this._disposed || this._isConsumingEvents || this._isHandlingAction) break;
         await (global.FurryGame && global.FurryGame.CombatRuntime
             ? global.FurryGame.CombatRuntime.wait(350)
             : new Promise(r => setTimeout(r, 350)));
-        if (this._isConsumingEvents || this._isHandlingAction) break;
+        if (this._disposed || this._isConsumingEvents || this._isHandlingAction) break;
         const newState = typeof this._sessionGetState === 'function'
             ? await this._sessionGetState()
             : await Bridge.getState();
+        if (this._disposed) break;
         if (!newState || newState.error) continue;
 
         if (newState.events && newState.events.length > 0) {
