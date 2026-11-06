@@ -483,6 +483,37 @@
     return mergeGeometries(parts);
   }
 
+  // 两种野花共用植物着色器：五瓣金凤花与分层紫色花穗。
+  function createWildflowerGeometry(spike) {
+    var parts = [], height = spike ? 0.64 : 0.46;
+    parts.push(setPart(bladeAt(0.016, height, 0, 0, 0, 0, 0, 0, 3), 0));
+    parts.push(setPart(bladeAt(0.016, height, 0, 0, 0, 0, Math.PI / 2, 0, 3), 0));
+    for (var leaf = 0; leaf < 3; leaf++) {
+      parts.push(setPart(bladeAt(0.055, 0.14, 0, 0.12 + leaf * 0.07, 0, 0.75, leaf * 2.4, 0.3, 2), 0));
+    }
+    var tiers = spike ? 4 : 1, petals = spike ? 4 : 5;
+    for (var tier = 0; tier < tiers; tier++) {
+      for (var petal = 0; petal < petals; petal++) {
+        var angle = petal / petals * Math.PI * 2 + tier * 0.8;
+        var radius = spike ? 0.033 - tier * 0.004 : 0.051;
+        var g = new THREE.CircleGeometry(spike ? 0.03 - tier * 0.003 : 0.045, 7);
+        g.scale(spike ? 0.7 : 0.85, 1, 1);
+        g.rotateX(spike ? -0.45 : -1.05);
+        g.translate(0, 0, radius);
+        g.rotateY(angle);
+        g.translate(0, height - (spike ? 0.17 - tier * 0.055 : 0), 0);
+        parts.push(setPart(g, 1));
+      }
+    }
+    if (!spike) {
+      var center = new THREE.CircleGeometry(0.024, 8);
+      center.rotateX(-Math.PI / 2);
+      center.translate(0, height + 0.01, 0);
+      parts.push(setPart(center, 2));
+    }
+    return mergeGeometries(parts);
+  }
+
   function canvasTex(w, h, paint) {
     var cv = document.createElement("canvas");
     cv.width = w;
@@ -1071,10 +1102,30 @@
     await scatterGrid(carpet, carpetCols, carpetRows, 70, 54, 0.1, 1.28, 0.22, 0.62);
     world.add(carpet);
 
-    var flowers = new THREE.InstancedMesh(flowerGeo, flowerMat, flowerCount);
+    var whiteFlowerCount = Math.floor(flowerCount * 0.5);
+    var flowers = new THREE.InstancedMesh(flowerGeo, flowerMat, whiteFlowerCount);
     flowers.frustumCulled = false;
-    await scatterFlowers(flowers, flowerCount, 66, 50);
+    await scatterFlowers(flowers, whiteFlowerCount, 66, 50);
     world.add(flowers);
+    var wildflowerMaterials = [], wildflowers = [];
+    var flowerVariants = [
+      { spike: false, color: 0xf6c64d, heart: 0xb97823, count: Math.floor(flowerCount * 0.3) },
+      { spike: true, color: 0xa58bd4, heart: 0xe9ce88, count: flowerCount - whiteFlowerCount - Math.floor(flowerCount * 0.3) }
+    ];
+    for (var fi = 0; fi < flowerVariants.length; fi++) {
+      var variant = flowerVariants[fi];
+      var fm = makePlantMaterial(FLOWER_FRAG, variant.color, PALETTE.grassStem, variant.heart, { bend: 0.16 });
+      fm.uniforms.uTime = grassMat.uniforms.uTime;
+      fm.uniforms.uWindDir = grassMat.uniforms.uWindDir;
+      fm.uniforms.uSunDir = grassMat.uniforms.uSunDir;
+      var mesh = new THREE.InstancedMesh(createWildflowerGeometry(variant.spike), fm, variant.count);
+      mesh.frustumCulled = false;
+      await scatterFlowers(mesh, variant.count, 66, 50);
+      world.add(mesh);
+      wildflowerMaterials.push(fm);
+      wildflowers.push(mesh);
+    }
+
 
     var plantLayers = [];
     var plantFrustum = new THREE.Frustum();
@@ -1095,6 +1146,7 @@
     await addPlantTiles(undergrowth);
     await addPlantTiles(carpet);
     await addPlantTiles(flowers);
+    for (var wi = 0; wi < wildflowers.length; wi++) await addPlantTiles(wildflowers[wi]);
     function cullPlantTiles() {
       if (!sceneRuntime) return;
       camera.updateMatrixWorld();
@@ -1247,7 +1299,7 @@
     var sunDirWorld = new THREE.Vector3();
     var moonDirWorld = new THREE.Vector3();
     var lightDirWorld = new THREE.Vector3();
-    var plantMaterials = [grassMat, underMat, carpetMat, flowerMat];
+    var plantMaterials = [grassMat, underMat, carpetMat, flowerMat].concat(wildflowerMaterials);
     var paletteColorKeys = [
       "sky",
       "zenith",
@@ -1369,6 +1421,12 @@
       setPlantColor(flowerMat, "uColorA", palette.flower);
       setPlantColor(flowerMat, "uColorB", palette.grassStem);
       setPlantColor(flowerMat, "uColorHead", palette.flowerHead);
+
+      for (i = 0; i < wildflowerMaterials.length; i++) {
+        setPlantColor(wildflowerMaterials[i], "uColorB", palette.grassStem);
+        wildflowerMaterials[i].uniforms.uColorA.value.setHex(flowerVariants[i].color).multiplyScalar(0.58 + palette.skyGlow * 0.42);
+        wildflowerMaterials[i].uniforms.uColorHead.value.setHex(flowerVariants[i].heart).multiplyScalar(0.58 + palette.skyGlow * 0.42);
+      }
 
       pollen.material.color.setHex(palette.particle);
       pollen.material.opacity = 0.55 * palette.skyGlow;
