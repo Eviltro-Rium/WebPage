@@ -27,10 +27,13 @@
     }
   }
 
-  function setThemeAttribute(theme) {
+  function setThemeAttribute(theme, options) {
     var normalized = theme === "dark" ? "dark" : "light";
     document.documentElement.setAttribute("data-theme", normalized);
-    document.documentElement.style.colorScheme = normalized;
+    // 过渡中途立刻改 color-scheme 会让画布/页面闪成系统黑白底。
+    if (!options || options.colorScheme !== false) {
+      document.documentElement.style.colorScheme = normalized;
+    }
   }
 
   function syncGiscusTheme(theme) {
@@ -90,9 +93,10 @@
     cancelAnimationFrame(transitionRaf);
     var root = document.documentElement;
     root.classList.add("theme-animating");
-    setThemeAttribute(to);
+    setThemeAttribute(to, { colorScheme: false });
     updateThemeToggleUI(to);
     setThemeToggleDisabled(true);
+    dispatchTransition(from, to, 0);
 
     var started = performance.now();
     function step(now) {
@@ -102,6 +106,7 @@
         transitionRaf = requestAnimationFrame(step);
         return;
       }
+      setThemeAttribute(to);
       root.classList.remove("theme-animating");
       saveTheme(to);
       setThemeToggleDisabled(false);

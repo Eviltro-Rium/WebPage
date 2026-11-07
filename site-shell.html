@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rium</title><link rel="icon" href="favicon-ryan.webp" type="image/webp">
-<script src="js/site-navigation.js?v=20261103-pages-clean-urls"></script>
+<script src="js/site-navigation.js?v=20261107-theme-ready"></script>
     <script>
       (function () {
         var root = document.documentElement;
@@ -35,26 +35,33 @@
           theme = window.localStorage.getItem("rium-theme") === "dark" ? "dark" : "light";
         } catch (e) { /* ignore storage failures */ }
         root.setAttribute("data-theme", theme);
-        root.style.colorScheme = theme;
       })();
     </script>
-<link rel="stylesheet" href="styles.css?v=20261028-playful-font">
-<link rel="stylesheet" href="css/home.css?v=20261103-theme-fade">
+<link rel="stylesheet" href="styles.css?v=20261107-theme-blend">
+<link rel="stylesheet" href="css/home.css?v=20261107-stable-theme-surface">
 <style>
+html{color-scheme:only light}
 html,body{margin:0;width:100%;height:100%;overflow:hidden}
 #site-content{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:1;background:transparent;transition:opacity .14s ease,transform .14s ease}
 #site-content.is-leaving{opacity:0;transform:translateY(-6px)}
-#site-content.is-loading{pointer-events:none}
+#site-content.is-loading{opacity:0;pointer-events:none}
 #site-content.is-entering{animation:site-view-enter .32s cubic-bezier(.2,.7,.2,1) both}
 @keyframes site-view-enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){#site-content{transition:none}#site-content.is-entering{animation:none}}
+#site-content{transition:opacity .65s ease,transform .65s ease}
+.is-seated #site-content{opacity:0;pointer-events:none;visibility:hidden;transition:opacity .65s ease,visibility 0s .65s}
+#seat-return{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:5;padding:12px 24px;border:1px solid #ffffff88;border-radius:24px;background:#162c26bb;color:#fff;font:inherit;cursor:pointer}
+#seat-return:focus-visible{outline:3px solid #fff;outline-offset:4px}
+@media(prefers-reduced-motion:reduce){#site-content{transition:none}}
 </style>
 </head>
 <body class="site-collection page-home">
 <div id="home-scene-status" class="home-scene-status" role="status"><span>山丘场景加载中…</span></div>
 <iframe id="site-content" name="rium-site-content" title="Rium 网站内容"></iframe>
+<button id="seat-return" hidden type="button">起身返回 · Esc</button>
+<script src="js/seat-view.js?v=20261107-seat"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/home-loading-progress.js?v=20261007-loading-camera"></script>
 <script src="js/hill-scene-runtime.js?v=20261027-recovered"></script>
-<script src="js/hill-background.js?v=20261105-wildflowers"></script>
+<script src="js/hill-background.js?v=20261107-theme-ready"></script>
 </body></html>

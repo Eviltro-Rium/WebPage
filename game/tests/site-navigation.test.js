@@ -21,11 +21,16 @@ test('page transitions coalesce navigation, reject stale readiness and recover f
     w.eval(fs.readFileSync(path.resolve(__dirname, '../../js/site-navigation.js'), 'utf8'));
     w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
     const frame = w.document.querySelector('iframe');
-    const send = (type, url) => w.dispatchEvent(new w.MessageEvent('message', {
-      source: frame.contentWindow, data: { type, url },
+    const send = (type, url, theme) => w.dispatchEvent(new w.MessageEvent('message', {
+      source: frame.contentWindow, data: { type, url, theme },
     }));
     tick(0);
-    send('rium-view-ready', 'https://rium.test/index.html'); tick(360);
+    w.document.documentElement.dataset.theme = 'light';
+    const appliedThemes = [];
+    w.document.addEventListener('rium-theme-change', event => appliedThemes.push(event.detail.theme));
+    send('rium-view-ready', 'https://rium.test/index.html', 'dark'); tick(360);
+    assert.equal(w.document.documentElement.dataset.theme, 'dark');
+    assert.deepEqual(appliedThemes, ['dark']);
     assert.equal(frame.hasAttribute('aria-busy'), false);
     const historyLength = w.history.length;
     send('rium-navigate', 'https://rium.test/projects.html');
@@ -35,7 +40,8 @@ test('page transitions coalesce navigation, reject stale readiness and recover f
     tick(140);
     assert.equal(frame.src, 'https://rium.test/materials.html');
     assert.equal(w.history.length, historyLength + 1);
-    send('rium-view-ready', 'https://rium.test/projects.html');
+    send('rium-view-ready', 'https://rium.test/projects.html', 'light');
+    assert.deepEqual(appliedThemes, ['dark']);
     assert.equal(frame.classList.contains('is-leaving'), true);
     send('rium-view-ready', 'https://rium.test/materials.html');
     assert.equal(frame.classList.contains('is-leaving'), false);

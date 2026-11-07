@@ -174,6 +174,7 @@
                 this.s.mayDiscardAfterSkill = false;
                 this.s.forcedDiscard = false;
                 this.fillHands(true);
+                this.s.pendingHypnosisPromote = 'player';
                 this.turnStart('ai');
                 this.s.phase = 'PLAYER_PLAY';
                 this.s.busy = false;
@@ -258,6 +259,7 @@
                 this.s.selectedCard = -1;
                 this.s.selectedAICard = -1;
                 this.fillHands(false);
+                this.s.pendingHypnosisPromote = 'ai';
                 this.turnStart('player');
                 return this.check();
             };

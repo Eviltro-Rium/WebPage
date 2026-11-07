@@ -1,3 +1,30 @@
+/* 让主题色在日夜切换时可插值，避免渐变背景瞬间跳成全黑/全白。 */
+@property --home-field {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #e4efe7;
+}
+@property --home-ink {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #173c32;
+}
+@property --home-paper {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+@property --home-soft {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #3c5d52;
+}
+@property --home-accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #17684b;
+}
+
 /* 个人网站收藏册样式，由 site-collection 显式启用，不影响游戏。 */
 body.site-collection {
   --home-ground: #f5f9f6;
@@ -32,6 +59,7 @@ html[data-theme="dark"] body.site-collection {
   --home-soft: #c0d7c9;
   --home-accent: #b7e6c7;
   --home-on-accent: #163b2c;
+  background: var(--home-field);
 }
 body.site-collection::before, body.site-collection::after { display: none; }
 body.site-collection a { color: inherit; }
@@ -233,8 +261,15 @@ body.site-collection .section:not(.hero):not(.section-gallery) { content-visibil
 }
 
 /* 场景先完成首帧再淡入；加载提示不拦截阅读与点击。 */
-body.site-collection #hill-bg-canvas { opacity: 0; transition: opacity .85s ease; }
+body.site-collection #hill-bg-canvas {
+  opacity: 0;
+  color-scheme: only light;
+  isolation: isolate;
+  background: transparent;
+  transition: opacity .85s ease;
+}
 html.home-scene-ready body.site-collection #hill-bg-canvas { opacity: 1; }
+html.theme-animating body.site-collection #hill-bg-canvas { transition: none; }
 body.site-collection .home-scene-status {
   display: none; position: fixed; inset: 0 0 auto; z-index: 10;
   height: 3px; pointer-events: none; overflow: hidden; color: var(--home-ink);
@@ -290,21 +325,32 @@ body.site-collection .home-gallery-toggle { border-radius: 14px; }
 body.site-collection .home-scene-status span { border-radius: 14px; }
 
 /* 正文视图不绘制第二层背景；背景由外层常驻宿主提供。 */
+/* 透明 iframe 与宿主使用同一固定的原生配色，日夜颜色由 data-theme 驱动。
+   若两侧在不同帧改变 color-scheme，浏览器可能为 iframe 绘制不透明底色。 */
+html.shared-background-view { color-scheme: only light !important; }
 html.shared-background-view,
 html.shared-background-view body.site-collection { background: transparent !important; }
 html.shared-background-view .home-scene-status { display: none !important; }
 
-/* 与 theme.js 的 1500ms 正弦日夜过渡同步，覆盖新版表面及其独立文字颜色。 */
+/* 与 theme.js 的 1500ms 正弦日夜过渡同步；不过渡 opacity，避免整页闪一下。 */
 @media (prefers-reduced-motion: no-preference) {
-  html.theme-animating body.site-collection,
-  html.theme-animating body.site-collection *:not(#hill-bg-canvas):not(iframe),
+  html.theme-animating body.site-collection {
+    transition:
+      --home-field 1.5s cubic-bezier(.37, 0, .63, 1),
+      --home-ink 1.5s cubic-bezier(.37, 0, .63, 1),
+      --home-paper 1.5s cubic-bezier(.37, 0, .63, 1),
+      --home-soft 1.5s cubic-bezier(.37, 0, .63, 1),
+      --home-accent 1.5s cubic-bezier(.37, 0, .63, 1),
+      background-color 1.5s cubic-bezier(.37, 0, .63, 1),
+      color 1.5s cubic-bezier(.37, 0, .63, 1);
+  }
+  html.theme-animating body.site-collection *:not(#hill-bg-canvas):not(iframe):not(canvas),
   html.theme-animating body.site-collection *::before,
   html.theme-animating body.site-collection *::after {
     transition: background-color 1.5s cubic-bezier(.37, 0, .63, 1),
       color 1.5s cubic-bezier(.37, 0, .63, 1),
       border-color 1.5s cubic-bezier(.37, 0, .63, 1),
       box-shadow 1.5s cubic-bezier(.37, 0, .63, 1),
-      text-decoration-color 1.5s cubic-bezier(.37, 0, .63, 1),
-      transform .18s ease, opacity .18s ease;
+      text-decoration-color 1.5s cubic-bezier(.37, 0, .63, 1);
   }
 }

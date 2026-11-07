@@ -84,6 +84,8 @@ body.page-launchpad.hill-background-fallback {
   height: 100%;
   pointer-events: none;
   z-index: 0;
+  color-scheme: only light;
+  isolation: isolate;
 }
 
 html.home-is-booting body.page-home > .site-header,

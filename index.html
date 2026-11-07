@@ -7,7 +7,7 @@
     <title>Rium · 个人主页</title>
     <link rel="icon" href="favicon-ryan.webp" type="image/webp" />
     <link rel="apple-touch-icon" href="favicon-ryan.webp" />
-    <script src="js/site-navigation.js?v=20261103-pages-clean-urls"></script>
+    <script src="js/site-navigation.js?v=20261107-theme-ready"></script>
     <script>
       (function () {
         var root = document.documentElement;
@@ -49,8 +49,8 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=ZCOOL+KuaiLe&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20261028-playful-font" />
-    <link rel="stylesheet" href="css/home.css?v=20261103-playful-hero" />
+    <link rel="stylesheet" href="styles.css?v=20261107-theme-blend" />
+    <link rel="stylesheet" href="css/home.css?v=20261107-stable-theme-surface" />
   </head>
   <body class="site-collection page-home">
     <div id="home-scene-status" class="home-scene-status" role="status" aria-live="polite">
@@ -65,6 +65,7 @@
         <a href="launchpad.html?v=20261027-recovered">Launch Pad</a>
         <a href="game/index.html?v=20261027-recovered">游戏</a>
         <a href="guestbook.html?v=20261027-recovered">留言</a>
+      <button type="button" data-take-seat style="font:inherit;color:inherit;background:transparent;border:0;padding:0;cursor:pointer;white-space:nowrap">Take a seat</button>
       </nav>
       <button
         class="theme-toggle"
@@ -243,7 +244,7 @@ int D = first_perfect();</code></pre>
       </section>
 
       <section id="thanks" class="section section-thanks" aria-labelledby="thanks-title">
-        <h2 id="thanks-title" class="section-title">谢谢你们</h2>
+        <h2 id="thanks-title" class="section-title">谢谢你们❤️</h2>
         <p class="home-thanks-note">排名不分先后。还有很多名字，慢慢补上。</p>
         <h3 class="thanks-subtitle">技术顾问</h3>
         <ul class="thanks-list thanks-list--stack">
@@ -283,6 +284,7 @@ int D = first_perfect();</code></pre>
           <li>黑格</li>
           <li>直立蜥</li>
           <li>无慹</li>
+          <li>苍澜</li>
           <li>······（未完待续）</li>
         </ul>
         <h3 class="thanks-subtitle">室敌</h3>
@@ -302,8 +304,9 @@ int D = first_perfect();</code></pre>
     <script>
       document.getElementById("year").textContent = new Date().getFullYear();
     </script>
-    <script defer src="js/theme.js"></script>
+    <script defer src="js/theme.js?v=20261107-theme-blend"></script>
     <script defer src="js/home.js?v=20261103-translucent-scene"></script>
     <script defer src="js/gallery-cylinder.js?v=20261027-recovered"></script>
-  </body>
+  <script src="js/seat-view.js?v=20261107-seat"></script>
+</body>
 </html>

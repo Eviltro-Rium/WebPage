@@ -1,6 +1,7 @@
 /**
  * 主页 3D 背景：日夜主题下的青翠小山丘。
  * 白天使用暖黄暮空与软云，夜间切换为月光、星点和低照度的山坡。
+ * 谷地湖泊用同一套天空着色公式做镜像反射，不额外开反射相机。
  */
 (function () {
   if (typeof THREE === "undefined") return;
@@ -87,6 +88,8 @@
 
   var HOME_POS = { x: 0, y: 7.2, z: 16.5 };
   var HOME_LOOK = { x: 0, y: 2.6, z: -6 };
+  // 镜头前方偏左的椭圆湖：从默认机位能看见整面白天/月亮倒影。
+  var LAKE = { x: 1.0, z: -9.8, rx: 11.0, rz: 7.4, level: 0.18 };
   var CELESTIAL_PEAK = { x: 18, y: 20, z: -58 };
   var MOON_PEAK = CELESTIAL_PEAK;
   var CELESTIAL_DROP = 46;
@@ -99,6 +102,32 @@
     "}"
   ].join("\n");
 
+  var SKY_COLOR_GLSL = [
+    "vec3 skyColor(vec3 dir) {",
+    "  dir = normalize(dir);",
+    "  float h = clamp(dir.y * 0.52 + 0.32, 0.0, 1.0);",
+    "  vec3 col = mix(uHorizon, uZenith, smoothstep(0.02, 0.78, h));",
+    "  float rayleigh = pow(1.0 - max(dir.y, 0.0), 2.6);",
+    "  col = mix(col, uHaze * vec3(1.08, 0.9, 0.68), rayleigh * mix(0.06, 0.22, uSunGlow));",
+    "  float band = exp(-pow((h - 0.06) / 0.12, 2.0));",
+    "  col = mix(col, uHaze, band * mix(0.12, 0.38, uSunGlow));",
+    "  col += uHaze * exp(-pow(dir.y * 4.4, 2.0)) * mix(0.04, 0.14, uSunGlow);",
+    "  float sunDot = pow(max(dot(dir, normalize(uSunDir)), 0.0), uCelestialFocus);",
+    "  float sunDisk = smoothstep(0.993, 0.9997, sunDot) * uSunGlow;",
+    "  col += vec3(1.0, 0.84, 0.60) * sunDisk * 0.85;",
+    "  col += vec3(1.0, 0.55, 0.12) * pow(sunDot, 48.0) * uSunGlow * 0.12;",
+    "  col += vec3(1.0, 0.65, 0.20) * pow(sunDot, 180.0) * uSunGlow * 0.10;",
+    "  col += vec3(1.0, 0.60, 0.22) * pow(sunDot, 14.0) * uSunGlow * 0.035;",
+    "  float moonDot = pow(max(dot(dir, normalize(uMoonDir)), 0.0), uCelestialFocus);",
+    "  float moonDisk = smoothstep(0.993, 0.9997, moonDot) * uMoonGlow;",
+    "  col += vec3(0.94, 0.96, 1.0) * moonDisk;",
+    "  col += vec3(0.72, 0.82, 1.0) * pow(moonDot, 14.0) * uMoonGlow * 0.32;",
+    "  col += vec3(0.82, 0.88, 1.0) * pow(moonDot, 48.0) * uMoonGlow * 0.24;",
+    "  col += vec3(0.7, 0.78, 1.0) * pow(moonDot, 6.0) * uMoonGlow * 0.1;",
+    "  return col;",
+    "}"
+  ].join("\n");
+
   var SKY_FRAG = [
     "uniform vec3 uZenith;",
     "uniform vec3 uHorizon;",
@@ -107,30 +136,73 @@
     "uniform vec3 uMoonDir;",
     "uniform float uSunGlow;",
     "uniform float uMoonGlow;",
+    "uniform float uCelestialFocus;",
     "varying vec3 vDir;",
+    SKY_COLOR_GLSL,
     "void main() {",
-    "  vec3 dir = normalize(vDir);",
-    "  float h = clamp(dir.y * 0.52 + 0.32, 0.0, 1.0);",
-    "  vec3 col = mix(uHorizon, uZenith, smoothstep(0.02, 0.78, h));",
-    "  float rayleigh = pow(1.0 - max(dir.y, 0.0), 2.6);",
-    "  col = mix(col, uHaze * vec3(1.08, 0.9, 0.68), rayleigh * mix(0.06, 0.22, uSunGlow));",
-    "  float band = exp(-pow((h - 0.06) / 0.12, 2.0));",
-    "  col = mix(col, uHaze, band * mix(0.12, 0.38, uSunGlow));",
-    "  col += uHaze * exp(-pow(dir.y * 4.4, 2.0)) * mix(0.04, 0.14, uSunGlow);",
-    "  float sunDot = max(dot(dir, normalize(uSunDir)), 0.0);",
-    // 像月亮一样叠加发光，而非用实色覆盖天空；暖白核心向橘金光晕自然散开。
-    "  float sunDisk = smoothstep(0.993, 0.9997, sunDot) * uSunGlow;",
-    "  col += vec3(1.0, 0.84, 0.60) * sunDisk * 0.85;",
-    "  col += vec3(1.0, 0.55, 0.12) * pow(sunDot, 48.0) * uSunGlow * 0.12;",
-    "  col += vec3(1.0, 0.65, 0.20) * pow(sunDot, 180.0) * uSunGlow * 0.10;",
-    "  col += vec3(1.0, 0.60, 0.22) * pow(sunDot, 14.0) * uSunGlow * 0.035;",
-    "  float moonDot = max(dot(dir, normalize(uMoonDir)), 0.0);",
-    "  float moonDisk = smoothstep(0.993, 0.9997, moonDot) * uMoonGlow;",
-    "  col += vec3(0.94, 0.96, 1.0) * moonDisk;",
-    "  col += vec3(0.72, 0.82, 1.0) * pow(moonDot, 14.0) * uMoonGlow * 0.32;",
-    "  col += vec3(0.82, 0.88, 1.0) * pow(moonDot, 48.0) * uMoonGlow * 0.24;",
-    "  col += vec3(0.7, 0.78, 1.0) * pow(moonDot, 6.0) * uMoonGlow * 0.1;",
-    "  gl_FragColor = vec4(col, 1.0);",
+    "  gl_FragColor = vec4(skyColor(vDir), 1.0);",
+    "}"
+  ].join("\n");
+
+  var WATER_VERT = [
+    "uniform mat4 uReflectionMatrix;",
+    "varying vec4 vReflection;",
+    "varying vec3 vWorldPos;",
+    "varying vec2 vUv;",
+    "#include <common>",
+    "#include <fog_pars_vertex>",
+    "void main() {",
+    "  vUv = uv;",
+    "  vec4 worldPos = modelMatrix * vec4(position, 1.0);",
+    "  vWorldPos = worldPos.xyz;",
+    "  vReflection = uReflectionMatrix * worldPos;",
+    "  vec4 mvPosition = viewMatrix * worldPos;",
+    "  gl_Position = projectionMatrix * mvPosition;",
+    "  #include <fog_vertex>",
+    "}"
+  ].join("\n");
+
+  var WATER_FRAG = [
+    "uniform vec3 uZenith;",
+    "uniform vec3 uHorizon;",
+    "uniform vec3 uHaze;",
+    "uniform vec3 uSunDir;",
+    "uniform vec3 uMoonDir;",
+    "uniform float uSunGlow;",
+    "uniform float uMoonGlow;",
+    "uniform float uTime;",
+    "uniform vec3 uWaterDeep;",
+    "uniform sampler2D uReflection;",
+    "varying vec4 vReflection;",
+    "varying vec3 vWorldPos;",
+    "varying vec2 vUv;",
+    "#include <common>",
+    "#include <fog_pars_fragment>",
+    "void main() {",
+    "  vec2 p = (vUv * 2.0 - 1.0) * 1.35;",
+    "  float angle = atan(-p.y, p.x);",
+    "  float edge = 1.0 + 0.12 * sin(angle * 3.0 + 0.5) + 0.065 * cos(angle * 5.0 - 0.8);",
+    "  float r2 = dot(p, p) / (edge * edge);",
+    "  if (r2 > 1.0) discard;",
+    "  vec3 V = normalize(cameraPosition - vWorldPos);",
+    "  float ripple = sin(vWorldPos.x * 0.62 + uTime * 0.55) * 0.018",
+    "    + cos(vWorldPos.z * 0.48 - uTime * 0.41) * 0.014",
+    "    + sin((vWorldPos.x + vWorldPos.z) * 1.15 + uTime * 0.9) * 0.008;",
+    "  vec3 N = normalize(vec3(ripple, 1.0, -ripple * 0.85));",
+    "  vec3 R = reflect(-V, N);",
+    "  R.y = abs(R.y);",
+    "  vec2 reflectionUv = vReflection.xy / vReflection.w;",
+    "  reflectionUv += N.xz * 0.018;",
+    "  vec3 sky = texture2D(uReflection, clamp(reflectionUv, 0.001, 0.999)).rgb;",
+    "  float fresnel = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 4.2);",
+    "  vec3 col = mix(uWaterDeep, sky, 0.78 + fresnel * 0.18);",
+    "  vec3 H = normalize(normalize(uSunDir) + V);",
+    "  float sparkle = pow(max(dot(N, H), 0.0), 180.0) * uSunGlow;",
+    "  col += vec3(1.0, 0.86, 0.55) * sparkle * 0.55;",
+    "  col += vec3(0.82, 0.9, 1.0) * pow(max(dot(N, normalize(uMoonDir + V)), 0.0), 90.0) * uMoonGlow * 0.35;",
+    "  float shore = smoothstep(0.72, 1.0, r2);",
+    "  gl_FragColor = vec4(col, 1.0 - shore);",
+    "  #include <fog_fragment>",
     "}"
   ].join("\n");
 
@@ -320,6 +392,19 @@
     } catch (e) { /* older WebKit */ }
   }
 
+  function lakeRadius2(x, z) {
+    var dx = (x - LAKE.x) / LAKE.rx;
+    var dz = (z - LAKE.z) / LAKE.rz;
+    // 岸线、湖床和植被共用轮廓，避免圆盘边缘与地形脱节。
+    var angle = Math.atan2(dz, dx);
+    var shore = 1 + 0.12 * Math.sin(angle * 3 + 0.5) + 0.065 * Math.cos(angle * 5 - 0.8);
+    return (dx * dx + dz * dz) / (shore * shore);
+  }
+
+  function inLake(x, z) {
+    return lakeRadius2(x, z) < 1.10;
+  }
+
   function terrainHeight(x, z) {
     var hills =
       Math.sin(x * 0.11) * 1.55 +
@@ -331,7 +416,17 @@
       Math.cos(x * 0.88 - z * 1.18) * 0.032 +
       Math.sin(x * 2.4 + z * 1.9) * 0.018;
     var furrows = Math.sin(x * 0.72 + z * 0.28) * 0.055;
-    return hills + clods + furrows;
+    var h = hills + clods + furrows;
+    var r2 = lakeRadius2(x, z);
+    if (r2 < 2.8) {
+      // 在岸线处连续穿过水位，向外逐渐接回原草坡，不挖陡直的盆壁。
+      var radius = Math.sqrt(r2);
+      var bank = LAKE.level + (radius - 1) * 0.9;
+      var t = THREE.MathUtils.clamp((r2 - 1.12) / 1.68, 0, 1);
+      var blend = t * t * (3 - 2 * t);
+      h = bank * (1 - blend) + h * blend;
+    }
+    return h;
   }
 
   function setPart(geo, part) {
@@ -693,8 +788,12 @@
         z = (v - 0.5) * depth + (Math.random() - 0.5) * 0.1;
         dummy.position.set(x, terrainHeight(x, z), z);
         dummy.rotation.set(0, Math.atan2(0.38, 0.92) + (Math.random() - 0.5) * 0.18, (Math.random() - 0.5) * 0.04);
-        s = scaleBase + Math.random() * scaleJitter;
-        dummy.scale.set(s, s * heightScale * (0.88 + Math.random() * 0.28), s);
+        if (inLake(x, z)) {
+          dummy.scale.set(0, 0, 0);
+        } else {
+          s = scaleBase + Math.random() * scaleJitter;
+          dummy.scale.set(s, s * heightScale * (0.88 + Math.random() * 0.28), s);
+        }
         dummy.updateMatrix();
         mesh.setMatrixAt(n, dummy.matrix);
         n += 1;
@@ -711,6 +810,7 @@
     var x, z, patch, s, viewDist, farBoost;
 
     function placeFlower(px, pz, extraScale) {
+      if (inLake(px, pz)) return false;
       viewDist = Math.hypot(px - HOME_POS.x, pz - HOME_POS.z);
       farBoost = THREE.MathUtils.clamp((viewDist - 10) / 32, 0, 1);
       dummy.position.set(px, terrainHeight(px, pz) - 0.024 - farBoost * 0.016, pz);
@@ -722,6 +822,7 @@
       dummy.updateMatrix();
       mesh.setMatrixAt(n, dummy.matrix);
       n += 1;
+      return true;
     }
 
     while (n < count && attempts < count * 20) {
@@ -733,7 +834,9 @@
       placeFlower(x, z, 0.92 + Math.random() * 0.32);
       if (n % 256 === 0) await yieldWork();
     }
-    while (n < count) {
+    var fillTries = 0;
+    while (n < count && fillTries < count * 40) {
+      fillTries += 1;
       x = (Math.random() - 0.5) * width;
       z = (Math.random() - 0.5) * depth;
       placeFlower(x, z, 0.96 + Math.random() * 0.24);
@@ -746,12 +849,18 @@
     var canvas = document.createElement("canvas");
     canvas.id = "hill-bg-canvas";
     canvas.setAttribute("aria-hidden", "true");
+    canvas.style.colorScheme = "only light";
     document.body.prepend(canvas);
 
     var initialTheme =
       document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
     PALETTE = initialTheme === "dark" ? DARK_PALETTE : LIGHT_PALETTE;
     var mobile = window.innerWidth < 820 || window.innerHeight < 560;
+    if (mobile) {
+      LAKE.x = -0.4;
+      LAKE.rx = 6.6;
+      LAKE.rz = 4.8;
+    }
     var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     var subpageBoot =
       document.documentElement.classList.contains("subpage-is-booting");
@@ -848,7 +957,8 @@
         uSunDir: { value: new THREE.Vector3(0.55, 0.62, -0.55).normalize() },
         uMoonDir: { value: new THREE.Vector3(-0.5, 0.58, -0.64).normalize() },
         uSunGlow: { value: PALETTE.skyGlow },
-        uMoonGlow: { value: PALETTE.moonGlow }
+        uMoonGlow: { value: PALETTE.moonGlow },
+        uCelestialFocus: { value: 1 }
       },
       vertexShader: SKY_VERT,
       fragmentShader: SKY_FRAG,
@@ -961,26 +1071,33 @@
     scene.add(world);
     await yieldWork();
 
-    var terrainGeo = new THREE.PlaneGeometry(72, 56, 96, 64);
+    var terrainGeo = new THREE.PlaneGeometry(72, 56, 144, 112);
     terrainGeo.rotateX(-Math.PI / 2);
     var terrainPos = terrainGeo.attributes.position;
     var terrainColors = new Float32Array(terrainPos.count * 3);
     var soil = new THREE.Color(PALETTE.soil);
     var fieldLow = new THREE.Color(PALETTE.fieldLow);
     var lawn = new THREE.Color(0x62a832);
+    var wetShore = new THREE.Color(0x2a4a32);
     var tmpColor = new THREE.Color();
-    var ti, tx, tz, ty, heightT, furrow, grit;
+    var ti, tx, tz, ty, heightT, furrow, grit, lakeWet;
+    function paintTerrainColor(x, z, y, paletteSoil, paletteField, paletteLawn) {
+      heightT = THREE.MathUtils.clamp((y + 2.2) / 5.2, 0, 1);
+      furrow = 0.5 + 0.5 * Math.sin(x * 0.72 + z * 0.28);
+      tmpColor.copy(paletteField).lerp(paletteLawn, 0.45 + heightT * 0.35);
+      tmpColor.lerp(paletteSoil, 0.05 + (1 - furrow) * 0.03);
+      grit = 0.94 + ((Math.sin(x * 7.1 + z * 5.3) * 0.5 + 0.5) * 0.12);
+      tmpColor.multiplyScalar(grit);
+      lakeWet = THREE.MathUtils.clamp((1.45 - lakeRadius2(x, z)) / 0.73, 0, 1);
+      lakeWet = lakeWet * lakeWet * (3 - 2 * lakeWet);
+      if (lakeWet > 0) tmpColor.lerp(wetShore, lakeWet * 0.72);
+    }
     for (ti = 0; ti < terrainPos.count; ti++) {
       tx = terrainPos.getX(ti);
       tz = terrainPos.getZ(ti);
       ty = terrainHeight(tx, tz);
       terrainPos.setY(ti, ty);
-      heightT = THREE.MathUtils.clamp((ty + 2.2) / 5.2, 0, 1);
-      furrow = 0.5 + 0.5 * Math.sin(tx * 0.72 + tz * 0.28);
-      tmpColor.copy(fieldLow).lerp(lawn, 0.45 + heightT * 0.35);
-      tmpColor.lerp(soil, 0.05 + (1 - furrow) * 0.03);
-      grit = 0.94 + ((Math.sin(tx * 7.1 + tz * 5.3) * 0.5 + 0.5) * 0.12);
-      tmpColor.multiplyScalar(grit);
+      paintTerrainColor(tx, tz, ty, soil, fieldLow, lawn);
       terrainColors[ti * 3] = tmpColor.r;
       terrainColors[ti * 3 + 1] = tmpColor.g;
       terrainColors[ti * 3 + 2] = tmpColor.b;
@@ -995,6 +1112,80 @@
       color: 0x96c44a
     });
     world.add(new THREE.Mesh(terrainGeo, terrainMat));
+
+    // 只镜像天空、云和星星，避免为倒影重复绘制数万株草木。
+    var reflectionScene = new THREE.Scene();
+    reflectionScene.fog = scene.fog;
+    var reflectionSky = skyDome.clone();
+    var reflectionClouds = clouds.clone();
+    var reflectionStars = stars.clone();
+    reflectionScene.add(reflectionSky, reflectionClouds, reflectionStars);
+    var reflectionTarget = new THREE.WebGLRenderTarget(mobile ? 384 : 768, mobile ? 384 : 768, {
+      minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false
+    });
+    var reflectionCamera = new THREE.PerspectiveCamera();
+    var reflectionMatrix = new THREE.Matrix4();
+    var reflectionLook = new THREE.Vector3();
+    var reflectionDirection = new THREE.Vector3();
+    function updateLakeReflection() {
+      camera.updateMatrixWorld();
+      camera.getWorldDirection(reflectionDirection);
+      reflectionCamera.position.copy(camera.position);
+      reflectionCamera.position.y = 2 * LAKE.level - camera.position.y;
+      reflectionDirection.y *= -1;
+      reflectionLook.copy(reflectionCamera.position).add(reflectionDirection);
+      reflectionCamera.up.set(0, -1, 0);
+      reflectionCamera.projectionMatrix.copy(camera.projectionMatrix);
+      reflectionCamera.lookAt(reflectionLook);
+      reflectionCamera.updateMatrixWorld();
+      reflectionMatrix.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
+      reflectionMatrix.multiply(reflectionCamera.projectionMatrix).multiply(reflectionCamera.matrixWorldInverse);
+      reflectionClouds.position.copy(clouds.position);
+      reflectionClouds.visible = clouds.visible;
+      for (var i = 0; i < clouds.children.length; i++) {
+        reflectionClouds.children[i].quaternion.copy(clouds.children[i].quaternion);
+      }
+      reflectionStars.visible = stars.visible;
+      var previousTarget = renderer.getRenderTarget();
+      renderer.setRenderTarget(reflectionTarget);
+      renderer.render(reflectionScene, reflectionCamera);
+      renderer.setRenderTarget(previousTarget);
+    }
+
+    var waterGeo = new THREE.PlaneGeometry(2.7, 2.7);
+    waterGeo.rotateX(-Math.PI / 2);
+    var waterMat = new THREE.ShaderMaterial({
+      uniforms: THREE.UniformsUtils.merge([
+        THREE.UniformsLib.fog,
+        {
+          uZenith: { value: new THREE.Color(PALETTE.zenith) },
+          uHorizon: { value: new THREE.Color(PALETTE.horizon) },
+          uHaze: { value: new THREE.Color(PALETTE.haze) },
+          uSunDir: { value: new THREE.Vector3(0.55, 0.62, -0.55).normalize() },
+          uMoonDir: { value: new THREE.Vector3(-0.5, 0.58, -0.64).normalize() },
+          uSunGlow: { value: PALETTE.skyGlow },
+          uMoonGlow: { value: PALETTE.moonGlow },
+          uTime: { value: 0 },
+          uWaterDeep: { value: new THREE.Color(0x1c3d36) },
+          uReflection: { value: reflectionTarget.texture },
+          uReflectionMatrix: { value: reflectionMatrix }
+        }
+      ]),
+      vertexShader: WATER_VERT,
+      fragmentShader: WATER_FRAG,
+      transparent: true,
+      depthWrite: true,
+      fog: true
+    });
+    // merge 会复制贴图与矩阵，这里必须引用实时反射目标。
+    waterMat.uniforms.uReflection.value = reflectionTarget.texture;
+    waterMat.uniforms.uReflectionMatrix.value = reflectionMatrix;
+    var lake = new THREE.Mesh(waterGeo, waterMat);
+    lake.name = "valley-lake";
+    lake.position.set(LAKE.x, LAKE.level, LAKE.z);
+    lake.scale.set(LAKE.rx, 1, LAKE.rz);
+    lake.renderOrder = 1;
+    world.add(lake);
 
     // 风化岩块共用低面数几何与材质；埋入地形让草遮住接缝，不增加动态阴影。
     var rockGeo = new THREE.IcosahedronGeometry(1, 2);
@@ -1053,12 +1244,46 @@
       var z = rock[1];
       rockTransform.position.set(x, terrainHeight(x, z) + rock[3] * 0.3, z);
       rockTransform.rotation.set(0, rock[5], 0);
-      rockTransform.scale.set(rock[2], rock[3], rock[4]);
+      if (inLake(x, z)) rockTransform.scale.set(0, 0, 0);
+      else rockTransform.scale.set(rock[2], rock[3], rock[4]);
       rockTransform.updateMatrix();
       rocks.setMatrixAt(index, rockTransform.matrix);
     });
     rocks.instanceMatrix.needsUpdate = true;
     world.add(rocks);
+
+
+    // 长椅背朝来访者，面向负 Z 的远山；座位视线高于椅背。
+    var bench = new THREE.Group();
+    var benchX = mobile ? 2.0 : 5.3, benchZ = mobile ? 3.5 : 5;
+    var benchGround = terrainHeight(benchX, benchZ) + 0.22;
+    var benchScale = 1.25;
+    bench.position.set(benchX, benchGround, benchZ);
+    bench.scale.setScalar(benchScale);
+    var benchRed = new THREE.MeshLambertMaterial({ color: 0x6e090b });
+    var benchMetal = new THREE.MeshLambertMaterial({ color: 0x25352e });
+    function benchPart(w, h, d, x, y, z, mat) {
+      var part = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      part.position.set(x, y, z);
+      bench.add(part);
+    }
+    for (var slat = 0; slat < 4; slat++) benchPart(2.5, 0.075, 0.15, 0, 0.58, -0.3 + slat * 0.19, benchRed);
+    for (var rail = 0; rail < 3; rail++) benchPart(2.5, 0.18, 0.075, 0, 0.85 + rail * 0.23, 0.38, benchRed);
+    [-0.94, 0.94].forEach(function (x) {
+      [-0.25, 0.3].forEach(function (z) { benchPart(0.085, 0.65, 0.085, x, 0.29, z, benchMetal); });
+      benchPart(0.075, 1.18, 0.075, x, 0.72, 0.4, benchMetal);
+      benchPart(0.095, 0.07, 0.75, x, 0.86, 0, benchMetal);
+    });
+    world.add(bench);
+    var seated = false, seatBlend = 0, seatLastTime = null;
+    var standingFov = 48;
+    var standingFocalLength = 1 / Math.tan(THREE.MathUtils.degToRad(standingFov / 2));
+    var seatedFov = 70;
+    var seatEye = new THREE.Vector3(benchX, benchGround + 1.72 * benchScale, benchZ + 0.04 * benchScale);
+    var seatLook = new THREE.Vector3(benchX - 2.5, seatEye.y + 0.18, -25);
+    var seatPanX = 0, seatPanY = 0;
+    var seatViewLook = new THREE.Vector3();
+    document.addEventListener('rium-seat-change', function (event) { seated = !!(event.detail && event.detail.active); });
 
     var grassGeo = createGrassClumpGeometry();
     var underGeo = createUndergrowthGeometry();
@@ -1228,7 +1453,7 @@
       var fx = Math.sin(fi * 2.399) * (5 + (fi % 7) * 1.8);
       var fz = 8 - (fi % 11) * 2.1;
       fireflyPositions[fi * 3] = fx;
-      fireflyPositions[fi * 3 + 1] = terrainHeight(fx, fz) + 1.6 + (fi % 4) * 0.38;
+      fireflyPositions[fi * 3 + 1] = Math.max(LAKE.level + 1.2, terrainHeight(fx, fz) + 1.6 + (fi % 4) * 0.38);
       fireflyPositions[fi * 3 + 2] = fz;
       fireflyPhases[fi] = fi * 2.399;
     }
@@ -1277,7 +1502,7 @@
         var phase = i * 2.399;
         var x = (i % 2 ? 1 : -1) * ((mobile ? 1.6 : 5.5) + i * (mobile ? 0.35 : 0.75)) + Math.sin(time * 0.2 + phase) * (mobile ? 0.6 : 1.4);
         var z = 5 - i * 2.6 + Math.cos(time * 0.16 + phase) * 0.8;
-        var y = terrainHeight(x, z) + 2 + Math.sin(time * 0.7 + phase) * 0.3;
+        var y = Math.max(LAKE.level + 1.4, terrainHeight(x, z) + 2 + Math.sin(time * 0.7 + phase) * 0.3);
         var flap = 0.35 + (0.5 + 0.5 * Math.sin(time * 16 + phase)) * 0.9;
         butterflyTransform.position.set(x, y, z);
         butterflyTransform.scale.setScalar(0.8);
@@ -1346,15 +1571,10 @@
       fieldLow.setHex(palette.fieldLow);
       lawn.setHex(palette.lawn);
       for (ti = 0; ti < terrainPos.count; ti++) {
-        ty = terrainPos.getY(ti);
-        heightT = THREE.MathUtils.clamp((ty + 2.2) / 5.2, 0, 1);
         tx = terrainPos.getX(ti);
         tz = terrainPos.getZ(ti);
-        furrow = 0.5 + 0.5 * Math.sin(tx * 0.72 + tz * 0.28);
-        tmpColor.copy(fieldLow).lerp(lawn, 0.45 + heightT * 0.35);
-        tmpColor.lerp(soil, 0.05 + (1 - furrow) * 0.03);
-        grit = 0.94 + ((Math.sin(tx * 7.1 + tz * 5.3) * 0.5 + 0.5) * 0.12);
-        tmpColor.multiplyScalar(grit);
+        ty = terrainPos.getY(ti);
+        paintTerrainColor(tx, tz, ty, soil, fieldLow, lawn);
         terrainColors[ti * 3] = tmpColor.r;
         terrainColors[ti * 3 + 1] = tmpColor.g;
         terrainColors[ti * 3 + 2] = tmpColor.b;
@@ -1394,6 +1614,12 @@
       skyMat.uniforms.uHaze.value.setHex(palette.haze);
       skyMat.uniforms.uSunGlow.value = palette.skyGlow;
       skyMat.uniforms.uMoonGlow.value = palette.moonGlow;
+      waterMat.uniforms.uZenith.value.setHex(palette.zenith);
+      waterMat.uniforms.uHorizon.value.setHex(palette.horizon);
+      waterMat.uniforms.uHaze.value.setHex(palette.haze);
+      waterMat.uniforms.uSunGlow.value = palette.skyGlow;
+      waterMat.uniforms.uMoonGlow.value = palette.moonGlow;
+      waterMat.uniforms.uWaterDeep.value.setHex(palette.skyGlow > 0.5 ? 0x1c3d36 : 0x0b1a28);
 
       for (i = 0; i < cloudMaterials.length; i++) {
         cloudMaterials[i].uniforms.uZenith.value.setHex(palette.zenith);
@@ -1449,6 +1675,8 @@
       moonDirWorld.sub(camera.position).normalize();
       skyMat.uniforms.uSunDir.value.copy(sunDirWorld);
       skyMat.uniforms.uMoonDir.value.copy(moonDirWorld);
+      waterMat.uniforms.uSunDir.value.copy(sunDirWorld);
+      waterMat.uniforms.uMoonDir.value.copy(moonDirWorld);
       lightDirWorld
         .copy(sunDirWorld)
         .lerp(moonDirWorld, 1 - PALETTE.skyGlow)
@@ -1502,9 +1730,8 @@
 
     document.addEventListener("rium-theme-transition", onThemeTransition);
     document.addEventListener("rium-theme-change", onThemeChange);
-    setCelestialState(initialTheme);
-    applyPalette(PALETTE);
-    syncSkyDirections();
+    // 异步建场期间可能已收到正文的主题，此处读取宿主最新状态。
+    onThemeChange({ detail: { theme: document.documentElement.dataset.theme } });
 
     function faceCloudsToCamera() {
       var i, mesh;
@@ -1521,6 +1748,7 @@
       mouseY = -(e.clientY / window.innerHeight - 0.5) * 2;
     };
     document.addEventListener("mousemove", onMove, { passive: true });
+    document.documentElement.addEventListener("mouseleave", function () { mouseX = mouseY = 0; });
 
     var onResize = function () {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -1597,6 +1825,7 @@
     await yieldWork();
     renderer.compile(scene, camera);
     await yieldWork();
+    updateLakeReflection();
     renderer.render(scene, camera);
     if (sceneRuntime) await sceneRuntime.waitForGpu(renderer.getContext());
     windowLoaded = document.readyState === "complete";
@@ -1612,6 +1841,7 @@
       if (!reducedMotion) {
         updateNature(time);
         grassMat.uniforms.uTime.value = time;
+        waterMat.uniforms.uTime.value = time;
         clouds.position.x = Math.sin(time * 0.03) * 2.4;
         pollen.rotation.y = time * 0.02;
         var pp = pollenGeo.attributes.position;
@@ -1703,9 +1933,30 @@
         camera.fov = 48;
         camera.lookAt(homeLook);
       }
+      var seatDt = seatLastTime === null ? 0 : Math.min(0.05, (t - seatLastTime) / 1000);
+      seatLastTime = t;
+      seatBlend = reducedMotion ? (seated ? 1 : 0) : THREE.MathUtils.clamp(seatBlend + (seated ? 1 : -1) * seatDt / 1.8, 0, 1);
+      if (seatBlend > 0) {
+        var seatEase = seatBlend * seatBlend * (3 - 2 * seatBlend);
+        camera.position.lerpVectors(homePos, seatEye, seatEase);
+        seatViewLook.lerpVectors(homeLook, seatLook, seatEase);
+        // 转动视线，镜头仍固定在座位上。时间插值让不同帧率下的跟随速度一致。
+        var panSmoothing = 1 - Math.exp(-seatDt * 7);
+        seatPanX += ((seated && !reducedMotion ? mouseX : 0) - seatPanX) * panSmoothing;
+        seatPanY += ((seated && !reducedMotion ? mouseY : 0) - seatPanY) * panSmoothing;
+        seatViewLook.x += seatPanX * 4.0 * seatEase;
+        seatViewLook.y += seatPanY * 2.0 * seatEase;
+        camera.lookAt(seatViewLook);
+        camera.fov = THREE.MathUtils.lerp(standingFov, seatedFov, seatEase);
+      }
+      camera.updateProjectionMatrix();
+      // 按投影焦距补偿日月与光晕的角半径，广角下也保持接近原屏幕尺寸。
+      var focalRatio = camera.projectionMatrix.elements[5] / standingFocalLength;
+      skyMat.uniforms.uCelestialFocus.value = seatBlend > 0 ? focalRatio * focalRatio : 1;
       faceCloudsToCamera();
       syncSkyDirections();
       cullPlantTiles();
+      updateLakeReflection();
       renderer.render(scene, camera);
     }
 

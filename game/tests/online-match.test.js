@@ -948,3 +948,25 @@ test('online color cancellation is authorized only for the active actor and pres
     assert.equal(match.dispatch(actor, 'cancelColorChoice').ok, false);
   }
 });
+
+test('online attack handoff converts only the outgoing attacker’s hypnosis and wakes them next turn', () => {
+  for (const actor of ['host', 'guest']) {
+    const match = new context.OnlineMatchHost('Ryan', 'Otto', actor);
+    const attacker = actor === 'host' ? match.engine.s.player : match.engine.s.ai;
+    const defender = actor === 'host' ? match.engine.s.ai : match.engine.s.player;
+    const next = actor === 'host' ? 'guest' : 'host';
+    match.engine.applyHypnosis(attacker);
+    match.engine.applyHypnosis(defender);
+
+    assert.equal(match.dispatch(actor, 'doEndTurn').ok, true);
+    assert.equal(attacker.hypnosis, false);
+    assert.equal(attacker.sleep, true);
+    assert.equal(defender.hypnosis, true);
+    assert.equal(!!defender.sleep, false);
+
+    assert.equal(match.dispatch(next, 'doEndTurn').ok, true);
+    assert.equal(attacker.sleep, false);
+    assert.equal(defender.hypnosis, false);
+    assert.equal(defender.sleep, true);
+  }
+});

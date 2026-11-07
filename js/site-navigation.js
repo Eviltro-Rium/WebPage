@@ -28,7 +28,10 @@
     });
     document.addEventListener('DOMContentLoaded', function () {
       document.dispatchEvent(new CustomEvent('rium-scene-ready'));
-      parent.postMessage({ type: 'rium-view-ready', url: location.href, title: document.title }, '*');
+      parent.postMessage({
+        type: 'rium-view-ready', url: location.href, title: document.title,
+        theme: document.documentElement.getAttribute('data-theme')
+      }, '*');
     });
     // 导航在文档解析时就可用，不等待字体、播放器等资源完成。
     document.addEventListener('click', function (event) {
@@ -108,6 +111,14 @@
       var data = event.data;
       if (data.type === 'rium-view-ready') {
         if (sameView(data.url, pendingHref) && sameView(data.url, desiredHref)) {
+          // file:// 下宿主和正文可能读取各自的存储，以即将显示的正文为准。
+          if ((data.theme === 'light' || data.theme === 'dark') &&
+              (document.documentElement.dataset.theme !== data.theme ||
+               document.documentElement.classList.contains('theme-animating'))) {
+            document.documentElement.dataset.theme = data.theme;
+            document.documentElement.classList.remove('theme-animating');
+            document.dispatchEvent(new CustomEvent('rium-theme-change', { detail: { theme: data.theme } }));
+          }
           if (typeof data.title === 'string') document.title = data.title;
           reveal();
         }
@@ -117,8 +128,12 @@
         var detail = data.detail || {};
         var theme = data.type === 'rium-theme-transition' ? detail.to : detail.theme;
         if (theme === 'light' || theme === 'dark') {
-          document.documentElement.dataset.theme = theme;
-          document.documentElement.style.colorScheme = theme;
+          document.documentElement.setAttribute('data-theme', theme);
+          if (data.type === 'rium-theme-transition') {
+            document.documentElement.classList.add('theme-animating');
+          } else {
+            document.documentElement.classList.remove('theme-animating');
+          }
           document.dispatchEvent(new CustomEvent(data.type, { detail: detail }));
         }
       }
