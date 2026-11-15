@@ -36,8 +36,8 @@ const cases = [
   ['ForestPiranha', 2, false, '流血'],
   ['ForestLeech', 3, false, '不可防御'],
   ['FrozenOceanSamoyed', 2, false, '手牌'],
-  ['FrozenOceanSamoyed', 5, false, '弃掉'],
-  ['FrozenOceanSeal', 3, true, '相同点'],
+  ['FrozenOceanSamoyed', 4, false, '弃掉'],
+  ['FrozenOceanSeal', 2, true, '相同点'],
   ['ForestDendrobatidFrog', 1, false, '中毒'],
   ['CastleFox', 4, false, '手牌'],
   ['ForestPython', 2, false, '中毒'],
@@ -48,7 +48,7 @@ const cases = [
   ['ForestPanda', 0, true, '即将被施加'],
   ['CastleFirefly', 5, true, '无防御效果'],
   ['CastleFirefly', 2, true, '道具'],
-  ['FrozenWhale', 5, false, '所有其他角色']
+  ['FrozenWhale', 4, false, '所有其他角色']
 ];
 
 test('adventure skill desc matches guide formulas', () => {

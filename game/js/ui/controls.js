@@ -200,9 +200,10 @@ _renderControls() {
         if (canCrit && !s.pendingAttackBuffChoice) html += `<button class="ctrl-btn btn-play" id="btn-crit-use">使用暴击</button>`;
         if(!s.pendingAttackBuffChoice) html += `<button class="ctrl-btn btn-skip" id="btn-crit-skip">不使用</button>`;
     } else if (phase === 'PLAYER_FIVE_CHOICE' && canAct) {
-        html += `<span class="ctrl-hint">请选择一张数字牌：恢复牌面生命，或造成1.5倍伤害</span>`;
-        html += `<button class="ctrl-btn btn-play" id="btn-five-heal" ${!hasNumberCard ? 'disabled' : ''}>恢复${hasNumberCard ? ` ${selectedCard.value}` : ''}</button>`;
-        html += `<button class="ctrl-btn btn-play" id="btn-five-damage" ${!hasNumberCard ? 'disabled' : ''}>进攻${hasNumberCard ? ` ${Math.ceil(selectedCard.value * 1.5)}` : ''}</button>`;
+        const ryanBonus = hasNumberCard ? selectedCard.value + 3 : 0;
+        html += `<span class="ctrl-hint">请选择一张数字牌：恢复对应数字+3❤️，或造成对应数字+3🗡️</span>`;
+        html += `<button class="ctrl-btn btn-play" id="btn-five-heal" ${!hasNumberCard ? 'disabled' : ''}>恢复${hasNumberCard ? ` ${ryanBonus}` : ''}</button>`;
+        html += `<button class="ctrl-btn btn-play" id="btn-five-damage" ${!hasNumberCard ? 'disabled' : ''}>进攻${hasNumberCard ? ` ${ryanBonus}` : ''}</button>`;
     } else if (phase === 'PLAYER_SEVEN_CHOICE' && canAct) {
         if (s.chanFourSwapMode && s.chanFourSwapDrawn) {
             html += `<span class="ctrl-hint">4牌: ${cardLabel(s.chanFourSwapDrawn)}，选手牌交换或弃掉</span>`;
@@ -221,8 +222,16 @@ _renderControls() {
         }
     } else if (phase === 'SAIKI_SIX_JUDGE' && canAct) {
         const judgeType = s.pendingNumberJudge && s.pendingNumberJudge.type;
-        html += `<span class="ctrl-hint">${judgeType === 'Moze' ? '选择一张数字牌转化为守护' : '选择一张数字牌计算伤害'}</span>`;
-        html += `<button class="ctrl-btn btn-play" id="btn-saiki-six" ${!hasNumberCard ? 'disabled' : ''}>${judgeType === 'Moze' ? '确认守护判定' : '确认伤害判定'}</button>`;
+        if (judgeType === 'Otto') {
+            const preview = hasNumberCard
+                ? (selectedCard.isWhite ? `恢复 ${selectedCard.value + 2}❤️+暴击` : `造成 ${selectedCard.value + 2}🗡️`)
+                : '';
+            html += `<span class="ctrl-hint">选择数字牌：🔴🟡🔵🟢造成点数+2🗡️，⚪恢复点数+2❤️并获暴击（跳过防御）</span>`;
+            html += `<button class="ctrl-btn btn-play" id="btn-saiki-six" ${!hasNumberCard ? 'disabled' : ''}>确认判定${preview ? `（${preview}）` : ''}</button>`;
+        } else {
+            html += `<span class="ctrl-hint">${judgeType === 'Moze' ? '选择一张数字牌转化为守护' : '选择一张数字牌计算伤害'}</span>`;
+            html += `<button class="ctrl-btn btn-play" id="btn-saiki-six" ${!hasNumberCard ? 'disabled' : ''}>${judgeType === 'Moze' ? '确认守护判定' : '确认伤害判定'}</button>`;
+        }
     } else if (phase === 'TARGET_CHOICE' && canAct) {
         html += `<span class="ctrl-hint">选择攻击目标</span>`;
         if (s.ai && s.ai.alive) html += `<button class="ctrl-btn btn-play" id="btn-target-0">${s.ai.name}</button>`;

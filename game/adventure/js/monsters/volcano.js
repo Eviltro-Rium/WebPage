@@ -178,7 +178,7 @@
   R.registerMonster({
     name: 'VolcanoSulfurWeasel', kind: '硫晶鼬', hp: 27, attack: 3, defense: 2,
     minStage: 2, icon: '../icons/npc_icons/volcano_weasel.webp',
-    attackDamage: c => low(c) ? Number(c.value) || 0 : high(c) ? 5 : 0,
+    attackDamage: c => low(c) ? 3 : high(c) ? 5 : 0,
     attackBurn: c => low(c) ? Number(c.value) || 0 : 0,
     attackHarden: c => high(c) ? 1 : 0,
     defendBlock: (c, incoming) => low(c) ? Math.min(Math.max(0, incoming || 0), Math.ceil(Math.max(0, incoming || 0) / 2)) : 0,
@@ -206,7 +206,7 @@
     attackUnblockable: high,
     attackBurn: c => zero(c) ? 2 : (low(c) || high(c) ? 1 : 0),
     attackBurnSettle: zero,
-    attackScorch: c => high(c) || zero(c),
+    attackScorch: zero,
     attackGainMagma: c => (high(c) || zero(c)) ? 1 : 0,
     defendBlock: (c, incoming) => low(c) ? Math.min(3, Math.max(0, incoming || 0)) : 0,
     defendBurn: c => low(c) ? 1 : 0,
@@ -301,6 +301,7 @@
     defendScorch: low,
     defendImmune: zero,
     defendImmuneBuff: zero,
+    defendClearDebuffs: zero,
     defendFly: c => zero(c) ? 1 : 0,
     stageMods: {
       4: orig => ({

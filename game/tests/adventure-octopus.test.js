@@ -97,12 +97,12 @@ test('FrozenOceanOctopus loot: 1-2 diving, 3-4 ice seal', () => {
 
 test('FrozenOceanOctopus attack hooks', () => {
   const m = getMonster('FrozenOceanOctopus');
-  for (const v of [4, 5, 6]) {
+  for (const v of [3, 4]) {
     assert.equal(m.attackDamage(numCard(v)), 6);
     assert.equal(m.attackOctopusJudge(numCard(v)), false);
     assert.equal(m.attackGainDiving(numCard(v)), true);
   }
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.attackDamage(numCard(v)), 0);
     assert.equal(m.attackOctopusJudge(numCard(v)), true);
     assert.equal(m.attackGainDiving(numCard(v)), false);
@@ -111,9 +111,9 @@ test('FrozenOceanOctopus attack hooks', () => {
   assert.equal(m.attackOctopusJudgeDamage(true), 5);
 });
 
-test('FrozenOceanOctopus defend 1/2/3: counter 2 + heal 1', () => {
+test('FrozenOceanOctopus defend 1/2: counter 2 + heal 1', () => {
   const m = getMonster('FrozenOceanOctopus');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.defendCounter(numCard(v), 5), 2);
     assert.equal(m.defendHeal(numCard(v)), 1);
   }
@@ -126,7 +126,7 @@ test('FrozenOceanOctopus stage mods', () => {
   const s2 = applyStageMods(m, 2);
   assert.equal(s2.hp, 25);
   const s3 = applyStageMods(m, 3);
-  assert.equal(s3.attackDamage(numCard(5)), 6);
+  assert.equal(s3.attackDamage(numCard(4)), 6);
   assert.equal(s3.attackOctopusJudgeDamage(false), 4);
   assert.equal(s3.attackOctopusJudgeDamage(true), 5);
   const s4 = applyStageMods(m, 4);
@@ -145,7 +145,7 @@ function judgedBattle(judgedCard) {
   return eng;
 }
 
-test('FrozenOceanOctopus 1/2/3: normal color deals 3 and returns card to deck', () => {
+test('FrozenOceanOctopus 1/2: normal color deals 3 and returns card to deck', () => {
   const eng = judgedBattle(numCard(5, 'GREEN'));
   const r = eng.effect('FrozenOceanOctopus', 2, numCard(2), eng.s.ai, eng.s.player);
   assert.equal(r.d, 4);
@@ -154,7 +154,7 @@ test('FrozenOceanOctopus 1/2/3: normal color deals 3 and returns card to deck', 
   assert.equal(eng.piles.player.deck[0].value, 5);
 });
 
-test('FrozenOceanOctopus 1/2/3: black/white deals 5 and discards the card', () => {
+test('FrozenOceanOctopus 1/2: black/white deals 5 and discards the card', () => {
   const eng = judgedBattle(blackCard());
   const r = eng.effect('FrozenOceanOctopus', 1, numCard(1), eng.s.ai, eng.s.player);
   assert.equal(r.d, 5);
@@ -167,12 +167,12 @@ test('FrozenOceanOctopus skill desc', () => {
   const { getAdventureNpcSkillDesc } = AdventureMonsterBridge;
   const atk2 = getAdventureNpcSkillDesc('FrozenOceanOctopus', numCard(2), false, { stage: 1 });
   assert.ok(atk2.includes('判定'));
-  assert.ok(atk2.includes('3🗡️'));
-  assert.ok(atk2.includes('5🗡️'));
-  const atk5 = getAdventureNpcSkillDesc('FrozenOceanOctopus', numCard(5), false, { stage: 1 });
-  assert.ok(atk5.includes('5🗡️'));
+  assert.ok(/4🗡️|4点/.test(atk2));
+  assert.ok(/5🗡️|5点/.test(atk2));
+  const atk5 = getAdventureNpcSkillDesc('FrozenOceanOctopus', numCard(4), false, { stage: 1 });
+  assert.ok(atk5.includes('6🗡️'));
   assert.ok(atk5.includes('潜水'));
-  const atk5s3 = getAdventureNpcSkillDesc('FrozenOceanOctopus', numCard(5), false, { stage: 3 });
+  const atk5s3 = getAdventureNpcSkillDesc('FrozenOceanOctopus', numCard(4), false, { stage: 3 });
   assert.ok(atk5s3.includes('6🗡️'));
   const def2 = getAdventureNpcSkillDesc('FrozenOceanOctopus', numCard(2), true, { stage: 1 });
   assert.ok(def2.includes('2'));

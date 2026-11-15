@@ -34,7 +34,7 @@ test('final enemy is a 50 HP Boss with three cards and never enters scene encoun
  }
 });
 test('low attacks discard exactly the smallest nonzero number, then draw with owned-pile events',()=>{
- const e=battle(),zero=num(0),seven=num(7),two=num(2),m=magic();
+ const e=battle(),zero=num(0),seven=num(5),two=num(2),m=magic();
  e.h.ai.splice(0,e.h.ai.length,zero,seven,m,two);e.piles.ai.deck.splice(0,e.piles.ai.deck.length,num(6),num(5),num(4),num(3));
  const before=e.piles.ai.discard.length;const r=skill(e,1);assert.equal(r.d,4);
  assert.equal(e.piles.ai.discard.length,before+1);assert.equal(e.piles.ai.discard.at(-1).uid,two.uid);
@@ -51,13 +51,13 @@ for(const [color,status]of [['RED','magmaVein'],['YELLOW','crit'],['BLUE','divin
  e.commitAttackStatuses('afterDamage');assert.ok(e.s.ai[status]);
  const amount=e.s.ai[status];e.commitAttackStatuses('afterDamage');assert.equal(e.s.ai[status],amount);
 });
-test('seven sums remaining numeric hand; empty hand draws one and causes no damage',()=>{
- const e=battle();e.h.ai.splice(0,e.h.ai.length,num(3),num(6),magic());assert.equal(skill(e,7).d,9);
- assert.match(ctx.AdventureMonsterBridge.getAdventureNpcSkillDesc('CorruptedRyan',num(7),false),/数字之和/);
- e.h.ai.length=0;assert.equal(skill(e,7).d,0);assert.equal(e.h.ai.length,1);
+test('five sums remaining numeric hand; empty hand draws one and causes no damage',()=>{
+ const e=battle();e.h.ai.splice(0,e.h.ai.length,num(3),num(5),magic());assert.equal(skill(e,5).d,8);
+ assert.match(ctx.AdventureMonsterBridge.getAdventureNpcSkillDesc('CorruptedRyan',num(5),false),/数字之和/);
+ e.h.ai.length=0;assert.equal(skill(e,5).d,0);assert.equal(e.h.ai.length,1);
 });
 test('zero cleanses and draws exactly two; only the two drawn numbers count, magic is zero',()=>{
- const e=battle();e.h.ai.splice(0,e.h.ai.length,num(7));e.piles.ai.deck.splice(0,e.piles.ai.deck.length,magic(),num(5));
+ const e=battle();e.h.ai.splice(0,e.h.ai.length,num(5));e.piles.ai.deck.splice(0,e.piles.ai.deck.length,magic(),num(5));
  e.s.ai.poison=2;e.s.ai.burn=3;const r=skill(e,0);assert.equal(r.d,5);assert.equal(e.h.ai.length,3);
  e.commitAttackStatuses('beforeDamage');assert.equal(e.s.ai.poison,0);assert.equal(e.s.ai.burn,0);
  assert.equal(e.piles.ai.deck.length,0);
@@ -128,7 +128,7 @@ test('final battle snapshot retains health, statuses, and exact owned piles acro
 
 for(const value of [7,0])test('real AI attack executes final skill '+value+' and reaches player defense',()=>{
  const e=battle();e.s.phase='AI_TURN';e.s.busy=true;e.s.aiTurnStarted=true;e.s.aiHasPlayed=false;e.s.discardTop=num(2,'RED');
- e.h.ai.splice(0,e.h.ai.length,...(value===7?[num(7),num(4),num(2)]:[num(0)]));
+ e.h.ai.splice(0,e.h.ai.length,...(value===7?[num(5),num(4),num(2)]:[num(0)]));
  e.piles.ai.deck.splice(0,e.piles.ai.deck.length,num(1),num(2),num(6),num(5));
  e.aiTurn();assert.equal(e.s.phase,'PLAYER_DEFEND');assert.equal(e.s.pendingAttack.damage,value===7?6:11);
  assert.equal(e.events.filter(x=>x.type==='aiPlay').length,1);

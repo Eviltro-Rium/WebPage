@@ -16,9 +16,9 @@
         const extra = x.hand.filter(card => card !== c && card.isNumberCard);
         if (!extra.length) return -100;
         const max = Math.max(...extra.map(card => card.value));
-        const damage = max * 2;
+        const damage = max + 3;
         if (damage >= x.opponent.hp) return 96;
-        return x.missingHp >= max * 2 ? 70 : 55 + damage;
+        return x.missingHp >= damage ? 70 : 55 + damage;
       }
       if (v === 1) return x.missingHp >= 2 ? 58 : x.handSize <= 3 ? 52 : 32;
       if (v === 2) return x.missingHp ? 54 : 43;
@@ -54,14 +54,14 @@
         }
 
         const strongest = candidates.reduce((best, card) => card.value > best.value ? card : best);
-        const lethal = strongest.value * 2 >= t.hp;
+        const lethal = strongest.value + 3 >= t.hp;
         const missing = Math.max(0, a.maxHp - a.hp);
         const chooseDamage = lethal || missing <= 2 || a.hp >= t.hp;
         let second = strongest;
 
         if (!chooseDamage) {
           const useful = candidates.filter(card => card.value > 0).sort((left, right) => left.value - right.value);
-          second = useful.find(card => card.value * 2 >= missing) || useful[useful.length - 1] || strongest;
+          second = useful.find(card => card.value + 3 >= missing) || useful[useful.length - 1] || strongest;
         }
 
         helpers.selfHand.splice(helpers.selfHand.indexOf(second), 1);
@@ -71,13 +71,13 @@
         eng.discardWithEvent(second, owner, { from: 'reveal', faceUp: true, desc: `Ryan 3牌将${eng.cardText(second)}置于弃牌库底` });
 
         if (chooseDamage) {
-          const damage = second.value * 2;
+          const damage = second.value + 3;
           eng.emit('desc', `Ryan AI选择进攻，造成${damage}点伤害`);
           return { d: damage, skip: false, unblock: false };
         }
 
-        helpers.healSelf(second.value * 2);
-        eng.emit('desc', `Ryan AI选择恢复${second.value * 2}点生命`);
+        helpers.healSelf(second.value + 3);
+        eng.emit('desc', `Ryan AI选择恢复${second.value + 3}点生命`);
         return { d: 0, skip: true, unblock: false };
       }
 

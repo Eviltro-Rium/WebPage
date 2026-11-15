@@ -40,8 +40,7 @@
         if (cr) unblock = true;
       } else if (v === 4) {
         d = 4;
-        guard(2);
-        if (cg) guard(2);
+        guard(cg ? 4 : 2);
       } else if (v === 5) {
         d = 4 + chaosCount * 2;
         a.chaos_red = false;

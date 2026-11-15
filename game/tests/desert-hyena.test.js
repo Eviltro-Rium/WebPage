@@ -90,11 +90,11 @@ test('DesertHyena loot: 1-4 piercing, 5 crit, 6 thorns', () => {
   assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('desert', 'DesertHyena', null, 12).drops), ['PurifyWaterTrophy']);
 });
 
-test('DesertHyena attack 1/2/3 scales with bleed (2× layers)', () => {
+test('DesertHyena attack 1/2 scales with bleed (3 + layers)', () => {
   const m = getBoss('DesertHyena');
-  for (const v of [1, 2, 3]) {
-    assert.equal(m.attackDamage(numCard(v), { playerBleed: 0 }), 0);
-    assert.equal(m.attackDamage(numCard(v), { playerBleed: 1 }), 2);
+  for (const v of [1, 2]) {
+    assert.equal(m.attackDamage(numCard(v), { playerBleed: 0 }), 3);
+    assert.equal(m.attackDamage(numCard(v), { playerBleed: 1 }), 4);
     assert.equal(m.attackDamage(numCard(v), { playerBleed: 3 }), 6);
     assert.equal(m.attackBleed(numCard(v)), 0);
     assert.equal(m.attackGainCrit(numCard(v)), 0);
@@ -102,9 +102,9 @@ test('DesertHyena attack 1/2/3 scales with bleed (2× layers)', () => {
   }
 });
 
-test('DesertHyena attack 4/5/6: bleed + crit + hand-size damage', () => {
+test('DesertHyena attack 3/4: bleed + crit + hand-size damage', () => {
   const m = getBoss('DesertHyena');
-  for (const v of [4, 5, 6]) {
+  for (const v of [3, 4]) {
     assert.equal(m.attackDamage(numCard(v), { playerHandSize: 0 }), 0);
     assert.equal(m.attackDamage(numCard(v), { playerHandSize: 3 }), 3);
     assert.equal(m.attackBleed(numCard(v)), 1);
@@ -121,7 +121,7 @@ test('DesertHyena attack 0 judge hook only on zero', () => {
 
 test('DesertHyena defend hooks', () => {
   const m = getBoss('DesertHyena');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.defendCounter(numCard(v), 8), 4);
     assert.equal(m.defendCounter(numCard(v), 5), 3);
     assert.equal(m.defendGainCrit(numCard(v)), 0);
@@ -149,7 +149,7 @@ test('DesertHyena stage mods', () => {
   assert.equal(s4.attackUnblockable(numCard(1, 'YELLOW')), true);
 });
 
-test('DesertHyena 0: number card deals ceil(value*1.5) and always discards', () => {
+test('DesertHyena 0: number card deals value*2 and always discards', () => {
   const eng = new Engine();
   eng.start('Ryan', 'DesertHyena');
   eng.later = () => {};
@@ -158,7 +158,7 @@ test('DesertHyena 0: number card deals ceil(value*1.5) and always discards', () 
     ai: { deck: [], discard: [], hand: [] }
   };
   const r = eng.effect('DesertHyena', 0, numCard(0), eng.s.ai, eng.s.player);
-  assert.equal(r.d, 8);
+  assert.equal(r.d, 10);
   assert.equal(eng.piles.player.deck.length, 0);
   assert.equal(eng.piles.player.discard.length, 1);
   assert.equal(eng.piles.player.discard[0].value, 5);
@@ -200,12 +200,12 @@ test('DesertHyena stage3 yellow attack is unblockable without spending crit', (t
   eng.s.ai.crit = 2;
   eng.s.player.bleed = 1;
   const r = eng.effect('DesertHyena', 2, numCard(2, 'YELLOW'), eng.s.ai, eng.s.player);
-  assert.equal(r.d, 2);
+  assert.equal(r.d, 4);
   assert.equal(r.unblock, true);
   assert.equal(eng.s.ai.crit, 2, 'stage3 yellow unblock does not consume crit');
 });
 
-test('DesertHyena stage4 defend heal on 1/2/3 and 0', (t) => {
+test('DesertHyena stage4 defend heal on 1/2 and 0', (t) => {
   const eng = stagedEngine(t, 4);
   eng.s.ai.hp = 20;
   defendWith(eng, numCard(2), 8);
@@ -218,7 +218,7 @@ test('DesertHyena stage4 defend heal on 1/2/3 and 0', (t) => {
   assert.equal(eng.s.pendingKrakenDefendDiscard, true);
 });
 
-test('DesertHyena defend 1/2/3 counters half incoming', (t) => {
+test('DesertHyena defend 1/2 counters half incoming', (t) => {
   const eng = stagedEngine(t, 2);
   const playerHp = eng.s.player.hp;
   defendWith(eng, numCard(1), 7);
@@ -227,14 +227,14 @@ test('DesertHyena defend 1/2/3 counters half incoming', (t) => {
 
 test('DesertHyena skill panel text (compact)', () => {
   const low = describe('DesertHyena', numCard(2), false, { stage: 2 });
-  assert.match(low, /2×\[流血\]层数🗡️/);
-  const high = describe('DesertHyena', numCard(5), false, { stage: 2 });
+  assert.match(low, /3\+\[流血\]层数🗡️/);
+  const high = describe('DesertHyena', numCard(4), false, { stage: 2 });
   assert.match(high, /施加\[流血\]/);
   assert.match(high, /获得\[暴击\]/);
   assert.match(high, /手牌/);
   const zero = describe('DesertHyena', numCard(0), false, { stage: 2 });
   assert.match(zero, /翻开牌库顶1🃏/);
-  assert.match(zero, /1\.5/);
+  assert.match(zero, /×2/);
   assert.match(zero, /流血/);
   assert.match(zero, /荆棘/);
   assert.match(zero, /抽1🃏/);
@@ -246,7 +246,7 @@ test('DesertHyena skill panel text (compact)', () => {
   assert.match(def0, /弃1🃏/);
   const def0s4 = describe('DesertHyena', numCard(0), true, { stage: 4 });
   assert.match(def0s4, /回1❤️/);
-  const highS3 = describe('DesertHyena', numCard(5), false, { stage: 3 });
+  const highS3 = describe('DesertHyena', numCard(4), false, { stage: 3 });
   assert.match(highS3, /不可防御/);
 });
 

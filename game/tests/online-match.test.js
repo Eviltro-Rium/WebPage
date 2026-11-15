@@ -114,13 +114,13 @@ test('guest resume can retry a failed send when opponent metadata arrives again'
   ui._clearBattleResumeRetry();
 });
 
-test('rendered online Saiki judgment card click selects and confirms for either viewer', async () => {
+test('rendered online Otto judgment card click selects and confirms for either viewer', async () => {
   for (const actor of ['host', 'guest']) {
-    const match = new context.OnlineMatchHost('Saiki', 'Saiki', actor);
+    const match = new context.OnlineMatchHost('Otto', 'Otto', actor);
     match.setStarted(true);
     match.engine.s.onlineActor = actor;
     match.engine.s.phase = 'SAIKI_SIX_JUDGE';
-    match.engine.s.pendingNumberJudge = { type: 'Saiki' };
+    match.engine.s.pendingNumberJudge = { type: 'Otto' };
     match.engine.h[actor === 'host' ? 'player' : 'ai'] = [context.FurryGame.Card.number('RED', 2)];
     const container = { remove() {}, dataset: {}, children: [], appendChild(node) { node.parentElement = this; this.children.push(node); }, querySelectorAll() { return this.children; } };
     const uiContext = vm.createContext({
@@ -540,8 +540,8 @@ test('online sleeping defender skips PLAYER_DEFEND and takes full damage', () =>
 test('online guest defense keeps attack debuffs on the original target', () => {
   const Card = context.FurryGame.Card;
   const cases = [
-    // Leon 2 applies burn to the defender.
-    { character: 'Leon', card: Card.number('RED', 2), expected: 'burn' },
+    // Leon 1 applies burn to the defender.
+    { character: 'Leon', card: Card.number('RED', 1), expected: 'burn', expectedCount: 2 },
     // Chan 0 applies freeze to the defender while still allowing defense.
     { character: 'Chan', card: Card.number('RED', 0), expected: 'frozen' },
     // Saiki's yellow 1 applies 2 bleed from the attack skill plus 1 from the passive.
@@ -769,7 +769,7 @@ test('refreshed guest uses a new command id and can play from restored battle st
   };
   const match = new context.OnlineMatchHost('Leon', 'Knight', 'guest');
   match.setStarted(true);
-  const card = context.FurryGame.Card.number('RED', 6);
+  const card = context.FurryGame.Card.number('RED', 4);
   match.engine.h.ai = [card];
   match.engine.s.discardTop = context.FurryGame.Card.number('RED', 1);
   match.engine.s.onlineActor = 'guest';

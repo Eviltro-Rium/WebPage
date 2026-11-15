@@ -22,13 +22,13 @@ function battle(name, value, challenge=false) {
   return e;
 }
 
-for (const [name, value] of [['Chan',4],['Chan',7],['Saiki',3],['Saiki',5],['Moze',5],['Blaze',4],['Leon',7]]) {
+for (const [name, value] of [['Chan',5],['Saiki',4],['Moze',3],['Leon',5]]) {
   for (const target of ['ai','ai2']) test(`${name} ${value} returns the selected ${target} card to NPC discard without changing player ownership`, () => {
     const e = battle(name, value, target==='ai2');
     const before = cards(e.piles.player).map(card=>card.uid).sort();
     const chosen = e.h[target][0], npcCount = cards(e.piles.ai).length + (e.h.ai2 ? e.h.ai2.length : 0);
     const otherHand = target==='ai2' ? e.h.ai.map(card=>card.uid) : null;
-    // 直接进入公共手牌技能入口，覆盖所有使用该分支的角色（含历史 Saiki 3）。
+    // 直接进入公共手牌技能入口，覆盖所有使用该分支的角色。
     e.s.atkOwner='player'; e.s.atkCard=num(value); e.s.attackTarget=target;
     e.resolveOpponentHandSkill({name, value, owner:'player', targetKey:target, attackCard:e.s.atkCard});
     e.s.selectedAICard=0; e.resolveOpponentHandCard();
@@ -46,11 +46,11 @@ for (const [name, value] of [['Chan',4],['Chan',7],['Saiki',3],['Saiki',5],['Moz
   });
 }
 
-test('Chan 7 real play, target selection and confirmation keep the monster card out of the persistent player pile', () => {
+test('Chan 5 real play, target selection and confirmation keep the monster card out of the persistent player pile', () => {
   for(const challenge of [false,true]) {
-    const e=battle('Chan',7,challenge),target=challenge?'ai2':'ai';
+    const e=battle('Chan',5,challenge),target=challenge?'ai2':'ai';
     e.s.attackTarget=target;e.s.lordPlayerTargetIdx=challenge?1:0;
-    e.s.selectedCard=e.h.player.findIndex(card=>card.value===7);
+    e.s.selectedCard=e.h.player.findIndex(card=>card.value===5);
     e.dispatch('doPlay');assert.equal(e.s.phase,'OPPONENT_CARD_CHOICE');
     const chosen=e.h[target][0];
     e.dispatch('chooseAICard',{index:0});e.dispatch('doOpponentCardConfirm');
@@ -82,7 +82,7 @@ test('map save recovery removes marked foreign cards from every player zone whil
 });
 
 test('battle restore returns misplaced cards to the shared NPC discard and repairs a misplaced active top', () => {
-  const e=battle('Chan',7,true),npc=e.h.ai2.splice(0,1)[0],top=e.h.ai.splice(0,1)[0];
+  const e=battle('Chan',5,true),npc=e.h.ai2.splice(0,1)[0],top=e.h.ai.splice(0,1)[0];
   e.piles.player.deck.push(npc);e.piles.player.discard.push(top);
   e.s.discardTop=JSON.parse(JSON.stringify(top));e.tableTopOwner=e.s.discardTopOwner='player';
   const data=JSON.parse(JSON.stringify({s:e.s,piles:e.piles,events:e.events,ver:e.ver,tableTopOwner:e.tableTopOwner,testMode:true}));
@@ -107,7 +107,7 @@ test('map recovery removes NPC contamination before count normalization so no re
 });
 
 test('legacy Chan seven keep prompt cannot transfer a monster card into the player hand', () => {
-  const e=battle('Chan',7),chosen=e.h.ai.splice(0,1)[0];
+  const e=battle('Chan',5),chosen=e.h.ai.splice(0,1)[0];
   e.s.pendingOpponentSkill={name:'Chan',value:7,owner:'player',targetKey:'ai',attackCard:num(7)};
   e.s.chanSevenKeepMode=true;e.s.chanSevenChosenCard=chosen;e.s.phase='PLAYER_SEVEN_CHOICE';
   e.chanSevenChoice(true);

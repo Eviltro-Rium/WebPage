@@ -429,9 +429,29 @@
       }
       return false;
     }
-    _monsterHasDefendSkill(mod,card,incomingDamage=8){if(!mod||!card)return false;if(card.isItemCard)return true;const call=(name,...args)=>typeof mod[name]==='function'&&mod[name](...args);if(call('defendImmune',card))return true;if(typeof mod.defendRollImmune==='function'&&mod.defendRollImmune(card))return true;if(call('defendHeal',card)>0)return true;if(call('defendPoison',card)>0)return true;if(call('defendBleed',card)>0)return true;if(call('defendCounter',card,Math.max(1,incomingDamage))>0)return true;if(call('defendBlock',card,Math.max(1,incomingDamage),this.s&&this.s.ai)>0)return true;if(call('defendDrawSelf',card)>0)return true;if(call('defendSplit',card))return true;if(call('defendLush',card)>0)return true;if(call('defendGuard',card)>0)return true;if(call('defendAllLush',card)>0)return true;if(call('defendAllHeal',card)>0)return true;return card.value===1||card.value===3}
+    _monsterHasDefendSkill(mod,card,incomingDamage=8){
+      if(!mod||!card)return false;
+      if(card.isItemCard)return true;
+      if(card.value===5&&!mod.fiveSkill)return false;
+      if(card.value===0&&mod.defendEscape?.(card))return true;
+      if(card.value===0&&!window.AdventureRegistry?.getBoss(mod.name))return false;
+      if(typeof mod.defendSkill==='function')return true;
+      // 骰子技能仅探测牌值，实际防御时才传入引擎掷骰。
+      if(mod.defendRollImmune?.(card)||mod.defendDeckCompare?.(card))return true;
+      const amount=Math.max(1,incomingDamage);
+      if(mod.defendBlock?.(card,amount,this.s.ai,this)>0)return true;
+      if(mod.defendCounter?.(card,amount,this.s.ai,this.s.player)>0)return true;
+      return [
+        'defendAllHeal','defendAllLush','defendBleed','defendBurn','defendBurnSettle',
+        'defendClearDebuffs','defendDrawSelf','defendFly',
+        'defendGainCrit','defendGainDiving','defendGainMagma','defendGuard',
+        'defendHeal','defendHypothermia','defendImmune','defendImmuneBuff','defendLush',
+        'defendParasite','defendPlayerDiscard','defendPoison','defendPoisonDrain',
+        'defendSandblind','defendScorch','defendSplit','defendThorns'
+      ].some(hook=>typeof mod[hook]==='function'&&mod[hook](card)>0);
+    }
     _chooseAIDefendAdventure(hand,top,incomingDamage=0){let x=this.aiContext({incomingDamage}),name=this.name(this.s.ai),mod=this._getAdventureMod(name);if(!mod)return null;let magic=hand.filter(c=>c.isItemCard&&(c.magic||c.greenMagic||c.magicColor));magic.sort((a,b)=>((b.magic||b.magicColor==='purple')?2:1)-((a.magic||a.magicColor==='purple')?2:1));for(const c of magic){if(this.aiDefendLegal(c,top,x))return c}let numbers=hand.filter(c=>c.isNumberCard&&this.aiDefendLegal(c,top,x)).sort((a,b)=>b.value-a.value);for(const c of numbers){if(this._monsterHasDefendSkill(mod,c,incomingDamage))return c}for(const c of hand){if(c.isItemCard&&this.aiDefendLegal(c,top,x))return c}return null}
-    chooseAIDefend(top,incomingDamage=0){if(this.s.isAdventure){let r=this._chooseAIDefendAdventure(this.h.ai,top,incomingDamage);if(r!==null)return r}let x=this.aiContext({incomingDamage}),best=null,score=-Infinity;for(const c of this.h.ai){if(!this.aiDefendLegal(c,top,x))continue;let s=this.aiDefendScore(c,top,incomingDamage);if(s>score){score=s;best=c}}return score<=-100?null:best}
+    chooseAIDefend(top,incomingDamage=0){if(this.s.isAdventure){let r=this._chooseAIDefendAdventure(this.h.ai,top,incomingDamage);if(this._getAdventureMod(this.name(this.s.ai)))return r}let x=this.aiContext({incomingDamage}),best=null,score=-Infinity;for(const c of this.h.ai){if(!this.aiDefendLegal(c,top,x))continue;let s=this.aiDefendScore(c,top,incomingDamage);if(s>score){score=s;best=c}}return score<=-100?null:best}
     aiKeepScore(c){
       let x=this.aiContext(),m=AIRegistry.get(x.name),role=m?m.keepScore(this,c,x):null;
       if(role!=null)return role;
@@ -860,6 +880,24 @@
     performAoeAllExceptSelf(attacker='player',damage=0,opts={}){const targets=this._allKeysExcept(attacker);if(!targets.length)return 0;return this.performAttack({type:'aoe',attacker,target:targets[0],aoeTargets:targets,aoeDamage:damage,skipTarget:false,...opts})}
     chooseMozeGuardUse(guard,damage,hp){if(damage>=hp)return Math.min(guard,damage);if(damage<=2)return 0;if(guard>=3&&damage>=5)return Math.min(guard,damage);if(guard>=2&&damage>=4)return Math.min(guard,damage);if(hp<=30)return Math.min(guard,damage);return 0}
     chooseDefenderGuardUse(defender,damage){let guard=defender.guard||0;if(damage<=0||guard<=0)return 0;if(this.s.isAdventure)return Math.min(guard,damage);return this.chooseMozeGuardUse(guard,damage,defender.hp)}
+    teammateOf(entity) {
+      if (!this.s.is1v2 || this.s.isAdventure || !entity) return null;
+      const teammate = entity === this.s.ai ? this.s.ai2 : entity === this.s.ai2 ? this.s.ai : null;
+      return teammate && teammate.alive ? teammate : null;
+    }
+
+    ottoCoverFor(defender) {
+      const teammate = this.teammateOf(defender);
+      return teammate && this.name(defender) === 'Serenity' && this.name(teammate) === 'Otto'
+        ? teammate : null;
+    }
+
+    settleOttoCover(otto, excess) {
+      const damage = Math.floor(excess / 2);
+      this.emit('desc', 'Otto 承担队友超出的' + excess + '点伤害，格挡' + (excess - damage) + '点');
+      if (damage > 0) this.hurt(otto, damage);
+    }
+
     applyDefenderGuard(defender,damage,opts={}){
       if(!defender||damage<=0)return Math.max(0,damage);
       const use=opts.forceSpend?Math.min(defender.guard||0,damage):this.chooseDefenderGuardUse(defender,damage);
@@ -1486,7 +1524,7 @@
       this.s.revealCards=[cp(second)];
       this.emit('reveal',`Ryan 3牌追加${this.cardText(second)}并置于弃牌库底`,second,{who:'player',from:'hand',fromOwner:'player',handIndex:i});
       this.discardWithEvent(second,'player',{from:'reveal',faceUp:true,desc:`Ryan 3牌将${this.cardText(second)}置于弃牌库底`});
-      let amount=chooseDamage?second.value*2:second.value*2;
+      let amount=second.value+3;
       if(chooseDamage&&amount>0){
         this.emit('desc',`Ryan 3牌选择进攻：造成${amount}点伤害`,second);
         return this.gateAdventureAttackMod(second,amount,false,false,1800);
@@ -1521,7 +1559,7 @@
       if(pending.type==='Otto'){
         this.discardToBottom(second,'player');
         this.emit('discard',`Otto 4牌将${this.cardText(second)}置于弃牌库底`,second,{who:'player',from:'reveal',destination:'bottom'});
-        const amount=second.value*2;
+        const amount=second.value+2;
         if(second.isWhite){
           this.heal(this.s.player,amount);
           if(this.s.player.crit<3)this.s.player.crit++;

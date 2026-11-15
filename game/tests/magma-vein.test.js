@@ -43,7 +43,7 @@ for(const owner of ['ai','ai2'])test('NPC '+owner+' uses magma before crit on ac
 });
 test('a magma buff gained during this skill is saved for the next attack',()=>{const e=setup();e.s.atkOwner='ai';e.s.atkCard=card(3);e._onAttackSkillRelease(e.s.ai);e.magmaVein(e.s.ai);const r={d:3,unblock:false};e.s.pendingAttack={damage:3};ctx.FurryGame.AttackBuffs.applyAI(e,r,'ai',e.s.atkCard);assert.equal(r.d,3);assert.equal(e.s.ai.magmaVein,1);});
 for(const actor of ['host','guest'])test('online '+actor+' owns its modifier dialog and spends only its own magma',()=>{
- const match=new ctx.OnlineMatchHost('Ryan','Blaze',actor);match.started=true;const e=match.engine;const key=actor==='host'?'player':'ai';e.s[key].magmaVein=1;e.s[key].crit=1;e.h[key]=[card(3)];e.s.discardTop=card(3);
+ const match=new ctx.OnlineMatchHost('Ryan','Blaze',actor);match.started=true;const e=match.engine;const key=actor==='host'?'player':'ai';e.s[key].magmaVein=1;e.s[key].crit=1;e.h[key]=[card(2)];e.s.discardTop=card(2);
  const c=e.h[key][0];const id=ctx.FurryGame.Card ? [c.uid||'',c.color,c.value,!!c.isBlack,!!c.isWhite,!!c.potion,!!c.magic,!!c.greenMagic,c.magicColor||'',!!c.purify,!!c.superPurify,!!c.swapHand,!!c.shuffleToDeck,!!c.drawTwo,!!c.drawThree,!!c.trophyWhite,c.trophyName||''].join('_'):'';
  const out=match.dispatch(actor,'playCard',{index:0,cardId:id});assert.equal(out.ok,true,out.error);assert.equal(match.project(actor).phase,'ATTACK_BUFF_CHOICE');assert.equal(match.project(actor).onlineCanAct,true);
  const other=actor==='host'?'guest':'host';assert.equal(match.project(other).onlineCanAct,false);assert.equal(match.dispatch(other,'resolveAttackBuffChoice',{buff:'magmaVein'}).ok,false);

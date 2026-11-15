@@ -19,7 +19,7 @@
         let candidates = x.hand.filter(card => card !== c && card.isNumberCard);
         if (!candidates.length) return -100;
         let max = Math.max(...candidates.map(card => card.value));
-        const damage = max * 2;
+        const damage = max + 2;
         return damage >= x.opponent.hp ? 90 : 55 + damage * 3;
       }
       if (v === 2) return 48;
@@ -60,7 +60,7 @@
         eng.s.revealCards = [helpers.copy(best)];
         eng.emit('reveal', `Otto 4牌判定：${eng.cardText(best)}`, best, { who: owner, from: 'hand' });
         eng.discardWithEvent(best, owner, { from: 'reveal', faceUp: true, desc: `Otto 4牌将${eng.cardText(best)}置于弃牌库底` });
-        const amount = best.value * 2;
+        const amount = best.value + 2;
         if (best.isWhite) {
           eng.heal(a, amount);
           if (a.crit < 3) a.crit++;

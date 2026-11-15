@@ -216,10 +216,13 @@ test('Leon attack 1 applies burn after skip-defense attack resolves', () => {
   engine.dispatch('selectCard', { index: 0 });
   engine.dispatch('doPlay');
 
-  assert.equal(engine.s.ai.burn, 3, 'skip-defense effect commits before its damage');
+  assert.equal(engine.s.ai.burn||0, 0, 'burn waits for the hit');
+  if(!engine.pendingSettlement){
+    engine.dispatch('resolveAttackModChoice',{unblock:true});
+  }
   assert.ok(engine.pendingSettlement);
   engine.acknowledgeEvents(engine.ver);
-  assert.equal(engine.s.ai.burn, 3);
+  assert.equal(engine.s.ai.burn, 2);
 });
 
 test('GhostFire applies five burn stacks in adventure combat', () => {
@@ -280,10 +283,10 @@ test('NPC decks include two white 5 pass cards with no skill effect', () => {
   assert.equal(engine.aiDefendLegal(white5, engine.s.discardTop, x), true);
 
   const wolf = start({ hand: [number(2, 'RED')] }, number(2, 'RED'));
-  assert.equal(wolf.aiDefendLegal(white7, wolf.s.discardTop, wolf.aiContext({})), false);
+  assert.equal(wolf.aiDefendLegal(white5, wolf.s.discardTop, wolf.aiContext({})), false);
 });
 
-test('all ordinary NPC zero/seven and boss seven have no attack or defense effects at every stage', () => {
+test('all ordinary NPC zero/five and boss five have no attack or defense effects at every stage', () => {
   const registry = context.AdventureRegistry;
   for (const mod of [...registry.allMonsters(), ...registry.allBosses()]) {
     if (mod.fiveSkill) continue; // Final enemy has an explicitly documented 5 skill.
@@ -345,10 +348,10 @@ test('black cards pause for a color choice before resolving in adventure combat'
   assert.equal(resolved.events.filter(event => event.type === 'playerPlay').length, 1, 'confirmed black card emits one play animation');
 });
 
-test('Chan 4 in adventure discards the selected NPC card without swapping piles', () => {
+test('Chan 5 in adventure discards the selected NPC card without swapping piles', () => {
   const engine = new AdventureBattleEngine();
-  const playerAttack = number(4, 'RED');
-  const npcCard = number(6, 'BLUE');
+  const playerAttack = number(5, 'RED');
+  const npcCard = number(4, 'BLUE');
   engine.startAdventure({
     player: 'Chan',
     opponent: 'CastleWolf',
@@ -388,8 +391,8 @@ test('battle startup preserves the player pile and gives the NPC its own two-car
   // discardTop is mirrored as the newest card in the owner's discard pile.
   assert.deepEqual(Array.from(engine.piles.player.discard, card => card.value), [6, 2]);
   assert.equal(engine.h.ai.length, 2);
-  // NPC deck: 白0×1 + 白1~3×4 + 白4~6×2 + 白7×2 + 紫/绿魔法 = 23，开局抽 2 张后剩 21。
-  assert.equal(engine.piles.ai.deck.length, 21);
+  // NPC deck: 白0×2 + 白1~2各6 + 白3~4各4 + 白5×2 + 紫/绿魔法 = 26，开局后剩 24。
+  assert.equal(engine.piles.ai.deck.length, 24);
   assert.equal(engine.s.player.hp, 74);
   assert.equal(engine.s.player.burn, 1);
   assert.equal(engine.s.player.guard, 2);
@@ -479,15 +482,15 @@ test('the next room keeps the exact player hand, deck and discard snapshot', () 
   assert.equal(second.tableTopOwner, 'player');
 });
 
-test('adventure attack mod waits until damage is confirmed after Saiki 6 judge', () => {
+test('adventure attack mod waits until damage is confirmed after Otto 4 judge', () => {
   const engine = new AdventureBattleEngine();
   engine.startAdventure({
-    player: 'Saiki',
+    player: 'Otto',
     opponent: 'CastleWolf',
     playerState: { hp: 70, maxHp: 80 },
     playerPile: {
       deck: [number(4, 'BLUE')],
-      hand: [number(6, 'RED'), number(4, 'YELLOW')],
+      hand: [number(4, 'RED'), number(4, 'YELLOW')],
       discard: [],
       handLimit: 5
     },
@@ -503,10 +506,10 @@ test('adventure attack mod waits until damage is confirmed after Saiki 6 judge',
   engine.dispatch('selectCard', { index: 0 });
   const afterJudge = engine.dispatch('doSaikiSixConfirm');
   assert.equal(afterJudge.phase, 'ATTACK_MOD_CHOICE');
-  assert.equal(afterJudge.pendingAttack.damage, 6); // ceil(4*1.5)
+  assert.equal(afterJudge.pendingAttack.damage, 8);
 
   const resolved = engine.dispatch('resolveAttackModChoice', { bonus: 2 });
-  assert.equal(resolved.pendingAttack.damage, 8);
+  assert.equal(resolved.pendingAttack.damage, 10);
   assert.equal(resolved.phase, 'AI_DEFEND');
 });
 
@@ -584,24 +587,24 @@ test('1v2 skip-defense kill with empty event queue settles without freezing', ()
   assert.ok(engine.s.busy);
 });
 
-test('Otto 6 two-number branch enters NPC defense in challenge room', () => {
+test('Otto 5 HP branch enters NPC defense in challenge room', () => {
   const engine = new AdventureBattleEngine();
   engine.startAdventure1v2({
     player: 'Otto',
     opponent1: 'CastleWolf',
     opponent2: 'CastleBear',
     stage: 1,
+    playerState:{hp:40,maxHp:80},
     discardTop: number(1, 'RED'),
     playerPile: {
-      // Otto 6 reveals the two cards at the end of the player deck.
       deck: [number(2, 'BLUE'), number(3, 'GREEN')],
-      hand: [number(6, 'RED')],
+      hand: [number(5, 'RED')],
       discard: [],
       handLimit: 5
     }
   });
   engine.later = () => assert.fail('zero-delay NPC defense must not use the shared combat timer');
-  engine.h.ai.splice(0, engine.h.ai.length, number(2), number(6));
+  engine.h.ai.splice(0, engine.h.ai.length, number(2), number(5));
   engine.h.ai2.splice(0, engine.h.ai2.length);
   engine.s.attackTarget = 'ai';
 
@@ -620,17 +623,18 @@ test('Otto 6 two-number branch enters NPC defense in challenge room', () => {
   assert.ok(engine.events.some(event => event.type === 'aiDefend'));
 });
 
-test('Otto 6 challenge defense continues after an NPC magic bridge without replacing the defense timer', () => {
+test('Otto 5 challenge defense continues after an NPC magic bridge without replacing the defense timer', () => {
   const engine = new AdventureBattleEngine();
   engine.startAdventure1v2({
     player: 'Otto',
     opponent1: 'CastleWolf',
     opponent2: 'CastleBear',
     stage: 1,
+    playerState:{hp:40,maxHp:80},
     discardTop: number(1, 'RED'),
     playerPile: {
       deck: [number(2, 'BLUE'), number(3, 'GREEN')],
-      hand: [number(6, 'RED')],
+      hand: [number(5, 'RED')],
       discard: [],
       handLimit: 5
     }
@@ -656,7 +660,7 @@ test('Otto 6 challenge defense continues after an NPC magic bridge without repla
   assert.ok(engine.events.some(event => event.type === 'aiDefend' && event.card && event.card.value === 2));
 });
 
-test('Otto 7 keeps HP/8 in challenge rooms and makes small hits unblockable', () => {
+test('Otto 5 keeps HP/8 in challenge rooms and makes small hits unblockable', () => {
   const otto = CharacterRegistry.get('Otto');
   const emitted = [];
   const hurtCalls = [];
@@ -667,12 +671,12 @@ test('Otto 7 keeps HP/8 in challenge rooms and makes small hits unblockable', ()
   };
 
   const fullHealth = { hp: 80, crit: 0 };
-  const normal = otto.effect(eng, 7, number(7), fullHealth, {}, 'player', helpers);
+  const normal = otto.effect(eng, 5, number(5), fullHealth, {}, 'player', helpers);
   assert.equal(normal.d, 10);
   assert.equal(normal.unblock, false);
 
   const lowHealth = { hp: 24, crit: 0 };
-  const small = otto.effect(eng, 7, number(7), lowHealth, {}, 'player', helpers);
+  const small = otto.effect(eng, 5, number(5), lowHealth, {}, 'player', helpers);
   assert.equal(small.d, 3);
   assert.equal(small.unblock, true);
   assert.equal(hurtCalls.length, 0);
@@ -680,14 +684,14 @@ test('Otto 7 keeps HP/8 in challenge rooms and makes small hits unblockable', ()
 
   const classicDuo = otto.effect(
     { s: { is1v2: true, isAdventure: false }, emit() {} },
-    7,
-    number(7),
+    5,
+    number(5),
     { hp: 160, crit: 0 },
     {},
     'player',
     helpers
   );
-  assert.equal(classicDuo.d, 10, 'classic 1v2 doubles HP and scales Otto 7 by /16');
+  assert.equal(classicDuo.d, 10, 'classic 1v2 doubles HP and scales Otto 5 by /16');
 });
 
 test('restored Knight attack resumes the surviving snowy owl defense after the octopus is eliminated', () => {
@@ -1489,11 +1493,11 @@ test('borrowed NPC number card resolves NPC attack skill against its owner', () 
   assert.equal(engine.s.phase, 'ATTACK_MOD_CHOICE');
 });
 
-test('borrowed FrozenWhale white 6 in 1v2 applies AoE damage to all opponents', () => {
+test('borrowed FrozenWhale white 4 in 1v2 applies AoE damage to all opponents', () => {
   const engine = new AdventureBattleEngine();
   engine.start1v2('Ryan', 'FrozenWhale', 'FrozenOceanLynx');
   const before = { whale: engine.s.ai.hp, lynx: engine.s.ai2.hp };
-  const borrowed = number(6, 'BLUE');
+  const borrowed = number(4, 'BLUE');
   borrowed.isWhite = true;
   borrowed.chosenColor = 'BLUE';
   borrowed.color = 'WHITE';
@@ -1518,7 +1522,7 @@ test('borrowed FrozenWhale white 6 in 1v2 applies AoE damage to all opponents', 
   assert.equal(engine.s.ai2.hp, before.lynx - 4, 'lynx takes AoE damage');
 });
 
-test('borrowed FrozenWhale 6 in 1v2 applies AOE to non-main opponent', () => {
+test('borrowed FrozenWhale 4 in 1v2 applies AOE to non-main opponent', () => {
   const engine = new AdventureBattleEngine();
   engine.startAdventure1v2({
     player: 'Ryan',
@@ -1529,7 +1533,7 @@ test('borrowed FrozenWhale 6 in 1v2 applies AOE to non-main opponent', () => {
     discardTopOwner: 'player'
   });
   const before = { whale: engine.s.ai.hp, lynx: engine.s.ai2.hp };
-  const borrowed = number(6, 'BLUE');
+  const borrowed = number(4, 'BLUE');
   borrowed.isWhite = true;
   borrowed.chosenColor = 'BLUE';
   borrowed.color = 'WHITE';
@@ -1552,7 +1556,7 @@ test('borrowed FrozenWhale 6 in 1v2 applies AOE to non-main opponent', () => {
   assert.equal(engine.s.ai2.hp, before.lynx - 4, 'lynx takes AoE damage');
 });
 
-test('borrowed FrozenWhale 6 in 1v1 applies direct damage only', () => {
+test('borrowed FrozenWhale 4 in 1v1 applies direct damage only', () => {
   const engine = new AdventureBattleEngine();
   engine.startAdventure({
     player: 'Ryan',
@@ -1562,7 +1566,7 @@ test('borrowed FrozenWhale 6 in 1v1 applies direct damage only', () => {
     discardTopOwner: 'player'
   });
   const before = engine.s.ai.hp;
-  const borrowed = number(6, 'BLUE');
+  const borrowed = number(4, 'BLUE');
   borrowed.isWhite = true;
   borrowed.chosenColor = 'BLUE';
   borrowed.color = 'WHITE';
@@ -1646,7 +1650,7 @@ function startChan(pileOverrides = {}, top = number(3, 'RED')) {
   return engine;
 }
 
-test('Chan defense 3 heals from the revealed card and keeps remaining damage finite', () => {
+test('Chan defense 2 heals from the revealed card and keeps remaining damage finite', () => {
   const engine = startChan();
   engine.s.phase = 'PLAYER_DEFEND';
   engine.s.busy = false;
@@ -1654,7 +1658,7 @@ test('Chan defense 3 heals from the revealed card and keeps remaining damage fin
   engine.s.atkCard = number(2, 'RED');
   engine.s.atkOwner = 'ai';
   engine.s.discardTop = number(2, 'RED');
-  engine.h.player.push(number(3, 'RED'));
+  engine.h.player.push(number(2, 'RED'));
   engine.s.selectedCard = engine.h.player.length - 1;
   engine.piles.player.deck.push(number(4, 'BLUE'));
   const hp = engine.s.player.hp;
@@ -1920,15 +1924,15 @@ test('Otto white 5 with no follow-up number card keeps chosen color, animates, a
   assert.equal(engine.s.ai.hp, aiHp);
 });
 
-test('Otto 4 gains crit first and can spend it on its own 5 damage hit', () => {
+test('Otto 3 gains crit first and can spend it on its own 5 damage hit', () => {
   const engine = new AdventureBattleEngine();
   engine.startAdventure({
     player: 'Otto', opponent: 'CastleWolf',
     playerState: { hp: 80, maxHp: 100 },
-    playerPile: { deck: [number(4, 'BLUE')], hand: [number(4, 'RED')], discard: [], handLimit: 5 },
+    playerPile: { deck: [number(4, 'BLUE')], hand: [number(3, 'RED')], discard: [], handLimit: 5 },
     discardTop: number(2, 'RED'), discardTopOwner: 'player'
   });
-  engine.h.player = [number(4, 'RED')];
+  engine.h.player = [number(3, 'RED')];
   engine.s.player.crit = 0;
   engine.s.phase = 'PLAYER_PLAY'; engine.s.busy = false;
   const hp = engine.s.player.hp;

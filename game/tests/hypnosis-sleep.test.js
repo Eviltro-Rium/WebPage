@@ -164,8 +164,9 @@ test('Vixraps attack 5 applies burn and scales damage with burn stacks', () => {
   eng.start('Vixraps', 'Saiki');
   eng.s.ai.burn = 1;
   const r = eng.effect('Vixraps', 5, number(5), eng.s.player, eng.s.ai);
-  assert.equal(eng.s.ai.burn, 3);
   assert.equal(r.d, 6);
+  eng.commitAttackStatuses('beforeDamage');
+  assert.equal(eng.s.ai.burn, 3);
 });
 
 test('Vixraps attack 0 applies hypnosis to the main target only', () => {
@@ -230,7 +231,7 @@ test('Vixraps attack 3 doubles burn after defense without pre-defense feedback',
   eng.s.selectedCard = 0;
   eng.later = () => {};
   eng.play();
-  assert.equal(eng.s.ai.burn, 4, 'Vixraps 3 doubles burn when resolving the attack');
+  assert.equal(eng.s.ai.burn, 2, 'Vixraps 3 waits for the hit to settle');
   eng.prepareAttackSettlement(5, 'ai');
   eng.settlePreparedHit(eng.s.player, eng.s.ai, { damage: 5, bleed: 0 });
   assert.equal(eng.s.ai.burn, 4);
@@ -311,7 +312,7 @@ test('end-to-end: AI Vixraps attack-0 effect applies hypnosis to player', () => 
   eng.s.pendingHypnosisPromote = 'player';
   eng.turnStart('ai');
   const r = eng.effect('Vixraps', 0, number(0), eng.s.ai, eng.s.player);
-  assert.ok(!eng.s.player.hypnosis, 'hypnosis waits for defense');
+  assert.ok(eng.s.player.hypnosis, 'zero-damage skill commits without defense');
   eng.s.atkOwner='ai'; eng.s.pendingAttack={damage:r.d};
   eng.prepareAttackSettlement(r.d, 'player');
   assert.ok(eng.s.player.hypnosis === true, 'hypnosis applies after defense');
@@ -475,7 +476,7 @@ test('state damage keeps attack modifiers and doubling uses post-defense stacks'
   const eng=new Engine();eng.start('Leon','Ryan');const r=setupAttack(eng,'Leon',5);
   eng.s.pendingAttack.damage+=3;eng.burn(eng.s.ai,1);
   assert.equal(eng.prepareAttackSettlement(r.d+3,'ai'),9);
-  const second=new Engine();second.start('Vixraps','Blaze');setupAttack(second,'Vixraps',5);second.burn(second.s.ai,1);
+  const second=new Engine();second.start('Vixraps','Blaze');setupAttack(second,'Vixraps',3);second.burn(second.s.ai,1);
   const remaining=second.prepareAttackSettlement(5,'ai');assert.equal(second.s.ai.burn,1);
   second.settlePreparedHit(second.s.player,second.s.ai,{damage:remaining,bleed:0});assert.equal(second.s.ai.burn,2);
 });

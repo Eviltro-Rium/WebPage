@@ -68,7 +68,7 @@ for(const defenderActor of ['host','guest'])test('online defense2 commits and pr
   const match=new context.OnlineMatchHost(defenderActor==='host'?'Vixraps':'Blaze',defenderActor==='guest'?'Vixraps':'Blaze',first);
   const attacker=first==='host'?'player':'ai',defender=defenderActor==='host'?'player':'ai';
   match.engine.s[attacker].burn=2;match.engine.s[defender].hp=40;
-  match.engine.h[attacker]=[Card.number('RED',3)];match.engine.h[defender]=[Card.number('RED',2)];match.engine.s.discardTop=Card.number('RED',1);
+  match.engine.h[attacker]=[Card.number('RED',2)];match.engine.h[defender]=[Card.number('RED',2)];match.engine.s.discardTop=Card.number('RED',1);
   match.dispatch(first,'selectCard',{index:0});assert.ok(match.dispatch(first,'doPlay').ok);
   match.dispatch(defenderActor,'selectCard',{index:0});const result=match.dispatch(defenderActor,'doDefend');assert.ok(result.ok);
   assert.equal(match.engine.s[attacker].burn,4);assert.equal(match.engine.s[defender].hp,37);

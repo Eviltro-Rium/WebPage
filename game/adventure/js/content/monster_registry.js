@@ -145,7 +145,7 @@
           return { d: 0, skip: false, unblock: false };
         }
 
-        // 普通怪物的0/7、Boss的7均为轮空牌。
+        // 普通怪物的 0 和多数怪物的 5 为轮空牌。
         if (isPassNumber(mod, c)) {
           return { d: 0, skip: false, unblock: false };
         }
@@ -649,7 +649,7 @@
           return { remaining: 0, desc: '日光鬣蜥脱离战斗，房间已探索，无奖励' };
         }
 
-        // 普通怪物的0/7、Boss的7均无防御效果。
+        // 保留各怪物显式声明的例外，其余按轮空处理。
         if (isPassNumber(mod, c)) {
           return { remaining: d, desc: '无防御效果' };
         }
@@ -979,7 +979,6 @@
         applyPoison(); applyBleed(); applyHypothermia(); applyThorns(); applySandblind(); applyPoisonDrain();applyDrawSelf(); applyLushAndParasite(); applyAllExtras();
         if (typeof mod.defendBurnSettle === 'function' && mod.defendBurnSettle(c)) return { remaining: d, desc: '施加灼伤并结算' + allExtrasDesc };
         if (v === 1) return { remaining: Math.max(0, d - Math.ceil(d / 2)), desc: '1牌防御' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
-        if (v === 3) return { remaining: Math.max(0, d - Math.floor(d / 2)), desc: '3牌防御' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
         return { remaining: d, desc: '直接承受' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
       }
     });
@@ -1000,9 +999,9 @@
         if (c && (c.magic || c.magicColor === 'purple')) return 100;
         if (c && (c.greenMagic || c.magicColor === 'green')) return 90;
         if (!c || !c.isNumberCard) return null;
-        // 白7 可防御但对大王花等 canDefendHigh 无实际效果，不优先于有技能的高牌。
-        if (v === 7) return mod.canDefendHigh ? 5 : null;
-        if (v > 3 && !mod.canDefendHigh) return null;
+        // 白5 可防御但对大王花等 canDefendHigh 无实际效果，不优先于有技能的高牌。
+        if (v === 5) return mod.canDefendHigh ? 5 : null;
+        if (v > 2 && !mod.canDefendHigh) return null;
         return v * 10 + 30 + (x.lethal ? 50 : 0);
       },
 
@@ -1081,8 +1080,8 @@
     // FrozenOrca defend copy (ocean.md). Attack copy lives in the attack branch below.
     if (mod.name === 'FrozenOrca' && card.isNumberCard) {
       const v = card.value;
-      if (v === 7) return '无防御效果';
-      if (v >= 1 && v <= 3) {
+      if (v === 5) return '无防御效果';
+      if (v >= 1 && v <= 2) {
         return '施加1层[流血]，格挡半数伤害（向上取整）';
       }
       if (v === 0) {

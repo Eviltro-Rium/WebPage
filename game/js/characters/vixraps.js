@@ -10,7 +10,7 @@
     damageAtSettlement(eng, v, a, t) {
       return v === 5 ? (t.burn || 0) * 2 : null;
     },
-    attackEffectTiming: { 1: 'afterDamage', 4: 'immediate', 5: 'afterDamage' },
+    attackEffectTiming: { 1: 'afterDamage', 3: 'afterDamage', 4: 'immediate' },
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, heal } = helpers;
       let d = 0;
@@ -32,7 +32,6 @@
           const who = typeof eng._who === 'function' ? eng._who(t)
             : (owner === 'player' ? (t === (eng.s && eng.s.ai2) ? 'ai2' : 'ai') : 'player');
           eng.emit('buff', `灼伤翻倍至${t.burn}层`, null, { who, kind: 'burn', stacks: t.burn });
-          immediateBuffs = true;
         }
       } else if (v === 4) {
         burn(1);

@@ -57,7 +57,7 @@ function numCard(value) {
 // ===== loot 掉落测试 =====
 
 test('FrozenOrca loot: roll 1-3 drops DivingTrophy', () => {
-  for (const roll of [1, 2, 3]) {
+  for (const roll of [1, 2]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenOrca', () => (roll - 1) / 12);
     assert.equal(result.roll, roll);
     assert.equal(result.drops.length, 1);
@@ -110,23 +110,23 @@ test('FrozenOrca base stats', () => {
 
 // ===== 进攻测试 =====
 
-test('FrozenOrca attackDamage: 1/2/3 deals 3', () => {
+test('FrozenOrca attackDamage: 1/2 deals 3', () => {
   const boss = getBoss('FrozenOrca');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(boss.attackDamage(numCard(v), {}), 3);
   }
 });
 
-test('FrozenOrca attackDamage: 4/5/6 deals 5', () => {
+test('FrozenOrca attackDamage: 3/4 deals 5', () => {
   const boss = getBoss('FrozenOrca');
-  for (const v of [4, 5, 6]) {
+  for (const v of [3, 4]) {
     assert.equal(boss.attackDamage(numCard(v), {}), 5);
   }
 });
 
 test('FrozenOrca attackDamage: 0 uses current (after-apply) bleed stacks, cap 3', () => {
   const boss = getBoss('FrozenOrca');
-  // after-apply stacks: 0/1/2/3 → 2/4/6/8
+  // after-apply stacks: 0/1/2 → 2/4/6/8
   assert.equal(boss.attackDamage(numCard(0), { playerBleed: 0 }), 2);
   assert.equal(boss.attackDamage(numCard(0), { playerBleed: 1 }), 4);
   assert.equal(boss.attackDamage(numCard(0), { playerBleed: 2 }), 6);
@@ -135,32 +135,32 @@ test('FrozenOrca attackDamage: 0 uses current (after-apply) bleed stacks, cap 3'
   assert.equal(boss.attackDamage(numCard(0), {}), 2);
 });
 
-test('FrozenOrca attackGainDiving: 1/2/3 grants diving', () => {
+test('FrozenOrca attackGainDiving: 1/2 grants diving', () => {
   const boss = getBoss('FrozenOrca');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(boss.attackGainDiving(numCard(v)), true);
   }
-  for (const v of [0, 4, 5, 6]) {
+  for (const v of [0, 3, 4, 5]) {
     assert.equal(boss.attackGainDiving(numCard(v)), false);
   }
 });
 
-test('FrozenOrca attackHypothermia: 1/2/3 applies 1 stack', () => {
+test('FrozenOrca attackHypothermia: 1/2 applies 1 stack', () => {
   const boss = getBoss('FrozenOrca');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(boss.attackHypothermia(numCard(v)), 1);
   }
-  for (const v of [0, 4, 5, 6]) {
+  for (const v of [0, 3, 4, 5]) {
     assert.equal(boss.attackHypothermia(numCard(v)), 0);
   }
 });
 
-test('FrozenOrca attackBleed: 0/4/5/6 applies 1 stack', () => {
+test('FrozenOrca attackBleed: 0/3/4 applies 1 stack', () => {
   const boss = getBoss('FrozenOrca');
-  for (const v of [0, 4, 5, 6]) {
+  for (const v of [0, 3, 4]) {
     assert.equal(boss.attackBleed(numCard(v)), 1);
   }
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(boss.attackBleed(numCard(v)), 0);
   }
 });
@@ -170,26 +170,27 @@ test('FrozenOrca attackBleed: 0/4/5/6 applies 1 stack', () => {
 test('FrozenOrca defendClearDebuffs: only 0 clears debuffs', () => {
   const boss = getBoss('FrozenOrca');
   assert.equal(boss.defendClearDebuffs(numCard(0)), true);
-  for (const v of [1, 2, 3, 4, 5, 6, 7]) {
+  for (const v of [1, 2, 3, 4, 5]) {
     assert.equal(boss.defendClearDebuffs(numCard(v)), false);
   }
 });
 
-test('FrozenOrca defendBleed: 1/2/3 applies 1 stack', () => {
+test('FrozenOrca defendBleed: 1/2 applies 1 stack', () => {
   const boss = getBoss('FrozenOrca');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(boss.defendBleed(numCard(v)), 1);
   }
-  for (const v of [0, 4, 5, 6, 7]) {
+  for (const v of [0, 3, 4, 5]) {
     assert.equal(boss.defendBleed(numCard(v)), 0);
   }
 });
 
-test('FrozenOrca defendBlock: 1/2/3 blocks ceil(incoming/2)', () => {
+test('FrozenOrca defendBlock: 1/2 blocks ceil(incoming/2)', () => {
   const boss = getBoss('FrozenOrca');
   assert.equal(boss.defendBlock(numCard(1), 5), 3);
   assert.equal(boss.defendBlock(numCard(2), 4), 2);
-  assert.equal(boss.defendBlock(numCard(3), 7), 4);
+  assert.equal(boss.defendBlock(numCard(2), 7), 4);
+  assert.equal(boss.defendBlock(numCard(3), 7), 0);
   assert.equal(boss.defendBlock(numCard(0), 5), 0);
   assert.equal(boss.defendBlock(numCard(4), 5), 0);
 });
@@ -204,18 +205,18 @@ test('FrozenOrca defendCounter: 0 counters same damage', () => {
 
 // ===== stageMods 测试 =====
 
-test('FrozenOrca stage2: hp stays 35', () => {
+test('FrozenOrca stage2: hp +5', () => {
   const boss = getBoss('FrozenOrca');
   const s2 = applyStageMods(boss, 2);
-  assert.equal(s2.hp, 35);
+  assert.equal(s2.hp, 40);
 });
 
 test('FrozenOrca stage3: attackDamage +1 (0 card → 3+2×stacks, max 9)', () => {
   const boss = getBoss('FrozenOrca');
   const s3 = applyStageMods(boss, 3);
-  assert.equal(s3.hp, 35, 'stage3 should keep stage2 max hp');
-  assert.equal(s3.attackDamage(numCard(1), {}), 4, '1/2/3 base 3 +1 = 4');
-  assert.equal(s3.attackDamage(numCard(4), {}), 6, '4/5/6 base 5 +1 = 6');
+  assert.equal(s3.hp, 40, 'stage3 should keep stage2 max hp');
+  assert.equal(s3.attackDamage(numCard(1), {}), 4, '1/2 base 3 +1 = 4');
+  assert.equal(s3.attackDamage(numCard(4), {}), 6, '3/4 base 5 +1 = 6');
   assert.equal(s3.attackDamage(numCard(0), { playerBleed: 0 }), 3, '0: 2+0 +1 = 3');
   assert.equal(s3.attackDamage(numCard(0), { playerBleed: 1 }), 5, '0: 2+2 +1 = 5');
   assert.equal(s3.attackDamage(numCard(0), { playerBleed: 2 }), 7, '0: 2+4 +1 = 7');
@@ -225,7 +226,7 @@ test('FrozenOrca stage3: attackDamage +1 (0 card → 3+2×stacks, max 9)', () =>
 test('FrozenOrca stage4: defendImmune on 0', () => {
   const boss = getBoss('FrozenOrca');
   const s4 = applyStageMods(boss, 4);
-  assert.equal(s4.hp, 35, 'stage4 should keep base max hp');
+  assert.equal(s4.hp, 40, 'stage4 should keep base max hp');
   assert.equal(s4.attackDamage(numCard(1), {}), 4, 'stage4 should include stage3 damage bonus');
   assert.equal(s4.defendImmune(numCard(0)), true, 'stage4 defendImmune on 0');
   assert.equal(s4.defendImmune(numCard(1)), false, 'stage4 defendImmune only on 0');

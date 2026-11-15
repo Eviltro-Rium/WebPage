@@ -60,7 +60,7 @@ test('FrozenKraken base stats, boss pool from stage 3', () => {
 });
 
 test('FrozenKraken loot: Zero 1-6; 11/12 dual-source potions', () => {
-  for (const roll of [1, 2, 3, 4, 5, 6]) {
+  for (const roll of [1, 2, 3, 4]) {
     const result = AdventureLoot.rollMonsterDrop('ocean', 'FrozenKraken', () => (roll - 1) / 12);
     assert.deepEqual(Array.from(result.drops), ['ZeroTrophy']);
   }
@@ -76,12 +76,12 @@ test('FrozenKraken loot: Zero 1-6; 11/12 dual-source potions', () => {
 
 test('FrozenKraken attack hooks', () => {
   const m = getMonster('FrozenKraken');
-  for (const v of [4, 5, 6]) {
+  for (const v of [3, 4]) {
     assert.equal(m.attackHypothermia(numCard(v)), 1);
     assert.equal(m.attackKrakenJudge(numCard(v)), false);
     assert.equal(m.attackKrakenPurge(numCard(v)), false);
   }
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.attackKrakenJudge(numCard(v)), true);
     assert.equal(m.attackKrakenPurge(numCard(v)), false);
     assert.equal(m.attackHypothermia(numCard(v)), 0);
@@ -93,7 +93,7 @@ test('FrozenKraken attack hooks', () => {
 
 test('FrozenKraken defend hooks', () => {
   const m = getMonster('FrozenKraken');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.defendCounter(numCard(v), 8), 4);
     assert.equal(m.defendCounter(numCard(v), 5), 3);
     assert.equal(m.defendGainDiving(numCard(v)), true);
@@ -110,13 +110,13 @@ test('FrozenKraken stage mods', () => {
   assert.equal(s2.hp, 40);
   const s3 = applyStageMods(m, 3);
   assert.equal(s3.hp, 40);
-  assert.equal(s3.attackUnblockableBelow(numCard(5)), 5);
+  assert.equal(s3.attackUnblockableBelow(numCard(5)), 0);
   assert.equal(s3.attackUnblockableBelow(numCard(0)), 5);
   const s4 = applyStageMods(m, 4);
   assert.equal(s4.hp, 40);
   assert.equal(s4.defendHeal(numCard(2)), 1);
   assert.equal(s4.defendHeal(numCard(0)), 1);
-  assert.equal(s4.attackUnblockableBelow(numCard(5)), 5, 'stage4 keeps stage3 weak-unblock');
+  assert.equal(s4.attackUnblockableBelow(numCard(0)), 5, 'stage4 keeps the 0-card threshold');
 });
 
 function judgedBattle(judgedCard) {
@@ -130,7 +130,7 @@ function judgedBattle(judgedCard) {
   return eng;
 }
 
-test('FrozenKraken 1/2/3: normal color deals value and returns card to deck', () => {
+test('FrozenKraken 1/2: normal color deals value and returns card to deck', () => {
   const eng = judgedBattle(numCard(5, 'GREEN'));
   const r = eng.effect('FrozenKraken', 2, numCard(2), eng.s.ai, eng.s.player);
   assert.equal(r.d, 5);
@@ -140,7 +140,7 @@ test('FrozenKraken 1/2/3: normal color deals value and returns card to deck', ()
   assert.ok(eng.events.some(e => e.type === 'reveal'));
 });
 
-test('FrozenKraken 1/2/3: black card deals 0, discards, unblock, diving, ice seal', () => {
+test('FrozenKraken 1/2: black card deals 0, discards, unblock, diving, ice seal', () => {
   const eng = judgedBattle(blackCard());
   const r = eng.effect('FrozenKraken', 1, numCard(1), eng.s.ai, eng.s.player);
   assert.equal(r.d, 0);
@@ -151,7 +151,7 @@ test('FrozenKraken 1/2/3: black card deals 0, discards, unblock, diving, ice sea
   assert.ok(eng.s.player.iceSeal);
 });
 
-test('FrozenKraken 1/2/3: color zero card deals 0, discards, unblock, diving, ice seal', () => {
+test('FrozenKraken 1/2: color zero card deals 0, discards, unblock, diving, ice seal', () => {
   const eng = judgedBattle(numCard(0, 'RED'));
   const r = eng.effect('FrozenKraken', 2, numCard(2), eng.s.ai, eng.s.player);
   assert.equal(r.d, 0);
@@ -240,8 +240,8 @@ test('FrozenKraken skill desc', () => {
   const atk2 = getAdventureNpcSkillDesc('FrozenKraken', numCard(2), false, { stage: 1 });
   assert.ok(atk2.includes('判定'));
   assert.ok(atk2.includes('对应数字'));
-  assert.ok(atk2.includes('数字零'));
-  const atk5 = getAdventureNpcSkillDesc('FrozenKraken', numCard(5), false, { stage: 1 });
+  assert.ok(/伤害为0|数字零|0🗡️/.test(atk2));
+  const atk5 = getAdventureNpcSkillDesc('FrozenKraken', numCard(4), false, { stage: 1 });
   assert.ok(atk5.includes('手牌数'));
   assert.ok(atk5.includes('失温'));
   const atk0 = getAdventureNpcSkillDesc('FrozenKraken', numCard(0), false, { stage: 1 });

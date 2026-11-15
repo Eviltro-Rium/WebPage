@@ -231,7 +231,7 @@
     legal(card, def = false) {
       if (!this.top) return true;
       if (card.isItemCard) return true;
-      if (def && card.isNumberCard && card.value > 3) return false;
+      if (def && card.isNumberCard && card.value > 2) return false;
       const tc = this.top.chosenColor || this.top.color;
       const cc = card.chosenColor || card.color;
       return card.isWhite || tc === cc || this.top.value === card.value;

@@ -82,9 +82,14 @@ test('visible tiles pack into the original draw buffer without losing or changin
 });
 
 test('all hill pages load the runtime before the scene and homepage does not gate on the gallery', () => {
+  const shell = fs.readFileSync(path.join(root, 'site-shell.html'), 'utf8');
+  const runtime = shell.indexOf('src="js/hill-scene-runtime.js');
+  const scene = shell.indexOf('src="js/hill-background.js');
+  assert.ok(runtime >= 0 && scene > runtime, 'shared shell loads runtime before the scene');
   for (const file of ['index.html', 'projects.html', 'materials.html', 'guestbook.html', 'launchpad.html']) {
     const html = fs.readFileSync(path.join(root, file), 'utf8');
-    assert.ok(html.indexOf('src="js/hill-scene-runtime.js') < html.indexOf('src="js/hill-background.js'), file);
+    assert.match(html, /src="js\/site-navigation\.js/, file);
+    assert.doesNotMatch(html, /src="js\/hill-background\.js/, file);
   }
   const source = fs.readFileSync(path.join(root, 'js/hill-background.js'), 'utf8');
   assert.ok(source.indexOf('renderer.compile(scene, camera)') < source.indexOf('requestAnimationFrame(animate)'));

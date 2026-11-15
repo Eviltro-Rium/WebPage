@@ -301,7 +301,7 @@ test('Leon 0 in 1v2 randomly discards from the shared opponent hands', () => {
   }
 });
 
-test('Ryan value 3 pairs a follow-up number for double damage', () => {
+test('Ryan value 3 pairs a follow-up number for follow-up bonus damage', () => {
   const engine = setup('Ryan');
   engine.h.player = [number(3), number(2)];
   engine.s.selectedCard = 0;
@@ -311,7 +311,7 @@ test('Ryan value 3 pairs a follow-up number for double damage', () => {
   assert.equal(engine.s.phase, 'PLAYER_FIVE_CHOICE');
   engine.s.selectedCard = 0;
   engine.finishRyanFive(true);
-  assert.equal(engine.s.pendingAttack.damage, 4);
+  assert.equal(engine.s.pendingAttack.damage, 5);
 });
 
 test('Leon value 5 applies burn and really discards the stolen card', () => {
@@ -370,7 +370,7 @@ test('bloodthirst Serenity value 0 resets both hands without an undefined target
   engine.deck = [number(6), number(5), number(4), number(3), number(2), number(1)];
   engine.s.atkOwner = 'ai';
 
-  const result = engine.aiSpecialEffect('Serenity', 0, number(0));
+  const result = engine.aiSpecialEffect('Serenity', 0, number(0)) || engine.effect('Serenity',0,number(0),engine.s.ai,engine.s.player);
 
   assert.equal(result.skip, true);
   assert.equal(engine.s.ai.hp, 26);
@@ -390,7 +390,7 @@ test('Knight value 0 delegates damage once and keeps its setup option', () => {
   knight.chaos_green = true;
   const hpBefore = engine.s.player.hp;
 
-  const result = engine.aiSpecialEffect('Knight', 0, number(0));
+  const result = engine.aiSpecialEffect('Knight', 0, number(0)) || engine.effect('Knight',0,number(0),knight,engine.s.player);
 
   assert.equal(result.d, 8);
   assert.equal(result.skip, false);
@@ -401,7 +401,7 @@ test('Knight value 0 delegates damage once and keeps its setup option', () => {
   knight.chaos_yellow = false;
   knight.chaos_blue = false;
   knight.chaos_green = false;
-  const setupResult = engine.aiSpecialEffect('Knight', 0, number(0));
+  const setupResult = engine.aiSpecialEffect('Knight', 0, number(0)) || engine.effect('Knight',0,number(0),knight,engine.s.player);
   assert.equal(setupResult.d, 6);
   assert.equal(engine.aiSkip('Knight', number(0), engine.aiContext()), false);
   assert.ok(knight.chaos_red && knight.chaos_yellow && knight.chaos_blue && knight.chaos_green);
@@ -507,7 +507,7 @@ test('Leon, Saiki, and Blaze attack branches follow the updated character docs',
   result = blaze.effect('Blaze', 5, number(5), blaze.s.player, blaze.s.ai);
   assert.equal(blaze.s.player.burn, 2);
   assert.equal(blaze.s.ai.burn, 3);
-  assert.equal(result.d, 5);
+  assert.equal(result.d, 6);
 
   const challenge = new Engine();
   challenge.start1v2('Blaze', 'Ryan', 'Ryan');

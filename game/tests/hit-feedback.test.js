@@ -136,12 +136,12 @@ test('passive text follows the current stage and excludes loot and status encycl
   ui.state = { adventureStage: 2 };
   ui._updateAvatar('ai', 'DungeonGoblin');
   const passive = w.document.querySelector('#ai-hp-section .npc-passive');
-  assert.match(passive.textContent, /金币/);
+  assert.doesNotMatch(passive.textContent, /金币/);
   assert.doesNotMatch(passive.textContent, /随机道具|\*\*/);
   ui.state.adventureStage = 3;
   ui._updateAvatar('ai', 'DungeonGoblin');
-  assert.match(passive.textContent, /随机道具/);
-  assert.doesNotMatch(passive.textContent, /金币/);
+  assert.match(passive.textContent, /金币/);
+  assert.doesNotMatch(passive.textContent, /随机道具/);
   ui._updateAvatar('ai', 'ForestMonkey');
   assert.equal(passive.hidden, true);
   ui._updateAvatar('ai', 'CastleChameleon');

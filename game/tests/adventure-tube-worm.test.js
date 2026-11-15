@@ -75,27 +75,27 @@ test('FrozenOceanTubeWorm loot: 1-2 BurnTrophy, 3-4 DivingTrophy', () => {
   assert.deepEqual(Array.from(AdventureLoot.rollMonsterDrop('ocean', 'FrozenOceanTubeWorm', null, 12).drops), ['PurifyWaterTrophy']);
 });
 
-test('FrozenOceanTubeWorm attack 1/2/3: damage + burn', () => {
+test('FrozenOceanTubeWorm attack 1/2: damage + burn', () => {
   const m = getMonster('FrozenOceanTubeWorm');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.attackDamage(numCard(v)), v);
     assert.equal(m.attackBurn(numCard(v)), 2);
     assert.equal(m.attackBurnSettle(numCard(v)), false);
   }
 });
 
-test('FrozenOceanTubeWorm attack 4/5/6: burn settle, no card damage', () => {
+test('FrozenOceanTubeWorm attack 3/4: burn settle, no card damage', () => {
   const m = getMonster('FrozenOceanTubeWorm');
-  for (const v of [4, 5, 6]) {
+  for (const v of [3, 4]) {
     assert.equal(m.attackDamage(numCard(v)), 0);
     assert.equal(m.attackBurn(numCard(v)), 2);
     assert.equal(m.attackBurnSettle(numCard(v)), true);
   }
 });
 
-test('FrozenOceanTubeWorm defend 1/2/3: block up to 2 + diving', () => {
+test('FrozenOceanTubeWorm defend 1/2: block up to 2 + diving', () => {
   const m = getMonster('FrozenOceanTubeWorm');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.defendBlock(numCard(v), 5), 2);
     assert.equal(m.defendBlock(numCard(v), 1), 1);
     assert.equal(m.defendGainDiving(numCard(v)), true);
@@ -135,7 +135,7 @@ test('FrozenOceanTubeWorm skill desc', () => {
   assert.ok(atk2.includes('2🗡️'));
   assert.ok(atk2.includes('灼伤'));
 
-  const atk5 = getAdventureNpcSkillDesc('FrozenOceanTubeWorm', numCard(5), false, { stage: 1 });
+  const atk5 = getAdventureNpcSkillDesc('FrozenOceanTubeWorm', numCard(4), false, { stage: 1 });
   assert.ok(atk5.includes('2层[灼伤]') || atk5.includes('施加2层'));
   assert.ok(atk5.includes('灼伤]结算') || atk5.includes('灼伤结算'));
 
@@ -143,7 +143,7 @@ test('FrozenOceanTubeWorm skill desc', () => {
   assert.ok(def2.includes('格挡至多2'));
   assert.ok(def2.includes('潜水'));
 
-  const atk5s3 = getAdventureNpcSkillDesc('FrozenOceanTubeWorm', numCard(5), false, { stage: 3 });
+  const atk5s3 = getAdventureNpcSkillDesc('FrozenOceanTubeWorm', numCard(4), false, { stage: 3 });
   assert.ok(atk5s3.includes('2层'));
   assert.ok(atk5s3.includes('炙热'));
   assert.match(getAdventureNpcSkillDesc('FrozenOceanTubeWorm', numCard(2), true, {stage:4}), /反击2/);

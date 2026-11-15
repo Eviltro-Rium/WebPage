@@ -7,24 +7,6 @@
 
   const clone = value => Combat.Card.clone(value);
   const EngineAttack = {
-    teammateOf(entity) {
-      if (!this.s.is1v2 || this.s.isAdventure || !entity) return null;
-      const teammate = entity === this.s.ai ? this.s.ai2 : entity === this.s.ai2 ? this.s.ai : null;
-      return teammate && teammate.alive ? teammate : null;
-    },
-
-    ottoCoverFor(defender) {
-      const teammate = this.teammateOf(defender);
-      return teammate && this.name(defender) === 'Serenity' && this.name(teammate) === 'Otto'
-        ? teammate : null;
-    },
-
-    settleOttoCover(otto, excess) {
-      const damage = Math.floor(excess / 2);
-      this.emit('desc', 'Otto 承担队友超出的' + excess + '点伤害，格挡' + (excess - damage) + '点');
-      if (damage > 0) this.hurt(otto, damage);
-    },
-
     prepareAttackSettlement(remaining, defenderKey) {
       const attack = this.s.pendingAttack;
       if (!attack || attack.effectsPrepared) return this.prepareDivingMitigation(remaining, defenderKey);
@@ -137,7 +119,8 @@
       if (timing === 'immediate') return result;
       for (const operation of operations) operation.timing = timing;
       queued.push(...operations);
-      if (name === 'Vixraps' && value === 5) queued.push({target:this._who(target),id:'burn',factor:2,timing});
+      const doublesBurn = name === 'Vixraps' && value === 3;
+      if (doublesBurn) queued.push({target:this._who(target),id:'burn',factor:2,timing});
       const seen = new Set();
       for (const snapshot of snapshots) {
         if (seen.has(snapshot.entity)) continue;
@@ -150,8 +133,7 @@
           if (snapshot.entity===attacker && after<before && (def.id==='crit' || def.id.startsWith('chaos_')) &&
               !operations.some(op => op.target===this._who(attacker) && op.method==='clearPositiveBuffs')) return;
           const key = this._who(snapshot.entity);
-          if (!(name==='Vixraps' && value===5 && snapshot.entity===target && def.id==='burn') && !operations.some(op => op.target===key && (op.id===def.id || op.method==='clearDebuffs' && def.polarity==='debuff' || op.method==='clearPositiveBuffs' && def.polarity==='buff'))) queued.push({target:key,id:def.id,delta:after-before,value:after,timing,
-            factor:def.id==='burn' && snapshot.entity===target && name==='Vixraps' && value===5 ? 2 : null});
+          if (!(doublesBurn && snapshot.entity===target && def.id==='burn') && !operations.some(op => op.target===key && (op.id===def.id || op.method==='clearDebuffs' && def.polarity==='debuff' || op.method==='clearPositiveBuffs' && def.polarity==='buff'))) queued.push({target:key,id:def.id,delta:after-before,value:after,timing});
           Combat.StatusService.set(snapshot.entity,def.id,before);
         });
       }
