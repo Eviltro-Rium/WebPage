@@ -518,7 +518,7 @@
       return this.resolveOpponentHandCard();
     }
     /** Choose a visible opponent card in Adventure, without removing it yet. */
-    chooseOpponentCard(index){
+    chooseOpponentCard(index,confirm=false){
       const s=this.s;
       if(!s||!s.isAdventure||s.phase!=='OPPONENT_CARD_CHOICE')throw Error('当前不能选择对手手牌');
       const targetKey=s.opponentHandTarget||this.opponentHandTarget(s.pendingOpponentSkill||{});
@@ -526,8 +526,8 @@
       const i=Number(index);
       if(!Number.isInteger(i)||i<0||i>=hand.length)throw Error('无效的对手手牌');
       s.opponentHandTarget=targetKey;
-      s.selectedAICard=s.selectedAICard===i?-1:i;
-      return this.state();
+      s.selectedAICard=!confirm&&s.selectedAICard===i?-1:i;
+      return confirm?this.resolveOpponentHandCard():this.state();
     }
     finishOpponentAttack(p,d,skip=false,unblock=false){this.s.pendingOpponentSkill=null;this.s.opponentHandTarget=null;return this.gateAdventureAttackMod(p.attackCard,d,skip,unblock)}
     opponentEmpty(p){let d=0,skip=false;const targetKey=this.opponentHandTarget(p||{}),target=this.s[targetKey];if(p.name==='Chan'&&p.value===5)d=6;if(p.name==='Saiki'&&p.value===4)d=4;if(p.name==='Leon'&&p.value===5){d=6;if(target)this.burn(target,2)}if(p.name==='Moze'&&p.value===3){const before=this.s.player.hp;this.heal(this.s.player,2);this.addGuard(this.s.player,2);skip=true;this.emit('desc',`Moze 3牌：对手无手牌，恢复${this.s.player.hp-before}点生命并获得2层守护，跳过防御`,p.attackCard);return this.finishOpponentAttack(p,0,skip,false)}this.emit('desc',`${p.name} ${p.value}牌：对手无手牌${d?`，造成${d}点伤害`:''}${skip?'并跳过防御':''}`,p.attackCard);return this.finishOpponentAttack(p,d,skip,false)}
@@ -1852,7 +1852,7 @@
       if(m==='doOpponentCardConfirm'){
         if(!this.s||!this.s.isAdventure)throw Error('该操作尚不适用于当前状态');
         if(this.s.phase!=='OPPONENT_CARD_CHOICE')throw Error('当前没有待确认的对手手牌');
-        return this.resolveOpponentHandCard();
+        return p.index == null ? this.resolveOpponentHandCard() : this.chooseOpponentCard(p.index,true);
       }
       if(m==='doPlay')return this.play();
       if(m==='doFiveHeal')return this.finishRyanFive(false);

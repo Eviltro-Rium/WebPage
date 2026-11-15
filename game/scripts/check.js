@@ -5,15 +5,14 @@
  * Unified browser-game verification entry point.
  *
  * Default:
- *   - verifies both HTML script graphs and the split UI composition;
+ *   - verifies the game HTML script graphs and split UI composition;
  *   - parses every game JavaScript file with Node's syntax checker;
  *   - runs the stable protocol/event/adapter/UI/runtime test set, including
  *     the player/ai/ai2 × normal/bleed/poison/bomb event matrix and pile
  *     conservation/ownership checks.
  *
- * `node game/scripts/check.js --all` additionally runs every test file. The
- * latter is intentionally opt-in because some legacy adventure tests rely on
- * random loot and historical deck-size assertions.
+ * `node game/scripts/check.js --all` runs every test file.
+ * Pass test filenames to keep the static checks and run just those suites.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -21,7 +20,15 @@ const { spawnSync } = require('node:child_process');
 
 const gameRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(gameRoot, '..');
-const allTests = process.argv.includes('--all');
+const args = process.argv.slice(2);
+const allTests = args.includes('--all');
+const selected = args.filter(arg => arg !== '--all');
+const testDir = path.join(gameRoot, 'tests');
+const available = fs.readdirSync(testDir).filter(file => file.endsWith('.test.js')).sort();
+if ((allTests && selected.length) || selected.some(file => !available.includes(file))) {
+  console.error('用法：node game/scripts/check.js [--all | <game/tests 下的文件名.test.js> ...]');
+  process.exit(2);
+}
 
 function walk(dir) {
   const files = [];
@@ -99,16 +106,12 @@ const stableTests = [
   'online-transport.test.js',
   'signaling-room.test.js'
 ].map(file => path.join(gameRoot, 'tests', file));
-const tests = allTests
-  ? fs.readdirSync(path.join(gameRoot, 'tests'))
-    .filter(file => file.endsWith('.test.js'))
-    .sort()
-    .map(file => path.join(gameRoot, 'tests', file))
-  : stableTests;
+const tests = allTests || selected.length
+  ? (allTests ? available : [...new Set(selected)]).map(file => path.join(testDir, file)) : stableTests;
 
 const testLabel = allTests
   ? 'all test files'
-  : 'stable protocol / event / adapter / UI tests';
+  : selected.length ? 'selected test files' : 'stable protocol / event / adapter / UI tests';
 const testStatus = run(testLabel, [
   '--test', '--test-concurrency=1', ...tests
 ]);

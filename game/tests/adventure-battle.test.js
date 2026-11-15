@@ -286,6 +286,36 @@ test('NPC decks include two white 5 pass cards with no skill effect', () => {
   assert.equal(wolf.aiDefendLegal(white5, wolf.s.discardTop, wolf.aiContext({})), false);
 });
 
+for (const challenge of [false, true]) {
+  test(`adventure AI skips inert cards but preserves special defenses (${challenge ? 'challenge' : 'normal'})`, () => {
+    const top = number(2, 'RED');
+    const white0 = number(0, 'WHITE', true);
+    const white4 = number(4, 'WHITE', true);
+    const white5 = number(5, 'WHITE', true);
+
+    function choose(opponent, cards) {
+      const engine = new AdventureBattleEngine();
+      engine.later = () => {};
+      const options = { player: 'Ryan', stage: 3, discardTop: top,
+        playerPile: { deck: [], hand: [], discard: [], handLimit: 5 } };
+      if (challenge) {
+        engine.startAdventure1v2({ ...options, opponent1: 'CastleWolf', opponent2: opponent });
+        engine.h.ai2.splice(0, engine.h.ai2.length, ...cards);
+        return engine._chooseAIDefend1v2('ai2', engine.s.discardTop, 5);
+      }
+      engine.startAdventure({ ...options, opponent });
+      engine.h.ai.splice(0, engine.h.ai.length, ...cards);
+      return engine.chooseAIDefend(engine.s.discardTop, 5);
+    }
+
+    assert.equal(choose('CastleWolf', [white0, white5]), null);
+    // 大王花允许用高点数防御，但 5 仍是轮空牌。
+    assert.equal(choose('ForestRafflesia', [white5]), null);
+    assert.equal(choose('ForestRafflesia', [white4, white5]), white4);
+    assert.equal(choose('DesertLizard', [white0]), white0);
+  });
+}
+
 test('all ordinary NPC zero/five and boss five have no attack or defense effects at every stage', () => {
   const registry = context.AdventureRegistry;
   for (const mod of [...registry.allMonsters(), ...registry.allBosses()]) {
@@ -506,10 +536,10 @@ test('adventure attack mod waits until damage is confirmed after Otto 4 judge', 
   engine.dispatch('selectCard', { index: 0 });
   const afterJudge = engine.dispatch('doSaikiSixConfirm');
   assert.equal(afterJudge.phase, 'ATTACK_MOD_CHOICE');
-  assert.equal(afterJudge.pendingAttack.damage, 8);
+  assert.equal(afterJudge.pendingAttack.damage, 6);
 
   const resolved = engine.dispatch('resolveAttackModChoice', { bonus: 2 });
-  assert.equal(resolved.pendingAttack.damage, 10);
+  assert.equal(resolved.pendingAttack.damage, 8);
   assert.equal(resolved.phase, 'AI_DEFEND');
 });
 

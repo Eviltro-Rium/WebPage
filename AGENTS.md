@@ -113,6 +113,12 @@ node --test game/tests/hypnosis-sleep.test.js
 node --test game/tests/defense-effects.test.js game/tests/hypnosis-sleep.test.js
 ```
 
+需要同时校验脚本加载顺序和语法时，可给统一检查脚本传入测试文件名：
+
+```bash
+node game/scripts/check.js adventure-battle.test.js volcano-monsters.test.js
+```
+
 测试通常用 `node:vm` 创建上下文，再通过 `game/tests/_load.js` 的 `loadInto()`/`expand()` 按 `script_manifest.json` 分组加载源码；UI 测试使用 `jsdom`。新增测试优先复用这套方式，不要引入新的测试框架。
 
 ### 4.4 只校验脚本顺序

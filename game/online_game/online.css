@@ -29,14 +29,14 @@ body {
 .online-brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; border: 1px solid rgba(255,255,255,.24); background: rgba(255,255,255,.08); font-weight: 850; letter-spacing: -.08em; }
 .online-brand-title { font-weight: 850; letter-spacing: .07em; font-size: clamp(1.05rem, 2vw, 1.35rem); }
 .online-brand-sub { color: var(--muted); font-size: .72rem; margin-top: 2px; }
-.online-link, .online-btn { border: 1px solid var(--line); color: var(--ink); background: rgba(17, 34, 55, .73); border-radius: 10px; cursor: pointer; font: inherit; transition: transform .18s ease, border-color .18s ease, background .18s ease; }
+.online-link, .online-btn { border: 1px solid var(--line); color: var(--ink); background: #26384b; border-radius: 10px; cursor: pointer; font: inherit; transition: transform .18s ease, border-color .18s ease, background .18s ease; }
 .online-link { padding: 8px 12px; text-decoration: none; font-size: .78rem; }
 .online-btn { padding: 10px 15px; font-weight: 760; }
-.online-btn:hover, .online-link:hover { transform: translateY(-2px); border-color: rgba(196, 181, 253, .72); background: rgba(47, 39, 90, .72); }
-.online-btn.primary { border-color: rgba(196, 181, 253, .65); background: linear-gradient(115deg, rgba(124, 58, 237, .72), rgba(37, 99, 235, .68)); }
-.online-btn.good { border-color: rgba(134, 239, 172, .5); background: rgba(6, 95, 70, .58); }
-.online-btn.ghost { background: rgba(255,255,255,.05); }
-.online-btn:disabled { opacity: .42; cursor: not-allowed; transform: none; }
+.online-btn:hover, .online-link:hover { transform: translateY(-2px); border-color: rgba(196, 181, 253, .72); background: #334e65; }
+.online-btn.primary { border-color: rgba(196, 181, 253, .65); background: #503477; }
+.online-btn.good { border-color: rgba(134, 239, 172, .5); background: #205c47; }
+.online-btn.ghost { background: #26384b; }
+.online-btn:disabled { background: #273241; opacity: 1; cursor: not-allowed; transform: none; color: #a9b6c7; }
 
 .online-panel { border: 1px solid var(--line); border-radius: 18px; background: var(--panel); box-shadow: var(--shadow), inset 0 1px rgba(255,255,255,.09); backdrop-filter: blur(15px) saturate(125%); -webkit-backdrop-filter: blur(15px) saturate(125%); }
 .online-landing { display: grid; grid-template-columns: 1.05fr .95fr; gap: 18px; padding: clamp(20px, 4vw, 38px); }

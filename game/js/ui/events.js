@@ -116,6 +116,11 @@ async _consumeEvents(events, options = {}) {
                 break;
             }
             try {
+                // Inventory is already settled in this snapshot. Refresh it
+                // before card flights and messages hold up the full render.
+                if (this.state && this.state.isAdventure && typeof this._renderAdventureItemBar === 'function') {
+                    this._renderAdventureItemBar(this.state);
+                }
                 this._prepareHandAnimation(batch);
                 await this._playEvents(batch, !!options.fastFirstBatch && batches === 1);
             } catch (error) {

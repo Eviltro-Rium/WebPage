@@ -212,8 +212,8 @@ test('adventure 1v2 chooses a card only from the current attack target', () => {
   const pending = engine.dispatch('doPlay');
   assert.equal(pending.phase, 'OPPONENT_CARD_CHOICE');
   assert.equal(pending.opponentHandTarget, 'ai2');
-  engine.dispatch('chooseAICard', { index: 0 });
-  engine.dispatch('doOpponentCardConfirm');
+  assert.throws(() => engine.dispatch('doOpponentCardConfirm', { index: 2 }), /无效/);
+  engine.dispatch('doOpponentCardConfirm', { index: 0 });
   assert.equal(engine.h.ai.length, 1, 'non-target NPC hand must remain untouched');
   assert.equal(engine.h.ai2.length, 1, 'selected target card should be removed');
   assert.equal(engine.h.ai2[0].value, 2);

@@ -73,7 +73,7 @@
 
   function retire(node) {
     const animated = node.nodeType === 1 &&
-      node.matches('.buff-icon-wrap, .adv-combat-item-slot.filled, .adv-combat-acc-slot:not(.empty)');
+      node.matches('.buff-icon-wrap, .adv-combat-acc-slot:not(.empty)');
     if (!animated) { node.remove(); return; }
     if (node._renderRetirement) return;
     const parent = node.parentElement;

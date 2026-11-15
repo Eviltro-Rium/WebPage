@@ -447,10 +447,6 @@
             else t.burn = Math.min(5, (t.burn || 0) + burnAmt);
           }
         }
-        // 冻洋管虫 4/5/6：施加灼伤后立刻结算一次（配合 immediateBuffs，避免 defer 回滚剩余层数）
-        if (typeof mod.attackBurnSettle === 'function' && mod.attackBurnSettle(c) && (t.burn || 0) > 0) {
-          if (typeof eng.settleBurn === 'function') eng.settleBurn(t);
-        }
         if (typeof mod.attackScorch === 'function' && mod.attackScorch(c)) {
           if (typeof eng.setScorch === 'function') eng.setScorch(t, true, { silent: true });
           else {
@@ -458,6 +454,10 @@
             if (service) service.set(t, 'scorch', 1);
             else t.scorch = true;
           }
+        }
+        // 炎鬃狮 0 先施加炙热；这次灼伤结算因此不减少层数。
+        if (typeof mod.attackBurnSettle === 'function' && mod.attackBurnSettle(c) && (t.burn || 0) > 0) {
+          if (typeof eng.settleBurn === 'function') eng.settleBurn(t);
         }
         if (typeof mod.attackPoison === 'function' && !poisonAppliedEarly) {
           const p = mod.attackPoison(c);

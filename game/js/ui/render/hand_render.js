@@ -433,14 +433,11 @@
             const hideTrailing = this._hideTrailingCount(options, 'ai');
             const revealMode = !!s.aiHand && Array.isArray(s.aiHand);
             const handSize = Math.max(Number(s.aiHandSize) || 0, revealMode ? s.aiHand.length : 0);
-            const canSelectOpponent = !!(s.isAdventure && s.onlineCanAct !== false && revealMode
-                && s.phase === 'OPPONENT_CARD_CHOICE'
-                && (!s.opponentHandTarget || s.opponentHandTarget === 'ai'));
             const canPeekSkill = !!(s.isAdventure && revealMode && (s.phase === 'PLAYER_PLAY' || s.phase === 'PLAYER_DEFEND'));
             if (!canPeekSkill) this._npcHandFocusIndex = -1;
             else if (this._npcHandFocusIndex >= handSize) this._npcHandFocusIndex = -1;
 
-            const key = JSON.stringify([s.phase,s.isAdventure,s.onlineCanAct,s.opponentHandTarget,s.selectedAICard,this._npcHandFocusIndex,hideTrailing,handSize,revealMode,s.ai && s.ai.name,s.adventureStage,s.stage,s.pendingDefenseDamage,(s.playerHand || []).length,(s.aiHand || []).map(cardVisualKey),s.chanSevenKeepMode,s.chanSevenChosenCard,window.CardStyle && window.CardStyle.iconRevision]);
+            const key = JSON.stringify([s.phase,s.isAdventure,s.onlineCanAct,this._npcHandFocusIndex,hideTrailing,handSize,revealMode,s.ai && s.ai.name,s.adventureStage,s.stage,s.pendingDefenseDamage,(s.playerHand || []).length,(s.aiHand || []).map(cardVisualKey),s.chanSevenKeepMode,s.chanSevenChosenCard,window.CardStyle && window.CardStyle.iconRevision]);
             const visibleCount=Math.max(0,handSize-hideTrailing)+(s.chanSevenKeepMode && s.chanSevenChosenCard ? 1 : 0);
             if (container.dataset.handRenderKey===key && container.children.length===visibleCount) return;
             this._hideTooltip();container.replaceChildren();container.dataset.handRenderKey=key;
@@ -460,20 +457,7 @@
                     cv.dataset.cardMatch = cardMatchKey(card);
                 }
                 cv.dataset.aiIndex = i;
-                if (canSelectOpponent) {
-                    cv.style.cursor = 'pointer';
-                    cv.classList.add('selectable-ai-card');
-                    if (i === Number(s.selectedAICard)) {
-                        cv.classList.add('opponent-card-selected');
-                        cv.style.border = '3px solid #c084fc';
-                    }
-                    cv.addEventListener('click', async () => {
-                        if (this._isHandlingAction || this._isConsumingEvents) return;
-                        const idx = parseInt(cv.dataset.aiIndex, 10);
-                        if (!Number.isInteger(idx)) return;
-                        await this._apiAction('chooseAICard', { index: idx });
-                    });
-                } else if (canPeekSkill) {
+                if (canPeekSkill) {
                     cv.style.cursor = 'pointer';
                     cv.classList.add('selectable-ai-card');
                     if (focused) cv.style.border = '3px solid #a78bfa';
@@ -488,7 +472,7 @@
                         this.updateDisplay();
                     });
                 }
-                if (revealMode && card && (canPeekSkill || canSelectOpponent)) {
+                if (revealMode && card && canPeekSkill) {
                     cv.addEventListener('mouseenter', () => {
                         const live=this.state;
                         const charName=this._combatDisplayName(live.ai && live.ai.name);

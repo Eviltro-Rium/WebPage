@@ -93,15 +93,31 @@ test('real adventure inventory is projected without taking full map snapshots',t
   ui._selectedCombatItem=0;ui._updateUseItemButton();assert.equal(w.document.getElementById('btn-use-item').textContent,'使用[药剂]');
 });
 
-test('consuming an earlier item retains later image nodes when their indices shift',t=>{
+test('a consumed item disappears before combat animations finish, preserving later items',async t=>{
   const env=setup(t,'<div id="adventure-item-bar"></div>');if(!env)return;const {w,load}=env;
   const defs={A:{name:'A',displayName:'A',icon:'a.webp',kind:'consumable'},B:{name:'B',displayName:'B',icon:'b.webp',kind:'consumable'}};
   w.AdventureRegistry={getItem:n=>defs[n]};load('js/ui/render/adventure_bar.js');const ui=new w.GameUI();
+  load('js/ui/events.js');
   ui._syncAdventureActionLayout=()=>{};ui._canUseAdventureCombatItem=()=>true;
   ui.state={isAdventure:true,phase:'PLAYER_PLAY',adventureConsumables:[defs.A,defs.B],adventureAccessories:[]};
-  ui._renderAdventureItemBar(ui.state);const image=w.document.querySelector('img[src="b.webp"]');
-  ui.state.adventureConsumables=[defs.B];ui._renderAdventureItemBar(ui.state);
-  assert.equal(w.document.querySelector('[data-item-index="0"] img'),image);assert.ok(!image.parentElement._renderRetirement);
+  ui._renderAdventureItemBar(ui.state);
+  const consumed=w.document.querySelector('[data-item-index="0"]');
+  const image=w.document.querySelector('img[src="b.webp"]');
+  const events=[{id:1,type:'draw'}];
+  ui.state={...ui.state,adventureConsumables:[defs.B],events};
+  let finishAnimation,acknowledged=false;
+  ui._prepareHandAnimation=()=>{};
+  ui._playEvents=()=>new Promise(resolve=>{finishAnimation=resolve;});
+  ui._ackEvents=async()=>{acknowledged=true;};
+  ui._sessionGetState=async()=>({...ui.state,events:[]});
+
+  const playback=ui._consumeEvents(events);
+  assert.equal(acknowledged,false);
+  assert.equal(consumed.isConnected,false);
+  assert.equal(w.document.querySelector('[data-item-index="0"] img'),image);
+  finishAnimation();
+  await playback;
+  assert.equal(acknowledged,true);
 });
 
 function handGlobals(w){

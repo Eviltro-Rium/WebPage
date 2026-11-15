@@ -149,7 +149,7 @@
   Engine.prototype._chooseAIDefend1v2=function(key,top,incomingDamage=0){
     let hand=this.h[key];
     return this._swapAIContext(key,()=>{
-      if(this.s.isAdventure){let r=this._chooseAIDefendAdventure(hand,top,incomingDamage);if(r!==null)return r}
+      if(this.s.isAdventure&&this._getAdventureMod(this.name(this.s.ai)))return this._chooseAIDefendAdventure(hand,top,incomingDamage);
       let x=this.aiContext({incomingDamage}),best=null,score=-Infinity;
       for(const c of hand){if(!this.aiDefendLegal(c,top,x))continue;let s=this.aiDefendScore(c,top,incomingDamage);if(s>score){score=s;best=c}}
       return best

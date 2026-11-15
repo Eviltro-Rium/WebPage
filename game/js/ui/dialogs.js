@@ -38,11 +38,13 @@ class DialogManager {
             mozeSeven: 'super-purify-choice-dialog',
             guard: 'guard-choice-dialog',
             flyRetry: 'fly-retry-choice-dialog',
-            leonZeroDiscard: 'leon-zero-discard-dialog',
+            leonZeroDiscard: 'opponent-card-choice-dialog',
             trophyDisarm: 'opponent-card-choice-dialog',
             trophyPurify: 'purify-choice-dialog',
             attackBuff: 'attack-buff-choice-dialog'
-        }[pendingDialog] || (phase === 'CHAN_FIVE_REORDER' ? 'chan-five-dialog' : null);
+        }[pendingDialog] || (phase === 'CHAN_FIVE_REORDER' ? 'chan-five-dialog'
+            : phase === 'OPPONENT_CARD_CHOICE' ? 'opponent-card-choice-dialog' : null);
+        const opponentDecision = phase === 'OPPONENT_CARD_CHOICE' ? 'opponentSkill' : pendingDialog;
         if (this._avoidanceSubmission && (!canAct || !['guard-choice-dialog', 'fly-retry-choice-dialog'].includes(desired))) {
             this._avoidanceSubmission.cancelled = true;
             this._avoidanceNextChoice = null;
@@ -54,17 +56,15 @@ class DialogManager {
         const ids = [
             'purify-choice-dialog', 'super-purify-choice-dialog',
             'guard-choice-dialog', 'fly-retry-choice-dialog',
-            'opponent-card-choice-dialog', 'chan-five-dialog', 'attack-buff-choice-dialog', 'leon-zero-discard-dialog'
+            'opponent-card-choice-dialog', 'chan-five-dialog', 'attack-buff-choice-dialog'
         ];
         ids.forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
-            // The opponent-card dialog is also used by non-combat item flows
-            // (for example chameleon paint). Keep those overlays while the
-            // same flow is active, but replace one immediately when a combat
-            // trophy-disarm decision needs the shared dialog id.
-            if (id === 'opponent-card-choice-dialog' && el.dataset.combatDecision !== 'trophyDisarm') {
-                if (desired === id) el.remove();
+            if (id === 'opponent-card-choice-dialog') {
+                const owner = el.dataset.combatDecision;
+                if (!canAct || (owner ? id !== desired || owner !== opponentDecision
+                    : !!desired || !['PLAYER_PLAY', null].includes(phase))) el.remove();
                 return;
             }
             if (!canAct || id !== desired) el.remove();
@@ -195,100 +195,100 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
         document.getElementById('btn-back-select-overlay').addEventListener('click', () => closeFn('home'));
     }
 
-    showLeonZeroDiscardChoice(pending, onChoose) {
-        const id = 'leon-zero-discard-dialog';
-        if (!pending || document.getElementById(id)) return;
-        const overlay = document.createElement('div'); overlay.id = id; overlay.className = 'dialog-overlay';
-        overlay.dataset.combatDecision = 'leonZeroDiscard';
-        const box = document.createElement('div'); box.className = 'dialog-box';
-        const title = document.createElement('h3'); title.textContent = 'Leon 0牌 · 选择对手弃牌';
-        const summary = document.createElement('p'); summary.className = 'dialog-summary'; summary.setAttribute('aria-live', 'polite');
-        const list = document.createElement('div'); list.className = 'opponent-card-groups leon-zero-groups';
+    showOpponentCardChoice(groups, onChoose, options = {}) {
+        const id = 'opponent-card-choice-dialog';
+        if (document.getElementById(id)) return;
+        const { title = '选择对手手牌', count = 1, decision, confirmLabel = '确认选择', cancelable = false } = options;
+        const overlay = document.createElement('div');
+        overlay.id = id; overlay.className = 'dialog-overlay';
+        if (decision) overlay.dataset.combatDecision = decision;
+        const box = document.createElement('div');
+        box.className = 'dialog-box opponent-card-dialog';
+        box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
+        box.setAttribute('aria-labelledby', id + '-title');
+        const heading = document.createElement('h3');
+        heading.id = id + '-title'; heading.textContent = title;
+        const summary = document.createElement('p');
+        summary.className = 'opponent-card-summary'; summary.setAttribute('aria-live', 'polite');
+        const list = document.createElement('div'); list.className = 'opponent-card-groups';
+        const actions = document.createElement('div'); actions.className = 'dialog-buttons';
+        const confirm = document.createElement('button');
+        confirm.type = 'button'; confirm.className = 'ctrl-btn btn-play';
         const selected = new Map(), buttons = [];
-        const confirm = document.createElement('button'); confirm.type = 'button'; confirm.className = 'start-btn';
         let submitting = false;
+        const previousFocus = document.activeElement;
         const update = () => {
-            summary.textContent = '从两名对手的手牌中合计选择' + pending.count + '张（可来自同一对手） · 已选 ' + selected.size + '/' + pending.count;
-            if ((pending.groups || []).length === 1) summary.textContent = '选择对手的' + pending.count + '张手牌 · 已选 ' + selected.size + '/' + pending.count;
-            confirm.textContent = '确认弃掉所选牌（' + selected.size + '/' + pending.count + '）';
-            confirm.disabled = submitting || selected.size !== pending.count;
+            summary.textContent = buttons.length ? '已选 ' + selected.size + ' / ' + count + ' 张'
+                : '对手没有可选择的手牌';
+            confirm.disabled = submitting || selected.size !== count;
             buttons.forEach(({button, key}) => {
                 button.setAttribute('aria-pressed', String(selected.has(key)));
-                button.disabled = submitting || (!selected.has(key) && selected.size >= pending.count);
+                button.disabled = submitting || (count > 1 && !selected.has(key) && selected.size >= count);
             });
         };
-        for (const group of pending.groups || []) {
+        for (const group of groups || []) {
+            if (!group || !group.cards || !group.cards.length) continue;
             const section = document.createElement('section');
-            const heading = document.createElement('h4'); heading.textContent = group.label;
-            const row = document.createElement('div'); row.className = 'rule-card-row';
+            const label = document.createElement('h4'); label.textContent = group.label || group.key;
+            const row = document.createElement('div'); row.className = 'opponent-card-row';
             group.cards.forEach((card, index) => {
                 const key = group.key + ':' + index;
-                const button = document.createElement('button'); button.type = 'button'; button.className = 'card-choice leon-zero-card';
-                button.setAttribute('aria-label', group.label + ' 第' + (index + 1) + '张牌');
+                const button = document.createElement('button');
+                button.type = 'button'; button.className = 'card-choice';
+                button.setAttribute('aria-label', label.textContent + ' 第' + (index + 1) + '张牌');
                 button.dataset.target = group.key; button.dataset.index = String(index);
-                if (typeof renderCard === 'function') button.appendChild(renderCard(card, 54, 78, false, {isNpc:true}));
-                else button.textContent = String(card.value);
+                if (typeof renderCard === 'function') button.appendChild(renderCard(card, 54, 78, false, {isNpc:!!card.npcCard}));
+                else button.textContent = String(card.value ?? '?');
                 button.onclick = () => {
                     if (submitting) return;
                     if (selected.has(key)) selected.delete(key);
-                    else if (selected.size < pending.count) selected.set(key, {target:group.key, index});
+                    else {
+                        if (count === 1) selected.clear();
+                        if (selected.size < count) selected.set(key, {target:group.key, index});
+                    }
                     update();
                 };
                 buttons.push({button, key}); row.appendChild(button);
             });
-            section.append(heading, row); list.appendChild(section);
+            section.append(label, row); list.appendChild(section);
         }
+        confirm.textContent = confirmLabel;
         confirm.onclick = async () => {
-            if (submitting || selected.size !== pending.count) return;
-            submitting = true; update();
-            // Retain this disabled sheet until the command returns, so stale
-            // renders cannot open another copy while discard events play.
-            try { if ((await onChoose({cards:Array.from(selected.values())})) !== false) overlay.remove(); }
-            catch (_) { /* The command failed; retain the same selection for retry. */ }
-            finally { submitting = false; update(); }
+            if (submitting || selected.size !== count) return;
+            submitting = true;
+            // Keep the decision mounted during playback, with the board visible.
+            overlay.hidden = true;
+            try { if ((await onChoose(Array.from(selected.values()))) !== false) overlay.remove(); }
+            catch (_) { /* Retain the selection for retry. */ }
+            finally {
+                submitting = false;
+                if (overlay.isConnected) { overlay.hidden = false; update(); confirm.focus(); }
+            }
         };
-        update(); box.append(title, summary, list, confirm); overlay.appendChild(box); document.body.appendChild(overlay);
-    }
-
-    showOpponentCardChoice(groups, onChoose, title = '选择一张对手手牌') {
-        if (document.getElementById('opponent-card-choice-dialog')) return;
-        const overlay = document.createElement('div');
-        overlay.id = 'opponent-card-choice-dialog';
-        overlay.className = 'dialog-overlay';
-        if (String(title).startsWith('缴械')) overlay.dataset.combatDecision = 'trophyDisarm';
-        const box = document.createElement('div');
-        box.className = 'dialog-box';
-        box.innerHTML = `<h3>${title}</h3>`;
-        const list = document.createElement('div');
-        list.className = 'opponent-card-groups';
-        let count = 0;
-        for (const group of (groups || [])) {
-            if (!group || !Array.isArray(group.cards) || !group.cards.length) continue;
-            const section = document.createElement('div');
-            const heading = document.createElement('div');
-            heading.textContent = group.label || group.key;
-            heading.style.cssText = 'font-weight:700;margin-bottom:6px;color:#dbeafe';
-            section.appendChild(heading);
-            const row = document.createElement('div');
-            row.style.display = 'flex'; row.style.flexWrap = 'wrap'; row.style.gap = '8px';
-            group.cards.forEach((card, index) => {
-                const btn = document.createElement('button');
-                btn.className = 'card-choice';
-                btn.type = 'button';
-                if (typeof renderCard === 'function') {
-                    const cv = renderCard(card, 54, 78, false);
-                    btn.appendChild(cv);
-                }
-                else btn.innerHTML = `<span>${card.value || '?'}</span>`;
-                btn.addEventListener('click', () => { overlay.remove(); if (onChoose) onChoose({ target: group.key, index }); });
-                row.appendChild(btn); count++;
-            });
-            section.appendChild(row); list.appendChild(section);
+        if (cancelable) {
+            const cancel = document.createElement('button');
+            cancel.type = 'button'; cancel.className = 'ctrl-btn btn-skip'; cancel.textContent = '取消';
+            cancel.onclick = () => {
+                if (submitting) return;
+                overlay.remove();
+                if (previousFocus?.isConnected) previousFocus.focus();
+            };
+            overlay.addEventListener('keydown', event => { if (event.key === 'Escape') cancel.click(); });
+            actions.appendChild(cancel);
         }
-        if (!count) {
-            const empty = document.createElement('div'); empty.textContent = '对手没有可选择的手牌'; empty.style.color = '#94a3b8'; list.appendChild(empty);
-        }
-        box.appendChild(list); overlay.appendChild(box); document.body.appendChild(overlay);
+        actions.appendChild(confirm);
+        box.tabIndex = -1;
+        box.addEventListener('keydown', event => {
+            if (event.key !== 'Tab') return;
+            const enabled = [...box.querySelectorAll('button:not(:disabled)')];
+            const index = enabled.indexOf(document.activeElement);
+            if (!enabled.length || index === -1 || index === (event.shiftKey ? 0 : enabled.length - 1)) {
+                event.preventDefault();
+                (enabled[event.shiftKey ? enabled.length - 1 : 0] || box).focus();
+            }
+        });
+        update(); box.append(heading, summary, list, actions); overlay.appendChild(box); document.body.appendChild(overlay);
+        (buttons[0]?.button || box).focus();
     }
 
     collectPurifyChoices(ch, maxCount, onDone, extra) {
@@ -638,6 +638,8 @@ function prepareDialogCard(box) {
         if (!title.id) title.id = 'dialog-heading-' + (window.__dialogHeadingId = (window.__dialogHeadingId || 0) + 1);
         box.setAttribute('aria-labelledby', title.id);
     }
+    // Opponent hand choices are modal and need space to wrap both hands.
+    if (box.classList.contains('opponent-card-dialog')) return;
     const battle = box.ownerDocument.getElementById('game-screen');
     if (!battle || !battle.classList.contains('active') || !box.parentElement) return;
     box.classList.add('dialog-bottom-sheet');

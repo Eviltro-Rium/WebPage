@@ -102,6 +102,18 @@ test('all twelve loot faces match volcano.md and map names normalize correctly',
  assert.match(w.AdventureLoot.describeMonsterDrop('VolcanoCrab'),/熔脉/);
  assert.equal(w.AdventureLoot.describeMonsterDrop('VolcanoCrab').includes('MagmaVeinTrophy'),false);
 });
+test('Sulfur Weasel deals 3 with either low card and only bypasses defense while hardened from Stage 3',()=>{
+ const base=w.AdventureRegistry.getMonster('VolcanoSulfurWeasel');
+ const staged=bridge.applyStageMods(base,3);
+ for(const value of [1,2]){
+  const card=C(value);
+  assert.equal(base.attackDamage(card),3);
+  assert.equal(staged.attackDamage(card),3);
+  assert.equal(staged.attackBurn(card),value);
+  assert.equal(staged.attackUnblockableIfSelfBuff(card,{harden:0}),false);
+  assert.equal(staged.attackUnblockableIfSelfBuff(card,{harden:1}),true);
+ }
+});
 test('volcano bosses register with pools, loot, icons and stage gates',()=>{
  const pool=w.AdventureBossPool.volcano;
  for(const stage of [1,2,3,4]){
@@ -113,9 +125,9 @@ test('volcano bosses register with pools, loot, icons and stage gates',()=>{
  const hp={VolcanoFlameLion:30,VolcanoMagmaRhino:35,VolcanoCinderPhoenix:40};
  bosses.forEach(name=>{
   const base=w.AdventureRegistry.getBoss(name);
-  assert.ok(base);assert.equal(base.hp,hp[name]);assert.equal(base.handLimit,3);assert.equal(base.whiteZeros,2);
+  assert.ok(base);assert.equal(base.hp,hp[name]);assert.equal(base.handLimit,3);
   assert.ok(fs.existsSync(path.join(root,'adventure',base.icon)));
-  assert.equal(w.AdventureStageGuide[name].length,name==='VolcanoCinderPhoenix'?2:3);
+  assert.equal(w.AdventureStageGuide[name].length,name==='VolcanoCinderPhoenix'?1:3);
   const s3=bridge.applyStageMods(base,3);
   assert.equal(s3.attackDamage(C(2)),base.attackDamage(C(2))+(name==='VolcanoCinderPhoenix'?0:1));
   assert.equal(s3.attackDamage(C(5)),0);
@@ -160,9 +172,14 @@ test('volcano boss attack and defend hooks follow volcano.md',()=>{
  const p4=bridge.applyStageMods(phoenix,4);
  assert.equal(p4.defendCounter(C(2)),3);assert.equal(p4.defendHeal(C(0)),2);
  const e=engine('VolcanoFlameLion');e.s.player.burn=0;
+ const before=e.s.player.hp;
  const atk=C(0);e.s.atkCard=atk;e.s.atkOwner='ai';
  const res=e.effect('VolcanoFlameLion',0,atk,e.s.ai,e.s.player);
- assert.equal(res.d,0);assert.equal(e.s.player.burn,1);
+ assert.equal(res.d,0);
+ assert.equal(e.s.player.hp,before-2);
+ assert.equal(e.s.player.burn,2);
+ assert.ok(e.s.player.scorch);
+ assert.equal(e.events.filter(evt=>evt.type==='burnSettle').length,1);
  const pe=engine('VolcanoCinderPhoenix',3);
  assert.equal(pe.s.ai.maxHp,40);
  pe.s.ai.fly=0;w.CharacterRegistry.get('VolcanoCinderPhoenix').turnStart(pe,pe.s.ai,'ai');

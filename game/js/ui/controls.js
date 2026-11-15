@@ -155,14 +155,8 @@ _renderControls() {
             const canCancelDiscard = !s.forcedDiscard && !s.pendingVixrapsPassive && !s.pendingDiscardBeforeDefend && !s.pendingHypothermiaDiscard && !s.pendingSerenitySixDiscard && !s.pendingKrakenDefendDiscard;
             if (canCancelDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
         }
-    } else if (phase === 'LEON_ZERO_DISCARD') {
-        html += '<span class="ctrl-hint">请在下方选择对手要弃掉的手牌</span>';
-    } else if (phase === 'OPPONENT_CARD_CHOICE' && canAct && s.isAdventure) {
-        const targetKey = s.opponentHandTarget || (s.is1v2 ? (s.attackTarget || 'ai') : 'ai');
-        const target = s[targetKey];
-        const chosen = Number.isInteger(Number(s.selectedAICard)) && Number(s.selectedAICard) >= 0;
-        html += `<span class="ctrl-hint">${s.pendingOpponentSkill ? `${s.pendingOpponentSkill.name} ${s.pendingOpponentSkill.value}牌：` : ''}请选择${target && target.name || '对手'}的一张手牌</span>`;
-        html += `<button class="ctrl-btn btn-play" id="btn-opponent-confirm" ${chosen ? '' : 'disabled'}>确认选择</button>`;
+    } else if ((phase === 'LEON_ZERO_DISCARD' || phase === 'OPPONENT_CARD_CHOICE') && canAct) {
+        html += '<span class="ctrl-hint">请在弹窗中选择对手手牌</span>';
     } else if (phase === 'ATTACK_MOD_CHOICE' && canAct) {
         const dmg = s.pendingAttack && s.pendingAttack.damage != null ? s.pendingAttack.damage : 0;
         const hasSelection = this._attackModSelectedItem != null;
@@ -282,7 +276,6 @@ async _bindControls() {
     bind('btn-demon-pact', async () => { await this._apiAction('useDemonPact'); });
     bind('btn-confirm-discard', async () => { await this._apiAction('doConfirmDiscard'); });
     bind('btn-cancel-discard', async () => { await this._apiAction('doCancelDiscard'); });
-    bind('btn-opponent-confirm', async () => { await this._apiAction('doOpponentCardConfirm'); });
     bind('btn-five-heal', async () => { await this._apiAction('doFiveHeal'); });
     bind('btn-five-damage', async () => { await this._apiAction('doFiveDamage'); });
     bind('btn-seven-keep', async () => { await this._apiAction('doChanSevenKeep'); });

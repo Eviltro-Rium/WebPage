@@ -167,8 +167,8 @@
     }
     const canShowDecisionDialog=s.onlineCanAct!==false;
     if(this.dialogs&&typeof this.dialogs.syncCombatDialog==='function')this.dialogs.syncCombatDialog(s.pendingDialog,canShowDecisionDialog,s.phase);
-    if(canShowDecisionDialog&&!this._isConsumingEvents&&s.pendingDialog==='leonZeroDiscard')this.dialogs.showLeonZeroDiscardChoice(s.pendingLeonZeroDiscard,choice=>this._apiAction('chooseLeonZeroDiscard',choice));
-    else if(canShowDecisionDialog&&s.pendingDialog==='purify')this.dialogs.showPurifyChoice(s.player,picked=>{if(picked&&picked.done)return this._apiAction('choosePurify',{done:true});const kind=picked&&picked.kind?picked.kind:picked;if(typeof kind!=='string')return Promise.resolve();return this._apiAction('choosePurify',{kind})});
+    this._syncOpponentCardChoice(s);
+    if(canShowDecisionDialog&&s.pendingDialog==='purify')this.dialogs.showPurifyChoice(s.player,picked=>{if(picked&&picked.done)return this._apiAction('choosePurify',{done:true});const kind=picked&&picked.kind?picked.kind:picked;if(typeof kind!=='string')return Promise.resolve();return this._apiAction('choosePurify',{kind})});
     else if(canShowDecisionDialog&&s.pendingDialog==='superPurify'){const targets=[{key:'player',label:'自己',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+' (对手)',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+' (对手)',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseSuperPurifyTarget',{target}))}
     else if(canShowDecisionDialog&&s.pendingDialog==='mozeSeven'){const targets=[{key:'player',label:'自己（清除负面）',ch:s.player}];if(s.ai&&s.ai.alive)targets.push({key:'ai',label:s.ai.name+'（清除正面）',ch:s.ai});if(s.ai2&&s.ai2.alive)targets.push({key:'ai2',label:s.ai2.name+'（清除正面）',ch:s.ai2});this.dialogs.showSuperPurifyChoice(targets,target=>this._apiAction('chooseMozeSeven',{choice:{target}}),'Moze 7牌 · 选择目标')}
     else if(canShowDecisionDialog&&!this._isConsumingEvents&&s.pendingDialog==='guard')this.dialogs.showGuardChoice(s.player,s.pendingGuardDamage,choice=>{
@@ -188,7 +188,6 @@
       const opponentKey=s.attackTarget||'ai';
       this.dialogs.showPurifyChoice(s.player,picked=>this._apiAction('choosePurifyCrystal',{choice:picked}),{opponent:s[opponentKey],allowOpponent:true});
     }
-    else if(canShowDecisionDialog&&s.pendingDialog==='trophyDisarm'){const pending=s.pendingTrophyDisarm||{};this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s,pending.targetKey),choice=>this._apiAction('chooseTrophyDisarm',choice),'缴械 · 选择要弃掉的手牌');}
     else if(canShowDecisionDialog&&s.pendingDialog==='trophyPurify'){const pending=s.pendingTrophyPurify||{};const oppKey=pending.targetKey||s.attackTarget||'ai';const opponent=s[oppKey]&&s[oppKey].alive?s[oppKey]:(s.ai&&s.ai.alive?s.ai:null);this.dialogs.collectPurifyChoices(s.player,Math.max(1,Number(pending.count)||1),choices=>{if(!choices.length)return this._apiAction('chooseTrophyPurify',{done:true});return this._apiAction('chooseTrophyPurify',{choices});},{opponent});}
     if(s.phase==='ATTACK_MOD_CHOICE')this._ensureAttackModChoicePrompt(s);
     else{this._attackModPromptOpen=false;this._attackModActive=false;}
@@ -202,10 +201,8 @@
     const hideTrailing=this._hideTrailingCount(options, hideWho||'ai');
     const s=this.state;if(!s)return;
     const revealFace=!!(s.revealAIHand||s.isAdventure);
-    const selectedTarget=s.opponentHandTarget||(s.attackTarget||'ai');
-    const canSelectOpponent=!!(s.isAdventure&&s.onlineCanAct!==false&&s.phase==='OPPONENT_CARD_CHOICE'&&revealFace);
     const attachSkillHover=(card,opponent,ownerCard)=>{
-      if(!revealFace||!ownerCard||!(s.phase==='PLAYER_PLAY'||s.phase==='PLAYER_DEFEND'||s.phase==='OPPONENT_CARD_CHOICE'))return;
+      if(!revealFace||!ownerCard||!(s.phase==='PLAYER_PLAY'||s.phase==='PLAYER_DEFEND'))return;
       const charName=this._combatDisplayName(opponent&&opponent.name);
       const ownerKey=opponent===s.ai2?'ai2':'ai';
       card.addEventListener('mouseenter',()=>{
@@ -221,7 +218,7 @@
     const second=document.getElementById('ai2-hand');
     const revision=window.CardStyle && window.CardStyle.iconRevision;
     const key=JSON.stringify([
-      s.phase,s.onlineCanAct,s.isAdventure,revealFace,selectedTarget,s.selectedAICard,
+      s.phase,s.onlineCanAct,s.isAdventure,revealFace,
       hideWho,hideTrailing,revision,s.ai && s.ai.name,s.ai && s.ai.alive,
       s.aiHandSize,(s.aiHand||[]).map(cardVisualKey),s.ai2 && s.ai2.name,s.ai2 && s.ai2.alive,
       s.ai2HandSize,(s.ai2Hand||[]).map(cardVisualKey)
@@ -247,14 +244,6 @@
           let cv;
           if(handCards&&handCards[i]){
             cv=renderCard(handCards[i],40,58,false,{ isNpc: !!s.isAdventure });
-            if(canSelectOpponent&&selectedTarget==='ai'){
-              cv.style.cursor='pointer';cv.classList.add('selectable-ai-card');
-              if(i===Number(s.selectedAICard))cv.classList.add('opponent-card-selected');
-              cv.addEventListener('click',async()=>{
-                if(this._isHandlingAction||this._isConsumingEvents)return;
-                await this._apiAction('chooseAICard',{index:i});
-              });
-            }
             attachSkillHover(cv,s.ai,handCards[i]);
           }else{
             cv=renderCardBack(40,58);
@@ -280,14 +269,6 @@
           let cv;
           if(handCards2&&handCards2[i]){
             cv=renderCard(handCards2[i],40,58,false,{ isNpc: !!s.isAdventure });
-            if(canSelectOpponent&&selectedTarget==='ai2'){
-              cv.style.cursor='pointer';cv.classList.add('selectable-ai-card');
-              if(i===Number(s.selectedAICard))cv.classList.add('opponent-card-selected');
-              cv.addEventListener('click',async()=>{
-                if(this._isHandlingAction||this._isConsumingEvents)return;
-                await this._apiAction('chooseAICard',{index:i});
-              });
-            }
             attachSkillHover(cv,s.ai2,handCards2[i]);
           }else{
             cv=renderCardBack(40,58);

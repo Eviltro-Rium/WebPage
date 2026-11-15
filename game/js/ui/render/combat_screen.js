@@ -142,9 +142,8 @@
             if (this.dialogs && typeof this.dialogs.syncCombatDialog === 'function') {
                 this.dialogs.syncCombatDialog(s.pendingDialog, canShowDecisionDialog, s.phase);
             }
-            if (canShowDecisionDialog && !this._isConsumingEvents && s.pendingDialog === 'leonZeroDiscard') {
-                this.dialogs.showLeonZeroDiscardChoice(s.pendingLeonZeroDiscard, choice => this._apiAction('chooseLeonZeroDiscard', choice));
-            } else if (canShowDecisionDialog && s.pendingDialog === 'purify') {
+            this._syncOpponentCardChoice(s);
+            if (canShowDecisionDialog && s.pendingDialog === 'purify') {
                 this.dialogs.showPurifyChoice(s.player, picked => {
                     if (picked && picked.done) return this._apiAction('choosePurify', { done: true });
                     const kind = picked && picked.kind ? picked.kind : picked;
@@ -181,9 +180,6 @@
                 const targets = [{ key: 'player', label: '自己（清除负面）', ch: s.player }];
                 if (s.ai && s.ai.alive) targets.push({ key: 'ai', label: (s.ai.name || '对手') + '（清除正面）', ch: s.ai });
                 this.dialogs.showSuperPurifyChoice(targets, target => this._apiAction('chooseMozeSeven', { choice: { target } }), 'Moze 7牌 · 选择目标');
-            } else if (canShowDecisionDialog && s.pendingDialog === 'trophyDisarm') {
-                const pending = s.pendingTrophyDisarm || {};
-                this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s, pending.targetKey), choice => this._apiAction('chooseTrophyDisarm', choice), '缴械 · 选择要弃掉的手牌');
             } else if (canShowDecisionDialog && s.pendingDialog === 'trophyPurify') {
                 const pending = s.pendingTrophyPurify || {};
                 const oppKey = pending.targetKey || s.attackTarget || 'ai';

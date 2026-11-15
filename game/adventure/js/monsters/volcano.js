@@ -301,7 +301,6 @@
     defendScorch: low,
     defendImmune: zero,
     defendImmuneBuff: zero,
-    defendClearDebuffs: zero,
     defendFly: c => zero(c) ? 1 : 0,
     stageMods: {
       4: orig => ({

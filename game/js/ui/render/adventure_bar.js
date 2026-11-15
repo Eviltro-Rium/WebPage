@@ -390,6 +390,7 @@
                 btn.ondblclick = async (event) => {
                     event.preventDefault();
                     if (btn._itemClickTimer) {clearTimeout(btn._itemClickTimer);btn._itemClickTimer=null;}
+                    if (this._isHandlingAction || this._isConsumingEvents || btn.disabled) return;
                     const idx = parseInt(btn.getAttribute('data-item-index'), 10);
                     const item = consumables[idx];
                     const def = item && window.AdventureRegistry.getItem(item.name);
@@ -413,6 +414,7 @@
         },
 
         async _useSelectedCombatItem() {
+            if (this._isHandlingAction || this._isConsumingEvents) return;
             const idx = this._selectedCombatItem;
             if (idx == null) return;
             const s = this.state;
@@ -425,7 +427,7 @@
             if (!item || !def) { this._selectedCombatItem = null; return; }
             if (!this._canUseAdventureCombatItem(s, def)) return;
             const run = async (choice) => {
-                if (this._isHandlingAction) return;
+                if (this._isHandlingAction || this._isConsumingEvents) return false;
                 this._isHandlingAction = true;
                 try {
                     const payload = { itemIndex: idx };
@@ -441,7 +443,9 @@
                             await this._consumeEvents(result.events);
                         }
                         this.updateDisplay();
+                        return true;
                     }
+                    return false;
                 } finally {
                     this._isHandlingAction = false;
                 }
@@ -513,10 +517,34 @@
             if (def.combatUse === 'chameleonPaint') {
                 const groups = this._opponentCardGroups(s);
                 if (!groups.some(group => group.cards && group.cards.length)) return;
-                this.dialogs.showOpponentCardChoice(groups, choice => { void run(choice); }, '变色龙颜料 · 选择要暂借的牌');
+                this.dialogs.showOpponentCardChoice(groups, ([choice]) => run(choice), {
+                    title: '变色龙颜料 · 选择要暂借的牌', confirmLabel: '确认暂借', cancelable: true
+                });
                 return;
             }
             await run(null);
+        },
+
+        _syncOpponentCardChoice(s) {
+            if (!s || s.onlineCanAct === false || this._isConsumingEvents || !this.dialogs) return;
+            if (s.pendingDialog === 'leonZeroDiscard' && s.pendingLeonZeroDiscard) {
+                const { groups, count } = s.pendingLeonZeroDiscard;
+                this.dialogs.showOpponentCardChoice(groups, cards => this._apiAction('chooseLeonZeroDiscard', { cards }), {
+                    decision: 'leonZeroDiscard', title: 'Leon 0牌 · 选择对手弃牌', count, confirmLabel: '确认弃牌'
+                });
+            } else if (s.pendingDialog === 'trophyDisarm' && s.pendingTrophyDisarm) {
+                this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s, s.pendingTrophyDisarm.targetKey),
+                    ([choice]) => this._apiAction('chooseTrophyDisarm', choice), {
+                        decision: 'trophyDisarm', title: '缴械 · 选择要弃掉的手牌', confirmLabel: '确认弃牌'
+                    });
+            } else if (s.isAdventure && s.phase === 'OPPONENT_CARD_CHOICE' && s.pendingOpponentSkill) {
+                const { name, value } = s.pendingOpponentSkill;
+                const target = s.opponentHandTarget || s.attackTarget || 'ai';
+                this.dialogs.showOpponentCardChoice(this._opponentCardGroups(s, target),
+                    ([{index}]) => this._apiAction('doOpponentCardConfirm', { index }), {
+                        decision: 'opponentSkill', title: name + ' ' + value + '牌 · 选择对手手牌'
+                    });
+            }
         },
 
         _opponentCardGroups(s, onlyKey) {

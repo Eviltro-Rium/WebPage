@@ -256,22 +256,47 @@ test('Leon AOE dialog selects across both opponent hands and submits exactly two
  const {dom,w,dialogs}=setup();let finish,calls=0,payload;
  const pending={count:2,groups:[{key:'ai',label:'对手 I',cards:[{value:0},{value:2}]},{key:'ai2',label:'对手 II',cards:[{value:3},{value:4}]}]};
  const submit=p=>{calls++;payload=p;return new Promise(resolve=>finish=resolve);};
- dialogs.showLeonZeroDiscardChoice(pending,submit);const overlay=w.document.getElementById('leon-zero-discard-dialog');
- const buttons=[...overlay.querySelectorAll('.leon-zero-card')],confirm=overlay.querySelector('.start-btn');
+ dialogs.showOpponentCardChoice(pending.groups, cards => submit({ cards }), {count:pending.count,decision:'leonZeroDiscard'});const overlay=w.document.getElementById('opponent-card-choice-dialog');
+ const buttons=[...overlay.querySelectorAll('.card-choice')],confirm=overlay.querySelector('.btn-play');
  assert.equal(buttons.length,4);assert.equal(buttons[0].textContent,'0');assert.equal(confirm.disabled,true);
  buttons[0].click();buttons[3].click();assert.equal(confirm.disabled,false);assert.equal(buttons[1].disabled,true);
  buttons[3].click();assert.equal(confirm.disabled,true);buttons[2].click();confirm.click();confirm.click();
- dialogs.showLeonZeroDiscardChoice(pending,submit);assert.equal(w.document.querySelectorAll('#leon-zero-discard-dialog').length,1);assert.equal(calls,1);
+ dialogs.showOpponentCardChoice(pending.groups, cards => submit({ cards }), {count:pending.count,decision:'leonZeroDiscard'});assert.equal(w.document.querySelectorAll('#opponent-card-choice-dialog').length,1);assert.equal(calls,1);
  assert.equal(JSON.stringify(payload.cards),JSON.stringify([{target:'ai',index:0},{target:'ai2',index:0}]));
- finish(true);await new Promise(resolve=>setImmediate(resolve));assert.equal(w.document.getElementById('leon-zero-discard-dialog'),null);dom.window.close();
+ finish(true);await new Promise(resolve=>setImmediate(resolve));assert.equal(w.document.getElementById('opponent-card-choice-dialog'),null);dom.window.close();
 });
 
 test('Leon AOE dialog preserves chosen cards after rejection and sync removes an obsolete dialog',async()=>{
  const {dom,w,dialogs}=setup();let calls=0;
- dialogs.showLeonZeroDiscardChoice({count:1,groups:[{key:'ai2',label:'对手 II',cards:[{value:4}]}]},async()=>{calls++;return false;});
- w.document.querySelector('.leon-zero-card').click();w.document.querySelector('.start-btn').click();await new Promise(resolve=>setImmediate(resolve));
- assert.equal(calls,1);assert.equal(w.document.querySelector('.leon-zero-card').getAttribute('aria-pressed'),'true');assert.equal(w.document.querySelector('.start-btn').disabled,false);
- dialogs.syncCombatDialog(null,true,'AI_DEFEND');assert.equal(w.document.getElementById('leon-zero-discard-dialog'),null);dom.window.close();
+ dialogs.showOpponentCardChoice([{key:'ai2',label:'对手 II',cards:[{value:4}]}],async()=>{calls++;return false;},{decision:'leonZeroDiscard'});
+ w.document.querySelector('.card-choice').click();w.document.querySelector('.btn-play').click();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(calls,1);assert.equal(w.document.querySelector('.card-choice').getAttribute('aria-pressed'),'true');assert.equal(w.document.querySelector('.btn-play').disabled,false);
+ dialogs.syncCombatDialog(null,true,'AI_DEFEND');assert.equal(w.document.getElementById('opponent-card-choice-dialog'),null);dom.window.close();
+});
+
+test('single-target skills and Disarm use the same picker and only show the targeted hand',async()=>{
+ const {dom,w,dialogs}=setup();
+ try {
+  w.GameUI=class {};
+  w.eval(fs.readFileSync(path.join(__dirname,'../js/ui/render/adventure_bar.js'),'utf8'));
+  const ui=new w.GameUI();ui.dialogs=dialogs;
+  const options={isAdventure:true,is1v2:true,ai:{name:'NPC I'},ai2:{name:'NPC II'},aiHand:[{value:1}],ai2Hand:[{value:0},{value:2}]};
+  for(const [state,method,payload] of [
+   [{...options,phase:'OPPONENT_CARD_CHOICE',opponentHandTarget:'ai2',pendingOpponentSkill:{name:'Chan',value:5}},'doOpponentCardConfirm',{index:1}],
+   [{...options,phase:'TROPHY_DISARM_CHOICE',pendingDialog:'trophyDisarm',pendingTrophyDisarm:{targetKey:'ai2'}},'chooseTrophyDisarm',{target:'ai2',index:1}]
+  ]){
+   const calls=[];
+   ui._apiAction=async(method,params)=>{calls.push([method,params]);return true;};
+   dialogs.syncCombatDialog(state.pendingDialog,true,state.phase);
+   ui._syncOpponentCardChoice(state);
+   const overlay=w.document.getElementById('opponent-card-choice-dialog'),buttons=[...overlay.querySelectorAll('.card-choice')];
+   assert.deepEqual(buttons.map(button=>button.dataset.target),['ai2','ai2']);
+   buttons[0].click();buttons[1].click();assert.equal(calls.length,0);
+   overlay.querySelector('.btn-play').click();await new Promise(resolve=>setImmediate(resolve));
+   assert.equal(JSON.stringify(calls),JSON.stringify([[method,payload]]));
+   assert.equal(overlay.isConnected,false);
+  }
+ } finally {dom.window.close();}
 });
 
 test('challenge PurifyCrystal opens a choice for self and the current opponent, including after reload',async()=>{
@@ -279,7 +304,7 @@ test('challenge PurifyCrystal opens a choice for self and the current opponent, 
   const {dom,w,dialogs}=setup();
   try{
    w.eval('window.GameUI=class {}; window.PHASE_NAMES={PURIFY_CRYSTAL_CHOICE:"净化水晶"};');
-   w.eval(fs.readFileSync(path.join(__dirname,'../js/ui/mode_1v2.js'),'utf8'));
+   for (const file of ['render/adventure_bar.js','mode_1v2.js']) w.eval(fs.readFileSync(path.join(__dirname,'../js/ui',file),'utf8'));
    const ui=new w.GameUI();ui.dialogs=dialogs;ui.gameScreen=w.document.createElement('main');w.document.body.append(ui.gameScreen);
    for(const method of ['_drawDeckIcon','_updateHpBar','_updateBuffs','_updateAvatar','_updateAttackerIndicator','_renderPlayerHand','_renderAIHand1v2','_renderDiscardTop','_renderZones','_renderReveal','_renderDiceControl','_renderControls','_updateAdventureInfo','_renderAdventureItemBar'])ui[method]=()=>{};
    ui._handRenderingLocked=()=>false;
