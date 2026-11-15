@@ -9,6 +9,16 @@
   const R = window.AdventureRegistry;
   if (!R) return;
 
+  function isLow(card) {
+    return !!(card && card.isNumberCard && card.value >= 1 && card.value <= 2);
+  }
+  function isHigh(card) {
+    return !!(card && card.isNumberCard && card.value >= 3 && card.value <= 4);
+  }
+  function isZero(card) {
+    return !!(card && card.isNumberCard && card.value === 0);
+  }
+
   window.AdventureBossPool = window.AdventureBossPool || {};
   window.AdventureBossPool.forest = {
     '*': ['ForestPanda', 'ForestPython'],
@@ -36,19 +46,17 @@
     defense: 1,
     icon: '../icons/npc_icons/forest_monkey.webp',
     attackDamage(card, ctx) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 4;
-      if (v >= 4 && v <= 6) return 3;
+      if (isLow(card)) return 4;
+      if (isHigh(card)) return 3;
       return 0;
     },
     attackHeal(card) {
-      const v = card.value;
-      if (v >= 4 && v <= 6) return 3;
-      return 0;
+      return isHigh(card) ? 3 : 0;
     },
     defendHeal(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return v;
+      if (!card || !card.isNumberCard) return 0;
+      if (card.value === 1) return 1;
+      if (card.value === 2) return 2;
       return 0;
     },
     stageMods: {
@@ -68,25 +76,18 @@
     icon: '../icons/npc_icons/forest_deer.webp',
     firstStrike: true,
     attackDamage(card, ctx) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 3;
-      if (v >= 4 && v <= 6) return 5;
+      if (isLow(card)) return 3;
+      if (isHigh(card)) return 5;
       return 0;
     },
     attackGuard(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
     defendBlock(card, incoming) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return Math.min(2, incoming);
-      return 0;
+      return isLow(card) ? Math.min(2, incoming) : 0;
     },
     defendLush(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 6 }),
@@ -104,29 +105,19 @@
     defense: 2,
     icon: '../icons/npc_icons/forest_leech.webp',
     attackDamage(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 3;
-      return 0;
+      return isLow(card) ? 3 : 0;
     },
     attackBleed(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
     attackDrain(card) {
-      const v = card.value;
-      if (v >= 4 && v <= 6) return 3;
-      return 0;
+      return isHigh(card) ? 3 : 0;
     },
     defendHeal(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 2;
-      return 0;
+      return isLow(card) ? 2 : 0;
     },
     defendParasite(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
@@ -158,32 +149,29 @@
     defense: 1,
     icon: '../icons/npc_icons/forest_crocodile.webp',
     attackDamage(card, ctx) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) {
+      if (isLow(card)) {
         const playerBleed = (ctx && ctx.playerBleed) || 0;
         return 1 + playerBleed * 2;
       }
-      if (v >= 4 && v <= 6) return 4;
+      if (isHigh(card)) return 4;
       return 0;
     },
     attackUnblockable(card) {
-      const v = card.value;
-      return v >= 4 && v <= 6;
+      return isHigh(card);
     },
     attackBleed(card) {
-      const v = card.value;
-      if (v >= 4 && v <= 6) return 1;
-      return 0;
+      return isHigh(card) ? 1 : 0;
     },
     defendBlock(card, incoming) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return Math.ceil(incoming / 2);
-      return 0;
+      return isLow(card) ? Math.ceil(incoming / 2) : 0;
+    },
+    defendBleed(card) {
+      return isLow(card) ? 1 : 0;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
-      4: orig => ({ defendBleed: () => 1 })
+      4: orig => ({ defendBleed: (card) => (isLow(card) ? 2 : 0) })
     }
   });
 
@@ -197,26 +185,24 @@
     defense: 1,
     icon: '../icons/npc_icons/forest_dendrobatid_frog.webp',
     attackDamage(card, ctx) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 4;
-      if (v >= 4 && v <= 6) return 4 + ((ctx && ctx.playerPoison) || 0);
+      if (isLow(card)) return 4;
+      if (isHigh(card)) return 4 + ((ctx && ctx.playerPoison) || 0);
       return 0;
     },
     attackPoison(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
     defendCounter(card, incoming) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return v;
+      if (!isLow(card)) return 0;
+      if (card.value === 1) return 1;
+      if (card.value === 2) return 2;
       return 0;
     },
     defendPoison(card) {
-      return card.isNumberCard && card.value >= 1 && card.value <= 3 ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
     stageMods: {
-      4: () => ({ defendHeal: card => card.isNumberCard && card.value >= 1 && card.value <= 3 ? 2 : 0 })
+      4: () => ({ defendHeal: card => (isLow(card) ? 2 : 0) })
     }
   });
 
@@ -230,26 +216,22 @@
     icon: '../icons/npc_icons/forest_ladybug.webp',
     initialLush: 1,
     attackDamage(card, ctx) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 1 + ((ctx && ctx.attackerLush) || 0);
-      if (v >= 4 && v <= 6) return 4;
+      if (isLow(card)) return 1 + ((ctx && ctx.attackerLush) || 0);
+      if (isHigh(card)) return 4;
       return 0;
     },
     attackUnblockable(card) {
-      return card.value >= 1 && card.value <= 3;
+      return isLow(card);
     },
     attackLush(card) {
-      return card.value >= 4 && card.value <= 6 ? 1 : 0;
+      return isHigh(card) ? 1 : 0;
     },
     attackDrain(card, ctx) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 1 + ((ctx && ctx.attackerLush) || 0);
-      return 0;
+      if (!isLow(card)) return 0;
+      return 1 + ((ctx && ctx.attackerLush) || 0);
     },
     defendBlock(card, incoming) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return Math.min(2, incoming);
-      return 0;
+      return isLow(card) ? Math.min(2, incoming) : 0;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
@@ -275,21 +257,18 @@
     icon: '../icons/npc_icons/forest_capybara.webp',
     handLimit: 3,
     attackDamage(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 2;
-      if (v >= 4 && v <= 6) return 4;
+      if (isLow(card)) return 2;
+      if (isHigh(card)) return 4;
       return 0;
     },
     attackLush(card) {
-      return card.value >= 4 && card.value <= 6 ? 1 : 0;
+      return isHigh(card) ? 1 : 0;
     },
     defendBlock(card, incoming) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return Math.max(0, incoming - 2);
-      return 0;
+      return isLow(card) ? Math.max(0, incoming - 2) : 0;
     },
     stageMods: {
-      4: () => ({ defendBlock: (card, incoming) => card.isNumberCard && card.value >= 1 && card.value <= 3 ? Math.max(0, incoming - 1) : 0 })
+      4: () => ({ defendBlock: (card, incoming) => (isLow(card) ? Math.max(0, incoming - 1) : 0) })
     }
   });
 
@@ -310,29 +289,19 @@
       eng.emit('desc', self.name + '散发毒气，玩家获得1层中毒');
     },
     defendHeal(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
     defendGuard(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
     defendLush(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
     defendPoison(card) {
-      const v = card.value;
-      if (v >= 4 && v <= 6) return 1;
-      return 0;
+      return isHigh(card) ? 1 : 0;
     },
     defendAllHeal(card) {
-      const v = card.value;
-      if (v >= 4 && v <= 6) return 3;
-      return 0;
+      return isHigh(card) ? 3 : 0;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
@@ -361,29 +330,26 @@
     defense: 1,
     icon: '../icons/npc_icons/forest_piranha.webp',
     attackDamage(card, ctx) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return ((ctx && ctx.playerBleed) || 0) * 2;
-      if (v >= 4 && v <= 6) return 4;
+      if (isLow(card)) return ((ctx && ctx.playerBleed) || 0) * 2;
+      if (isHigh(card)) return 4;
       return 0;
     },
     attackUnblockable(card) {
-      return card.value >= 4 && card.value <= 6;
+      return isHigh(card);
     },
     attackBleed(card) {
-      return card.value >= 4 && card.value <= 6 ? 1 : 0;
+      return isHigh(card) ? 1 : 0;
     },
     defendCounter(card, incoming) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return Math.ceil((incoming || 0) / 2);
-      return 0;
+      return isLow(card) ? Math.ceil((incoming || 0) / 2) : 0;
     },
     defendBleed(card) {
-      return card.value >= 1 && card.value <= 3 ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
     stageMods: {
       4: () => ({
-        defendHeal: card => card.isNumberCard && card.value >= 1 && card.value <= 3 ? 1 : 0,
-        defendBleed: card => card.isNumberCard && card.value >= 1 && card.value <= 3 ? 2 : 0
+        defendHeal: card => (isLow(card) ? 1 : 0),
+        defendBleed: card => (isLow(card) ? 2 : 0)
       })
     }
   });
@@ -399,45 +365,36 @@
     handLimit: 3,
     whiteZeros: 2,
     attackDamage(card, ctx) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 3;
-      if (v >= 4 && v <= 6) return 2;
-      if (v === 0) return 5;
+      if (isLow(card)) return 3;
+      if (isHigh(card)) return 2;
+      if (isZero(card)) return 5;
       return 0;
     },
     attackUnblockable(card) {
-      const v = card.value;
-      return v >= 4 && v <= 6;
+      return isHigh(card);
     },
     attackHeal(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
     attackGuard(card) {
-      const v = card.value;
-      if (v >= 4 && v <= 6) return 2;
-      if (v === 0) return 1;
+      if (isHigh(card)) return 2;
+      if (isZero(card)) return 1;
       return 0;
     },
     attackLush(card) {
-      if (card.value === 0) return 1;
-      return 0;
+      return isZero(card) ? 1 : 0;
     },
     defendBlock(card, incoming, defender) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) {
-        let block = 2;
-        if (defender && (defender.lush || 0) >= 2) block += 2;
-        return block;
-      }
-      return 0;
+      if (!isLow(card)) return 0;
+      let block = 2;
+      if (defender && (defender.lush || 0) >= 2) block += 2;
+      return block;
     },
     defendImmune(card) {
-      return card.value === 0;
+      return isZero(card);
     },
     defendImmuneBuff(card) {
-      return card.value === 0;
+      return isZero(card);
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
@@ -457,55 +414,43 @@
     handLimit: 3,
     whiteZeros: 2,
     attackDamage(card, ctx) {
-      const v = card.value;
       const poison = Number(ctx && ctx.playerPoison) || 0;
-      if (v >= 1 && v <= 3) return 2;
-      // ctx.playerPoison 须为 beforeDamage 施加后的实际层数（上限 2）；不再 +1
-      if (v >= 4 && v <= 6 || v === 0) return 3 * Math.min(2, poison);
+      if (isLow(card)) return 2;
+      if (isHigh(card) || isZero(card)) return 3 * Math.min(2, poison);
       return 0;
     },
     attackUnblockable(card) {
-      return card.value === 0;
+      return isZero(card);
     },
     attackPoison(card) {
-      const v = card.value;
-      if (v >= 4 && v <= 6) return 1;
-      if (v === 0) return 1;
-      return 0;
+      return (isHigh(card) || isZero(card)) ? 1 : 0;
     },
     attackDrawSelf(card, ctx) {
-      const v = card.value;
-      if (v < 1 || v > 3) return 0;
+      if (!isLow(card)) return 0;
       const poison = (ctx && ctx.playerPoison) || 0;
-      return poison >= 2 ? 1 : 0;
+      return poison === 1 ? 1 : 0;
     },
-    defendCounter(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return v;
-      return 0;
+    defendCounter(card, incoming) {
+      if (!isLow(card)) return 0;
+      return Math.ceil((Number(incoming) || 0) / 2);
     },
     defendPoison(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return 1;
-      if (v === 0) return 1;
+      if (isLow(card) || isZero(card)) return 1;
       return 0;
     },
     defendSplit(card) {
-      return card.value === 0;
+      return isZero(card);
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 10 }),
-      // Stage3：仅 1/2/3/0 伤害 +1；4/5/6 倍率不变
       3: orig => ({
         attackDamage: (card, ctx) => {
-          const v = card.value;
           const base = orig.attackDamage(card, ctx);
-          if (v === 0 || (v >= 1 && v <= 3)) return base + 1;
+          if (isLow(card) || isZero(card)) return base + 1;
           return base;
         }
       }),
-      // Stage4：低牌与0防御额外恢复1点生命。
-      4: () => ({ defendHeal: card => card.isNumberCard && (card.value === 0 || card.value >= 1 && card.value <= 3) ? 1 : 0 })
+      4: () => ({ defendHeal: card => (isLow(card) || isZero(card) ? 1 : 0) })
     }
   });
 
@@ -521,41 +466,37 @@
     handLimit: 3,
     whiteZeros: 2,
     attackDamage(card) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return v;
-      if (v >= 4 && v <= 6) return 4;
-      if (v === 0) return 6;
+      if (isLow(card)) return 2;
+      if (isHigh(card)) return 4;
+      if (isZero(card)) return 6;
       return 0;
     },
     attackUnblockable(card) {
-      return card.value >= 1 && card.value <= 3;
+      return isLow(card);
     },
     attackLush(card) {
-      return card.value >= 1 && card.value <= 3 ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
     attackTransferDebuff(card) {
-      return card.value >= 4 && card.value <= 6;
+      return isHigh(card);
     },
     attackClearAllBuffs(card) {
-      return card.value === 0;
+      return isZero(card);
     },
     defendBlock(card, incoming) {
-      const v = card.value;
-      if (v >= 1 && v <= 3) return Math.ceil(incoming / 2);
-      return 0;
+      return isLow(card) ? Math.ceil(incoming / 2) : 0;
     },
     defendLush(card) {
-      return card.value >= 1 && card.value <= 3 ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
     defendImmune(card) {
-      return card.value === 0;
+      return isZero(card);
     },
     defendImmuneBuff(card) {
-      return card.value === 0;
+      return isZero(card);
     },
     stageMods: {
-
-      4: () => ({ defendCounter: card => card.isNumberCard && (card.value === 0 || card.value >= 1 && card.value <= 3) ? 1 : 0 })
+      4: () => ({ defendCounter: card => (isLow(card) || isZero(card) ? 1 : 0) })
     }
   });
 })();

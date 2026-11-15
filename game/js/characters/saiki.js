@@ -12,7 +12,7 @@
     },
     attackEffectTiming: { 1: 'afterDamage' },
     effect(eng, v, c, a, t, owner, helpers) {
-      const { bleed, heal, clearDebuffs } = helpers;
+      const { bleed, heal } = helpers;
       let d = 0;
       let skip = false;
       let unblock = false;
@@ -37,9 +37,8 @@
         unblock = true;
         return { d, skip, unblock, drain: d, isDrain: true };
       } else if (v === 0) {
-        const oldBleed = t.bleed || 0;
         bleed(1);
-        d = 2 * oldBleed + 3;
+        d = 2 * (t.bleed || 0) + 3;
         const totalBleed = [eng.s.player, eng.s.ai, eng.s.ai2]
           .filter(Boolean)
           .reduce((sum, ent) => sum + (ent.bleed || 0), 0);

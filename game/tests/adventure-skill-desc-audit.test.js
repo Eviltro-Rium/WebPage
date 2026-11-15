@@ -34,14 +34,14 @@ const card = (v) => ({ value: v, isNumberCard: true, isItemCard: false });
 
 const cases = [
   ['ForestPiranha', 2, false, '流血'],
-  ['ForestLeech', 5, false, '不可防御'],
+  ['ForestLeech', 3, false, '不可防御'],
   ['FrozenOceanSamoyed', 2, false, '手牌'],
   ['FrozenOceanSamoyed', 5, false, '弃掉'],
   ['FrozenOceanSeal', 3, true, '相同点'],
-  ['ForestDendrobatidFrog', 5, false, '中毒'],
+  ['ForestDendrobatidFrog', 1, false, '中毒'],
   ['CastleFox', 4, false, '手牌'],
   ['ForestPython', 2, false, '中毒'],
-  ['ForestPython', 5, false, '先施加'],
+  ['ForestPython', 3, false, '先施加'],
   ['ForestPython', 0, false, '不可防御'],
   ['CastleGhost', 4, false, '正好剩1张'],
   ['ForestDryad', 0, true, '免疫所有伤害和debuff'],

@@ -18,6 +18,7 @@
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, heal } = helpers;
       let d = 0;
+      let aoeTargets;
       let skip = false;
       let unblock = false;
       const cr = a.chaos_red;
@@ -51,7 +52,7 @@
         if (chaosCount >= 4) {
           d = 8;
           unblock = true;
-          if (eng.s.is1v2) eng.performAoeEnemies(owner, 8, { direct: true });
+          if (eng.s.is1v2) aoeTargets = eng._enemyKeys(owner);
         } else {
           const gained = [];
           for (const [key, label] of [['chaos_red', '红'], ['chaos_yellow', '黄'], ['chaos_blue', '蓝'], ['chaos_green', '绿']]) {
@@ -64,7 +65,7 @@
           d = 6;
         }
       }
-      return { d, skip, unblock };
+      return { d, skip, unblock, aoeTargets, aoeDamage: aoeTargets ? 8 : 0 };
     },
     damageAfterDefense(v, damage, defender) {
       if (v === 2) return Math.max(0, damage - Math.ceil(damage / 2));

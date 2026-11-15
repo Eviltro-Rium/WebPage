@@ -37,7 +37,7 @@ for (const stage of [3,4]) {
       const mod=bridge.applyStageMods(registry.getMonster(name),stage);
       assert.equal(mod.hp,hp);assert.equal(mod.minStage,3);
       assert.equal(mod.attackDamage(card(2),{playerPoison:2,playerBleed:2}),low);
-      assert.equal(mod.attackDamage(card(5),{playerPoison:2,playerBleed:2}),high);
+      assert.equal(mod.attackDamage(card(4),{playerPoison:2,playerBleed:2}),high);
       assert.equal(mod.attackDamage(card(0),{}),0);
       assert.equal(mod.attackDamage(card(7),{}),0);
     }
@@ -45,8 +45,8 @@ for (const stage of [3,4]) {
   test('frog defense poisons and counters its card value on Stage '+stage,t=>{
     const e=setup(t,'ForestDendrobatidFrog',stage);e.s.ai.hp=20;
     const before=e.s.player.hp;
-    const result=defend(e,'ForestDendrobatidFrog',3,6);
-    assert.equal(result.remaining,6);assert.equal(e.s.player.hp,before-3);
+    const result=defend(e,'ForestDendrobatidFrog',2,6);
+    assert.equal(result.remaining,6);assert.equal(e.s.player.hp,before-2);
     assert.equal(e.s.player.poison,1);assert.equal(e.s.ai.hp,stage===4?22:20);
   });
   test('capybara caps damage without increasing small hits on Stage '+stage,t=>{
@@ -75,9 +75,9 @@ for(const stage of [1,3,4])for(const poison of [0,1,2]){
   test(`python low attack uses fixed damage and existing poison for draw: stage ${stage}, poison ${poison}`,t=>{
     const e=setup(t,'ForestPython',stage);e.s.player.poison=poison;
     const before=e.h.ai.length;
-    const result=e.effect('ForestPython',3,card(3),e.s.ai,e.s.player);
+    const result=e.effect('ForestPython',2,card(2),e.s.ai,e.s.player);
     assert.equal(result.d,stage>=3?3:2);
-    assert.equal(e.h.ai.length,before+(poison===2?1:0));
+    assert.equal(e.h.ai.length,before+(poison===1?1:0));
     assert.equal(e.s.player.poison,poison);
     assert.ok(!(e.s.pendingSkillStatuses||[]).some(op=>op.id==='poison'));
   });
@@ -94,7 +94,7 @@ test('Stage4 python zero heals once while splitting damage and poisoning',t=>{
 for(const stage of [3,4]){
   test('dryad no longer gains Stage3 damage or Stage4 block on Stage '+stage,t=>{
     const e=setup(t,'ForestDryad',stage),mod=bridge.applyStageMods(registry.getBoss('ForestDryad'),stage);
-    assert.equal(mod.attackDamage(card(2)),2);assert.equal(mod.attackDamage(card(5)),4);assert.equal(mod.attackDamage(card(0)),6);
+    assert.equal(mod.attackDamage(card(2)),2);assert.equal(mod.attackDamage(card(4)),4);assert.equal(mod.attackDamage(card(0)),6);
     const before=e.s.player.hp;const result=defend(e,'ForestDryad',2,7);
     assert.equal(result.remaining,3);assert.equal(e.s.ai.lush,1);
     assert.equal(e.s.player.hp,before-(stage===4?1:0));
@@ -109,7 +109,7 @@ test('Stage4 dryad zero stays immune and counters once',t=>{
 
 test('forest codex text reports the elite and boss rules',()=>{
   const describe=bridge.getAdventureNpcSkillDesc;
-  assert.match(describe('ForestDendrobatidFrog',card(5),false,{stage:4}),/4\+玩家.*中毒/);
+  assert.match(describe('ForestDendrobatidFrog',card(4),false,{stage:4}),/4\+玩家.*中毒/);
   assert.doesNotMatch(describe('ForestPython',card(2),false,{stage:4}),/施加/);
   assert.match(describe('ForestPython',card(2),false,{stage:4}),/3🗡️/);
   assert.match(describe('ForestDendrobatidFrog',card(2),true,{stage:4}),/中毒/);

@@ -6,62 +6,57 @@
 (function () {
   window.AdventureStageGuide = {
   "VolcanoSalamander": [
-    { "stage": "2", "text": "生命上限 +5（25）" },
+    { "stage": "2", "text": "生命上限 +6（24）" },
     { "stage": "3", "text": "进攻技能伤害 +1" },
     { "stage": "4", "text": "防御格挡 +1" }
   ],
   "VolcanoCrab": [
-    { "stage": "2", "text": "生命上限 +6（30）" },
+    { "stage": "2", "text": "生命上限 +5（25）" },
     { "stage": "3", "text": "进攻技能伤害 +1" },
     { "stage": "4", "text": "防御格挡 +1" }
   ],
   "VolcanoAshWolf": [
-    { "stage": "2", "text": "生命上限 +5（25）" },
+    { "stage": "2", "text": "生命上限 +6（24）" },
     { "stage": "3", "text": "进攻技能伤害 +1" },
     { "stage": "4", "text": "防御额外施加[炙热]" }
   ],
   "VolcanoObsidianBoar": [
-    { "stage": "2", "text": "生命上限 +6（32）" },
-    { "stage": "3", "text": "进攻伤害<3时变为不可防御" },
+    { "stage": "2", "text": "生命上限 +5（25）" },
+    { "stage": "3", "text": "进攻技能伤害 < 3 时变为不可防御" },
     { "stage": "4", "text": "防御格挡 +1" }
   ],
   "VolcanoCinderBadger": [
-    { "stage": "2", "text": "生命上限 +5（25）" },
+    { "stage": "2", "text": "生命上限 +6（24）" },
     { "stage": "3", "text": "进攻技能伤害 +1" },
     { "stage": "4", "text": "防御格挡 +1" }
   ],
   "VolcanoObsidianArmadillo": [
-    { "stage": "3", "text": "进攻伤害 +1；4/5/6 额外获得1层[守护]" },
-    { "stage": "4", "text": "防御改为格挡对手攻击牌点数" }
+    { "stage": "4", "text": "防御改为格挡对手攻击牌面点数🛡️" }
   ],
   "VolcanoBasaltCentipede": [
-    { "stage": "2", "text": "生命上限 +5（25）" },
-    { "stage": "3", "text": "进攻 1/2/3 伤害 +1" },
-    { "stage": "4", "text": "防御格挡 +1、反击 +1" }
+    { "stage": "4", "text": "防御反击 +1，格挡 +1" }
   ],
   "VolcanoMagmaSlug": [
-    { "stage": "2", "text": "生命上限 +5（30）" },
+    { "stage": "2", "text": "生命上限 +5（25）" },
     { "stage": "3", "text": "进攻技能伤害 +1" },
     { "stage": "4", "text": "牌库顶判定由怪物点数 > 玩家改为 ≥ 玩家" }
   ],
   "VolcanoSulfurWeasel": [
-    { "stage": "2", "text": "生命上限 +6（30）" },
-    { "stage": "3", "text": "自身有[硬化]时，进攻 1/2/3 变为不可防御" },
-    { "stage": "4", "text": "防御额外施加1层[灼伤]" }
+    { "stage": "3", "text": "自身有[硬化]时，进攻 1/2 变为不可防御" },
+    { "stage": "4", "text": "防御额外施加 1 层[灼伤]（累计 2 层）" }
   ],
   "VolcanoFlameLion": [
-    { "stage": "2", "text": "生命上限 +10（50）" },
-    { "stage": "3", "text": "进攻卡面伤害 +1（0 牌仍无卡面伤害）" },
-    { "stage": "4", "text": "防御格挡 +1；防御 0 额外施加2层[灼伤]" }
+    { "stage": "2", "text": "生命上限 +10（40）" },
+    { "stage": "3", "text": "进攻伤害 +1" },
+    { "stage": "4", "text": "防御格挡 +1（变为 4🛡️）；0 牌额外施加 2 层[灼伤]" }
   ],
   "VolcanoMagmaRhino": [
-    { "stage": "2", "text": "生命上限 +10（55）" },
-    { "stage": "3", "text": "进攻卡面伤害 +1" },
-    { "stage": "4", "text": "防御 0 的反击固定为2🗡️" }
+    { "stage": "2", "text": "生命上限 +5（40）" },
+    { "stage": "3", "text": "进攻伤害 +1" },
+    { "stage": "4", "text": "防御 0 固定反击 2🗡️" }
   ],
   "VolcanoCinderPhoenix": [
-    { "stage": "3", "text": "进攻卡面伤害 +1" },
-    { "stage": "4", "text": "防御反击 +1；防御 0 额外恢复 2 点生命" }
+    { "stage": "4", "text": "防御技能额外恢复 2❤️" }
   ],
   "FrozenMammoth": [
     { "stage": "2", "text": "生命上限 +10（55）" },
@@ -207,7 +202,7 @@
   "ForestMonkey": [
     {
       "stage": "2",
-      "text": "生命上限 +6（24）"
+      "text": "生命上限 +5（20）"
     },
     {
       "stage": "3",
@@ -312,7 +307,7 @@
     },
     {
       "stage": "3",
-      "text": "进攻 1/2/3/0 伤害 +1（4/5/6 倍率不变）"
+      "text": "进攻 1/2/0 伤害 +1（3/4 倍率不变）"
     },
     {
       "stage": "4",
@@ -323,7 +318,7 @@
   "FrozenOceanLynx": [
     {
       "stage": "2",
-      "text": "生命上限 +5（25）"
+      "text": "生命上限 +6（24）"
     },
     {
       "stage": "3",
@@ -337,7 +332,7 @@
   "FrozenWhale": [
     {
       "stage": "2",
-      "text": "生命上限 +5（30）"
+      "text": "生命上限 +5（25）"
     },
     {
       "stage": "3",
@@ -350,10 +345,6 @@
   ],
   "FrozenOceanShark": [
     {
-      "stage": "3",
-      "text": "1/2/3 牌改为 3 × 玩家[流血]层数🗡️"
-    },
-    {
       "stage": "4",
       "text": "防御时额外防御 2🛡️"
     }
@@ -361,7 +352,7 @@
   "FrozenOceanSeal": [
     {
       "stage": "2",
-      "text": "生命上限 +5（25）"
+      "text": "生命上限 +6（24）"
     },
     {
       "stage": "3",
@@ -369,7 +360,7 @@
     },
     {
       "stage": "4",
-      "text": "防御3免疫所有伤害"
+      "text": "防御2免疫所有伤害（仍反击相同点伤害）"
     }
   ],
   "FrozenPolarBear": [
@@ -379,7 +370,7 @@
     },
     {
       "stage": "3",
-      "text": "4/5/6 流血改为 2 层"
+      "text": "3/4 进攻流血改为 2 层"
     },
     {
       "stage": "4",
@@ -389,7 +380,7 @@
   "FrozenOrca": [
     {
       "stage": "2",
-      "text": "生命上限 +10（50）"
+      "text": "生命上限 +5（40）"
     },
     {
       "stage": "3",
@@ -554,7 +545,9 @@
   "VolcanoObsidianArmadillo": [
     { "title": "出现条件", "lines": ["从 Stage 2 开始有几率出现"] }
   ],
-  "VolcanoBasaltCentipede": [],
+  "VolcanoBasaltCentipede": [
+    { "title": "被动", "lines": ["手牌上限为 3 张"] }
+  ],
   "VolcanoMagmaSlug": [
     { "title": "防御判定", "lines": ["怪物和玩家分别翻开各自牌库顶1张牌；仅显示点数进行判定，判定后卡牌放回各自牌库顶。无点数牌按0点。"] }
   ],
@@ -565,7 +558,7 @@
     {
       "title": "出现条件",
       "lines": [
-        "仅从 Stage 2 开始出现"
+        "仅在 Stage 3/4 Boss 池中出现"
       ]
     },
     {
@@ -702,7 +695,7 @@
     {
       "title": "被动",
       "lines": [
-        "无进攻阶段，手牌上限为 3 张。每回合自动跳过进攻，跳过后玩家获得 1 层[中毒]。可用 4/5/6 牌防御。"
+        "无进攻阶段，手牌上限为 3 张。每回合自动跳过进攻，跳过后玩家获得 1 层[中毒]。可用 3/4/5 牌防御（白 5 无效果）。"
       ]
     }
   ],

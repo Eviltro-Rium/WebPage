@@ -16,12 +16,13 @@
       if (v === 1) {
         d = 1;
         eng.freeze(t);
-        skip = true;
+        unblock = true;
       } else if (v === 2) {
         d = 4;
       } else if (v === 3) {
         d = 0;
         hurt(a, 2);
+        if (typeof eng.refillDeckIfNeeded === 'function') eng.refillDeckIfNeeded(owner);
         const cards = [];
         for (let i = 0; i < 5 && eng.deck.length; i++) cards.push(eng.deck.pop());
         cards.sort((x, y) => {
@@ -33,9 +34,11 @@
         skip = true;
       } else if (v === 4) {
         d = 5;
-        const r = helpers.takeReveal('Chan 4牌判定');
+        const r = eng.reveal('Chan 4牌判定', owner);
         if (r) {
-          skip = !!(r.isBlack || r.isWhite || eng.effective(r) === 'BLUE');
+          unblock = !!(r.isBlack || r.isWhite || eng.effective(r) === 'BLUE');
+          if (unblock) eng.discardWithEvent(r, owner, { from: 'reveal', faceUp: true });
+          else eng.h[owner].push(r);
         }
       } else if (v === 5) {
         d = 6;

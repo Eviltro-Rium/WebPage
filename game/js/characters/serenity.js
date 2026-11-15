@@ -11,6 +11,7 @@
     effect(eng, v, c, a, t, owner, helpers) {
       const { bleed, heal, draw, hurt } = helpers;
       let d = 0;
+      let aoeTargets;
       let skip = false;
       let unblock = false;
       const bt = !!a.bloodthirst || a.hp < 25;
@@ -25,7 +26,7 @@
         d = 5;
         if (bt) bleed(1);
       } else if (v === 4) {
-        const r = eng.reveal('Serenity 4牌判定');
+        const r = eng.reveal('Serenity 4牌判定', owner);
         if (r && ['YELLOW', 'GREEN'].includes(eng.effective(r))) {
           heal(a, 4);
           skip = true;
@@ -37,13 +38,7 @@
         d = 5;
         unblock = true;
         if (!bt) hurt(a, 2);
-        if (eng.s.is1v2) {
-          const focus = typeof eng.s.attackTarget === 'string' ? eng.s.attackTarget : null;
-          const aoeTarget = owner === 'player'
-            ? (focus === 'ai2' ? 'ai2' : 'ai')
-            : 'player';
-          eng.performAttack({ type: 'unblockable', attacker: owner, target: aoeTarget, damage: 5, direct: true });
-        }
+        if (eng.s.is1v2) aoeTargets = eng._enemyKeys(owner);
       } else if (v === 0) {
         const own = eng.h[owner];
         const bonus = Math.min(9, own.length * 3);
@@ -61,7 +56,7 @@
         draw(owner, 4, true);
         skip = true;
       }
-      return { d, skip, unblock };
+      return { d, skip, unblock, aoeTargets, aoeDamage: aoeTargets ? 5 : 0 };
     },
     damageAfterDefense(v, damage, defender) {
       if (v === 1) return Math.max(0, damage - 3);

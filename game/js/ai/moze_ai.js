@@ -5,19 +5,14 @@
 
     attackScore(eng, v, c, x) {
       if (v === 0) return x.guard <= 2 ? 88 : 72;
-      if (v === 6) {
+      if (v === 4) {
         const damage = 3 + x.guard;
         return damage >= x.opponent.hp ? 96 : x.guard ? 68 + x.guard * 3 : 70;
       }
-      if (v === 7) return x.debuffCount >= 2 ? 86 : x.debuffCount ? 70 : 48;
-      if (v === 4) {
-        const hasExtraNumber = x.hand.some(card => card !== c && card.isNumberCard);
-        return hasExtraNumber && x.guard < 5 ? 76 - x.guard * 5 : -100;
-      }
-      if (v === 2) return x.guard < 3 ? (eng.effective(c) === 'GREEN' ? 74 : 62) : 48;
-      if (v === 1) return x.guard < 3 || x.missingHp ? 66 : 46;
-      if (v === 5) return x.oppHand ? 64 : 42;
-      if (v === 3) return 48;
+      if (v === 5) return x.debuffCount >= 2 ? 86 : x.debuffCount ? 70 : 48;
+      if (v === 1) return x.guard < 3 ? (eng.effective(c) === 'GREEN' ? 74 : 62) : 48;
+      if (v === 3) return x.oppHand ? 64 : 42;
+      if (v === 2) return 48;
       return null;
     },
 
@@ -25,77 +20,43 @@
       if (v === 0) return x.lethal ? 98 : 84;
       if (v === 1) return 68 + Math.min(18, x.incomingDamage * 2);
       if (v === 2) return x.guard ? 62 + x.guard * 3 : 46;
-      if (v === 3) return x.guard || x.missingHp ? 66 : 50;
       return null;
     },
 
     keepScore(eng, c, x) {
       if (!c.isNumberCard) return null;
       if (c.value === 0) return 86;
-      if (c.value === 6) return 72 + x.guard * 2;
-      if (c.value === 7) return x.debuffCount ? 80 : 52;
-      if (c.value === 4) return x.guard < 5 ? 68 : 30;
-      if (c.value === 2 && eng.effective(c) === 'GREEN') return 70;
+      if (c.value === 4) return 72 + x.guard * 2;
+      if (c.value === 5) return x.debuffCount ? 80 : 52;
+      if (c.value === 1 && eng.effective(c) === 'GREEN') return 70;
       return 30 + c.value * 5;
     },
 
-    skip(eng, c, x, phase) {
-      return phase === 'attack' && c.value === 4 &&
-        (x.guard >= 5 || !x.hand.some(card => card !== c && card.isNumberCard));
-    },
-
     specialEffect(eng, n, v, c, a, t, owner, helpers) {
-      if (v === 4) {
-        const candidates = helpers.selfHand.filter(card => card.isNumberCard);
-        if (!candidates.length || a.guard >= 5) {
-          eng.emit('desc', 'Moze 4牌：没有适合转化的数字牌');
-          return { d: 0, skip: true, unblock: false };
-        }
-
-        const needed = Math.max(1, 5 - a.guard);
-        const sorted = candidates.slice().sort((left, right) => left.value - right.value);
-        const chosen = sorted.find(card => card.value >= needed) || sorted[sorted.length - 1];
-        helpers.selfHand.splice(helpers.selfHand.indexOf(chosen), 1);
-        if (chosen.isWhite) chosen.chosenColor = eng.effective(c);
-        eng.s.revealCards = [helpers.copy(chosen)];
-        eng.emit('reveal', 'Moze 4牌守护判定', chosen, { who: owner, from: 'hand' });
-        eng.discardWithEvent(chosen, owner, { from: 'reveal', faceUp: true, desc: `Moze 4牌将${eng.cardText(chosen)}置于弃牌库底` });
-        if (typeof eng.addGuard === 'function') eng.addGuard(a, chosen.value);
-        else a.guard = Math.min(5, (a.guard || 0) + chosen.value);
-        eng.emit('desc', `Moze AI使用${eng.cardText(chosen)}并放入弃牌库底，守护提升至${a.guard}层`);
-        return { d: 0, skip: true, unblock: false };
-      }
-
       if (v === 3) {
-        if (!helpers.targetHand.length) return { d: 0, skip: true, unblock: false };
-        const drawn = helpers.targetHand.splice(Math.floor(random() * helpers.targetHand.length), 1)[0];
-        eng.s.revealCards = [helpers.copy(drawn)];
-        eng.emit('reveal', 'Moze 3牌系统随机抽取玩家手牌', drawn, { who: 'player', from: 'hand' });
-        const hit = !drawn.isItemCard &&
-          (drawn.isBlack || drawn.isWhite || eng.effective(drawn) === 'GREEN');
-        if (hit) {
-          eng.discardWithEvent(drawn, 'player', { from: 'reveal', faceUp: true, desc: `Moze 3牌弃掉${eng.cardText(drawn)}` });
-          eng.emit('desc', `Moze 3牌判定${eng.cardText(drawn)}：造成4点伤害`);
-          return { d: 4, skip: false, unblock: false };
+        const i = Math.floor(random() * helpers.targetHand.length);
+        const drawn = helpers.targetHand.splice(i, 1)[0];
+        if (drawn) {
+          eng.s.revealCards = [helpers.copy(drawn)];
+          eng.emit('reveal', 'Moze 3牌系统随机抽取玩家手牌', drawn,
+            { who: 'player', fromOwner: 'player', from: 'hand', handIndex: i });
+          if (eng.s.isAdventure) eng.discardWithEvent(drawn, 'player', { from: 'reveal', faceUp: true });
+          else helpers.selfHand.push(drawn);
+          if (drawn.isBlack || drawn.isWhite || eng.effective(drawn) === 'GREEN') {
+            return { d: 4, skip: false, unblock: false };
+          }
         }
         helpers.healSelf(2);
         helpers.gainGuard(2);
-        eng.emit('desc', `Moze 3牌判定${eng.cardText(drawn)}：恢复2点并获得2层守护`);
         return { d: 0, skip: true, unblock: false };
       }
 
       if (v === 5) {
-        // Moze 7 converts every currently active negative status into damage.
-        // Keep this list in sync with StatusRegistry/StatusService so newly
-        // introduced debuffs (blind, bomb, ice seal, hypothermia, binding,
-        // etc.) are not silently omitted from the AI branch.
-        const bonus = (a.burn || 0) + (a.bleed || 0) + (a.poison || 0) +
-          (a.frozen ? 1 : 0) + (a.bomb || 0) + (a.blind || 0) +
-          (a.iceSeal || 0) + (a.hypothermia || 0) + (a.thorns || 0) +
-          (a.sandblind || 0) + (a.quicksand || 0) + (a.bindMark ? 1 : 0);
-        helpers.clearSelf();
-        eng.emit('desc', `Moze AI清除${bonus}层debuff，造成${3 + bonus}点伤害`);
-        return { d: 3 + bonus, skip: false, unblock: false };
+        const own = eng.countMozePurgeStacks(a, 'debuff');
+        const opponent = eng.countMozePurgeStacks(t, 'buff');
+        if (opponent > own) eng.clearPositiveBuffs(t);
+        else helpers.clearSelf();
+        return { d: 3 + Math.max(own, opponent), skip: false, unblock: false };
       }
 
       return null;

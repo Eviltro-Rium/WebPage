@@ -2,8 +2,8 @@
 (function () {
   const R = window.AdventureRegistry;
   if (!R) return;
-  const low = c => !!(c && c.isNumberCard && c.value >= 1 && c.value <= 3);
-  const high = c => !!(c && c.isNumberCard && c.value >= 4 && c.value <= 6);
+  const low = c => !!(c && c.isNumberCard && c.value >= 1 && c.value <= 2);
+  const high = c => !!(c && c.isNumberCard && c.value >= 3 && c.value <= 4);
   const zero = c => !!(c && c.isNumberCard && c.value === 0);
   const numeric = c => low(c) || high(c);
   const block = amount => (c, incoming) => low(c) ? Math.min(amount, Math.max(0, incoming || 0)) : 0;
@@ -115,11 +115,6 @@
       return Math.min(Math.max(0, incoming || 0), Math.ceil(face / 2));
     },
     stageMods: {
-      3: orig => ({
-        stageDamageBonus: true,
-        attackDamage(c, ctx) { const d = orig.attackDamage(c, ctx); return d > 0 ? d + 1 : 0; },
-        attackGuard(c) { return (orig.attackGuard(c) || 0) + (high(c) ? 1 : 0); }
-      }),
       4: () => ({
         defendFullFace: true,
         defendBlock(c, incoming, defender, eng) {
@@ -138,6 +133,7 @@
   });
   R.registerMonster({
     name: 'VolcanoBasaltCentipede', kind: '玄岩蜈蚣', hp: 25, attack: 1, defense: 1,
+    handLimit: 3, minStage: 3,
     icon: '../icons/npc_icons/volcano_centipede.webp',
     attackDamage: (c, ctx) => low(c) ? Math.max(0, Number(ctx && ctx.playerBurn) || 0) : 0,
     attackScorch: low,
@@ -208,9 +204,9 @@
     handLimit: 3, whiteZeros: 2, icon: '../icons/npc_icons/volcano_lion.webp',
     attackDamage: c => low(c) ? 4 : high(c) ? 3 : 0,
     attackUnblockable: high,
-    attackBurn: c => low(c) ? 1 : zero(c) ? 2 : 0,
+    attackBurn: c => zero(c) ? 2 : (low(c) || high(c) ? 1 : 0),
     attackBurnSettle: zero,
-    attackScorch: high,
+    attackScorch: c => high(c) || zero(c),
     attackGainMagma: c => (high(c) || zero(c)) ? 1 : 0,
     defendBlock: (c, incoming) => low(c) ? Math.min(3, Math.max(0, incoming || 0)) : 0,
     defendBurn: c => low(c) ? 1 : 0,
@@ -238,8 +234,8 @@
         return '无防御效果';
       }
       if (low(c)) return damageText(this, c) + '，施加[灼伤]';
-      if (high(c)) return damageText(this, c) + '（不可防御），施加[炙热]，获得[熔脉]';
-      if (zero(c)) return '先施加2层[灼伤]，再立刻进行一次[灼伤]结算，获得[熔脉]';
+      if (high(c)) return damageText(this, c) + '（不可防御），获得[熔脉]，施加[灼伤]';
+      if (zero(c)) return '先施加2层[灼伤]和[炙热]，获得[熔脉]，再立刻进行一次[灼伤]结算';
       return '无进攻效果';
     }
   });
@@ -297,7 +293,7 @@
     },
     attackDamage: c => low(c) ? 3 : high(c) ? 4 : zero(c) ? 5 : 0,
     attackFly: c => low(c) ? 1 : 0,
-    attackBurn: c => high(c) ? 2 : 0,
+    attackBurn: c => high(c) ? 1 : 0,
     attackScorch: c => high(c) || zero(c),
     attackHeal: c => zero(c) ? 3 : 0,
     attackUnblockable: zero,
@@ -307,12 +303,6 @@
     defendImmuneBuff: zero,
     defendFly: c => zero(c) ? 1 : 0,
     stageMods: {
-      3: orig => ({
-        attackDamage(c, ctx) {
-          const base = orig.attackDamage(c, ctx);
-          return (numeric(c) || zero(c)) ? base + 1 : base;
-        }
-      }),
       4: orig => ({
         defendCounter: (c, incoming) => (orig.defendCounter(c, incoming) || 0) + (low(c) ? 1 : 0),
         defendHeal: c => (low(c) || zero(c)) ? 2 : 0
@@ -328,7 +318,7 @@
         return '无防御效果';
       }
       if (low(c)) return damageText(this, c) + '，获得[飞翔]';
-      if (high(c)) return damageText(this, c) + '，施加2层[灼伤]与[炙热]';
+      if (high(c)) return damageText(this, c) + '，施加[灼伤]与[炙热]';
       if (zero(c)) return '施加[炙热]，恢复3❤️，' + damageText(this, c) + '（不可防御）';
       return '无进攻效果';
     }

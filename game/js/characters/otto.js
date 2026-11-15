@@ -4,7 +4,7 @@
     name: 'Otto',
     hp: 80,
     type: '战士',
-    passive: '进攻伤害>4时可消耗1层[暴击]使攻击不可防御',
+    passive: '与 Serenity 同队时，承担其受到的超出6点的攻击伤害，并自动格挡承担伤害的一半（向上取整）',
     init() { return { crit: 0 }; },
     turnStart(eng, ch) {},
     damageAtSettlement(eng, v, a, t) {
@@ -12,7 +12,7 @@
       const divisor = eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8;
       return Math.ceil(a.hp / divisor);
     },
-    attackEffectTiming: { 1: 'afterDamage', 3: 'afterDamage', 4: 'immediate' },
+    attackEffectTiming: { 1: 'afterDamage', 3: 'immediate', 4: 'immediate' },
     effect(eng, v, c, a, t, owner, helpers) {
       const { guard } = helpers;
       let d = 0;
@@ -20,7 +20,6 @@
       let unblock = false;
       if (v === 1) {
         d = 2;
-        unblock = true;
         guard(1);
         if (a.crit < 3) a.crit++;
         eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });

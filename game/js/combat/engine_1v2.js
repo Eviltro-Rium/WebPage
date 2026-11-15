@@ -374,7 +374,7 @@
         i=chosen?hand.indexOf(chosen):-1;
     if(i>=0){
       let top=this.s.discardTop,c=hand.splice(i,1)[0];
-      if(c.isBlack)c.chosenColor=hand.find(q=>!q.isBlack&&!q.isWhite&&q.value<=3)?.color||this._chooseAIColor1v2(key);
+      if(c.isBlack)c.chosenColor=hand.find(q=>!q.isBlack&&!q.isWhite&&q.value<=2)?.color||this._chooseAIColor1v2(key);
       else if(c.isWhite)c.chosenColor=this.effective(top);
       this.s.defCard=cp(c);this.s.defOwner=key;this.setDiscardTop(c,key);
       if(window.CardEffects&&window.CardEffects.isItem(c)){
@@ -394,9 +394,9 @@
       if(c.isBlack||c.isWhite)this.emit('colorChoice',ch.name+'指定'+this.colorName(c.chosenColor),c);
       let judged=this.defenseJudge(key,c,d),b=0,remaining,desc='';
       if(judged){remaining=Math.max(0,judged.remaining);desc=ch.name+'完成防御判定'}
-      else{let m=CharacterRegistry.get(n);if(m){let r=m.defend(this,n,v,d,c,ch,this.s.player,key,this.effective(atk),{hurt:(x,n,b)=>this.hurt(x,n,b),heal:(x,n,k)=>this.heal(x,n,k),draw:(w,n,an)=>this.draw(w,n,an),burn:(x,n)=>this.burn(x,n),bleed:(x,n)=>this.bleed(x,n),poison:(x,n)=>this.poison(x,n),counter:(x,n)=>this.counterAttack(ch,x,n),cancelAttackDebuffs:(o,r)=>this.cancelAttackDebuffs(o,r),clearDebuffs:x=>this.clearDebuffs(x),addGuard:(x,n)=>this.addGuard(x,n)});if(r){remaining=r.remaining;desc=r.desc}}if(desc===''){b=c.isNumberCard?(c.value===1?Math.ceil(d/2):c.value===3?Math.floor(d/2):0):0;remaining=Math.max(0,d-b);desc=ch.name+'抵消'+b+'点伤害，剩余'+remaining+'点待结算'}}
+      else{let m=CharacterRegistry.get(n);if(m){let r=m.defend(this,n,v,d,c,ch,this.s.player,key,this.effective(atk),{hurt:(x,n,b)=>this.hurt(x,n,b),heal:(x,n,k)=>this.heal(x,n,k),draw:(w,n,an)=>this.draw(w,n,an),burn:(x,n)=>this.burn(x,n),bleed:(x,n)=>this.bleed(x,n),poison:(x,n)=>this.poison(x,n),counter:(x,n)=>this.counterAttack(ch,x,n),cancelAttackDebuffs:(o,r)=>this.cancelAttackDebuffs(o,r),clearDebuffs:x=>this.clearDebuffs(x),addGuard:(x,n)=>this.addGuard(x,n)});if(r){remaining=r.remaining;desc=r.desc}}if(desc===''){b=c.isNumberCard?(c.value===1?Math.ceil(d/2):0):0;remaining=Math.max(0,d-b);desc=ch.name+'抵消'+b+'点伤害，剩余'+remaining+'点待结算'}}
       if(!judged)this.emit('desc',desc);
-      this.deferSettlement('PLAYER_ATTACK',remaining,c.isNumberCard&&c.value<=3?ch.bleed:0)
+      this.deferSettlement('PLAYER_ATTACK',remaining,c.isNumberCard&&c.value<=2?ch.bleed:0)
     }else{
       this.emit('desc',frozen?ch.name+'处于冷冻状态，无法防御蓝色攻击':(asleep?ch.name+'处于[沉睡]，无法防御':ch.name+'根据防御策略选择跳过'));
       this.deferSettlement('PLAYER_ATTACK',d,0)
@@ -472,13 +472,13 @@
       this.emit('defend','玩家打出防御牌',c);
       let judged=this.defenseJudge('player',c,d);
       if(judged){d=Math.max(0,Number(judged.remaining)||0);desc='防御判定完成'}
-        else{let m=CharacterRegistry.get(n);if(m){let r=m.defend(this,n,v,d,c,this.s.player,targetChar,'player',inheritedColor,{hurt:(x,n,b)=>this.hurt(x,n,b),heal:(x,n,k)=>this.heal(x,n,k),draw:(w,n,an)=>this.draw(w,n,an),burn:(x,n)=>this.burn(x,n),bleed:(x,n)=>this.bleed(x,n),poison:(x,n)=>this.poison(x,n),counter:(x,n)=>this.counterAttack(this.s.player,x,n),cancelAttackDebuffs:(o,r)=>this.cancelAttackDebuffs(o,r),clearDebuffs:x=>this.clearDebuffs(x),addGuard:(x,n)=>this.addGuard(x,n)});if(r){d=r.remaining;desc=r.desc}}if(desc===''){b=c.value===1?Math.ceil(d/2):c.value===3?Math.floor(d/2):0;d=Math.max(0,d-b);desc='抵消'+b+'点伤害，剩余'+d+'点待结算'}}
+        else{let m=CharacterRegistry.get(n);if(m){let r=m.defend(this,n,v,d,c,this.s.player,targetChar,'player',inheritedColor,{hurt:(x,n,b)=>this.hurt(x,n,b),heal:(x,n,k)=>this.heal(x,n,k),draw:(w,n,an)=>this.draw(w,n,an),burn:(x,n)=>this.burn(x,n),bleed:(x,n)=>this.bleed(x,n),poison:(x,n)=>this.poison(x,n),counter:(x,n)=>this.counterAttack(this.s.player,x,n),cancelAttackDebuffs:(o,r)=>this.cancelAttackDebuffs(o,r),clearDebuffs:x=>this.clearDebuffs(x),addGuard:(x,n)=>this.addGuard(x,n)});if(r){d=r.remaining;desc=r.desc}}if(desc===''){b=c.value===1?Math.ceil(d/2):0;d=Math.max(0,d-b);desc='抵消'+b+'点伤害，剩余'+d+'点待结算'}}
       if(!judged)this.emit('desc',desc)
     }
     if(d&&this.playerNeedsAvoidChoice()){this.askGuard(d,this.s.player.bleed);return this.check()}
     let curAIKey=this._incomingNpcKey();
     this.s.phase=curAIKey.toUpperCase()+'_TURN';
-    this.deferSettlement('AI_ATTACK',d,triggeredDefense&&this.s.defCard&&this.s.defCard.isNumberCard&&this.s.defCard.value<=3?this.s.player.bleed:0);
+    this.deferSettlement('AI_ATTACK',d,triggeredDefense&&this.s.defCard&&this.s.defCard.isNumberCard&&this.s.defCard.value<=2?this.s.player.bleed:0);
     return this.check()
   };
 

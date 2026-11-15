@@ -4,13 +4,13 @@
     name: 'Moze',
     hp: 80,
     type: '守护',
-    passive: '可消耗守护减免攻击与反击伤害（不含Buff伤害）',
+    passive: '可为队友消耗最多2层守护，减免攻击或反击伤害',
     init() { return {}; },
     turnStart(eng, ch) {},
     damageAtSettlement(eng, v, a, t) { return v === 4 ? 3 + (a.guard || 0) : null; },
     attackEffectTiming: { 1: 'afterDamage', 5: 'afterDamage' },
     effect(eng, v, c, a, t, owner, helpers) {
-      const { guard, heal, draw, clearDebuffs } = helpers;
+      const { guard, draw } = helpers;
       let d = 0;
       let skip = false;
       let unblock = false;

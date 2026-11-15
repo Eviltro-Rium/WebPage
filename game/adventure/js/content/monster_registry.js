@@ -91,12 +91,12 @@
         const active = mod;
         if (typeof active.attackEffectTiming === 'function') return active.attackEffectTiming(v);
         // Ladybug explicitly gains lush BEFORE its attack; Kraken purges first.
-        const before = mod.name === 'ForestLadybug' && v >= 4 && v <= 6 ||
+        const before = mod.name === 'ForestLadybug' && v >= 3 && v <= 4 ||
           mod.name === 'FrozenKraken' && v === 0 ||
-          mod.name === 'ForestPython' && (v === 0 || v >= 4 && v <= 6) ||
+          mod.name === 'ForestPython' && (v === 0 || v >= 3 && v <= 4) ||
           mod.name === 'FrozenOrca' && v === 0 ||
           mod.name === 'ForestPanda' && v === 0 ||
-          mod.name === 'ForestDryad' && (v === 0 || v >= 1 && v <= 3) ||
+          mod.name === 'ForestDryad' && (v === 0 || v >= 1 && v <= 2) ||
           mod.name === 'CastleEagle' && (v === 0 || v >= 3 && v <= 4) ||
           mod.name === 'CastleGargoyle' && v >= 0 && v <= 4;
         return before ? 'beforeDamage' : 'afterDamage';
@@ -184,12 +184,12 @@
         let bleedAppliedEarly = false;
         const effectTiming = (typeof mod.attackEffectTiming === 'function')
           ? mod.attackEffectTiming(v)
-          : ((mod.name === 'ForestLadybug' && v >= 4 && v <= 6 ||
+          : ((mod.name === 'ForestLadybug' && v >= 3 && v <= 4 ||
             mod.name === 'FrozenKraken' && v === 0 ||
-            mod.name === 'ForestPython' && (v === 0 || v >= 4 && v <= 6) ||
+            mod.name === 'ForestPython' && (v === 0 || v >= 3 && v <= 4) ||
             mod.name === 'FrozenOrca' && v === 0 ||
             mod.name === 'ForestPanda' && v === 0 ||
-            mod.name === 'ForestDryad' && (v === 0 || v >= 1 && v <= 3) ||
+            mod.name === 'ForestDryad' && (v === 0 || v >= 1 && v <= 2) ||
             mod.name === 'CastleEagle' && (v === 0 || v >= 3 && v <= 4) ||
             mod.name === 'CastleGargoyle' && v >= 0 && v <= 4)
             ? 'beforeDamage' : 'afterDamage');
@@ -241,7 +241,8 @@
                 d = 0;
                 eng.emit('desc', eng.cardText(drawn) + '加入' + a.name + '手牌');
               } else {
-                d = drawn.value;
+                const revealBonus = typeof mod.attackRevealDrawBonus === 'function' ? (Number(mod.attackRevealDrawBonus()) || 0) : 0;
+                d = drawn.value + revealBonus;
                 pile.discard.push(drawn);
                 eng.emit('desc', a.name + '造成' + d + '点伤害，' + eng.cardText(drawn) + '放入弃牌堆');
               }
@@ -1301,10 +1302,10 @@
     if (mod.name === 'ForestLadybug' && card.isNumberCard) {
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '吸取' + (1 + stageBonus) + '+[茂盛]层数点[生命]（不可防御）';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '获得1层[茂盛]，造成' + (4 + stageBonus) + '点[伤害]';
       }
       return '无进攻效果';
@@ -1313,14 +1314,14 @@
     if (mod.name === 'CastleBat' && card.isNumberCard && card.value >= 3 && card.value <= 4) {
       return '吸取3+玩家[流血]层数点[生命]（不可防御）';
     }
-    // FrozenWhale: AoE on 4/5/6, diving on 1/2/3, deferred hypothermia (ocean.md).
+    // FrozenWhale: AoE on 3/4, diving on 1/2, deferred hypothermia (ocean.md).
     if (mod.name === 'FrozenWhale' && card.isNumberCard) {
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '造成' + (2 + stageBonus) + '点[伤害]，获得[潜水]';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '对场上所有其他角色造成' + (4 + stageBonus) + '点[伤害]（不可防御），防御结束后对对手施加1层[失温]';
       }
       return '无进攻效果';
@@ -1329,10 +1330,10 @@
     if (mod.name === 'ForestPython' && card.isNumberCard) {
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
-        return '造成' + (2 + stageBonus) + '🗡️；玩家[中毒]≥2时额外抽1🃏';
+      if (v >= 1 && v <= 2) {
+        return '造成' + (2 + stageBonus) + '🗡️；玩家恰好1层[中毒]时额外抽1🃏';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '先施加[中毒]，再按施加后层数×3🗡️（上限2，最多6）';
       }
       if (v === 0) {
@@ -1358,20 +1359,20 @@
         if (v >= 3 && v <= 4) return '造成玩家手牌数点[伤害]';
         return '无进攻效果';
       }
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '造成对手手牌张数点[伤害]' + (stage >= 3 ? '（不可防御）' : '');
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '造成5点[伤害]；玩家先选择1张手牌弃掉再防御（无手牌则不弃）';
       }
       return '无进攻效果';
     }
-    // ForestDendrobatidFrog 4/5/6: poison-scaled formula.
-    if (mod.name === 'ForestDendrobatidFrog' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
+    // ForestDendrobatidFrog 3/4: poison-scaled formula.
+    if (mod.name === 'ForestDendrobatidFrog' && card.isNumberCard && card.value >= 3 && card.value <= 4) {
       return '造成4+玩家[中毒]层数点[伤害]';
     }
-    // ForestPiranha 1/2/3: bleed×2 formula (forest.md / SKILL_DATA).
-    if (mod.name === 'ForestPiranha' && card.isNumberCard && card.value >= 1 && card.value <= 3) {
+    // ForestPiranha 1/2: bleed×2 formula (forest.md / SKILL_DATA).
+    if (mod.name === 'ForestPiranha' && card.isNumberCard && card.value >= 1 && card.value <= 2) {
       return '造成玩家[流血]层数×2点[伤害]';
     }
     // FrozenOrca: diving + deferred hypothermia on 1/2/3, bleed on 4/5/6,
@@ -1379,10 +1380,10 @@
     if (mod.name === 'FrozenOrca' && card.isNumberCard) {
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '造成' + (3 + stageBonus) + '点[伤害]，获得[潜水]，防御结束后施加1层[失温]';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '造成' + (5 + stageBonus) + '点[伤害]，施加1层[流血]';
       }
       if (v === 0) {
@@ -1396,36 +1397,35 @@
     if (mod.name === 'FrozenPolarBear' && card.isNumberCard) {
       const v = card.value;
       const stage3 = (Number(opts.stage) || 1) >= 3;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '造成对手buff总层数点[伤害]';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         const bleed = stage3 ? 2 : 1;
-        return '造成4点[伤害]，获得1层[暴击]（上限2），施加' + bleed + '层[流血]';
+        return '造成4点[伤害]，获得1层[暴击]，施加' + bleed + '层[流血]';
       }
       return '无进攻效果';
     }
-    // FrozenOceanOctopus: player-deck judgment on 1/2/3, diving on 4/5/6 (ocean.md).
+    // FrozenOceanOctopus: player-deck judgment on 1/2, diving on 3/4 (ocean.md).
     if (mod.name === 'FrozenOceanOctopus' && card.isNumberCard) {
       const v = card.value;
-      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
-        return '抽取玩家牌库1张牌判定：普通颜色造成' + (3 + stageBonus) + '点[伤害]并放回牌库底，黑/白牌造成' + (5 + stageBonus) + '点[伤害]并置入玩家弃牌堆';
+      if (v >= 1 && v <= 2) {
+        return '抽取玩家牌库1张牌判定：普通颜色造成4点[伤害]并放回牌库底，黑/白牌造成5点[伤害]并置入玩家弃牌堆';
       }
-      if (v >= 4 && v <= 6) {
-        return '造成' + (5 + stageBonus) + '点[伤害]，获得[潜水]';
+      if (v >= 3 && v <= 4) {
+        return '造成6点[伤害]，获得[潜水]';
       }
       return '无进攻效果';
     }
-    // FrozenKraken: player-deck judgment on 1/2/3, hand-size damage + hypothermia on 4/5/6,
+    // FrozenKraken: player-deck judgment on 1/2, hand-size + crit + hypothermia on 3/4,
     // purge burst on 0 (ocean.md). Weak damage (<5) is unblockable (0 always, all cards stage3+).
     if (mod.name === 'FrozenKraken' && card.isNumberCard) {
       const v = card.value;
-      if (v >= 1 && v <= 3) {
-        return '抽取玩家牌库1张牌判定：彩色牌造成对应数字点[伤害]，黑白牌不造成伤害；伤害为0（数字零牌或黑白牌）置入玩家弃牌堆、跳过防御、获得[潜水]、施加[冰封]，否则放回牌库底';
+      if (v >= 1 && v <= 2) {
+        return '抽取玩家牌库1张牌判定：彩色牌造成对应数字点[伤害]，黑白牌不造成伤害；伤害为0时置入玩家弃牌堆、跳过防御、获得[潜水]、施加[冰封]，否则放回牌库底';
       }
-      if (v >= 4 && v <= 6) {
-        return '造成玩家手牌数点[伤害]，施加1层[失温]';
+      if (v >= 3 && v <= 4) {
+        return '造成玩家手牌数点[伤害]，获得[暴击]，施加1层[失温]';
       }
       if (v === 0) {
         return '施加1层[失温]，清除自身所有负面效果，造成3+清除层数点[伤害]（<5不可防御）';

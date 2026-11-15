@@ -2,25 +2,22 @@
  * 图鉴 —— 展示主角（玩家角色）/怪物（含首领）/道具/饰品/Buff图鉴。
  */
 (function () {
-  // 怪物/Boss NPC 牌堆：白1~3×4、白4~6×2、白7×2；Boss 另加白0。
-  // atk/def 下标与 NPC_SKILL_VALUES 一一对应。
-  const NPC_SKILL_VALUES = [1, 2, 3, 4, 5, 6, 7, 0];
+  // 怪物/Boss NPC 牌堆：白 1~4 技能档、白 5 轮空；Boss 另加白 0。
+  const NPC_SKILL_VALUES = [1, 2, 3, 4, 5, 0];
   const NPC_SKILL_GRID = [
     { atkKey: 0, defKey: 0, label: '1' },
     { atkKey: 1, defKey: 1, label: '2' },
-    { atkKey: 2, defKey: 2, label: '3' },
-    { atkKey: 7, defKey: 7, label: '0' },
+    { atkKey: 2, defKey: -1, label: '3' },
     { atkKey: 3, defKey: -1, label: '4' },
     { atkKey: 4, defKey: -1, label: '5' },
-    { atkKey: 5, defKey: -1, label: '6' },
-    { atkKey: 6, defKey: -1, label: '7' }
+    { atkKey: 5, defKey: 2, label: '0' }
   ];
 
   // 所有会在战斗界面显示的状态集中维护，避免规则页和图鉴出现两套说明。
   // desc 三行：堆叠上限：n / 维持效果：衰减|持续|瞬爆 / 效果说明
   const BUFF_DATA = [
     { key: 'burn', name: '灼伤', type: '负面状态', icon: 'icons/buff_icons/burn.webp', desc: '堆叠上限：5\n维持效果：衰减\n拥有灼伤的角色在自己的进攻回合结束时受到等同于层数的伤害，随后减少1层。' },
-    { key: 'bleed', name: '流血', type: '负面状态', icon: 'icons/buff_icons/bleed.webp', desc: '堆叠上限：3\n维持效果：衰减\n防御方用0~3点数字牌防御时，额外承受等同于[流血]层数的伤害，随后减少1层流血。' },
+    { key: 'bleed', name: '流血', type: '负面状态', icon: 'icons/buff_icons/bleed.webp', desc: '堆叠上限：3\n维持效果：衰减\n防御方用0~2点数字牌防御时，额外承受等同于[流血]层数的伤害，随后减少1层流血。' },
     { key: 'poison', name: '中毒', type: '负面状态', icon: 'icons/buff_icons/poison.webp', desc: '堆叠上限：2\n维持效果：持续\n拥有中毒的角色在自己的进攻回合开始前受到等同于层数的伤害；层数不会自然减少，可被净化。' },
     { key: 'freeze', name: '冷冻', type: '负面状态', icon: 'icons/buff_icons/freeze.webp', desc: '堆叠上限：1\n维持效果：持续\n无法防御蓝色攻击。受到蓝色攻击时只能跳过防御并承受全部伤害。' },
     { key: 'blind', name: '致盲', type: '负面状态', icon: 'icons/buff_icons/blind.webp', desc: '堆叠上限：1\n维持效果：持续\n持续期间不能在战斗中使用一次性道具，只能等待被净化。' },
@@ -419,8 +416,8 @@
     } else if (entity.attackSkipDescription && !hasTitle(/跳过进攻|中毒/)) {
       pushAuto('被动', entity.attackSkipDescription);
     }
-    if (entity.canDefendHigh && !hasTitle(/高牌|4\/5\/6/)) {
-      pushAuto('被动', '可用高牌（4/5/6/7）防御');
+    if (entity.canDefendHigh && !hasTitle(/高牌|3\/4\/5|4\/5\/6/)) {
+      pushAuto('被动', '可用 3/4/5 牌防御（白 5 可能无效果）');
     }
     // Boss 手牌上限是牌库注册配置，不是被动（desert.md：鬣狗/阿努比斯等）
     const isBoss = !!(window.AdventureRegistry && typeof window.AdventureRegistry.getBoss === 'function'

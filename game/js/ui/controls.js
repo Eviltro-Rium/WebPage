@@ -123,7 +123,7 @@ _renderControls() {
                 html += `<button class="ctrl-btn btn-skip" id="btn-skip">跳过</button>`;
             } else {
                 if (s.hasPlayedBlackDefend) {
-                    html += `<span class="ctrl-hint">搭桥完成：请选择一张数字≤3的牌触发防御技能</span>`;
+                    html += `<span class="ctrl-hint">搭桥完成：请选择一张数字≤2的牌触发防御技能</span>`;
                 }
                 html += `<button class="ctrl-btn btn-defend" id="btn-defend" ${!hasCard ? 'disabled' : ''}>防御</button>`;
                 html += `<button class="ctrl-btn btn-use-item" id="btn-use-item" ${this._selectedCombatItem == null ? 'disabled' : ''}>使用道具</button>`;
@@ -391,9 +391,8 @@ _showSkillOverlay() {
     ];
     const NPC_SKILL_GRID = [
         { atkKey: 0, defKey: 0, label: '1' }, { atkKey: 1, defKey: 1, label: '2' },
-        { atkKey: 2, defKey: 2, label: '3' }, { atkKey: 7, defKey: 3, label: '0' },
-        { atkKey: 3, defKey: -1, label: '4' }, { atkKey: 4, defKey: -1, label: '5' },
-        { atkKey: 5, defKey: -1, label: '6' }, { atkKey: 6, defKey: -1, label: '7' }
+        { atkKey: 2, defKey: -1, label: '3' }, { atkKey: 3, defKey: -1, label: '4' },
+        { atkKey: 4, defKey: -1, label: '5' }, { atkKey: 5, defKey: 2, label: '0' }
     ];
     const stripPrefix = t => (t || '').replace(/^\d+\s+/, '');
     const tagifySkill = t => {
@@ -417,7 +416,9 @@ _showSkillOverlay() {
         let def = (SKILL_DATA && SKILL_DATA.defend && SKILL_DATA.defend[ch.name]) || [];
         if (ch.stage && ch.stage > 1 && SKILL_DATA) {
             const modTable = (SKILL_DATA.castleStageMods && SKILL_DATA.castleStageMods[ch.name]) ||
-                (SKILL_DATA.forestStageMods && SKILL_DATA.forestStageMods[ch.name]);
+                (SKILL_DATA.forestStageMods && SKILL_DATA.forestStageMods[ch.name]) ||
+                (SKILL_DATA.desertStageMods && SKILL_DATA.desertStageMods[ch.name]) ||
+                (SKILL_DATA.oceanStageMods && SKILL_DATA.oceanStageMods[ch.name]);
             if (modTable && modTable[ch.stage]) {
                 if (modTable[ch.stage].attack) atk = modTable[ch.stage].attack;
                 if (modTable[ch.stage].defend) def = modTable[ch.stage].defend;
@@ -429,7 +430,7 @@ _showSkillOverlay() {
             if (fn) {
                 const mkCard = vv => ({ value: vv, isNumberCard: true, isItemCard: false, isBlack: false, isWhite: true });
                 const st = ch.stage || 1;
-                for (const vv of [1, 2, 3, 4, 5, 6, 7, 0]) {
+                for (const vv of [1, 2, 3, 4, 5, 0]) {
                     const aDesc = fn(ch.name, mkCard(vv), false, { stage: st });
                     const dDesc = fn(ch.name, mkCard(vv), true, { stage: st });
                     if (aDesc) { if (!dynAtk) dynAtk = {}; dynAtk[vv] = aDesc; }
@@ -454,7 +455,7 @@ _showSkillOverlay() {
             const rv = parseInt(row.label, 10);
             let atkDesc, defDesc;
             const hasDefSlot = ch.isNpc
-                ? (['1', '2', '3', '0'].includes(row.label) || (canDefendHigh && ['4', '5', '6', '7'].includes(row.label)))
+                ? (['1', '2', '0'].includes(row.label) || (canDefendHigh && ['3', '4'].includes(row.label)))
                 : (row.defKey >= 0);
             if (dynAtk) atkDesc = dynAtk[rv] ? colorize(dynAtk[rv]) : '—';
             else atkDesc = atk[row.atkKey] ? colorize(stripPrefix(atk[row.atkKey])) : '—';

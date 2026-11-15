@@ -9,21 +9,19 @@
         if (crit === 0) return x.opponent.hp <= 4 ? 90 : 62;
         return 58 + crit * 8;
       }
-      if (v === 4) return x.opponent.hp <= 5 ? 88 : 68;
-      if (v === 7) {
+      if (v === 3) return x.opponent.hp <= 5 ? 88 : 68;
+      if (v === 5) {
         let divisor = eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8;
         let dmg = Math.ceil(x.self.hp / divisor);
         return dmg >= x.opponent.hp ? 92 : 50 + dmg * 4;
       }
-      if (v === 5) {
+      if (v === 4) {
         let candidates = x.hand.filter(card => card !== c && card.isNumberCard);
         if (!candidates.length) return -100;
         let max = Math.max(...candidates.map(card => card.value));
-        const damage = Math.ceil(max * 1.5);
+        const damage = max * 2;
         return damage >= x.opponent.hp ? 90 : 55 + damage * 3;
       }
-      if (v === 6) return 58;
-      if (v === 3) return 52;
       if (v === 2) return 48;
       if (v === 1) return 62;
       return null;
@@ -31,7 +29,6 @@
 
     defendScore(eng, v, c, top, x) {
       if (v === 0) return x.lethal ? 96 : x.incomingDamage >= 5 ? 82 : 60;
-      if (v === 3) return x.missingHp >= 2 ? 64 : 40;
       if (v === 2) return x.incomingDamage >= 3 ? 56 : 38;
       if (v === 1) return 52 + Math.min(16, Math.ceil(x.incomingDamage / 2) * 3);
       return null;
@@ -40,127 +37,42 @@
     keepScore(eng, c, x) {
       if (!c.isNumberCard) return null;
       if (c.value === 0) return 78;
-      if (c.value === 7) return 55 + Math.ceil(x.self.hp / (eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8)) * 3;
-      if (c.value === 4) return 66;
-      if (c.value === 5) return x.hand.filter(card => card !== c && card.isNumberCard).length ? 60 : 20;
-      if (c.value === 6) return 48;
+      if (c.value === 5) return 55 + Math.ceil(x.self.hp / (eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8)) * 3;
+      if (c.value === 3) return 66;
+      if (c.value === 4) return x.hand.filter(card => card !== c && card.isNumberCard).length ? 60 : 20;
       return 28 + c.value * 5;
     },
 
     skip(eng, c, x, phase) {
-      return phase === 'attack' && c.value === 5 && !x.hand.some(card => card !== c && card.isNumberCard);
+      return phase === 'attack' && c.value === 4 && !x.hand.some(card => card !== c && card.isNumberCard);
     },
 
     specialEffect(eng, n, v, c, a, t, owner, helpers) {
-      if (v === 3) {
-        let r = eng.reveal('Otto 3牌判定');
-        if (!r) return { d: 0, skip: true, unblock: false };
-        // Zero and item judgements are returned to Otto's hand and skip
-        // defense; only numeric cards deal damage and enter the discard pile.
-        if (r.isItemCard || r.value === 0) {
-          helpers.selfHand.push(r);
-          eng.emit('desc', `Otto 3牌：${eng.cardText(r)}加入手牌，跳过防御`);
-          return { d: 0, skip: true, unblock: false };
-        }
-        let dmg = r.value;
-        if (dmg > 4) {
-          eng.hurt(a, 2);
-          if (a.crit < 3) a.crit++;
-          eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
-        }
-        eng.discardWithEvent(r, owner, { from: 'reveal', faceUp: true, desc: `Otto 3牌将${eng.cardText(r)}置于弃牌库底` });
-        eng.emit('desc', `Otto 3牌：${eng.cardText(r)}造成${dmg}点伤害${dmg > 4 ? '，自伤2+1层暴击' : ''}`);
-        return { d: dmg, skip: false, unblock: false };
-      }
-
       if (v === 4) {
-        if (a.crit < 3) a.crit++;
-        eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
-        return { d: 5, skip: false, unblock: false };
-      }
-
-      if (v === 6) {
-        eng.refillDeckIfNeeded();
-        let c1 = eng.deck.length ? eng.deck.pop() : null;
-        eng.refillDeckIfNeeded();
-        let c2 = eng.deck.length ? eng.deck.pop() : null;
-        eng.s.revealCards = [];
-        if (c1) eng.s.revealCards.push(helpers.copy(c1));
-        if (c2) eng.s.revealCards.push(helpers.copy(c2));
-        eng.emit('reveal', `Otto 6牌：翻开牌库顶${eng.s.revealCards.length}张牌判定`, c1 || c2 || null, {
-          who: owner, from: 'deck', cards: eng.s.revealCards.map(helpers.copy)
-        });
-        let d = 0, skip = false, unblock = false, isDrain = false;
-        if (c1 && c2) {
-          if (c1.isItemCard && c2.isItemCard) {
-            d = 3; skip = true; unblock = true; isDrain = true;
-            eng.emit('desc', 'Otto 6牌：两张道具牌，吸取3点生命（不可防御）');
-          } else if (c1.isItemCard || c2.isItemCard) {
-            let nc = c1.isItemCard ? c2 : c1;
-            d = nc.value; unblock = true;
-            eng.emit('desc', `Otto 6牌：1张道具牌，造成${d}点伤害（不可防御）`);
-          } else {
-            d = c1.value + c2.value;
-            eng.emit('desc', `Otto 6牌：两张数字牌，造成${d}点伤害`);
-          }
-        } else if (c1) {
-          if (c1.isItemCard) {
-            d = 3; skip = true; unblock = true; isDrain = true;
-            eng.emit('desc', 'Otto 6牌：仅1张道具牌，吸取3点生命（不可防御）');
-          } else {
-            d = c1.value;
-            eng.emit('desc', `Otto 6牌：仅1张数字牌，造成${d}点伤害`);
-          }
-        }
-        if (c2) eng.deck.push(c2);
-        if (c1) eng.deck.push(c1);
-        eng.emit('desc', 'Otto 6牌：判定完毕，两张牌放回牌库顶');
-        return { d, skip, unblock, isDrain };
-      }
-
-      if (v === 5) {
         let candidates = helpers.selfHand.filter(card => card.isNumberCard);
         if (!candidates.length) {
-          eng.emit('desc', 'Otto 5牌：没有可判定的数字牌');
+          eng.emit('desc', 'Otto 4牌：没有可判定的数字牌');
           return { d: 0, skip: true, unblock: false };
         }
         let best = candidates.reduce((b, card) => card.value > b.value ? card : b);
         helpers.selfHand.splice(helpers.selfHand.indexOf(best), 1);
         if (best.isWhite) best.chosenColor = eng.effective(c);
         eng.s.revealCards = [helpers.copy(best)];
-        eng.emit('reveal', `Otto 5牌判定：${eng.cardText(best)}`, best, { who: owner, from: 'hand' });
-        eng.discardWithEvent(best, owner, { from: 'reveal', faceUp: true, desc: `Otto 5牌将${eng.cardText(best)}置于弃牌库底` });
-        const amount = Math.ceil(best.value * 1.5);
+        eng.emit('reveal', `Otto 4牌判定：${eng.cardText(best)}`, best, { who: owner, from: 'hand' });
+        eng.discardWithEvent(best, owner, { from: 'reveal', faceUp: true, desc: `Otto 4牌将${eng.cardText(best)}置于弃牌库底` });
+        const amount = best.value * 2;
         if (best.isWhite) {
           eng.heal(a, amount);
           if (a.crit < 3) a.crit++;
           eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
-          eng.emit('desc', `Otto 5牌：白牌恢复${amount}点+1层暴击`);
+          eng.emit('desc', `Otto 4牌：白牌恢复${amount}点+1层暴击`);
           return { d: 0, skip: true, unblock: false };
         }
-        eng.emit('desc', `Otto 5牌：造成${amount}点伤害`);
+        eng.emit('desc', `Otto 4牌：造成${amount}点伤害`);
         return { d: amount, skip: false, unblock: false };
       }
 
 
-
-      if (v === 7) {
-        let divisor = eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8;
-        let dmg = Math.ceil(a.hp / divisor);
-        let unblock = dmg <= 3;
-        eng.emit('desc', `Otto 7牌：自身生命${a.hp}/${divisor}=${dmg}点伤害${unblock ? '（不可防御）' : ''}`);
-        return { d: dmg, skip: false, unblock };
-      }
-
-      if (v === 0) {
-        let stacks = Math.min(a.crit || 0, 3);
-        let d = 4 + stacks * 3;
-        if (stacks > 0) {
-          eng.emit('desc', `Otto 0牌：拥有${stacks}层暴击，造成${d}点伤害`);
-          return { d, skip: false, unblock: false };
-        }
-        return { d: 4, skip: false, unblock: true };
-      }
 
       return null;
     }

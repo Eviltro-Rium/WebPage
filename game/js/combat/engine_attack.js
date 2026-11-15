@@ -7,6 +7,24 @@
 
   const clone = value => Combat.Card.clone(value);
   const EngineAttack = {
+    teammateOf(entity) {
+      if (!this.s.is1v2 || this.s.isAdventure || !entity) return null;
+      const teammate = entity === this.s.ai ? this.s.ai2 : entity === this.s.ai2 ? this.s.ai : null;
+      return teammate && teammate.alive ? teammate : null;
+    },
+
+    ottoCoverFor(defender) {
+      const teammate = this.teammateOf(defender);
+      return teammate && this.name(defender) === 'Serenity' && this.name(teammate) === 'Otto'
+        ? teammate : null;
+    },
+
+    settleOttoCover(otto, excess) {
+      const damage = Math.floor(excess / 2);
+      this.emit('desc', 'Otto 承担队友超出的' + excess + '点伤害，格挡' + (excess - damage) + '点');
+      if (damage > 0) this.hurt(otto, damage);
+    },
+
     prepareAttackSettlement(remaining, defenderKey) {
       const attack = this.s.pendingAttack;
       if (!attack || attack.effectsPrepared) return this.prepareDivingMitigation(remaining, defenderKey);
@@ -24,10 +42,15 @@
       if (!character || typeof character.damageAtSettlement !== 'function') return this.prepareDivingMitigation(remaining, defenderKey);
       const live = character.damageAtSettlement(this, formula.value, attacker, target);
       if (live == null) return this.prepareDivingMitigation(remaining, defenderKey);
-      const preview = Math.max(0, Number(attack.damage) || 0);
-      const final = attack.attackModifier === 'magmaVein'
+      const basePreview = Math.max(0, Number(attack.damage) || 0);
+      const preview = attack.ottoCoveredDamage ? Math.min(6, basePreview) : basePreview;
+      let final = attack.attackModifier === 'magmaVein'
         ? Math.max(0, Math.ceil(Number(live) * 1.5) + (attack.magmaFlatBonus || 0))
-        : Math.max(0, preview + (Number(live) - formula.preview) * (attack.damageMultiplier == null ? 1 : attack.damageMultiplier));
+        : Math.max(0, basePreview + (Number(live) - formula.preview) * (attack.damageMultiplier == null ? 1 : attack.damageMultiplier));
+      if (this.ottoCoverFor(target)) {
+        attack.ottoCoveredDamage = Math.max(0, final - 6);
+        final = Math.min(6, final);
+      }
       const defense = this.s.defCard, defenseCharacter = global.CharacterRegistry.get(this.name(target));
       const mitigation = defense && defenseCharacter && typeof defenseCharacter.damageAfterDefense === 'function'
         ? defenseCharacter.damageAfterDefense(defense.value, final, defenseSnapshot, this) : null;
@@ -145,6 +168,11 @@
       const attack = this.s.pendingAttack;
       if (attack && attack.divingHandled ? attack.divingBlocked : this.divingBlocksDamage(target, this.s.atkCard)) damage = 0;
       else if (!pending.avoidanceHandled && !isDrain && target !== this.s.player) damage = this.applyDefenderAvoidance(target, damage);
+      const otto = this.ottoCoverFor(target);
+      if (otto && attack && attack.ottoCoveredDamage > 0) {
+        this.settleOttoCover(otto, attack.ottoCoveredDamage);
+        attack.ottoCoveredDamage = 0;
+      }
       const counters = (this.s.queuedCounterHits || []).slice();
       this.s.queuedCounterHits = [];
       const result = this.dealAttackHit(attacker, target, damage, isDrain,

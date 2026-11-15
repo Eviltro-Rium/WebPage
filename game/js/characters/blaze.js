@@ -19,7 +19,7 @@
       if (v >= 1 && v <= 2) return [0, 3, 4][v] + passive;
       return null;
     },
-    attackEffectTiming: { 0: 'afterDamage', 1: 'afterDamage', 5: 'afterDamage' },
+    attackEffectTiming: { 0: 'afterDamage', 1: 'afterDamage' },
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, burnSelf, heal } = helpers;
       let d = 0;
@@ -28,14 +28,15 @@
       const passive = a.burn ? 1 : 0;
       if (v === 1) {
         d = 3 + passive;
-        unblock = true;
+        burnSelf(1);
+        burn(1);
       }
       if (v === 2) {
         d = 4 + passive;
       }
       if (v === 3) {
         if (burnSelf) burnSelf(1);
-        d = 2 + (a.burn || 0) + passive;
+        d = 2 + (a.burn || 0) + (a.burn ? 1 : 0);
       }
       if (v === 4) {
         const burnLayers = a.burn || 0;
@@ -55,7 +56,7 @@
         const fieldBurn = [eng.s.player, eng.s.ai, eng.s.ai2]
           .filter((entity, index, all) => entity && all.indexOf(entity) === index)
           .reduce((sum, entity) => sum + (entity.burn || 0), 0);
-        d = Math.ceil(fieldBurn) + passive;
+        d = Math.ceil(fieldBurn) + (a.burn ? 1 : 0);
       }
       if (v === 0) {
         d = 5;
