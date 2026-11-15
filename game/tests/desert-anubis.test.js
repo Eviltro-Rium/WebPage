@@ -99,7 +99,7 @@ test('Anubis loot: Zero 1-6; 11/12 dual-source potions', () => {
 
 test('Anubis attack hooks follow card value and color', () => {
   const m = getBoss('Anubis');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.attackDamage(numCard(v)), 4);
     assert.equal(m.attackBurn(numCard(v, 'RED')), 2);
     assert.equal(m.attackBurn(numCard(v, 'BLUE')), 0);
@@ -114,7 +114,7 @@ test('Anubis attack hooks follow card value and color', () => {
   }
   const wildYellow = Object.assign(numCard(2, 'WILD'), { chosenColor: 'YELLOW' });
   assert.equal(m.attackQuicksand(wildYellow), 1);
-  for (const v of [4, 5, 6]) {
+  for (const v of [3, 4]) {
     assert.equal(m.attackDamage(numCard(v)), 6);
     assert.equal(m.attackUnblockable(numCard(v, 'YELLOW')), true);
     assert.equal(m.attackUnblockable(numCard(v, 'RED')), false);
@@ -129,12 +129,12 @@ test('Anubis attack hooks follow card value and color', () => {
 
 test('Anubis defend hooks', () => {
   const m = getBoss('Anubis');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.defendCounter(numCard(v), 7), 3);
     assert.equal(m.defendHeal(numCard(v)), 1);
     assert.equal(m.defendClearDebuffs(numCard(v)), false);
   }
-  for (const v of [4, 5, 6]) {
+  for (const v of [3, 4]) {
     assert.equal(m.defendCounter(numCard(v), 7), 0);
     assert.equal(m.defendHeal(numCard(v)), 0);
   }
@@ -150,11 +150,11 @@ test('Anubis stage mods: Stage 3 base attacks, Stage 4 defend heal +1', () => {
   assert.equal(s2.defendHeal(numCard(2)), 1);
   const s3 = applyStageMods(m, 3);
   assert.equal(s3.attackDamage(numCard(2)), 4);
-  assert.equal(s3.attackDamage(numCard(5)), 6);
+  assert.equal(s3.attackDamage(numCard(4)), 6);
   assert.equal(s3.attackDamage(numCard(0)), 0);
   assert.equal(s3.defendHeal(numCard(2)), 1);
   const s4 = applyStageMods(m, 4);
-  assert.equal(s4.attackDamage(numCard(5)), 6);
+  assert.equal(s4.attackDamage(numCard(4)), 6);
   assert.equal(s4.defendHeal(numCard(2)), 2);
   assert.equal(s4.defendHeal(numCard(0)), 0);
 });
@@ -177,14 +177,14 @@ test('Anubis 0 attack heals 3, clears own debuffs, draws 2, deals no damage', t 
 
 test('Anubis 4/5/6 yellow attack is unblockable, other colors are not', t => {
   const eng = stagedEngine(t, 2);
-  const yellow = numCard(5, 'YELLOW');
+  const yellow = numCard(4, 'YELLOW');
   eng.s.atkCard = yellow; eng.s.atkOwner = 'ai';
-  const r = eng.effect('Anubis', 5, yellow, eng.s.ai, eng.s.player);
+  const r = eng.effect('Anubis', 4, yellow, eng.s.ai, eng.s.player);
   assert.equal(r.d, 6);
   assert.equal(r.unblock, true);
-  const red = numCard(5, 'RED');
+  const red = numCard(4, 'RED');
   eng.s.atkCard = red;
-  const r2 = eng.effect('Anubis', 5, red, eng.s.ai, eng.s.player);
+  const r2 = eng.effect('Anubis', 4, red, eng.s.ai, eng.s.player);
   assert.equal(r2.d, 6);
   assert.ok(!r2.unblock);
 });
@@ -247,11 +247,11 @@ test('Anubis skill panel text', () => {
   for (const stage of [2, 3, 4]) {
     const bonus = stage >= 3 ? 1 : 0;
     assert.match(describe('Anubis', numCard(2), false, { stage }), new RegExp('^' + 4 + '🗡️，.*🔴施加2层\\[灼伤\\].*🟡施加\\[流沙\\].*🔵施加\\[失温\\].*🟢获得\\[茂盛\\]'));
-    assert.match(describe('Anubis', numCard(5), false, { stage }), new RegExp('^' + 6 + '🗡️，.*🟡则不可防御'));
+    assert.match(describe('Anubis', numCard(4), false, { stage }), new RegExp('^' + 6 + '🗡️，.*🟡则不可防御'));
     assert.equal(describe('Anubis', numCard(0), false, { stage }), '回3❤️，清除自身所有负面状态，抽2🃏');
     assert.equal(describe('Anubis', numCard(2), true, { stage }), '反击3🗡️，回' + (stage >= 4 ? 2 : 1) + '❤️');
     assert.equal(describe('Anubis', numCard(0), true, { stage }), '清除自身所有负面状态，反击相同点伤害');
-    assert.equal(describe('Anubis', numCard(5), true, { stage }), '无防御效果');
+    assert.equal(describe('Anubis', numCard(4), true, { stage }), '无防御效果');
   }
 });
 

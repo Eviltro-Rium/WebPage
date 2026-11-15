@@ -1262,19 +1262,12 @@
       const stage = this.s.adventureStage || 1;
       const advEngine = this._adventureEngine;
       if (!advEngine) return;
-      if (stage === 2) {
-        if (advEngine.s.currency.gold > 0) {
-          advEngine.s.currency.gold--;
-          this.emit('desc', '城堡哥布林被动：玩家损失1金币');
-        }
-      } else if (stage >= 3) {
-        if (advEngine.s.consumables && advEngine.s.consumables.length) {
-          const random = window.FurryGame && window.FurryGame.CombatRuntime
-            ? window.FurryGame.CombatRuntime.random : Math.random;
-          const idx = Math.floor(random() * advEngine.s.consumables.length);
-          const removed = advEngine.s.consumables.splice(idx, 1)[0];
-          const def = window.AdventureRegistry.getItem(removed);
-          this.emit('desc', '城堡哥布林被动：玩家损失道具[' + (def ? def.displayName : removed) + ']');
+      if (stage >= 3) {
+        const gold = advEngine.s.currency && advEngine.s.currency.gold;
+        if (gold > 0) {
+          const spent = Math.min(2, gold);
+          advEngine.s.currency.gold -= spent;
+          this.emit('desc', '城堡哥布林被动：玩家损失' + spent + '金币');
         }
       }
     }
@@ -1349,7 +1342,7 @@
       this.emit('desc', '复活十字：恢复' + healAmt + '点生命，配饰损坏消失');
     }
 
-    // DesertSobek 被动[丰饶]：致死时若有[茂盛]，清除所有 buff，血量回到 15。
+    // DesertSobek 被动[丰饶]：致死时若有[茂盛]，清除所有 buff，血量回到 10。
     _tryDesertSobekFertility(entity, beforeHp) {
       if (!this.s || !this.s.isAdventure) return;
       if (!entity || (entity !== this.s.ai && entity !== this.s.ai2)) return;
@@ -1364,12 +1357,12 @@
         entity.chaos_red = false; entity.chaos_yellow = false;
         entity.chaos_blue = false; entity.chaos_green = false;
       }
-      const reviveHp = Math.min(15, entity.maxHp || 15);
+      const reviveHp = Math.min(10, entity.maxHp || 10);
       entity.hp = reviveHp;
       entity.alive = true;
       const who = this._who ? this._who(entity) : (entity === this.s.ai2 ? 'ai2' : 'ai');
       this.emit('buff', '[丰饶]复活', null, { who, kind: 'fertility', stacks: 1 });
-      this.emit('desc', '[丰饶]：清除所有buff，恢复至15点生命');
+      this.emit('desc', '[丰饶]：清除所有buff，恢复至10点生命');
     }
 
     afterAttack() {

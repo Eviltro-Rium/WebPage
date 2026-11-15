@@ -12,7 +12,7 @@
 
   function isPassNumber(mod, card) {
     return !!(card && card.isNumberCard &&
-      (card.value === 7 && !mod.sevenSkill || (card.value === 0 && !AdvR.getBoss(mod.name))));
+      (card.value === 5 && !mod.fiveSkill || (card.value === 0 && !AdvR.getBoss(mod.name))));
   }
 
   function applyStageMods(mod, stage) {
@@ -97,8 +97,8 @@
           mod.name === 'FrozenOrca' && v === 0 ||
           mod.name === 'ForestPanda' && v === 0 ||
           mod.name === 'ForestDryad' && (v === 0 || v >= 1 && v <= 3) ||
-          mod.name === 'CastleEagle' && (v === 0 || v >= 4 && v <= 6) ||
-          mod.name === 'CastleGargoyle' && v >= 1 && v <= 6;
+          mod.name === 'CastleEagle' && (v === 0 || v >= 3 && v <= 4) ||
+          mod.name === 'CastleGargoyle' && v >= 0 && v <= 4;
         return before ? 'beforeDamage' : 'afterDamage';
       },
       damageAtSettlement(eng, v, a, t) {
@@ -190,8 +190,8 @@
             mod.name === 'FrozenOrca' && v === 0 ||
             mod.name === 'ForestPanda' && v === 0 ||
             mod.name === 'ForestDryad' && (v === 0 || v >= 1 && v <= 3) ||
-            mod.name === 'CastleEagle' && (v === 0 || v >= 4 && v <= 6) ||
-            mod.name === 'CastleGargoyle' && v >= 1 && v <= 6)
+            mod.name === 'CastleEagle' && (v === 0 || v >= 3 && v <= 4) ||
+            mod.name === 'CastleGargoyle' && v >= 0 && v <= 4)
             ? 'beforeDamage' : 'afterDamage');
         if (effectTiming === 'beforeDamage') {
           if (typeof mod.attackPoison === 'function') {
@@ -319,7 +319,7 @@
           eng.emit('desc', a.name + '清除自身' + cleared + '层负面效果，造成' + d + '点伤害');
         }
         // 沙漠鬣狗专属0牌：翻开玩家牌库顶判定，始终置入玩家弃牌堆；
-        // 数字牌 value>0 → ceil(value×1.5) 伤害；否则施加2层流血+[荆棘]并抽1张（伤害0跳过防御）
+        // 数字牌 value>0 → 点数×2 伤害；否则施加2层流血+[荆棘]并抽1张（伤害0跳过防御）
         if (typeof mod.attackHyenaJudge === 'function' && mod.attackHyenaJudge(c)) {
           const pp = eng.piles && eng.piles.player;
           if (pp) {
@@ -330,7 +330,7 @@
               pp.discard.push(drawn);
               const numVal = (drawn.isNumberCard && !drawn.isItemCard) ? Math.max(0, Number(drawn.value) || 0) : 0;
               if (drawn.isNumberCard && !drawn.isItemCard && numVal > 0) {
-                d = Math.ceil(numVal * 1.5);
+                d = numVal * 2;
                 eng.emit('desc', eng.cardText(drawn) + '为数字牌，造成' + d + '点伤害并置入玩家弃牌堆');
               } else {
                 d = 0;
@@ -1095,7 +1095,7 @@
     // DesertHyena defend: half counter 1/2/3; 0 counters 6 + crit + player discard (desert.md).
     if (mod.name === 'DesertHyena' && card.isNumberCard) {
       const v = card.value;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         const heal = typeof mod.defendHeal === 'function' ? (mod.defendHeal(card) || 0) : 0;
         return '反击一半伤害（向上取整）' + (heal > 0 ? '，恢复' + heal + '点生命' : '');
       }
@@ -1109,7 +1109,7 @@
     // Anubis defend copy (desert.md): keep doc order (clear first, then counter on 0).
     if (mod.name === 'Anubis' && card.isNumberCard) {
       const v = card.value;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         const heal = typeof mod.defendHeal === 'function' ? mod.defendHeal(card) : 0;
         return '反击3点伤害，恢复' + heal + '点生命';
       }
@@ -1120,7 +1120,7 @@
     if (mod.name === 'DesertSobek' && card.isNumberCard) {
       const v = card.value;
       const lushText = Number(opts.stage) >= 4 ? '；🟢额外获得[茂盛]' : '';
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         const heal = typeof mod.defendHeal === 'function' ? (mod.defendHeal(card) || 0) : 3;
         return '恢复' + heal + '点生命' + lushText;
       }
@@ -1130,9 +1130,10 @@
     // DesertBison defend: counter card value + bleed (desert.md).
     if (mod.name === 'DesertBison' && card.isNumberCard) {
       const v = card.value;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         const bleed = (Number(opts.stage) || 1) >= 4 ? 2 : 1;
-        return '反击1/2/3点伤害，施加' + bleed + '层[流血]';
+        const counter = (Number(opts.stage) || 1) >= 4 ? 3 : 2;
+        return '反击' + counter + '点伤害，施加' + bleed + '层[流血]';
       }
       return '无防御效果';
     }
@@ -1184,7 +1185,7 @@
       if (typeof mod.defendBlock === 'function') {
         if (mod.name === 'CastleFirefly') {
           const v = card && card.value;
-          if (v >= 1 && v <= 3) {
+          if (v >= 1 && v <= 2) {
             parts.push((opts.stage >= 4 ? '格挡1+道具数量点伤害' : '格挡向上取整(1+道具数量×1/2)点伤害'));
           }
         } else if (mod.name === 'ForestPanda') {
@@ -1309,9 +1310,8 @@
       return '无进攻效果';
     }
     // CastleBat 4/5/6: drain scales with player bleed (castle.md).
-    if (mod.name === 'CastleBat' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
-      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      return '吸取' + (2 + stageBonus) + '+玩家[流血]层数点[生命]（不可防御）';
+    if (mod.name === 'CastleBat' && card.isNumberCard && card.value >= 3 && card.value <= 4) {
+      return '吸取3+玩家[流血]层数点[生命]（不可防御）';
     }
     // FrozenWhale: AoE on 4/5/6, diving on 1/2/3, deferred hypothermia (ocean.md).
     if (mod.name === 'FrozenWhale' && card.isNumberCard) {
@@ -1343,21 +1343,19 @@
       return '无进攻效果';
     }
     // CastleGhost 4/5/6: keep full branch text (castle.md), not live hand-size substitution.
-    if (mod.name === 'CastleGhost' && card.isNumberCard && card.value >= 4 && card.value <= 6) {
-      return (Number(opts.stage) || 1) >= 3
-        ? '若打出后手上正好剩1张牌，按剩余手牌点数的2倍造成[伤害]；否则本轮空过'
-        : '若打出后手上正好剩1张牌，按剩余手牌点数的1.5倍（向上取整）造成[伤害]；否则本轮空过';
+    if (mod.name === 'CastleGhost' && card.isNumberCard && card.value >= 3 && card.value <= 4) {
+      return '若打出后手上正好剩1张牌，按剩余手牌点数的+5造成[伤害]；否则本轮空过';
     }
     // CastleFox / FrozenOceanSamoyed: hand-size damage as formula (not live count).
     if ((mod.name === 'CastleFox' || mod.name === 'FrozenOceanSamoyed') && card.isNumberCard) {
       const v = card.value;
       const stage = Number(opts.stage) || 1;
       if (mod.name === 'CastleFox') {
-        if (v >= 1 && v <= 3) {
-          const dmg = v + (stage >= 3 ? 1 : 0);
+        if (v >= 1 && v <= 2) {
+          const dmg = v + 1 + (stage >= 3 ? 1 : 0);
           return '造成' + dmg + '点[伤害]（不可防御）';
         }
-        if (v >= 4 && v <= 6) return '造成玩家手牌数点[伤害]';
+        if (v >= 3 && v <= 4) return '造成玩家手牌数点[伤害]';
         return '无进攻效果';
       }
       if (v >= 1 && v <= 3) {
@@ -1438,10 +1436,10 @@
     if (mod.name === 'DesertSandworm' && card.isNumberCard) {
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '造成' + (4 + stageBonus) + '点[伤害]，若目标有[沙盲]则不可防御';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '造成' + (5 + stageBonus) + '点[伤害]，获得[寄生]';
       }
       return '无进攻效果';
@@ -1450,10 +1448,10 @@
     if (mod.name === 'DesertScarab' && card.isNumberCard) {
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '造成' + (3 + stageBonus) + '点[伤害]，按技能牌颜色施加：🔴→2层[灼伤]、🟡→[荆棘]、🔵→[冰封]、🟢→[中毒]';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '造成' + (4 + stageBonus) + '点[伤害]，获得1层[飞翔]';
       }
       return '无进攻效果';
@@ -1462,10 +1460,10 @@
     if (mod.name === 'DesertScorpion' && card.isNumberCard) {
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '造成' + (3 + stageBonus) + '点[伤害]，若目标有[中毒]则不可防御';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '造成' + (2 + stageBonus) + '点[伤害]（不可防御），施加1层[荆棘]，施加1层[中毒]';
       }
       return '无进攻效果';
@@ -1474,10 +1472,10 @@
     if (mod.name === 'DesertViper' && card.isNumberCard) {
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '造成3点[伤害]，施加1层[中毒]';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '吸取' + (2 + stageBonus) + '+玩家[中毒]层数点生命（不可防御）';
       }
       return '无进攻效果';
@@ -1486,10 +1484,10 @@
     // unconditional damage by the generic description generator.
     if (mod.name === 'DesertAntlion' && card.isNumberCard) {
       const v = card.value;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '造成' + mod.attackDamage(card, ctx) + '点[伤害]，目标有[流沙]时不可防御';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '造成' + mod.attackDamage(card, ctx) + '点[伤害]，施加1层[流沙]';
       }
       return '无进攻效果';
@@ -1497,10 +1495,10 @@
     // DesertHyena: bleed-scaled 1/2/3, hand-size+bleed+crit 4/5/6, deck judge 0 (desert.md).
     if (mod.name === 'DesertHyena' && card.isNumberCard) {
       const v = card.value;
-      if (v >= 1 && v <= 3) {
-        return '造成2×[流血]层数点[伤害]';
+      if (v >= 1 && v <= 2) {
+        return '造成3+[流血]层数点[伤害]';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         let line = '施加1层[流血]，获得[暴击]，造成玩家手牌数点[伤害]';
         if (typeof mod.attackUnblockable === 'function') {
           const yellow = Object.assign({}, card, { color: 'YELLOW', chosenColor: 'YELLOW' });
@@ -1509,18 +1507,17 @@
         return line;
       }
       if (v === 0) {
-        // 面板定稿（游戏ui）：翻开牌库顶1🃏：数字牌（非0）→点数×1.5🗡️；否则2层[流血]+[荆棘]，抽1🃏
-        return '翻开牌库顶1🃏：数字牌（非0）→点数×1.5点[伤害]；否则2层[流血]+[荆棘]，抽1🃏';
+        return '翻开牌库顶1🃏：数字牌（非0）→点数×2点[伤害]；否则2层[流血]+[荆棘]，抽1🃏';
       }
       return '无进攻效果';
     }
     // Anubis: color-based effect on 1/2/3, yellow-unblockable 4/5/6, self-restore 0 (desert.md).
     if (mod.name === 'Anubis' && card.isNumberCard) {
       const v = card.value;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '造成' + 4 + '点[伤害]，按技能牌颜色：🔴施加2层[灼伤]、🟡施加[流沙]、🔵施加[失温]、🟢获得[茂盛]';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '造成' + 6 + '点[伤害]，若技能牌为🟡则不可防御';
       }
       if (v === 0) {
@@ -1532,10 +1529,10 @@
     if (mod.name === 'DesertSobek' && card.isNumberCard) {
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '造成' + (4 + stageBonus) + '点[伤害]，施加1层[流血]';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '造成' + (6 + stageBonus) + '点[伤害]；🟢获得[茂盛]、🟡获得[暴击]';
       }
       if (v === 0) {
@@ -1549,10 +1546,10 @@
     if (mod.name === 'DesertBison' && card.isNumberCard) {
       const v = card.value;
       const mult = (Number(opts.stage) || 1) >= 3 ? 3 : 2;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '施加1层[流血]，造成' + mult + '×[流血]层数点[伤害]';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '造成2点[伤害]（不可防御），施加1层[流血]，获得1层[暴击]';
       }
       return '无进攻效果';
@@ -1561,10 +1558,10 @@
     if (mod.name === 'DesertVulture' && card.isNumberCard) {
       const v = card.value;
       const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
-      if (v >= 1 && v <= 3) {
+      if (v >= 1 && v <= 2) {
         return '造成' + (3 + stageBonus) + '点[伤害]，若技能牌为🟡施加2层[沙盲]，否则获得[飞翔]';
       }
-      if (v >= 4 && v <= 6) {
+      if (v >= 3 && v <= 4) {
         return '造成' + (5 + stageBonus) + '点[伤害]，清除玩家所有正面buff';
       }
       return '无进攻效果';

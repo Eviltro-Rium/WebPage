@@ -3,7 +3,7 @@
  *
  * 与主引擎的差异：
  *   - 玩家牌库去掉「交换手牌」道具牌（swapHand）。
- *   - 普通怪物与 Boss 使用同一牌库：白0一张，白1~3各4张、白4~6各2张、白7两张，紫/绿魔法各一张。
+ *   - 普通怪物与 Boss 使用同一牌库：白0×2、白1/2×6、白3/4×4、白5（轮空）×2，紫/绿魔法各一张。
  *   - 弃牌库拆分为不可见的玩家弃牌库与 NPC 弃牌库，互不混淆。
  *   - 弃牌库顶（DiscardTop）始终对应玩家弃牌库中的最后一张牌；它只是牌库数据的便捷视图，不会额外占用一张牌。
  *   - 怪物手牌上限2张且明牌展示；Boss 手牌上限3张。
@@ -91,15 +91,15 @@
   function makePlayerDeck(opts = {}) {
     const d = [];
     for (const c of COLORS) {
-      for (let v = 1; v <= 7; v++)
-        for (let n = 0; n < (v <= 3 ? 3 : v <= 6 ? 2 : 1); n++) d.push(num(c, v));
+      for (let v = 1; v <= 5; v++)
+        for (let n = 0; n < (v <= 2 ? 3 : v <= 4 ? 2 : 1); n++) d.push(num(c, v));
       d.push(num(c, 0));
     }
-    for (let v = 1; v <= 7; v++) d.push(num('WHITE', v, true));
+    for (let v = 1; v <= 5; v++) d.push(num('WHITE', v, true));
 
     for (let i = 0; i < 4; i++) d.push(item('BLACK', 'black'));
     for (let i = 0; i < 2; i++) d.push(item('BLACK', 'drawTwo'), item('WHITE', 'drawThree'));
-    for (let i = 0; i < 4; i++) d.push(item('WHITE', 'potion'));
+    for (let i = 0; i < 3; i++) d.push(item('WHITE', 'potion'));
     // 净化 / 超级净化各比对战标准组少 2 张；洗入与对战同为 2 张。
     for (let i = 0; i < 2; i++) d.push(item('BLACK', 'shuffle'), item('WHITE', 'superPurify'));
     for (let i = 0; i < 4; i++) d.push(item('WHITE', 'purify'));
@@ -109,11 +109,10 @@
   function makeNpcDeck() {
     const d = [];
     const npc = { npcCard: true };
-    d.push(num('WHITE', 0, true, npc));
-    for (let v = 1; v <= 3; v++) for (let n = 0; n < 4; n++) d.push(num('WHITE', v, true, npc));
-    for (let v = 4; v <= 6; v++) for (let n = 0; n < 2; n++) d.push(num('WHITE', v, true, npc));
-    // 白7：轮空牌，无攻防效果；所有怪物/Boss 各 2 张。
-    for (let i = 0; i < 2; i++) d.push(num('WHITE', 7, true, npc));
+    for (let i = 0; i < 2; i++) d.push(num('WHITE', 0, true, npc));
+    for (let v = 1; v <= 2; v++) for (let n = 0; n < 6; n++) d.push(num('WHITE', v, true, npc));
+    for (let v = 3; v <= 4; v++) for (let n = 0; n < 4; n++) d.push(num('WHITE', v, true, npc));
+    for (let i = 0; i < 2; i++) d.push(num('WHITE', 5, true, npc));
     // Purple magic is the original magic card; green magic cleanses the caster.
     d.push(item('WHITE', 'magic', npc));
     d.push(item('WHITE', 'greenMagic', npc));

@@ -48,7 +48,7 @@
 
       // The generic skill targets every other combatant in 1v2. An AI
       // Serenity must only pay its own HP cost and attack the player once.
-      if (v === 7) {
+      if (v === 5) {
         if (!bloodthirst) eng.hurt(a, 2);
         return { d: 5, skip: false, unblock: true };
       }

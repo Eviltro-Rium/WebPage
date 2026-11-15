@@ -95,7 +95,7 @@ test('DesertSobek loot: 1-4 LushTrophy, 5 CritTrophy, 6 PiercingTrophy', () => {
 
 test('DesertSobek attack 1/2/3: 4 damage + bleed', () => {
   const m = getBoss('DesertSobek');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.attackDamage(numCard(v), {}), 4);
     assert.equal(m.attackBleed(numCard(v)), 1);
     assert.equal(m.attackLush(numCard(v)), 0);
@@ -105,7 +105,7 @@ test('DesertSobek attack 1/2/3: 4 damage + bleed', () => {
 
 test('DesertSobek attack 4/5/6: 6 damage; GREEN lush; YELLOW crit', () => {
   const m = getBoss('DesertSobek');
-  for (const v of [4, 5, 6]) {
+  for (const v of [3, 4]) {
     assert.equal(m.attackDamage(numCard(v), {}), 6);
     assert.equal(m.attackBleed(numCard(v)), 0);
     assert.equal(m.attackLush(numCard(v, 'GREEN')), 1);
@@ -160,10 +160,10 @@ test('DesertSobek attack 0: more positive stacks → higher damage, >3 blockable
 
 test('DesertSobek defend 1/2/3 heal 3; stage4 heal 3 and green lush', () => {
   const m = getBoss('DesertSobek');
-  for (const v of [1, 2, 3]) assert.equal(m.defendHeal(numCard(v)), 3);
+  for (const v of [1, 2]) assert.equal(m.defendHeal(numCard(v)), 3);
   assert.equal(m.defendHeal(numCard(0)), 0);
   const s4 = applyStageMods(m, 4);
-  for (const v of [1, 2, 3]) assert.equal(s4.defendHeal(numCard(v)), 3);
+  for (const v of [1, 2]) assert.equal(s4.defendHeal(numCard(v)), 3);
   assert.equal(s4.defendHeal(numCard(0)), 0);
 });
 
@@ -194,7 +194,7 @@ test('DesertSobek stage mods: HP+10, attack+1, green defense lush', () => {
   assert.equal(s4.defendHeal(numCard(2)), 3);
 });
 
-test('DesertSobek fertility revive: lush>0 clears all buffs, hp=15; no lush stays dead', () => {
+test('DesertSobek fertility revive: lush>0 clears all buffs, hp=10; no lush stays dead', () => {
   const base = getBoss('DesertSobek');
   AdventureMonsterBridge.registerMonsterChar(applyStageMods(base, 2));
   const eng = new AdventureBattleEngine();
@@ -221,7 +221,7 @@ test('DesertSobek fertility revive: lush>0 clears all buffs, hp=15; no lush stay
   assert.equal(eng.s.ai.hp, 0);
   assert.equal(eng.s.ai.alive, false);
 
-  // With lush → revive to 15, clear positive, keep debuff
+  // With lush → revive to 10, clear positive, keep debuff
   eng.s.ai.hp = 5;
   eng.s.ai.alive = true;
   eng.s.ai.lush = 2;
@@ -229,7 +229,7 @@ test('DesertSobek fertility revive: lush>0 clears all buffs, hp=15; no lush stay
   eng.s.ai.crit = 1;
   eng.s.ai.bleed = 2;
   eng.hurt(eng.s.ai, 20);
-  assert.equal(eng.s.ai.hp, 15);
+  assert.equal(eng.s.ai.hp, 10);
   assert.equal(eng.s.ai.alive, true);
   assert.equal(eng.s.ai.lush || 0, 0);
   assert.equal(eng.s.ai.guard || 0, 0);
@@ -241,7 +241,7 @@ test('DesertSobek fertility revive: lush>0 clears all buffs, hp=15; no lush stay
   eng.s.ai.lush = 1;
   eng.s.ai.hp = 2;
   eng.hurt(eng.s.ai, 50);
-  assert.equal(eng.s.ai.hp, 15);
+  assert.equal(eng.s.ai.hp, 10);
   assert.equal(eng.s.ai.alive, true);
 
   AdventureMonsterBridge.registerMonsterChar(base);
@@ -250,7 +250,7 @@ test('DesertSobek fertility revive: lush>0 clears all buffs, hp=15; no lush stay
 test('DesertSobek panel text matches compact shorthand', () => {
   assert.equal(describe('DesertSobek', numCard(2), false, { stage: 2 }), '4🗡️，施加[流血]');
   assert.equal(describe('DesertSobek', numCard(2), false, { stage: 3 }), '5🗡️，施加[流血]');
-  assert.equal(describe('DesertSobek', numCard(5), false, { stage: 2 }), '6🗡️；🟢获得[茂盛]、🟡获得[暴击]');
+  assert.equal(describe('DesertSobek', numCard(4), false, { stage: 2 }), '6🗡️；🟢获得[茂盛]、🟡获得[暴击]');
   assert.equal(describe('DesertSobek', numCard(0), false, { stage: 2 }), '双方获得[茂盛]，对手每层正面buff→3🗡️（≤3不可防御）');
   assert.equal(describe('DesertSobek', numCard(2), true, { stage: 2 }), '回3❤️');
   assert.equal(describe('DesertSobek', numCard(2), true, { stage: 4 }), '回3❤️；🟢额外获得[茂盛]');

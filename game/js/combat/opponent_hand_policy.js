@@ -13,11 +13,10 @@
     // the mode policy.  The effect itself still lives in Engine, but callers
     // no longer need to duplicate a growing chain of character/value checks.
     const HAND_SKILLS = Object.freeze({
-        Chan: Object.freeze([4, 7]),
-        Saiki: Object.freeze([5]),
-        Blaze: Object.freeze([4]),
-        Moze: Object.freeze([5]),
-        Leon: Object.freeze([7])
+        Chan: Object.freeze([5]),
+        Saiki: Object.freeze([4]),
+        Moze: Object.freeze([3]),
+        Leon: Object.freeze([5])
     });
 
     const stateOf = value => value && value.s && typeof value.s === 'object'
@@ -34,7 +33,8 @@
             if (state.ai2 && state.ai2.alive) return 'ai2';
             return requested === 'ai2' ? 'ai2' : 'ai';
         }
-        return 'ai';
+        const owner = pending.owner || (state.atkOwner === 'ai' || state.atkOwner === 'ai2' ? state.atkOwner : 'player');
+        return owner === 'player' ? 'ai' : 'player';
     }
 
     function strategy(engine, pending = {}) {

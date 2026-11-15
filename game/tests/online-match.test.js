@@ -304,10 +304,10 @@ test('online atomic card commands select and play in one request', () => {
   assert.ok(['PLAYER_DEFEND', 'PLAYER_PLAY', 'GAME_OVER'].includes(outcome.state.phase));
 });
 
-test('online Saiki 6 keeps the judgment selection actionable', () => {
+test('online Otto 4 keeps the judgment selection actionable', () => {
   const Card = context.FurryGame.Card;
-  const match = new context.OnlineMatchHost('Saiki', 'Ryan', 'host');
-  match.engine.h.player = [Card.number('RED', 6), Card.number('BLUE', 2)];
+  const match = new context.OnlineMatchHost('Otto', 'Ryan', 'host');
+  match.engine.h.player = [Card.number('RED', 4), Card.number('BLUE', 2)];
   match.engine.h.ai = [Card.number('GREEN', 1)];
   match.engine.s.discardTop = Card.number('RED', 1);
   let outcome = match.dispatch('host', 'selectCard', { index: 0 });
@@ -322,11 +322,11 @@ test('online Saiki 6 keeps the judgment selection actionable', () => {
   assert.notEqual(outcome.state.phase, 'SAIKI_SIX_JUDGE');
 });
 
-test('online guest Saiki 6 accepts the judgment card and confirm action', () => {
+test('online guest Otto 4 accepts the judgment card and confirm action', () => {
   const Card = context.FurryGame.Card;
-  const match = new context.OnlineMatchHost('Ryan', 'Saiki', 'guest');
+  const match = new context.OnlineMatchHost('Ryan', 'Otto', 'guest');
   match.engine.h.player = [Card.number('GREEN', 1)];
-  match.engine.h.ai = [Card.number('RED', 6), Card.number('BLUE', 2)];
+  match.engine.h.ai = [Card.number('RED', 4), Card.number('BLUE', 2)];
   match.engine.s.discardTop = Card.number('RED', 1);
 
   let outcome = match.dispatch('guest', 'selectCard', { index: 0 });
@@ -383,11 +383,11 @@ test('online lobby reconciles the temporary peer id with the Worker identity', (
   assert.equal(ui.players[0].nickname, 'Rium');
 });
 
-test('online Saiki judgment projection marks number cards selectable for both viewers', () => {
+test('online Otto judgment projection marks number cards selectable for both viewers', () => {
   const Card = context.FurryGame.Card;
-  const match = new context.OnlineMatchHost('Ryan', 'Saiki', 'guest');
+  const match = new context.OnlineMatchHost('Ryan', 'Otto', 'guest');
   match.engine.h.player = [Card.number('GREEN', 1)];
-  match.engine.h.ai = [Card.number('RED', 6), Card.item('WHITE', 'purify')];
+  match.engine.h.ai = [Card.number('RED', 3), Card.item('WHITE', 'purify')];
   match.engine.s.phase = 'SAIKI_SIX_JUDGE';
   match.engine.s.onlineActor = 'guest';
   let state = match.project('host');
@@ -396,12 +396,12 @@ test('online Saiki judgment projection marks number cards selectable for both vi
   assert.deepEqual(state.legalHand, [true, false]);
 });
 
-test('online Saiki judgment selection rejects non-number cards at the protocol boundary', () => {
+test('online Otto judgment selection rejects non-number cards at the protocol boundary', () => {
   const Card = context.FurryGame.Card;
-  const match = new context.OnlineMatchHost('Saiki', 'Ryan', 'host');
+  const match = new context.OnlineMatchHost('Otto', 'Ryan', 'host');
   match.engine.h.player = [Card.number('RED', 2), Card.item('WHITE', 'purify')];
   match.engine.s.phase = 'SAIKI_SIX_JUDGE';
-  match.engine.s.pendingNumberJudge = { type: 'Saiki', attackCard: Card.number('RED', 6) };
+  match.engine.s.pendingNumberJudge = { type: 'Otto', attackCard: Card.number('RED', 4) };
   assert.deepEqual(match.engine._computeLegalHand(), [true, false]);
   const invalid = match.dispatch('host', 'selectCard', { index: 1 });
   assert.equal(invalid.ok, false);
@@ -738,13 +738,13 @@ test('online transport still prefers an open WebRTC data channel', () => {
   assert.equal(relayed.length, 0);
 });
 
-test('Knight 6 grants its guard in one settlement for either online actor', () => {
+test('Knight 4 grants its guard in one settlement for either online actor', () => {
   for (const actor of ['host', 'guest']) {
     for (const green of [false, true]) {
       const match = new context.OnlineMatchHost('Knight', 'Knight', actor);
       match.setStarted(true);
       const owner = actor === 'host' ? 'player' : 'ai';
-      const card = context.FurryGame.Card.number('RED', 6);
+      const card = context.FurryGame.Card.number('RED', 4);
       match.engine.h[owner] = [card];
       match.engine.s[owner].chaos_green = green;
       match.engine.s.discardTop = context.FurryGame.Card.number('RED', 1);

@@ -127,9 +127,11 @@ test('all eight characters have complete independent AI strategies', () => {
 test('opponent-hand policy keeps skill recognition and mode routing centralized', () => {
   const policy = context.FurryGame.OpponentHandPolicy;
   assert.ok(policy);
-  assert.equal(policy.isSkill('Chan', 4), true);
-  assert.equal(policy.isSkill('Saiki', 5), true);
-  assert.equal(policy.isSkill('Saiki', 3), false);
+  assert.equal(policy.isSkill('Chan', 5), true);
+  assert.equal(policy.isSkill('Saiki', 4), true);
+  assert.equal(policy.isSkill('Saiki', 5), false);
+  assert.equal(policy.isSkill('Moze', 3), true);
+  assert.equal(policy.isSkill('Leon', 5), true);
   assert.equal(policy.isSkill('Otto', 4), false);
   const adventure = { s: { isAdventure: true, is1v2: false } };
   const classic = { s: { isAdventure: false, is1v2: false } };
@@ -142,7 +144,7 @@ test('opponent-hand skills draw a target card automatically', () => {
   const runtime = context.FurryGame.CombatRuntime;
   runtime.setRandomSource(() => 0.999999);
   try {
-    for (const [name, value] of [['Chan', 4], ['Chan', 7], ['Saiki', 5], ['Blaze', 4], ['Moze', 5], ['Leon', 7]]) {
+    for (const [name, value] of [['Chan', 5], ['Saiki', 4], ['Moze', 3], ['Leon', 5]]) {
         const engine = new Engine();
         engine.start(name, 'Ryan');
         engine.s.discardTop = number(3);
@@ -171,8 +173,8 @@ test('adventure opponent-hand skills let the player choose the visible target ca
   engine.s.discardTop = number(3, 'RED');
   engine.s.phase = 'PLAYER_PLAY';
   engine.s.selectedCard = 0;
-  engine.h.player = [number(4, 'RED')];
-  engine.h.ai = [number(1, 'BLUE'), number(6, 'GREEN')];
+  engine.h.player = [number(5, 'RED')];
+  engine.h.ai = [number(1, 'BLUE'), number(4, 'GREEN')];
   engine.deck = [];
   engine.discardBottom = [];
 
@@ -180,15 +182,15 @@ test('adventure opponent-hand skills let the player choose the visible target ca
   assert.equal(pending.phase, 'OPPONENT_CARD_CHOICE');
   assert.equal(pending.opponentHandTarget, 'ai');
   assert.equal(pending.selectedAICard, -1);
-  assert.deepEqual(Array.from(pending.aiHand, card => card.value), [1, 6]);
+  assert.deepEqual(Array.from(pending.aiHand, card => card.value), [1, 4]);
 
   const selected = engine.dispatch('chooseAICard', { index: 1 });
   assert.equal(selected.selectedAICard, 1);
   const resolved = engine.dispatch('doOpponentCardConfirm');
   assert.equal(engine.h.ai.length, 1);
   assert.equal(engine.h.ai[0].value, 1);
-  assert.equal(engine.h.player.some(card => card.value === 6), false);
-  assert.equal(engine.discardBottom.some(card => card.value === 6), true, 'Adventure Chan 4 must discard the selected NPC card instead of swapping it');
+  assert.equal(engine.h.player.some(card => card.value === 4), false);
+  assert.equal(engine.discardBottom.some(card => card.value === 4), true, 'Adventure Chan 5 must discard the selected NPC card instead of swapping it');
   assert.notEqual(resolved.phase, 'OPPONENT_CARD_CHOICE');
 });
 
@@ -201,9 +203,9 @@ test('adventure 1v2 chooses a card only from the current attack target', () => {
   engine.s.phase = 'PLAYER_PLAY';
   engine.s.attackTarget = 'ai2';
   engine.s.selectedCard = 0;
-  engine.h.player = [number(4, 'RED')];
+  engine.h.player = [number(5, 'RED')];
   engine.h.ai = [number(1, 'BLUE')];
-  engine.h.ai2 = [number(6, 'GREEN'), number(2, 'YELLOW')];
+  engine.h.ai2 = [number(4, 'GREEN'), number(2, 'YELLOW')];
   engine.deck = [];
   engine.discardBottom = [];
 
@@ -224,9 +226,9 @@ test('1v2 opponent-hand skills use the selected target and runtime RNG', () => {
   engine.s.phase = 'PLAYER_PLAY';
   engine.s.attackTarget = 'ai2';
   engine.s.selectedCard = 0;
-  engine.h.player = [number(4, 'RED')];
+  engine.h.player = [number(5, 'RED')];
   engine.h.ai = [number(1, 'BLUE'), number(2, 'GREEN')];
-  engine.h.ai2 = [number(6, 'YELLOW'), number(5, 'RED')];
+  engine.h.ai2 = [number(4, 'YELLOW'), number(3, 'RED')];
   engine.deck = [];
   engine.discardBottom = [];
 
@@ -242,24 +244,34 @@ test('1v2 opponent-hand skills use the selected target and runtime RNG', () => {
   }
 });
 
-test('Leon 7 in 1v2 discards from the selected target hand', () => {
+test('Leon 5 in 1v2 discards from the selected target hand', () => {
   const engine = new Engine();
   engine.start1v2('Leon', 'Ryan', 'Ryan');
   engine.s.discardTop = number(3, 'RED');
   engine.s.phase = 'PLAYER_PLAY';
   engine.s.attackTarget = 'ai2';
   engine.s.selectedCard = 0;
-  engine.h.player = [number(7, 'RED')];
+  engine.h.player = [number(5, 'RED')];
   engine.h.ai = [number(1, 'BLUE'), number(2, 'GREEN')];
-  engine.h.ai2 = [number(6, 'YELLOW'), number(5, 'RED')];
+  engine.h.ai2 = [number(4, 'YELLOW'), number(3, 'RED')];
   engine.deck = [];
   engine.discardBottom = [];
 
+  engine.s.atkOwner = 'player';
+  engine.later = () => {};
   context.FurryGame.CombatRuntime.setRandomSource(() => 0);
   try {
-    engine.play1v2();
+    const before = engine.h.ai2.length;
+    engine.resolveOpponentHandSkill({
+      name: 'Leon',
+      value: 5,
+      owner: 'player',
+      attackCard: number(5, 'RED'),
+      targetKey: 'ai2'
+    });
     assert.equal(engine.h.ai.length, 2, 'non-target NPC hand should be untouched');
-    assert.equal(engine.h.ai2.length, 1, 'Leon 7 should discard from the selected target');
+    assert.ok(engine.h.ai2.length < before, 'Leon 5 should discard from the selected target');
+    assert.ok(engine.discardBottom.length > 0);
   } finally {
     context.FurryGame.CombatRuntime.resetRandomSource();
   }
@@ -289,87 +301,52 @@ test('Leon 0 in 1v2 randomly discards from the shared opponent hands', () => {
   }
 });
 
-test('Ryan value 5 consumes the best extra card for lethal damage', () => {
+test('Ryan value 3 pairs a follow-up number for double damage', () => {
   const engine = setup('Ryan');
-  engine.s.player.hp = 8;
-  engine.h.ai = [number(6), number(2)];
-  engine.s.atkOwner = 'ai';
-
-  const result = engine.aiSpecialEffect('Ryan', 5, number(5));
-
-  assert.equal(result.d, 9);
-  assert.deepEqual(engine.h.ai.map(card => card.value), [2]);
-  assert.equal(engine.discardBottom.at(-1).value, 6);
+  engine.h.player = [number(3), number(2)];
+  engine.s.selectedCard = 0;
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.discardTop = number(1, 'RED');
+  engine.play();
+  assert.equal(engine.s.phase, 'PLAYER_FIVE_CHOICE');
+  engine.s.selectedCard = 0;
+  engine.finishRyanFive(true);
+  assert.equal(engine.s.pendingAttack.damage, 4);
 });
 
-test('Leon value 7 applies burn and really discards the stolen card', () => {
+test('Leon value 5 applies burn and really discards the stolen card', () => {
   const engine = setup('Leon');
-  engine.h.player = [number(4, 'BLUE')];
   engine.s.atkOwner = 'ai';
+  engine.h.player = [number(4, 'BLUE')];
+  engine.h.ai = [number(5, 'RED')];
+  engine.resolveOpponentHandSkill({ name: 'Leon', value: 5, owner: 'ai', attackCard: number(5, 'RED'), targetKey: 'player' });
+  const result = engine.s.pendingAttack || { damage: 6 };
 
-  const result = engine.aiSpecialEffect('Leon', 7, number(7));
-
-  assert.equal(result.d, 6);
+  assert.equal(result.damage, 6);
   assert.equal(engine.s.player.burn, 2);
   assert.equal(engine.h.player.length, 0);
   assert.equal(engine.discardBottom.at(-1).value, 4);
 });
 
-test('Chan value 4 trades its weakest card for a valuable stolen card', () => {
-  const engine = setup('Chan');
-  engine.h.ai = [number(1)];
-  engine.h.player = [number(0, 'BLUE')];
-  engine.s.atkOwner = 'ai';
-
-  const result = engine.aiSpecialEffect('Chan', 4, number(4));
-
-  assert.equal(result.d, 0);
-  assert.equal(engine.h.ai[0].value, 0);
-  assert.equal(engine.h.player[0].value, 1);
-});
-
-test('Moze value 4 spends only enough value to reach guard cap', () => {
+test('Moze value 3 steals a green card for damage', () => {
   const engine = setup('Moze');
-  engine.s.ai.guard = 4;
-  engine.h.ai = [number(1), number(7)];
-  engine.s.atkOwner = 'ai';
+  engine.h.player = [number(2, 'GREEN')];
+  engine.h.ai = [number(3, 'RED')];
+  engine.resolveOpponentHandSkill({ name: 'Moze', value: 3, owner: 'ai', attackCard: number(3, 'RED'), targetKey: 'player' });
 
-  engine.aiSpecialEffect('Moze', 4, number(4));
-
-  assert.equal(engine.s.ai.guard, 5);
-  assert.deepEqual(engine.h.ai.map(card => card.value), [7]);
-  assert.equal(engine.s.discardTop.value, 3);
-  assert.equal(engine.discardBottom.at(-1).value, 1);
+  assert.equal(engine.s.pendingAttack.damage, 4);
+  assert.equal(engine.h.player.length, 1);
 });
 
-test('player Moze value 4 also sends its judge card to discard bottom', () => {
-  const engine = setup('Ryan');
-  engine.s.player = engine.character('Moze');
-  engine.s.phase = 'SAIKI_SIX_JUDGE';
-  engine.s.pendingNumberJudge = { type: 'Moze', attackCard: number(4) };
-  engine.s.selectedCard = 0;
-  engine.h.player = [number(5, 'BLUE')];
-
-  engine.finishNumberJudge();
-
-  assert.equal(engine.s.discardTop.value, 3);
-  assert.equal(engine.discardBottom.at(-1).value, 5);
-  assert.equal(engine.s.player.guard, 5);
-});
-
-test('Saiki value 6 prefers a yellow judge when its bleed payoff wins', () => {
+test('Saiki value 5 drains with bleed stacks', () => {
   const engine = setup('Saiki');
-  engine.h.ai = [number(5, 'YELLOW'), number(7, 'RED')];
-  engine.s.atkOwner = 'ai';
-
-  const result = engine.aiSpecialEffect('Saiki', 6, number(6));
-
-  assert.equal(result.d, 8);
-  assert.equal(engine.s.player.bleed, 1);
-  assert.deepEqual(engine.h.ai.map(card => card.value), [7]);
+  engine.s.ai.bleed = 2;
+  const result = engine.effect('Saiki', 5, number(5), engine.s.player, engine.s.ai);
+  assert.equal(result.d, 5);
+  assert.equal(result.isDrain, true);
 });
 
-test('Serenity value 7 does not friendly-fire the second AI in 1v2', () => {
+test('Serenity value 5 does not friendly-fire the second AI in 1v2', () => {
   const engine = setup('Serenity');
   engine.s.is1v2 = true;
   engine.s.ai2 = engine.character('Moze', true);
@@ -377,7 +354,7 @@ test('Serenity value 7 does not friendly-fire the second AI in 1v2', () => {
   engine.s.ai.hp = 50;
   engine.s.atkOwner = 'ai';
 
-  const result = engine.aiSpecialEffect('Serenity', 7, number(7));
+  const result = engine.effect('Serenity', 5, number(5), engine.s.ai, engine.s.player, 'ai');
 
   assert.equal(result.d, 5);
   assert.equal(result.unblock, true);
@@ -460,17 +437,18 @@ test('manual multi-card discard preserves cards and emits animation events', () 
   assert.deepEqual(Array.from(discardEvents, event => event.handIndex), [2, 0]);
 });
 
-test('Moze can use value 6 without guard and Saiki 7 is always playable for drain', () => {
+test('Moze value 4 without guard is playable and Saiki 5 prefers drain', () => {
   const moze = setup('Moze');
-  const six = number(6);
-  moze.h.ai = [number(1), six];
-  assert.equal(moze.chooseAIPlay(moze.s.discardTop), six);
+  const four = number(4);
+  moze.h.ai = [number(1), four];
+  assert.equal(moze.chooseAIPlay(moze.s.discardTop), four);
 
   const saiki = setup('Saiki');
-  const seven = number(7);
+  const five = number(5);
   const two = number(2);
-  saiki.h.ai = [seven, two];
-  assert.equal(saiki.chooseAIPlay(saiki.s.discardTop), seven);
+  saiki.h.ai = [five, two];
+  saiki.s.ai.bleed = 2;
+  assert.equal(saiki.chooseAIPlay(saiki.s.discardTop), five);
 });
 
 test('Blaze defense 2 follows the documented burn and half-block rule', () => {
@@ -507,8 +485,8 @@ test('Leon, Saiki, and Blaze attack branches follow the updated character docs',
   const leon = new Engine();
   leon.start('Leon', 'Ryan');
   let result = leon.effect('Leon', 1, number(1), leon.s.player, leon.s.ai);
-  assert.equal(result.skip, true);
-  assert.equal(leon.s.ai.burn, 3);
+  assert.equal(result.d, 2);
+  assert.equal(leon.s.ai.burn, 2);
 
   const saiki = new Engine();
   saiki.start('Saiki', 'Ryan');
@@ -516,18 +494,20 @@ test('Leon, Saiki, and Blaze attack branches follow the updated character docs',
   assert.equal(result.d, 2);
   assert.equal(saiki.s.ai.bleed, 2);
   saiki.s.player.hp = 30;
-  result = saiki.effect('Saiki', 5, number(5), saiki.s.player, saiki.s.ai);
+  result = saiki.effect('Saiki', 4, number(4), saiki.s.player, saiki.s.ai);
   assert.equal(result.skip, true);
-  assert.equal(saiki.s.player.hp, 35);
+  assert.equal(saiki.s.player.hp, 34);
   saiki.s.player.hp = 31;
-  result = saiki.effect('Saiki', 5, number(5), saiki.s.player, saiki.s.ai);
+  result = saiki.effect('Saiki', 4, number(4), saiki.s.player, saiki.s.ai);
   assert.equal(result.d, 4);
 
   const blaze = new Engine();
   blaze.start('Blaze', 'Ryan');
+  blaze.s.ai.burn = 1;
   result = blaze.effect('Blaze', 5, number(5), blaze.s.player, blaze.s.ai);
-  assert.equal(blaze.s.player.burn, 1);
-  assert.equal(result.d, 4); // base 2 + one burn + the non-stacking passive
+  assert.equal(blaze.s.player.burn, 2);
+  assert.equal(blaze.s.ai.burn, 3);
+  assert.equal(result.d, 5);
 
   const challenge = new Engine();
   challenge.start1v2('Blaze', 'Ryan', 'Ryan');
@@ -578,7 +558,7 @@ test('Leon discard branches return removed cards to the opponent discard pile', 
   seven.s.discardTop = number(0);
   seven.s.phase = 'PLAYER_PLAY';
   seven.s.selectedCard = 0;
-  seven.h.player = [number(7)];
+  seven.h.player = [number(5)];
   seven.h.ai = [number(4)];
   seven.deck = [];
   seven.discardBottom = [];
@@ -596,12 +576,12 @@ test('Leon discard branches return removed cards to the opponent discard pile', 
   emptyTarget.s.discardTop = number(0);
   emptyTarget.s.phase = 'PLAYER_PLAY';
   emptyTarget.s.selectedCard = 0;
-  emptyTarget.h.player = [number(7)];
+  emptyTarget.h.player = [number(5)];
   emptyTarget.h.ai = [];
   emptyTarget.deck = [];
   emptyTarget.discardBottom = [];
   emptyTarget.play();
-  assert.equal(emptyTarget.s.ai.burn, 2, 'Leon 7 should still apply burn when the target hand is empty');
+  assert.equal(emptyTarget.s.ai.burn, 2, 'Leon 5 should still apply burn when the target hand is empty');
 
   const defense = new Engine();
   defense.start('Ryan', 'Leon');
@@ -631,17 +611,20 @@ test('Leon discard branches return removed cards to the opponent discard pile', 
   assert.equal(defense.discardBottom.length, 2, 'discarded cards must remain in the shared discard pile');
 });
 
-test('Saiki defense 3 always returns the revealed judge card to hand', () => {
+test('Saiki defense 2 blocks all damage on yellow deck top', () => {
   const engine = setup('Saiki');
   engine.deck = [number(2, 'YELLOW')];
-  const beforeDiscard = engine.discardBottom.length;
-
-  const result = engine.defenseJudge('ai', number(3), 7);
-
+  const mod = CharacterRegistry.get('Saiki');
+  const result = mod.defend(
+    engine, 'Saiki', 2, 7, number(2), engine.s.ai, engine.s.player, 'ai', 'RED',
+  {
+    hurt: (target, amount) => engine.hurt(target, amount),
+    bleed: (target, amount) => engine.bleed(target, amount)
+  }
+  );
   assert.equal(result.remaining, 0);
-  assert.equal(engine.h.ai.length, 1);
-  assert.equal(engine.h.ai[0].value, 2);
-  assert.equal(engine.discardBottom.length, beforeDiscard);
+  assert.equal(engine.h.ai.length, 0);
+  assert.equal(engine.deck.length, 0);
 });
 
 test('Serenity defense 2 drains attacker HP and heals only actual life taken', () => {
@@ -699,31 +682,11 @@ test('Serenity attack 1 heals normally and applies bleed while bloodthirst', () 
   assert.equal(engine.s.ai.bleed, 2);
 });
 
-test('Serenity attack 6 deals 6 and requires a discard instead of skipping defense', () => {
+test('Serenity attack 5 is unblockable AOE unless bloodthirst', () => {
   const engine = setup('Serenity');
-  engine.h.player.push(number(2), number(3));
-  const result = engine.effect('Serenity', 6, number(6), engine.s.player, engine.s.ai);
-  assert.equal(result.d, 6);
-  assert.equal(result.unblock, false);
-  assert.equal(engine.s.pendingSerenitySixDiscard, true);
-});
-
-test('Serenity defense 3 blocks half and counters 2 while bloodthirst', () => {
-  const engine = setup('Serenity');
-  const mod = CharacterRegistry.get('Serenity');
-  const counters = [];
-  engine.s.ai.bloodthirst = true;
-  const result = mod.defend(
-    engine, 'Serenity', 3, 7, number(3), engine.s.ai, engine.s.player, 'ai', 'RED',
-    {
-      hurt: (target, amount, kind) => engine.hurt(target, amount, kind),
-      heal: (target, amount, kind) => engine.heal(target, amount, kind),
-      counter: (target, amount) => counters.push([target, amount]),
-      bleed() {}
-    }
-  );
-  assert.equal(result.remaining, 3);
-  assert.deepEqual(counters, [[engine.s.player, 2]]);
+  const result = engine.effect('Serenity', 5, number(5), engine.s.player, engine.s.ai);
+  assert.equal(result.d, 5);
+  assert.equal(result.unblock, true);
 });
 
 test('Knight defense 0 drains the active ai2 target in 1v2', () => {

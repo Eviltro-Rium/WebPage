@@ -13,6 +13,19 @@
   const R = window.AdventureRegistry;
   if (!R) return;
 
+  function isLow(card) {
+    return !!(card && card.isNumberCard && card.value >= 1 && card.value <= 2);
+  }
+  function isHigh(card) {
+    return !!(card && card.isNumberCard && card.value >= 3 && card.value <= 4);
+  }
+  function lowValue(v) {
+    return v >= 1 && v <= 2;
+  }
+  function highValue(v) {
+    return v >= 3 && v <= 4;
+  }
+
   window.AdventureBossPool = window.AdventureBossPool || {};
   // 鬣狗和索贝克从 Stage 1 出现，只有阿努比斯从 Stage 3 起出现。
   window.AdventureBossPool.desert = {
@@ -41,53 +54,45 @@
     hp: 20,
     attack: 3,
     defense: 2,
+    firstStrike: true,
     icon: '../icons/npc_icons/desert_bison.webp',
     attackEffectTiming(v) {
-      return (v >= 1 && v <= 3) ? 'beforeDamage' : 'afterDamage';
+      return lowValue(v) ? 'beforeDamage' : 'afterDamage';
     },
     attackDamage(card, ctx) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return 2 * ((ctx && ctx.playerBleed) || 0);
-      if (v >= 4 && v <= 6) return 2;
+      if (isLow(card)) return 2 * ((ctx && ctx.playerBleed) || 0);
+      if (isHigh(card)) return 2;
       return 0;
     },
-    // 进攻1/2/3：不可防御
     attackUnblockable(card) {
-      return !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
+      return isHigh(card);
     },
-    // 进攻1/2/3 先施加；4/5/6 伤害后施加
     attackBleed(card) {
-      const v = card && card.value;
-      return (card && card.isNumberCard && v >= 1 && v <= 6) ? 1 : 0;
+      return isLow(card) || isHigh(card) ? 1 : 0;
     },
-    // 进攻4/5/6：获得1层暴击（上限2）
     attackGainCrit(card) {
-      return (card && card.isNumberCard && card.value >= 4 && card.value <= 6) ? 1 : 0;
+      return isHigh(card) ? 1 : 0;
     },
-    // 防御1/2/3：反击卡面点数伤害
-    defendCounter(card, incoming) {
-      const v = card && card.value;
-      return (v >= 1 && v <= 3) ? v : 0;
+    defendCounter(card) {
+      return isLow(card) ? 2 : 0;
     },
-    // 防御1/2/3：施加1层流血
     defendBleed(card) {
-      return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
-        // 进攻1/2/3：先流血，再3×[流血]层数伤害
         attackDamage(card, ctx) {
-          const v = card && card.value;
-          if (v >= 1 && v <= 3) return 3 * ((ctx && ctx.playerBleed) || 0);
+          if (isLow(card)) return 3 * ((ctx && ctx.playerBleed) || 0);
           return orig.attackDamage(card, ctx);
         }
       }),
       4: orig => ({
-        // 防御技能施加[流血]层数 +1（变为2层）
         defendBleed(card) {
-          const v = card && card.value;
-          return (v >= 1 && v <= 3) ? 2 : 0;
+          return isLow(card) ? 2 : 0;
+        },
+        defendCounter(card) {
+          return isLow(card) ? 3 : 0;
         }
       })
     }
@@ -109,30 +114,23 @@
     icon: '../icons/npc_icons/desert_camel.webp',
     firstStrike: true,
     attackDamage(card) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return 3;
-      if (v >= 4 && v <= 6) return 6;
+      if (isLow(card)) return 3;
+      if (isHigh(card)) return 6;
       return 0;
     },
-    // 进攻1/2/3：施加2层沙盲
     attackSandblind(card) {
-      return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 2 : 0;
+      return isLow(card) ? 2 : 0;
     },
-    // 进攻4/5/6：施加1层荆棘
     attackThorns(card) {
-      return (card && card.isNumberCard && card.value >= 4 && card.value <= 6) ? 1 : 0;
+      return isHigh(card) ? 1 : 0;
     },
-    // 防御1/2/3：格挡一半伤害（向上取整）
     defendBlock(card, incoming) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return Math.ceil((incoming || 0) / 2);
-      return 0;
+      return isLow(card) ? Math.ceil((incoming || 0) / 2) : 0;
     },
     stageMods: {
       4: orig => ({
-        // 防御1/2/3：额外施加1层荆棘
         defendThorns(card) {
-          return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+          return isLow(card) ? 1 : 0;
         }
       })
     }
@@ -152,27 +150,31 @@
     icon: '../icons/npc_icons/desert_lizard.webp',
     defendEscape(card) { return !!(card && card.isNumberCard && card.value === 0); },
     attackDamage(card) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return 3;
-      if (v >= 4 && v <= 6) return 5;
+      if (isLow(card)) return 3;
+      if (isHigh(card)) return 5;
       return 0;
     },
     attackSandblind(card) {
-      return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
     attackQuicksand(card) {
-      return (card && card.isNumberCard && card.value >= 4 && card.value <= 6) ? 1 : 0;
+      return isHigh(card) ? 1 : 0;
     },
     defendBlock(card, incoming) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return Math.min(2, incoming || 0);
-      return 0;
+      return isLow(card) ? Math.min(2, incoming || 0) : 0;
     },
     defendSandblind(card) {
-      return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 2 : 0;
+      return isLow(card) ? 2 : 0;
     },
     stageMods: {
-      4: () => ({ defendCounter(card) { return card && card.isNumberCard && card.value >= 1 && card.value <= 3 ? 1 : 0; } })
+      4: orig => ({
+        defendCounter(card) {
+          return isLow(card) ? 1 : 0;
+        },
+        defendBlock(card, incoming) {
+          return isLow(card) ? Math.min(3, incoming || 0) : 0;
+        }
+      })
     }
   });
 
@@ -188,29 +190,26 @@
     defense: 2,
     icon: '../icons/npc_icons/desert_sandworm.webp',
     attackDamage(card) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return 4;
-      if (v >= 4 && v <= 6) return 5;
+      if (isLow(card)) return 4;
+      if (isHigh(card)) return 5;
       return 0;
     },
     attackUnblockableIfBuff(card, target) {
-      const v = card && card.value;
-      return !!(v >= 1 && v <= 3 && target && (target.sandblind || 0) > 0);
+      return !!(isLow(card) && target && (target.sandblind || 0) > 0);
     },
     attackParasite(card) {
-      return (card && card.isNumberCard && card.value >= 4 && card.value <= 6) ? 1 : 0;
+      return isHigh(card) ? 1 : 0;
     },
     defendCounter(card) {
-      const v = card && card.value;
-      return (v >= 1 && v <= 3) ? 2 : 0;
+      return isLow(card) ? 2 : 0;
     },
     defendSandblind(card) {
-      return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
-      4: orig => ({ defendHeal: (card) => ((card && card.value >= 1 && card.value <= 3) ? 2 : 0) })
+      4: orig => ({ defendHeal: (card) => (isLow(card) ? 2 : 0) })
     }
   });
 
@@ -227,14 +226,12 @@
     defense: 2,
     icon: '../icons/npc_icons/desert_scarab.webp',
     attackDamage(card) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return 3;
-      if (v >= 4 && v <= 6) return 4;
+      if (isLow(card)) return 3;
+      if (isHigh(card)) return 4;
       return 0;
     },
     attackColorBuff(card) {
-      const v = card && card.value;
-      if (!(v >= 1 && v <= 3)) return null;
+      if (!isLow(card)) return null;
       const color = (card && (card.chosenColor || card.color)) || '';
       if (color === 'RED') return { burn: 2 };
       if (color === 'YELLOW') return { thorns: 1 };
@@ -243,17 +240,22 @@
       return null;
     },
     attackFly(card) {
-      return (card && card.isNumberCard && card.value >= 4 && card.value <= 6) ? 1 : 0;
+      return isHigh(card) ? 1 : 0;
     },
     defendBlock(card, incoming) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return Math.min(3, incoming || 0);
-      return 0;
+      return isLow(card) ? Math.min(3, incoming || 0) : 0;
+    },
+    defendCounter(card) {
+      return isLow(card) ? 1 : 0;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
-      4: orig => ({ defendBlock: (card, incoming) => Math.min(orig.defendBlock(card, incoming) + 1, incoming || 0) })
+      4: orig => ({
+        defendCounter(card) {
+          return isLow(card) ? 1 : 0;
+        }
+      })
     }
   });
 
@@ -269,39 +271,37 @@
     defense: 2,
     icon: '../icons/npc_icons/desert_scorpion.webp',
     attackDamage(card) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return 3;
-      if (v >= 4 && v <= 6) return 2;
+      if (isLow(card)) return 3;
+      if (isHigh(card)) return 2;
       return 0;
     },
     attackUnblockableIfBuff(card, target) {
-      const v = card && card.value;
-      return !!(v >= 1 && v <= 3 && target && (target.poison || 0) > 0);
+      return !!(isLow(card) && target && (target.poison || 0) > 0);
     },
     attackUnblockable(card) {
-      return !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
+      return isHigh(card);
     },
     attackThorns(card) {
-      return (card && card.isNumberCard && card.value >= 4 && card.value <= 6) ? 1 : 0;
+      return isHigh(card) ? 1 : 0;
     },
     attackPoison(card) {
-      return (card && card.isNumberCard && card.value >= 4 && card.value <= 6) ? 1 : 0;
+      return isHigh(card) ? 1 : 0;
     },
     defendPoisonDrain(card) {
-      return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? { poison: 1, drain: 0 } : null;
+      return isLow(card) ? { poison: 1, drain: 0 } : null;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         defendPoisonDrain(card) {
-          return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? { poison: 1, drain: 1 } : null;
+          return isLow(card) ? { poison: 1, drain: 1 } : null;
         }
       })
     }
   });
 
-  // ===== 热砂蝰（Stage 2 起） =====
+  // ===== 热砂蝰 =====
   // 进攻1/2/3：造成3点伤害，施加[中毒]
   // 进攻4/5/6：吸取 2+玩家[中毒]层数 生命（不可防御）
   // 防御1/2/3：格挡至多2点伤害，施加1层[中毒]
@@ -309,43 +309,38 @@
     name: 'DesertViper',
     kind: '热砂蝰',
     hp: 20,
-    minStage: 2,
     attack: 3,
     defense: 2,
     icon: '../icons/npc_icons/desert_viper.webp',
     attackDamage(card) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return 3;
-      return 0;
+      return isLow(card) ? 3 : 0;
     },
     attackPoison(card) {
-      return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
     attackDrain(card, ctx) {
-      const v = card && card.value;
-      if (v >= 4 && v <= 6) return 2 + ((ctx && ctx.playerPoison) || 0);
-      return 0;
+      return isHigh(card) ? 2 + ((ctx && ctx.playerPoison) || 0) : 0;
+    },
+    attackUnblockable(card) {
+      return isHigh(card);
     },
     defendBlock(card, incoming) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return Math.min(2, incoming || 0);
-      return 0;
+      return isLow(card) ? Math.min(2, incoming || 0) : 0;
     },
     defendPoison(card) {
-      return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({
         attackDrain(card, ctx) {
-          const v = card && card.value;
-          if (v >= 4 && v <= 6) return 3 + ((ctx && ctx.playerPoison) || 0);
+          if (isHigh(card)) return 3 + ((ctx && ctx.playerPoison) || 0);
           return orig.attackDrain(card, ctx);
         }
       }),
       4: orig => ({
         defendPoison(card) {
-          return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 2 : 0;
+          return isLow(card) ? 2 : 0;
         }
       })
     }
@@ -362,27 +357,27 @@
     icon: '../icons/npc_icons/desert_antlion.webp',
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 3;
-      if (card.value >= 4 && card.value <= 6) return 5;
+      if (isLow(card)) return 3;
+      if (isHigh(card)) return 5;
       return 0;
     },
     attackUnblockableIfBuff(card, target) {
-      return !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3 && target && target.quicksand > 0);
+      return !!(isLow(card) && target && target.quicksand > 0);
     },
     attackQuicksand(card) {
-      return card && card.isNumberCard && card.value >= 4 && card.value <= 6 ? 1 : 0;
+      return isHigh(card) ? 1 : 0;
     },
     defendBlock(card, incoming) {
-      if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return 0;
+      if (!isLow(card)) return 0;
       return Math.min(2, Math.max(0, Number(incoming) || 0));
     },
     defendThorns(card) {
-      return card && card.isNumberCard && card.value >= 1 && card.value <= 3 ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
     stageMods: {
       4: () => ({
         defendCounter(card) {
-          return card && card.isNumberCard && card.value >= 1 && card.value <= 3 ? 2 : 0;
+          return isLow(card) ? 2 : 0;
         }
       })
     }
@@ -400,45 +395,38 @@
     defense: 2,
     icon: '../icons/npc_icons/desert_vulture.webp',
     attackDamage(card) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return 3;
-      if (v >= 4 && v <= 6) return 5;
+      if (isLow(card)) return 3;
+      if (isHigh(card)) return 5;
       return 0;
     },
     attackSandblind(card) {
-      const v = card && card.value;
-      if (!(v >= 1 && v <= 3)) return 0;
+      if (!isLow(card)) return 0;
       const color = (card && (card.chosenColor || card.color)) || '';
       return color === 'YELLOW' ? 2 : 0;
     },
     attackFly(card) {
-      const v = card && card.value;
-      if (!(v >= 1 && v <= 3)) return 0;
+      if (!isLow(card)) return 0;
       const color = (card && (card.chosenColor || card.color)) || '';
       return color === 'YELLOW' ? 0 : 1;
     },
     attackClearPositive(card) {
-      return !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
+      return isHigh(card);
     },
     defendBlock(card, incoming) {
-      const v = card && card.value;
-      if (v >= 1 && v <= 3) return Math.min(1, incoming || 0);
-      return 0;
+      return isLow(card) ? Math.min(1, incoming || 0) : 0;
     },
     defendCounter(card) {
-      const v = card && card.value;
-      return (v >= 1 && v <= 3) ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
     defendSandblind(card) {
-      return (card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         defendCounter(card) {
-          const v = card && card.value;
-          return (v >= 1 && v <= 3) ? 2 : 0;
+          return isLow(card) ? 2 : 0;
         }
       })
     }
@@ -452,8 +440,8 @@
   // 防御0：清除自身所有负面状态，反击相同点数伤害
   // Stage 3：进攻伤害 +1；Stage 4：防御恢复 +1
   const anubisColor = card => (card && (card.chosenColor || card.color)) || '';
-  const isAnubisLow = card => !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3);
-  const isAnubisHigh = card => !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
+  const isAnubisLow = isLow;
+  const isAnubisHigh = isHigh;
   const isAnubisZero = card => !!(card && card.isNumberCard && card.value === 0);
   R.registerBoss({
     name: 'Anubis',
@@ -535,8 +523,8 @@
   // 防御1/2/3：反击 ceil(incoming/2)；防御0：反击6，获得暴击，玩家弃1张手牌
   // Stage2 HP+5；Stage3 🟡进攻不可防御（不耗暴击）；Stage4 防御回1❤️
   const hyenaColor = card => (card && (card.chosenColor || card.color)) || '';
-  const isHyenaLow = card => !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3);
-  const isHyenaHigh = card => !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
+  const isHyenaLow = isLow;
+  const isHyenaHigh = isHigh;
   const isHyenaZero = card => !!(card && card.isNumberCard && card.value === 0);
   R.registerBoss({
     name: 'DesertHyena',
@@ -591,7 +579,7 @@
       return !!(mocked && atkColor === mocked);
     },
     attackDamage(card, ctx) {
-      if (isHyenaLow(card)) return 2 * ((ctx && ctx.playerBleed) || 0);
+      if (isHyenaLow(card)) return 3 + ((ctx && ctx.playerBleed) || 0);
       if (isHyenaHigh(card)) return (ctx && ctx.playerHandSize) || 0;
       return 0;
     },
@@ -647,8 +635,8 @@
   // 防御1/2/3：回3❤️；防御0：免疫，若有[茂盛]则消耗1层并反击3🗡️
   // Stage2 HP+7；Stage3 进攻伤害+1；Stage4 防御恢复+1
   const sobekColor = card => (card && (card.chosenColor || card.color)) || '';
-  const isSobekLow = card => !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3);
-  const isSobekHigh = card => !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
+  const isSobekLow = isLow;
+  const isSobekHigh = isHigh;
   const isSobekZero = card => !!(card && card.isNumberCard && card.value === 0);
   R.registerBoss({
     name: 'DesertSobek',

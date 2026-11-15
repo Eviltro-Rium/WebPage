@@ -75,12 +75,12 @@ test('DesertLizard loot: 1-2 sandblind, 3-4 quicksand', () => {
 
 test('DesertLizard attack hooks', () => {
   const m = getMonster('DesertLizard');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.attackDamage(numCard(v)), 3);
     assert.equal(m.attackSandblind(numCard(v)), 1);
     assert.equal(m.attackQuicksand(numCard(v)), 0);
   }
-  for (const v of [4, 5, 6]) {
+  for (const v of [3, 4]) {
     assert.equal(m.attackDamage(numCard(v)), 5);
     assert.equal(m.attackSandblind(numCard(v)), 0);
     assert.equal(m.attackQuicksand(numCard(v)), 1);
@@ -92,7 +92,7 @@ test('DesertLizard defend: block cap 2 + 2 sandblind', () => {
   assert.equal(m.defendBlock(numCard(2), 8), 2);
   assert.equal(m.defendBlock(numCard(2), 1), 1);
   assert.equal(m.defendSandblind(numCard(2)), 2);
-  assert.equal(m.defendSandblind(numCard(5)), 0);
+  assert.equal(m.defendSandblind(numCard(4)), 0);
 });
 
 test('DesertLizard stage mods', () => {
@@ -101,11 +101,12 @@ test('DesertLizard stage mods', () => {
   assert.equal(s2.hp, 25);
   const s3 = applyStageMods(m, 3);
   assert.equal(s3.attackSandblind(numCard(2)), 1);
-  assert.equal(s3.attackSandblind(numCard(5)), 0);
-  assert.equal(s3.attackQuicksand(numCard(5)), 1);
+  assert.equal(s3.attackSandblind(numCard(4)), 0);
+  assert.equal(s3.attackQuicksand(numCard(4)), 1);
   const s4 = applyStageMods(m, 4);
-  assert.equal(s4.defendBlock(numCard(2), 8), 2);
+  assert.equal(s4.defendBlock(numCard(2), 8), 3);
   assert.equal(s4.defendBlock(numCard(2), 2), 2);
+  assert.equal(s4.defendCounter(numCard(2)), 1);
 });
 
 test('DesertLizard effect: 1/2/3 deals 3 + 1 sandblind', () => {
@@ -123,7 +124,7 @@ test('DesertLizard effect: 4/5/6 deals 5 + 1 quicksand', () => {
   const eng = new Engine();
   eng.start('Ryan', 'DesertLizard');
   eng.later = () => {};
-  const r = eng.effect('DesertLizard', 5, numCard(5), eng.s.ai, eng.s.player);
+  const r = eng.effect('DesertLizard', 4, numCard(4), eng.s.ai, eng.s.player);
   assert.equal(r.d, 5);
   eng.prepareAttackSettlement(r.d, 'player');
   eng.commitAttackStatuses('afterDamage');
@@ -151,12 +152,12 @@ test('DesertSandworm loot: 1-2 sandblind, 3-4 parasite', () => {
 
 test('DesertSandworm attack hooks', () => {
   const m = getMonster('DesertSandworm');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.attackDamage(numCard(v)), 4);
     assert.equal(m.attackUnblockableIfBuff(numCard(v), { sandblind: 0 }), false);
     assert.equal(m.attackUnblockableIfBuff(numCard(v), { sandblind: 2 }), true);
   }
-  for (const v of [4, 5, 6]) {
+  for (const v of [3, 4]) {
     assert.equal(m.attackDamage(numCard(v)), 5);
     assert.equal(m.attackParasite(numCard(v)), 1);
   }
@@ -172,7 +173,7 @@ test('DesertSandworm stage mods', () => {
   const m = getMonster('DesertSandworm');
   assert.equal(applyStageMods(m, 2).hp, 25);
   assert.equal(applyStageMods(m, 3).attackDamage(numCard(2)), 5);
-  assert.equal(applyStageMods(m, 3).attackDamage(numCard(5)), 6);
+  assert.equal(applyStageMods(m, 3).attackDamage(numCard(4)), 6);
   const s4 = applyStageMods(m, 4);
   assert.equal(s4.defendHeal(numCard(2)), 2);
 });
@@ -181,7 +182,7 @@ test('DesertSandworm effect: 4/5/6 grants parasite', () => {
   const eng = new Engine();
   eng.start('Ryan', 'DesertSandworm');
   eng.later = () => {};
-  const r = eng.effect('DesertSandworm', 5, numCard(5), eng.s.ai, eng.s.player);
+  const r = eng.effect('DesertSandworm', 4, numCard(4), eng.s.ai, eng.s.player);
   assert.equal(r.d, 5);
   eng.prepareAttackSettlement(r.d, 'player');
   eng.commitAttackStatuses('afterDamage');
@@ -210,7 +211,7 @@ test('DesertScarab loot: 1-2 crit, 3-4 fly', () => {
 test('DesertScarab attack color buff', () => {
   const m = getMonster('DesertScarab');
   assert.equal(m.attackDamage(numCard(2)), 3);
-  assert.equal(m.attackDamage(numCard(5)), 4);
+  assert.equal(m.attackDamage(numCard(4)), 4);
   const red = m.attackColorBuff(numCard(2, 'RED'));
   assert.equal(red.burn, 2);
   assert.equal(red.thorns, undefined);
@@ -221,8 +222,8 @@ test('DesertScarab attack color buff', () => {
   assert.equal(blue.iceSeal, 1);
   const green = m.attackColorBuff(numCard(2, 'GREEN'));
   assert.equal(green.poison, 1);
-  assert.equal(m.attackColorBuff(numCard(5, 'RED')), null);
-  assert.equal(m.attackFly(numCard(5)), 1);
+  assert.equal(m.attackColorBuff(numCard(3, 'RED')), null);
+  assert.equal(m.attackFly(numCard(4)), 1);
   assert.equal(m.attackFly(numCard(2)), 0);
 });
 
@@ -236,7 +237,9 @@ test('DesertScarab stage mods', () => {
   const m = getMonster('DesertScarab');
   assert.equal(applyStageMods(m, 2).hp, 24);
   assert.equal(applyStageMods(m, 3).attackDamage(numCard(2)), 4);
-  assert.equal(applyStageMods(m, 4).defendBlock(numCard(2), 8), 4);
+  const s4 = applyStageMods(m, 4);
+  assert.equal(s4.defendBlock(numCard(2), 8), 3);
+  assert.equal(s4.defendCounter(numCard(2)), 1);
 });
 
 test('DesertScarab effect: RED card applies 2 burn', () => {
@@ -254,7 +257,7 @@ test('DesertScarab effect: 4/5/6 grants fly', () => {
   const eng = new Engine();
   eng.start('Ryan', 'DesertScarab');
   eng.later = () => {};
-  const r = eng.effect('DesertScarab', 5, numCard(5), eng.s.ai, eng.s.player);
+  const r = eng.effect('DesertScarab', 4, numCard(4), eng.s.ai, eng.s.player);
   assert.equal(r.d, 4);
   eng.prepareAttackSettlement(r.d, 'player');
   eng.commitAttackStatuses('afterDamage');
@@ -280,12 +283,12 @@ test('DesertScorpion loot: 1-3 poison, 4 thorns', () => {
 
 test('DesertScorpion attack hooks', () => {
   const m = getMonster('DesertScorpion');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.attackDamage(numCard(v)), 3);
     assert.equal(m.attackUnblockableIfBuff(numCard(v), { poison: 0 }), false);
     assert.equal(m.attackUnblockableIfBuff(numCard(v), { poison: 1 }), true);
   }
-  for (const v of [4, 5, 6]) {
+  for (const v of [3, 4]) {
     assert.equal(m.attackDamage(numCard(v)), 2);
     assert.equal(m.attackUnblockable(numCard(v)), true);
     assert.equal(m.attackThorns(numCard(v)), 1);
@@ -298,7 +301,7 @@ test('DesertScorpion defend poison drain', () => {
   const pd = m.defendPoisonDrain(numCard(2));
   assert.equal(pd.poison, 1);
   assert.equal(pd.drain, 0);
-  assert.equal(m.defendPoisonDrain(numCard(5)), null);
+  assert.equal(m.defendPoisonDrain(numCard(4)), null);
 });
 
 test('DesertScorpion stage mods', () => {
@@ -315,7 +318,7 @@ test('DesertScorpion effect: 4/5/6 unblockable + thorns + poison', () => {
   const eng = new Engine();
   eng.start('Ryan', 'DesertScorpion');
   eng.later = () => {};
-  const r = eng.effect('DesertScorpion', 5, numCard(5), eng.s.ai, eng.s.player);
+  const r = eng.effect('DesertScorpion', 4, numCard(4), eng.s.ai, eng.s.player);
   assert.equal(r.d, 2);
   assert.equal(r.unblock, true);
   eng.prepareAttackSettlement(r.d, 'player');
@@ -350,7 +353,7 @@ test('DesertViper base stats', () => {
   assert.ok(m);
   assert.equal(m.kind, '热砂蝰');
   assert.equal(m.hp, 20);
-  assert.equal(m.minStage, 2);
+  assert.equal(m.minStage, undefined);
 });
 
 test('DesertViper loot: 1-4 poison', () => {
@@ -362,12 +365,12 @@ test('DesertViper loot: 1-4 poison', () => {
 
 test('DesertViper attack hooks', () => {
   const m = getMonster('DesertViper');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.attackDamage(numCard(v)), 3);
     assert.equal(m.attackPoison(numCard(v)), 1);
   }
-  assert.equal(m.attackDrain(numCard(5), { playerPoison: 0 }), 2);
-  assert.equal(m.attackDrain(numCard(5), { playerPoison: 2 }), 4);
+  assert.equal(m.attackDrain(numCard(4), { playerPoison: 0 }), 2);
+  assert.equal(m.attackDrain(numCard(4), { playerPoison: 2 }), 4);
   assert.equal(m.attackDrain(numCard(2), { playerPoison: 2 }), 0);
 });
 
@@ -384,8 +387,8 @@ test('DesertViper stage mods', () => {
   assert.equal(applyStageMods(m, 3).hp, 25);
   assert.equal(applyStageMods(m, 4).hp, 25);
   const s3 = applyStageMods(m, 3);
-  assert.equal(s3.attackDrain(numCard(5), { playerPoison: 0 }), 3);
-  assert.equal(s3.attackDrain(numCard(5), { playerPoison: 2 }), 5);
+  assert.equal(s3.attackDrain(numCard(4), { playerPoison: 0 }), 3);
+  assert.equal(s3.attackDrain(numCard(4), { playerPoison: 2 }), 5);
   const s4 = applyStageMods(m, 4);
   assert.equal(s4.defendPoison(numCard(2)), 2);
 });
@@ -422,7 +425,7 @@ test('DesertVulture loot: 1-2 fly, 3-4 sandblind', () => {
 
 test('DesertVulture attack: YELLOW→2 sandblind, else fly', () => {
   const m = getMonster('DesertVulture');
-  for (const v of [1, 2, 3]) {
+  for (const v of [1, 2]) {
     assert.equal(m.attackDamage(numCard(v)), 3);
     assert.equal(m.attackSandblind(numCard(v, 'YELLOW')), 2);
     assert.equal(m.attackFly(numCard(v, 'YELLOW')), 0);
@@ -430,7 +433,7 @@ test('DesertVulture attack: YELLOW→2 sandblind, else fly', () => {
     assert.equal(m.attackFly(numCard(v, 'RED')), 1);
     assert.equal(m.attackFly(numCard(v, 'BLUE')), 1);
   }
-  for (const v of [4, 5, 6]) {
+  for (const v of [3, 4]) {
     assert.equal(m.attackDamage(numCard(v)), 5);
     assert.equal(m.attackClearPositive(numCard(v)), true);
   }
@@ -481,7 +484,7 @@ test('DesertVulture effect: 4/5/6 clears positive buffs', () => {
   eng.s.player.guard = 3;
   eng.s.player.fly = 1;
   eng.s.player.crit = 2;
-  const r = eng.effect('DesertVulture', 5, numCard(5), eng.s.ai, eng.s.player);
+  const r = eng.effect('DesertVulture', 4, numCard(4), eng.s.ai, eng.s.player);
   assert.equal(r.d, 5);
   eng.prepareAttackSettlement(r.d, 'player');
   eng.commitAttackStatuses('afterDamage');
@@ -506,7 +509,7 @@ test('DesertAntlion attacks and cumulative stages leave pass cards inert', () =>
   for (const stage of [2, 3, 4]) {
     const mod = applyStageMods(m, stage);
     assert.equal(mod.hp, 27);
-    for (const value of [1, 2, 3]) {
+    for (const value of [1, 2]) {
       assert.equal(mod.attackDamage(numCard(value)), 3);
       assert.equal(mod.attackUnblockableIfBuff(numCard(value), {quicksand:0}), false);
       assert.equal(mod.attackUnblockableIfBuff(numCard(value), {quicksand:1}), true);
@@ -515,13 +518,13 @@ test('DesertAntlion attacks and cumulative stages leave pass cards inert', () =>
       for (const damage of [0,1,2,3,5,8]) assert.equal(mod.defendBlock(numCard(value),damage), Math.min(2,damage));
       assert.equal(typeof mod.defendCounter==='function' ? mod.defendCounter(numCard(value)) : 0, stage>=4 ? 2:0);
     }
-    for (const value of [4,5,6]) {
+    for (const value of [3, 4]) {
       assert.equal(mod.attackDamage(numCard(value)), 5);
       assert.equal(mod.attackQuicksand(numCard(value)),1);
       assert.equal(mod.defendBlock(numCard(value),8),0);
       assert.equal(mod.defendThorns(numCard(value)),0);
     }
-    for (const value of [0,7]) {
+    for (const value of [0, 5]) {
       assert.equal(mod.attackDamage(numCard(value)),0);
       assert.equal(mod.attackQuicksand(numCard(value)),0);
       assert.equal(mod.attackUnblockableIfBuff(numCard(value),{quicksand:1}),false);
@@ -559,9 +562,9 @@ function stagedEngine(t, name, stage=2) {
 
 test('DesertAntlion attack status applies after damage and only to its target', t => {
   const eng=stagedEngine(t,'DesertAntlion');
-  const card=numCard(5);
+  const card=numCard(4);
   eng.s.atkCard=card; eng.s.atkOwner='ai';
-  const r=eng.effect('DesertAntlion',5,card,eng.s.ai,eng.s.player);
+  const r=eng.effect('DesertAntlion',4,card,eng.s.ai,eng.s.player);
   assert.equal(r.d,5);
   assert.equal(eng.s.player.quicksand,0);
   eng.s.pendingAttack={damage:r.d};
@@ -597,7 +600,7 @@ test('DesertViper drain flags, damage scaling, and actual loss-based healing', t
   for(const stage of [2,3,4]) {
     const eng=stagedEngine(t,'DesertViper',stage);
     eng.s.player.poison=2; eng.s.ai.hp=10;
-    const card=numCard(5);eng.s.atkCard=card;eng.s.atkOwner='ai';
+    const card=numCard(4);eng.s.atkCard=card;eng.s.atkOwner='ai';
     const r=eng.effect('DesertViper',5,card,eng.s.ai,eng.s.player);
     assert.equal(r.d,stage>=3 ? 5:4);
     assert.equal(r.isDrain,true);assert.equal(r.unblock,true);
@@ -617,14 +620,14 @@ test('DesertViper Stage4 defense adds two poison with the status cap intact', t 
   assert.equal(eng.s.ai.poison,0);
 });
 
-test('desert normal rooms allow Viper from Stage2 and exclude all elite monsters', () => {
+test('desert normal rooms allow Viper from Stage1 and exclude all elite monsters', () => {
   const file=path.join(gameRoot,'adventure/js/engine/adventure_engine.js');
   vm.runInContext(fs.readFileSync(file,'utf8'),context,{filename:file});
   const eng=new context.AdventureEngine();
   for (const stage of [1,2,3,4]) {
     eng.s={scene:'desert',stage};
     const names=eng._encounterNames('monster');
-    assert.equal(names.includes('DesertViper'),stage>=2);
+    assert.ok(names.includes('DesertViper'));
     for (const name of ['DesertAntlion','DesertCamel','DesertLizard']) assert.ok(!names.includes(name));
   }
 });
@@ -633,11 +636,11 @@ test('Viper/Antlion combat and codex descriptions match Stage2/3/4 rules', () =>
   const describe=AdventureMonsterBridge.getAdventureNpcSkillDesc;
   for(const stage of [2,3,4]) {
     assert.match(describe('DesertAntlion',numCard(2),false,{stage}),/流沙.*不可防御/);
-    assert.match(describe('DesertAntlion',numCard(5),false,{stage}),new RegExp(5+'🗡️.*流沙'));
+    assert.match(describe('DesertAntlion',numCard(4),false,{stage}),new RegExp(5+'🗡️.*流沙'));
     assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/格挡2/);
     assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/荆棘/);
     if(stage>=4)assert.match(describe('DesertAntlion',numCard(2),true,{stage}),/反击2🗡️/);
-    assert.match(describe('DesertViper',numCard(5),false,{stage}),new RegExp('吸'+(stage>=3 ? 3:2)+'\\+玩家.*中毒'));
+    assert.match(describe('DesertViper',numCard(4),false,{stage}),new RegExp('吸'+(stage>=3 ? 3:2)+'\\+玩家.*中毒'));
     assert.match(describe('DesertViper',numCard(2),true,{stage}),new RegExp(stage>=4 ? '施加2层.*中毒' : '施加\\[中毒\\]'));
   }
 });

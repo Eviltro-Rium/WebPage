@@ -41,14 +41,14 @@
     },
 
     specialEffect(eng, n, v, c, a, t, owner, helpers) {
-      if (v === 7) {
+      if (v === 5) {
         helpers.burnTarget(2);
         if (helpers.targetHand.length) {
           const index = Math.floor(random() * helpers.targetHand.length);
           const dropped = helpers.targetHand.splice(index, 1)[0];
           eng.s.revealCards = [helpers.copy(dropped)];
-          eng.emit('reveal', 'Leon 7牌系统随机弃掉目标手牌', dropped, { who: 'player', from: 'hand' });
-          eng.discardWithEvent(dropped, 'player', { from: 'reveal', faceUp: true, desc: `Leon 7牌弃掉${eng.cardText(dropped)}` });
+          eng.emit('reveal', 'Leon 5牌系统随机弃掉目标手牌', dropped, { who: 'player', from: 'hand' });
+          eng.discardWithEvent(dropped, 'player', { from: 'reveal', faceUp: true, desc: `Leon 5牌弃掉${eng.cardText(dropped)}` });
           eng.emit('desc', `Leon AI弃掉${eng.cardText(dropped)}`);
         }
         return { d: 6, skip: false, unblock: false };

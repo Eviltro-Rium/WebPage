@@ -8,42 +8,37 @@
     init() { return { crit: 0 }; },
     turnStart(eng, ch) {},
     damageAtSettlement(eng, v, a, t) {
-      if (v !== 7) return null;
+      if (v !== 5) return null;
       const divisor = eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8;
       return Math.ceil(a.hp / divisor);
     },
-    attackEffectTiming: {1: 'afterDamage', 2: 'afterDamage', 4: 'immediate'},
+    attackEffectTiming: { 1: 'afterDamage', 3: 'afterDamage', 4: 'immediate' },
     effect(eng, v, c, a, t, owner, helpers) {
-      const { burn, bleed, guard, heal, draw, clearDebuffs, hurt } = helpers;
-      let d = 0, skip = false, unblock = false;
+      const { guard } = helpers;
+      let d = 0;
+      let skip = false;
+      let unblock = false;
       if (v === 1) {
         d = 2;
         unblock = true;
+        guard(1);
         if (a.crit < 3) a.crit++;
         eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
       } else if (v === 2) {
-        d = 3;
-        guard(1);
-      } else if (v === 3) {
         d = 4;
-      } else if (v === 4) {
-        // Gain crit first so the new stack can be spent on this same 5-damage hit.
+      } else if (v === 3) {
         if (a.crit < 3) a.crit++;
         eng.emit('buff', '+1[暴击]', null, { who: owner, kind: 'crit', stacks: a.crit });
         d = 5;
+      } else if (v === 4) {
+        return null;
       } else if (v === 5) {
-        return null;
-      } else if (v === 6) {
-        return null;
-      } else if (v === 7) {
-        // Classic 1v2 doubles starting HP, so Otto 7 scales by /16. Adventure
-        // (including challenge rooms) uses the normal pool and therefore /8.
         const divisor = eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8;
         d = Math.ceil(a.hp / divisor);
         unblock = d <= 3;
       } else if (v === 0) {
         d = 4;
-        let stacks = Math.min(a.crit || 0, 3);
+        const stacks = Math.min(a.crit || 0, 3);
         if (stacks > 0) {
           d += stacks * 3;
           eng.emit('desc', `Otto 0牌：拥有${stacks}层暴击，造成${d}点伤害`);
@@ -54,39 +49,28 @@
       return { d, skip, unblock };
     },
     damageAfterDefense(v, damage, defender) {
-      if ([1].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2));
-
       return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
-      const { hurt, heal, burn, bleed, addGuard } = helpers;
+      const { hurt, heal, bleed, guard } = helpers;
       const counter = helpers.counter || ((target, amount) => hurt(target, amount));
-      let remaining = d, desc = '';
+      let remaining = d;
+      let desc = '';
       if (v === 1) {
-        let b = Math.ceil(d / 2);
-        remaining = Math.max(0, d - b);
-        desc = `Otto 1牌：格挡${b}点`;
-        if ((defender.crit || 0) >= 2) {
-          counter(opponent, b);
-          defender.crit -= 2;
-          desc += `，消耗2层暴击返还${b}点伤害`;
-          eng.emit('buff', `-2[暴击]`, null, { who: owner, kind: 'crit', stacks: defender.crit });
-        }
-      } else if (v === 2) {
         counter(opponent, 2);
-        addGuard(defender, 1);
+        guard(1);
         remaining = d;
-        desc = 'Otto 2牌：反击2点+获得1层守护';
-      } else if (v === 3) {
+        desc = 'Otto 1牌：反击2点+获得1层守护';
+      } else if (v === 2) {
         heal(defender, 2);
         bleed(opponent, 2);
         remaining = d;
-        desc = 'Otto 3牌：恢复2点+施加2层流血';
+        desc = 'Otto 2牌：恢复2点+施加2层流血';
       } else if (v === 0) {
-        addGuard(defender, 5);
+        guard(5);
         counter(opponent, d);
         remaining = d;
-        desc = `Otto 0牌：获得5层守护+反击${d}点+承受${d}点伤害`;
+        desc = `Otto 0牌：获得5层守护+反击${d}点`;
       }
       return { remaining, desc };
     }

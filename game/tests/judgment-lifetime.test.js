@@ -84,10 +84,10 @@ test('multi-card/deck-return judgment remains visible without changing pile owne
  assert.equal(e.events.at(-1).type,'judgmentEnd');assert.equal(e.events.at(-1).cards.length,2);
  assert.equal(e.deck.length,size);
 });
-for(const actor of ['host','guest'])test('online Saiki6 keeps judgment and maps delayed exit: '+actor,()=>{
- const match=new context.OnlineMatchHost(actor==='host'?'Saiki':'Ryan',actor==='guest'?'Saiki':'Ryan',actor);
+for(const actor of ['host','guest'])test('online Otto4 keeps judgment and maps delayed exit: '+actor,()=>{
+ const match=new context.OnlineMatchHost(actor==='host'?'Otto':'Ryan',actor==='guest'?'Otto':'Ryan',actor);
  const e=match.engine,owner=actor==='host'?'player':'ai',other=actor==='host'?'guest':'host';
- e.h[owner]=[Card.number('RED',6),Card.number('RED',3)];e.s.discardTop=Card.number('RED',1);
+ e.h[owner]=[Card.number('RED',4),Card.number('RED',3)];e.s.discardTop=Card.number('RED',1);
  assert.ok(match.dispatch(actor,'selectCard',{index:0}).ok);
  assert.ok(match.dispatch(actor,'doPlay').ok);
  assert.ok(match.dispatch(actor,'selectCard',{index:0}).ok);

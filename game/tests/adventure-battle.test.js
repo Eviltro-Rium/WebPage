@@ -242,17 +242,17 @@ test('adventure opponent is registered for the ordinary 1v1 character and AI int
   assert.ok(context.AIRegistry.get('CastleWolf'));
 });
 
-test('NPC decks include two white 7 pass cards with no skill effect', () => {
+test('NPC decks include two white 5 pass cards with no skill effect', () => {
   const deck = context.AdventureDeck.makeNpcDeck();
-  const sevens = deck.filter(c => c.isNumberCard && c.isWhite && c.value === 7);
-  assert.equal(sevens.length, 2);
-  assert.ok(sevens.every(c => c.npcCard));
-  assert.equal(deck.filter(c => c.isNumberCard && c.isWhite && c.value === 0).length, 1);
+  const fives = deck.filter(c => c.isNumberCard && c.isWhite && c.value === 5);
+  assert.equal(fives.length, 2);
+  assert.ok(fives.every(c => c.npcCard));
+  assert.equal(deck.filter(c => c.isNumberCard && c.isWhite && c.value === 0).length, 2);
 
   const bossDeck = context.AdventureDeck.makeNpcDeck({ whiteZeros: 2 });
-  assert.equal(bossDeck.filter(c => c.isNumberCard && c.isWhite && c.value === 7).length, 2);
-  assert.equal(bossDeck.filter(c => c.isNumberCard && c.isWhite && c.value === 0).length, 1);
-  assert.equal(deck.length, 23);
+  assert.equal(bossDeck.filter(c => c.isNumberCard && c.isWhite && c.value === 5).length, 2);
+  assert.equal(bossDeck.filter(c => c.isNumberCard && c.isWhite && c.value === 0).length, 2);
+  assert.equal(deck.length, 26);
   assert.deepEqual(Array.from(deck, c => c.magic ? 'purple' : c.greenMagic ? 'green' : c.value).sort(),
     Array.from(bossDeck, c => c.magic ? 'purple' : c.greenMagic ? 'green' : c.value).sort());
 
@@ -265,11 +265,11 @@ test('NPC decks include two white 7 pass cards with no skill effect', () => {
     discardTop: number(2, 'RED'),
     discardTopOwner: 'player'
   });
-  const white7 = number(7, 'WHITE', true);
-  const rAtk = engine.effect('ForestRafflesia', 7, white7, engine.s.ai, engine.s.player);
+  const white5 = number(5, 'WHITE', true);
+  const rAtk = engine.effect('ForestRafflesia', 5, white5, engine.s.ai, engine.s.player);
   assert.equal(rAtk.d, 0);
   const rDef = context.CharacterRegistry.get('ForestRafflesia').defend(
-    engine, 'ForestRafflesia', 7, 5, white7,
+    engine, 'ForestRafflesia', 5, 5, white5,
     engine.s.ai, engine.s.player, 'ai', 'RED',
     { heal: () => {}, hurt: () => {}, poison: () => {}, bleed: () => {}, clearDebuffs: () => {}, draw: () => {} }
   );
@@ -277,7 +277,7 @@ test('NPC decks include two white 7 pass cards with no skill effect', () => {
   assert.match(rDef.desc, /无防御效果/);
 
   const x = engine.aiContext({ incomingDamage: 4 });
-  assert.equal(engine.aiDefendLegal(white7, engine.s.discardTop, x), true);
+  assert.equal(engine.aiDefendLegal(white5, engine.s.discardTop, x), true);
 
   const wolf = start({ hand: [number(2, 'RED')] }, number(2, 'RED'));
   assert.equal(wolf.aiDefendLegal(white7, wolf.s.discardTop, wolf.aiContext({})), false);
@@ -286,8 +286,8 @@ test('NPC decks include two white 7 pass cards with no skill effect', () => {
 test('all ordinary NPC zero/seven and boss seven have no attack or defense effects at every stage', () => {
   const registry = context.AdventureRegistry;
   for (const mod of [...registry.allMonsters(), ...registry.allBosses()]) {
-    if (mod.sevenSkill) continue; // Final enemy has an explicitly documented 7 skill.
-    const values = registry.getBoss(mod.name) ? [7] : (mod.defendEscape ? [7] : [0, 7]);
+    if (mod.fiveSkill) continue; // Final enemy has an explicitly documented 5 skill.
+    const values = registry.getBoss(mod.name) ? [5] : (mod.defendEscape ? [5] : [0, 5]);
     assert.equal(mod.whiteZeros, 1);
     for (const stage of [1, 2, 3, 4]) {
       const engine = new AdventureBattleEngine();
@@ -1238,8 +1238,12 @@ test('CastleEagle attack and defend skills', () => {
   assert.equal(atk1.d, 4);
   assert.equal(atk1.unblock, false);
 
+  const atk2 = engine.effect('CastleEagle', 2, number(2, 'RED'), engine.s.ai, engine.s.player);
+  assert.equal(atk2.d, 6);
+
   const atk3 = engine.effect('CastleEagle', 3, number(3, 'RED'), engine.s.ai, engine.s.player);
-  assert.equal(atk3.d, 6);
+  assert.equal(atk3.d, 3);
+  assert.equal(atk3.unblock, true);
 
   engine.s.player.guard = 2;
   engine.s.player.fly = 1;

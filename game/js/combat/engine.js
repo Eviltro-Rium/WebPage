@@ -361,7 +361,7 @@
     }
     aiAttackScore(c,top){let x=this.aiContext();if(c.isItemCard){if(this.s.isAdventure&&this._getAdventureMod(x.name)){if(c.magic||c.magicColor==='purple')return 200;if(c.greenMagic||c.magicColor==='green')return 190}return this.baseAttackScore(c,top,x)}if(this.aiSkip(x.name,c,x,'attack'))return-100;let m=AIRegistry.get(x.name),role=m?m.attackScore(this,c.value,c,x):null;return role!=null?role:this.baseAttackScore(c,top,x)}
     chooseAIPlay(top){let best=null,score=-Infinity;for(const c of this.h.ai){if(!this.legal(c))continue;let s=this.aiAttackScore(c,top);if(s>score){score=s;best=c}}return score<=-100?null:best}
-    aiDefendLegal(c,top,x){if(c.isBlack||c.drawThree||c.drawTwo||c.potion||c.swapHand||c.shuffleToDeck)return true;if(c.superPurify)return x.debuff||x.oppGuard>0;if(c.purify)return x.debuff;if(this.s.isAdventure&&((c.value>=4&&c.value<=6)||c.value===7)){let mod=this._getAdventureMod(this.name(this.s.ai));if(mod&&mod.canDefendHigh)return this.legal(c,false);return false}if(c.isWhite)return c.value<=3&&this.legal(c,true);if(c.value<=3)return this.legal(c,true);return false}
+    aiDefendLegal(c,top,x){if(c.isBlack||c.drawThree||c.drawTwo||c.potion||c.swapHand||c.shuffleToDeck)return true;if(c.superPurify)return x.debuff||x.oppGuard>0;if(c.purify)return x.debuff;if(this.s.isAdventure&&(c.value>=4&&c.value<=5)){let mod=this._getAdventureMod(this.name(this.s.ai));if(mod&&mod.canDefendHigh)return this.legal(c,false);return false}if(c.isWhite)return c.value<=3&&this.legal(c,true);if(c.value<=3)return this.legal(c,true);return false}
     baseDefendScore(c,top,x){
       if(c.magic||c.magicColor==='purple')return 100;
       if(c.greenMagic||c.magicColor==='green')return 90;
@@ -447,16 +447,14 @@
       return 24+Math.max(0,c.value)*4
     }
     chooseAIDiscard(hand=this.h.ai){let worst=-1,score=Infinity;for(let i=0;i<hand.length;i++){let value=this.aiKeepScore(hand[i]);if(value<score){score=value;worst=i}}return worst}
-    defenseJudge(owner,card,incoming){let defender=this.s[owner],opponentKey=owner==='player'?(this.s.is1v2&&this.s.atkOwner&&this.s.atkOwner!=='player'?this.s.atkOwner:'ai'):'player',opponent=this.s[opponentKey],name=this.name(defender),v=card.value;if(!((name==='Chan'&&v===3)||(name==='Saiki'&&v===3)||(name==='Serenity'&&v===0)))return null;let r=this.reveal(`${name} ${v}牌防御判定`,owner);if(!r)return{remaining:incoming};let remaining=incoming;
-      if(name==='Chan'){let heal=r.isItemCard?0:Math.ceil(r.value/2);this.heal(defender,heal);this.h[owner].push(r);this.emit('desc',`Chan 3牌判定：${this.cardText(r)}，恢复${heal}点并加入手牌`)}
-      if(name==='Saiki'){let success=r.isBlack||r.isWhite||this.effective(r)==='YELLOW';this.h[owner].push(r);if(success){remaining=0;this.emit('desc',`Saiki 3牌判定成功：${this.cardText(r)}加入手牌，防御所有伤害`)}else{this.emit('desc',`Saiki 3牌判定失败：${this.cardText(r)}加入手牌`)}}
+    defenseJudge(owner,card,incoming){let defender=this.s[owner],opponentKey=owner==='player'?(this.s.is1v2&&this.s.atkOwner&&this.s.atkOwner!=='player'?this.s.atkOwner:'ai'):'player',opponent=this.s[opponentKey],name=this.name(defender),v=card.value;if(!(name==='Serenity'&&v===0))return null;let r=this.reveal(`${name} ${v}牌防御判定`,owner);if(!r)return{remaining:incoming};let remaining=incoming;
       if(name==='Serenity'){remaining=0;let yellow=this.effective(r)==='YELLOW';if(yellow){this.s.serenityHalfTarget=opponentKey;this.emit('desc','Serenity 0牌判定黄牌：防御伤害，攻防结束后进攻方生命减半')}else{this.cancelAttackDebuffs(owner,false);this.emit('desc','Serenity 0牌判定非黄牌：免疫所有伤害和debuff')}this.discardWithEvent(r,owner,{from:'reveal',faceUp:true,desc:`Serenity 0牌将${this.cardText(r)}置于弃牌库底`})}
       return{remaining}}
     opponentHandSkill(name,value){
       const policy=Combat.OpponentHandPolicy;
       return policy&&typeof policy.isSkill==='function'
         ? policy.isSkill(name,value)
-        : (name==='Chan'&&(value===4||value===7))||(name==='Saiki'&&value===5)||(name==='Blaze'&&value===4)||(name==='Moze'&&value===5)||(name==='Leon'&&value===7);
+        : (name==='Chan'&&value===5)||(name==='Saiki'&&value===4)||(name==='Moze'&&value===3)||(name==='Leon'&&value===5);
     }
     /** Resolve the target hand and select the interaction strategy. */
     opponentHandTarget(pending={}){
@@ -512,7 +510,7 @@
       return this.state();
     }
     finishOpponentAttack(p,d,skip=false,unblock=false){this.s.pendingOpponentSkill=null;this.s.opponentHandTarget=null;return this.gateAdventureAttackMod(p.attackCard,d,skip,unblock)}
-    opponentEmpty(p){let d=0,skip=false;const targetKey=this.opponentHandTarget(p||{}),target=this.s[targetKey];if(p.name==='Chan'&&p.value===4){d=2;skip=true}if(p.name==='Chan'&&p.value===7)d=6;if(p.name==='Saiki'&&p.value===5)d=4;if(p.name==='Leon'&&p.value===7){d=6;if(target)this.burn(target,2)}if(p.name==='Blaze'){d=4+(this.s.player.burn?1:0);const queued=this.s.pendingSkillStatuses||(this.s.pendingSkillStatuses=[]);for(const key of ['player',targetKey])queued.push({target:key,id:'burn',method:'burn',args:[1],timing:'afterDamage'});this.emit('desc',`Blaze 4牌：对手无手牌，造成${d}点伤害，双方灼伤+1`,p.attackCard);return this.finishOpponentAttack(p,d,false,false)}if(p.name==='Moze'){const before=this.s.player.hp;this.s.player.hp=Math.min(this.s.player.maxHp,this.s.player.hp+2);this.addGuard(this.s.player,2);skip=true;this.emit('desc',`Moze 5牌：对手无手牌，恢复${this.s.player.hp-before}点生命并获得2层守护，跳过防御`,p.attackCard);return this.finishOpponentAttack(p,0,skip,false)}this.emit('desc',`${p.name} ${p.value}牌：对手无手牌${d?`，造成${d}点伤害`:''}${skip?'并跳过防御':''}`,p.attackCard);return this.finishOpponentAttack(p,d,skip,false)}
+    opponentEmpty(p){let d=0,skip=false;const targetKey=this.opponentHandTarget(p||{}),target=this.s[targetKey];if(p.name==='Chan'&&p.value===5)d=6;if(p.name==='Saiki'&&p.value===4)d=4;if(p.name==='Leon'&&p.value===5){d=6;if(target)this.burn(target,2)}if(p.name==='Moze'&&p.value===3){const before=this.s.player.hp;this.heal(this.s.player,2);this.addGuard(this.s.player,2);skip=true;this.emit('desc',`Moze 3牌：对手无手牌，恢复${this.s.player.hp-before}点生命并获得2层守护，跳过防御`,p.attackCard);return this.finishOpponentAttack(p,0,skip,false)}this.emit('desc',`${p.name} ${p.value}牌：对手无手牌${d?`，造成${d}点伤害`:''}${skip?'并跳过防御':''}`,p.attackCard);return this.finishOpponentAttack(p,d,skip,false)}
     gateAdventureAttackMod(card,damage,skip=false,unblock=false,delay=0,opts={}){
       damage=Number(damage)||0;skip=!!skip;unblock=!!unblock;
       const isDrain=!!(opts&&(opts.isDrain||(opts.drain>0)));
@@ -1343,7 +1341,7 @@
       if(!c)throw Error('请先选择卡牌');
       if(!this.legal(c))throw Error('颜色或数字不匹配');
       let who=this.name(this.s.player);
-      const needsNumberFollowup = !c.borrowedMonster && ((who==='Ryan'&&c.value===5)||(who==='Saiki'&&c.value===6)||(who==='Moze'&&c.value===4)||(who==='Otto'&&c.value===5));
+      const needsNumberFollowup = !c.borrowedMonster && ((who==='Ryan'&&c.value===3)||(who==='Otto'&&c.value===4));
       if(c.isBlack&&!c.chosenColor)return this._stagePendingBlackCard(i,c,'attack');
       if(c.isWhite)c.chosenColor=this.effective(this.s.discardTop);
       if(needsNumberFollowup&&!this.h.player.some((x,j)=>j!==i&&x.isNumberCard)){
@@ -1380,15 +1378,12 @@
       if(this._onAttackSkillRelease(this.s.player))return this.gateAdventureAttackMod(c,0,true,false);
       if(this._applyAdventureDefendPhaseMock(this.s.ai,c))return this.gateAdventureAttackMod(c,0,true,false);
       this._deferAttackBuffs('ai',_buffBefore);
-      if(who==='Moze'&&c.value===7){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc','Moze 7牌：请选择自己或一名对手作为清除目标',c);return this.state()}
-      if(who==='Ryan'&&c.value===5)return this.startRyanFive(c);
+      if(who==='Moze'&&c.value===5){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc','Moze 5牌：请选择自己或一名对手作为清除目标',c);return this.state()}
+      if(who==='Ryan'&&c.value===3)return this.startRyanFive(c);
       if(who==='Leon'&&c.value===0&&this.s.isAdventure)return this.beginLeonZeroDiscard(c);
-      if(who==='Saiki'&&c.value===6)return this.startNumberJudge('Saiki',c);
-      if(who==='Moze'&&c.value===4)return this.startNumberJudge('Moze',c);
-      if(who==='Chan'&&c.value===5)return this.startChanFive();
-      if(who==='Otto'&&c.value===6)return this.startOttoFour(c);
-      if(who==='Otto'&&c.value===5)return this.startNumberJudge('Otto',c);
-      if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===5&&this.s.player.hp<=30)){let p={name:who,value:c.value,owner:'player',attackCard:cp(c)};return this.resolveOpponentHandSkill(p)}
+      if(who==='Chan'&&c.value===3)return this.startChanFive();
+      if(who==='Otto'&&c.value===4)return this.startNumberJudge('Otto',c);
+      if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===4&&this.s.player.hp<=30)){let p={name:who,value:c.value,owner:'player',attackCard:cp(c)};return this.resolveOpponentHandSkill(p)}
       let r=this.effect(who,c.value,c,this.s.player,this.s.ai);
       this._deferAttackBuffs('ai',_buffBefore);
       if(r.immediateBuffs)this._restoreAttackBuffs();
@@ -1403,7 +1398,7 @@
       return this.gateAdventureAttackMod(c,r.d,r.skip,r.unblock,0,{isDrain:!!(r.isDrain||r.drain),aoeTargets:r.aoeTargets,aoeDamage:r.aoeDamage,hypothermiaTarget:r.hypothermiaTarget,hypothermiaAmount:r.hypothermiaAmount})
     }
     resolveMozeSevenChoice(choice){
-      if(!this.s || this.s.pendingDialog!=='mozeSeven')throw Error('当前没有待处理的 Moze 7牌选择');
+      if(!this.s || this.s.pendingDialog!=='mozeSeven')throw Error('当前没有待处理的 Moze 5牌选择');
       const selected=choice&&typeof choice==='object'?(choice.target||choice.choice):choice;
       // 1v1/1v2 share the same target-row dialog: player clears self debuffs,
       // ai/ai2 clears that opponent's positive buffs. Legacy string choices remain valid.
@@ -1434,7 +1429,7 @@
       if(this.s.is1v2&&isTargetChoice&&targetKey!=='player')this.s.attackTarget=targetKey;
       this.s.pendingDialog=null;
       const damage=3+cleared;
-      this.emit('desc',`Moze 7牌：${desc}，清除${cleared}层，造成${damage}点伤害`,this.s.atkCard);
+      this.emit('desc',`Moze 5牌：${desc}，清除${cleared}层，造成${damage}点伤害`,this.s.atkCard);
       return this.gateAdventureAttackMod(this.s.atkCard,damage,false,false);
     }
     startRyanFive(card){
@@ -1444,32 +1439,32 @@
       this.s.selectedCard=-1;
       this.s.phase='PLAYER_FIVE_CHOICE';
       this.s.busy=false;
-      this.emit('desc','Ryan 5牌：请再选择一张数字牌，然后选择恢复或进攻',card);
+      this.emit('desc','Ryan 3牌：请再选择一张数字牌，然后选择恢复或进攻',card);
       return this.check()
     }
     finishRyanFive(chooseDamage){
-      if(this.s.phase!=='PLAYER_FIVE_CHOICE'||!this.s.pendingFiveChoice)throw Error('当前没有待处理的 Ryan 5牌');
+      if(this.s.phase!=='PLAYER_FIVE_CHOICE'||!this.s.pendingFiveChoice)throw Error('当前没有待处理的 Ryan 3牌');
       let i=this.s.selectedCard,second=this.h.player[i];
       if(!second)throw Error('请先选择一张数字牌');
-      if(!second.isNumberCard)throw Error('Ryan 5牌的第二张牌必须是数字牌');
+      if(!second.isNumberCard)throw Error('Ryan 3牌的第二张牌必须是数字牌');
       if(second.isWhite)second.chosenColor=this.effective(this.s.discardTop);
       this.h.player.splice(i,1);
       this.s.selectedCard=-1;
       this.s.pendingFiveChoice=false;
       this.s.fiveChoiceCard=null;
       this.s.revealCards=[cp(second)];
-      this.emit('reveal',`Ryan 5牌追加${this.cardText(second)}并置于弃牌库底`,second,{who:'player',from:'hand',fromOwner:'player',handIndex:i});
-      this.discardWithEvent(second,'player',{from:'reveal',faceUp:true,desc:`Ryan 5牌将${this.cardText(second)}置于弃牌库底`});
-      let amount=chooseDamage?Math.ceil(second.value*1.5):second.value;
+      this.emit('reveal',`Ryan 3牌追加${this.cardText(second)}并置于弃牌库底`,second,{who:'player',from:'hand',fromOwner:'player',handIndex:i});
+      this.discardWithEvent(second,'player',{from:'reveal',faceUp:true,desc:`Ryan 3牌将${this.cardText(second)}置于弃牌库底`});
+      let amount=chooseDamage?second.value*2:second.value*2;
       if(chooseDamage&&amount>0){
-        this.emit('desc',`Ryan 5牌选择进攻：造成${amount}点伤害（牌面值1.5倍，向上取整）`,second);
+        this.emit('desc',`Ryan 3牌选择进攻：造成${amount}点伤害`,second);
         return this.gateAdventureAttackMod(second,amount,false,false,1800);
       }
       if(!chooseDamage)this.heal(this.s.player,amount);
       this.s.pendingAttack=null;
       this.s.phase='AI_DEFEND';
       this.s.busy=true;
-      this.emit('desc',chooseDamage?'Ryan 5牌追加0：本次进攻没有伤害':`Ryan 5牌选择恢复：恢复${amount}点生命`,second);
+      this.emit('desc',chooseDamage?'Ryan 3牌追加0：本次进攻没有伤害':`Ryan 3牌选择恢复：恢复${amount}点生命`,second);
       this.later(()=>{this.afterAttack();this.check()},1700);
       return this.check()
     }
@@ -1479,7 +1474,7 @@
       this.s.selectedCard=-1;
       this.s.phase='SAIKI_SIX_JUDGE';
       this.s.busy=false;
-      this.emit('desc',type==='Saiki'?'Saiki 6牌：请选择一张数字牌作为伤害判定':'Moze 4牌：请选择一张数字牌转化为对应层数守护',card);
+      this.emit('desc','Otto 4牌：请选择一张数字牌进行判定',card);
       return this.check()
     }
     finishNumberJudge(){
@@ -1492,46 +1487,30 @@
       this.s.pendingNumberJudge=null;
       this.s.revealCards=[cp(second)];
       this.emit('reveal',`${pending.type} 数字判定：${this.cardText(second)}`,second,{who:'player',from:'hand',fromOwner:'player',handIndex:i});
-      if(pending.type==='Moze'){
-        this.discardWithEvent(second,'player',{from:'reveal',faceUp:true,desc:`Moze 4牌将${this.cardText(second)}置于弃牌库底`});
-        this.addGuard(this.s.player,second.value);
-        this.emit('desc',`Moze 4牌：${this.cardText(second)}放入弃牌库底，获得${second.value}层守护并跳过防御`,second);
-        this.s.phase='AI_DEFEND';this.s.busy=true;
-        this.later(()=>{this.afterAttack();this.check()},1700);
-        return this.check()
-      }
       if(pending.type==='Otto'){
-        this.discardWithEvent(second,'player',{from:'reveal',faceUp:true,desc:`Otto 5牌将${this.cardText(second)}置于弃牌库底`});
-        let judgeTarget=this.s.is1v2?this.s[this.s.attackTarget||'ai']:this.s.ai;
-        const amount=Math.ceil(second.value*1.5);
+        this.discardToBottom(second,'player');
+        this.emit('discard',`Otto 4牌将${this.cardText(second)}置于弃牌库底`,second,{who:'player',from:'reveal',destination:'bottom'});
+        const amount=second.value*2;
         if(second.isWhite){
           this.heal(this.s.player,amount);
           if(this.s.player.crit<3)this.s.player.crit++;
           this.emit('buff','+1[暴击]',null,{who:'player',kind:'crit',stacks:this.s.player.crit});
-          this.emit('desc',`Otto 5牌：${this.cardText(second)}为白牌，恢复${amount}点+1层暴击，跳过防御`);
+          this.emit('desc',`Otto 4牌：${this.cardText(second)}为白牌，恢复${amount}点+1层暴击，跳过防御`);
           this.s.phase='AI_DEFEND';this.s.busy=true;
           this.later(()=>{this.afterAttack();this.check()},1700);
           return this.check()
         }
-        let damage=amount;
-        this.emit('desc',`Otto 5牌：${this.cardText(second)}造成${damage}点伤害`,second);
-        if(damage>0)return this.gateAdventureAttackMod(second,damage,false,false,1800);
+        const damage=amount;
+        this.emit('desc',`Otto 4牌：${this.cardText(second)}造成${damage}点伤害`,second);
+        if(damage>0)return this.gateAdventureAttackMod(second,damage,true,false,1800);
         this.s.pendingAttack=null;this.s.phase='AI_DEFEND';this.s.busy=true;
         this.later(()=>{this.afterAttack();this.check()},1500);
         return this.check()
       }
-      this.discardToBottom(second,'player');
-      this.emit('discard',`Saiki 6牌将${this.cardText(second)}置于弃牌库底`,second,{who:'player',from:'reveal',destination:'bottom'});
-      let judgeTarget=this.s.is1v2?this.s[this.s.attackTarget||'ai']:this.s.ai;if(this.effective(second)==='YELLOW')this.bleed(judgeTarget,1);
-      let damage=Math.ceil(second.value*1.5);
-      this.emit('desc',`Saiki 6牌：${this.cardText(second)}造成${damage}点伤害${this.effective(second)==='YELLOW'?'并施加1层流血':''}`,second);
-      if(damage>0)return this.gateAdventureAttackMod(second,damage,false,false,1800);
-      this.s.pendingAttack=null;this.s.phase='AI_DEFEND';this.s.busy=true;
-      this.later(()=>{this.afterAttack();this.check()},1500);
-      return this.check()
+      throw Error('无效的判定类型');
     }
-    startChanFive(){this.hurt(this.s.player,2);let cards=[];for(let i=0;i<5&&this.deck.length;i++)cards.push(this.deck.pop());this.s.chanFiveCards=cp(cards);this.s.phase='CHAN_FIVE_REORDER';this.s.busy=false;this.emit('desc',`Chan 5牌：消耗2点生命，查看牌库顶${cards.length}张并排序`);if(!cards.length){if(this.s.isAdventure)return this.gateAdventureAttackMod(this.s.atkCard,0,true,false,1200);this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this.afterAttack();this.check()},1200)}return this.check()}
-    finishChanFive(order){let cards=this.s.chanFiveCards;if(!cards||!cards.length)throw Error('当前没有需要排序的牌');let ids=String(order||'').split(',').map(Number);if(ids.length!==cards.length||new Set(ids).size!==cards.length||ids.some(i=>i<0||i>=cards.length))ids=cards.map((_,i)=>i);let arranged=ids.map(i=>cards[i]);for(let i=arranged.length-1;i>=0;i--)this.deck.push(arranged[i]);this.s.chanFiveCards=null;this.draw('player',2,true);this.emit('desc','Chan 5牌：排序完成，抽取新的牌库顶2张牌并跳过防御');if(this.s.isAdventure)return this.gateAdventureAttackMod(this.s.atkCard,0,true,false,1700);this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this.afterAttack();this.check()},1700);return this.check()}
+    startChanFive(){this.hurt(this.s.player,2);let cards=[];for(let i=0;i<5&&this.deck.length;i++)cards.push(this.deck.pop());this.s.chanFiveCards=cp(cards);this.s.phase='CHAN_FIVE_REORDER';this.s.busy=false;this.emit('desc',`Chan 3牌：消耗2点生命，查看牌库顶${cards.length}张并排序`);if(!cards.length){if(this.s.isAdventure)return this.gateAdventureAttackMod(this.s.atkCard,0,true,false,1200);this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this.afterAttack();this.check()},1200)}return this.check()}
+    finishChanFive(order){let cards=this.s.chanFiveCards;if(!cards||!cards.length)throw Error('当前没有需要排序的牌');let ids=String(order||'').split(',').map(Number);if(ids.length!==cards.length||new Set(ids).size!==cards.length||ids.some(i=>i<0||i>=cards.length))ids=cards.map((_,i)=>i);let arranged=ids.map(i=>cards[i]);for(let i=arranged.length-1;i>=0;i--)this.deck.push(arranged[i]);this.s.chanFiveCards=null;this.draw('player',2,true);this.emit('desc','Chan 3牌：排序完成，抽取新的牌库顶2张牌并跳过防御');if(this.s.isAdventure)return this.gateAdventureAttackMod(this.s.atkCard,0,true,false,1700);this.s.phase='AI_DEFEND';this.s.busy=true;this.later(()=>{this.afterAttack();this.check()},1700);return this.check()}
     startOttoFour(card){
       let targetKey=this.s.is1v2?(this.s.attackTarget||'ai'):'ai';
       this.refillDeckIfNeeded();let c1=this.deck.length?this.deck.pop():null;
@@ -1558,15 +1537,13 @@
       // flag makes a transferred white card render with the NPC badge.
       if(this.s.isAdventure||this.isAdventureBattle) chosen.npcCard=true; else delete chosen.npcCard;
       this.s.selectedAICard=-1;this.s.revealCards=[cp(chosen)];this.emit('reveal',`${p.name} ${p.value}牌抽取对手手牌判定`,chosen,{who:targetKey,fromOwner:targetKey,from:'hand',handIndex:i});let d=0,skip=false,unblock=false,keep=false;
-      if(p.name==='Chan'&&p.value===4){const adventure=!!(this.s&&this.s.isAdventure||this.isAdventureBattle);if(adventure){this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Chan 4牌弃掉${this.cardText(chosen)}`});this.emit('desc',`Chan 4牌：弃掉${this.cardText(chosen)}，造成2点伤害并跳过防御`);return this.gateAdventureAttackMod(chosen,2,true,false)}this.s.pendingOpponentSkill=null;this.s.chanFourSwapMode=true;this.s.chanFourSwapDrawn=cp(chosen);this.s.phase='PLAYER_SEVEN_CHOICE';this.s.selectedCard=-1;this.emit('desc','Chan 4牌：选择自己一张手牌交换，或弃掉抽到的牌并造成2点伤害');return this.state()}
-      if(p.name==='Chan'&&p.value===7){if(this.s.isAdventure){this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Chan 7牌弃掉${this.cardText(chosen)}`});this.emit('desc',`Chan 7牌：弃掉${this.cardText(chosen)}，造成6点伤害`);return this.finishOpponentAttack(p,6,false,false)}this.s.chanSevenKeepMode=true;this.s.chanSevenChosenCard=cp(chosen);this.s.phase='PLAYER_SEVEN_CHOICE';this.s.busy=false;this.emit('desc','Chan 7牌：选择将抽到的牌加入手牌或弃掉');return this.state()}
-      if(p.name==='Saiki'&&p.value===5){if(this.s.isAdventure)this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Saiki 5牌弃掉${this.cardText(chosen)}`});else this.h.player.push(chosen);this.emit('desc',`Saiki 5牌：弃掉${this.cardText(chosen)}，造成4点伤害${this.s.isAdventure?'（冒险模式）':''}`);return this.finishOpponentAttack(p,4,false,false)}
+      if(p.name==='Chan'&&p.value===5){if(this.s.isAdventure){this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Chan 5牌弃掉${this.cardText(chosen)}`});this.emit('desc',`Chan 5牌：弃掉${this.cardText(chosen)}，造成6点伤害`);return this.finishOpponentAttack(p,6,false,false)}this.s.chanSevenKeepMode=true;this.s.chanSevenChosenCard=cp(chosen);this.s.phase='PLAYER_SEVEN_CHOICE';this.s.busy=false;this.emit('desc','Chan 5牌：选择将抽到的牌加入手牌或弃掉');return this.state()}
+      if(p.name==='Saiki'&&p.value===4){if(this.s.isAdventure)this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Saiki 4牌弃掉${this.cardText(chosen)}`});else this.h.player.push(chosen);this.emit('desc',`Saiki 4牌：弃掉${this.cardText(chosen)}，造成4点伤害${this.s.isAdventure?'（冒险模式）':''}`);return this.finishOpponentAttack(p,4,false,false)}
       if(p.name==='Saiki'&&p.value===3){if(this.s.isAdventure){this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Saiki 3牌弃掉${this.cardText(chosen)}`});this.emit('desc',`Saiki 3牌：弃掉${this.cardText(chosen)}，造成2点伤害${this.effective(p.attackCard)==='YELLOW'?'并施加1层流血':''}`);return this.finishOpponentAttack(p,2,false,false)}this.s.saikiThreeDrawn=cp(chosen);this.s.phase='SAIKI_THREE_CHOICE';this.s.busy=false;this.emit('desc','Saiki 3牌：选择将抽到的牌加入手牌或弃掉');return this.state()}
-      if(p.name==='Leon'&&p.value===7){this.burn(target,2);this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Leon 7牌弃掉${this.cardText(chosen)}`});this.emit('desc',`Leon 7牌：对手灼伤+2并弃掉${this.cardText(chosen)}，造成6点伤害`);return this.finishOpponentAttack(p,6,false,false)}
-      if(p.name==='Blaze'){const special=!chosen.isNumberCard||chosen.value===0;d=(special?4:chosen.value)+(this.s.player.burn?1:0);if(special){const queued=this.s.pendingSkillStatuses||(this.s.pendingSkillStatuses=[]);for(const key of ['player',targetKey])queued.push({target:key,id:'burn',method:'burn',args:[1],timing:'afterDamage'})}this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Blaze 4牌弃掉${this.cardText(chosen)}`});this.emit('desc',`Blaze 4牌判定：${d}点伤害${special?'，双方灼伤+1':''}`)}
-      if(p.name==='Moze'){keep=!this.s.isAdventure;if(this.s.isAdventure)this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Moze 5牌弃掉${this.cardText(chosen)}`});if(!chosen.isItemCard&&(chosen.isBlack||chosen.isWhite||this.effective(chosen)==='GREEN'))d=4;else{this.heal(this.s.player,2);this.addGuard(this.s.player,2);skip=true}this.emit('desc',(d?'Moze 5牌判定：4点伤害':'Moze 5牌判定：恢复2点并获得2层守护')+(this.s.isAdventure?'（弃掉）':''))}
+      if(p.name==='Leon'&&p.value===5){this.burn(target,2);this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Leon 5牌弃掉${this.cardText(chosen)}`});this.emit('desc',`Leon 5牌：对手灼伤+2并弃掉${this.cardText(chosen)}，造成6点伤害`);return this.finishOpponentAttack(p,6,false,false)}
+      if(p.name==='Moze'&&p.value===3){keep=!this.s.isAdventure;if(this.s.isAdventure)this.discardWithEvent(chosen,targetKey,{from:'reveal',faceUp:true,desc:`Moze 3牌弃掉${this.cardText(chosen)}`});if(!chosen.isItemCard&&(chosen.isBlack||chosen.isWhite||this.effective(chosen)==='GREEN'))d=4;else{this.heal(this.s.player,2);this.addGuard(this.s.player,2);skip=true}this.emit('desc',(d?'Moze 3牌判定：4点伤害':'Moze 3牌判定：恢复2点并获得2层守护')+(this.s.isAdventure?'（弃掉）':''))}
       if(keep)this.h.player.push(chosen);return this.finishOpponentAttack(p,d,skip,unblock)}
-    chanSevenChoice(keep){let p=this.s.pendingOpponentSkill,c=this.s.chanSevenChosenCard;if(!p||!this.s.chanSevenKeepMode||!c)throw Error('当前没有待处理的 Chan 7牌');const owner=this.s.isAdventure?this.opponentHandTarget(p):'player';if(this.s.isAdventure)keep=false;if(keep)this.h.player.push(c);else this.discardWithEvent(c,owner,{from:'reveal',faceUp:true,desc:`Chan 7牌弃掉${this.cardText(c)}`});this.s.chanSevenKeepMode=false;this.s.chanSevenChosenCard=null;this.emit('desc',`Chan 7牌：${keep?'加入手牌':'弃掉'}${this.cardText(c)}`);return this.finishOpponentAttack(p,6,false,false)}
+    chanSevenChoice(keep){let p=this.s.pendingOpponentSkill,c=this.s.chanSevenChosenCard;if(!p||!this.s.chanSevenKeepMode||!c)throw Error('当前没有待处理的 Chan 5牌');const owner=this.s.isAdventure?this.opponentHandTarget(p):'player';if(this.s.isAdventure)keep=false;if(keep)this.h.player.push(c);else this.discardWithEvent(c,owner,{from:'reveal',faceUp:true,desc:`Chan 5牌弃掉${this.cardText(c)}`});this.s.chanSevenKeepMode=false;this.s.chanSevenChosenCard=null;this.emit('desc',`Chan 5牌：${keep?'加入手牌':'弃掉'}${this.cardText(c)}`);return this.finishOpponentAttack(p,6,false,false)}
     saikiThreeChoice(keep){let p=this.s.pendingOpponentSkill,c=this.s.saikiThreeDrawn;if(!p||!c)throw Error('当前没有待处理的 Saiki 3牌');if(keep)this.h.player.push(c);else this.discardWithEvent(c,'player',{from:'reveal',faceUp:true,desc:`Saiki 3牌弃掉${this.cardText(c)}`});this.s.saikiThreeDrawn=null;this.emit('desc',`Saiki 3牌：${keep?'加入手牌':'弃掉'}${this.cardText(c)}，造成2点伤害${this.effective(p.attackCard)==='YELLOW'?'并施加1层流血':''}`);return this.finishOpponentAttack(p,2,false,false)}
     chanFourSwap(){let targetKey=this.s.is1v2?(this.s.attackTarget||'ai'):'ai',i=this.s.selectedCard,drawn=this.s.chanFourSwapDrawn;if(!this.s.chanFourSwapMode||!drawn)throw Error('当前没有可交换的牌');if(i<0||!this.h.player[i])throw Error('请选择自己的一张手牌用于交换');let own=this.h.player.splice(i,1)[0];this.h[targetKey].push(own);this.h.player.push(drawn);this.s.selectedCard=-1;this.s.chanFourSwapMode=false;this.s.chanFourSwapDrawn=null;this.emit('desc',`Chan 4牌：${this.cardText(drawn)} 与 ${this.cardText(own)} 完成交换`);this.afterAttack();return this.check()}
     chanFourDiscard(){let drawn=this.s.chanFourSwapDrawn;if(!this.s.chanFourSwapMode||!drawn)throw Error('当前没有可弃掉的牌');let targetKey=this.s.is1v2?(this.s.attackTarget||'ai'):'ai';this.s.chanFourSwapMode=false;this.s.chanFourSwapDrawn=null;this.discardWithEvent(drawn,targetKey,{from:'reveal',faceUp:true,desc:`Chan 4牌弃掉${this.cardText(drawn)}`});this.emit('desc',`Chan 4牌：弃掉${this.cardText(drawn)}，造成2点伤害并跳过防御`);return this.gateAdventureAttackMod(drawn,2,true,false)}

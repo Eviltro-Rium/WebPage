@@ -53,7 +53,7 @@ test('EngineModes exposes topology adapters for each battle mode', () => {
   assert.equal(dualState.modeId, '1v2');
   assert.equal(Array.from(one.participants).join(','), 'player,ai');
   assert.equal(Array.from(dual.participants).join(','), 'player,ai,ai2');
-  assert.equal(one.createPiles().deck.length + 1, 101);
+  assert.equal(one.createPiles().deck.length + 1, 74);
   assert.equal(M.adapterFor({ s: { isAdventure: true, is1v2: true } }), 'adventure');
   assert.equal(M.forEngine({ s: dualState }).id, '1v2');
   const adventure = M.adapters.adventure.createPiles();

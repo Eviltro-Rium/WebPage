@@ -9,7 +9,7 @@
 
   R.registerBoss({
     name: 'CorruptedRyan', kind: '堕落 Ryan', hp: 50, handLimit: 3,
-    minStage: 4, finalEnemy: true, sevenSkill: true, passive,
+    minStage: 4, finalEnemy: true, fiveSkill: true, passive,
     icon: '../icons/npc_icons/corrupted_ryan.webp',
     onOpponentBlackCard(eng, self) { eng.heal(self, 2, 'passive'); },
     attackEffectTiming(v) { return v === 0 ? 'beforeDamage' : 'afterDamage'; },
@@ -27,7 +27,7 @@
           eng.discardWithEvent(discarded, owner, { handIndex: index, desc: '堕落 Ryan：弃掉点数最小的非0数字牌' });
           eng.draw(owner, 1, true);
         }
-      } else if (v >= 4 && v <= 6) {
+      } else if (v === 4) {
         damage = 4;
         const color = eng.effective(card);
         if (color === 'RED') eng.magmaVein(self, 1);
@@ -41,7 +41,7 @@
               {who:owner,target:owner,kind:status,stacks:S.amount(self,status)});
           }
         }
-      } else if (v === 7) {
+      } else if (v === 5) {
         damage = sum(hand);
         if (!hand.length) eng.draw(owner, 1, true);
       } else if (v === 0) {
@@ -69,8 +69,8 @@
       const v = card.value;
       if (defend) return low(v) ? '反击2🗡️，恢复2❤️' : v === 0 ? '免疫本次所有伤害和debuff，施加[催眠]' : '无防御效果';
       if (low(v)) return '4🗡️，弃掉手中点数最小的非0数字牌，再抽1🃏；无可弃数字牌时跳过换牌';
-      if (v >= 4 && v <= 6) return '4🗡️，按技能牌有效颜色获得：🔴[熔脉] / 🟡[暴击] / 🔵[潜水] / 🟢[茂盛]';
-      if (v === 7) return '造成剩余手牌数字之和点🗡️；没有手牌则抽1🃏';
+      if (v === 4) return '4🗡️，按技能牌有效颜色获得：🔴[熔脉] / 🟡[暴击] / 🔵[潜水] / 🟢[茂盛]';
+      if (v === 5) return '造成剩余手牌数字之和点🗡️；没有手牌则抽1🃏';
       if (v === 0) return '清除自身所有debuff，抽2🃏，造成这两张牌数字之和点🗡️（魔法牌按0点）';
       return '无进攻效果';
     }

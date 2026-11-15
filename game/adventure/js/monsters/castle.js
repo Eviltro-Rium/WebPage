@@ -10,6 +10,17 @@
   const R = window.AdventureRegistry;
   if (!R) return;
 
+  function isLow(card) {
+    return !!(card && card.isNumberCard && card.value >= 1 && card.value <= 2);
+  }
+  function isHigh(card) {
+    return !!(card && card.isNumberCard && card.value >= 3 && card.value <= 4);
+  }
+  function consumableCount(eng) {
+    return eng && eng._adventureEngine && eng._adventureEngine.snapshot
+      ? (eng._adventureEngine.snapshot().consumables || []).length : 0;
+  }
+
   window.AdventureBossPool = window.AdventureBossPool || {};
   window.AdventureBossPool.castle = {
     '*': ['CastleChameleon', 'CastleEagle'],
@@ -46,21 +57,21 @@
 
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 4;
-      if (card.value >= 4 && card.value <= 6 && ctx && ctx.attackerHandSize === 1) {
+      if (isLow(card)) return 4;
+      if (isHigh(card) && ctx && ctx.attackerHandSize === 1) {
         const remaining = ctx.attackerHand && ctx.attackerHand[0];
         const value = remaining && remaining.isNumberCard ? Number(remaining.value) || 0 : 0;
-        return value + 4;
+        return value + 5;
       }
       return 0;
     },
 
     attackFly(card) {
-      return !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
 
     defendRollImmune(card, eng) {
-      if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return false;
+      if (!isLow(card)) return false;
       // UI/AI capability checks call this without an engine; the real defense
       // path supplies the engine and records the D12 roll in the判定区.
       if (!eng || typeof eng.rollD12 !== 'function') return true;
@@ -71,7 +82,7 @@
     stageMods: {
       4: orig => ({
         defendRollImmune(card, eng) {
-          if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return false;
+          if (!isLow(card)) return false;
           if (!eng || typeof eng.rollD12 !== 'function') return true;
           return eng.rollD12('夜巡幽魂防御判定', { who: 'ai' }) <= 6;
         }
@@ -79,9 +90,6 @@
     }
   });
 
-  /** 廊灯萤（CastleFirefly）
-   * Stage 2 起出现；4/5/6 技能会根据打出后剩余手牌决定是否造成伤害。
-   */
   R.registerMonster({
     name: 'CastleFirefly',
     kind: '廊灯萤',
@@ -92,24 +100,22 @@
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 2;
-      if (card.value >= 4 && card.value <= 6) return 4;
+      if (isLow(card)) return 2;
+      if (isHigh(card)) return 5;
       return 0;
     },
 
     attackFly(card) {
-      return !!(card && card.isNumberCard && card.value >= 1 && card.value <= 3) ? 1 : 0;
+      return isLow(card) ? 1 : 0;
     },
 
     attackBlind(card) {
-      return !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
+      return isHigh(card);
     },
 
     defendBlock(card, incoming, defender, eng) {
-      if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return 0;
-      const count = eng && eng._adventureEngine && eng._adventureEngine.snapshot
-        ? ((eng._adventureEngine.snapshot().consumables || []).length) : 0;
-      return Math.ceil(1 + count / 2);
+      if (!isLow(card)) return 0;
+      return Math.ceil(1 + consumableCount(eng) / 2);
     },
 
     stageMods: {
@@ -117,10 +123,8 @@
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         defendBlock: (card, incoming, defender, eng) => {
-          if (!card || !card.isNumberCard || card.value < 1 || card.value > 3) return 0;
-          const count = eng && eng._adventureEngine && eng._adventureEngine.snapshot
-            ? ((eng._adventureEngine.snapshot().consumables || []).length) : 0;
-          return 1 + count;
+          if (!isLow(card)) return 0;
+          return 1 + consumableCount(eng);
         }
       })
     }
@@ -142,14 +146,15 @@
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 4;
-      if (card.value >= 4 && card.value <= 6) return 6;
+      if (isLow(card)) return 4;
+      if (isHigh(card)) return 6;
       return 0;
     },
 
     defendBlock(card, incoming) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return card.value;
+      if (card.value === 1) return 1;
+      if (card.value === 2) return 2;
       return 0;
     },
 
@@ -176,20 +181,17 @@
 
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return card.value;
-      if (card.value >= 4 && card.value <= 6) return ctx ? (ctx.playerHandSize || 0) : 0;
+      if (isLow(card)) return card.value + 1;
+      if (isHigh(card)) return ctx ? (ctx.playerHandSize || 0) : 0;
       return 0;
     },
 
     attackUnblockable(card) {
-      if (!card || !card.isNumberCard) return false;
-      return card.value >= 1 && card.value <= 3;
+      return isLow(card);
     },
 
     defendHeal(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 2;
-      return 0;
+      return isLow(card) ? 2 : 0;
     },
 
     stageMods: {
@@ -197,16 +199,12 @@
       3: orig => ({
         attackDamage: (card, ctx) => {
           const base = orig.attackDamage(card, ctx);
-          if (card && card.isNumberCard && card.value >= 1 && card.value <= 3) return base + 1;
+          if (isLow(card)) return base + 1;
           return base;
         }
       }),
       4: orig => ({
-        defendHeal: (card) => {
-          if (!card || !card.isNumberCard) return 0;
-          if (card.value >= 1 && card.value <= 3) return 3;
-          return 0;
-        }
+        defendHeal: (card) => (isLow(card) ? 3 : 0)
       })
     }
   });
@@ -227,27 +225,21 @@
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 3;
-      if (card.value >= 4 && card.value <= 6) return 5;
+      if (isLow(card)) return 3;
+      if (isHigh(card)) return 5;
       return 0;
     },
 
     attackGuard(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
 
     attackBleed(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 4 && card.value <= 6) return 1;
-      return 0;
+      return isHigh(card) ? 1 : 0;
     },
 
     defendBlock(card, incoming) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return Math.ceil((incoming || 0) / 2);
-      return 0;
+      return isLow(card) ? Math.ceil((incoming || 0) / 2) : 0;
     },
 
     stageMods: {
@@ -256,17 +248,13 @@
         attackDamage: (card, ctx) => {
           const base = orig.attackDamage(card, ctx);
           if (!card || !card.isNumberCard) return base;
-          if (card.value >= 1 && card.value <= 3) return base + 1;
-          if (card.value >= 4 && card.value <= 6) return base + 2;
+          if (isLow(card)) return base + 1;
+          if (isHigh(card)) return base + 2;
           return base;
         }
       }),
       4: orig => ({
-        defendCounter: (card) => {
-          if (!card || !card.isNumberCard) return 0;
-          if (card.value >= 1 && card.value <= 3) return 1;
-          return 0;
-        }
+        defendCounter: (card) => (isLow(card) ? 1 : 0)
       })
     }
   });
@@ -288,31 +276,27 @@
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 2;
-      if (card.value >= 4 && card.value <= 6) return card.value;
+      if (isLow(card)) return 3;
+      if (card.value === 3) return 4;
+      if (card.value === 4) return 6;
       return 0;
     },
 
     attackBleed(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
 
     defendCounter(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return card.value;
+      if (card.value === 1) return 2;
+      if (card.value === 2) return 3;
       return 0;
     },
 
     stageMods: {
       2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({
-        attackUnblockable: (card) => {
-          if (!card || !card.isNumberCard) return false;
-          if (card.value >= 1 && card.value <= 3) return true;
-          return false;
-        }
+        attackUnblockable: (card) => isLow(card)
       }),
       4: orig => ({
         defendCounter: (card) => {
@@ -342,48 +326,38 @@
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value === 1) return 1;
-      if (card.value === 2) return 2;
-      if (card.value === 3) return 3;
-      if (card.value >= 4 && card.value <= 6) return 3;
+      if (isLow(card)) return 2;
+      if (isHigh(card)) return 4;
       if (card.value === 0) return 2;
       return 0;
     },
 
     attackUnblockable(card) {
       if (!card || !card.isNumberCard) return false;
-      return card.value === 0 || (card.value >= 1 && card.value <= 3);
+      return card.value === 0 || isLow(card);
     },
 
     attackPoison(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 4 && card.value <= 6) return 1;
+      if (isHigh(card)) return 1;
       if (card.value === 0) return 2;
       return 0;
     },
 
     attackGuard(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value === 0) return 2;
-      return 0;
+      return card && card.isNumberCard && card.value === 0 ? 2 : 0;
     },
 
     defendHeal(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 2;
-      return 0;
+      return isLow(card) ? 2 : 0;
     },
 
     defendBlock(card, incoming) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value === 0) return Math.ceil((incoming || 0) / 2);
-      return 0;
+      return card && card.isNumberCard && card.value === 0
+        ? Math.ceil((incoming || 0) / 2) : 0;
     },
 
     defendCounter(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value === 0) return 2;
-      return 0;
+      return card && card.isNumberCard && card.value === 0 ? 4 : 0;
     },
 
     stageMods: {
@@ -392,15 +366,11 @@
         attackDamage: (card, ctx) => {
           const base = orig.attackDamage(card, ctx);
           if (!card || !card.isNumberCard) return base;
-          if (card.value === 0 || (card.value >= 4 && card.value <= 6)) return base + 1;
-          return base;
+          return base + 1;
         }
       }),
       4: orig => ({
-        defendHeal: (card) => {
-          const base = orig.defendHeal(card);
-          return base > 0 ? base + 1 : 0;
-        }
+        defendHeal: (card) => (isLow(card) ? 3 : 0)
       })
     }
   });
@@ -430,19 +400,18 @@
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
       if (card.value === 1) return 4;
-      if (card.value === 2) return 5;
-      if (card.value === 3) return 6;
-      if (card.value >= 4 && card.value <= 6) return 3;
+      if (card.value === 2) return 6;
+      if (isHigh(card)) return 3;
       if (card.value === 0) return 3;
       return 0;
     },
 
     attackUnblockable(card) {
-      return !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
+      return isHigh(card);
     },
 
     attackClearPositive(card) {
-      return !!(card && card.isNumberCard && card.value >= 4 && card.value <= 6);
+      return isHigh(card);
     },
 
     attackFly(card) {
@@ -456,15 +425,11 @@
     },
 
     defendCounter(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 2;
-      return 0;
+      return isLow(card) ? 2 : 0;
     },
 
     defendFly(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
 
     defendBleed(card) {
@@ -503,45 +468,34 @@
 
      attackDamage(card) {
        if (!card || !card.isNumberCard) return 0;
-       if (card.value >= 1 && card.value <= 3) return 2;
-       if (card.value >= 4 && card.value <= 6) return 6;
+       if (isLow(card)) return 2;
+       if (isHigh(card)) return 6;
        return 0;
      },
 
      attackUnblockable(card) {
-       if (!card || !card.isNumberCard) return false;
-       return card.value >= 1 && card.value <= 3;
+       return isLow(card);
      },
 
      attackGuard(card) {
        if (!card || !card.isNumberCard) return 0;
-       if (card.value >= 4 && card.value <= 6) return card.value - 3;
+       if (card.value === 3) return 1;
+       if (card.value === 4) return 3;
        return 0;
      },
 
      defendHeal(card) {
-       if (!card || !card.isNumberCard) return 0;
-       if (card.value >= 1 && card.value <= 3) return card.value;
-       return 0;
+       return isLow(card) ? 2 : 0;
      },
 
      defendCounter(card) {
-       if (!card || !card.isNumberCard) return 0;
-       if (card.value >= 1 && card.value <= 3) return 2;
-       return 0;
+       return isLow(card) ? 2 : 0;
      },
 
      stageMods: {
        4: orig => ({
-         defendHeal: (card) => {
-           if (!card || !card.isNumberCard) return 0;
-           if (card.value >= 1 && card.value <= 3) return card.value + 1;
-           return 0;
-         },
-         defendCounter: (card) => {
-           const base = orig.defendCounter(card);
-           return base > 0 ? base + 1 : 0;
-         }
+         defendHeal: (card) => (isLow(card) ? 3 : 0),
+         defendCounter: (card) => (isLow(card) ? 3 : 0)
        })
      }
    });
@@ -562,15 +516,15 @@
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 3;
-      if (card.value >= 4 && card.value <= 6) return 4;
+      if (isLow(card)) return 3;
+      if (isHigh(card)) return 4;
       return 0;
     },
 
     attackHeal(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 1;
-      if (card.value >= 4 && card.value <= 6) return 2;
+      if (isLow(card)) return 1;
+      if (isHigh(card)) return 2;
       return 0;
     },
 
@@ -581,15 +535,15 @@
     },
 
     defendImmune(card) {
-      return !!(card && card.isNumberCard && card.value === 3);
+      return !!(card && card.isNumberCard && card.value === 2);
     },
 
     defendImmuneBuff(card) {
-      return !!(card && card.isNumberCard && card.value === 3);
+      return !!(card && card.isNumberCard && card.value === 2);
     },
 
     stageMods: {
-      2: orig => ({ hp: 25 }),
+      2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
       4: orig => ({
         defendBlock: (card, incoming) => {
@@ -617,40 +571,28 @@
 
     attackDamage(card, ctx) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 3;
-      if (card.value >= 4 && card.value <= 6) return 0;
+      if (isLow(card)) return 3;
       return 0;
     },
 
     attackBleed(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
 
     attackUnblockable(card) {
-      if (!card || !card.isNumberCard) return false;
-      return card.value >= 4 && card.value <= 6;
+      return isHigh(card);
     },
 
     attackDrain(card, ctx) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 4 && card.value <= 6) {
-        return 3 + ((ctx && ctx.playerBleed) || 0);
-      }
-      return 0;
+      return isHigh(card) ? 3 + ((ctx && ctx.playerBleed) || 0) : 0;
     },
 
     defendBlock(card, incoming) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return Math.min(2, incoming || 0);
-      return 0;
+      return isLow(card) ? Math.min(2, incoming || 0) : 0;
     },
 
     defendBleed(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
 
     stageMods: {
@@ -683,27 +625,21 @@
 
     attackDamage(card) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 4;
-      if (card.value >= 4 && card.value <= 6) return 4;
-      if (card.value === 0) return 4;
+      if (isLow(card) || isHigh(card) || card.value === 0) return 4;
       return 0;
     },
 
     attackFly(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
 
     attackGuard(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 4 && card.value <= 6) return 1;
-      return 0;
+      return isHigh(card) ? 1 : 0;
     },
 
     attackUnblockable(card) {
       if (!card || !card.isNumberCard) return false;
-      return card.value === 0 || (card.value >= 4 && card.value <= 6);
+      return card.value === 0 || isHigh(card);
     },
 
     attackStealItem(card) {
@@ -715,15 +651,11 @@
     },
 
     defendBlock(card, incoming) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return Math.ceil((incoming || 0) / 2);
-      return 0;
+      return isLow(card) ? Math.ceil((incoming || 0) / 2) : 0;
     },
 
     defendBleed(card) {
-      if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 3) return 1;
-      return 0;
+      return isLow(card) ? 1 : 0;
     },
 
     defendImmune(card) {
@@ -738,11 +670,7 @@
 
     stageMods: {
       4: orig => ({
-        defendCounter: (card) => {
-          if (!card || !card.isNumberCard) return 0;
-          if (card.value >= 1 && card.value <= 3) return 1;
-          return 0;
-        }
+        defendCounter: (card) => (isLow(card) ? 1 : 0)
       })
     }
   });

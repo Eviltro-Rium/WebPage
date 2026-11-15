@@ -22,13 +22,13 @@
     function makeStandard() {
         const deck = [];
         for (const color of COLORS) {
-            for (let value = 1; value <= 7; value++) {
-                const copies = value <= 3 ? 3 : value <= 6 ? 2 : 1;
+            for (let value = 1; value <= 5; value++) {
+                const copies = value <= 2 ? 3 : value <= 4 ? 2 : 1;
                 for (let n = 0; n < copies; n++) deck.push(Card.number(color, value));
             }
             deck.push(Card.number(color, 0));
         }
-        for (let value = 1; value <= 7; value++) deck.push(Card.number('WHITE', value, true));
+        for (let value = 1; value <= 5; value++) deck.push(Card.number('WHITE', value, true));
         for (let n = 0; n < 4; n++) deck.push(Card.item('BLACK', 'black'));
         for (let n = 0; n < 2; n++) {
             deck.push(Card.item('BLACK', 'drawTwo'));
@@ -36,11 +36,9 @@
             deck.push(Card.item('WHITE', 'swap'));
         }
         for (let n = 0; n < 2; n++) deck.push(Card.item('BLACK', 'shuffle'));
-        for (let n = 0; n < 4; n++) {
-            deck.push(Card.item('WHITE', 'potion'));
-            deck.push(Card.item('WHITE', 'superPurify'));
-        }
-        for (let n = 0; n < 6; n++) deck.push(Card.item('WHITE', 'purify'));
+        for (let n = 0; n < 3; n++) deck.push(Card.item('WHITE', 'potion'));
+        for (let n = 0; n < 2; n++) deck.push(Card.item('WHITE', 'superPurify'));
+        for (let n = 0; n < 4; n++) deck.push(Card.item('WHITE', 'purify'));
         return shuffle(deck);
     }
 

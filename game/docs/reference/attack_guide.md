@@ -2,6 +2,8 @@
 
 本文档介绍冒险模式战斗中，对怪物 / 玩家造成各种伤害的方法调用方式。所有方法在 `registerMonster()` 的怪物定义中实现，由 `monster_registry.js` 桥接层统一调度。
 
+怪物白牌技能点数为 **0~5**（5 为轮空）。图鉴与代码将逐步从旧七档对齐：文档上映射为 **原 1/2/3→1/2、4/5/6→3/4、7→5**，见 [`adventure_guide/README.md`](../adventure_guide/README.md#怪物技能牌点文档用语)。
+
 ---
 
 ## Emoji 说明
@@ -38,7 +40,7 @@ const ctx = {
 
 ```javascript
 attackDamage(card, ctx) {
-  // card: 出牌对象，card.value 为点数 0~6
+  // card: 出牌对象，card.value 为点数 0~5（怪物；5 为轮空无技）
   // ctx:  上下文对象（见上方）
   return 伤害数值; // 数字，可防御
 }
@@ -50,16 +52,16 @@ attackDamage(card, ctx) {
 // 固定伤害，按点数段
 attackDamage(card) {
   const v = card.value;
-  if (v >= 1 && v <= 3) return 3;
-  if (v >= 4 && v <= 6) return 4;
+  if (v >= 1 && v <= 2) return 3;
+  if (v >= 3 && v <= 4) return 4;
   return 0;
 }
 
 // 动态伤害，参考玩家手牌数
 attackDamage(card, ctx) {
   const v = card.value;
-  if (v >= 1 && v <= 3) return v;
-  if (v >= 4 && v <= 6) return ctx.playerHandSize || 0;
+  if (v >= 1 && v <= 2) return v;
+  if (v >= 3 && v <= 4) return ctx.playerHandSize || 0;
   return 0;
 }
 
@@ -67,8 +69,8 @@ attackDamage(card, ctx) {
 attackDamage(card, ctx) {
   const v = card.value;
   const bleed = ctx.playerBleed || 0;
-  if (v >= 1 && v <= 3) return 2 * bleed;
-  if (v >= 4 && v <= 6) return 3;
+  if (v >= 1 && v <= 2) return 2 * bleed;
+  if (v >= 3 && v <= 4) return 3;
   return 0;
 }
 ```
@@ -99,15 +101,15 @@ attackUnblockable(card) {
 ### 示例
 
 ```javascript
-// 狐：1/2/3 牌不可防御
+// 狐：1/2 牌不可防御
 attackDamage(card) {
   const v = card.value;
-  if (v >= 1 && v <= 3) return v;
-  if (v >= 4 && v <= 6) return ctx ? (ctx.playerHandSize || 0) : 0;
+  if (v >= 1 && v <= 2) return v;
+  if (v >= 3 && v <= 4) return ctx ? (ctx.playerHandSize || 0) : 0;
   return 0;
 },
 attackUnblockable(card) {
-  return card.value >= 1 && card.value <= 3;
+  return card.value >= 1 && card.value <= 2;
 }
 ```
 
@@ -135,14 +137,14 @@ attackAoEOtherChars(card) {
 ### 示例
 
 ```javascript
-// 冻洋蓝鲸：4/5/6 对场上所有其他角色造成 4🗡️（不可防御）
+// 冻洋蓝鲸：3/4 对场上所有其他角色造成 4🗡️（不可防御）
 attackAoEOtherChars(card) {
   const v = card.value;
-  return v >= 4 && v <= 6 ? 4 : 0;
+  return v >= 3 && v <= 4 ? 4 : 0;
 },
 attackUnblockable(card) {
   const v = card.value;
-  return v >= 4 && v <= 6; // AOE 部分不可防御
+  return v >= 3 && v <= 4; // AOE 部分不可防御
 }
 ```
 
@@ -172,24 +174,24 @@ attackDrain(card, ctx) {
 ### 示例
 
 ```javascript
-// 丛林水蛭：4/5/6 吸血 3❤️
+// 丛林水蛭：3/4 吸血 3❤️
 attackDrain(card) {
   const v = card.value;
-  if (v >= 4 && v <= 6) return 3;
+  if (v >= 3 && v <= 4) return 3;
   return 0;
 }
 
-// 丛林瓢虫：1/2/3 吸血 1 + 茂盛层数 ❤️
+// 丛林瓢虫：1/2 吸血 1 + 茂盛层数 ❤️
 attackDrain(card, ctx) {
   const v = card.value;
-  if (v >= 1 && v <= 3) return 1 + ((ctx && ctx.attackerLush) || 0);
+  if (v >= 1 && v <= 2) return 1 + ((ctx && ctx.attackerLush) || 0);
   return 0;
 }
 
-// 城堡蝠：4/5/6 吸血 2 + 玩家[流血]层数 ❤️
+// 城堡蝠：3/4 吸血 2 + 玩家[流血]层数 ❤️
 attackDrain(card, ctx) {
   if (!card || !card.isNumberCard) return 0;
-  if (card.value >= 4 && card.value <= 6) {
+  if (card.value >= 3 && card.value <= 4) {
     return 2 + ((ctx && ctx.playerBleed) || 0);
   }
   return 0;
@@ -274,10 +276,10 @@ defendCounter(card) {
   return 0;
 }
 
-// 冻洋鲨：1/2/3 牌反击 2 点
+// 冻洋鲨：1/2 牌反击 2 点
 defendCounter(card, incoming, defender, opponent) {
   const v = card.value;
-  if (!(v >= 1 && v <= 3)) return 0;
+  if (!(v >= 1 && v <= 2)) return 0;
   return 2;
 }
 ```
@@ -299,12 +301,12 @@ defendCounter(card, incoming, defender, opponent) {
 // 施加[流血]
 attackBleed(card) {
   const v = card.value;
-  return v >= 4 && v <= 6 ? 1 : 0; // 返回施加层数
+  return v >= 3 && v <= 4 ? 1 : 0; // 返回施加层数
 }
 // 防御时施加[流血]
 defendBleed(card) {
   const v = card.value;
-  return v >= 1 && v <= 3 ? 1 : 0;
+  return v >= 1 && v <= 2 ? 1 : 0;
 }
 ```
 
@@ -317,7 +319,7 @@ defendBleed(card) {
 ```javascript
 attackPoison(card) {
   const v = card.value;
-  return v >= 1 && v <= 3 ? 1 : 0;
+  return v >= 1 && v <= 2 ? 1 : 0;
 }
 ```
 
@@ -354,7 +356,7 @@ defendBlock(card, incoming) {
   // incoming:  即将受到的伤害
   // 返回：格挡量（不超过 incoming）
   const v = card.value;
-  if (v >= 1 && v <= 3) return Math.min(2, incoming);
+  if (v >= 1 && v <= 2) return Math.min(2, incoming);
   return 0;
 }
 ```
@@ -373,7 +375,7 @@ defendCounter(card, incoming, defender, opponent, eng) {
   // eng:       战斗引擎
   // 返回：反击伤害数字
   const v = card.value;
-  if (!(v >= 1 && v <= 3)) return 0;
+  if (!(v >= 1 && v <= 2)) return 0;
   return 2;
 }
 ```
@@ -391,7 +393,7 @@ defendCounter(card, incoming, defender, opponent, eng) {
 // 进攻满足条件时返回 true，桥接层抽取玩家牌库顶牌展示并按判定牌结算
 attackKrakenJudge(card) {
   const v = card.value;
-  return v >= 1 && v <= 3;
+  return v >= 1 && v <= 2;
 }
 ```
 

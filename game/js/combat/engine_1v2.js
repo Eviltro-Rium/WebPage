@@ -220,7 +220,7 @@
     if(!c)throw Error('请选择要打出的牌');
     if(!this.legal(c))throw Error('该牌不能用于进攻');
     let who=this.name(this.s.player);
-    const needsNumberFollowup = !c.borrowedMonster && ((who==='Ryan'&&c.value===5)||(who==='Saiki'&&c.value===6)||(who==='Moze'&&c.value===4)||(who==='Otto'&&c.value===5));
+    const needsNumberFollowup = !c.borrowedMonster && ((who==='Ryan'&&c.value===3)||(who==='Otto'&&c.value===4));
     if(c.isBlack&&!c.chosenColor)return this._stagePendingBlackCard(i,c,'attack');
     if(c.isWhite)c.chosenColor=this.effective(this.s.discardTop);
     if(needsNumberFollowup&&!this.h.player.some((x,j)=>j!==i&&x.isNumberCard)){
@@ -260,15 +260,12 @@
      if(this._onAttackSkillRelease(this.s.player))return this.gateAdventureAttackMod(c,0,true,false);
      if(this._applyAdventureDefendPhaseMock(targetChar,c))return this.gateAdventureAttackMod(c,0,true,false);
      this._deferAttackBuffs(target,_buffBefore);
-     if(who==='Moze'&&c.value===7){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc','Moze 7牌：请选择自己或一名对手作为清除目标',c);return this.state()}
+     if(who==='Moze'&&c.value===5){this.s.pendingDialog='mozeSeven';this.s.pendingAttack=null;this.emit('desc','Moze 5牌：请选择自己或一名对手作为清除目标',c);return this.state()}
      if(who==='Leon'&&c.value===0)return this.leonZero1v2(c);
-    if(who==='Ryan'&&c.value===5)return this.startRyanFive(c);
-    if(who==='Saiki'&&c.value===6)return this.startNumberJudge('Saiki',c);
-    if(who==='Moze'&&c.value===4)return this.startNumberJudge('Moze',c);
-    if(who==='Chan'&&c.value===5)return this.startChanFive();
-    if(who==='Otto'&&c.value===6)return this.startOttoFour(c);
-    if(who==='Otto'&&c.value===5)return this.startNumberJudge('Otto',c);
-     if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===5&&this.s.player.hp<=30)){
+    if(who==='Ryan'&&c.value===3)return this.startRyanFive(c);
+    if(who==='Chan'&&c.value===3)return this.startChanFive();
+    if(who==='Otto'&&c.value===4)return this.startNumberJudge('Otto',c);
+     if(this.opponentHandSkill(who,c.value)&&!(who==='Saiki'&&c.value===4&&this.s.player.hp<=30)){
       let p={name:who,value:c.value,owner:'player',attackCard:cp(c)};
       return this.resolveOpponentHandSkill(p)
     }

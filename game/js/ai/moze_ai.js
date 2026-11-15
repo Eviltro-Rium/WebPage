@@ -66,30 +66,25 @@
         return { d: 0, skip: true, unblock: false };
       }
 
-      if (v === 5) {
+      if (v === 3) {
         if (!helpers.targetHand.length) return { d: 0, skip: true, unblock: false };
         const drawn = helpers.targetHand.splice(Math.floor(random() * helpers.targetHand.length), 1)[0];
         eng.s.revealCards = [helpers.copy(drawn)];
-        eng.emit('reveal', 'Moze 5牌系统随机抽取玩家手牌', drawn, { who: 'player', from: 'hand' });
-        helpers.selfHand.push(drawn);
-
-        // Only coloured number cards count as the offensive branch.  White
-        // utility/trophy cards are item cards and must follow the recovery
-        // branch, just like the player-side resolver.
+        eng.emit('reveal', 'Moze 3牌系统随机抽取玩家手牌', drawn, { who: 'player', from: 'hand' });
         const hit = !drawn.isItemCard &&
           (drawn.isBlack || drawn.isWhite || eng.effective(drawn) === 'GREEN');
         if (hit) {
-          eng.emit('desc', `Moze 5牌判定${eng.cardText(drawn)}：造成4点伤害`);
+          eng.discardWithEvent(drawn, 'player', { from: 'reveal', faceUp: true, desc: `Moze 3牌弃掉${eng.cardText(drawn)}` });
+          eng.emit('desc', `Moze 3牌判定${eng.cardText(drawn)}：造成4点伤害`);
           return { d: 4, skip: false, unblock: false };
         }
-
         helpers.healSelf(2);
         helpers.gainGuard(2);
-        eng.emit('desc', `Moze 5牌判定${eng.cardText(drawn)}：恢复2点并获得2层守护`);
+        eng.emit('desc', `Moze 3牌判定${eng.cardText(drawn)}：恢复2点并获得2层守护`);
         return { d: 0, skip: true, unblock: false };
       }
 
-      if (v === 7) {
+      if (v === 5) {
         // Moze 7 converts every currently active negative status into damage.
         // Keep this list in sync with StatusRegistry/StatusService so newly
         // introduced debuffs (blind, bomb, ice seal, hypothermia, binding,

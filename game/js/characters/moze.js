@@ -7,38 +7,26 @@
     passive: '可消耗守护减免攻击与反击伤害（不含Buff伤害）',
     init() { return {}; },
     turnStart(eng, ch) {},
-    damageAtSettlement(eng, v, a, t) { return v === 6 ? 3 + (a.guard || 0) : null; },
-    attackEffectTiming: {1: 'afterDamage', 2: 'afterDamage'},
+    damageAtSettlement(eng, v, a, t) { return v === 4 ? 3 + (a.guard || 0) : null; },
+    attackEffectTiming: { 1: 'afterDamage', 5: 'afterDamage' },
     effect(eng, v, c, a, t, owner, helpers) {
-      const { burn, bleed, guard, takeReveal, heal, draw, clearDebuffs } = helpers;
-      let d = 0, skip = false, unblock = false;
+      const { guard, heal, draw, clearDebuffs } = helpers;
+      let d = 0;
+      let skip = false;
+      let unblock = false;
       if (v === 1) {
-        d = 1;
-        unblock = true;
-        heal(a, 1);
-        guard(1);
-      } else if (v === 2) {
         d = 2;
-        guard(eng.effective(c) === 'GREEN' ? 2 : 1);
-      } else if (v === 3) {
-        d = 3;
-      } else if (v === 4) {
-        skip = true;
-      } else if (v === 5) {
-        d = 4;
-        // The hand-judgement path is resolved by the engine, but keep the
-        // fallback effect aligned with the documented recovery branch.
         guard(2);
-      } else if (v === 6) {
-        d = 3 + a.guard;
-        unblock = !a.guard;
-      } else if (v === 7) {
-        const q = (a.burn || 0) + (a.bleed || 0) + (a.poison || 0) +
-          (a.frozen ? 1 : 0) + (a.bomb || 0) + (a.blind || 0) +
-          (a.iceSeal || 0) + (a.hypothermia || 0) + (a.thorns || 0) +
-          (a.sandblind || 0) + (a.quicksand || 0) + (a.bindMark ? 1 : 0);
-        clearDebuffs(a);
-        d = 3 + q;
+        if (eng.effective(c) === 'GREEN') guard(1);
+      } else if (v === 2) {
+        d = 4;
+      } else if (v === 3) {
+        skip = true;
+      } else if (v === 4) {
+        d = 3 + (a.guard || 0);
+        unblock = !(a.guard > 0);
+      } else if (v === 5) {
+        d = 3;
       } else if (v === 0) {
         guard(3);
         d = 6;
@@ -47,33 +35,28 @@
       return { d, skip, unblock };
     },
     damageAfterDefense(v, damage, defender) {
-      if ([0,1].includes(v)) return Math.max(0, damage - Math.ceil(damage / 2));
-
+      if (v === 0 || v === 1) return Math.max(0, damage - Math.ceil(damage / 2));
       return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
-      const { hurt, heal, draw, burn, bleed, cancelAttackDebuffs, clearDebuffs } = helpers;
+      const { hurt } = helpers;
       const counter = helpers.counter || ((target, amount) => hurt(target, amount));
-      let remaining = d, desc = '';
+      let remaining = d;
+      let desc = '';
       if (v === 1) {
-        let b = Math.ceil(d / 2);
+        const b = Math.ceil(d / 2);
         eng.addGuard(defender, 1);
         remaining = Math.max(0, d - b);
         desc = `Moze 1牌：防御${b}点+1层守护`;
       } else if (v === 2) {
-        let cd = 1 + Math.ceil(defender.guard / 2);
+        const cd = 1 + Math.ceil((defender.guard || 0) / 2);
         counter(opponent, cd);
         remaining = d;
         desc = `Moze 2牌：反击${cd}点`;
-      } else if (v === 3) {
-        eng.addGuard(defender, 1);
-        heal(defender, Math.ceil(defender.guard / 2));
-        remaining = d;
-        desc = `Moze 3牌：1层守护+恢复${Math.ceil(defender.guard / 2)}点`;
       } else if (v === 0) {
-        let b = Math.ceil(d / 2);
+        const b = Math.ceil(d / 2);
         eng.addGuard(defender, 2);
-        let cd = defender.guard * 2;
+        const cd = (defender.guard || 0) * 2;
         counter(opponent, cd);
         remaining = Math.max(0, d - b);
         desc = `Moze 0牌：防御${b}点+2层守护+反击${cd}点`;

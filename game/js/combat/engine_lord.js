@@ -36,7 +36,7 @@
     if(c.isItemCard&&!c.swapHand&&!trophyTargetsOpponent)return false;
     let who=this.name(this.s.player);
     if(who==='Leon'&&c.value===0)return false;
-    if(who==='Serenity'&&c.value===7)return false;
+    if(who==='Serenity'&&c.value===5)return false;
     return true
   };
 

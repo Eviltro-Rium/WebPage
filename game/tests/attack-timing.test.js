@@ -3,7 +3,7 @@ const {loadInto}=require('./_load');
 const ctx=vm.createContext({console,Math,JSON,Date,setTimeout:()=>1,clearTimeout:()=>{}});ctx.window=ctx;
 loadInto(ctx,['characters','ai','combat','adventure_content']);
 const card=(value,color='BLUE')=>({value,color,isNumberCard:true,isItemCard:false});
-function setup(name='Vixraps',value=7,target='ai',color='BLUE'){
+function setup(name='Vixraps',value=3,target='ai',color='BLUE'){
  const e=new ctx.Engine();e.start(name,'Ryan');e.later=()=>{};
  if(target==='ai2'){e.s.ai2=e.character('Ryan',true);e.s.is1v2=true;e.s.modeId='1v2';}
  e.s.atkOwner='player';e.s.atkCard=card(value,color);e.s.defCard=null;e.s.attackTarget=target;
@@ -11,8 +11,8 @@ function setup(name='Vixraps',value=7,target='ai',color='BLUE'){
  return {e,r,t:e.s[target]};
 }
 for(const key of ['ai','ai2'])test('diving preserves attack statuses and avoids guard/fly consumption for '+key,()=>{
- const {e,r,t}=setup('Vixraps',7,key);t.diving=true;t.guard=3;t.fly=2;const hp=t.hp;e.events=[];
- const amount=e.prepareAttackSettlement(r.d,key);assert.equal(amount,0);assert.equal(t.burn,2);assert.ok(t.hypnosis);
+ const {e,r,t}=setup('Vixraps',3,key);t.diving=true;t.guard=3;t.fly=2;t.burn=2;const hp=t.hp;e.events=[];
+ const amount=e.prepareAttackSettlement(r.d,key);assert.equal(amount,0);assert.equal(t.burn,4);
  e.prepareAttackSettlement(amount,key);e.settlePreparedHit(e.s.player,t,{damage:amount,bleed:0});
  assert.equal(t.hp,hp);assert.equal(t.guard,3);assert.equal(t.fly,2);
  assert.equal(e.events.filter(evt=>evt.kind==='diving').length,1,'one trigger only');
@@ -23,8 +23,8 @@ test('diving on player bypasses the manual guard choice after the damage formula
  e.askGuard(6);assert.notEqual(e.s.phase,'GUARD_CHOICE');assert.equal(e.s.player.guard,3);assert.equal(e.s.player.fly,1);
 });
 test('damage-first burn lands after HP loss and does not add the Blaze passive to this hit',()=>{
- const {e,r,t}=setup('Blaze',2,'ai','RED');const hp=t.hp;e.events=[];
- const amount=e.prepareAttackSettlement(r.d,'ai');assert.equal(amount,3);assert.equal(t.burn,0);assert.equal(e.s.player.burn,0);
+ const {e,r,t}=setup('Blaze',3,'ai','RED');e.s.player.burn=1;e.events=[];const hp=t.hp;
+ const amount=e.prepareAttackSettlement(r.d,'ai');assert.equal(amount,3);assert.equal(t.burn,0);
  e.settlePreparedHit(e.s.player,t,{damage:amount,bleed:0});assert.equal(t.hp,hp-3);assert.equal(t.burn,1);
  const hit=e.events.findIndex(evt=>evt.type==='hit'),buff=e.events.findIndex(evt=>evt.type==='buff'&&evt.kind==='burn');assert.ok(hit>=0&&buff>hit);
  e.performAttack({type:'aoe',commitAttackEffects:true});assert.equal(e.s.player.burn,1);assert.equal(e.s.pendingSkillStatuses.length,0);

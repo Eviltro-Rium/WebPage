@@ -147,34 +147,25 @@ test('player hypnosis promotes when AI attack phase starts and skips defense', (
   assert.equal(eng.pendingSettlement && eng.pendingSettlement.damage, 4);
 });
 
-test('Vixraps attack 2 opens the ordinary purify dialog before defense', () => {
+test('Vixraps attack 2 deals 4 damage without a purify dialog', () => {
   const eng = new Engine();
   eng.start('Vixraps', 'Saiki');
-  eng.s.player.burn = 1;
   eng.h.player = [number(2, 'RED')];
   eng.s.selectedCard = 0;
   eng.s.discardTop = number(1, 'RED');
   const result = eng.play();
-  assert.equal(result.pendingDialog, 'purify');
-  assert.ok(eng.s.pendingVixrapsPurify);
-  eng.choosePurify({ done: true });
+  assert.equal(result.pendingDialog, null);
   assert.equal(eng.s.pendingVixrapsPurify, null);
-  assert.equal(eng.s.pendingDialog, null);
-  assert.equal(eng.s.phase, 'AI_DEFEND');
+  assert.equal(eng.s.pendingAttack.damage, 4);
 });
 
-test('Vixraps attack 7 applies hypnosis and burn and scales damage with burn stacks', () => {
+test('Vixraps attack 5 applies burn and scales damage with burn stacks', () => {
   const eng = new Engine();
   eng.start('Vixraps', 'Saiki');
   eng.s.ai.burn = 1;
-  const r = eng.effect('Vixraps', 7, number(7), eng.s.player, eng.s.ai);
-  assert.ok(!eng.s.ai.hypnosis);
-  assert.equal(eng.s.ai.burn, 1);
+  const r = eng.effect('Vixraps', 5, number(5), eng.s.player, eng.s.ai);
+  assert.equal(eng.s.ai.burn, 3);
   assert.equal(r.d, 6);
-  eng.s.atkOwner='player'; eng.s.atkCard=number(7); eng.s.pendingAttack={damage:r.d};
-  assert.equal(eng.prepareAttackSettlement(r.d,'ai'),6);
-  assert.ok(eng.s.ai.hypnosis === true);
-  assert.equal(eng.s.ai.burn,3);
 });
 
 test('Vixraps attack 0 applies hypnosis to the main target only', () => {
@@ -203,46 +194,45 @@ test('Vixraps attack 0 keeps at most 3 burn after settling a full stack', () => 
   assert.equal(eng.s.ai.burn, 3);
 });
 
-test('Vixraps attack 6 applies burn first then heals and deals by current stacks', () => {
+test('Vixraps attack 4 applies burn first then heals and deals by current stacks', () => {
   const eng = new Engine();
   eng.start('Vixraps', 'Saiki');
   eng.s.ai.burn = 2;
   eng.s.player.hp = 50;
-  const r = eng.effect('Vixraps', 6, number(6), eng.s.player, eng.s.ai);
-  assert.equal(eng.s.ai.burn, 3, 'attack 6 applies 1 burn before scaling');
+  const r = eng.effect('Vixraps', 4, number(4), eng.s.player, eng.s.ai);
+  assert.equal(eng.s.ai.burn, 3, 'attack 4 applies 1 burn before scaling');
   assert.equal(r.d, 3, 'damage equals burn stacks after the new layer');
   assert.equal(eng.s.player.hp, 53, 'Vixraps heals by burn stacks after applying');
   assert.equal(eng.s.pendingVixrapsBurnSettle, null, 'no deferred settlement anymore');
   const recovery = [...eng.events].reverse().find(event => event.type === 'heal');
-  assert.equal(recovery && recovery.kind, 'heal', 'Vixraps 6 uses ordinary recovery floating text');
+  assert.equal(recovery && recovery.kind, 'heal', 'Vixraps 4 uses ordinary recovery floating text');
 });
 
-test('Vixraps attack 6 still burns and hits when the opponent starts with no burn', () => {
+test('Vixraps attack 4 still burns and hits when the opponent starts with no burn', () => {
   const eng = new Engine();
   eng.start('Vixraps', 'Saiki');
   eng.s.ai.burn = 0;
   eng.s.player.hp = 50;
-  const r = eng.effect('Vixraps', 6, number(6), eng.s.player, eng.s.ai);
+  const r = eng.effect('Vixraps', 4, number(4), eng.s.player, eng.s.ai);
   assert.equal(eng.s.ai.burn, 1);
   assert.equal(r.d, 1);
   assert.equal(eng.s.player.hp, 51);
 });
 
-test('Vixraps attack 5 doubles burn after defense without pre-defense feedback', () => {
+test('Vixraps attack 3 doubles burn after defense without pre-defense feedback', () => {
   const eng = new Engine();
   eng.start('Vixraps', 'Saiki');
   eng.s.ai.burn = 2;
-  eng.h.player = [number(5, 'RED')];
-  eng.s.discardTop = number(5, 'RED');
+  eng.h.player = [number(3, 'RED')];
+  eng.s.discardTop = number(3, 'RED');
   eng.s.phase = 'PLAYER_PLAY';
   eng.s.busy = false;
   eng.s.selectedCard = 0;
   eng.later = () => {};
   eng.play();
-  assert.equal(eng.s.ai.burn, 2, 'status waits for defense to finish');
+  assert.equal(eng.s.ai.burn, 4, 'Vixraps 3 doubles burn when resolving the attack');
   eng.prepareAttackSettlement(5, 'ai');
-  assert.equal(eng.s.ai.burn, 2, 'damage-first effect waits for HP settlement');
-  eng.settlePreparedHit(eng.s.player, eng.s.ai, {damage:5,bleed:0});
+  eng.settlePreparedHit(eng.s.player, eng.s.ai, { damage: 5, bleed: 0 });
   assert.equal(eng.s.ai.burn, 4);
   assert.ok(!eng.s.pendingBuffRestore, 'no old deferred restore remains');
   assert.equal(eng.s.phase, 'AI_DEFEND');
@@ -315,12 +305,12 @@ test('end-to-end: AI hypnosis on player promotes at the attack-phase transition'
   assert.equal(handled, true, 'sleeping player skips defense');
 });
 
-test('end-to-end: AI Vixraps attack-7 effect applies hypnosis to player', () => {
+test('end-to-end: AI Vixraps attack-0 effect applies hypnosis to player', () => {
   const eng = new Engine();
   eng.start('Saiki', 'Vixraps');
   eng.s.pendingHypnosisPromote = 'player';
   eng.turnStart('ai');
-  const r = eng.effect('Vixraps', 7, number(7), eng.s.ai, eng.s.player);
+  const r = eng.effect('Vixraps', 0, number(0), eng.s.ai, eng.s.player);
   assert.ok(!eng.s.player.hypnosis, 'hypnosis waits for defense');
   eng.s.atkOwner='ai'; eng.s.pendingAttack={damage:r.d};
   eng.prepareAttackSettlement(r.d, 'player');
@@ -462,22 +452,22 @@ function setupAttack(eng, name, value, defender='ai') {
 }
 test('settlement re-reads capped burn after defense cleansing and commits only once', () => {
   const eng=new Engine();eng.start('Vixraps','Ryan');eng.s.ai.burn=5;
-  const r=setupAttack(eng,'Vixraps',7);
+  const r=setupAttack(eng,'Vixraps',5);
   assert.equal(eng.s.ai.burn,5);assert.ok(!eng.s.ai.hypnosis);
   eng.clearDebuffs(eng.s.ai);
   const damage=eng.prepareAttackSettlement(r.d,'ai');
-  assert.equal(eng.s.ai.burn,2);assert.equal(damage,4);assert.ok(eng.s.ai.hypnosis);
+  assert.equal(eng.s.ai.burn,2);assert.equal(damage,4);assert.ok(!eng.s.ai.hypnosis);
   eng.prepareAttackSettlement(damage,'ai');assert.equal(eng.s.ai.burn,2);
 });
 test('full immunity cancels delayed attack effects', () => {
-  const eng=new Engine();eng.start('Vixraps','Ryan');setupAttack(eng,'Vixraps',7);
+  const eng=new Engine();eng.start('Vixraps','Ryan');setupAttack(eng,'Vixraps',5);
   eng.cancelAttackDebuffs('ai');eng.s.defCard=number(0);eng.s.defOwner='ai';
   assert.equal(eng.prepareAttackSettlement(0,'ai'),0);
   assert.equal(eng.s.ai.burn,0);assert.ok(!eng.s.ai.hypnosis);
 });
 test('half defense is recalculated without repeating guard gain', () => {
   const eng=new Engine();eng.start('Vixraps','Moze');eng.s.ai.burn=3;
-  const r=setupAttack(eng,'Vixraps',7);
+  const r=setupAttack(eng,'Vixraps',5);
   eng.s.defCard=number(1);eng.s.defOwner='ai';eng.addGuard(eng.s.ai,1);eng.clearDebuffs(eng.s.ai);
   assert.equal(eng.prepareAttackSettlement(Math.floor(r.d/2),'ai'),2);assert.equal(eng.s.ai.guard,1);
 });
@@ -497,9 +487,9 @@ test('manual guard reduces life steal only once', () => {
   assert.equal(eng.s.player.guard,2);assert.equal(eng.s.player.hp,beforeHp-4);assert.equal(eng.s.ai.hp,54);
 });
 test('queued effects survive refresh snapshots', () => {
-  const eng=new Engine();eng.start('Vixraps','Ryan');const r=setupAttack(eng,'Vixraps',7);
+  const eng=new Engine();eng.start('Vixraps','Ryan');eng.s.ai.burn=1;const r=setupAttack(eng,'Vixraps',5);
   const restored=new Engine();restored.restoreCombatSnapshot(eng.combatSnapshot());
-  assert.equal(restored.prepareAttackSettlement(r.d,'ai'),4);assert.equal(restored.s.ai.burn,2);assert.ok(restored.s.ai.hypnosis);
+  assert.equal(restored.prepareAttackSettlement(r.d,'ai'),6);assert.equal(restored.s.ai.burn,3);
 });
 test('HP events carry the values needed for sequential animations', () => {
   const eng=new Engine();eng.start('Ryan','Leon');const beforeHp=eng.s.ai.hp;eng.events=[];eng.hurt(eng.s.ai,3);eng.heal(eng.s.ai,2);
@@ -535,7 +525,7 @@ test('guard blocks the main hit but does not erase existing defense bleed', () =
 
 test('attack resource consumption stays committed before defense', () => {
   const eng=new Engine();eng.start('Knight','Ryan');eng.s.player.chaos_red=true;eng.s.player.chaos_blue=true;
-  const r=setupAttack(eng,'Knight',7);assert.equal(r.d,8);assert.ok(!eng.s.player.chaos_red);assert.ok(!eng.s.player.chaos_blue);
+  const r=setupAttack(eng,'Knight',5);assert.equal(r.d,8);assert.ok(!eng.s.player.chaos_red);assert.ok(!eng.s.player.chaos_blue);
   eng.prepareAttackSettlement(r.d,'ai');assert.ok(!eng.s.player.chaos_red);
 });
 
