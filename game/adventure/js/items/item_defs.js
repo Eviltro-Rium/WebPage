@@ -565,7 +565,7 @@
     name: 'RewindHourglass',
     displayName: '回溯沙漏',
     kind: 'consumable',
-    description: '战斗中使用：立即退出当前房间，手牌补至上限；下次进入重新抽取怪物（故障房事件不重置）',
+    description: '战斗中使用：立即退出当前房间，手牌补至上限；下次进入只会再次遭遇尚未击败的怪物（故障房事件不重置）',
     icon: ICON + 'hourglass.webp',
     useScene: 'combat',
     price: 5,

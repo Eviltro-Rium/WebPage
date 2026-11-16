@@ -4,7 +4,26 @@
 
 > 文档语言：中文优先。代码注释、提交说明和规则文档沿用仓库现有的中文风格。
 
-## 1. 先读什么
+## 1. 按任务找文件
+
+从对应行的实现入口开始，按需要核对规则和受影响的模式。先用角色名、房间类型或报错文本在入口内定位；改动只涉及一个模块时，不必通读全仓。生成文件从源头更新。
+
+| 任务 | 实现入口 | 一起核对 |
+| --- | --- | --- |
+| 玩家技能（如 Ryan 进攻 4） | [角色定义](game/js/characters/)；需要选目标、弃牌或弹窗时看 [共享战斗引擎](game/js/combat/engine.js) | [角色规则](game/docs/Characters/)、[技能文案](game/js/ui/skills.js)、[角色 AI](game/js/ai/)；确认多人模式是否另有分支 |
+| 战斗技能书 📖、角色图鉴 | [技能文案与玩家点数表](game/js/ui/skills.js)、[技能书](game/js/ui/controls.js)、[图鉴](game/js/ui/adventure_codex.js) | NPC 技能文案优先查[怪物技能桥接](game/adventure/js/content/monster_registry.js) |
+| 卡牌数量与规则页 | [对战牌组](game/js/combat/deck.js)、[冒险牌组](game/adventure/js/deck/adventure_deck.js)、[规则页](game/js/ui/rules.js) | [牌库规则](game/docs/reference/Cards_deck.md) |
+| 卡牌效果、伤害与防御 | [卡牌效果](game/js/combat/card_effects.js)、[攻击结算](game/js/combat/engine_attack.js) | [结算规则](game/docs/reference/COMBAT_SETTLEMENT.md)；区分数值重算与只执行一次的副作用 |
+| Buff、Debuff 与净化 | [状态注册表](game/js/combat/status_registry.js)、[状态操作](game/js/combat/status_service.js) | [状态规则](game/docs/reference/buff_guide.md)、[状态渲染](game/js/ui/render/status_render.js) |
+| 怪物、精英或 Boss | [分场景定义](game/adventure/js/monsters/)、[怪物技能桥接](game/adventure/js/content/monster_registry.js) | [各场景规则](game/docs/adventure_guide/)、[阶段强化文案](game/adventure/js/content/stage_guide.js)、[掉落表](game/adventure/js/engine/loot.js) |
+| 地图房间数量、形状与环路 | [地图生成器](game/adventure/generate_maps.js)、[地图探索](game/adventure/js/map/map.js) | [房间规则](game/docs/adventure_guide/rooms.md)、[地图约束检查](game/tests/adventure-map-layout.test.js)；生成器同步 CSV 和内嵌地图 |
+| 房间遭遇、奖励和存档 | [冒险引擎](game/adventure/js/engine/adventure_engine.js)、[战斗结果](game/adventure/js/engine/combat_result.js)、[奖励](game/adventure/js/engine/rewards.js) | [地图存档](game/adventure/js/save/adventure_save.js)、[战斗快照](game/adventure/js/battle/adventure_battle_session.js) |
+| 冒险道具、配饰和战利卡 | [道具定义](game/adventure/js/items/item_defs.js)、[战斗效果](game/adventure/js/items/combat_effects.js)、[地图效果](game/adventure/js/items/map_effects.js) | [冒险指南](game/docs/adventure_guide/README.md)、[冒险牌组](game/adventure/js/deck/adventure_deck.js) |
+| 战斗 UI、动画和弹窗 | [渲染模块](game/js/ui/render/)、[事件播放](game/js/ui/events.js)、[弹窗](game/js/ui/dialogs.js) | [战斗样式](game/css/)、[渲染维护说明](game/docs/reference/RENDER_PERFORMANCE.md) |
+| 在线对战、重连或视角同步 | [对战会话](game/online_game/online_match.js)、[P2P 适配](game/online_game/p2p_adapter.js) | [在线规则](game/docs/online/README.md)、[在线对战检查](game/tests/online-match.test.js) |
+| 个人网站导航、主题或背景 | [共享页面壳](site-shell.html)、[导航](js/site-navigation.js)、[3D 背景](js/hill-background.js)、[公共样式](styles.css) | [首页维护说明](docs/homepage.md)；个人网站和游戏有独立入口 |
+
+### 按需阅读的规则文档
 
 按任务类型选择入口：
 

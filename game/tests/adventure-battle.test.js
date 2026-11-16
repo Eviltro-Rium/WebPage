@@ -245,6 +245,49 @@ test('adventure opponent is registered for the ordinary 1v1 character and AI int
   assert.ok(context.AIRegistry.get('CastleWolf'));
 });
 
+test('Ryan attack 4 waits for a single chosen status and resumes the attack in both modes', () => {
+  for (const challenge of [false, true]) {
+    const engine = new AdventureBattleEngine();
+    engine.later = () => {};
+    const opts = { player: 'Ryan', opponent: 'CastleWolf', opponent1: 'CastleWolf', opponent2: 'CastleFox',
+      discardTop: number(1), playerPile: { deck: [number(5)], hand: [number(4)], discard: [], handLimit: 5 } };
+    if (challenge) engine.startAdventure1v2(opts);
+    else engine.startAdventure(opts);
+    engine.s.player.guard = 2;
+    engine.s.player.burn = 2;
+    engine.s.selectedCard = 0;
+    engine.play();
+    assert.equal(engine.s.pendingDialog, 'purify');
+    assert.equal(engine.h.player.length, 1, 'the draw happens once');
+    assert.equal(engine.s.player.burn, 2);
+    engine.choosePurify({ kind: 'guard' });
+    assert.equal(engine.s.player.guard, 1);
+    assert.equal(engine.s.player.burn, 2);
+    assert.equal(engine.s.pendingDialog, null);
+    assert.equal(engine.s.pendingAttack.damage, 4);
+  }
+});
+
+test('CastleCrow stage 4 adds a layer of flying without changing the two-point block', () => {
+  const engine = new AdventureBattleEngine();
+  engine.startAdventure({ player: 'Ryan', opponent: 'CastleCrow', stage: 4,
+    discardTop: number(2), playerPile: { deck: [], hand: [], discard: [], handLimit: 5 } });
+  const mod = CharacterRegistry.get('CastleCrow');
+  const defend = value => mod.defend(engine, 'CastleCrow', value, 9, number(value, 'WHITE', true),
+    engine.s.ai, engine.s.player, 'ai', 'RED', { clearDebuffs: target => engine.clearDebuffs(target) });
+  assert.equal(defend(0).remaining, 9);
+  assert.equal(engine.s.ai.fly, 0);
+  assert.equal(defend(1).remaining, 7);
+  assert.equal(engine.s.ai.fly, 1);
+  engine.s.ai.burn = 2;
+  engine.rememberAttackDebuffs('ai');
+  engine.s.pendingSkillStatuses = [{ target: 'ai', id: 'burn', polarity: 'debuff' }];
+  assert.equal(defend(2).remaining, 0);
+  assert.equal(engine.s.ai.fly, 2);
+  assert.equal(engine.s.ai.burn, 0);
+  assert.equal(engine.s.pendingSkillStatuses.length, 0);
+});
+
 test('NPC decks include two white 5 pass cards with no skill effect', () => {
   const deck = context.AdventureDeck.makeNpcDeck();
   const fives = deck.filter(c => c.isNumberCard && c.isWhite && c.value === 5);
@@ -287,11 +330,11 @@ test('NPC decks include two white 5 pass cards with no skill effect', () => {
 });
 
 for (const challenge of [false, true]) {
-  test(`adventure AI skips inert cards but preserves special defenses (${challenge ? 'challenge' : 'normal'})`, () => {
+  test(`adventure AI defends with magic first, then the highest legal number even without an effect (${challenge ? 'challenge' : 'normal'})`, () => {
     const top = number(2, 'RED');
-    const white0 = number(0, 'WHITE', true);
-    const white4 = number(4, 'WHITE', true);
-    const white5 = number(5, 'WHITE', true);
+    const white = Array.from({length: 6}, (_, value) => number(value, 'WHITE', true));
+    const purple = context.AdventureDeck.item('WHITE', 'magic');
+    const green = context.AdventureDeck.item('WHITE', 'greenMagic');
 
     function choose(opponent, cards) {
       const engine = new AdventureBattleEngine();
@@ -308,11 +351,18 @@ for (const challenge of [false, true]) {
       return engine.chooseAIDefend(engine.s.discardTop, 5);
     }
 
-    assert.equal(choose('CastleWolf', [white0, white5]), null);
-    // 大王花允许用高点数防御，但 5 仍是轮空牌。
-    assert.equal(choose('ForestRafflesia', [white5]), null);
-    assert.equal(choose('ForestRafflesia', [white4, white5]), white4);
-    assert.equal(choose('DesertLizard', [white0]), white0);
+    for (const opponent of ['CastleWolf', 'CastleCrow', 'DesertScorpion', 'DesertLizard', 'FrozenKraken']) {
+      assert.equal(choose(opponent, white.slice(3)), null);
+      for (const value of [0, 1, 2]) {
+        assert.equal(choose(opponent, [...white.slice(0, value + 1), ...white.slice(3)]), white[value]);
+      }
+    }
+    for (let value = 0; value <= 5; value++) {
+      assert.equal(choose('ForestRafflesia', white.slice(0, value + 1)), white[value]);
+    }
+    assert.equal(choose('CastleWolf', [...white, green, purple]), purple);
+    assert.equal(choose('ForestRafflesia', [...white, green]), green);
+    assert.equal(choose('ForestRafflesia', [...white, green, purple]), purple);
   });
 }
 
@@ -1954,7 +2004,7 @@ test('Otto white 5 with no follow-up number card keeps chosen color, animates, a
   assert.equal(engine.s.ai.hp, aiHp);
 });
 
-test('Otto 3 gains crit first and can spend it on its own 5 damage hit', () => {
+test('Otto 3 gains crit after defense and cannot spend it on its own 5 damage hit', () => {
   const engine = new AdventureBattleEngine();
   engine.startAdventure({
     player: 'Otto', opponent: 'CastleWolf',
@@ -1964,16 +2014,19 @@ test('Otto 3 gains crit first and can spend it on its own 5 damage hit', () => {
   });
   engine.h.player = [number(3, 'RED')];
   engine.s.player.crit = 0;
+  engine.later = () => {};
   engine.s.phase = 'PLAYER_PLAY'; engine.s.busy = false;
   const hp = engine.s.player.hp;
   engine.s.selectedCard = 0;
   engine.play();
   assert.equal(engine.s.player.hp, hp, 'no self damage');
   assert.equal(engine.s.pendingAttack.damage, 5);
-  assert.ok(engine.s.pendingAttackBuffChoice && engine.s.pendingAttackBuffChoice.canCrit, 'fresh crit offered');
-  engine.resolveAttackBuffChoice({ buff: 'crit' });
   assert.equal(engine.s.player.crit, 0);
-  assert.equal(engine.s.pendingAttack.unblock, true);
+  assert.ok(!engine.s.pendingAttackBuffChoice, 'fresh crit is not offered before defense');
+  assert.equal(engine.s.pendingAttack.unblock, false);
+  engine.h.ai.length = 0;
+  engine.aiDefend(engine.s.atkCard, 5);
+  assert.equal(engine.s.player.crit, 1);
 });
 
 test('challenge room second kill gives no passive +3 heal', () => {
@@ -2470,6 +2523,43 @@ for (const incoming of [3, 7]) {
     assert.equal(engine.s.player.guard,2);
     assert.equal(engine._adventureEngine.s.consumables.length,0);
     assert.ok(!engine.events.some(event=>event.type==='buff'&&event.kind==='guard'));
+  });
+}
+
+for (const [challenge, value, defend, expectedLoss, trophy] of [[false, 4, false, 3], [false, 1, false, 0], [true, 4, true, 1], [false, 4, false, 3, true]]) {
+  test(`${trophy ? 'GuardTrophy' : 'NaturalShield'} survives magma settlement (challenge=${challenge}, card=${value}, defense=${defend})`, () => {
+    const engine = new AdventureBattleEngine();
+    engine.later = () => {};
+    const options = {player:'Ryan', stage:1, testMode:true, discardTop:number(2,'RED'),
+      playerPile:{deck:[],hand:[trophy ? context.AdventureDeck.trophyWhite('GuardTrophy') : number(1,'RED')],discard:[],handLimit:5}};
+    const owner = challenge ? 'ai2' : 'ai';
+    if (challenge) engine.startAdventure1v2({...options,opponent1:'CastleWolf',opponent2:'VolcanoSalamander'});
+    else engine.startAdventure({...options,opponent:'VolcanoSalamander'});
+    engine._adventureEngine = {
+      s:{consumables:trophy ? [] : ['NaturalShield'],accessories:[]},
+      snapshot() { return {consumables:this.s.consumables.map(name=>({name})),accessories:[]}; },
+      hasAccessory() { return false; }
+    };
+    engine._invariantBaseline = null;
+    engine.h[owner].splice(0, engine.h[owner].length, number(value,'WHITE',true));
+    engine.s.currentAITarget = challenge ? 1 : 0;
+    engine.s.phase = challenge ? 'AI2_TURN' : 'AI_TURN';
+    engine.s.aiTurnStarted = true;
+    engine.s[owner].magmaVein = 1;
+    if (challenge) engine.aiTurn1v2();
+    else engine.aiTurn();
+    assert.equal(engine.s.phase,'PLAYER_DEFEND');
+    assert.equal(engine.s.pendingAttack.attackModifier,'magmaVein');
+
+    const hp = engine.s.player.hp;
+    if (trophy) {
+      engine.dispatch('selectCard',{index:0});
+      engine.dispatch('doDefend');
+    } else engine.dispatch('useAdventureCombatItem',{itemIndex:0});
+    if (defend) engine.dispatch('selectCard',{index:0});
+    engine.dispatch(defend ? 'doDefend' : 'doSkipDefend');
+    engine.acknowledgeEvents(engine.ver);
+    assert.equal(hp - engine.s.player.hp,expectedLoss);
   });
 }
 

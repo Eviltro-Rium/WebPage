@@ -301,9 +301,28 @@ body {
     gap: 2px;
     min-height: 74px;
     padding: 12px 8px;
+    border: 1px solid #53677b;
     border-radius: 12px;
-    transform-origin: center;
+    background: #26384b;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: background-color 0.18s, border-color 0.18s;
     animation: homeModeIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.home-mode-btn:hover {
+    background: #334e65;
+    border-color: #718ca3;
+}
+.home-mode-btn:focus-visible {
+    outline: 2px solid #8ad8fc;
+    outline-offset: 3px;
+}
+.home-mode-btn:active {
+    background: #203346;
+}
+@media (prefers-reduced-motion: reduce) {
+    .home-mode-btn { animation: none; transition: none; }
 }
 .home-mode-btn:nth-child(1) { animation-delay: 0.14s; }
 .home-mode-btn:nth-child(2) { animation-delay: 0.2s; }
@@ -494,52 +513,6 @@ body {
     font-size: 0.8rem;
     color: var(--text-muted);
     margin-bottom: 10px;
-}
-
-.mode-toggle {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    margin-bottom: 10px;
-}
-.mode-btn {
-    padding: 10px 24px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    border: 1px solid rgba(255,255,255,0.16);
-    border-radius: 12px;
-    background: #26384b;
-    color: var(--text-muted);
-    cursor: pointer;
-    transform-origin: center;
-    transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s;
-    font-family: var(--font-body);
-}
-.mode-btn:hover {
-    background: #334e65;
-    transform: translateY(-2px) scale(1.05);
-    border-color: rgba(255,255,255,0.28);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.18);
-}
-.mode-btn.active {
-    border-color: rgba(56,189,248,0.72);
-    background: #1d4966;
-    color: #f8fafc;
-    box-shadow: 0 0 0 1px rgba(56,189,248,0.22), 0 10px 24px rgba(14,116,144,0.24);
-}
-.mode-btn.active:hover {
-    transform: translateY(-2px) scale(1.04);
-}
-.mode-btn:active {
-    transform: translateY(0) scale(0.96);
-    transition-duration: 0.12s;
-}
-.home-mode-grid .home-mode-btn:hover {
-    transform: translateY(-3px) scale(1.06);
-}
-.home-mode-grid .home-mode-btn:active {
-    transform: translateY(0) scale(0.96);
-    transition-duration: 0.12s;
 }
 
 .assign-bar {

@@ -31,7 +31,7 @@ test('all sixty maps obey room ranges, optional branch topology and the post-bos
     const source = fs.readFileSync(path.join(root, 'adventure/maps', name), 'utf8');
     const map = context.AdventureMap.fromCsvText(source), counts = map.summary().counts;
     const late = Number(stage) >= 3;
-    assert.ok(counts.normal >= (late ? 4 : 3) && counts.normal <= (late ? 6 : 5), name);
+    assert.ok(counts.normal >= (late ? 4 : 3) && counts.normal <= 4, name);
     for (const type of ['start', 'boss', 'item', 'blacksmith', 'shop', 'challenge', 'sacrifice']) assert.equal(counts[type], 1, name + ' ' + type);
     assert.equal(counts.glitch, late ? 2 : 1, name);
     assert.equal(counts.elite, late ? 2 : 0, name);
@@ -42,6 +42,8 @@ test('all sixty maps obey room ranges, optional branch topology and the post-bos
     const sacrifice = rooms.find(room => room.type === 'sacrifice');
     const fromStart = distances(map, start), fromBoss = distances(map, boss);
     assert.equal(fromStart.size, rooms.length, name + ' connected');
+    const edges = rooms.reduce((count, room) => count + map.neighbors(room.row, room.col).length, 0) / 2;
+    assert.ok(edges >= rooms.length, name + ' contains a loop');
     const routeLength = fromStart.get(key(boss));
     const onMainRoute = room => fromStart.get(key(room)) + fromBoss.get(key(room)) === routeLength;
     const normals = rooms.filter(room => room.type === 'normal');
@@ -68,7 +70,7 @@ test('all sixty maps obey room ranges, optional branch topology and the post-bos
   }
 });
 
-test('every stage has varied footprints and its three variants cover every ordinary-room count', () => {
+test('every stage has varied footprints and each scene stays within ordinary-room limits', () => {
   for (let stage = 1; stage <= 4; stage++) {
     const dimensions = new Set(), grids = new Set();
     for (const scene of ['castle', 'forest', 'ocean', 'desert', 'volcano']) {
@@ -78,7 +80,7 @@ test('every stage has varied footprints and its three variants cover every ordin
         dimensions.add(grid.length + 'x' + grid[0].length); grids.add(JSON.stringify(grid));
         counts.push(grid.flat().filter(code => code === 1).length);
       }
-      assert.deepEqual(counts.sort(), stage <= 2 ? [3, 4, 5] : [4, 5, 6]);
+      assert.deepEqual([...new Set(counts)].sort(), stage <= 2 ? [3, 4] : [4]);
     }
     assert.ok(dimensions.size >= 3, 'varied footprints stage ' + stage);
     assert.equal(grids.size, 15, 'unique layouts stage ' + stage);

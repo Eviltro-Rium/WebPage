@@ -526,7 +526,10 @@
           }
         } else if (typeof mod.attackHeal === 'function') {
           const h = mod.attackHeal(c, ctx);
-          if (h > 0) heal(a, h);
+          if (h > 0) {
+            if (d > 0 && typeof eng.queueAttackRecovery === 'function') eng.queueAttackRecovery(a, h);
+            else heal(a, h);
+          }
         }
         if (typeof mod.attackLush === 'function' && !(ctx && ctx._lushAppliedEarly)) {
           const l = mod.attackLush(c);
@@ -841,6 +844,7 @@
 
         if (typeof mod.defendImmune === 'function' && mod.defendImmune(c)) {
           if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c) && clearDebuffs) {
+            if (mod.name === 'CastleCrow') eng.cancelAttackDebuffs?.(owner, false);
             clearDebuffs(defender);
           }
           let counterDesc = '';
@@ -999,9 +1003,7 @@
         if (c && (c.magic || c.magicColor === 'purple')) return 100;
         if (c && (c.greenMagic || c.magicColor === 'green')) return 90;
         if (!c || !c.isNumberCard) return null;
-        // 白5 可防御但对大王花等 canDefendHigh 无实际效果，不优先于有技能的高牌。
-        if (v === 5) return mod.canDefendHigh ? 5 : null;
-        if (v > 2 && !mod.canDefendHigh) return null;
+        if (v < 0 || v > (mod.canDefendHigh ? 5 : 2)) return null;
         return v * 10 + 30 + (x.lethal ? 50 : 0);
       },
 
@@ -1140,7 +1142,7 @@
     let parts = [];
       if (typeof mod.defendImmune === 'function' && mod.defendImmune(card)) {
         if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(card)) {
-          if (mod.name === 'ForestPanda') {
+          if (mod.name === 'ForestPanda' || mod.name === 'CastleCrow') {
             parts.push('免疫所有伤害和即将被施加的debuff，清除自身所有debuff');
           } else {
             parts.push('免疫所有伤害和debuff');

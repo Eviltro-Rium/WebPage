@@ -385,12 +385,6 @@ _showSkillOverlay() {
     }
 
     let html = '';
-    const PLAYER_SKILL_GRID = [
-        { atkKey: 0, defKey: 0, label: '1' }, { atkKey: 1, defKey: 1, label: '2' },
-        { atkKey: 2, defKey: 2, label: '3' }, { atkKey: 7, defKey: 3, label: '0' },
-        { atkKey: 3, defKey: -1, label: '4' }, { atkKey: 4, defKey: -1, label: '5' },
-        { atkKey: 5, defKey: -1, label: '6' }, { atkKey: 6, defKey: -1, label: '7' }
-    ];
     const NPC_SKILL_GRID = [
         { atkKey: 0, defKey: 0, label: '1' }, { atkKey: 1, defKey: 1, label: '2' },
         { atkKey: 2, defKey: -1, label: '3' }, { atkKey: 3, defKey: -1, label: '4' },
@@ -457,7 +451,7 @@ _showSkillOverlay() {
             const rv = parseInt(row.label, 10);
             let atkDesc, defDesc;
             const hasDefSlot = ch.isNpc
-                ? (['1', '2', '0'].includes(row.label) || (canDefendHigh && ['3', '4'].includes(row.label)))
+                ? (['1', '2', '0'].includes(row.label) || (canDefendHigh && ['3', '4', '5'].includes(row.label)))
                 : (row.defKey >= 0);
             if (dynAtk) atkDesc = dynAtk[rv] ? colorize(dynAtk[rv]) : '—';
             else atkDesc = atk[row.atkKey] ? colorize(stripPrefix(atk[row.atkKey])) : '—';

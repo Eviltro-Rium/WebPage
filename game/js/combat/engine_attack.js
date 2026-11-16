@@ -21,18 +21,25 @@
       this.s.pendingDamageFormula = null;
       if (!formula || !target || !attacker) return this.prepareDivingMitigation(remaining, defenderKey);
       const character = global.CharacterRegistry.get(formula.name);
+      const recovery = character?.attackHealBeforeDamage?.(this, formula.value, attacker, target);
+      if (recovery > 0 && attacker.alive) this.heal(attacker, recovery);
+      const afterRecovery = character?.attackHealAfterDamage?.(this, formula.value, attacker, target);
+      if (afterRecovery > 0) this.queueAttackRecovery(attacker, afterRecovery);
       if (!character || typeof character.damageAtSettlement !== 'function') return this.prepareDivingMitigation(remaining, defenderKey);
       const live = character.damageAtSettlement(this, formula.value, attacker, target);
       if (live == null) return this.prepareDivingMitigation(remaining, defenderKey);
       const basePreview = Math.max(0, Number(attack.damage) || 0);
       const preview = attack.ottoCoveredDamage ? Math.min(6, basePreview) : basePreview;
+      const beforeBlock = attack.damageBeforeFlatDefenseBlock ?? basePreview;
       let final = attack.attackModifier === 'magmaVein'
         ? Math.max(0, Math.ceil(Number(live) * 1.5) + (attack.magmaFlatBonus || 0))
-        : Math.max(0, basePreview + (Number(live) - formula.preview) * (attack.damageMultiplier == null ? 1 : attack.damageMultiplier));
+        : Math.max(0, beforeBlock + (Number(live) - formula.preview) * (attack.damageMultiplier == null ? 1 : attack.damageMultiplier));
       if (this.ottoCoverFor(target)) {
         attack.ottoCoveredDamage = Math.max(0, final - 6);
         final = Math.min(6, final);
       }
+      // 固定格挡作用于熔脉等攻击修正之后的伤害，再按剩余伤害重算防御牌。
+      final = Math.max(0, final - (attack.flatDefenseBlock || 0));
       const defense = this.s.defCard, defenseCharacter = global.CharacterRegistry.get(this.name(target));
       const mitigation = defense && defenseCharacter && typeof defenseCharacter.damageAfterDefense === 'function'
         ? defenseCharacter.damageAfterDefense(defense.value, final, defenseSnapshot, this) : null;
@@ -41,6 +48,12 @@
       if (damage !== remaining) this.emit('desc', '效果结算后：剩余' + damage + '点伤害', null,
         {who: defenderKey, target: defenderKey, kind: 'damageRecalculated', amount: damage});
       return this.prepareDivingMitigation(damage, defenderKey);
+    },
+
+    queueAttackRecovery(attacker, amount) {
+      (this.s.pendingSkillStatuses ||= []).push({
+        target: this._who(attacker), id: 'heal', method: 'heal', args: [amount], timing: 'afterDamage'
+      });
     },
 
     // Diving sees the computed hit, before either fly or guard consumes stacks.
@@ -65,6 +78,7 @@
       for (const effect of effects) {
         const entity = this.s[effect.target], def = registry && registry.get(effect.id);
         if (!entity || !service) continue;
+        if (effect.method === 'heal' && !entity.alive) continue;
         if (effect.method && typeof this[effect.method] === 'function') {
           this[effect.method](entity, ...effect.args); continue;
         }
@@ -115,8 +129,6 @@
       const definition = global.CharacterRegistry.get(name);
       const rule = definition && definition.attackEffectTiming;
       const timing = (typeof rule === 'function' ? rule(value, this) : rule && rule[value]) || 'beforeDamage';
-      // 'immediate': statuses land before damage settles and before attack-buff choices.
-      if (timing === 'immediate') return result;
       for (const operation of operations) operation.timing = timing;
       queued.push(...operations);
       const doublesBurn = name === 'Vixraps' && value === 3;

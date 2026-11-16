@@ -503,8 +503,8 @@
   /**
    * 鸦（CastleCrow）
    * 进攻：1/2/3牌造成3点伤害恢复1点生命，4/5/6牌造成4点伤害恢复2点生命
-   * 防御：1/2牌无任何效果，3牌免疫所有伤害并免疫buff
-   * 强化：(2)+5生命 (3)伤害+1 (4)1/2牌格挡½伤害（向上取整）
+   * 防御：1牌格挡至多2点，2牌免疫所有伤害并免疫buff，0牌无效果但仍会打出
+   * 强化：(2)+5生命 (3)伤害+1 (4)打出防御1/2时获得1层飞翔
    */
   R.registerMonster({
     name: 'CastleCrow',
@@ -530,7 +530,7 @@
 
     defendBlock(card, incoming) {
       if (!card || !card.isNumberCard) return 0;
-      if (card.value >= 1 && card.value <= 2) return 0;
+      if (card.value === 1) return Math.min(2, incoming || 0);
       return 0;
     },
 
@@ -545,13 +545,7 @@
     stageMods: {
       2: orig => ({ hp: orig.hp + 5 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),
-      4: orig => ({
-        defendBlock: (card, incoming) => {
-          if (!card || !card.isNumberCard) return 0;
-          if (card.value >= 1 && card.value <= 2) return Math.ceil((incoming || 0) / 2);
-          return 0;
-        }
-      })
+      4: () => ({ defendFly: card => isLow(card) ? 1 : 0 })
     }
   });
 

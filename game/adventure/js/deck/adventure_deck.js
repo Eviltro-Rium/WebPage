@@ -97,10 +97,10 @@
     }
     for (let v = 1; v <= 5; v++) d.push(num('WHITE', v, true));
 
-    for (let i = 0; i < 4; i++) d.push(item('BLACK', 'black'));
+    for (let i = 0; i < 2; i++) d.push(item('BLACK', 'black'));
     for (let i = 0; i < 2; i++) d.push(item('BLACK', 'drawTwo'), item('WHITE', 'drawThree'));
     for (let i = 0; i < 3; i++) d.push(item('WHITE', 'potion'));
-    // 净化 / 超级净化各比对战标准组少 2 张；洗入与对战同为 2 张。
+    // 除交换牌外，道具牌数量与对战牌组相同。
     for (let i = 0; i < 2; i++) d.push(item('BLACK', 'shuffle'), item('WHITE', 'superPurify'));
     for (let i = 0; i < 4; i++) d.push(item('WHITE', 'purify'));
     return opts.shuffle === false ? d : shuffle(d);

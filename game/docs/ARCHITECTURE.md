@@ -217,7 +217,7 @@ close()
 
 | 文件 | 职责 |
 | --- | --- |
-| `adventure/js/content/registry.js` | 怪物、Boss、道具的注册表；普通怪与 Boss 的 NPC 牌组各含 1 张白 0 |
+| `adventure/js/content/registry.js` | 怪物、Boss、道具的注册表；普通怪与 Boss 共用同一套 26 张牌组配置 |
 | `adventure/js/content/monster.js` / `boss.js` | 怪物/Boss 基础类与阶段强化 |
 | `adventure/js/monsters/castle.js` / `forest.js` / `ocean.js` / `desert.js` / `volcano.js` | 各场景普通怪、精英怪、Boss 和遭遇池；规则镜像 `docs/adventure_guide/*.md` |
 | `adventure/js/content/monster_registry.js` | 怪物技能到共享战斗引擎的桥接、阶段修正和技能文本 |
@@ -279,7 +279,7 @@ close()
 
 `ui_core.js` 定义 `GameUI`、常量、卡牌/动画基础工具；其余功能按职责拆分：
 
-- `skills.js`：角色/怪物技能说明文案；改技能后必须与规则同步。
+- `skills.js`：角色/怪物技能说明文案；改技能后必须与规则同步。战斗技能书和主角图鉴共用这里的 `PLAYER_SKILL_GRID`，统一玩家点数、行顺序和防御栏。NPC 的可防御点数仍由各自的规则决定。
 - `rules.js`：规则页静态内容。
 - `card_style.js`：卡面颜色、图标和白卡/魔法牌样式。
 - `adventure_codex.js`：冒险图鉴查询和展示。

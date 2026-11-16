@@ -201,9 +201,15 @@ test('Vixraps attack 4 applies burn first then heals and deals by current stacks
   eng.s.ai.burn = 2;
   eng.s.player.hp = 50;
   const r = eng.effect('Vixraps', 4, number(4), eng.s.player, eng.s.ai);
-  assert.equal(eng.s.ai.burn, 3, 'attack 4 applies 1 burn before scaling');
-  assert.equal(r.d, 3, 'damage equals burn stacks after the new layer');
-  assert.equal(eng.s.player.hp, 53, 'Vixraps heals by burn stacks after applying');
+  assert.equal(eng.s.ai.burn, 2, 'burn is still pending during defense');
+  assert.equal(r.d, 3, 'the defense preview anticipates the new layer');
+  assert.equal(eng.s.player.hp, 50);
+  eng.clearDebuffs(eng.s.ai);
+  eng.s.pendingAttack = { damage: r.d };
+  eng.s.atkOwner = 'player';
+  assert.equal(eng.prepareAttackSettlement(r.d, 'ai'), 1);
+  assert.equal(eng.s.ai.burn, 1);
+  assert.equal(eng.s.player.hp, 51, 'recovery reads the stacks after defense and the new layer');
   assert.equal(eng.s.pendingVixrapsBurnSettle, null, 'no deferred settlement anymore');
   const recovery = [...eng.events].reverse().find(event => event.type === 'heal');
   assert.equal(recovery && recovery.kind, 'heal', 'Vixraps 4 uses ordinary recovery floating text');
@@ -215,6 +221,9 @@ test('Vixraps attack 4 still burns and hits when the opponent starts with no bur
   eng.s.ai.burn = 0;
   eng.s.player.hp = 50;
   const r = eng.effect('Vixraps', 4, number(4), eng.s.player, eng.s.ai);
+  eng.s.pendingAttack = { damage: r.d };
+  eng.s.atkOwner = 'player';
+  assert.equal(eng.prepareAttackSettlement(r.d, 'ai'), 1);
   assert.equal(eng.s.ai.burn, 1);
   assert.equal(r.d, 1);
   assert.equal(eng.s.player.hp, 51);

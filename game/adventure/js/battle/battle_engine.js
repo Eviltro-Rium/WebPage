@@ -1040,6 +1040,8 @@
 
       this._checkInvariants('finishAdventureBattle');
       return {
+        defeatedMonsterNames: ['ai', 'ai2'].map(key => this.s[key])
+          .filter(opponent => opponent && !opponent.alive).map(opponent => opponent.name),
         playerState: clone(this.s.player),
         playerPile: clone({
           deck: this.piles.player.deck,

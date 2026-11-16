@@ -30,12 +30,12 @@ function generateMap(stage, scene, variant) {
     throw new Error('无效地图配置');
   }
   const late = stage >= 3;
-  const normalCount = (late ? 4 : 3) + (stage + scenes.indexOf(scene) + variant) % 3;
-  const random = seededRandom('branch-layout-v2:' + stage + ':' + scene + ':' + variant);
+  const normalCount = late ? 4 : 3 + (stage + scenes.indexOf(scene) + variant) % 2;
+  const random = seededRandom('loop-layout-v3:' + stage + ':' + scene + ':' + variant);
   const sideNormals = Math.min(normalCount - 2, 1 + (stage + variant) % 2);
   const sideElites = late ? (variant === 2 ? 2 : 1) : 0;
   const routeRooms = [1, ...shuffle([
-    ...Array(normalCount - sideNormals - 1).fill(1), ...Array(late ? 2 : 1).fill(7),
+    ...Array(normalCount - sideNormals - 1).fill(1), ...Array(late ? 1 : 0).fill(7),
     ...Array(late ? 2 - sideElites : 0).fill(8)
   ], random)];
   const routeCodes = [0, ...routeRooms, 2, 10];
@@ -52,7 +52,7 @@ function generateMap(stage, scene, variant) {
     const route = [[Math.floor(random() * rows), 0]];
     cells.set(key(...route[0]), 0);
     const neighbors = (r, c) => directions.map(([dr, dc]) => [r + dr, c + dc]);
-    // 每个新格只能接触一个已用格，避免相邻格意外连通支路或绕过 Boss。
+    // 先铺设主路和支路，再用一间故障房连通两条路径。
     const canAttach = (r, c) => r >= 0 && r < rows && c >= 0 && c < cols &&
       !cells.has(key(r, c)) && neighbors(r, c).filter(pos => cells.has(key(...pos))).length === 1;
     while (route.length < routeCodes.length) {
@@ -77,10 +77,44 @@ function generateMap(stage, scene, variant) {
     let complete = true;
     for (const codes of branches) {
       // 优先从沿途房间分叉；不占用 Boss 与献祭房的相邻入口。
-      const parents = [...shuffle(route.slice(1, -2), random), route[0]];
+      const parents = shuffle(route.slice(0, -2), random);
       if (!parents.some(parent => attachBranch(parent, codes))) { complete = false; break; }
     }
     if (!complete) continue;
+    const distances = start => {
+      const queue = [start], seen = new Map([[key(...start), 0]]);
+      for (let i = 0; i < queue.length; i++) {
+        const pos = queue[i];
+        for (const next of neighbors(...pos)) {
+          const id = key(...next);
+          if (!cells.has(id) || seen.has(id)) continue;
+          seen.set(id, seen.get(key(...pos)) + 1);
+          queue.push(next);
+        }
+      }
+      return seen;
+    };
+    const connectors = [];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      if (cells.has(key(r, c))) continue;
+      const touches = neighbors(r, c).map(pos => cells.get(key(...pos))).filter(code => code != null);
+      // 奖励房、铁匠铺及 Boss 后的献祭支路保留原入口。
+      if (touches.length >= 2 && touches.every(code => [0, 1, 4, 6, 7, 8].includes(code))) connectors.push([r, c]);
+    }
+    const boss = route[route.length - 2];
+    const connected = shuffle(connectors, random).some(pos => {
+      const id = key(...pos);
+      cells.set(id, 7);
+      const fromStart = distances(route[0]), fromBoss = distances(boss);
+      const length = fromStart.get(key(...boss));
+      const onMain = room => fromStart.get(room) + fromBoss.get(room) === length;
+      const normals = [...cells].filter(([, code]) => code === 1).map(([room]) => room);
+      if (normals.filter(onMain).length >= 2 && normals.some(room => !onMain(room)) &&
+          (!late || [...cells].some(([room, code]) => code === 8 && !onMain(room)))) return true;
+      cells.delete(id);
+      return false;
+    });
+    if (!connected) continue;
     const points = [...cells.keys()].map(value => value.split(',').map(Number));
     const minR = Math.min(...points.map(pos => pos[0])), maxR = Math.max(...points.map(pos => pos[0]));
     const minC = Math.min(...points.map(pos => pos[1])), maxC = Math.max(...points.map(pos => pos[1]));

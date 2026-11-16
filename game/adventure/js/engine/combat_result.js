@@ -12,6 +12,12 @@
   Object.assign(AdventureEngine.prototype, {
     _prepareCombatEncounter(enemy, kind, enemy2 = null) {
       if (!this.s) return null;
+      if (kind !== 'glitch') {
+        const names = [enemy, enemy2].filter(Boolean).map(opponent => opponent.name);
+        this._recordEncounterNames(names);
+        const room = this.currentRoom();
+        if (room) room.encounterNames = names;
+      }
       this.s.combat = {
         enemy,
         enemy2,
@@ -110,6 +116,7 @@
       this.s.pendingRoomReward = null;
       this.s.pendingMapReturnEffects = null;
       room.cleared = false;
+      room.encounterNames = [];
       room.stashedLoot = null;
       room.bossName = 'CorruptedRyan';
       this._handleBoss(room);

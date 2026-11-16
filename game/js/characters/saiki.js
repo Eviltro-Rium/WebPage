@@ -8,7 +8,14 @@
     init() { return {}; },
     turnStart(eng, ch) {},
     damageAtSettlement(eng, v, a, t) {
+      if (v === 0) return 2 * (t.bleed || 0) + 3;
       return v === 5 ? 3 + (t.bleed || 0) : null;
+    },
+    attackHealAfterDamage(eng, v) {
+      if (v !== 0) return 0;
+      return [eng.s.player, eng.s.ai, eng.s.ai2]
+        .filter(Boolean)
+        .reduce((sum, entity) => sum + (entity.bleed || 0), 0);
     },
     attackEffectTiming: { 1: 'afterDamage' },
     effect(eng, v, c, a, t, owner, helpers) {
@@ -39,10 +46,6 @@
       } else if (v === 0) {
         bleed(1);
         d = 2 * (t.bleed || 0) + 3;
-        const totalBleed = [eng.s.player, eng.s.ai, eng.s.ai2]
-          .filter(Boolean)
-          .reduce((sum, ent) => sum + (ent.bleed || 0), 0);
-        heal(a, totalBleed);
       }
       return { d, skip, unblock };
     },

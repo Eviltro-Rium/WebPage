@@ -8,11 +8,15 @@
     init() { return {}; },
     turnStart(eng, ch) {},
     damageAtSettlement(eng, v, a, t) {
+      if (v === 4) return t.burn || 0;
       return v === 5 ? (t.burn || 0) * 2 : null;
     },
-    attackEffectTiming: { 1: 'afterDamage', 3: 'afterDamage', 4: 'immediate' },
+    attackHealBeforeDamage(eng, v, a, t) {
+      return v === 4 ? t.burn || 0 : 0;
+    },
+    attackEffectTiming: { 1: 'afterDamage', 3: 'afterDamage', 4: 'beforeDamage' },
     effect(eng, v, c, a, t, owner, helpers) {
-      const { burn, heal } = helpers;
+      const { burn } = helpers;
       let d = 0;
       let skip = false;
       let unblock = false;
@@ -35,9 +39,7 @@
         }
       } else if (v === 4) {
         burn(1);
-        const stacks = t.burn || 0;
-        if (stacks > 0) heal(a, stacks);
-        d = stacks;
+        d = t.burn || 0;
       } else if (v === 5) {
         burn(2);
         d = (t.burn || 0) * 2;

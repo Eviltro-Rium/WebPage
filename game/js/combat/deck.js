@@ -29,7 +29,7 @@
             deck.push(Card.number(color, 0));
         }
         for (let value = 1; value <= 5; value++) deck.push(Card.number('WHITE', value, true));
-        for (let n = 0; n < 4; n++) deck.push(Card.item('BLACK', 'black'));
+        for (let n = 0; n < 2; n++) deck.push(Card.item('BLACK', 'black'));
         for (let n = 0; n < 2; n++) {
             deck.push(Card.item('BLACK', 'drawTwo'));
             deck.push(Card.item('WHITE', 'drawThree'));

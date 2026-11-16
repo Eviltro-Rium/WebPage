@@ -13,14 +13,14 @@
       color: '#86efac',
       cards: [
         {
-          name: '四色数字牌 0~3',
+          name: '四色数字牌 0~2',
           desc: '可进攻，也可防御；触发角色对应的数字技能。',
-          samples: [num('RED', 0), num('YELLOW', 1), num('BLUE', 3)]
+          samples: [num('RED', 0), num('YELLOW', 1), num('BLUE', 2)]
         },
         {
-          name: '四色数字牌 4~7',
+          name: '四色数字牌 3~5',
           desc: '仅用于进攻，触发角色对应的数字技能。',
-          samples: [num('RED', 4), num('YELLOW', 6), num('BLUE', 7)]
+          samples: [num('RED', 3), num('YELLOW', 4), num('BLUE', 5)]
         }
       ]
     },
@@ -29,9 +29,9 @@
       color: '#e8e8ed',
       cards: [
         {
-          name: '白 1~7',
-          desc: '匹配任意牌，自动继承当前颜色。1~3可攻可守，4~7仅能进攻。',
-          samples: [num('WHITE', 2, true), num('WHITE', 5, true), num('WHITE', 7, true)]
+          name: '白 1~5',
+          desc: '匹配任意牌，自动继承当前颜色。1~2可攻可守，3~5仅能进攻。',
+          samples: [num('WHITE', 2, true), num('WHITE', 3, true), num('WHITE', 5, true)]
         },
         {
           name: '白色药水',
@@ -91,11 +91,11 @@
   ];
 
   const DECK_COMPARISON = [
-    ['初始牌组', '101张 · 全体共用', '95张 · 玩家独立牌组'],
-    ['四色数字牌 / 白色数字牌', '68张 / 7张', '68张 / 7张'],
-    ['黑色指定颜色 / ＋2 / 洗入', '4张 / 2张 / 2张', '4张 / 2张 / 2张'],
-    ['药水 / 白色＋3', '4张 / 2张', '4张 / 2张'],
-    ['净化 / 超级净化', '6张 / 4张', '4张 / 2张'],
+    ['初始牌组', '72张 · 全体共用', '70张 · 玩家独立牌组'],
+    ['四色数字牌 / 白色数字牌', '48张 / 5张', '48张 / 5张'],
+    ['黑色指定颜色 / ＋2 / 洗入', '2张 / 2张 / 2张', '2张 / 2张 / 2张'],
+    ['药水 / 白色＋3', '3张 / 2张', '3张 / 2张'],
+    ['净化 / 超级净化', '4张 / 2张', '4张 / 2张'],
     ['交换手牌', '2张', '不含'],
     ['战利白卡', '不含', '冒险中获得，加入玩家牌组循环']
   ];
@@ -145,21 +145,21 @@
     html += '<ul class="rules-adventure-notes"><li>玩家与怪物各用各的牌库、弃牌库；挑战房的两名怪物共享一套怪物牌组。</li><li>进入战斗时翻开新牌作为弃牌库顶；结束房间后保留玩家手牌和牌库。</li><li>战利白卡加入手牌，不占道具槽；打出后进入弃牌库，可循环抽到。抽牌数量、能否继续搭桥以卡片说明为准。</li></ul>';
     const npcCard = card => Object.assign(card, { npcCard: true });
     const npcRows = [
-      ['白 1 / 2 / 3', '各 4 张', '按怪物技能触发进攻或防御效果。', [1,2,3].map(v => npcCard(num('WHITE',v,true)))],
-      ['白 4 / 5 / 6', '各 2 张', '用于进攻；部分怪物可用高点数牌防御，详见技能。', [4,5,6].map(v => npcCard(num('WHITE',v,true)))],
-      ['白 7', '2 张', '普通怪物和场景Boss无效果；堕落Ryan例外，详见图鉴。', [npcCard(num('WHITE',7,true))]],
-      ['白 0', '1 张', '普通怪物打出后没有攻防效果；Boss 触发对应的 0 技能。', [npcCard(num('WHITE',0,true))]],
+      ['白 1 / 2', '各 6 张', '按怪物技能触发进攻或防御效果。', [1,2].map(v => npcCard(num('WHITE',v,true)))],
+      ['白 3 / 4', '各 4 张', '用于进攻；部分怪物可用高点数牌防御，详见技能。', [3,4].map(v => npcCard(num('WHITE',v,true)))],
+      ['白 5', '2 张', '普通怪物和场景Boss无效果；堕落Ryan例外，详见图鉴。', [npcCard(num('WHITE',5,true))]],
+      ['白 0', '2 张', '普通怪物通常无效果；Boss 和日光鬣蜥有专属技能。', [npcCard(num('WHITE',0,true))]],
       ['紫魔法', '1 张', '回复3点生命，清除对手可清除的正面状态。', [npcCard(item('WHITE','magic'))]],
       ['绿魔法', '1 张', '回复3点生命，清除自身可清除的负面状态。', [npcCard(item('WHITE','greenMagic'))]]
     ];
-    html += '<h3 class="rules-section-title">怪物牌组 · 共23张</h3><p class="rules-table-note">普通怪物与Boss使用相同的牌组构成，牌面带紫色标识。Boss魔法回复5点生命。</p><div class="rules-npc-reference">';
+    html += '<h3 class="rules-section-title">怪物牌组 · 共26张</h3><p class="rules-table-note">普通怪物与Boss使用相同的牌组构成，牌面带紫色标识。Boss魔法回复5点生命。防御优先打魔法牌，再按合法数字牌从大到小出牌。</p><div class="rules-npc-reference">';
     for (const [label, count, effect, samples] of npcRows) {
       const id = thumbPlaceholder();
       thumbSlots.push({ id, card: samples[0] });
       html += '<div class="rule-item rules-npc-row"><span id="' + id + '"></span><div><h4 class="rule-item-title">' + label + ' <small>' + count + '</small></h4><p class="rule-item-desc">' + effect + '</p></div></div>';
     }
     html += '</div><p class="rules-table-note">怪物牌库少于3张时回收其弃牌。挑战房怪物出局后，手牌进入怪物弃牌库。</p></div></details>';
-    html += '<details class="rules-disclosure"><summary><span>牌组数量与回收</span><small>单机101张 · 冒险玩家95张</small></summary><div class="rules-disclosure-body">';
+    html += '<details class="rules-disclosure"><summary><span>牌组数量与回收</span><small>单机72张 · 冒险玩家70张</small></summary><div class="rules-disclosure-body">';
     html += '<div class="rules-table-wrap" role="region" aria-label="两种模式牌库对照表" tabindex="0"><table class="rules-deck-table"><thead><tr><th scope="col">卡牌</th><th scope="col">单机对战</th><th scope="col">冒险玩家</th></tr></thead><tbody>';
     for (const [label, classic, player] of DECK_COMPARISON) {
       html += '<tr><th scope="row">' + label + '</th><td>' + classic + '</td><td>' + player + '</td></tr>';

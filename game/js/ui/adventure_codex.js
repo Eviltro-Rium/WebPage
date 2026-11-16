@@ -61,17 +61,6 @@
     { name: 'Vixraps', hp: 65, type: '灼热', passive: '打出黑牌后须弃1张（无手牌可免），然后回复2生命并对对手施加1层灼伤', avatar: 'avatars/Vixraps.webp', color: '#c0392b' }
   ];
 
-  const PLAYER_SKILL_GRID = [
-    { atkKey: 0, defKey: 0, label: '1' },
-    { atkKey: 1, defKey: 1, label: '2' },
-    { atkKey: 2, defKey: 2, label: '3' },
-    { atkKey: 7, defKey: 3, label: '0' },
-    { atkKey: 3, defKey: -1, label: '4' },
-    { atkKey: 4, defKey: -1, label: '5' },
-    { atkKey: 5, defKey: -1, label: '6' },
-    { atkKey: 6, defKey: -1, label: '7' }
-  ];
-
   function stripPrefix(s) {
     // Only strip SKILL_DATA row prefixes like "1 造成…", not formulas like "2×[流血]".
     return (s || '').replace(/^\d+\s+/, '');
@@ -240,7 +229,7 @@
     </div>`;
 
     html += '<div class="skill-grid-caption"><span>进攻</span><span>点数</span><span>防御</span></div><div class="skill-grid">';
-    for (const row of PLAYER_SKILL_GRID) {
+    for (const row of typeof PLAYER_SKILL_GRID === 'undefined' ? [] : PLAYER_SKILL_GRID) {
       const atkDesc = atk[row.atkKey] ? colorize(stripPrefix(atk[row.atkKey])) : '—';
       const defDesc = row.defKey >= 0 && def[row.defKey] ? colorize(stripPrefix(def[row.defKey])) : (row.defKey >= 0 ? '无防御效果' : '');
       html += `<div class="skill-row">`;
@@ -772,7 +761,7 @@
     let html = '<div class="skill-grid-caption"><span>进攻</span><span>点数</span><span>防御</span></div><div class="skill-grid">';
     for (const row of npcSkillGrid(includeZero)) {
       const atkDesc = atk[row.atkKey] ? formatCodexSkillText(atk[row.atkKey]) : '—';
-      const highDefKey = canDefendHigh && ['4', '5', '6', '7'].includes(row.label) ? row.atkKey : -1;
+      const highDefKey = canDefendHigh && ['3', '4', '5'].includes(row.label) ? row.atkKey : -1;
       const defKey = row.defKey >= 0 ? row.defKey : highDefKey;
       const defDesc = defKey >= 0 && def[defKey] ? formatCodexSkillText(def[defKey]) : (defKey >= 0 ? '无防御效果' : '');
       html += '<div class="skill-row">';

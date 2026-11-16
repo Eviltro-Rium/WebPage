@@ -390,7 +390,7 @@
         return this.check()
       }
       let n=this.name(ch),v=c.value;
-      this.emit('aiDefend',ch.name+'打出'+n+' '+v+'牌，触发防御技能',c,{who:key});
+      this.emit('aiDefend',ch.name+'打出'+n+' '+v+'牌进行防御',c,{who:key});
       if(c.isBlack||c.isWhite)this.emit('colorChoice',ch.name+'指定'+this.colorName(c.chosenColor),c);
       let judged=this.defenseJudge(key,c,d),b=0,remaining,desc='';
       if(judged){remaining=Math.max(0,judged.remaining);desc=ch.name+'完成防御判定'}

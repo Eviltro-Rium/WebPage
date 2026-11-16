@@ -165,15 +165,12 @@
     const room = typeof eng._adventureEngine.currentRoom === 'function' ? eng._adventureEngine.currentRoom() : null;
     const message = room && room.type === window.RoomType.GLITCH
       ? '退出故障房，手牌补至上限；本房事件已消耗，不能重新抽取'
-      : '退出当前房间，手牌补至上限，下次重新遭遇';
+      : '退出当前房间，手牌补至上限，下次只会再次遭遇尚未击败的怪物';
     return { ok: true, message, rewindRoom: true };
   });
 
-  register('naturalShield', (eng, def, ctx) => {
-    const damage = Math.max(0, Number(eng.s.pendingAttack && eng.s.pendingAttack.damage) || 0);
-    const blocked = Math.min(def.shieldAmount || 5, damage);
-    if (eng.s.pendingAttack) eng.s.pendingAttack.damage = damage - blocked;
-    eng.s.pendingDefenseDamage = Math.max(0, damage - blocked);
+  register('naturalShield', (eng, def) => {
+    const blocked = eng.blockPendingAttackDamage(def.shieldAmount || 5);
     return { ok: true, message: '格挡本次攻击' + blocked + '点伤害' };
   });
 

@@ -183,6 +183,7 @@
         finalEnemyDefeated: false,
         scene: opts.scene || 'castle',
         usedScenes: [opts.scene || 'castle'],
+        encounteredMonsters: [],
         pendingMapReturnEffects: null,
         pendingMapRecoveries: [],
         serenityDiscardRecoveryVersion: 1,
@@ -273,6 +274,7 @@
         finalEnemyDefeated: !!save.finalEnemyDefeated || (save.finalEnemyDefeated == null && save.phase === Phase.CLEAR && save.stage >= 4),
         scene: save.scene || 'castle',
         usedScenes: Array.from(new Set([...(save.usedScenes || []), save.scene || 'castle'])),
+        encounteredMonsters: [...new Set(save.encounteredMonsters || [])],
         pendingMapReturnEffects: clone(save.pendingMapReturnEffects) || null,
         pendingMapRecoveries: clone(save.pendingMapRecoveries) || [],
         serenityDiscardRecoveryVersion: save.serenityDiscardRecoveryVersion == null ? 0 : save.serenityDiscardRecoveryVersion,
@@ -321,6 +323,14 @@
           room.sacrificeResult = d.sacrificeResult ? clone(d.sacrificeResult) : null;
           if (d.monsterName != null) room.monsterName = d.monsterName;
           if (d.bossName != null) room.bossName = d.bossName;
+          if (room.type !== window.RoomType.GLITCH && room.isCombatRoom()) {
+            const lock = this.s.activeCombat;
+            const lockedHere = lock && lock.pos && lock.pos.r === r && lock.pos.c === c;
+            room.encounterNames = lockedHere ? [lock.enemy, lock.enemy2].filter(Boolean)
+              : Array.isArray(d.encounterNames) ? d.encounterNames.slice()
+              : room.cleared ? [d.monsterName, d.bossName].filter(Boolean) : [];
+            this._recordEncounterNames(room.encounterNames);
+          }
           room.reward = d.reward ? clone(d.reward) : null;
           room.shopSlots = d.shopSlots ? clone(d.shopSlots) : null;
           if (Array.isArray(d.blacksmithSlots)) room.blacksmithSlots = clone(d.blacksmithSlots);
@@ -461,7 +471,7 @@
 
     /**
      * 回溯沙漏：中止当前战斗并重置本房间遭遇（不清空房间、不发奖励）。
-     * 同步战斗中的玩家状态与牌库，手牌补至上限，下次进入重新抽怪。
+     * 同步玩家状态并补牌；下次只会遭遇该房尚未击败的怪物。
      */
     rewindCurrentRoomCombat(battleResult) {
       if (!this.s) return false;
@@ -472,9 +482,9 @@
       this.s.pendingMapReturnEffects = null;
       const room = this.currentRoom();
       if (room) {
-        room.monsterName = null;
-        room.bossName = null;
         room.cleared = false;
+        const defeated = new Set(battleResult && battleResult.defeatedMonsterNames || []);
+        if (room.encounterNames) room.encounterNames = room.encounterNames.filter(name => !defeated.has(name));
         if (room.type === window.RoomType.GLITCH && room.glitchEvent) {
           room.cleared = true;
           room.glitchEvent.status = 'done';
@@ -498,7 +508,7 @@
       this.s.phase = Phase.MAP;
       this._log(room && room.type === window.RoomType.GLITCH
         ? '回溯沙漏：已逃离故障房，本房事件不能再次抽取'
-        : '回溯沙漏：退出当前房间，下次进入重新抽取怪物');
+        : '回溯沙漏：退出当前房间，下次进入会再次遭遇尚未击败的怪物');
       this.emit('roomRewind', '回溯沙漏：房间遭遇已重置', {
         r: this.s.pos && this.s.pos.r,
         c: this.s.pos && this.s.pos.c,
@@ -549,18 +559,28 @@
       return this._availableNames(sceneEncounterNames(scene, stage, kind), stage, kind);
     }
 
+    _recordEncounterNames(names) {
+      this.s.encounteredMonsters = [...new Set([...(this.s.encounteredMonsters || []), ...names.filter(Boolean)])];
+    }
+
+    _unusedEncounterNames(kind) {
+      const seen = new Set(this.s.encounteredMonsters || []);
+      return [...new Set(this._encounterNames(kind))].filter(name => !seen.has(name));
+    }
+
     _pickMonsterName(room, opts = {}) {
+      if (!opts.ignoreRoom && room?.encounterNames?.length) return room.encounterNames[0];
       const poolKind = room && room.type === window.RoomType.ELITE && !opts.ignoreRoom ? 'elite' : 'monster';
-      const list = this._encounterNames(poolKind);
+      const list = this._unusedEncounterNames(poolKind);
       if (room && !opts.ignoreRoom && list.includes(room.monsterName)) return room.monsterName;
       const distinct = opts.exclude ? list.filter(name => name !== opts.exclude) : list;
-      const choices = distinct.length ? distinct : list;
-      return choices.length ? choices[Math.floor(random() * choices.length)] : null;
+      return distinct.length ? distinct[Math.floor(random() * distinct.length)] : null;
     }
 
     _pickBossName(room) {
+      if (room?.encounterNames?.length) return room.encounterNames[0];
       if (this.s.stage === 4 && this.s.finalEnemyAwakened) return 'CorruptedRyan';
-      const list = this._encounterNames('boss');
+      const list = this._unusedEncounterNames('boss');
       if (room && list.includes(room.bossName)) return room.bossName;
       return list.length ? list[Math.floor(random() * list.length)] : null;
     }
@@ -670,6 +690,8 @@
       room.monsterName = this._pickMonsterName(room);
       const monster = window.Monster.fromRegistry(room.monsterName);
       if (!monster) {
+        const kind = room.type === window.RoomType.ELITE ? 'elite' : 'monster';
+        if (this._encounterNames(kind).length && !this._unusedEncounterNames(kind).length) return this._clearEmptyEncounter(room);
         return this._encounterUnavailable('怪物');
       }
       monster.init(this);
@@ -722,22 +744,35 @@
         }
         return;
       }
-      const lock = this.s.activeCombat;
-      // Challenge rooms draw both monsters at random from the scene/stage pool,
-      // ignoring the room's preset monster, and avoid a duplicate when possible.
-      const name1 = (lock && lock.enemy) || this._pickMonsterName(room, { ignoreRoom: true });
-      const name2 = (lock && lock.enemy2) || this._pickMonsterName(room, { ignoreRoom: true, exclude: name1 });
+      // 回溯后可能只剩一名存活的对手。新房间则最多抽取两名不同的怪物。
+      const assigned = room.encounterNames || [];
+      const name1 = assigned[0] || this._pickMonsterName(room, { ignoreRoom: true });
+      const name2 = assigned.length ? assigned[1] : this._pickMonsterName(room, { ignoreRoom: true, exclude: name1 });
       const monster1 = window.Monster.fromRegistry(name1);
-      const monster2 = window.Monster.fromRegistry(name2);
-      if (!monster1 || !monster2) {
+      const monster2 = name2 && window.Monster.fromRegistry(name2);
+      if (!monster1) {
+        if (this._encounterNames('monster').length && !this._unusedEncounterNames('monster').length) return this._clearEmptyEncounter(room);
         return this._encounterUnavailable('怪物');
       }
       if (room) room.monsterName = name1;
       monster1.init(this);
-      monster2.init(this);
+      if (monster2) monster2.init(this);
       this._initializeDiscardTop();
-      this._prepareCombatEncounter(monster1, 'challenge', monster2);
-      this.emit('combatStart', '挑战房：' + monster1.name + ' + ' + monster2.name, { enemy: monster1.name, enemy2: monster2.name, is1v2: true });
+      this._prepareCombatEncounter(monster1, 'challenge', monster2 || null);
+      this.emit('combatStart', '挑战房：' + monster1.name + (monster2 ? ' + ' + monster2.name : ''), {
+        enemy: monster1.name, enemy2: monster2 ? monster2.name : null, is1v2: !!monster2
+      });
+    }
+
+    _clearEmptyEncounter(room) {
+      // 旧地图可能比当前怪物池容纳的房间多，保留旧布局并允许继续探索。
+      room.cleared = true;
+      room.visited = true;
+      room.rewardClaimed = true;
+      room.beastTokenClaimed = true;
+      this.s.phase = Phase.MAP;
+      this._log('该场景的对应怪物已全部出场，本房间没有新的遭遇');
+      return { ok: true };
     }
 
     _handleItem(room, opts) {

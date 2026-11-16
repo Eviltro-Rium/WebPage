@@ -12,7 +12,7 @@
       const divisor = eng.s.is1v2 && !eng.s.isAdventure ? 16 : 8;
       return Math.ceil(a.hp / divisor);
     },
-    attackEffectTiming: { 1: 'afterDamage', 3: 'immediate', 4: 'immediate' },
+    attackEffectTiming: { 1: 'afterDamage', 3: 'beforeDamage' },
     effect(eng, v, c, a, t, owner, helpers) {
       const { guard } = helpers;
       let d = 0;

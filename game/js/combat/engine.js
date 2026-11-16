@@ -429,28 +429,21 @@
       }
       return false;
     }
-    _monsterHasDefendSkill(mod,card,incomingDamage=8){
-      if(!mod||!card)return false;
-      if(card.isItemCard)return true;
-      if(card.value===5&&!mod.fiveSkill)return false;
-      if(card.value===0&&mod.defendEscape?.(card))return true;
-      if(card.value===0&&!window.AdventureRegistry?.getBoss(mod.name))return false;
-      if(typeof mod.defendSkill==='function')return true;
-      // 骰子技能仅探测牌值，实际防御时才传入引擎掷骰。
-      if(mod.defendRollImmune?.(card)||mod.defendDeckCompare?.(card))return true;
-      const amount=Math.max(1,incomingDamage);
-      if(mod.defendBlock?.(card,amount,this.s.ai,this)>0)return true;
-      if(mod.defendCounter?.(card,amount,this.s.ai,this.s.player)>0)return true;
-      return [
-        'defendAllHeal','defendAllLush','defendBleed','defendBurn','defendBurnSettle',
-        'defendClearDebuffs','defendDrawSelf','defendFly',
-        'defendGainCrit','defendGainDiving','defendGainMagma','defendGuard',
-        'defendHeal','defendHypothermia','defendImmune','defendImmuneBuff','defendLush',
-        'defendParasite','defendPlayerDiscard','defendPoison','defendPoisonDrain',
-        'defendSandblind','defendScorch','defendSplit','defendThorns'
-      ].some(hook=>typeof mod[hook]==='function'&&mod[hook](card)>0);
+    _chooseAIDefendAdventure(hand,top,incomingDamage=0){
+      if(!this._getAdventureMod(this.name(this.s.ai)))return null;
+      const x=this.aiContext({incomingDamage});
+      let best=null,priority=-Infinity;
+      for(const c of hand){
+        if(!this.aiDefendLegal(c,top,x))continue;
+        // 选择防御牌只看出牌资格和优先级，技能效果在打出后结算。
+        let score=-Infinity;
+        if(c.isItemCard&&(c.magic||c.greenMagic||c.magicColor))score=c.magic||c.magicColor==='purple'?102:101;
+        else if(c.isNumberCard)score=c.value;
+        else if(c.isItemCard)score=-1;
+        if(score>priority){best=c;priority=score}
+      }
+      return best;
     }
-    _chooseAIDefendAdventure(hand,top,incomingDamage=0){let x=this.aiContext({incomingDamage}),name=this.name(this.s.ai),mod=this._getAdventureMod(name);if(!mod)return null;let magic=hand.filter(c=>c.isItemCard&&(c.magic||c.greenMagic||c.magicColor));magic.sort((a,b)=>((b.magic||b.magicColor==='purple')?2:1)-((a.magic||a.magicColor==='purple')?2:1));for(const c of magic){if(this.aiDefendLegal(c,top,x))return c}let numbers=hand.filter(c=>c.isNumberCard&&this.aiDefendLegal(c,top,x)).sort((a,b)=>b.value-a.value);for(const c of numbers){if(this._monsterHasDefendSkill(mod,c,incomingDamage))return c}for(const c of hand){if(c.isItemCard&&this.aiDefendLegal(c,top,x))return c}return null}
     chooseAIDefend(top,incomingDamage=0){if(this.s.isAdventure){let r=this._chooseAIDefendAdventure(this.h.ai,top,incomingDamage);if(this._getAdventureMod(this.name(this.s.ai)))return r}let x=this.aiContext({incomingDamage}),best=null,score=-Infinity;for(const c of this.h.ai){if(!this.aiDefendLegal(c,top,x))continue;let s=this.aiDefendScore(c,top,incomingDamage);if(s>score){score=s;best=c}}return score<=-100?null:best}
     aiKeepScore(c){
       let x=this.aiContext(),m=AIRegistry.get(x.name),role=m?m.keepScore(this,c,x):null;
@@ -996,6 +989,18 @@
     itemKind(c){if(c.trophyWhite)return'trophyWhite';if(c.swapHand)return'swap';if(c.drawThree)return'drawThree';if(c.drawTwo)return'drawTwo';if(c.potion)return'potion';if(c.greenMagic||c.magicColor==='green')return'greenMagic';if(c.magic||c.magicColor==='purple')return'magic';if(c.superPurify)return'superPurify';if(c.purify)return'purify';if(c.shuffleToDeck)return'shuffle';return'wild'}
     _isAdventureBoss(x){if(!this.s.isAdventure||!window.AdventureRegistry)return false;return!!window.AdventureRegistry.getBoss(this.name(x))}
     itemEffectDesc(c,who){let actor=who==='player'?'玩家':who==='ai2'?'AI2':'AI',kind=this.itemKind(c);if(kind==='trophyWhite'){let def=window.AdventureRegistry&&c.trophyName?window.AdventureRegistry.getItem(c.trophyName):null;let effect=c.trophyEffect||def&&def.trophyEffect||'burn';if(effect==='bomb')return`${actor}打出定时炸弹：对手获得倒计时5的炸弹，并抽1张牌，然后继续搭桥`;if(effect==='roulette')return`${actor}打出俄罗斯赌盘：投掷12面骰，1-5伤害玩家，6-12伤害对手，并抽1张牌`;if(effect==='zero'){let label=this.s.phase==='PLAYER_DEFEND'?'释放角色防御0技能':'释放角色攻击0技能';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}`}if(effect==='drawTwo')return`${actor}打出${def&&def.displayName||'战利白卡'}：抽2张牌，然后继续搭桥`;if(effect==='greenMagic'||effect==='purpleMagic')return`${actor}打出${def&&def.displayName||'战利白卡'}：恢复3点生命，${effect==='greenMagic'?'清除自身可清除的负面状态':'清除当前对手可清除的正面状态'}，不抽牌，继续搭桥`;let label=effect==='drain'?'吸取对手至多'+Math.max(0,Number(def&&def.drainAmount)||3)+'点生命':effect==='bleed'?'施加1层流血':effect==='freeze'?'施加冷冻':effect==='iceSeal'?'施加[冰封]':effect==='hypothermia'?'施加1层[失温]':effect==='guard'?(this.s.phase==='PLAYER_DEFEND'?'格挡本次攻击至多5点伤害':'获得1层守护'):effect==='disarm'?'选择对手1张手牌弃掉':effect==='purify'?'清除自身或对手至多1个buff':effect==='fly'?'获得1层飞翔':effect==='crit'?'获得1层暴击':effect==='magmaVein'?'获得1层[熔脉]':effect==='diving'?'获得[潜水]':effect==='scorch'?'施加[炙热]':effect==='lush'?'获得1层茂盛':effect==='parasite'?'获得1层寄生':effect==='poison'?'施加1层中毒':effect==='thorns'?'施加1层荆棘':effect==='sandblind'?'施加2层沙盲':effect==='quicksand'?'施加1层[流沙]，手牌上限-1':effect==='riot'?'对手负面层数翻倍（不超上限），定时炸弹立即引爆':effect==='smallPotion'?'恢复'+Math.max(0,Number(def&&def.healAmount)||2)+'点生命':'施加1层灼伤';return`${actor}打出${def&&def.displayName||'战利白卡'}：${label}并抽1张牌，然后继续搭桥`}if(kind==='swap')return`${actor}立即交换双方手牌，随后使用交换后的手牌继续搭桥`;if(kind==='drawThree')return`${actor}立即抽3张牌，然后继续搭桥`;if(kind==='drawTwo')return`${actor}立即抽2张牌，然后继续搭桥`;if(kind==='potion')return`${actor}立即恢复${this.s.isAdventure&&who!=='player'?3:5}点生命，然后继续搭桥`;if(kind==='magic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出紫魔法：恢复${hp}点生命，清除对手所有正面buff，然后继续搭桥`}if(kind==='greenMagic'){let hp=who!=='player'&&this._isAdventureBoss(this.s[who==='ai2'?'ai2':'ai'])?5:3;return`${actor}打出绿魔法：恢复${hp}点生命，清除自身所有负面状态，然后继续搭桥`}if(kind==='superPurify')return`${actor}选择目标，清除其全部可净化状态（印记保留），然后继续搭桥`;if(kind==='purify')return`${actor}立即净化1层debuff，然后继续搭桥`;if(kind==='shuffle')return`${actor}立即洗回弃牌库，然后继续搭桥`;return`${actor}指定颜色后继续搭桥`}
+    blockPendingAttackDamage(amount) {
+      const attack = this.s.pendingAttack;
+      if (!attack) return 0;
+      const preview = Math.max(0, Number(attack.damage) || 0);
+      const block = Math.max(0, Number(amount) || 0);
+      if (attack.damageBeforeFlatDefenseBlock == null) attack.damageBeforeFlatDefenseBlock = preview;
+      attack.flatDefenseBlock = (attack.flatDefenseBlock || 0) + block;
+      const blocked = Math.min(block, preview);
+      attack.damage = preview - blocked;
+      this.s.pendingDefenseDamage = attack.damage;
+      return blocked;
+    }
     useTrophyWhite(c, target, w='player'){
       if (!c || !c.trophyWhite) return false;
       // The caller resolves the target for the current card before entering
@@ -1062,10 +1067,7 @@
         }
       } else if (effect === 'guard') {
         if (this.s && this.s.phase === 'PLAYER_DEFEND' && this.s.pendingAttack) {
-          const damage = Math.max(0, Number(this.s.pendingAttack.damage) || 0);
-          const blocked = Math.min(5, damage);
-          this.s.pendingAttack.damage = damage - blocked;
-          this.s.pendingDefenseDamage = this.s.pendingAttack.damage;
+          const blocked = this.blockPendingAttackDamage(5);
           if (blocked) this.emit('desc', '守护战利白卡：格挡' + blocked + '点伤害');
         } else if (this.s && this.s.player) {
           this.addGuard(this.s.player, 1);
@@ -1901,7 +1903,7 @@
   Engine.prototype.aiDefend=function(atk,d){
     
     const asleep=!!this.s.ai.sleep;
-    let frozen=this._freezeBlocksDefend(this.s.ai,atk),chosen=(frozen||asleep)?null:this.chooseAIDefend(this.s.discardTop,d),i=chosen?this.h.ai.indexOf(chosen):-1;if(i>=0){let top=this.s.discardTop,c=this.h.ai.splice(i,1)[0];if(c.isBlack)c.chosenColor=this.h.ai.find(q=>!q.isBlack&&!q.isWhite&&q.value<=2)?.color||this.chooseAIColor();else this.setAIWildColor(c,top,false);this.s.defCard=cp(c);this.s.defOwner='ai';this.setDiscardTop(c);if(c.isItemCard){this.emit('aiDefend','AI打出搭桥牌并立即结算道具效果',c);this.announceAIColor(c);let kind=this.itemKind(c);this.emit('itemEffect',this.itemEffectDesc(c,'ai'),c,{effect:kind,who:'ai'});this.useItem(c,this.s.ai,this.s.player,'ai');this._grantChaosOnItemPlay('ai',c);if(c.isBlack&&this.name(this.s.ai)==='Vixraps')this._beginVixrapsPassive('ai',c,'AI_DEFEND');this.s.pendingAIBridge={mode:'defense',afterEventId:this.ver,attackCard:cp(atk),damage:d,owner:'ai'};return this.check()}let n=this.name(this.s.ai),v=c.value;this.emit('aiDefend',`AI打出${n} ${v}牌，触发防御技能`,c);this.announceAIColor(c);let judged=this.defenseJudge('ai',c,d),b=0,remaining,desc='';
+    let frozen=this._freezeBlocksDefend(this.s.ai,atk),chosen=(frozen||asleep)?null:this.chooseAIDefend(this.s.discardTop,d),i=chosen?this.h.ai.indexOf(chosen):-1;if(i>=0){let top=this.s.discardTop,c=this.h.ai.splice(i,1)[0];if(c.isBlack)c.chosenColor=this.h.ai.find(q=>!q.isBlack&&!q.isWhite&&q.value<=2)?.color||this.chooseAIColor();else this.setAIWildColor(c,top,false);this.s.defCard=cp(c);this.s.defOwner='ai';this.setDiscardTop(c);if(c.isItemCard){this.emit('aiDefend','AI打出搭桥牌并立即结算道具效果',c);this.announceAIColor(c);let kind=this.itemKind(c);this.emit('itemEffect',this.itemEffectDesc(c,'ai'),c,{effect:kind,who:'ai'});this.useItem(c,this.s.ai,this.s.player,'ai');this._grantChaosOnItemPlay('ai',c);if(c.isBlack&&this.name(this.s.ai)==='Vixraps')this._beginVixrapsPassive('ai',c,'AI_DEFEND');this.s.pendingAIBridge={mode:'defense',afterEventId:this.ver,attackCard:cp(atk),damage:d,owner:'ai'};return this.check()}let n=this.name(this.s.ai),v=c.value;this.emit('aiDefend',`AI打出${n} ${v}牌进行防御`,c);this.announceAIColor(c);let judged=this.defenseJudge('ai',c,d),b=0,remaining,desc='';
       if(judged){remaining=Math.max(0,judged.remaining);desc='AI完成防御判定'}
       else{let m=CharacterRegistry.get(n);if(m){let r=m.defend(this,n,v,d,c,this.s.ai,this.s.player,'ai',this.effective(atk),{hurt:(x,n,b)=>this.hurt(x,n,b),heal:(x,n,k)=>this.heal(x,n,k),draw:(w,n,an)=>this.draw(w,n,an),burn:(x,n)=>this.burn(x,n),bleed:(x,n)=>this.bleed(x,n),poison:(x,n)=>this.poison(x,n),counter:(x,n)=>this.counterAttack(this.s.ai,x,n),cancelAttackDebuffs:(o,r)=>this.cancelAttackDebuffs(o,r),clearDebuffs:x=>this.clearDebuffs(x),addGuard:(x,n)=>this.addGuard(x,n)});if(r){remaining=r.remaining;desc=r.desc}}if(desc===''){b=c.isNumberCard?(c.value===1?Math.ceil(d/2):0):0;remaining=Math.max(0,d-b);desc=this.s.ai.name+'抵消'+b+'点伤害，剩余'+remaining+'点待结算'}}
       if(!judged)this.emit('desc',desc);

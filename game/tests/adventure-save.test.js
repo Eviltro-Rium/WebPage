@@ -239,6 +239,46 @@ test('normal room fixes monster name on first entry', () => {
   assert.equal(eng._pickMonsterName(room), fixed);
 });
 
+test('room encounters stay unique after rewind, reload and advancing a layer', () => {
+  const ctx = createContext();
+  loadSources(ctx);
+  const { AdventureEngine, AdventureMap, AdventureSave } = ctx;
+  const eng = new AdventureEngine();
+  const layout = [[0, 6, 1, 1, 1, 1]];
+  eng.mapName = 'stage_01_castle_1';
+  eng.start(new AdventureMap(layout), 'Ryan', { scene: 'castle' });
+  ctx.FurryGame.CombatRuntime.setRandomSource(() => 0);
+  eng.move(0, 1);
+  eng.enterCurrent();
+  const first = eng.s.combat.enemy.name, second = eng.s.combat.enemy2.name;
+  assert.notEqual(first, second);
+  eng.rewindCurrentRoomCombat({ defeatedMonsterNames: [first] });
+  const saved = AdventureSave.serialize(eng);
+  const restored = new AdventureEngine();
+  restored.restoreFromSave(saved, new AdventureMap(layout));
+  restored.enterCurrent();
+  assert.equal(restored.s.combat.enemy.name, second);
+  assert.equal(restored.s.combat.enemy2, null);
+  restored.onCombatEnd('win');
+  restored.s.phase = ctx.AdventurePhase.MAP;
+  const seen = new Set([first, second]);
+  for (let col = 2; col <= 5; col++) {
+    assert.ok(restored.move(0, col));
+    restored.enterCurrent();
+    const name = restored.s.combat.enemy.name;
+    assert.ok(!seen.has(name));
+    seen.add(name);
+    restored.onCombatEnd('win');
+    restored.s.phase = ctx.AdventurePhase.MAP;
+  }
+  restored.continueTo(new AdventureMap([[0, 1]]), { stage: 2, scene: 'castle' });
+  assert.equal(restored.s.encounteredMonsters.length, 6);
+  restored.move(0, 1);
+  restored.enterCurrent();
+  assert.equal(restored.s.combat, null);
+  assert.ok(restored.currentRoom().cleared, 'a legacy surplus room does not block exploration');
+});
+
 test('activeCombat lock survives save/load and blocks farming after refresh', () => {
   const ctx = createContext();
   loadSources(ctx);

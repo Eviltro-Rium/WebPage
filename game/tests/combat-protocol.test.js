@@ -84,7 +84,7 @@ test('standard deck service builds the classic deck and a numeric opening top', 
   const { CombatDeck } = context.FurryGame;
   const initial = CombatDeck.createStandard();
 
-  assert.equal(initial.deck.length + 1, 74);
+  assert.equal(initial.deck.length + 1, 72);
   assert.equal(initial.discardBottom.length, 0);
   assert.ok(initial.discardTop && initial.discardTop.isNumberCard);
   assert.ok(initial.deck.every(card => card && card.isNumberCard !== undefined));

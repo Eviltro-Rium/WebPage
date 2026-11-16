@@ -17,6 +17,7 @@
       let d = 0;
       let skip = false;
       let unblock = false;
+      let pendingPurify = false;
       const hand = eng.h[owner] || eng.h.player || [];
       if (v === 1) {
         heal(a, 1);
@@ -28,7 +29,8 @@
         return null;
       } else if (v === 4) {
         d = 4;
-        clearDebuffs(a);
+        pendingPurify = owner === 'player';
+        if (!pendingPurify) eng.clean(a);
         draw(owner, 1, true);
       } else if (v === 5) {
         d = hand.filter(x => x.isNumberCard).reduce((q, x) => q + x.value, 0);
@@ -45,7 +47,7 @@
         eng.s.revealCards = JSON.parse(JSON.stringify(cards));
         d = cards.reduce((sum, x) => sum + (x.isNumberCard ? x.value : 3), 0);
       }
-      return { d, skip, unblock };
+      return { d, skip, unblock, pendingPurify };
     },
     damageAfterDefense(v, damage, defender) {
       if (v === 1) return Math.max(0, damage - Math.ceil(damage / 2));
