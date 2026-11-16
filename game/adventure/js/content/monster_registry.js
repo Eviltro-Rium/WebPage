@@ -15,6 +15,27 @@
       (card.value === 5 && !mod.fiveSkill || (card.value === 0 && !AdvR.getBoss(mod.name))));
   }
 
+  function attackTiming(mod, v) {
+    if (typeof mod.attackEffectTiming === 'function') return mod.attackEffectTiming(v);
+    // 按各场景技能文案标注先于伤害的效果。
+    const before = mod.name === 'ForestLadybug' && v >= 3 && v <= 4 ||
+      mod.name === 'FrozenKraken' && v === 0 ||
+      mod.name === 'ForestPython' && (v === 0 || v >= 3 && v <= 4) ||
+      mod.name === 'FrozenOrca' && v === 0 ||
+      mod.name === 'DesertSobek' && v === 0 ||
+      mod.name === 'ForestPanda' && v === 0 ||
+      mod.name === 'ForestDryad' && (v === 0 || v >= 1 && v <= 2) ||
+      mod.name === 'CastleEagle' && (v === 0 || v >= 3 && v <= 4) ||
+      mod.name === 'CastleGargoyle' && v >= 1 && v <= 4;
+    return before ? 'beforeDamage' : 'afterDamage';
+  }
+
+  function cleanseableDebuffStacks(entity) {
+    const registry = window.FurryGame.StatusRegistry;
+    return registry.debuffs.reduce((sum, status) =>
+      sum + (status.cleanse === 'never' ? 0 : registry.amount(entity, status.id)), 0);
+  }
+
   function applyStageMods(mod, stage) {
     if (!mod || !mod.stageMods) return mod;
     let result = mod;
@@ -86,28 +107,18 @@
         // Shared Engine.turnStart settles lush once for every participant.
         if (typeof mod.attackTurnStart === 'function') mod.attackTurnStart(eng, x, w);
       },
-      attackEffectTiming(v, eng) {
-        // The registered definition already contains its cumulative stage modifiers.
-        const active = mod;
-        if (typeof active.attackEffectTiming === 'function') return active.attackEffectTiming(v);
-        // Ladybug explicitly gains lush BEFORE its attack; Kraken purges first.
-        const before = mod.name === 'ForestLadybug' && v >= 3 && v <= 4 ||
-          mod.name === 'FrozenKraken' && v === 0 ||
-          mod.name === 'ForestPython' && (v === 0 || v >= 3 && v <= 4) ||
-          mod.name === 'FrozenOrca' && v === 0 ||
-          mod.name === 'ForestPanda' && v === 0 ||
-          mod.name === 'ForestDryad' && (v === 0 || v >= 1 && v <= 2) ||
-          mod.name === 'CastleEagle' && (v === 0 || v >= 3 && v <= 4) ||
-          mod.name === 'CastleGargoyle' && v >= 0 && v <= 4;
-        return before ? 'beforeDamage' : 'afterDamage';
+      attackEffectTiming(v) {
+        return attackTiming(mod, v);
       },
-      damageAtSettlement(eng, v, a, t) {
+      damageAtSettlement(eng, v, a, t, attackerBeforeEffects) {
         const active = mod; // Do not replace the staged definition with the raw registry entry.
         const card = eng.s.atkCard;
         if (isPassNumber(mod, card)) return 0;
         // Card/dice judgment damage is locked to its revealed result, not rolled again.
-        if (!card || typeof active.attackDamage!=='function' ||
-            active.attackRevealDraw || active.attackOctopusJudge || active.attackKrakenJudge || active.attackHyenaJudge) return null;
+        if (!card || typeof active.attackDamage !== 'function') return null;
+        if (active.attackRevealDraw?.(card) || active.attackOctopusJudge?.(card) ||
+            active.attackKrakenJudge?.(card) || active.attackHyenaJudge?.(card)) return null;
+        if (active.attackKrakenPurge?.(card)) return 3 + cleanseableDebuffStacks(attackerBeforeEffects || a);
         const owner = eng._who(a), hand=eng.h[owner] || [];
         const total = window.FurryGame.StatusRegistry.all.reduce((sum,def) => sum+window.FurryGame.StatusRegistry.amount(t,def.id),0);
         const positiveStacks = (ent) => !ent ? 0 :
@@ -182,17 +193,7 @@
         // (captureAttackSkill queues + rolls back; commit beforeDamage then live recalc).
         let poisonAppliedEarly = false;
         let bleedAppliedEarly = false;
-        const effectTiming = (typeof mod.attackEffectTiming === 'function')
-          ? mod.attackEffectTiming(v)
-          : ((mod.name === 'ForestLadybug' && v >= 3 && v <= 4 ||
-            mod.name === 'FrozenKraken' && v === 0 ||
-            mod.name === 'ForestPython' && (v === 0 || v >= 3 && v <= 4) ||
-            mod.name === 'FrozenOrca' && v === 0 ||
-            mod.name === 'ForestPanda' && v === 0 ||
-            mod.name === 'ForestDryad' && (v === 0 || v >= 1 && v <= 2) ||
-            mod.name === 'CastleEagle' && (v === 0 || v >= 3 && v <= 4) ||
-            mod.name === 'CastleGargoyle' && v >= 0 && v <= 4)
-            ? 'beforeDamage' : 'afterDamage');
+        const effectTiming = attackTiming(mod, v);
         if (effectTiming === 'beforeDamage') {
           if (typeof mod.attackPoison === 'function') {
             const p = Math.max(0, Number(mod.attackPoison(c)) || 0);
@@ -304,20 +305,9 @@
         if (typeof mod.attackKrakenPurge === 'function' && mod.attackKrakenPurge(c)) {
           if (typeof eng.hypothermia === 'function') eng.hypothermia(t, 1);
           else t.hypothermia = Math.min(2, (t.hypothermia || 0) + 1);
-          let cleared = Math.max(0, Number(a.burn) || 0) + Math.max(0, Number(a.bleed) || 0)
-            + Math.max(0, Number(a.poison) || 0) + Math.max(0, Number(a.bomb) || 0)
-            + Math.max(0, Number(a.hypothermia) || 0) + Math.max(0, Number(a.thorns) || 0)
-            + Math.max(0, Number(a.sandblind) || 0)
-            + Math.max(0, Number(a.quicksand) || 0);
-          if (a.frozen) cleared += 1;
-          if (a.blind) cleared += 1;
-          if (a.iceSeal) cleared += 1;
-          if (a.hypnosis) cleared += 1;
-          if (a.sleep) cleared += 1;
-          if (a.scorch) cleared += 1;
+          const cleared = cleanseableDebuffStacks(a);
           if (typeof eng.clearDebuffs === 'function') eng.clearDebuffs(a);
           d = 3 + cleared;
-          eng.emit('desc', a.name + '清除自身' + cleared + '层负面效果，造成' + d + '点伤害');
         }
         // 沙漠鬣狗专属0牌：翻开玩家牌库顶判定，始终置入玩家弃牌堆；
         // 数字牌 value>0 → 点数×2 伤害；否则施加2层流血+[荆棘]并抽1张（伤害0跳过防御）
@@ -390,7 +380,7 @@
         if (typeof mod.attackHypothermia === 'function') {
           const hyAmt = mod.attackHypothermia(c);
           if (hyAmt > 0) {
-            if (typeof mod.attackEffectTiming === 'function' && mod.attackEffectTiming(v) === 'beforeDamage') {
+            if (effectTiming === 'beforeDamage') {
               // Unified skill capture defers this operation until after defense, before damage.
               eng.hypothermia(t, hyAmt);
             } else {
@@ -412,8 +402,6 @@
           if (f > 0) {
             if (fly) fly(f);
             else a.fly = Math.min(2, (a.fly || 0) + f);
-            const who = owner === 'player' ? 'player' : (owner === 'ai2' ? 'ai2' : 'ai');
-            eng.emit('buff', '+' + f + '[飞翔]', null, { who, kind: 'fly', stacks: a.fly });
           }
         }
         // 进攻获得寄生（上限1，沙虫4/5/6）
@@ -724,6 +712,7 @@
           (hypothermiaAmt ? '，施加' + hypothermiaAmt + '层[失温]' : '') +
           (thornsAmt ? '，施加' + thornsAmt + '层荆棘' : '');
         if (typeof mod.defendRollImmune === 'function' && mod.defendRollImmune(c, eng, defender, d, owner)) {
+          eng.cancelAttackDebuffs?.(owner, false);
           return { remaining: 0, desc: '12面骰判定成功，免疫所有伤害和buff' };
         }
         const drawSelfAmt = typeof mod.defendDrawSelf === 'function' ? (mod.defendDrawSelf(c) || 0) : 0;
@@ -843,9 +832,9 @@
         const lushDesc = lushAmt > 0 ? '，获得' + lushAmt + '层茂盛' : '';
 
         if (typeof mod.defendImmune === 'function' && mod.defendImmune(c)) {
-          if (typeof mod.defendImmuneBuff === 'function' && mod.defendImmuneBuff(c) && clearDebuffs) {
-            if (mod.name === 'CastleCrow') eng.cancelAttackDebuffs?.(owner, false);
-            clearDebuffs(defender);
+          if (mod.defendImmuneBuff?.(c)) {
+            eng.cancelAttackDebuffs?.(owner, false);
+            if (clearDebuffs) clearDebuffs(defender);
           }
           let counterDesc = '';
           if (typeof mod.defendCounter === 'function') {

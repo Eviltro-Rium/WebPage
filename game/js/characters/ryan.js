@@ -35,7 +35,6 @@
       } else if (v === 5) {
         d = hand.filter(x => x.isNumberCard).reduce((q, x) => q + x.value, 0);
       } else if (v === 0) {
-        heal(a, 4);
         clearDebuffs(a);
         const cards = [];
         for (let i = 0; i < 2 && eng.deck.length; i++) {

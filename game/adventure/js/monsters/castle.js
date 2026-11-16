@@ -70,21 +70,21 @@
       return isLow(card) ? 1 : 0;
     },
 
-    defendRollImmune(card, eng) {
+    defendRollImmune(card, eng, defender, damage, owner = 'ai') {
       if (!isLow(card)) return false;
       // UI/AI capability checks call this without an engine; the real defense
       // path supplies the engine and records the D12 roll in the判定区.
       if (!eng || typeof eng.rollD12 !== 'function') return true;
-      const roll = eng.rollD12('夜巡幽魂防御判定', { who: 'ai' });
+      const roll = eng.rollD12('夜巡幽魂防御判定', { who: owner });
       return roll <= 4;
     },
 
     stageMods: {
       4: orig => ({
-        defendRollImmune(card, eng) {
+        defendRollImmune(card, eng, defender, damage, owner = 'ai') {
           if (!isLow(card)) return false;
           if (!eng || typeof eng.rollD12 !== 'function') return true;
-          return eng.rollD12('夜巡幽魂防御判定', { who: 'ai' }) <= 6;
+          return eng.rollD12('夜巡幽魂防御判定', { who: owner }) <= 6;
         }
       })
     }

@@ -173,9 +173,11 @@ test('FrozenKraken 0: purge counts cleared layers into damage', () => {
   assert.equal(r.unblock, false);
   assert.equal(eng.s.ai.burn, 2, 'attack status operations wait for defense');
   eng.s.atkOwner='ai';eng.s.atkCard=numCard(0);eng.s.pendingAttack={damage:r.d};
-  assert.equal(eng.prepareAttackSettlement(r.d,'player'),6);
+  eng.bleed(eng.s.ai, 1);
+  assert.equal(eng.prepareAttackSettlement(r.d,'player'),7, 'defense can add another debuff before the purge');
   assert.equal(eng.s.ai.burn, 0);
   assert.equal(eng.s.ai.poison, 0);
+  assert.equal(eng.s.ai.bleed, 0);
   assert.equal(eng.s.player.hypothermia, 1);
 });
 

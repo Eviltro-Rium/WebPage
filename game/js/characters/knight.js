@@ -14,7 +14,7 @@
       ch.chaos_green = false;
       if (had) eng.emit('buff', '[混沌重制]', null, { who: w, kind: 'chaos_reset', stacks: 0 });
     },
-    attackEffectTiming: { 1: 'afterDamage', 4: 'afterDamage' },
+    attackEffectTiming: { 1: 'afterDamage', 4: 'afterDamage', 5: 'afterDamage' },
     effect(eng, v, c, a, t, owner, helpers) {
       const { burn, bleed, guard, heal } = helpers;
       let d = 0;
@@ -29,7 +29,10 @@
       if (v === 1) {
         d = 1;
         unblock = true;
-        if (cg) { heal(a, 1); guard(1); }
+        if (cg) {
+          eng.queueAttackRecovery(a, 1);
+          guard(1);
+        }
         if (cr) burn(2);
         if (cb) eng.freeze(t);
         if (cy) bleed(1);

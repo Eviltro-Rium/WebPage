@@ -14,9 +14,10 @@
       // Defense conditions were decided before incoming status effects.
       const defenseSnapshot = Object.assign({},this.s[defenderKey]);
       this._restoreAttackBuffs();
+      const target = this.s[defenderKey], attacker = this.s[this.s.atkOwner || (defenderKey === 'player' ? this._incomingNpcKey() : 'player')];
+      const attackerBeforeEffects = { ...attacker };
       this.commitAttackStatuses('beforeDamage');
       if (typeof this.applyPendingSaikiBleed === 'function') this.applyPendingSaikiBleed();
-      const target = this.s[defenderKey], attacker = this.s[this.s.atkOwner || (defenderKey === 'player' ? this._incomingNpcKey() : 'player')];
       const formula = this.s.pendingDamageFormula;
       this.s.pendingDamageFormula = null;
       if (!formula || !target || !attacker) return this.prepareDivingMitigation(remaining, defenderKey);
@@ -26,7 +27,7 @@
       const afterRecovery = character?.attackHealAfterDamage?.(this, formula.value, attacker, target);
       if (afterRecovery > 0) this.queueAttackRecovery(attacker, afterRecovery);
       if (!character || typeof character.damageAtSettlement !== 'function') return this.prepareDivingMitigation(remaining, defenderKey);
-      const live = character.damageAtSettlement(this, formula.value, attacker, target);
+      const live = character.damageAtSettlement(this, formula.value, attacker, target, attackerBeforeEffects);
       if (live == null) return this.prepareDivingMitigation(remaining, defenderKey);
       const basePreview = Math.max(0, Number(attack.damage) || 0);
       const preview = attack.ottoCoveredDamage ? Math.min(6, basePreview) : basePreview;
@@ -133,6 +134,7 @@
       queued.push(...operations);
       const doublesBurn = name === 'Vixraps' && value === 3;
       if (doublesBurn) queued.push({target:this._who(target),id:'burn',factor:2,timing});
+      const clearsChaosAfterHit = name === 'Knight' && value === 5;
       const seen = new Set();
       for (const snapshot of snapshots) {
         if (seen.has(snapshot.entity)) continue;
@@ -140,6 +142,11 @@
         registry.all.forEach((def, index) => {
           if (def.mark) return;
           const before = snapshot.values[index], after = registry.amount(snapshot.entity,def.id);
+          if (clearsChaosAfterHit && snapshot.entity === attacker && def.id.startsWith('chaos_')) {
+            queued.push({target: this._who(attacker), id: def.id, value: false, timing});
+            Combat.StatusService.set(attacker, def.id, before);
+            return;
+          }
           if (before === after) return;
           // Consumed attack resources are locked costs, not delayed effects.
           if (snapshot.entity===attacker && after<before && (def.id==='crit' || def.id.startsWith('chaos_')) &&
@@ -150,7 +157,8 @@
         });
       }
       this.events = this.events.filter(event => !(event.id > firstEvent && event.type==='buff' &&
-        queued.some(effect => effect.id===event.kind && effect.target===(event.target||event.who))));
+        queued.some(effect => (effect.id===event.kind || effect.method===event.kind) &&
+          effect.target===(event.target||event.who))));
       this.s.pendingDamageFormula = {name,value,preview:Math.max(0,Number(result.d)||0)};
       return result;
     },
@@ -455,6 +463,12 @@
     const registry = Combat.StatusRegistry;
     const incoming = (this.s.pendingSkillStatuses || []).filter(effect => effect.target === owner && (effect.polarity || (registry.get(effect.id) || {}).polarity) === 'debuff');
     this.s.pendingSkillStatuses = (this.s.pendingSkillStatuses || []).filter(effect => !incoming.includes(effect));
+    const attack = this.s.pendingAttack;
+    if (attack?.hypothermiaTarget === owner && attack.hypothermiaAmount > 0) {
+      incoming.push({id:'hypothermia', method:'hypothermia', args:[attack.hypothermiaAmount], timing:'afterDamage'});
+      attack.hypothermiaTarget = null;
+      attack.hypothermiaAmount = 0;
+    }
     if (this.s.pendingSaikiBleed && this.s.pendingSaikiBleed.target === this.s[owner]) this.s.pendingSaikiBleed = null;
     if (reflect) {
       const target = owner === 'player' ? this._incomingNpcKey() : 'player';
