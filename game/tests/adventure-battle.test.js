@@ -245,6 +245,49 @@ test('adventure opponent is registered for the ordinary 1v1 character and AI int
   assert.ok(context.AIRegistry.get('CastleWolf'));
 });
 
+test('Scarab stage upgrades accumulate without leaking across opponents or a restored battle', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({
+    player: 'Ryan', opponent1: 'DesertScarab', opponent2: 'DesertScarab',
+    stage: 1, opponent1Stage: 1, opponent2Stage: 4,
+    discardTop: number(2), playerPile: { deck: [], hand: [], discard: [], handLimit: 5 }
+  });
+  const restored = new AdventureBattleEngine();
+  restored.later = () => {};
+  restored.restoreSession({ s: engine.s, piles: engine.piles, events: [], ver: engine.ver }, null, false);
+  for (const battle of [engine, restored]) {
+    for (const [key, stage, hp, damage, counter] of [['ai', 1, 18, 3, 0], ['ai2', 4, 24, 4, 1]]) {
+      const opponent = battle.s[key];
+      const card = number(2, 'WHITE', true);
+      assert.equal(opponent.encounterStage, stage);
+      assert.equal(opponent.maxHp, hp);
+      assert.equal(battle.effect('DesertScarab', 2, card, opponent, battle.s.player).d, damage);
+      let countered = 0;
+      const result = CharacterRegistry.get('DesertScarab').defend(battle, 'DesertScarab', 2, 8, card,
+        opponent, battle.s.player, key, 'RED', { counter: (_, amount) => { countered += amount; } });
+      assert.equal(result.remaining, 5);
+      assert.equal(countered, counter);
+      const text = context.AdventureMonsterBridge.getAdventureNpcSkillDesc('DesertScarab', card, true, { stage });
+      assert.equal(text.includes('反击'), counter > 0);
+    }
+  }
+});
+
+test('first strike swaps the NPC and its stage together', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({
+    player: 'Ryan', opponent1: 'DesertScarab', opponent2: 'ForestDeer',
+    stage: 2, opponent1Stage: 4, opponent2Stage: 2, discardTop: number(2),
+    playerPile: { deck: [], hand: [], discard: [], handLimit: 5 }
+  });
+  assert.equal(engine.s.ai.name, 'ForestDeer');
+  assert.equal(engine.s.ai.encounterStage, 2);
+  assert.equal(engine.s.ai2.name, 'DesertScarab');
+  assert.equal(engine.s.ai2.encounterStage, 4);
+});
+
 test('Ryan attack 4 waits for a single chosen status and resumes the attack in both modes', () => {
   for (const challenge of [false, true]) {
     const engine = new AdventureBattleEngine();

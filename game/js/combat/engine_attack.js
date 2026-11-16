@@ -129,7 +129,7 @@
       const queued = this.s.pendingSkillStatuses || (this.s.pendingSkillStatuses = []);
       const definition = global.CharacterRegistry.get(name);
       const rule = definition && definition.attackEffectTiming;
-      const timing = (typeof rule === 'function' ? rule(value, this) : rule && rule[value]) || 'beforeDamage';
+      const timing = (typeof rule === 'function' ? rule(value, this, attacker) : rule && rule[value]) || 'beforeDamage';
       for (const operation of operations) operation.timing = timing;
       queued.push(...operations);
       const doublesBurn = name === 'Vixraps' && value === 3;

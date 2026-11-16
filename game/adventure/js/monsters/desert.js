@@ -245,9 +245,6 @@
     defendBlock(card, incoming) {
       return isLow(card) ? Math.min(3, incoming || 0) : 0;
     },
-    defendCounter(card) {
-      return isLow(card) ? 1 : 0;
-    },
     stageMods: {
       2: orig => ({ hp: orig.hp + 6 }),
       3: orig => ({ attackDamage: (card, ctx) => orig.attackDamage(card, ctx) + 1 }),

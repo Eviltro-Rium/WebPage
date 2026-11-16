@@ -362,9 +362,9 @@ _closeGameMenu(overlay) {
 _showSkillOverlay() {
     const s = this.state;
     if (!s || !s.player) return;
-    const advEngine = window.AdventureBattleController && window.AdventureBattleController.activeEngine &&
-      window.AdventureBattleController.activeEngine()._adventureEngine;
-    const stage = (advEngine && advEngine.s && advEngine.s.stage) || s.stage || 1;
+    const npcStage = opponent => s.isAdventure
+        ? opponent.encounterStage || s.adventureStage || s.stage || 1
+        : null;
     const chars = [];
     chars.push({ name: s.player.name.replace(/^AI\d*\s+/, ''), label: '玩家', color: '#3b82f6', isNpc: false });
     chars.push({
@@ -372,7 +372,7 @@ _showSkillOverlay() {
         label: s.isAdventure || s.isOnline || !s.is1v2 ? '敌人' : 'AI',
         color: '#ef4444',
         isNpc: !!s.isAdventure,
-        stage
+        stage: npcStage(s.ai)
     });
     if (s.ai2 && s.ai2.name) {
         chars.push({
@@ -380,7 +380,7 @@ _showSkillOverlay() {
             label: s.isAdventure || s.isOnline || !s.is1v2 ? '敌人2' : 'AI2',
             color: '#a855f7',
             isNpc: !!s.isAdventure,
-            stage
+            stage: npcStage(s.ai2)
         });
     }
 

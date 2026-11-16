@@ -17,7 +17,7 @@
   class Engine{
     constructor(){this.s=null;this.mode=false;this.deck=[];this.discardBottom=[];this.h={player:[],ai:[]};this.events=[];this.ver=0;this.timer=0;this.pendingSettlement=null;this._buffTriggerSeq=0;this._buffTriggerCards=new WeakMap();this._buffTriggerSeen=new Set()}
     chars(){return CharacterRegistry.all().map(m=>({name:m.name,hp:m.hp,type:m.type,passive:m.passive}))}
-    character(n,ai=false){let m=CharacterRegistry.get(n);  let ch=Object.assign({name:(ai?'AI ': '')+n,hp:m.hp,maxHp:m.hp,burn:0,frozen:false,bleed:0,poison:0,blind:0,iceSeal:0,guard:0,fly:0,parasite:0,thorns:0,thornsTriggersLeft:0,sandblind:0,alive:true,bloodthirst:false,bomb:0,diving:false,scorch:false,hypothermia:0,hypnosis:false,hypnosisArmed:false,sleep:false},m.init());let S=window.FurryGame&&window.FurryGame.StatusService;if(S&&S.ensure)S.ensure(ch);return ch}
+    character(n,ai=false,definition=null){let m=definition||CharacterRegistry.get(n);  let ch=Object.assign({name:(ai?'AI ': '')+n,hp:m.hp,maxHp:m.hp,burn:0,frozen:false,bleed:0,poison:0,blind:0,iceSeal:0,guard:0,fly:0,parasite:0,thorns:0,thornsTriggersLeft:0,sandblind:0,alive:true,bloodthirst:false,bomb:0,diving:false,scorch:false,hypothermia:0,hypnosis:false,hypnosisArmed:false,sleep:false},m.init());let S=window.FurryGame&&window.FurryGame.StatusService;if(S&&S.ensure)S.ensure(ch);return ch}
     name(x){return x.name.replace(/^AI\d*\s+/,'')}
     makeDeck(){return CombatDeck.makeStandard()}
     start(p,a){

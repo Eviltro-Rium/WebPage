@@ -87,8 +87,8 @@
     return Math.max(0, (ent.parasite || 0) - before);
   }
 
-  function registerMonsterChar(mod) {
-    CR.register({
+  function buildMonsterChar(mod) {
+    return {
       name: mod.name,
       hp: mod.hp || 30,
       type: mod.kind || '怪物',
@@ -974,7 +974,48 @@
         if (v === 1) return { remaining: Math.max(0, d - Math.ceil(d / 2)), desc: '1牌防御' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
         return { remaining: d, desc: '直接承受' + suffix() + clearSelfDebuffsDesc + drawSelfDesc + lushParasiteDesc + allExtrasDesc };
       }
-    });
+    };
+  }
+
+  function registerMonsterChar(mod) {
+    const raw = AdvR.getMonster(mod.name) || AdvR.getBoss(mod.name);
+    if (mod === raw) registerStagedMonster(mod);
+    else CR.register(buildMonsterChar(mod));
+  }
+
+  function registerStagedMonster(mod) {
+    const definitions = new Map();
+    const atStage = stage => {
+      const level = Math.max(1, Math.min(4, Math.trunc(Number(stage) || 1)));
+      if (!definitions.has(level)) definitions.set(level, buildMonsterChar(applyStageMods(mod, level)));
+      return definitions.get(level);
+    };
+    const base = buildMonsterChar(mod);
+    const attackingStage = (eng, card, attacker) =>
+      (card?.borrowedFrom && eng.s?.[card.borrowedFrom]?.encounterStage) || attacker?.encounterStage;
+
+    CR.register(Object.assign(base, {
+      atStage,
+      turnStart(eng, actor, owner) {
+        return atStage(actor.encounterStage).turnStart(eng, actor, owner);
+      },
+      attackEffectTiming(value, eng, attacker) {
+        return atStage(attackingStage(eng, eng.s?.atkCard, attacker)).attackEffectTiming(value, eng);
+      },
+      damageAtSettlement(eng, value, attacker, target, attackerBeforeEffects) {
+        return atStage(attackingStage(eng, eng.s?.atkCard, attacker))
+          .damageAtSettlement(eng, value, attacker, target, attackerBeforeEffects);
+      },
+      damageAfterDefense(value, damage, defender, eng) {
+        return atStage(defender.encounterStage).damageAfterDefense(value, damage, defender, eng);
+      },
+      effect(eng, value, card, attacker, ...args) {
+        return atStage(attackingStage(eng, card, attacker)).effect(eng, value, card, attacker, ...args);
+      },
+      defend(eng, name, value, damage, card, defender, ...args) {
+        return atStage(defender.encounterStage).defend(eng, name, value, damage, card, defender, ...args);
+      }
+    }));
   }
 
   function registerMonsterAI(mod) {
@@ -1007,12 +1048,12 @@
   }
 
   AdvR.allMonsters().forEach(mod => {
-    registerMonsterChar(mod);
+    registerStagedMonster(mod);
     registerMonsterAI(mod);
   });
 
   AdvR.allBosses().forEach(mod => {
-    registerMonsterChar(mod);
+    registerStagedMonster(mod);
     registerMonsterAI(mod);
   });
 
@@ -1171,7 +1212,10 @@
       }
       if (typeof mod.defendPoisonDrain === 'function') {
         const pd = mod.defendPoisonDrain(card);
-        if (pd && pd.poison > 0) parts.push('施加' + pd.poison + '层[中毒]并按层数吸取生命');
+        if (pd && pd.poison > 0) {
+          const extra = pd.drain > 0 ? '，额外吸取' + pd.drain + '点生命' : '';
+          parts.push('施加' + pd.poison + '层[中毒]并按层数吸取生命' + extra);
+        }
       }
       if (typeof mod.defendBlock === 'function') {
         if (mod.name === 'CastleFirefly') {
@@ -1437,12 +1481,11 @@
     // DesertScarab: color-based buff on 1/2/3, fly on 4/5/6 (desert.md).
     if (mod.name === 'DesertScarab' && card.isNumberCard) {
       const v = card.value;
-      const stageBonus = (Number(opts.stage) || 1) >= 3 ? 1 : 0;
       if (v >= 1 && v <= 2) {
-        return '造成' + (3 + stageBonus) + '点[伤害]，按技能牌颜色施加：🔴→2层[灼伤]、🟡→[荆棘]、🔵→[冰封]、🟢→[中毒]';
+        return '造成' + mod.attackDamage(card, ctx) + '点[伤害]，按技能牌颜色施加：🔴→2层[灼伤]、🟡→[荆棘]、🔵→[冰封]、🟢→[中毒]';
       }
       if (v >= 3 && v <= 4) {
-        return '造成' + (4 + stageBonus) + '点[伤害]，获得1层[飞翔]';
+        return '造成' + mod.attackDamage(card, ctx) + '点[伤害]，获得1层[飞翔]';
       }
       return '无进攻效果';
     }
@@ -1485,19 +1528,16 @@
     // DesertHyena: bleed-scaled 1/2/3, hand-size+bleed+crit 4/5/6, deck judge 0 (desert.md).
     if (mod.name === 'DesertHyena' && card.isNumberCard) {
       const v = card.value;
+      const yellow = Object.assign({}, card, { color: 'YELLOW', chosenColor: 'YELLOW' });
+      const yellowNote = mod.attackUnblockable?.(yellow) ? '（🟡不可防御）' : '';
       if (v >= 1 && v <= 2) {
-        return '造成3+[流血]层数点[伤害]';
+        return '造成3+[流血]层数点[伤害]' + yellowNote;
       }
       if (v >= 3 && v <= 4) {
-        let line = '施加1层[流血]，获得[暴击]，造成玩家手牌数点[伤害]';
-        if (typeof mod.attackUnblockable === 'function') {
-          const yellow = Object.assign({}, card, { color: 'YELLOW', chosenColor: 'YELLOW' });
-          if (mod.attackUnblockable(yellow)) line += '（🟡不可防御）';
-        }
-        return line;
+        return '施加1层[流血]，获得[暴击]，造成玩家手牌数点[伤害]' + yellowNote;
       }
       if (v === 0) {
-        return '翻开牌库顶1🃏：数字牌（非0）→点数×2点[伤害]；否则2层[流血]+[荆棘]，抽1🃏';
+        return '翻开牌库顶1🃏：数字牌（非0）→点数×2点[伤害]' + yellowNote + '；否则2层[流血]+[荆棘]，抽1🃏';
       }
       return '无进攻效果';
     }
@@ -1526,9 +1566,8 @@
         return '造成' + (6 + stageBonus) + '点[伤害]；🟢获得[茂盛]、🟡获得[暴击]';
       }
       if (v === 0) {
-        // After compact: 双方获得[茂盛]，对手每层正面buff→3🗡️（≤3不可防御）
-        // Stage3 +1 is applied to the computed damage, not restated here.
-        return '双方获得[茂盛]，对手每层正面buff→3点[伤害]（≤3不可防御）';
+        const bonus = mod.attackDamage(card, { playerPositiveBuffStacks: 1 }) - 3;
+        return '双方获得[茂盛]，造成3×对手正面buff层数' + (bonus > 0 ? '+' + bonus : '') + '点[伤害]（≤3不可防御）';
       }
       return '无进攻效果';
     }

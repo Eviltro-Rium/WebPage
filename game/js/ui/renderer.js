@@ -59,12 +59,12 @@ _showCardSkillDesc(id, card, owner, isDefend) {
     // Never fall back to the opponent's name when owner is missing — that was
     // painting player skill text onto NPC attack/defend zones.
     const charName = card.borrowedMonsterName || this._combatDisplayName(participant.name);
-    const adventureOpts = s.isAdventure ? this._adventureSkillDescOpts(owner) : null;
+    const adventureOpts = s.isAdventure ? this._adventureSkillDescOpts(owner, card) : null;
     const skill = this._resolveHandSkillDesc(charName, card, isDefend, adventureOpts) || (isDefend ? '执行防御效果' : '执行进攻效果');
     this._showZoneDesc(id, skill);
 },
 
-_adventureSkillDescOpts(owner) {
+_adventureSkillDescOpts(owner, card) {
     const s = this.state;
     if (!s) return null;
     const attackerKey = owner === 'ai2' ? 'ai2' : owner === 'ai' ? 'ai' : 'player';
@@ -74,7 +74,8 @@ _adventureSkillDescOpts(owner) {
       ? (s.playerHand || [])
       : (attackerKey === 'ai2' ? (s.ai2Hand || []) : (s.aiHand || []));
     return {
-        stage: s.adventureStage || s.stage || 1,
+        stage: (card?.borrowedFrom && s[card.borrowedFrom]?.encounterStage)
+            || attacker?.encounterStage || s.adventureStage || s.stage || 1,
         playerHandSize: (s.playerHand && s.playerHand.length) || 0,
         attackerHandSize: Array.isArray(attackerHand) ? attackerHand.length : 0,
         attackerHand: Array.isArray(attackerHand) ? attackerHand : [],

@@ -239,7 +239,7 @@
                 if (canInteract) {
                     cv.addEventListener('mouseenter', () => {
                         const adventureOpts = this.state.isAdventure && typeof this._adventureSkillDescOpts === 'function'
-                            ? this._adventureSkillDescOpts('player') : null;
+                            ? this._adventureSkillDescOpts('player', card) : null;
                         this._showTooltip(card, cv, isDefend, { adventureOpts });
                     });
                     cv.addEventListener('mouseleave', () => this._hideTooltip());

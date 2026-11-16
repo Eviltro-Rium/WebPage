@@ -255,6 +255,8 @@ close()
 
 ### 6.1 场景、房间与遭遇池
 
+每名 NPC 的 `encounterStage` 随战斗快照保存。规则和战斗技能文案从该阶段读取，自基础定义依次应用已解锁的强化。先手调整对手顺序时，阶段随对手一起移动。旧快照缺少此字段时沿用保存的战斗层数。
+
 - 场景池为 `castle`、`forest`、`ocean`、`desert`、`volcano`；每层从可用场景中无放回抽取，已用场景记入 `s.usedScenes`。
 - 普通怪、精英怪和 Boss 分别来自 `AdventureMonsterPool`、`AdventureElitePool`、`AdventureBossPool`。缺该层配置时只能回退到本场景其他层，禁止全局怪物/Boss 池兜底。
 - 房间编码：`-1` 空、`0` 起点、`1` 普通、`2` Boss、`3` 奖励、`4` 商店、`5` 铁匠铺、`6` 挑战、`7` 故障、`8` 精英、`10` 献祭；`9` 作为旧精英存档兼容。

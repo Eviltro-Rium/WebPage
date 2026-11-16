@@ -135,18 +135,10 @@
           this._adventureEngine.s.currency.gold = Number(this.s.adventureGold);
         }
       }
-      const register = name => {
-        const raw = window.AdventureRegistry &&
-          (window.AdventureRegistry.getMonster(name) || window.AdventureRegistry.getBoss(name));
-        if (!raw || !window.AdventureMonsterBridge) return;
-        const def = window.AdventureMonsterBridge.applyStageMods
-          ? window.AdventureMonsterBridge.applyStageMods(raw, this.s.adventureStage || 1)
-          : raw;
-        window.AdventureMonsterBridge.registerMonsterChar(def);
-        window.AdventureMonsterBridge.registerMonsterAI(def);
-      };
-      register(this.s.ai && this.s.ai.name);
-      register(this.s.ai2 && this.s.ai2.name);
+      // 旧快照没有单个对手的阶段，沿用当时保存的战斗层数。
+      for (const opponent of [this.s.ai, this.s.ai2]) {
+        if (opponent) opponent.encounterStage ||= this.s.adventureStage || 1;
+      }
       this._invariantReady = true;
       this._invariantBaseline = null;
       this._checkInvariants('restoreSession');
@@ -222,9 +214,9 @@
       return this.state();
     }
 
-    character(n, ai = false) {
+    character(n, ai = false, definition = null) {
       // 冒险模式不给 NPC 加 "AI " 前缀
-      const ch = super.character(n, false);
+      const ch = super.character(n, false, definition);
       return ch;
     }
 
@@ -334,6 +326,14 @@
       return this.state();
     }
 
+    _createAdventureOpponent(name, stage) {
+      const base = window.CharacterRegistry.get(name);
+      const encounterStage = Math.max(1, Math.min(4, Math.trunc(Number(stage) || 1)));
+      const opponent = this.character(name, true, base.atStage?.(encounterStage) || base);
+      opponent.encounterStage = encounterStage;
+      return opponent;
+    }
+
     startAdventure(config = {}) {
       const playerName = config.player;
       const opponentName = config.opponent;
@@ -341,16 +341,7 @@
       this.testMode = !!config.testMode;
       if (!window.CharacterRegistry.get(playerName)) throw new Error('未知冒险角色：' + playerName);
 
-      const rawDef = window.AdventureRegistry.getMonster(opponentName) ||
-        window.AdventureRegistry.getBoss(opponentName);
-      if (rawDef) {
-        const oppStage = config.opponentStage || stage;
-        const moddedDef = (window.AdventureMonsterBridge && window.AdventureMonsterBridge.applyStageMods)
-          ? window.AdventureMonsterBridge.applyStageMods(rawDef, oppStage)
-          : rawDef;
-        window.AdventureMonsterBridge.registerMonsterChar(moddedDef);
-        window.AdventureMonsterBridge.registerMonsterAI(moddedDef);
-      }
+      const oppStage = config.opponentStage || stage;
       if (!window.CharacterRegistry.get(opponentName)) throw new Error('未知冒险对手：' + opponentName);
 
       const modeAdapter = window.FurryGame.EngineModes && window.FurryGame.EngineModes.adapters && window.FurryGame.EngineModes.adapters.adventure;
@@ -400,7 +391,7 @@
         this.s.player.alive = this.s.player.hp > 0;
       }
       this._ensureStatuses();
-      this.s.ai = this.character(opponentName, true);
+      this.s.ai = this._createAdventureOpponent(opponentName, oppStage);
       this.s.ai.name = opponentName;
       applyAdventureHandLimit(this);
       this.s.isAdventure = true;
@@ -478,23 +469,14 @@
       const _fs1 = _fsDef(opponent1Name);
       const _fs2 = _fsDef(opponent2Name);
       const hasFirstStrike = _fs1 || _fs2;
-      if (_fs2 && !_fs1) {
-        const tmp = opponent1Name; opponent1Name = opponent2Name; opponent2Name = tmp;
-      }
-
-      const oppStages = [config.opponent1Stage || stage, config.opponent2Stage || stage];
-      for (let i = 0; i < 2; i++) {
-        const oppName = [opponent1Name, opponent2Name][i];
-        const rawDef = window.AdventureRegistry.getMonster(oppName) ||
-          window.AdventureRegistry.getBoss(oppName);
-        if (rawDef) {
-          const moddedDef = (window.AdventureMonsterBridge && window.AdventureMonsterBridge.applyStageMods)
-            ? window.AdventureMonsterBridge.applyStageMods(rawDef, oppStages[i])
-            : rawDef;
-          window.AdventureMonsterBridge.registerMonsterChar(moddedDef);
-          window.AdventureMonsterBridge.registerMonsterAI(moddedDef);
-        }
-        if (!window.CharacterRegistry.get(oppName)) throw new Error('未知冒险对手：' + oppName);
+      const opponents = [
+        { name: opponent1Name, stage: config.opponent1Stage || stage },
+        { name: opponent2Name, stage: config.opponent2Stage || stage }
+      ];
+      if (_fs2 && !_fs1) opponents.reverse();
+      [opponent1Name, opponent2Name] = opponents.map(opponent => opponent.name);
+      for (const opponent of opponents) {
+        if (!window.CharacterRegistry.get(opponent.name)) throw new Error('未知冒险对手：' + opponent.name);
       }
 
       clearTimeout(this.timer);
@@ -547,8 +529,8 @@
         is1v2: true, isLord: true, isAdventure: true, adventureStage: stage, adventureScene: config.scene || null, needColorChoice: false,
         pendingDialog: null, discardTop: top, discardTopOwner: topOwner,
         player: this.character(playerName),
-        ai: this.character(opponent1Name, true),
-        ai2: this.character(opponent2Name, true),
+        ai: this._createAdventureOpponent(opponent1Name, opponents[0].stage),
+        ai2: this._createAdventureOpponent(opponent2Name, opponents[1].stage),
         // attackTarget stays null until a real target roll; UI must not invent a default NPC1 defender.
         currentAITarget: 0, attackTarget: null, eliminatedHandled: { ai: false, ai2: false },
         atkCard: null, atkOwner: null, defCard: null, defOwner: null, revealCards: [], diceRoll: null,
@@ -1261,7 +1243,7 @@
       if (!c || !c.isNumberCard || c.value !== 1) return;
       const attacker = this.s[this.s.atkOwner] || this.s.ai;
       if (this.name(attacker) !== 'DungeonGoblin') return;
-      const stage = this.s.adventureStage || 1;
+      const stage = attacker.encounterStage || this.s.adventureStage || 1;
       const advEngine = this._adventureEngine;
       if (!advEngine) return;
       if (stage >= 3) {
