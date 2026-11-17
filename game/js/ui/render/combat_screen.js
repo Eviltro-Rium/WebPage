@@ -14,7 +14,7 @@
             const stageNum = s.adventureStage || s.stage || 1;
             const titleText = s.isOnline ? 'Furry Trial · 在线对决' : s.isAdventure ? 'Furry Trial 冒险' : 'Furry Battle';
             let html = `
-                <div class="game-title">${titleText}</div>
+                <h1 class="game-title">${titleText}</h1>
                 <div class="top-bar">
                     <div class="deck-area" id="deck-area">
                         <canvas id="deck-icon" width="40" height="52"></canvas>

@@ -27,7 +27,7 @@
     const ai2HandTitle=adv?'对手II':'对手II';
     const gameTitle=adv?'Furry Trial 冒险':'Furry Battle 领主模式';
     let html=`
-      <div class="game-title">${gameTitle}</div>
+      <h1 class="game-title">${gameTitle}</h1>
       <div class="top-bar">
         <div class="deck-area" id="deck-area"><canvas id="deck-icon" width="40" height="52"></canvas><span class="deck-info" id="deck-info">牌堆: 0</span></div>
         <div class="npc-deck-info" id="npc-deck-info" style="display:none"></div>

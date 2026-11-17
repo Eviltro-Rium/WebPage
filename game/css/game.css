@@ -1,20 +1,32 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-    --bg-gradient: radial-gradient(circle at 18% 12%, #164e63 0%, transparent 34%),
-        radial-gradient(circle at 82% 88%, #14532d 0%, transparent 38%),
-        linear-gradient(145deg, #081c2c 0%, #0b2940 42%, #0b3b3b 72%, #123524 100%);
-    /* Transparent glass base: the page/background remains visible without a
-       compositor-heavy backdrop blur on every card and panel. */
-    --glass-fill: rgba(10, 31, 49, 0.62);
-    --glass-border: rgba(186,230,253,0.48);
-    --glass-highlight: rgba(255,255,255,0.16);
-    --glass-shadow: 0 12px 36px rgba(0,8,20,0.36);
-    --text-main: #f8fafc;
-    --text-muted: #dbeafe;
-    --text-soft: #bfdbfe;
-    --accent: #075985;
-    --accent-hover: #0c4a6e;
+    /* 共用视觉令牌：卡牌 / Buff / 房间类型的规则色独立保留。 */
+    --ui-ground: #191620;
+    --ui-surface: #26212f;
+    --ui-raised: #352e41;
+    --ui-hover: #463b57;
+    --ui-panel: rgba(30, 25, 40, .92);
+    --ui-border: #615372;
+    --ui-line: rgba(209, 192, 232, .2);
+    --ui-primary: #7852ad;
+    --ui-primary-ink: #ffffff;
+    --ui-focus: #d4b8f8;
+    --ui-selected: #49365f;
+    --ui-gold: #e6c58a;
+    --ui-attack: #e3a4a0;
+    --ui-defense: #9bc8db;
+    --ui-disabled: #302b37;
+    --bg-gradient: var(--ui-ground);
+    --glass-fill: var(--ui-panel);
+    --glass-border: var(--ui-line);
+    --glass-highlight: rgba(255,255,255,.06);
+    --glass-shadow: 0 12px 36px rgba(0,0,0,.25);
+    --text-main: #f6f1fc;
+    --text-muted: #d0c5dc;
+    --text-soft: #b5a7c4;
+    --accent: #c5a3ec;
+    --accent-hover: #e1c8ff;
     --radius: 14px;
     --font-body: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
@@ -2389,13 +2401,13 @@ body.combat-sheet-open::after {
 }
 
 .rules-entry-btn {
-    background: #503477 !important;
-    border-color: rgba(139,92,246,0.42) !important;
-    color: #ede9fe !important;
+    background: var(--ui-raised);
+    border-color: var(--ui-border);
+    color: var(--text-main);
 }
 .rules-entry-btn:hover {
-    background: #68469a !important;
-    box-shadow: 0 10px 24px rgba(99,102,241,0.22) !important;
+    background: var(--ui-hover);
+    box-shadow: none;
 }
 
 .rule-card-row {
@@ -3085,13 +3097,13 @@ body.combat-sheet-open::after {
 }
 
 .codex-entry-btn {
-    background: #174b49 !important;
-    border-color: rgba(45,212,191,0.38) !important;
-    color: #ccfbf1 !important;
+    background: var(--ui-raised);
+    border-color: var(--ui-border);
+    color: var(--text-main);
 }
 .codex-entry-btn:hover {
-    background: #205e59 !important;
-    box-shadow: 0 10px 24px rgba(20,184,166,0.2) !important;
+    background: var(--ui-hover);
+    box-shadow: none;
 }
 
 .hud-side-tools {
@@ -3998,3 +4010,120 @@ body.combat-sheet-open #controls .ctrl-btn { cursor: not-allowed; }
   color: #e3ecf5;
   border-color: #567088;
 }
+
+/* 共用界面外观。仅调整静态表面，不覆盖卡牌、选色和受击动画。 */
+.home-panel, .char-card, .char-detail-card, .codex-category-card,
+.codex-all-item, .codex-trophy-entry, .char-detail-hero, .rules-disclosure {
+  background: var(--ui-panel); border-color: var(--ui-line); box-shadow: none;
+}
+.char-detail-card:hover, .codex-category-card:hover, .char-card:hover {
+  background: var(--ui-raised); border-color: var(--ui-focus); box-shadow: none;
+}
+.char-card.selected { background: var(--ui-selected); box-shadow: none; }
+.char-passive, .char-card .char-passive, .codex-all-item-desc { color: var(--text-muted); }
+.rules-header { background: var(--ui-surface); }
+.rules-turn-flow, .rule-item { background: var(--ui-raised); color: var(--text-main); }
+.rules-disclosure > summary, .rules-turn-flow span { color: var(--ui-focus); }
+
+/* 主次操作使用同一套不透明填充，禁用态也不透出背景。 */
+.ctrl-btn:not(.color-btn), .menu-btn, .skill-book-btn, .game-menu-btn,
+.rules-back-btn, .char-entry-btn, .game-home-link {
+  background: var(--ui-raised); border-color: var(--ui-border); color: var(--text-main);
+  border-radius: 10px; text-shadow: none; box-shadow: none; min-height: 44px;
+  transition: background-color .15s, border-color .15s, transform .15s;
+}
+.ctrl-btn:not(.color-btn):hover:not(:disabled), .menu-btn:hover, .skill-book-btn:hover,
+.game-menu-btn:hover, .rules-back-btn:hover, .char-entry-btn:hover, .game-home-link:hover {
+  background: var(--ui-hover); border-color: var(--ui-focus); filter: none; box-shadow: none;
+}
+.start-btn:not(:disabled) { background: var(--ui-primary); color: var(--ui-primary-ink); box-shadow: none; text-shadow: none; }
+:is(button, a, summary, input):focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 3px; }
+
+#game-screen .top-bar, #game-screen .hp-section,
+#game-screen :is(.discard-zone, .ai-hand-zone, .player-hand-zone, .adventure-inventory-panel) {
+  background: var(--ui-panel); border-color: var(--ui-line);
+}
+#game-screen .hp-section.active-attacker { background: #383329eb; border-color: #a99161; }
+#game-screen .hp-section.selected-target:not(.active-attacker) { outline-color: var(--ui-defense); }
+#game-screen .phase-info { background: var(--ui-selected); color: #eadbff; }
+#game-screen .npc-deck-info, #game-screen .npc-passive,
+#game-screen .player-hand-zone > .zone-title, #game-screen .reserve-title { color: var(--text-muted); }
+#game-screen .attack-zone { background: #302728eb; border-color: #72504e; }
+#game-screen .defend-zone { background: #243035eb; border-color: #49636e; }
+#game-screen .reveal-zone { background: #302e24eb; border-color: #6c6145; }
+#game-screen .attack-zone > .zone-title { color: var(--ui-attack); }
+#game-screen .defend-zone > .zone-title { color: var(--ui-defense); }
+#game-screen .reveal-zone > .zone-title { color: var(--ui-gold); }
+#game-screen .zone-desc { color: var(--text-main); text-shadow: none; }
+#game-screen .hp-bar-outer { background: #121918; }
+#game-screen .hp-bar-inner { background: #429b70; }
+#game-screen .hp-bar-inner.low { background: #b4893c; }
+#game-screen .hp-bar-inner.critical { background: #bf5c54; }
+#game-screen .hp-text { text-shadow: none; background: #12231c; padding-inline: 5px; border-radius: 4px; }
+#game-screen .ctrl-btn:not(.color-btn) { background: var(--ui-raised); border-color: var(--ui-border); color: var(--text-main); }
+#game-screen .ctrl-btn:is(.btn-play, .btn-defend):not(:disabled),
+.dialog-box .choice-primary, .opponent-card-dialog .btn-play:not(:disabled) {
+  background: var(--ui-primary); border-color: var(--ui-primary); color: var(--ui-primary-ink);
+}
+#game-screen .ctrl-btn.btn-end:not(:disabled) { background: #3e382b; border-color: #8a7853; color: var(--ui-gold); }
+#game-screen .ctrl-btn:not(.color-btn):hover:not(:disabled) { background: var(--ui-hover); color: var(--text-main); border-color: var(--ui-focus); }
+#game-screen .ctrl-btn:is(.btn-play, .btn-defend):hover:not(:disabled) { background: #8962bc; color: var(--ui-primary-ink); }
+#game-screen .ctrl-btn:disabled, .dialog-box button:disabled {
+  background: var(--ui-disabled); border-color: var(--ui-line); color: #afa2bd;
+  opacity: 1; filter: none; box-shadow: none; transform: none;
+}
+#game-screen .adventure-inventory-panel > .adventure-info-bar { background: #211b2bed; border-color: var(--ui-line); }
+#game-screen .adv-combat-item-slot { background: var(--ui-surface); border-color: var(--ui-border); }
+#game-screen .adv-item-bar-title { color: var(--text-muted); }
+#game-screen :is(.zone-desc, .reveal-desc, .ai-hand-row, #player-hand),
+.dialog-box, .game-menu-body { scrollbar-color: #8e77a8 var(--ui-surface); }
+
+/* 浮层比战场更实，避免长描述叠在背景和手牌上难以阅读。 */
+.dialog-box, .dialog-box.dialog-bottom-sheet.opponent-card-dialog,
+.game-over-box, .game-menu-box {
+  background: var(--ui-surface); color: var(--text-main); border-color: var(--ui-border);
+  box-shadow: 0 16px 48px #0006; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.dialog-box h3, .dialog-title, .opponent-card-groups h4 { color: var(--text-main); }
+.dialog-box .choice-row, .dialog-box .choice-secondary,
+.dialog-summary, .guard-layer-control, .opponent-card-dialog .card-choice {
+  background: var(--ui-raised); border-color: var(--ui-border); color: var(--text-main);
+}
+.dialog-box .choice-row:hover:not(:disabled) { background: var(--ui-hover); border-color: var(--ui-focus); }
+.dialog-box .choice-primary { background: var(--ui-primary); color: var(--ui-primary-ink); }
+.dialog-summary > span, .opponent-card-summary { color: var(--text-muted); }
+.guard-layer-control output { color: var(--ui-focus); }
+.guard-layer-control input { accent-color: var(--ui-focus); }
+.opponent-card-dialog .card-choice[aria-pressed="true"] {
+  background: var(--ui-selected); border-color: var(--ui-focus); box-shadow: 0 0 0 2px var(--ui-focus);
+}
+.opponent-card-dialog .card-choice[aria-pressed="false"]:not(:disabled):hover { background: var(--ui-hover); }
+.dialog-box button:focus-visible, .dialog-box input:focus-visible,
+#game-screen .ctrl-btn:focus-visible { outline-color: var(--ui-focus); }
+
+@media (max-width: 768px) {
+  #game-container { padding-inline: 10px; }
+  #game-screen .controls,
+  #game-screen.adventure-combat-layout .player-hand-zone + .controls { background: var(--ui-surface); }
+  #game-screen .ai-hand-zone { padding-inline: 6px; }
+  #game-screen .zone-title, #game-screen .npc-passive, #game-screen .reserve-title { font-size: .75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ctrl-btn, .menu-btn, .skill-book-btn, .game-menu-btn, .char-detail-card, .char-card { transition: none; }
+}
+
+/* 入口也沿用同一主次层级，模式按钮是等权的三个选项。 */
+.home-hero .game-title { background: none; -webkit-text-fill-color: var(--text-main); color: var(--text-main); text-shadow: none; }
+.home-hero .game-title::after { display: none; }
+.home-cta { background: var(--ui-primary); border-color: #a283c5; box-shadow: none; }
+.home-cta:hover { background: #8962bc; box-shadow: none; }
+.home-cta-glow { display: none; }
+.home-cta-icon { background: #ffffff12; border-color: #ffffff30; box-shadow: none; }
+.home-mode-btn, .home-online-btn, .home-secondary-btn { background: var(--ui-raised); color: var(--text-main); border-color: var(--ui-border); box-shadow: none; }
+.home-mode-btn:hover, .home-online-btn:hover, .home-secondary-btn:hover { background: var(--ui-hover); border-color: var(--ui-focus); box-shadow: none; }
+.home-section-label, .home-tagline, .home-mode-desc, .home-online-btn small { color: var(--text-muted); }
+.home-online-dot { background: var(--ui-focus); box-shadow: none; }
+.home-online-arrow { color: var(--ui-focus); }
+.game-over-box button:not(.adv-beast-cell):not(.adv-beast-pick) { background: var(--ui-primary); color: var(--ui-primary-ink); border-radius: 10px; min-height: 44px; }
+.game-over-box button:not(.adv-beast-cell):not(.adv-beast-pick):hover:not(:disabled) { background: #8962bc; }
+.game-over-box button:disabled { background: var(--ui-disabled); color: #afa2bd; opacity: 1; transform: none; }

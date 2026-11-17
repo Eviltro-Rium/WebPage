@@ -1,4 +1,4 @@
-/* 冒险模式样式 —— 与主游戏 game.css 风格保持一致（玻璃拟态 + 紫色高亮） */
+/* 冒险模式样式：复用 game.css 的界面令牌，保留各房间与兽元的语义颜色。 */
 #adventure-container { min-height: 100vh; overflow-x: hidden; }
 .adv-menu-bar { position: fixed; top: 16px; right: 20px; z-index: 100; }
 .adv-menu-bar .hud-side-tools { margin-left: 0; }
@@ -1328,3 +1328,87 @@ div.adv-trophy-forge-fly { display: grid; place-items: center; background: #f8f4
 }
 @media (prefers-reduced-motion: reduce) { .adv-sacrifice-result.revealing { animation: none; } }
 .adv-sacrifice-health { display: inline-block; padding: 3px 9px; border-radius: 7px; color: #fecaca; background: rgba(185,28,28,.2); font-weight: 700; }
+
+/* 冒险与战斗共用深紫灰表面；风景从面板外与少量透明度中透出。 */
+.adventure-wrap { color: var(--text-main); font-family: var(--font-body); }
+.adventure-header, .adventure-board, .adv-card, .adventure-log,
+.adv-shop-page, .adv-reward-page, .adv-select-screen {
+  background: var(--ui-panel); border-color: var(--ui-line); border-radius: var(--radius);
+  backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none;
+}
+.adv-title { letter-spacing: .02em; line-height: 1.45; }
+.adv-phase-tag { background: var(--ui-selected); color: #eadbff; padding: 5px 10px; }
+.adv-char-type, .adv-acc-panel-label, .adv-log-title, .adv-deck-total,
+.adv-settle-section-title, .adv-sidebar-title, .adv-sidebar-subtitle,
+.adv-shopkeeper-name, .adv-select-screen h2 { color: var(--ui-focus); }
+.adv-currency, .adv-inventory, .adv-log-list, .adv-deck-info,
+.adv-shop-page-hint, .adv-merchant-hint { color: var(--text-muted); }
+.adv-currency, .adv-hp-text, .adv-shop-slot-price, .adv-deck-info,
+.adv-gold-price-count { font-variant-numeric: tabular-nums; }
+.adv-hp-fill { background: #429b70; }
+.adv-hp-text { text-shadow: none; background: #12231c; width: max-content; padding: 0 6px; margin-inline: auto; }
+.adv-shop-page-title, .adv-reward-page-title, .adv-shop-slot-price,
+.adv-gold-price-count, .adv-shop-slot-trade-text { color: var(--ui-gold); }
+.adv-shopkeeper-portrait { background: var(--ui-raised); border-color: var(--ui-border); }
+.adv-shop-slot {
+  background: var(--ui-surface); border: 1px solid var(--ui-border);
+  border-radius: 12px; padding: 16px 12px; gap: 8px; box-shadow: none;
+}
+.adv-shop-slot:hover { border-color: #a88bc6; }
+.adv-shop-slot.selected { background: var(--ui-selected); border-color: var(--ui-focus); box-shadow: 0 0 0 1px var(--ui-focus); }
+.adv-shop-slot.empty { background: #211c28; color: var(--text-soft); }
+.adv-shop-slot-name { color: var(--text-main); font-size: .9rem; }
+.adv-shop-slot-desc { color: var(--text-muted); font-size: .8rem; line-height: 1.6; }
+.adv-shop-slot-tag { background: var(--ui-raised); color: var(--text-muted); font-size: .7rem; padding: 3px 8px; border-radius: 6px; }
+.adv-shop-slot-hint, .adv-shop-slot-trade-empty { color: var(--text-soft); font-size: .75rem; }
+.adv-shop-slot-trade { border-color: var(--ui-line); }
+.adv-shop-slot-trade-text { font-size: .75rem; }
+.adv-shop-slot-icon { width: 48px; height: 48px; }
+.adv-reward-page .adv-settle-rewards, .adv-recycle-section, .adv-merchant-product {
+  background: var(--ui-surface); border-color: var(--ui-line);
+}
+.adv-recycle-slot, .adv-sidebar-item { background: var(--ui-raised); border-color: var(--ui-line); }
+.adv-toast { background: var(--ui-surface); color: var(--text-main); border-color: var(--ui-focus); }
+.adv-btn {
+  min-height: 44px; font-family: inherit; font-weight: 600; line-height: 1.4;
+  background: var(--ui-raised); color: var(--text-main); border-color: var(--ui-border); border-radius: 10px;
+}
+.adv-btn:hover:not(:disabled) { background: var(--ui-hover); border-color: var(--ui-focus); }
+.adv-btn-primary:not(:disabled) { background: var(--ui-primary); color: var(--ui-primary-ink); border-color: var(--ui-primary); }
+.adv-btn-primary:hover:not(:disabled) { background: #8962bc; }
+.adv-btn:disabled, .adv-shop-page-actions .adv-btn:disabled {
+  background: var(--ui-disabled); border-color: var(--ui-line); color: #afa2bd; opacity: 1;
+}
+.adv-slot-actions .adv-btn { min-height: 44px; font-size: .78rem; }
+.adv-btn:focus-visible, .adv-shop-slot-body:focus-visible, .adv-settle-sidebar:focus-visible {
+  outline: 2px solid var(--ui-focus); outline-offset: 3px;
+}
+.adv-settle-sidebar { scrollbar-color: #8e77a8 var(--ui-surface); }
+.adv-beast-cell, .adv-settle-box button.adv-beast-cell, .adv-settle-box button.adv-beast-pick {
+  background: var(--ui-raised); color: var(--text-main); border-color: var(--ui-border);
+}
+.adv-beast-cell:hover, .adv-settle-box button.adv-beast-cell:hover { background: var(--ui-hover); transform: none; }
+.adv-beast-cell.selected, .adv-settle-box button.adv-beast-cell.selected {
+  background: var(--ui-selected); border-color: var(--ui-focus); box-shadow: none;
+}
+.adv-settle-box .adv-settle-secondary { background: var(--ui-raised) !important; border-color: var(--ui-border) !important; color: var(--text-main); }
+/* 静止时不用呼吸光抢夺注意力，当前位置与可走房间仍有独立轮廓。 */
+.adv-cell { border-radius: 12px; }
+.adv-cell.reachable { animation: none; box-shadow: none; }
+.adv-cell.current { animation: none; box-shadow: none; }
+.adv-cell.current::before { border-color: var(--ui-focus); filter: none; }
+@media (max-width: 640px) {
+  .adv-shop-slot { padding: 12px 10px; }
+  .adv-shop-slot-desc { font-size: .78rem; }
+  .adv-shop-slot-icon { width: 40px; height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .adv-btn, .adv-shop-slot, .adv-cell { transition: none; }
+}
+
+.adv-action-hint { padding: 4px 10px; color: var(--text-muted); font-size: .8rem; line-height: 1.5; }
+@media (max-width: 960px) {
+  .adv-shop-page .adv-shop-slots, .adv-blacksmith-page .adv-shop-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .adv-slot-actions .adv-btn { padding-inline: 4px; }
+}
+.adv-settle-box #adv-settle-claim:disabled { background: var(--ui-disabled); color: #afa2bd; }
