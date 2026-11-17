@@ -6,7 +6,7 @@
 
 ## 1. 按任务找文件
 
-从对应行的实现入口开始，按需要核对规则和受影响的模式。先用角色名、房间类型或报错文本在入口内定位；改动只涉及一个模块时，不必通读全仓。生成文件从源头更新。
+从对应行的实现入口开始，按需要核对规则和受影响的模式。先用角色名、房间类型、DOM `id`/`data-*` 或报错文本在入口内定位；改动只涉及一个模块时，不必通读全仓。生成文件从源头更新。**改代码前先对表 §1；检索习惯见 §1.1。**
 
 | 任务 | 实现入口 | 一起核对 |
 | --- | --- | --- |
@@ -19,7 +19,9 @@
 | 地图房间数量、形状与环路 | [地图生成器](game/adventure/generate_maps.js)、[地图探索](game/adventure/js/map/map.js) | [房间规则](game/docs/adventure_guide/rooms.md)、[地图约束检查](game/tests/adventure-map-layout.test.js)；生成器同步 CSV 和内嵌地图 |
 | 房间遭遇、奖励和存档 | [冒险引擎](game/adventure/js/engine/adventure_engine.js)、[战斗结果](game/adventure/js/engine/combat_result.js)、[奖励](game/adventure/js/engine/rewards.js) | [地图存档](game/adventure/js/save/adventure_save.js)、[战斗快照](game/adventure/js/battle/adventure_battle_session.js) |
 | 冒险道具、配饰和战利卡 | [道具定义](game/adventure/js/items/item_defs.js)、[战斗效果](game/adventure/js/items/combat_effects.js)、[地图效果](game/adventure/js/items/map_effects.js) | [冒险指南](game/docs/adventure_guide/README.md)、[冒险牌组](game/adventure/js/deck/adventure_deck.js) |
-| 战斗 UI、动画和弹窗 | [渲染模块](game/js/ui/render/)、[事件播放](game/js/ui/events.js)、[弹窗](game/js/ui/dialogs.js) | [战斗样式](game/css/)、[渲染维护说明](game/docs/reference/RENDER_PERFORMANCE.md) |
+| 冒险地图页 UI（商店、铁匠、地图格、奖励房、商人） | [点击与路由](game/adventure/js/ui/adventure_ui.js)、[房间页 HTML](game/adventure/js/ui/adventure_ui_panels.js)、[地图格/库存视图](game/adventure/js/ui/adventure_ui_map_view.js)、[样式](game/adventure/css/adventure.css) | 房间规则与价格逻辑在 [冒险引擎](game/adventure/js/engine/adventure_engine.js)；商店/铁匠交互与补丁渲染测 [render-performance.test.js](game/tests/render-performance.test.js) |
+| 冒险特殊房间页（故障、献祭） | [故障 UI](game/adventure/js/ui/adventure_ui_glitch.js)、[献祭 UI](game/adventure/js/ui/adventure_ui_sacrifice.js) | 规则分别在 [glitch.js](game/adventure/js/engine/glitch.js)、[sacrifice.js](game/adventure/js/engine/sacrifice.js) |
+| 战斗 UI、动画和弹窗 | [渲染模块](game/js/ui/render/)、[事件播放](game/js/ui/events.js)、[弹窗](game/js/ui/dialogs.js) | [对战样式](game/css/game.css)、[RENDER_PERFORMANCE.md](game/docs/reference/RENDER_PERFORMANCE.md)；对手选牌等测 [dialog-ui.test.js](game/tests/dialog-ui.test.js) |
 | 在线对战、重连或视角同步 | [对战会话](game/online_game/online_match.js)、[P2P 适配](game/online_game/p2p_adapter.js) | [在线规则](game/docs/online/README.md)、[在线对战检查](game/tests/online-match.test.js) |
 | 个人网站导航、主题或背景 | [共享页面壳](site-shell.html)、[导航](js/site-navigation.js)、[3D 背景](js/hill-background.js)、[公共样式](styles.css) | [首页维护说明](docs/homepage.md)；个人网站和游戏有独立入口 |
 
@@ -39,6 +41,25 @@
 | 文档总索引 | [`game/docs/README.md`](game/docs/README.md) |
 
 规则文档和代码冲突时，**先确认哪边是本次需求的事实来源**。怪物数值、技能和战利品表通常以 `game/docs/adventure_guide/<scene>.md` 为准；如果需求明确要求改规则，则同时改文档和代码，不要只改一边。
+
+### 1.1 Agent 检索策略（减搜索时间）
+
+1. **先索引、后搜索**：本文件 §1 与 §5.3–5.4 已列入口；单模块 UI/数值改动**不要**默认通读 [`ARCHITECTURE.md`](game/docs/ARCHITECTURE.md)（仅分层重构、会话边界、离场隔离时再读）。
+2. **路径限定 grep**：在已确定的目录内搜，例如冒险页 UI → `game/adventure/js/ui/`、`game/adventure/css/`；对战弹窗 → `game/js/ui/dialogs.js`、`game/css/`；角色技能 → `game/js/characters/`、`game/js/combat/engine*.js`。
+3. **优先机器锚点**：用 `id`、`data-*`、引擎方法名（如 `leaveShop`）检索，少用界面中文文案全仓搜。
+4. **避免盲目 explore**：任务已在 §1 对应一行时，直接 `Read` 列出的 1–3 个文件；只有跨目录职责不清时再扩大范围或开 explore。
+5. **验证收窄**：`node game/scripts/check.js <相关>.test.js` 优于先 `--all`；UI/冒险地图页优先 `render-performance.test.js`，弹窗 `dialog-ui.test.js`，协议/状态见 §9.1。
+
+### 1.2 冒险地图页常用锚点
+
+| 场景 | DOM / 属性 | 点击处理位置（`adventure_ui.js`） | 页面结构（`adventure_ui_panels.js`） |
+| --- | --- | --- | --- |
+| 商店 | `adv-leave-shop`、`data-shop-buy`、`data-shop-refresh` | 委托 `click` → `id` / `dataset` 分支 | `_buildShopPage`、`_shopSlotActions` |
+| 铁匠 | `adv-leave-blacksmith`、`data-blacksmith-trade`、`data-blacksmith-refresh`、`data-blacksmith-trophy-*` | 同上 | `_buildBlacksmithPage`、`_blacksmithSlotActions` |
+| 流浪商人 | `adv-merchant-buy`、`adv-merchant-leave` | 同上 | `_buildMerchantPage` |
+| 奖励房 | `adv-room-claim`、`adv-room-defer` | 同上 | `_buildRewardPage` |
+
+仅改布局/样式：动 `adventure_ui_panels.js` + `adventure.css`，逻辑不变则不必先读 `adventure_engine.js`。改价格、刷新、库存规则：先 `adventure_engine.js`，再对齐面板展示。
 
 ## 2. 项目概览
 
@@ -224,6 +245,11 @@ npx wrangler deploy --config wrangler.jsonc
 | `game/adventure/js/items/map_effects.js` | 地图场景道具效果注册表 |
 | `game/adventure/js/save/adventure_save.js` | 地图存档（localStorage） |
 | `game/adventure/js/battle/adventure_battle_session.js` | 战斗快照（sessionStorage） |
+| `game/adventure/js/ui/adventure_ui.js` | `AdventureUI`：地图页渲染调度、点击委托、`adv-*` 动作入口 |
+| `game/adventure/js/ui/adventure_ui_panels.js` | 商店/铁匠/奖励/商人等房间页 HTML 拼装 |
+| `game/adventure/js/ui/adventure_ui_map_view.js` | 地图格、路线、背包侧栏等地图视图补丁 |
+| `game/adventure/js/ui/adventure_ui_views.js` | 其它冒险视图片段（与 map_view / panels 分工） |
+| `game/adventure/css/adventure.css` | 冒险模式专属样式（含商店槽位、铁匠分区） |
 
 ## 6. 常见改动流程
 
@@ -265,11 +291,28 @@ npx wrangler deploy --config wrangler.jsonc
 
 ### 6.5 新增 UI 模块
 
+**共享对战 UI**
+
 1. 新文件放在 `game/js/ui/` 对应目录。
 2. 加入 `game/script_manifest.json` 的 `ui_shell` 或相应分组。
 3. 按依赖顺序加入三张入口页（在线页只加载共享 UI 子集）。
 4. 运行 `node game/scripts/verify-load-order.js`。
-5. 修改文件后同步更新 HTML 中的 `?v=` cache query。
+5. 修改脚本后更新对应 HTML 里该文件的 `?v=YYYYMMDD-短描述`。
+
+**冒险地图 UI**
+
+1. 新文件放在 `game/adventure/js/ui/`，样式进 `game/adventure/css/adventure.css`。
+2. 加入 `game/script_manifest.json` 的冒险 UI 分组，并写入 `game/adventure/adventure.html` 的 `<script>` 顺序。
+3. 大块房间页 HTML 优先扩展 `adventure_ui_panels.js`；点击与引擎调用留在 `adventure_ui.js`。
+4. 改 `adventure_ui_panels.js` / `adventure_ui.js` / `adventure.css` 时同步 bump `adventure.html` 中同名资源的 `?v=`。
+
+**`?v=` 所在入口**
+
+| 入口 | 路径 |
+| --- | --- |
+| 单机对战 | `game/index.html`（共享 `game/js/`、`game/css/game.css`） |
+| 冒险 | `game/adventure/adventure.html`（含 `adventure/css/adventure.css` 与 `adventure/js/ui/*`） |
+| 在线 | `game/online_game/index.html`（共享 UI 子集 + 在线脚本） |
 
 ### 6.6 在线改动
 
@@ -322,6 +365,24 @@ npx wrangler deploy --config wrangler.jsonc
 - 新增测试后，把它加入 `check.js` 的 `stableTests` 仅当你确认它稳定且属于核心协议；否则留给 `--all`。
 - 掉落/随机测试使用固定随机源或直接传 `roll`，不要依赖真实随机。
 
+### 9.1 按改动选测（速查）
+
+`node game/scripts/check.js` 默认跑 **stableTests**（见 `game/scripts/check.js`）；可追加文件名只跑相关用例。
+
+| 改动类型 | 建议优先测试 |
+| --- | --- |
+| 协议 / 事件 / 回合机 | `combat-protocol.test.js`、`combat-events.test.js`、`turn-machine.test.js` |
+| 角色 AI / 技能选牌 | `ai-strategy.test.js` |
+| 攻击时机 / 防御 / 飞行守护 | `attack-timing.test.js`、`defense-effects.test.js`、`fly-guard.test.js` |
+| Buff、催眠、熔脉、流沙 | `status-registry.test.js`、`hypnosis-sleep.test.js`、`magma-vein.test.js`、`quicksand.test.js` |
+| 卡牌效果 / 引擎模块 | `card-effects.test.js`、`engine-modules.test.js`、`runtime-invariants.test.js` |
+| 对战 UI 反馈 / 结算展示 | `ui-feedback.test.js`、`settlement-ui.test.js` |
+| 弹窗、底栏 sheet | `dialog-ui.test.js` |
+| 冒险地图页、商店铁匠、DOM 补丁性能 | `render-performance.test.js` |
+| 冒险 D12 / 骰子边界 | `dice-controller.test.js` |
+| 在线房间 / 传输 | `online-match.test.js`、`online-transport.test.js`、`signaling-room.test.js` |
+| 怪物 / 掉落 / 地图（非 UI） | `check.js --all` 中对应 `*-monsters.test.js`、`adventure-*.test.js`（部分为历史随机断言） |
+
 ## 10. 文档地图
 
 ```text
@@ -356,7 +417,7 @@ game/docs/
 - [ ] 至少运行了受影响的单测；提交前运行 `node game/scripts/check.js`。
 - [ ] 涉及冒险/在线/全量规则时运行 `node game/scripts/check.js --all`，并说明既有失败。
 - [ ] 没有把临时文件、调试输出或第二套规则实现带进仓库。
-- [ ] 如果改了架构边界或新增模块，更新 `ARCHITECTURE.md` 和本文件的目录/流程说明。
+- [ ] 如果改了架构边界或新增模块，更新 `ARCHITECTURE.md` 和本文件 §1 / §5 / §6 的入口说明。
 
 ## 个人网站共享背景补充
 

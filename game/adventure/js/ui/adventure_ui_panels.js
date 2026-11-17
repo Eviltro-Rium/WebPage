@@ -401,13 +401,10 @@
       const canBuy = selected != null && slots[selected];
     
       page.innerHTML =
-        this._shopkeeperHeader('商店', 'shopkeeper.webp') +
+        this._shopkeeperHeader('商店', 'shopkeeper.webp', null, { id: 'adv-leave-shop', label: '离开商店' }) +
         '<div class="adv-shop-slots">' + slotsHtml + '</div>' +
         this._mobileOfferDescription(canBuy ? slots[selected] : null) +
-        '<div class="adv-shop-page-hint">前3槽道具、第6槽配饰（刷新2金币，配饰15金币），第4–5槽兽元（普通2/万能4，不可刷新）。战利白卡不在商店出售，可从怪物掉落或铁匠铺获得。</div>' +
-        '<div class="adv-shop-page-actions adv-shop-page-actions--solo">' +
-          '<button class="adv-btn" id="adv-leave-shop">离开商店</button>' +
-        '</div>';
+        '<div class="adv-shop-page-hint">前3槽道具、第6槽配饰（刷新2金币，配饰15金币），第4–5槽兽元（普通2/万能4，不可刷新）。战利白卡不在商店出售，可从怪物掉落或铁匠铺获得。</div>';
       this._mountTrophyCards(page);
       return page;
     }
@@ -524,24 +521,26 @@
       const isTrophySelected = trophyIndex >= 0;
 
       page.innerHTML =
-        this._shopkeeperHeader('铁匠铺', 'blacksmith.webp') +
+        this._shopkeeperHeader('铁匠铺', 'blacksmith.webp', null, { id: 'adv-leave-blacksmith', label: '离开铁匠铺' }) +
         '<section class="adv-blacksmith-stall"><div class="adv-blacksmith-stall-title">配饰兑换</div><div class="adv-shop-slots adv-blacksmith-slots">' + slotsHtml + '</div></section>' +
         '<section class="adv-blacksmith-stall adv-blacksmith-trophy-stall"><div class="adv-blacksmith-stall-title">白卡锻造</div><div class="adv-shop-slots adv-blacksmith-slots">' + trophyHtml + '</div></section>' +
         this._mobileOfferDescription(isTrophySelected ? trophies[trophyIndex] : slots[selected]) +
-        recycleHtml +
-        '<div class="adv-shop-page-actions adv-shop-page-actions--solo">' +
-          '<button class="adv-btn" id="adv-leave-blacksmith">离开铁匠铺</button>' +
-        '</div>';
+        recycleHtml;
       this._mountTrophyCards(page);
       return page;
     }
     
-    _shopkeeperHeader(title, icon, label) {
+    _shopkeeperHeader(title, icon, label, leave) {
       const subtitle = label ? '<div class="adv-shopkeeper-name">' + label + '</div>' : '';
-      return '<div class="adv-shopkeeper-header">' +
+      const header =
+        '<div class="adv-shopkeeper-header">' +
         '<img class="adv-shopkeeper-portrait" src="../icons/npc_icons/' + icon + '" alt="' + title + '" width="64" height="64">' +
         '<div class="adv-shopkeeper-heading"><div class="adv-shop-page-title">' + title + '</div>' +
         subtitle + '</div></div>';
+      if (!leave || !leave.id) return header;
+      return '<div class="adv-shop-page-top">' + header +
+        '<button type="button" class="adv-btn adv-shop-page-leave" id="' + leave.id + '">' + leave.label + '</button>' +
+        '</div>';
     }
 
     _mobileOfferDescription(item) {

@@ -1286,6 +1286,9 @@ div.adv-trophy-forge-fly { display: grid; place-items: center; background: #f8f4
 }
 
 /* The shopkeeper and smith share the NPC portrait frame. */
+.adv-shop-page-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; width: 100%; }
+.adv-shop-page-top .adv-shopkeeper-header { flex: 1 1 auto; min-width: 0; }
+.adv-shop-page-leave { flex: 0 0 auto; align-self: flex-start; min-height: 40px; white-space: nowrap; }
 .adv-shopkeeper-header { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .adv-shopkeeper-portrait { width: 80px; height: 80px; flex: 0 0 80px; object-fit: contain; image-rendering: pixelated; border: 1px solid rgba(196,181,253,.38); border-radius: 12px; background: rgba(30,25,50,.7); }
 .adv-shopkeeper-heading { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
@@ -1294,6 +1297,7 @@ div.adv-trophy-forge-fly { display: grid; place-items: center; background: #f8f4
   .adv-shopkeeper-portrait { width: 64px; height: 64px; flex-basis: 64px; border-radius: 10px; }
   .adv-shopkeeper-header { gap: 8px; }
   .adv-shopkeeper-heading { gap: 3px; }
+  .adv-shop-page-leave { min-height: 44px; padding: 7px 10px; font-size: .75rem; }
 }
 
 /* Sacrifice altar: life costs and the selected physical hand card stay visible. */
