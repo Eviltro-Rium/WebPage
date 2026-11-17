@@ -45,7 +45,7 @@
     <script src="../js/characters/knight.js?v=20261116-npc-settlement-order"></script>
     <script src="../js/characters/otto.js?v=20261116-defense-effect-order"></script>
     <script src="../js/characters/vixraps.js?v=20261117-vixraps-5-scorch"></script>
-    <script src="../js/characters/fenric.js?v=20261117-fenric"></script>
+    <script src="../js/characters/fenric.js?v=20261117-fenric-zero-harden"></script>
     <script src="../js/ai/registry.js?v=20261101-overall-repair"></script>
     <script src="../js/ai/knight_ai.js?v=20261115-character-rules"></script>
     <script src="../js/ai/leon_ai.js?v=20261115-character-rules"></script>
@@ -86,7 +86,7 @@
     <script src="../js/combat/engine_lord.js?v=20261101-overall-repair"></script>
     <script src="../js/combat/bridge.js?v=20261101-overall-repair"></script>
     <script src="../js/combat/session.js?v=20261101-overall-repair"></script>
-    <script src="../js/ui/skills.js?v=20261117-vixraps-5-scorch"></script>
+    <script src="../js/ui/skills.js?v=20261117-skill-order"></script>
     <script src="../js/ui/dialogs.js?v=20261117-opponent-sheet"></script>
     <script src="../js/ui/card_style.js?v=20261101-overall-repair"></script>
     <script src="../js/ui/ui_core.js?v=20261101-overall-repair"></script>
@@ -111,7 +111,7 @@
     <script src="js/content/currency.js?v=20261102-room-reward-cap"></script>
     <script src="js/content/room.js?v=20261101-overall-repair"></script>
     <script src="js/content/monster.js?v=20261101-overall-repair"></script>
-    <script src="js/monsters/castle.js?v=20261116-npc-settlement-order"></script>
+    <script src="js/monsters/castle.js?v=20261117-chameleon-zero"></script>
     <script src="js/monsters/forest.js?v=20261115-forest-doc"></script>
     <script src="js/monsters/ocean.js?v=20261115-ocean-doc"></script>
     <script src="js/monsters/desert.js?v=20261116-npc-stage"></script>
@@ -129,7 +129,7 @@
     <script src="js/deck/npc_strategy.js?v=20261117-npc-draw-two-priority"></script>
     <script src="js/engine/adventure_engine.js?v=20261116-deck-encounters"></script>
     <script src="js/engine/loot.js?v=20261101-overall-repair"></script>
-    <script src="js/engine/shop.js?v=20261101-overall-repair"></script>
+    <script src="js/engine/shop.js?v=20261117-shop-unique-slots"></script>
     <script src="js/engine/rewards.js?v=20261102-room-reward-cap"></script>
     <script src="js/engine/inventory.js?v=20261102-room-reward-cap"></script>
     <script src="js/engine/combat_result.js?v=20261116-deck-encounters"></script>
@@ -273,13 +273,8 @@
                     addOpponent(combatName(combat.enemy2), '敌人2', '#a855f7', enemyStage);
                 }
 
-                // NPC：白 1~4 技能、白 5 轮空；白 0 仅 Boss。玩家角色仍按各自 0~7 档位。
-                const PLAYER_SKILL_GRID = [
-                    { atkKey: 0, defKey: 0, label: '1' }, { atkKey: 1, defKey: 1, label: '2' },
-                    { atkKey: 2, defKey: 2, label: '3' }, { atkKey: 7, defKey: 3, label: '0' },
-                    { atkKey: 3, defKey: -1, label: '4' }, { atkKey: 4, defKey: -1, label: '5' },
-                    { atkKey: 5, defKey: -1, label: '6' }, { atkKey: 6, defKey: -1, label: '7' }
-                ];
+                // NPC：白 1~4 技能、白 5 轮空；白 0 仅 Boss。
+                // 玩家使用 skills.js 的 PLAYER_SKILL_GRID，与战斗技能书和主角图鉴一致。
                 const NPC_SKILL_GRID = [
                     { atkKey: 0, defKey: 0, label: '1' },
                     { atkKey: 1, defKey: 1, label: '2' },

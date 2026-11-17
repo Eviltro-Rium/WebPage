@@ -3,7 +3,7 @@
   C.register({
     name: 'Vixraps',
     hp: 65,
-    type: '灼热',
+    type: '法师',
     passive: '打出黑牌后须弃1张（无手牌可免），然后回复2生命并对对手施加1层灼伤',
     init() { return {}; },
     turnStart(eng, ch) {},

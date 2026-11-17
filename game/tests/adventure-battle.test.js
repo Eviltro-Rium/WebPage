@@ -246,6 +246,20 @@ test('adventure opponent is registered for the ordinary 1v1 character and AI int
   assert.ok(context.AIRegistry.get('CastleWolf'));
 });
 
+test('Chameleon zero deals 4 base damage and keeps cumulative stage upgrades', () => {
+  for (const stage of [1, 2, 3, 4]) {
+    const engine = new AdventureBattleEngine();
+    engine.later = () => {};
+    engine.startAdventure({ player: 'Ryan', opponent: 'CastleChameleon', stage,
+      playerPile: { deck: [], hand: [], discard: [], handLimit: 5 } });
+    const card = number(0, 'WHITE', true);
+    const damage = stage >= 3 ? 5 : 4;
+    assert.equal(engine.effect('CastleChameleon', 0, card, engine.s.ai, engine.s.player).d, damage);
+    const text = context.AdventureMonsterBridge.getAdventureNpcSkillDesc('CastleChameleon', card, false, { stage });
+    assert.ok(text.includes(damage + '🗡️'), text);
+  }
+});
+
 test('Scarab stage upgrades accumulate without leaking across opponents or a restored battle', () => {
   const engine = new AdventureBattleEngine();
   engine.later = () => {};

@@ -512,6 +512,30 @@ test('shop offers 3 item + 2 beast + 1 accessory slots', () => {
   assert.equal(emptyBuy.message, 'sold-out');
 });
 
+test('shop item slots avoid duplicate consumables and accessory', () => {
+  const map = new AdventureMap([[0, 4]]);
+  const eng = new AdventureEngine();
+  eng.start(map, 'Ryan');
+  eng.move(0, 1);
+  eng.enterCurrent();
+  const room = eng.currentRoom();
+  const listed = room.shopSlots.filter((slot, index) =>
+    (index <= 2 || index === 5) && typeof slot === 'string');
+  assert.equal(new Set(listed).size, listed.length);
+
+  room.shopSlots = ['Dodge', 'Dodge', 'LaserEye', { kind: 'beast', beastType: 'ben' }, { kind: 'beast', beastType: 'shui' }, 'FlameFist'];
+  eng._dedupeShopItemSlots(room);
+  const consumables = room.shopSlots.slice(0, 3);
+  assert.equal(new Set(consumables).size, consumables.length);
+
+  eng.s.currency.addGold(10);
+  room.shopSlots[0] = room.shopSlots[1];
+  const refresh = eng.refreshShopSlot(0);
+  assert.equal(refresh.ok, true);
+  assert.notEqual(room.shopSlots[0], room.shopSlots[1]);
+  assert.notEqual(room.shopSlots[0], room.shopSlots[2]);
+});
+
 test('shop beast slots cost 2/4 and cannot refresh', () => {
   const map = new AdventureMap([[0, 4]]);
   const eng = new AdventureEngine();
@@ -744,6 +768,29 @@ test('blacksmith refresh costs 2 gold including empty slots', () => {
   assert.equal(refresh2.ok, true);
   assert.equal(eng.s.currency.gold, goldBefore - 4);
   assert.ok(eng.currentRoom().blacksmithSlots[2]);
+});
+
+test('blacksmith accessory slots stay unique', () => {
+  const map = new AdventureMap([[0, 5]]);
+  const eng = new AdventureEngine();
+  eng.start(map, 'Ryan');
+  eng.s.stage = 4;
+  eng.s.currency.addGold(20);
+  eng.move(0, 1);
+  eng.enterCurrent();
+  const room = eng.currentRoom();
+  const initial = room.blacksmithSlots.filter(Boolean);
+  assert.equal(new Set(initial).size, initial.length);
+
+  room.blacksmithSlots = ['FlameFist', 'FlameFist', 'WisdomNecklace'];
+  eng._dedupeBlacksmithAccessorySlots(room);
+  const deduped = room.blacksmithSlots.filter(Boolean);
+  assert.equal(new Set(deduped).size, deduped.length);
+
+  eng.s.currency.addGold(10);
+  eng.refreshBlacksmithSlot(1);
+  const all = room.blacksmithSlots.filter(Boolean);
+  assert.equal(new Set(all).size, all.length);
 });
 
 test('shop sells accessories for 15 gold and can refresh accessory slot', () => {

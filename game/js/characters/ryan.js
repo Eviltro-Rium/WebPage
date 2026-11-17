@@ -3,7 +3,7 @@
   C.register({
     name: 'Ryan',
     hp: 50,
-    type: '战士',
+    type: '恢复型法师',
     passive: '在我方⚔️回合开始前恢复1❤️',
     init() { return {}; },
     turnStart(eng, ch) { eng.heal(ch, 1); },

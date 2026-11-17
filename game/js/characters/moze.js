@@ -3,7 +3,7 @@
   C.register({
     name: 'Moze',
     hp: 80,
-    type: '守护',
+    type: '坦克',
     passive: '可为队友消耗最多2层守护，减免攻击或反击伤害',
     init() { return {}; },
     turnStart(eng, ch) {},

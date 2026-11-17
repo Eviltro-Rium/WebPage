@@ -9,7 +9,7 @@ const { JSDOM } = require('jsdom');
 const gameRoot = path.resolve(__dirname, '..');
 
 async function boot(t, entry) {
-  const file = path.join(gameRoot, entry);
+  const file = path.join(gameRoot, entry.split('?')[0]);
   const dom = new JSDOM(fs.readFileSync(file, 'utf8'), {
     runScripts: 'outside-only', url: 'http://localhost/game/' + entry,
     pretendToBeVisual: true
@@ -78,6 +78,17 @@ test('adventure entry boots, starts an embedded map and renders the new sacrific
   ui.eng.move(0, 1); ui.eng.enterCurrent(); ui.bindActions(); ui.render();
   assert.ok(ui.container.querySelector('#adv-sacrifice-upgrade'));
   assert.match(ui.container.textContent, /本层剩余 3 \/ 3 次升级/);
+});
+
+test('adventure map skill book uses the current player numbers and defense slots', async t => {
+  const { w } = await boot(t, 'adventure/adventure.html?char=Ryan');
+  w.document.querySelector('#adv-skill-book').click();
+  const grid = w.document.querySelector('.game-menu-box-book .skill-grid');
+  assert.ok(grid);
+  const rows = [...grid.querySelectorAll('.skill-row')];
+  const number = row => row.querySelector('.skill-num').textContent;
+  assert.deepEqual(rows.map(number), ['0', '1', '2', '3', '4', '5']);
+  assert.deepEqual(rows.filter(row => !row.querySelector('.skill-no-def')).map(number), ['0', '1', '2']);
 });
 
 test('online entry boots and keeps the shared combat UI available', async t => {

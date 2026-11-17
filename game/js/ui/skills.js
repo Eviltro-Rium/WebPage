@@ -86,7 +86,7 @@ const SKILL_DATA = {
             "3 4[伤害]；🔴获得1层[硬化]；🔵施加1层[失温]；其他颜色伤害+1",
             "4 翻开牌库1🃏判定：造成对应数字点[伤害]（至少3点），获得1层[硬化]，判定牌入弃牌库",
             "5 2[伤害]，抽1🃏，获得2层[守护]，随后每层[守护]恢复1[生命]",
-            "0 获得2层[守护]，造成2+[守护]层数点[伤害]；有[硬化]时变为不可防御"
+            "0 获得2层[守护]，造成2+[守护]层数点[伤害]；拥有2层[硬化]时变为不可防御"
         ],
         CastleWolf: [
             "1 4点[伤害]",
@@ -126,7 +126,7 @@ const SKILL_DATA = {
             "3 4点[伤害]，施加1层[中毒]",
             "4 4点[伤害]，施加1层[中毒]",
             "5 无效果",
-            "0 2点[伤害]（不可防御），获得2层[守护]，施加2层[中毒]"
+            "0 4点[伤害]（不可防御），获得2层[守护]，施加2层[中毒]"
         ],
         CastleEagle: [
             "1 4点[伤害]",
@@ -1022,7 +1022,7 @@ const SKILL_DATA = {
                 "3 4点[伤害]，施加1层[中毒]",
                 "4 4点[伤害]，施加1层[中毒]",
                 "5 无效果",
-                "0 3点[伤害]（不可防御），获得2层[守护]，施加2层[中毒]"
+                "0 5点[伤害]（不可防御），获得2层[守护]，施加2层[中毒]"
             ]},
             4: { defend: [
                 "1 恢复3[生命]",
@@ -1511,12 +1511,12 @@ function getSkillDesc(charName, card, isDefend) {
 
 // 玩家技能表只定义一次，技能书和图鉴按同一顺序展示。
 const PLAYER_SKILL_GRID = Object.freeze([
+    { atkKey: 5, defKey: 2, label: '0' },
     { atkKey: 0, defKey: 0, label: '1' },
     { atkKey: 1, defKey: 1, label: '2' },
     { atkKey: 2, defKey: -1, label: '3' },
     { atkKey: 3, defKey: -1, label: '4' },
-    { atkKey: 4, defKey: -1, label: '5' },
-    { atkKey: 5, defKey: 2, label: '0' }
+    { atkKey: 4, defKey: -1, label: '5' }
 ].map(Object.freeze));
 
 window.SKILL_DATA = SKILL_DATA;

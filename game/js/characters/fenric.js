@@ -2,8 +2,8 @@
   const C = CharacterRegistry;
   C.register({
     name: 'Fenric',
-    hp: 70,
-    type: '铁壁',
+    hp: 65,
+    type: '战士',
     passive: '受到的技能伤害超过7点时会截断为7点',
     incomingSkillDamageCap: 7,
     init() { return {}; },
@@ -63,7 +63,7 @@
       } else if (v === 0) {
         guard(2);
         d = 2 + Math.max(0, a.guard || 0);
-        unblock = (a.harden || 0) > 0;
+        unblock = (a.harden || 0) >= 2;
       }
       return { d, skip, unblock };
     },

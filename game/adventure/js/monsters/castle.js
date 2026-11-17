@@ -310,9 +310,9 @@
   /**
    * Boss · 隐之避役（CastleChameleon）
    * 牌库：普通 NPC 牌库 + 两张白色 0；手牌上限 3
-   * 进攻：1/2/3 → 1/2/3 不可防御；4/5/6 → 3伤+1中毒；0 → 2不可防御+2守护+2中毒
-   * 防御：1/2/3 → 恢复2；0 → 施加2中毒并格挡半数（向上取整）
-   * 强化：(2)+10生命 (3)4/5/6/0伤害+1 (4)防御1/2/3恢复+1
+   * 进攻：1/2 → 2 不可防御；3/4 → 4伤+1中毒；0 → 4不可防御+2守护+2中毒
+   * 防御：1/2 → 恢复2；0 → 反击4并格挡半数（向上取整）
+   * 强化：(2)+5生命 (3)进攻伤害+1 (4)防御1/2恢复+1
    */
   R.registerBoss({
     name: 'CastleChameleon',
@@ -328,7 +328,7 @@
       if (!card || !card.isNumberCard) return 0;
       if (isLow(card)) return 2;
       if (isHigh(card)) return 4;
-      if (card.value === 0) return 2;
+      if (card.value === 0) return 4;
       return 0;
     },
 

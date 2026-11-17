@@ -11,7 +11,7 @@
 ## 冒险模式
 
 - [冒险指南](adventure_guide/README.md)：地图、房间、奖励和测试模式。
-  - [城堡怪物](adventure_guide/castle.md) · [丛林怪物](adventure_guide/forest.md) · [冻洋怪物](adventure_guide/ocean.md) · [沙漠怪物](adventure_guide/desert.md) · [火山怪物](adventure_guide/volcano.md)
+  - [城堡怪物](adventure_guide/castle.md)（隐之避役基础进攻 0：4 点伤害，Stage 3 起累加至 5 点） · [丛林怪物](adventure_guide/forest.md) · [冻洋怪物](adventure_guide/ocean.md) · [沙漠怪物](adventure_guide/desert.md) · [火山怪物](adventure_guide/volcano.md)
   - [配饰](adventure_guide/accessories.md) · [一次性道具](adventure_guide/consumables.md)
   - [掉落](adventure_guide/loot.md) · [房间](adventure_guide/rooms.md)（含普通房数量、可变形状、战斗/功能房支路与献祭规则、兽元初始上限 9、奖励房满槽及互斥道具领取）
 - [角色图鉴](Characters/README.md)：玩家角色技能说明。

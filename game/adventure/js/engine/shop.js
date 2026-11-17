@@ -10,7 +10,61 @@
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
   const random = () => window.FurryGame && window.FurryGame.CombatRuntime
     ? window.FurryGame.CombatRuntime.random() : Math.random();
+  const excludeSet = exclude => {
+    if (!exclude) return new Set();
+    return exclude instanceof Set ? exclude : new Set(exclude);
+  };
   Object.assign(AdventureEngine.prototype, {
+
+    _collectShopUsedItemNames(room, excludeIndex = -1) {
+      const used = new Set();
+      if (!room || !Array.isArray(room.shopSlots)) return used;
+      room.shopSlots.forEach((slot, index) => {
+        if (index === excludeIndex || typeof slot !== 'string') return;
+        used.add(slot);
+      });
+      return used;
+    },
+    _collectBlacksmithUsedAccessoryNames(room, excludeIndex = -1) {
+      const used = new Set();
+      if (!room || !Array.isArray(room.blacksmithSlots)) return used;
+      room.blacksmithSlots.forEach((name, index) => {
+        if (index === excludeIndex || !name) return;
+        used.add(name);
+      });
+      return used;
+    },
+    _dedupeShopItemSlots(room) {
+      if (!room || !Array.isArray(room.shopSlots)) return;
+      const seen = new Set();
+      for (let index = 0; index < SHOP_SLOT_COUNT; index++) {
+        if (!this._isShopItemSlot(index) && !this._isShopAccessorySlot(index)) continue;
+        let slot = room.shopSlots[index];
+        if (!slot || typeof slot !== 'string') continue;
+        if (seen.has(slot)) {
+          const used = new Set(seen);
+          slot = this._isShopAccessorySlot(index)
+            ? this._rollAccessoryDrop(used)
+            : this._rollConsumableDrop(used);
+          room.shopSlots[index] = slot;
+        }
+        if (slot) seen.add(slot);
+      }
+    },
+    _dedupeBlacksmithAccessorySlots(room) {
+      if (!room || !Array.isArray(room.blacksmithSlots)) return;
+      const seen = new Set();
+      for (let index = 0; index < room.blacksmithSlots.length; index++) {
+        let name = room.blacksmithSlots[index];
+        if (!name) continue;
+        if (seen.has(name)) {
+          const used = new Set(seen);
+          name = this._rollAccessoryDrop(used);
+          room.blacksmithSlots[index] = name;
+        }
+        if (name) seen.add(name);
+      }
+    },
 
     _handleShop(room) {
       this._ensureShopSlots(room, true);
@@ -48,11 +102,14 @@
     _ensureBlacksmithSlots(room) {
       if (!room) return;
       if (!Array.isArray(room.blacksmithSlots) || room.blacksmithSlots.length !== 3) {
-        room.blacksmithSlots = [
-          this._rollBlacksmithSlot(),
-          this._rollBlacksmithSlot(),
-          this._rollBlacksmithSlot()
-        ];
+        const used = new Set();
+        room.blacksmithSlots = [0, 1, 2].map(() => {
+          const name = this._rollBlacksmithSlot(used);
+          if (name) used.add(name);
+          return name;
+        });
+      } else {
+        this._dedupeBlacksmithAccessorySlots(room);
       }
       // undefined means this room has never been stocked (or comes from an
       // older save); null is an intentionally sold-out slot and must persist.
@@ -82,8 +139,8 @@
       if (!trophies.length) return null;
       return trophies[Math.floor(random() * trophies.length)].name;
     },
-    _rollBlacksmithSlot() {
-      return this._rollAccessoryDrop();
+    _rollBlacksmithSlot(exclude) {
+      return this._rollAccessoryDrop(exclude);
     },
     _accessoryTradeCost(itemName) {
       const def = window.AdventureRegistry.getItem(itemName);
@@ -253,7 +310,8 @@
         this.emit('buyFail', '金币不足', { reason: 'refresh', price });
         return { ok: false, message: '金币不足（需要' + price + '）' };
       }
-      const itemName = this._rollBlacksmithSlot();
+      const used = this._collectBlacksmithUsedAccessoryNames(room, index);
+      const itemName = this._rollBlacksmithSlot(used);
       room.blacksmithSlots[index] = itemName;
       this.s.blacksmithSelectedSlot = index;
       const def = itemName ? window.AdventureRegistry.getItem(itemName) : null;
@@ -321,19 +379,26 @@
     },
     _initShopSlots(room) {
       // 商店固定为：3 道具 + 2 兽元 + 1 配饰。战利白卡只从怪物掉落或铁匠铺获得。
+      const used = new Set();
+      const rollConsumable = () => {
+        const name = this._rollConsumableDrop(used);
+        if (name) used.add(name);
+        return name;
+      };
       room.shopSlots = [
-        this._rollConsumableDrop(),
-        this._rollConsumableDrop(),
-        this._rollConsumableDrop(),
+        rollConsumable(),
+        rollConsumable(),
+        rollConsumable(),
         this._rollBeastShopOffer(),
         this._rollBeastShopOffer(),
-        this._rollAccessoryDrop()
+        this._rollAccessoryDrop(used)
       ];
     },
     _migrateShopSlots(room) {
       const slots = room.shopSlots.slice(0, SHOP_SLOT_COUNT);
       while (slots.length < SHOP_SLOT_COUNT) slots.push(null);
       room.shopSlots = slots.map((slot, index) => this._sanitizeShopSlot(slot, index));
+      this._dedupeShopItemSlots(room);
     },
     _ensureShopSlots(room, migrate) {
       if (!room) return;
@@ -346,10 +411,13 @@
     _isShopBeastSlot(index) { return index === 3 || index === 4; },
     _isShopAccessorySlot(index) { return index === 5; },
     _isShopItemSlot(index) { return index >= 0 && index <= 2; },
-    _rollConsumableDrop() {
+    _rollConsumableDrop(exclude) {
       const consumables = window.AdventureRegistry.itemsByKind('consumable');
       if (!consumables.length) return null;
-      return consumables[Math.floor(random() * consumables.length)].name;
+      const excluded = excludeSet(exclude);
+      let pool = consumables.filter(it => !excluded.has(it.name));
+      if (!pool.length) pool = consumables;
+      return pool[Math.floor(random() * pool.length)].name;
     },
     _shopBeastPrice(beastType) {
       const base = beastType === 'wuneng' ? 4 : 2;
@@ -367,18 +435,21 @@
       const beastType = types[Math.floor(random() * types.length)];
       return { kind: 'beast', beastType };
     },
-    _rollAccessoryDrop() {
+    _rollAccessoryDrop(exclude) {
       const accessories = window.AdventureRegistry.itemsByKind('accessory');
       if (!accessories.length) return null;
+      const excluded = excludeSet(exclude);
       const owned = this.s.accessories || [];
-      const available = accessories.filter(it => {
+      const stackOk = (it) => {
         if (!it.maxStacks) return true;
         let count = 0;
         for (const a of owned) if (a === it.name) count++;
         return count < it.maxStacks;
-      });
-      if (!available.length) return null;
-      return available[Math.floor(random() * available.length)].name;
+      };
+      let pool = accessories.filter(it => stackOk(it) && !excluded.has(it.name));
+      if (!pool.length) pool = accessories.filter(stackOk);
+      if (!pool.length) return null;
+      return pool[Math.floor(random() * pool.length)].name;
     },
     _shopSlotPrice(index, slot) {
       if (!slot) return 0;
@@ -475,8 +546,9 @@
         return { ok: true };
       }
       if (def.kind !== 'consumable') {
-        if (this._isShopItemSlot(index)) room.shopSlots[index] = this._rollConsumableDrop();
-        else if (this._isShopAccessorySlot(index)) room.shopSlots[index] = this._rollAccessoryDrop();
+        const used = this._collectShopUsedItemNames(room, index);
+        if (this._isShopItemSlot(index)) room.shopSlots[index] = this._rollConsumableDrop(used);
+        else if (this._isShopAccessorySlot(index)) room.shopSlots[index] = this._rollAccessoryDrop(used);
         this.emit('buyFail', '不可购买', { itemName, reason: 'invalid' });
         return { ok: false, message: '不可购买' };
       }
@@ -511,9 +583,10 @@
         this.emit('buyFail', '金币不足', { action: 'refresh', price, gold: this.s.currency.gold });
         return { ok: false, message: '金币不足（需要' + price + '）' };
       }
+      const used = this._collectShopUsedItemNames(room, index);
       const itemName = this._isShopAccessorySlot(index)
-        ? this._rollAccessoryDrop()
-        : this._rollConsumableDrop();
+        ? this._rollAccessoryDrop(used)
+        : this._rollConsumableDrop(used);
       room.shopSlots[index] = itemName;
       this.s.shopSelectedSlot = index;
       const def = itemName ? window.AdventureRegistry.getItem(itemName) : null;

@@ -3,7 +3,7 @@
   C.register({
     name: 'Serenity',
     hp: 50,
-    type: '暗影',
+    type: '刺客',
     passive: '免疫冷冻；生命低于25获得嗜血印记（不可净化，冒险离房时生命高于25则清除）；无印记时恢复额外+1',
     init() { return {}; },
     turnStart(eng, ch) { if (ch.hp < 25) ch.bloodthirst = true; },

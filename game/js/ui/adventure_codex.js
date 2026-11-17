@@ -49,17 +49,17 @@
 
   // 主角图鉴：仅展示玩家可选择的角色（排除冒险 NPC、领主专属和测试用角色）。
   const PLAYER_CHARS = [
-    { name: 'Ryan', hp: 50, type: '战士', passive: '进攻回合开始前恢复1点生命', avatar: 'avatars/Ryan.webp', color: '#14eb5f' },
-    { name: 'Leon', hp: 70, type: '骑士', passive: '免疫灼伤', avatar: 'avatars/Leon.webp', color: '#ee1111' },
-    { name: 'Chan', hp: 60, type: '谋士', passive: '进攻回合开始前抽1张牌', avatar: 'avatars/Chan.webp', color: '#1399f2' },
-    { name: 'Saiki', hp: 60, type: '猎手', passive: '进攻打出有效黄色牌时，防御结算后施加1层流血', avatar: 'avatars/Saiki.webp', color: '#9b59b6' },
-    { name: 'Blaze', hp: 65, type: '狂战', passive: '自身有灼伤时，1至7牌的攻击伤害+1', avatar: 'avatars/Blaze.webp', color: '#e67e22' },
-    { name: 'Serenity', hp: 50, type: '暗影', passive: '免疫冷冻；生命低于25获得不可净化的嗜血印记；离房时生命高于25则清除；无印记时恢复额外+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
-    { name: 'Moze', hp: 80, type: '守护', passive: '可消耗守护减免攻击与反击伤害（不含Buff伤害）', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
-    { name: 'Knight', hp: 70, type: '混沌', passive: '进攻前清除混沌；打出数字/白道具牌获得对应颜色混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
+    { name: 'Ryan', hp: 50, type: '法师', passive: '进攻回合开始前恢复1点生命', avatar: 'avatars/Ryan.webp', color: '#14eb5f' },
+    { name: 'Leon', hp: 70, type: '法坦', passive: '免疫灼伤', avatar: 'avatars/Leon.webp', color: '#ee1111' },
+    { name: 'Chan', hp: 60, type: '战士', passive: '进攻回合开始前抽1张牌', avatar: 'avatars/Chan.webp', color: '#1399f2' },
+    { name: 'Saiki', hp: 60, type: '刺客', passive: '进攻打出有效黄色牌时，防御结算后施加1层流血', avatar: 'avatars/Saiki.webp', color: '#9b59b6' },
+    { name: 'Blaze', hp: 65, type: '火法', passive: '自身有灼伤时，1至7牌的攻击伤害+1', avatar: 'avatars/Blaze.webp', color: '#e67e22' },
+    { name: 'Serenity', hp: 50, type: '刺客', passive: '免疫冷冻；生命低于25获得嗜血印记；离房时生命高于25则清除；无印记时恢复额外+1', avatar: 'avatars/Serenity.webp', color: '#1abc9c' },
+    { name: 'Moze', hp: 80, type: '坦克', passive: '可消耗守护减免攻击与反击伤害（不含Buff伤害）', avatar: 'avatars/Moze.webp', color: '#7f8c8d' },
+    { name: 'Knight', hp: 70, type: '法师', passive: '进攻前清除混沌；打出数字/白道具牌获得对应颜色混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
     { name: 'Otto', hp: 80, type: '战士', passive: '进攻伤害>4时可消耗1层[暴击]使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
-    { name: 'Vixraps', hp: 65, type: '灼热', passive: '打出黑牌后须弃1张（无手牌可免），然后回复2生命并对对手施加1层灼伤', avatar: 'avatars/Vixraps.webp', color: '#c0392b' },
-    { name: 'Fenric', hp: 70, type: '铁壁', passive: '受到的技能伤害超过7点时会截断为7点', avatar: 'avatars/Fenric.webp', color: '#5d6d7e' }
+    { name: 'Vixraps', hp: 65, type: '法师', passive: '打出黑牌后须弃1张（无手牌可免），然后回复2生命并对对手施加1层灼伤', avatar: 'avatars/Vixraps.webp', color: '#c0392b' },
+    { name: 'Fenric', hp: 65, type: '战士', passive: '受到的技能伤害超过7点时会截断为7点', avatar: 'avatars/Fenric.webp', color: '#5d6d7e' }
   ];
 
   function stripPrefix(s) {

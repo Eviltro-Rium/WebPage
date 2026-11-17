@@ -614,15 +614,17 @@ class GameUI {
             this.characters = await Bridge.call('characters');
         } catch (e) {
             this.characters = [
-                { name: 'Ryan', hp: 50, type: '战士', passive: '进攻回合开始前恢复1点生命' },
-                { name: 'Leon', hp: 70, type: '骑士', passive: '免疫灼伤' },
-                { name: 'Chan', hp: 60, type: '谋士', passive: '进攻回合开始前抽1张牌' },
-                { name: 'Saiki', hp: 60, type: '猎手', passive: '进攻打出有效黄色牌时，防御结算后施加1层流血' },
-                { name: 'Blaze', hp: 65, type: '狂战', passive: '有灼伤时1至7牌攻击伤害+1' },
-                { name: 'Serenity', hp: 50, type: '暗影', passive: '免疫冷冻；生命低于25获得嗜血印记（永久、不可净化）；离房高于25则清除；无印记时恢复额外+1' },
-                { name: 'Moze', hp: 80, type: '守护', passive: '可消耗守护减免攻击与反击伤害（不含Buff伤害）' },
-                { name: 'Knight', hp: 70, type: '混沌', passive: '进攻前清除混沌；打出数字/白道具牌获得对应颜色混沌' },
+                { name: 'Ryan', hp: 50, type: '法师', passive: '进攻回合开始前恢复1点生命' },
+                { name: 'Leon', hp: 70, type: '法坦', passive: '免疫灼伤' },
+                { name: 'Chan', hp: 60, type: '战士', passive: '进攻回合开始前抽1张牌' },
+                { name: 'Saiki', hp: 60, type: '刺客', passive: '进攻打出有效黄色牌时，防御结算后施加1层流血' },
+                { name: 'Blaze', hp: 65, type: '火法', passive: '有灼伤时1至7牌攻击伤害+1' },
+                { name: 'Serenity', hp: 50, type: '刺客', passive: '免疫冷冻；生命低于25获得嗜血印记（永久、不可净化）；离房高于25则清除；无印记时恢复额外+1' },
+                { name: 'Moze', hp: 80, type: '坦克', passive: '可消耗守护减免攻击与反击伤害（不含Buff伤害）' },
+                { name: 'Knight', hp: 70, type: '法师', passive: '进攻前清除混沌；打出数字/白道具牌获得对应颜色混沌' },
                 { name: 'Otto', hp: 80, type: '战士', passive: '进攻伤害>4时可消耗1层[暴击]使攻击不可防御' },
+                { name: 'Vixraps', hp: 65, type: '法师', passive: '打出黑牌后须弃1张（无手牌可免），然后回复2生命并对对手施加1层灼伤' },
+                { name: 'Fenric', hp: 65, type: '战士', passive: '受到的技能伤害超过7点时会截断为7点' },
             ];
         }
         this._buildSelectScreen();

@@ -3,7 +3,7 @@
   C.register({
     name: 'Knight',
     hp: 70,
-    type: '混沌',
+    type: '法师',
     passive: '进攻前清除混沌；打出数字/白道具牌获得对应颜色混沌',
     init() { return { chaos_red: false, chaos_yellow: false, chaos_blue: false, chaos_green: false }; },
     turnStart(eng, ch, w) {

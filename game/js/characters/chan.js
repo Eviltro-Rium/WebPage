@@ -3,7 +3,7 @@
   C.register({
     name: 'Chan',
     hp: 60,
-    type: '谋士',
+    type: '战士',
     passive: '进攻回合开始前抽1张牌',
     init() { return {}; },
     turnStart(eng, ch, w) { eng.draw(w, 1, true); },

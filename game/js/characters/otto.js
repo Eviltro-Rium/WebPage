@@ -3,7 +3,7 @@
   C.register({
     name: 'Otto',
     hp: 80,
-    type: '战士',
+    type: '坦克',
     passive: '与 Serenity 同队时，承担其受到的超出6点的攻击伤害，并自动格挡承担伤害的一半（向上取整）',
     init() { return { crit: 0 }; },
     turnStart(eng, ch) {},

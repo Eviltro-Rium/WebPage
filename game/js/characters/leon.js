@@ -5,7 +5,7 @@
   C.register({
     name: 'Leon',
     hp: 70,
-    type: '骑士',
+    type: '法坦',
     passive: '可叠[灼伤]但不承受灼伤伤害',
     init() { return {}; },
     turnStart(eng, ch) {},

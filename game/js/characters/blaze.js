@@ -3,7 +3,7 @@
   C.register({
     name: 'Blaze',
     hp: 65,
-    type: '狂战',
+    type: '火法',
     passive: '当你[灼伤]时，你的⚔️阶段的所有攻击+1🗡️（参与🛡️的计算），该伤害加成不能叠加',
     init() { return {}; },
     turnStart(eng, ch) {},

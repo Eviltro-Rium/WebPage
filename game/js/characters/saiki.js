@@ -3,7 +3,7 @@
   C.register({
     name: 'Saiki',
     hp: 60,
-    type: '猎手',
+    type: '刺客',
     passive: '进攻打出有效黄色牌时，防御结算后施加1层流血',
     init() { return {}; },
     turnStart(eng, ch) {},

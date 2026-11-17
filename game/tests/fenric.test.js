@@ -63,16 +63,20 @@ test('Fenric attack 3 red gains harden', () => {
   assert.equal(eng.s.player.harden, 1);
 });
 
-test('Fenric attack 0 is unblockable with harden', () => {
+test('Fenric attack 0 is unblockable only with 2 harden stacks', () => {
   const eng = new Engine();
   eng.start('Fenric', 'Ryan');
-  eng.s.player.harden = 1;
   const mod = CharacterRegistry.get('Fenric');
   const card = number(0, 'RED');
-  const r = mod.effect(eng, 0, card, eng.s.player, eng.s.ai, 'player', fenricHelpers(eng));
-  assert.equal(r.d, 4);
+  eng.s.player.harden = 1;
+  const one = mod.effect(eng, 0, card, eng.s.player, eng.s.ai, 'player', fenricHelpers(eng));
+  assert.equal(one.unblock, false);
+  eng.s.player.guard = 0;
+  eng.s.player.harden = 2;
+  const two = mod.effect(eng, 0, card, eng.s.player, eng.s.ai, 'player', fenricHelpers(eng));
+  assert.equal(two.d, 4);
   assert.equal(eng.s.player.guard, 2);
-  assert.equal(r.unblock, true);
+  assert.equal(two.unblock, true);
 });
 
 test('Fenric defend 1 blocks half and applies hypothermia', () => {
