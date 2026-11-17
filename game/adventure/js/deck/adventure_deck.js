@@ -3,7 +3,7 @@
  *
  * 与主引擎的差异：
  *   - 玩家牌库去掉「交换手牌」道具牌（swapHand）。
- *   - 普通怪物与 Boss 使用同一牌库：白0×2、白1/2×6、白3/4×4、白5（轮空）×2，紫/绿魔法各一张。
+ *   - 普通怪物与 Boss 使用同一牌库：白0×2、白1/2×6、白3/4×4、白5（轮空）×2、白双抽×2，紫/绿魔法各一张。
  *   - 弃牌库拆分为不可见的玩家弃牌库与 NPC 弃牌库，互不混淆。
  *   - 弃牌库顶（DiscardTop）始终对应玩家弃牌库中的最后一张牌；它只是牌库数据的便捷视图，不会额外占用一张牌。
  *   - 怪物手牌上限2张且明牌展示；Boss 手牌上限3张。
@@ -113,6 +113,7 @@
     for (let v = 1; v <= 2; v++) for (let n = 0; n < 6; n++) d.push(num('WHITE', v, true, npc));
     for (let v = 3; v <= 4; v++) for (let n = 0; n < 4; n++) d.push(num('WHITE', v, true, npc));
     for (let i = 0; i < 2; i++) d.push(num('WHITE', 5, true, npc));
+    for (let i = 0; i < 2; i++) d.push(item('WHITE', 'drawTwo', npc));
     // Purple magic is the original magic card; green magic cleanses the caster.
     d.push(item('WHITE', 'magic', npc));
     d.push(item('WHITE', 'greenMagic', npc));

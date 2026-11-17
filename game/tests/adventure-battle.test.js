@@ -341,9 +341,14 @@ test('NPC decks include two white 5 pass cards with no skill effect', () => {
   const bossDeck = context.AdventureDeck.makeNpcDeck({ whiteZeros: 2 });
   assert.equal(bossDeck.filter(c => c.isNumberCard && c.isWhite && c.value === 5).length, 2);
   assert.equal(bossDeck.filter(c => c.isNumberCard && c.isWhite && c.value === 0).length, 2);
-  assert.equal(deck.length, 26);
-  assert.deepEqual(Array.from(deck, c => c.magic ? 'purple' : c.greenMagic ? 'green' : c.value).sort(),
-    Array.from(bossDeck, c => c.magic ? 'purple' : c.greenMagic ? 'green' : c.value).sort());
+  const drawTwos = deck.filter(c => c.drawTwo && c.npcCard);
+  assert.equal(drawTwos.length, 2);
+  assert.ok(drawTwos.every(c => c.isItemCard && c.isWhite));
+  assert.equal(deck.length, 28);
+  const deckKind = c => (c.magic || c.magicColor === 'purple' ? 'purple'
+    : (c.greenMagic || c.magicColor === 'green' ? 'green' : (c.drawTwo ? 'drawTwo' : String(c.value))));
+  assert.deepEqual(Array.from(deck, deckKind).sort(),
+    Array.from(bossDeck, deckKind).sort());
 
   const engine = new AdventureBattleEngine();
   engine.startAdventure({
@@ -514,8 +519,8 @@ test('battle startup preserves the player pile and gives the NPC its own two-car
   // discardTop is mirrored as the newest card in the owner's discard pile.
   assert.deepEqual(Array.from(engine.piles.player.discard, card => card.value), [6, 2]);
   assert.equal(engine.h.ai.length, 2);
-  // NPC deck: 白0×2 + 白1~2各6 + 白3~4各4 + 白5×2 + 紫/绿魔法 = 26，开局后剩 24。
-  assert.equal(engine.piles.ai.deck.length, 24);
+  // NPC deck: 白0×2 + 白1~2各6 + 白3~4各4 + 白5×2 + 白双抽×2 + 紫/绿魔法 = 28，开局后剩 26。
+  assert.equal(engine.piles.ai.deck.length, 26);
   assert.equal(engine.s.player.hp, 74);
   assert.equal(engine.s.player.burn, 1);
   assert.equal(engine.s.player.guard, 2);

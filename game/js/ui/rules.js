@@ -150,9 +150,10 @@
       ['白 5', '2 张', '普通怪物和场景Boss无效果；堕落Ryan例外，详见图鉴。', [npcCard(num('WHITE',5,true))]],
       ['白 0', '2 张', '普通怪物通常无效果；Boss 和日光鬣蜥有专属技能。', [npcCard(num('WHITE',0,true))]],
       ['紫魔法', '1 张', '回复3点生命，清除对手可清除的正面状态。', [npcCard(item('WHITE','magic'))]],
-      ['绿魔法', '1 张', '回复3点生命，清除自身可清除的负面状态。', [npcCard(item('WHITE','greenMagic'))]]
+      ['绿魔法', '1 张', '回复3点生命，清除自身可清除的负面状态。', [npcCard(item('WHITE','greenMagic'))]],
+      ['白 双抽', '2 张', '指定颜色，抽2张牌，可搭桥继续出牌。', [npcCard(item('WHITE','drawTwo'))]]
     ];
-    html += '<h3 class="rules-section-title">怪物牌组 · 共26张</h3><p class="rules-table-note">普通怪物与Boss使用相同的牌组构成，牌面带紫色标识。Boss魔法回复5点生命。防御优先打魔法牌，再按合法数字牌从大到小出牌。</p><div class="rules-npc-reference">';
+    html += '<h3 class="rules-section-title">怪物牌组 · 共28张</h3><p class="rules-table-note">普通怪物与Boss使用相同的牌组构成，牌面带紫色标识。Boss魔法回复5点生命。防御优先打魔法牌，再按合法数字牌从大到小出牌。</p><div class="rules-npc-reference">';
     for (const [label, count, effect, samples] of npcRows) {
       const id = thumbPlaceholder();
       thumbSlots.push({ id, card: samples[0] });
