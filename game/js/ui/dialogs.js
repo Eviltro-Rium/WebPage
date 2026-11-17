@@ -200,10 +200,11 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
         if (document.getElementById(id)) return;
         const { title = '选择对手手牌', count = 1, decision, confirmLabel = '确认选择', cancelable = false } = options;
         const overlay = document.createElement('div');
-        overlay.id = id; overlay.className = 'dialog-overlay';
+        overlay.id = id;
+        overlay.className = 'dialog-overlay dialog-sheet-overlay';
         if (decision) overlay.dataset.combatDecision = decision;
         const box = document.createElement('div');
-        box.className = 'dialog-box opponent-card-dialog';
+        box.className = 'dialog-box dialog-bottom-sheet opponent-card-dialog';
         box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true');
         box.setAttribute('aria-labelledby', id + '-title');
         const heading = document.createElement('h3');
@@ -288,6 +289,7 @@ ${online ? '            <button id="btn-online-room-overlay">返回房间</butto
             }
         });
         update(); box.append(heading, summary, list, actions); overlay.appendChild(box); document.body.appendChild(overlay);
+        prepareDialogCard(box);
         (buttons[0]?.button || box).focus();
     }
 
@@ -638,8 +640,6 @@ function prepareDialogCard(box) {
         if (!title.id) title.id = 'dialog-heading-' + (window.__dialogHeadingId = (window.__dialogHeadingId || 0) + 1);
         box.setAttribute('aria-labelledby', title.id);
     }
-    // Opponent hand choices are modal and need space to wrap both hands.
-    if (box.classList.contains('opponent-card-dialog')) return;
     const battle = box.ownerDocument.getElementById('game-screen');
     if (!battle || !battle.classList.contains('active') || !box.parentElement) return;
     box.classList.add('dialog-bottom-sheet');

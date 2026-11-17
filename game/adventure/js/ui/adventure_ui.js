@@ -561,10 +561,18 @@
         const buyBtn = e.target.closest('[data-buy-item]');
         const buyItem = buyBtn ? buyBtn.getAttribute('data-buy-item') : null;
         const buyPrice = buyBtn ? parseInt(buyBtn.getAttribute('data-buy-price'), 10) : 0;
+        const shopBuyBtn = e.target.closest('[data-shop-buy]');
+        const shopRefreshBtn = e.target.closest('[data-shop-refresh]');
+        const bsTradeBtn = e.target.closest('[data-blacksmith-trade]');
+        const bsRefreshBtn = e.target.closest('[data-blacksmith-refresh]');
+        const bsTrophyTradeBtn = e.target.closest('[data-blacksmith-trophy-trade]');
+        const bsTrophyRefreshBtn = e.target.closest('[data-blacksmith-trophy-refresh]');
         const shopSlotBtn = e.target.closest('[data-shop-slot]');
-        const shopSlot = shopSlotBtn ? parseInt(shopSlotBtn.getAttribute('data-shop-slot'), 10) : -1;
+        const shopSlot = shopSlotBtn && !e.target.closest('.adv-slot-actions')
+          ? parseInt(shopSlotBtn.getAttribute('data-shop-slot'), 10) : -1;
         const bsSlotBtn = e.target.closest('[data-blacksmith-slot]');
-        const bsSlot = bsSlotBtn ? parseInt(bsSlotBtn.getAttribute('data-blacksmith-slot'), 10) : -1;
+        const bsSlot = bsSlotBtn && !e.target.closest('.adv-slot-actions')
+          ? parseInt(bsSlotBtn.getAttribute('data-blacksmith-slot'), 10) : -1;
         const recycleBtn = e.target.closest('[data-recycle-index]');
         const recycleIndex = recycleBtn ? parseInt(recycleBtn.getAttribute('data-recycle-index'), 10) : -1;
         const itemDiscardBtn = e.target.closest('[data-item-discard]');
@@ -705,9 +713,8 @@
         else if (id === 'adv-next-stage') { this._advanceStage(); }
         else if (id === 'adv-leave-shop') { this.eng.leaveShop(); this.render(); }
         else if (id === 'adv-leave-blacksmith') { this.eng.leaveBlacksmith(); this.render(); }
-        else if (id === 'adv-shop-buy') {
-          const sel = this.eng.s.shopSelectedSlot;
-          if (sel == null) { this._toast('请先选择槽位'); return; }
+        else if (shopBuyBtn) {
+          const sel = parseInt(shopBuyBtn.getAttribute('data-shop-buy'), 10);
           const result = this.eng.buyShopSlot(sel);
           if (!result.ok) {
             if (result.reason === 'beastFull') {
@@ -722,48 +729,55 @@
               this._toast(result.message || '购买失败');
             }
           }
+          this.eng.selectShopSlot(sel);
           this.render();
         }
-        else if (id === 'adv-shop-refresh') {
-          const sel = this.eng.s.shopSelectedSlot;
-          if (sel == null) { this._toast('请先选择槽位'); return; }
+        else if (shopRefreshBtn) {
+          const sel = parseInt(shopRefreshBtn.getAttribute('data-shop-refresh'), 10);
           const result = this.eng.refreshShopSlot(sel);
           if (!result.ok) this._toast(result.message || '刷新失败');
+          this.eng.selectShopSlot(sel);
+          this.render();
+        }
+        else if (bsTradeBtn) {
+          const sel = parseInt(bsTradeBtn.getAttribute('data-blacksmith-trade'), 10);
+          const result = this.eng.buyBlacksmithSlot(sel);
+          if (result && result.needBeastChoice) { this.eng.selectBlacksmithSlot(sel); this.render(); return; }
+          if (result && !result.ok) {
+            if (result.reason === 'accessoryFull') this._showAlertDialog('无法拾取', result.message || '配饰已达上限');
+            else this._toast(result.message || '兑换失败');
+          }
+          this.eng.selectBlacksmithSlot(sel);
+          this.render();
+        }
+        else if (bsRefreshBtn) {
+          const sel = parseInt(bsRefreshBtn.getAttribute('data-blacksmith-refresh'), 10);
+          const result = this.eng.refreshBlacksmithSlot(sel);
+          if (!result.ok) this._toast(result.message || '刷新失败');
+          this.eng.selectBlacksmithSlot(sel);
+          this.render();
+        }
+        else if (bsTrophyTradeBtn) {
+          const sel = parseInt(bsTrophyTradeBtn.getAttribute('data-blacksmith-trophy-trade'), 10);
+          const result = this.eng.buyBlacksmithTrophy(sel);
+          if (result && result.needBeastChoice) {
+            this.eng.s.blacksmithSelectedSlot = sel === 0 ? 'trophy' : 'trophy:' + sel;
+            this.render();
+            return;
+          }
+          if (result && !result.ok) this._toast(result.message || '锻造失败');
+          this.eng.s.blacksmithSelectedSlot = sel === 0 ? 'trophy' : 'trophy:' + sel;
+          this.render();
+        }
+        else if (bsTrophyRefreshBtn) {
+          const sel = parseInt(bsTrophyRefreshBtn.getAttribute('data-blacksmith-trophy-refresh'), 10);
+          const result = this.eng.refreshBlacksmithTrophy(sel);
+          if (!result.ok) this._toast(result.message || '刷新失败');
+          this.eng.s.blacksmithSelectedSlot = sel === 0 ? 'trophy' : 'trophy:' + sel;
           this.render();
         }
         else if (shopSlot >= 0) {
           this.eng.selectShopSlot(shopSlot);
-          this.render();
-        }
-        else if (id === 'adv-blacksmith-trade') {
-          const sel = this.eng.s.blacksmithSelectedSlot;
-          if (sel == null) { this._toast('请先选择槽位'); return; }
-          let result;
-          if (this._blacksmithTrophySlotIndex(sel) >= 0) {
-            result = this.eng.buyBlacksmithTrophy(this._blacksmithTrophySlotIndex(sel));
-          } else {
-            result = this.eng.buyBlacksmithSlot(sel);
-          }
-          if (result && result.needBeastChoice) {
-            this.render();
-            return;
-          }
-          if (result && !result.ok) {
-            if (result.reason === 'accessoryFull') this._showAlertDialog('无法拾取', result.message || '配饰已达上限');
-            else this._toast(result.message || (this._blacksmithTrophySlotIndex(sel) >= 0 ? '锻造失败' : '兑换失败'));
-          }
-          this.render();
-        }
-        else if (id === 'adv-blacksmith-refresh') {
-          const sel = this.eng.s.blacksmithSelectedSlot;
-          if (sel == null) { this._toast('请先选择槽位'); return; }
-          if (this._blacksmithTrophySlotIndex(sel) >= 0) {
-            const result = this.eng.refreshBlacksmithTrophy(this._blacksmithTrophySlotIndex(sel));
-            if (!result.ok) this._toast(result.message || '刷新失败');
-          } else {
-            const result = this.eng.refreshBlacksmithSlot(sel);
-            if (!result.ok) this._toast(result.message || '刷新失败');
-          }
           this.render();
         }
         else if (id === 'adv-boss-claim') {
@@ -778,7 +792,7 @@
           this.eng.returnToMap();
           this.render();
         }
-        else if (e.target.closest('[data-blacksmith-trophy]')) {
+        else if (e.target.closest('[data-blacksmith-trophy]') && !e.target.closest('.adv-slot-actions')) {
           const index = Number(e.target.closest('[data-blacksmith-trophy]').getAttribute('data-blacksmith-trophy'));
           this.eng.s.blacksmithSelectedSlot = index === 0 ? 'trophy' : 'trophy:' + index;
           this.render();

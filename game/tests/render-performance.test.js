@@ -275,11 +275,14 @@ test('blacksmith uses the same slot structure for three accessories and three tr
  ui.eng.refreshBlacksmithTrophy=index=>{refreshed.push(index);snap.roomInfo.blacksmithTrophies[index]=trophy('ZeroTrophy');return {ok:true};};
  ui.render();assert.equal(host.querySelectorAll('[data-blacksmith-slot]').length,3);assert.equal(host.querySelectorAll('[data-blacksmith-trophy]').length,3);
  assert.equal(host.querySelectorAll('.adv-blacksmith-stall').length,2);assert.equal(host.querySelectorAll('.adv-blacksmith-slot .adv-blacksmith-art').length,6);
- host.querySelector('[data-blacksmith-trophy="2"]').click();assert.equal(snap.blacksmithSelectedSlot,'trophy:2');assert.equal(host.querySelector('#adv-blacksmith-trade').disabled,false);
- host.querySelector('#adv-blacksmith-trade').click();assert.deepEqual(bought,[2]);assert.equal(host.querySelector('#adv-blacksmith-trade').disabled,true);
- const first=host.querySelector('[data-blacksmith-trophy="0"] canvas');host.querySelector('#adv-blacksmith-refresh').click();assert.deepEqual(refreshed,[2]);
- assert.equal(host.querySelector('[data-blacksmith-trophy="0"] canvas'),first,'refresh does not replace another slot face');
- host.querySelector('[data-blacksmith-trophy="1"]').click();assert.equal(snap.blacksmithSelectedSlot,'trophy:1');assert.equal(host.querySelector('#adv-blacksmith-trade').disabled,true);assert.equal(host.querySelector('#adv-blacksmith-refresh').disabled,false);
+  host.querySelector('[data-blacksmith-trophy="2"]').click();assert.equal(snap.blacksmithSelectedSlot,'trophy:2');
+  const trophyTrade2=host.querySelector('[data-blacksmith-trophy-trade="2"]');assert.equal(trophyTrade2.disabled,false);
+  trophyTrade2.click();assert.deepEqual(bought,[2]);assert.equal(host.querySelector('[data-blacksmith-trophy-trade="2"]').disabled,true);
+  const first=host.querySelector('[data-blacksmith-trophy="0"] canvas');host.querySelector('[data-blacksmith-trophy-refresh="2"]').click();assert.deepEqual(refreshed,[2]);
+  assert.equal(host.querySelector('[data-blacksmith-trophy="0"] canvas'),first,'refresh does not replace another slot face');
+  host.querySelector('[data-blacksmith-trophy="1"]').click();assert.equal(snap.blacksmithSelectedSlot,'trophy:1');
+  assert.equal(host.querySelector('[data-blacksmith-trophy-trade="1"]').disabled,true);
+  assert.equal(host.querySelector('[data-blacksmith-trophy-refresh="1"]').disabled,false);
 });
 
 test('room inventory expansion survives selection and page updates',t=>{

@@ -853,14 +853,51 @@
   gap: 10px;
   flex: 1;
 }
+.adv-shop-slot-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+.adv-shop-slot-body:focus-visible {
+  outline: 2px solid #c4b5fd;
+  outline-offset: 2px;
+}
+.adv-slot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 8px;
+}
+.adv-slot-actions .adv-btn {
+  flex: 1 1 7.5rem;
+  min-height: 40px;
+  padding: 6px 8px;
+  font-size: .72rem;
+  line-height: 1.25;
+}
+.adv-slot-actions .adv-gold-price-token { font-size: inherit; }
 .adv-shop-slot {
   min-height: 140px; padding: 12px 10px;
   border-radius: 10px;
   border: 2px solid rgba(168, 85, 247, 0.25);
   background: #28213b;
   color: #e8e8f0;
-  cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: default;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
   gap: 6px; text-align: center;
   font-family: inherit;
   transition: border-color 0.12s, box-shadow 0.12s, background 0.12s;
@@ -942,6 +979,14 @@
 .adv-recycle-empty { font-size: 0.8rem; color: rgba(255,255,255,0.4); text-align: center; padding: 6px; }
 .adv-shop-page-actions {
   display: flex; flex-wrap: wrap; gap: 8px;
+}
+.adv-shop-page-actions.adv-shop-page-actions--solo {
+  justify-content: center;
+  margin-top: 8px;
+}
+.adv-shop-page-actions.adv-shop-page-actions--solo .adv-btn {
+  flex: 0 1 auto;
+  min-width: min(240px, 100%);
 }
 .adv-shop-page-actions .adv-btn:disabled { background: #273241;
   opacity: 1; cursor: not-allowed;

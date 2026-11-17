@@ -366,7 +366,6 @@
       page.className = 'adv-shop-page';
       const slots = (snap.roomInfo && snap.roomInfo.shopSlots) || [null, null, null, null, null, null];
       const selected = snap.shopSelectedSlot;
-      const gold = snap.currency.gold;
     
       let slotsHtml = '';
       for (let i = 0; i < 6; i++) {
@@ -377,42 +376,36 @@
         let slotCls = '';
         if (isBeastSlot) slotCls += ' adv-shop-slot-beast';
         if (isAccessorySlot) slotCls += ' adv-shop-slot-accessory';
+        const tag = isBeastSlot ? '兽元' : (isAccessorySlot ? '配饰' : '道具');
+        const bodyStart = '<div class="adv-shop-slot' + (item ? ' filled' : ' empty') + slotCls + (isSel ? ' selected' : '') + '" data-shop-slot="' + i + '">' +
+          '<button type="button" class="adv-shop-slot-body" title="' + (item && item.description ? String(item.description).replace(/"/g, '&quot;') : '') + '">';
         if (item) {
           const price = item.price || 0;
-          const tag = isBeastSlot ? '兽元' : (isAccessorySlot ? '配饰' : '道具');
           const icon = item.icon ? '<img class="adv-shop-slot-icon" src="' + item.icon + '" alt="">' : '';
-          slotsHtml += '<button type="button" class="adv-shop-slot filled' + slotCls + (isSel ? ' selected' : '') + '" data-shop-slot="' + i + '" title="' + (item.description || '') + '">' +
+          slotsHtml += bodyStart +
             (tag ? '<div class="adv-shop-slot-tag">' + tag + '</div>' : '') +
             icon +
             '<div class="adv-shop-slot-name">' + item.displayName + '</div>' +
             '<div class="adv-shop-slot-desc">' + (item.description || '') + '</div>' +
             '<div class="adv-shop-slot-price">' + this._goldPriceHtml(price) + '</div>' +
-            '</button>';
+            '</button>' + this._shopSlotActions(i, snap, slots) + '</div>';
         } else {
-          const tag = isBeastSlot ? '兽元' : (isAccessorySlot ? '配饰' : '道具');
-          slotsHtml += '<button type="button" class="adv-shop-slot empty' + slotCls + (isSel ? ' selected' : '') + '" data-shop-slot="' + i + '">' +
+          slotsHtml += bodyStart +
             (tag ? '<div class="adv-shop-slot-tag">' + tag + '</div>' : '') +
             '<div class="adv-shop-slot-empty-label">sold-out</div>' +
             (isAccessorySlot ? '<div class="adv-shop-slot-hint">刷新可补货</div>' : '') +
-            '</button>';
+            '</button>' + this._shopSlotActions(i, snap, slots) + '</div>';
         }
       }
     
       const canBuy = selected != null && slots[selected];
-      const selectedPrice = canBuy ? (slots[selected].price || 0) : 0;
-      const isBeastSelected = selected === 3 || selected === 4;
-      const canRefresh = selected != null && !isBeastSelected;
-      const refreshCost = 2;
-      const buyLabel = canBuy ? ('购买 · ' + this._goldPriceHtml(selectedPrice)) : '购买';
     
       page.innerHTML =
         this._shopkeeperHeader('商店', 'shopkeeper.webp') +
         '<div class="adv-shop-slots">' + slotsHtml + '</div>' +
         this._mobileOfferDescription(canBuy ? slots[selected] : null) +
         '<div class="adv-shop-page-hint">前3槽道具、第6槽配饰（刷新2金币，配饰15金币），第4–5槽兽元（普通2/万能4，不可刷新）。战利白卡不在商店出售，可从怪物掉落或铁匠铺获得。</div>' +
-        '<div class="adv-shop-page-actions">' +
-          '<button class="adv-btn adv-btn-primary" id="adv-shop-buy"' + (canBuy && gold >= selectedPrice ? '' : ' disabled') + '>' + buyLabel + '</button>' +
-          '<button class="adv-btn" id="adv-shop-refresh"' + (canRefresh && gold >= refreshCost ? '' : ' disabled') + '>刷新 · ' + this._goldPriceHtml(refreshCost) + '</button>' +
+        '<div class="adv-shop-page-actions adv-shop-page-actions--solo">' +
           '<button class="adv-btn" id="adv-leave-shop">离开商店</button>' +
         '</div>';
       this._mountTrophyCards(page);
@@ -425,6 +418,42 @@
         '<span class="adv-gold-price-count">' + n + '</span>' +
         '<img class="adv-gold-price-icon" src="' + AC.GOLD_ICON + '" alt="金币">' +
         '</span>';
+    }
+
+    _shopSlotActions(index, snap, slots) {
+      const gold = snap.currency.gold;
+      const refreshCost = 2;
+      const isBeastSlot = index === 3 || index === 4;
+      const item = slots[index];
+      const price = item ? (item.price || 0) : 0;
+      const canBuy = !!item && gold >= price;
+      const canRefresh = !isBeastSlot && gold >= refreshCost;
+      const buyInner = item ? ('购买 · ' + this._goldPriceHtml(price)) : '购买';
+      let html = '<div class="adv-slot-actions">' +
+        '<button type="button" class="adv-btn adv-btn-primary adv-slot-buy" data-shop-buy="' + index + '"' + (canBuy ? '' : ' disabled') + '>' + buyInner + '</button>';
+      if (!isBeastSlot) {
+        html += '<button type="button" class="adv-btn adv-slot-refresh" data-shop-refresh="' + index + '"' + (canRefresh ? '' : ' disabled') + '>刷新 · ' + this._goldPriceHtml(refreshCost) + '</button>';
+      }
+      return html + '</div>';
+    }
+
+    _blacksmithSlotActions(index, snap, slots, isTrophy) {
+      const gold = snap.currency.gold;
+      const refreshCost = 2;
+      const item = isTrophy ? ((snap.roomInfo && snap.roomInfo.blacksmithTrophies) || [])[index] : slots[index];
+      const canPay = isTrophy
+        ? (snap.blacksmithCanPay && (Array.isArray(snap.blacksmithCanPay.trophies)
+          ? snap.blacksmithCanPay.trophies[index] : index === 0 && snap.blacksmithCanPay.trophy))
+        : !!(snap.blacksmithCanPay && snap.blacksmithCanPay.slots[index]);
+      const tradeLabel = isTrophy ? '锻造' : '兑换';
+      const tradeAttr = isTrophy ? 'data-blacksmith-trophy-trade' : 'data-blacksmith-trade';
+      const refreshAttr = isTrophy ? 'data-blacksmith-trophy-refresh' : 'data-blacksmith-refresh';
+      const canTrade = !!item && canPay;
+      const canRefresh = gold >= refreshCost;
+      return '<div class="adv-slot-actions">' +
+        '<button type="button" class="adv-btn adv-btn-primary adv-slot-trade" ' + tradeAttr + '="' + index + '"' + (canTrade ? '' : ' disabled') + '>' + tradeLabel + '</button>' +
+        '<button type="button" class="adv-btn adv-slot-refresh" ' + refreshAttr + '="' + index + '"' + (canRefresh ? '' : ' disabled') + '>刷新 · ' + this._goldPriceHtml(refreshCost) + '</button>' +
+        '</div>';
     }
 
     _beastCostIconsHtml(beastCost) {
@@ -446,7 +475,6 @@
       page.className = 'adv-shop-page adv-blacksmith-page';
       const slots = (snap.roomInfo && snap.roomInfo.blacksmithSlots) || [null, null, null];
       const selected = snap.blacksmithSelectedSlot;
-      const gold = snap.currency.gold;
     
       const trophies = (snap.roomInfo && snap.roomInfo.blacksmithTrophies) || [snap.roomInfo && snap.roomInfo.blacksmithTrophy, null, null];
       const trophyIndex = this._blacksmithTrophySlotIndex(selected);
@@ -458,21 +486,18 @@
           (item ? ' filled' : ' empty') + (isSel ? ' selected' : '');
         const art = item && (isTrophy ? this._trophyCardMarkup(item.name, 54, 78) :
           item.icon ? '<img class="adv-shop-slot-icon" src="' + item.icon + '" alt="">' : '');
-        return '<button type="button" class="' + classes + '" ' + attr + '="' + index + '" title="' + (item && item.description || '') + '">' +
+        const body = '<button type="button" class="adv-shop-slot-body" title="' + (item && item.description ? String(item.description).replace(/"/g, '&quot;') : '') + '">' +
           '<div class="adv-shop-slot-tag">' + category + '</div>' +
           '<div class="adv-blacksmith-art">' + (art || '<span class="adv-shop-slot-empty-label">已售罄</span>') + '</div>' +
           '<div class="adv-shop-slot-name">' + (item ? item.displayName : '空槽位') + '</div>' +
           '<div class="adv-shop-slot-desc">' + (item ? item.description || '' : '刷新此槽可重新进货') + '</div>' +
           '<div class="adv-shop-slot-trade">' + (item ? this._beastCostIconsHtml(item.beastCost) ||
             '' : this._goldPriceHtml(2) + '<span class="adv-shop-slot-trade-empty-label">刷新</span>') + '</div></button>';
+        return '<div class="' + classes + '" ' + attr + '="' + index + '">' + body +
+          this._blacksmithSlotActions(index, snap, slots, isTrophy) + '</div>';
       };
       const slotsHtml = Array.from({length:3}, (_, i) => offer(slots[i], i, false)).join('');
       const trophyHtml = Array.from({length:3}, (_, i) => offer(trophies[i], i, true)).join('');
-      const canTrade = Number.isInteger(selected) && !!slots[selected];
-      const canPayTrade = canTrade && !!(snap.blacksmithCanPay && snap.blacksmithCanPay.slots[selected]);
-      const canRefresh = Number.isInteger(selected) || trophyIndex >= 0;
-      const refreshCost = 2;
-    
       const accessories = snap.accessories || [];
       let recycleHtml = '<div class="adv-recycle-section"><div class="adv-recycle-title">回收配饰（+10金币/件）</div>';
       if (accessories.length) {
@@ -497,10 +522,6 @@
       recycleHtml += '</div>';
     
       const isTrophySelected = trophyIndex >= 0;
-      const tradeLabel = isTrophySelected ? '锻造' : '兑换';
-      const canPayTrophy = snap.blacksmithCanPay && (Array.isArray(snap.blacksmithCanPay.trophies)
-        ? snap.blacksmithCanPay.trophies[trophyIndex] : trophyIndex === 0 && snap.blacksmithCanPay.trophy);
-      const tradeEnabled = isTrophySelected ? !!trophies[trophyIndex] && canPayTrophy : canPayTrade;
 
       page.innerHTML =
         this._shopkeeperHeader('铁匠铺', 'blacksmith.webp') +
@@ -508,9 +529,7 @@
         '<section class="adv-blacksmith-stall adv-blacksmith-trophy-stall"><div class="adv-blacksmith-stall-title">白卡锻造</div><div class="adv-shop-slots adv-blacksmith-slots">' + trophyHtml + '</div></section>' +
         this._mobileOfferDescription(isTrophySelected ? trophies[trophyIndex] : slots[selected]) +
         recycleHtml +
-        '<div class="adv-shop-page-actions">' +
-          '<button class="adv-btn adv-btn-primary" id="adv-blacksmith-trade"' + (tradeEnabled ? '' : ' disabled') + '>' + tradeLabel + '</button>' +
-          '<button class="adv-btn" id="adv-blacksmith-refresh"' + (canRefresh && gold >= refreshCost ? '' : ' disabled') + '>刷新 · ' + this._goldPriceHtml(refreshCost) + '</button>' +
+        '<div class="adv-shop-page-actions adv-shop-page-actions--solo">' +
           '<button class="adv-btn" id="adv-leave-blacksmith">离开铁匠铺</button>' +
         '</div>';
       this._mountTrophyCards(page);

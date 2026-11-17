@@ -1892,6 +1892,35 @@ body.combat-sheet-open::after {
     text-align: left;
     background: #152638;
 }
+.dialog-box.dialog-bottom-sheet.opponent-card-dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    align-content: stretch;
+    gap: 10px;
+    max-height: min(82vh, calc(100vh - 16px));
+    max-height: min(82dvh, calc(100dvh - 16px));
+    background: linear-gradient(145deg, rgba(8,22,38,.94), rgba(12,39,49,.92));
+}
+.dialog-box.dialog-bottom-sheet.opponent-card-dialog > h3,
+.dialog-box.dialog-bottom-sheet.opponent-card-dialog > .opponent-card-summary {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+}
+.dialog-box.dialog-bottom-sheet.opponent-card-dialog > .opponent-card-groups {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 96px;
+    max-height: min(52vh, 420px);
+}
+.dialog-box.dialog-bottom-sheet.opponent-card-dialog > .dialog-buttons {
+    flex: 0 0 100%;
+    width: 100%;
+    margin-top: 4px;
+}
 .opponent-card-dialog h3 { margin: 0 0 4px; }
 .opponent-card-summary { margin: 0 0 12px; color: #cbd5e1; font-variant-numeric: tabular-nums; }
 .opponent-card-groups { min-height: 0; overflow-y: auto; display: grid; gap: 12px; padding: 4px; }

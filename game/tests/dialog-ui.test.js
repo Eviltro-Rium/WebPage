@@ -257,6 +257,8 @@ test('Leon AOE dialog selects across both opponent hands and submits exactly two
  const pending={count:2,groups:[{key:'ai',label:'对手 I',cards:[{value:0},{value:2}]},{key:'ai2',label:'对手 II',cards:[{value:3},{value:4}]}]};
  const submit=p=>{calls++;payload=p;return new Promise(resolve=>finish=resolve);};
  dialogs.showOpponentCardChoice(pending.groups, cards => submit({ cards }), {count:pending.count,decision:'leonZeroDiscard'});const overlay=w.document.getElementById('opponent-card-choice-dialog');
+ assert.ok(overlay.classList.contains('dialog-sheet-overlay'));
+ assert.ok(overlay.querySelector('.dialog-bottom-sheet.opponent-card-dialog'));
  const buttons=[...overlay.querySelectorAll('.card-choice')],confirm=overlay.querySelector('.btn-play');
  assert.equal(buttons.length,4);assert.equal(buttons[0].textContent,'0');assert.equal(confirm.disabled,true);
  buttons[0].click();buttons[3].click();assert.equal(confirm.disabled,false);assert.equal(buttons[1].disabled,true);
