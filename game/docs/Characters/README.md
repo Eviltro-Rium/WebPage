@@ -4,6 +4,7 @@
 
 - [Blaze](Blaze.md)
 - [Chan](Chan.md)
+- [Fenric](Fenric.md)
 - [K-night](K-night.md)
 - [Leon](Leon.md)
 - [Moze](Moze.md)

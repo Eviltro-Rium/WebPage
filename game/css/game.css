@@ -4059,7 +4059,12 @@ body.combat-sheet-open #controls .ctrl-btn { cursor: not-allowed; }
 #game-screen .hp-bar-inner { background: #429b70; }
 #game-screen .hp-bar-inner.low { background: #b4893c; }
 #game-screen .hp-bar-inner.critical { background: #bf5c54; }
-#game-screen .hp-text { text-shadow: none; background: #12231c; padding-inline: 5px; border-radius: 4px; }
+#game-screen .hp-text {
+    background: transparent;
+    padding-inline: 0;
+    border-radius: 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 1px rgba(0, 0, 0, 0.9);
+}
 #game-screen .ctrl-btn:not(.color-btn) { background: var(--ui-raised); border-color: var(--ui-border); color: var(--text-main); }
 #game-screen .ctrl-btn:is(.btn-play, .btn-defend):not(:disabled),
 .dialog-box .choice-primary, .opponent-card-dialog .btn-play:not(:disabled) {

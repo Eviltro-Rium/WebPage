@@ -73,7 +73,7 @@
 - `game/docs/`：规则、架构、角色、冒险、在线文档。
 - `game/tests/`：Node 内置 `node:test` 测试。
 - `game/scripts/`：统一检查和静态脚本加载顺序校验。
-- 当前版本标识在 `game/js/version.js`（`3.4`，`IS_TEST = true`）。
+- 当前版本标识在 `game/js/version.js`（`3.5`，`IS_TEST = true`）。
 
 ## 3. 仓库地图
 

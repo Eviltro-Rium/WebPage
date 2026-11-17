@@ -167,6 +167,7 @@ test('Vixraps attack 5 applies burn and scales damage with burn stacks', () => {
   assert.equal(r.d, 6);
   eng.commitAttackStatuses('beforeDamage');
   assert.equal(eng.s.ai.burn, 3);
+  assert.equal(!!eng.s.ai.scorch, true);
 });
 
 test('Vixraps attack 0 applies hypnosis to the main target only', () => {

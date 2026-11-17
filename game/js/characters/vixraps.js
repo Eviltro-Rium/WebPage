@@ -42,6 +42,12 @@
         d = t.burn || 0;
       } else if (v === 5) {
         burn(2);
+        if (typeof eng.setScorch === 'function') eng.setScorch(t, true, { silent: true });
+        else {
+          const service = window.FurryGame && window.FurryGame.StatusService;
+          if (service) service.set(t, 'scorch', 1);
+          else t.scorch = true;
+        }
         d = (t.burn || 0) * 2;
       } else if (v === 0) {
         immediateBuffs = true;

@@ -270,8 +270,11 @@ test('settlement rewards and inventory share a single card across all reward sta
       Object.assign(engine.s, { phase, pendingCombatReward, pendingDiscard: 1, pendingItemDiscard: 1 });
       assert.equal(w.AdventureBattleController.resumeSettlement(engine), true);
       assertSingleCard(document);
-      assert.match(document.querySelector('.adv-settle-sidebar').textContent, /金币 ×12/);
-      assert.match(document.querySelector('.adv-settle-sidebar').textContent, /闪避/);
+      const sidebar = document.querySelector('.adv-settle-sidebar');
+      assert.match(sidebar.textContent, /战利白卡/);
+      assert.match(sidebar.textContent, /守护战利白卡/);
+      assert.doesNotMatch(sidebar.textContent, /金币 ×12/);
+      assert.doesNotMatch(sidebar.textContent, /闪避/);
     }
   } finally { dom.window.close(); }
 });

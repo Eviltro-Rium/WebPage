@@ -468,62 +468,60 @@
     return '<div class="adv-settle-row">无奖励</div>';
   }
 
-  function sidebarItemHtml(item) {
-    const icon = item.icon
-      ? '<img src="' + item.icon + '" class="adv-sidebar-icon" alt="">'
-      : '<span class="adv-sidebar-noicon"></span>';
-    return '<div class="adv-sidebar-item" title="' + (item.description || '') + '">' +
-      icon + '<span class="adv-sidebar-item-name">' + item.displayName + '</span></div>';
+  function trophyCardPlaceholder(name, black, width, height) {
+    return '<span class="adv-scene-trophy-card" data-trophy-card="' + name + '" data-trophy-black="' + (black ? '1' : '0') + '"' +
+      ' data-trophy-card-width="' + width + '" data-trophy-card-height="' + height + '"></span>';
+  }
+
+  function mountSettleTrophyCards(root) {
+    if (!root || !window.renderCard || !window.AdventureDeck) return;
+    root.querySelectorAll('.adv-settle-sidebar [data-trophy-card]').forEach(slot => {
+      const card = window.AdventureDeck.trophyWhite(slot.getAttribute('data-trophy-card'));
+      if (!card) return;
+      if (slot.getAttribute('data-trophy-black') === '1') window.AdventureDeck.upgradeTrophy(card);
+      const width = Number(slot.getAttribute('data-trophy-card-width')) || 36;
+      const height = Number(slot.getAttribute('data-trophy-card-height')) || 52;
+      const canvas = window.renderCard(card, width, height, false);
+      canvas.classList.add('adv-scene-trophy-card-canvas', 'adv-sidebar-icon');
+      canvas.dataset.renderKey = ['trophy', card.trophyName, card.trophyBlack ? 'black' : 'white', width, height, window.CardStyle && window.CardStyle.iconRevision || 0].join(':');
+      slot.replaceWith(canvas);
+    });
+  }
+
+  function sidebarTrophyItemHtml(item) {
+    const tip = String(item.description || '').replace(/"/g, '&quot;');
+    const label = item.displayName + (item.count > 1 ? ' ×' + item.count : '');
+    return '<div class="adv-sidebar-item adv-sidebar-trophy-item" title="' + tip + '">' +
+      trophyCardPlaceholder(item.name, !!item.trophyBlack, 36, 52) +
+      '<span class="adv-sidebar-item-name">' + label + '</span></div>';
   }
 
   function buildSidebarHtml(snap) {
-    const AC = window.AdventureCurrency;
-    const cur = snap.currency || {};
-    const tokens = cur.tokens || {};
-    const goldIcon = AC && AC.GOLD_ICON ? '<img src="' + AC.GOLD_ICON + '" class="adv-sidebar-icon" alt="金币">' : '';
-    let html = '<div class="adv-settle-sidebar" tabindex="0" role="region" aria-label="当前持有的资源">';
+    const cards = snap.trophyWhiteCards || [];
+    let html = '<div class="adv-settle-sidebar" tabindex="0" role="region" aria-label="当前持有的战利白卡">';
     html += '<div class="adv-sidebar-title">当前持有</div>';
-
     html += '<div class="adv-sidebar-section">';
-    html += '<div class="adv-sidebar-subtitle">货币</div>';
-    html += '<div class="adv-sidebar-row">' + goldIcon + '<span>金币 ×' + (cur.gold || 0) + '</span></div>';
-    (AC.ALL_BEAST_TYPES || []).forEach(k => {
-      const cnt = tokens[k] || 0;
-      if (cnt <= 0) return;
-      const icon = AC.BEAST_ICON[k] ? '<img src="' + AC.BEAST_ICON[k] + '" class="adv-sidebar-icon" alt="' + AC.BEAST_LABEL[k] + '">' : '';
-      html += '<div class="adv-sidebar-row">' + icon + '<span>' + AC.BEAST_LABEL[k] + ' ×' + cnt + '</span></div>';
-    });
-    html += '</div>';
-
-    const consumables = snap.consumables || [];
-    if (consumables.length) {
-      html += '<div class="adv-sidebar-section">';
-      html += '<div class="adv-sidebar-subtitle">道具 (' + consumables.length + '/' + (snap.consumableSlots || 6) + ')</div>';
-      consumables.forEach(it => { html += sidebarItemHtml(it); });
-      html += '</div>';
-    }
-
-    const accessories = snap.accessories || [];
-    if (accessories.length) {
+    html += '<div class="adv-sidebar-subtitle">战利白卡 (' + cards.length + ')</div>';
+    if (!cards.length) {
+      html += '<div class="adv-sidebar-empty">暂无战利白卡</div>';
+    } else {
       const grouped = {};
       const order = [];
-      accessories.forEach(it => {
+      cards.forEach(it => {
         if (!it || !it.name) return;
-        if (!grouped[it.name]) { grouped[it.name] = { item: it, count: 0 }; order.push(it.name); }
-        grouped[it.name].count++;
+        const key = it.name + (it.trophyBlack ? ':black' : ':white');
+        if (!grouped[key]) {
+          grouped[key] = { item: it, count: 0 };
+          order.push(key);
+        }
+        grouped[key].count++;
       });
-      html += '<div class="adv-sidebar-section">';
-      html += '<div class="adv-sidebar-subtitle">配饰 (' + accessories.length + ')</div>';
-      order.forEach(name => {
-        const g = grouped[name];
-        const it = Object.assign({}, g.item, {
-          displayName: g.item.displayName + (g.count > 1 ? ' ×' + g.count : '')
-        });
-        html += sidebarItemHtml(it);
+      order.forEach(key => {
+        const g = grouped[key];
+        html += sidebarTrophyItemHtml(Object.assign({}, g.item, { count: g.count }));
       });
-      html += '</div>';
     }
-
+    html += '</div>';
     html += '</div>';
     return html;
   }
@@ -653,6 +651,7 @@
     const dom = window.FurryGame && window.FurryGame.RenderDOM;
     if (dom) dom.patchMarkup(overlay, html);
     else overlay.innerHTML = html;
+    mountSettleTrophyCards(overlay);
     bindSettleEvents(overlay, eng, leave);
   }
 

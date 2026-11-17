@@ -7,8 +7,8 @@
     <title>地牢冒险 · Furry Trial</title>
     <link rel="icon" href="../../favicon-ryan.webp" type="image/webp">
     <link rel="apple-touch-icon" href="../../favicon-ryan.webp">
-    <link rel="stylesheet" href="../css/game.css?v=20261117-ui-palette">
-    <link rel="stylesheet" href="css/adventure.css?v=20261117-ui-palette">
+    <link rel="stylesheet" href="../css/game.css?v=20261117-battle-hp-text">
+    <link rel="stylesheet" href="css/adventure.css?v=20261117-settle-trophy-sidebar">
     <style>
         /* Keep the initial/test screens on the shared game-home background.
            Adventure scene artwork is assigned only when a real map starts. */
@@ -44,7 +44,8 @@
     <script src="../js/characters/moze.js?v=20261115-character-rules"></script>
     <script src="../js/characters/knight.js?v=20261116-npc-settlement-order"></script>
     <script src="../js/characters/otto.js?v=20261116-defense-effect-order"></script>
-    <script src="../js/characters/vixraps.js?v=20261116-defense-effect-order"></script>
+    <script src="../js/characters/vixraps.js?v=20261117-vixraps-5-scorch"></script>
+    <script src="../js/characters/fenric.js?v=20261117-fenric"></script>
     <script src="../js/ai/registry.js?v=20261101-overall-repair"></script>
     <script src="../js/ai/knight_ai.js?v=20261115-character-rules"></script>
     <script src="../js/ai/leon_ai.js?v=20261115-character-rules"></script>
@@ -56,6 +57,7 @@
     <script src="../js/ai/chan_ai.js?v=20261115-character-rules"></script>
     <script src="../js/ai/otto_ai.js?v=20261115-ryan-otto-skill"></script>
     <script src="../js/ai/vixraps_ai.js?v=20261115-character-rules"></script>
+    <script src="../js/ai/fenric_ai.js?v=20261117-fenric"></script>
     <script src="../js/combat/protocol.js?v=20261101-overall-repair"></script>
     <script src="../js/combat/runtime.js?v=20261101-overall-repair"></script>
     <script src="../js/combat/events.js?v=20261101-overall-repair"></script>
@@ -69,28 +71,28 @@
     <script src="../js/combat/damage.js?v=20261101-overall-repair"></script>
     <script src="../js/combat/modes.js?v=20261101-overall-repair"></script>
     <script src="../js/combat/deck_port.js?v=20261101-overall-repair"></script>
-    <script src="../js/combat/turn_machine.js?v=20261101-overall-repair"></script>
+    <script src="../js/combat/turn_machine.js?v=20261117-dryad-magic-transfer"></script>
     <script src="../js/combat/dice.js?v=20261101-overall-repair"></script>
     <script src="../js/combat/card_effects.js?v=20261101-overall-repair"></script>
     <script src="../js/combat/opponent_hand_policy.js?v=20261115-deck-skills"></script>
     <script src="../js/combat/attack_buffs.js?v=20261101-overall-repair"></script>
-    <script src="../js/combat/engine.js?v=20261116-npc-stage"></script>
+    <script src="../js/combat/engine.js?v=20261117-fenric"></script>
     <script src="../js/combat/engine_1v2.js?v=20261116-npc-defense-order"></script>
-    <script src="../js/combat/engine_1v2_adapter.js?v=20261101-overall-repair"></script>
+    <script src="../js/combat/engine_1v2_adapter.js?v=20261117-chameleon-target"></script>
     <script src="../js/combat/engine_turns.js?v=20261101-overall-repair"></script>
-    <script src="../js/combat/engine_attack.js?v=20261116-npc-stage"></script>
+    <script src="../js/combat/engine_attack.js?v=20261117-dryad-magic-transfer"></script>
     <script src="../js/combat/engine_ai.js?v=20261101-overall-repair"></script>
     <script src="../js/combat/engine_snapshot.js?v=20261101-overall-repair"></script>
     <script src="../js/combat/engine_lord.js?v=20261101-overall-repair"></script>
     <script src="../js/combat/bridge.js?v=20261101-overall-repair"></script>
     <script src="../js/combat/session.js?v=20261101-overall-repair"></script>
-    <script src="../js/ui/skills.js?v=20261116-ryan-zero"></script>
+    <script src="../js/ui/skills.js?v=20261117-vixraps-5-scorch"></script>
     <script src="../js/ui/dialogs.js?v=20261117-opponent-sheet"></script>
     <script src="../js/ui/card_style.js?v=20261101-overall-repair"></script>
     <script src="../js/ui/ui_core.js?v=20261101-overall-repair"></script>
       <script src="../js/ui/render/runtime.js?v=20261115-instant-consumables"></script>
 <script src="../js/ui/render/particles.js?v=20261101-overall-repair"></script>
-    <script src="../js/ui/render/home_screen.js?v=20261116-mode-buttons"></script>
+    <script src="../js/ui/render/home_screen.js?v=20261117-fenric"></script>
     <script src="../js/ui/render/combat_screen.js?v=20261117-ui-palette"></script>
     <script src="../js/ui/render/status_render.js?v=20261101-overall-repair"></script>
     <script src="../js/ui/hand_discard_picker.js?v=20261101-overall-repair"></script>
@@ -116,15 +118,15 @@
     <script src="js/monsters/volcano.js?v=20261115-npc-settlement"></script>
     <script src="js/content/boss.js?v=20261101-overall-repair"></script>
     <script src="js/monsters/corrupted_ryan.js?v=20261101-overall-repair"></script>
-    <script src="js/content/monster_registry.js?v=20261116-npc-stage"></script>
+    <script src="js/content/monster_registry.js?v=20261117-dryad-magic-transfer"></script>
     <script src="js/items/item_defs.js?v=20261116-deck-encounters"></script>
-    <script src="js/items/combat_effects.js?v=20261116-deck-encounters"></script>
+    <script src="js/items/combat_effects.js?v=20261117-chameleon-target"></script>
     <script src="js/items/map_effects.js?v=20261101-overall-repair"></script>
     <script src="js/map/csv_loader.js?v=20261101-overall-repair"></script>
     <script src="js/map/map_data.js?v=20261116-deck-encounters"></script>
     <script src="js/map/map.js?v=20261101-overall-repair"></script>
     <script src="js/deck/adventure_deck.js?v=20261117-npc-draw-two"></script>
-    <script src="js/deck/npc_strategy.js?v=20261101-overall-repair"></script>
+    <script src="js/deck/npc_strategy.js?v=20261117-npc-draw-two-priority"></script>
     <script src="js/engine/adventure_engine.js?v=20261116-deck-encounters"></script>
     <script src="js/engine/loot.js?v=20261101-overall-repair"></script>
     <script src="js/engine/shop.js?v=20261101-overall-repair"></script>
@@ -133,16 +135,16 @@
     <script src="js/engine/combat_result.js?v=20261116-deck-encounters"></script>
     <script src="js/engine/sacrifice.js?v=20261101-overall-repair"></script>
     <script src="js/engine/glitch.js?v=20261101-overall-repair"></script>
-    <script src="js/battle/battle_engine.js?v=20261116-npc-stage"></script>
+    <script src="js/battle/battle_engine.js?v=20261117-chameleon-target"></script>
     <script src="js/battle/adventure_battle_items.js?v=20261101-overall-repair"></script>
     <script src="js/battle/dice_controller.js?v=20261102-avoidance-dice"></script>
     <script src="js/save/adventure_save.js?v=20261116-deck-encounters"></script>
     <script src="js/ui/card_render.js?v=20261101-overall-repair"></script>
     <script src="js/battle/adventure_battle_session.js?v=20261101-overall-repair"></script>
-    <script src="js/battle/adventure_battle_controller.js?v=20261104-battle-lifecycle"></script>
+    <script src="js/battle/adventure_battle_controller.js?v=20261117-settle-trophy-sidebar"></script>
     <script src="js/ui/adventure_ui.js?v=20261117-shop-slot-actions"></script>
     <script src="js/ui/adventure_ui_map_view.js?v=20261102-map-branches"></script>
-    <script src="js/ui/adventure_ui_panels.js?v=20261117-shop-leave-top"></script>
+    <script src="js/ui/adventure_ui_panels.js?v=20261117-shop-price-once"></script>
     <script src="js/ui/adventure_ui_sacrifice.js?v=20261101-overall-repair"></script>
     <script src="js/ui/adventure_ui_glitch.js?v=20261101-magician-ui"></script>
     <script src="js/ui/adventure_ui_views.js?v=20261101-overall-repair"></script>
@@ -403,7 +405,7 @@
             const startBtn = screen.querySelector('#adv-start');
             let picked = null;
 
-            const charAvatar = { Ryan: '../avatars/Ryan.webp', Leon: '../avatars/Leon.webp', Chan: '../avatars/Chan.webp', Saiki: '../avatars/Saiki.webp', Blaze: '../avatars/Blaze.webp', Serenity: '../avatars/Serenity.webp', Moze: '../avatars/Moze.webp', Knight: '../avatars/Knight.webp', Otto: '../avatars/Otto.webp' };
+            const charAvatar = { Ryan: '../avatars/Ryan.webp', Leon: '../avatars/Leon.webp', Chan: '../avatars/Chan.webp', Saiki: '../avatars/Saiki.webp', Blaze: '../avatars/Blaze.webp', Serenity: '../avatars/Serenity.webp', Moze: '../avatars/Moze.webp', Knight: '../avatars/Knight.webp', Otto: '../avatars/Otto.webp', Vixraps: '../avatars/Vixraps.webp', Fenric: '../avatars/Fenric.webp' };
 
             CharacterRegistry.all().filter(mod => {
                 if (mod.adventureNpc) return false;

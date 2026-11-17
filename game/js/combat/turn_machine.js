@@ -122,6 +122,7 @@
       engine.s.phase = 'AI_TURN';
       engine.s.busy = true;
       engine.s.pendingAttack = null;
+      engine.s.pendingTransferDebuffsFrom = null;
       engine.s.pendingDefenseDamage = 0;
       engine.s.attackDebuffSnapshot = null;
       engine.s.atkCard = engine.s.defCard = null;

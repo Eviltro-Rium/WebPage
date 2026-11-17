@@ -19,6 +19,10 @@
       currency: { gold: 12, tokens: { ben: 1, cao: 2, shui: 1, huo: 0, wuneng: 0 } },
       consumables: [{ name: 'Dodge', displayName: '闪避', icon: '../icons/items_icons/dodge.webp' }],
       accessories: [{ name: 'WisdomNecklace', displayName: '智慧项链', icon: '../icons/items_icons/wisdom_necklace.webp' }],
+      trophyWhiteCards: [
+        { name: 'GuardTrophy', displayName: '守护战利白卡', description: '测试用守护白卡' },
+        { name: 'BurnTrophy', displayName: '灼伤战利白卡', description: '测试用灼伤白卡' }
+      ],
       beastReward: { pickCount: 2, selection: [], slots: ['ben', 'cao', 'shui', 'huo'].map((type, index) => ({ type, index, selected: false })) }
     };
     if (new URLSearchParams(location.search).has('victory')) { previewState.phase=AdventurePhase.CLEAR; previewState.stage=4; }

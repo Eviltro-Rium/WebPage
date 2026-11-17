@@ -26,6 +26,7 @@ context.window = context;
 const sources = expand(['characters', 'ai', 'combat', 'adventure_content']).concat([
   'adventure/js/map/map.js',
   'adventure/js/deck/adventure_deck.js',
+  'adventure/js/deck/npc_strategy.js',
   'adventure/js/engine/adventure_engine.js',
   'adventure/js/engine/shop.js',
   'adventure/js/engine/rewards.js',
@@ -1324,6 +1325,59 @@ function startVs(opponent, pileOverrides = {}, top = number(2), topOwner = 'play
   return engine;
 }
 
+test('Dryad attack 4 with no debuffs still opens defense and continues the turn', () => {
+  const engine = startVs('ForestDryad');
+  const callbacks = [];
+  engine.later = fn => { callbacks.push(fn); };
+  engine.h.ai = [number(4)];
+  engine.s.phase = 'AI_TURN';
+  engine.s.aiTurnStarted = true;
+  engine.s.busy = true;
+  engine.aiTurn();
+  assert.equal(engine.s.phase, 'PLAYER_DEFEND');
+  assert.equal(engine.s.pendingTransferDebuffsFrom, 'ai');
+  engine.dispatch('doSkipDefend');
+  engine.acknowledgeEvents(engine.ver);
+  assert.equal(engine.s.pendingTransferDebuffsFrom, null);
+  assert.equal(engine.pendingSettlement, null);
+  assert.ok(callbacks.length, 'the next AI action is scheduled after settlement');
+  while (callbacks.length && engine.s.phase !== 'PLAYER_PLAY') callbacks.shift()();
+  assert.equal(engine.s.phase, 'PLAYER_PLAY');
+});
+
+test('Dryad attack 4 opens defense, transfers debuffs after damage and continues the turn', () => {
+  const engine = startVs('ForestDryad');
+  const callbacks = [];
+  engine.later = fn => { callbacks.push(fn); };
+  engine.h.ai = [number(4)];
+  engine.s.phase = 'AI_TURN';
+  engine.s.aiTurnStarted = true;
+  engine.s.busy = true;
+  Object.assign(engine.s.ai, { burn: 2, poison: 1, iceSeal: 2, hypnosis: true, hypnosisArmed: true, guard: 1 });
+  engine.s.player.burn = 4;
+  const hp = engine.s.player.hp;
+
+  engine.aiTurn();
+  assert.equal(engine.s.phase, 'PLAYER_DEFEND');
+  assert.equal(engine.s.ai.burn, 2);
+  assert.equal(engine.s.player.iceSeal, 0);
+  engine.dispatch('doSkipDefend');
+  engine.acknowledgeEvents(engine.ver);
+  assert.equal(engine.s.player.hp, hp - 4);
+  assert.equal(engine.s.player.burn, 5);
+  assert.equal(engine.s.player.poison, 1);
+  assert.equal(engine.s.player.iceSeal, 2);
+  assert.equal(engine.s.player.hypnosis, true);
+  assert.equal(engine.s.ai.burn, 0);
+  assert.equal(engine.s.ai.hypnosisArmed, false);
+  assert.equal(engine.s.ai.guard, 1);
+  assert.equal(engine.pendingSettlement, null);
+  assert.equal(engine.s.pendingSkillStatuses.length, 0);
+  assert.ok(callbacks.length, 'the next AI action is scheduled after settlement');
+  while (callbacks.length && engine.s.phase !== 'PLAYER_PLAY') callbacks.shift()();
+  assert.equal(engine.s.phase, 'PLAYER_PLAY');
+});
+
 function incomingPoisonRestore() {
   return {
     target: 'player',
@@ -1587,6 +1641,30 @@ test('Chameleon Paint borrows an NPC card with source metadata', () => {
   assert.equal(transfer.card.borrowedMonster, true);
 });
 
+test('Chameleon Paint borrowing from the other challenge NPC does not change attackTarget', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({
+    player: 'Leon', opponent1: 'CastleWolf', opponent2: 'CastleBear', stage: 1,
+    playerPile: { deck: [], hand: [], discard: [], handLimit: 5 },
+    discardTop: number(1, 'RED')
+  });
+  engine._adventureEngine = {
+    snapshot: () => ({ consumables: [{ name: 'ChameleonPaint' }] }),
+    s: { consumables: ['ChameleonPaint'] }
+  };
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.s.busy = false;
+  engine.s.attackTarget = 'ai';
+  engine.s.lordPlayerTargetIdx = 0;
+  engine.h.ai = [number(3, 'RED')];
+  engine.h.ai2 = [number(2, 'BLUE'), number(4, 'YELLOW')];
+  engine.useAdventureCombatItem(0, { target: 'ai2', index: 1 });
+  assert.equal(engine.s.attackTarget, 'ai');
+  assert.equal(engine.s.lordPlayerTargetIdx, 0);
+  assert.equal(engine.h.player.at(-1).borrowedFrom, 'ai2');
+});
+
 test('Chameleon Paint emits the source and selected hand index for the second challenge opponent', () => {
   const engine = new AdventureBattleEngine();
   engine.later = () => {};
@@ -1619,6 +1697,29 @@ test('borrowed NPC number card resolves NPC attack skill against its owner', () 
   engine.play();
   assert.equal(engine.s.pendingAttack.damage, 4);
   assert.equal(engine.s.phase, 'ATTACK_MOD_CHOICE');
+});
+
+test('borrowed monster skill restores challenge attackTarget after the attack ends', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({
+    player: 'Ryan', opponent1: 'CastleWolf', opponent2: 'CastleWolf', stage: 1,
+    playerPile: { deck: [], hand: [], discard: [], handLimit: 5 },
+    discardTop: number(1, 'RED')
+  });
+  const borrowed = number(2, 'RED');
+  borrowed.borrowedMonster = true;
+  borrowed.borrowedFrom = 'ai2';
+  borrowed.borrowedMonsterName = 'CastleWolf';
+  engine.s.attackTarget = 'ai';
+  engine.s.lordPlayerTargetIdx = 0;
+  engine.s.atkOwner = 'player';
+  engine.s.phase = 'PLAYER_PLAY';
+  engine.h.player = [borrowed];
+  engine.playBorrowedMonsterCard(borrowed);
+  assert.equal(engine.s.attackTarget, 'ai2');
+  engine.afterAttack();
+  assert.equal(engine.s.attackTarget, 'ai');
 });
 
 test('borrowed FrozenWhale white 4 in 1v2 applies AoE damage to all opponents', () => {
@@ -2509,6 +2610,25 @@ for(const challenge of [false,true])test('reserve same color after trophy can pl
  assert.equal(engine.s.discardTop.chosenColor,'RED');assert.equal(engine.state().legalReserve[0],true);
  engine.dispatch('selectReserveCard',{index:0});engine.dispatch('doPlay');
  assert.equal(engine.s.reserveCards.length,0);assert.equal(engine.s.atkCard.value,2);
+});
+
+test('NPC chooses white draw two before green or purple magic when all are legal', () => {
+  const engine = new AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure({
+    player: 'Ryan', opponent: 'VolcanoObsidianBoar', stage: 1,
+    playerPile: { deck: [], hand: [], discard: [], handLimit: 5 },
+    discardTop: number(1, 'RED')
+  });
+  const drawTwo = context.AdventureDeck.item('WHITE', 'drawTwo', { npcCard: true });
+  const green = context.AdventureDeck.makeNpcDeck().find(c => c.magicColor === 'green');
+  const purple = context.AdventureDeck.makeNpcDeck().find(c => c.magicColor === 'purple');
+  const seven = number(7, 'WHITE', true);
+  engine.h.ai.splice(0, engine.h.ai.length, seven, green, purple, drawTwo);
+  const chosen = engine.chooseAIPlay(engine.s.discardTop);
+  assert.equal(chosen, drawTwo);
+  assert.equal(engine.aiAttackScore(drawTwo, engine.s.discardTop), 220);
+  assert.ok(engine.aiAttackScore(green, engine.s.discardTop) < engine.aiAttackScore(drawTwo, engine.s.discardTop));
 });
 
 for(const challenge of [false,true]) for(const color of ['green','purple']) {

@@ -40,6 +40,8 @@
     if (!hand || !targetChar || !targetChar.alive || !Number.isInteger(index) || !hand[index]) {
       return { ok: false, message: '请选择一张有效的对手手牌' };
     }
+    const savedAttackTarget = eng.s.attackTarget;
+    const savedLordIdx = eng.s.lordPlayerTargetIdx;
     const borrowed = hand.splice(index, 1)[0];
     borrowed.borrowedMonster = true;
     borrowed.borrowedFrom = targetKey;
@@ -48,6 +50,10 @@
     eng.emit('cardTransfer', '变色龙颜料：暂借对手手牌', borrowed, {
       who: 'player', fromOwner: targetKey, from: 'hand', handIndex: index
     });
+    if (eng.s.is1v2) {
+      eng.s.attackTarget = savedAttackTarget;
+      eng.s.lordPlayerTargetIdx = savedLordIdx;
+    }
     return { ok: true, message: '暂借' + borrowed.borrowedMonsterName + '的一张牌，加入玩家手牌' };
   });
 

@@ -380,14 +380,12 @@
         const bodyStart = '<div class="adv-shop-slot' + (item ? ' filled' : ' empty') + slotCls + (isSel ? ' selected' : '') + '" data-shop-slot="' + i + '">' +
           '<button type="button" class="adv-shop-slot-body" title="' + (item && item.description ? String(item.description).replace(/"/g, '&quot;') : '') + '">';
         if (item) {
-          const price = item.price || 0;
           const icon = item.icon ? '<img class="adv-shop-slot-icon" src="' + item.icon + '" alt="">' : '';
           slotsHtml += bodyStart +
             (tag ? '<div class="adv-shop-slot-tag">' + tag + '</div>' : '') +
             icon +
             '<div class="adv-shop-slot-name">' + item.displayName + '</div>' +
             '<div class="adv-shop-slot-desc">' + (item.description || '') + '</div>' +
-            '<div class="adv-shop-slot-price">' + this._goldPriceHtml(price) + '</div>' +
             '</button>' + this._shopSlotActions(i, snap, slots) + '</div>';
         } else {
           slotsHtml += bodyStart +

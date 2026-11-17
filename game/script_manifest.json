@@ -10,7 +10,8 @@
     "js/characters/moze.js",
     "js/characters/knight.js",
     "js/characters/otto.js",
-    "js/characters/vixraps.js"
+    "js/characters/vixraps.js",
+    "js/characters/fenric.js"
   ],
   "ai": [
     "js/ai/registry.js",
@@ -23,7 +24,8 @@
     "js/ai/moze_ai.js",
     "js/ai/chan_ai.js",
     "js/ai/otto_ai.js",
-    "js/ai/vixraps_ai.js"
+    "js/ai/vixraps_ai.js",
+    "js/ai/fenric_ai.js"
   ],
   "combat": [
     "js/combat/protocol.js",

@@ -69,6 +69,55 @@
       return this._prepareHardenedHit(target,amount,options);
     },
 
+    transferAttackDebuffs(target, sourceKey) {
+      const source = this.s[sourceKey];
+      if (!source || !target || !target.alive || source === target) return;
+      const who = this._who(target);
+      const moved = [];
+      // 与一次性道具「魔法转移」相同：按层移动，走 StatusService 以重置 hypnosisArmed 等伴随字段。
+      if (typeof this._listTransferableBuffs === 'function' && typeof this._moveBuffLayer === 'function') {
+        const registry = Combat.StatusRegistry;
+        const kinds = this._listTransferableBuffs(source).filter(id => {
+          const def = registry && registry.get(id);
+          return !!(def && def.polarity === 'debuff' && def.transferable);
+        });
+        for (const kind of kinds) {
+          let guard = 0;
+          while (guard++ < 8 && this._listTransferableBuffs(source).includes(kind)) {
+            const before = registry ? registry.amount(source, kind) : 1;
+            const label = this._moveBuffLayer(source, target, kind, who);
+            if (!label) break;
+            moved.push(label);
+            const after = registry ? registry.amount(source, kind) : 0;
+            if (after >= before) break;
+          }
+        }
+      } else {
+        const status = Combat.StatusService;
+        const registry = Combat.StatusRegistry;
+        if (!status || !registry) return;
+        const defs = status.list(source, def => def.polarity === 'debuff' && def.transferable);
+        for (const def of defs) {
+          let guard = 0;
+          while (guard++ < 8 && registry.has(source, def.id)) {
+            if (!def.stack) status.clear(source, def.id, 'all');
+            else status.remove(source, def.id, 1);
+            status.add(target, def.id, 1);
+            if (def.id === 'thorns' && registry.has(target, 'thorns')) target.thornsTriggersLeft = 2;
+            moved.push(def.label);
+          }
+        }
+      }
+      if (moved.length) this.emit('desc', source.name + '将自身负面状态转移给' + target.name);
+    },
+
+    flushPendingDebuffTransfer(target) {
+      const fromKey = this.s && this.s.pendingTransferDebuffsFrom;
+      if (!fromKey || !target) return;
+      this.s.pendingTransferDebuffsFrom = null;
+      this.transferAttackDebuffs(target, fromKey);
+    },
+
     commitAttackStatuses(timing, targetKey) {
       const service = Combat.StatusService, registry = Combat.StatusRegistry;
       const queued = this.s.pendingSkillStatuses || [];
@@ -186,6 +235,7 @@
           {allowAvoidance: false, damageSource: 'counter', hardenHandled: !!hit.hardenHandled});
       }
       this.commitAttackStatuses('afterDamage', this._who(target));
+      this.flushPendingDebuffTransfer(target);
       this.settleBleed(target, pending.bleed);
       return result;
     },

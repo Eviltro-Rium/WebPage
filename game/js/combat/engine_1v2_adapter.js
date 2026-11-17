@@ -191,8 +191,6 @@
       return this._startAISequence1v2()
     }
     if(m==='doDefend'||m==='doSkipDefend'){
-      let target=this.s.attackTarget||(this.s.ai.alive?'ai':(this.s.ai2&&this.s.ai2.alive?'ai2':'ai'));
-      this.s.attackTarget=target;
       return this.defend1v2(m==='doSkipDefend')
     }
     return origDispatch.call(this,m,p)

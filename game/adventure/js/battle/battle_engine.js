@@ -1230,6 +1230,15 @@
       this.addGuard(this.s.player, guard);
     }
 
+    aiAttackScore(c, top) {
+      const strat = window.AdventureNpcStrategy;
+      if (this.s && this.s.isAdventure && strat && typeof strat.itemAttackScore === 'function') {
+        const itemScore = strat.itemAttackScore(c);
+        if (itemScore != null) return itemScore;
+      }
+      return super.aiAttackScore(c, top);
+    }
+
     aiTurn() {
       const result = super.aiTurn();
       this._tryGoblinPassive();
@@ -1350,7 +1359,10 @@
     }
 
     afterAttack() {
-
+      if (this.s && this.s.is1v2 && Object.prototype.hasOwnProperty.call(this.s, '_restoreAttackTargetAfterBorrowedSkill')) {
+        this.s.attackTarget = this.s._restoreAttackTargetAfterBorrowedSkill;
+        delete this.s._restoreAttackTargetAfterBorrowedSkill;
+      }
       this._freezeLaserAppliedThisAttack = false;
       this._freezeLaserSkillMissed = false;
       if (this.s) this.s.pendingPurifyCrystal = null;
@@ -1390,7 +1402,10 @@
       if (!monster || !monster.alive) return this.gateAdventureAttackMod(card, 0, true, false);
       const monsterName = card.borrowedMonsterName || this.name(monster);
       const mod = window.AdventureRegistry && (window.AdventureRegistry.getMonster(monsterName) || window.AdventureRegistry.getBoss(monsterName));
-      this.s.attackTarget = sourceKey;
+      if (this.s.is1v2) {
+        this.s._restoreAttackTargetAfterBorrowedSkill = this.s.attackTarget;
+        this.s.attackTarget = sourceKey;
+      }
       this.s.borrowedMonsterSkill = true;
       this.s.pendingAttack = this.s.pendingAttack || {};
       this.rememberAttackDebuffs(sourceKey);

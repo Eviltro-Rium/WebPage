@@ -7,7 +7,7 @@
     <title>Furry Trial · Rium</title>
     <link rel="icon" href="../favicon-ryan.webp" type="image/webp">
     <link rel="apple-touch-icon" href="../favicon-ryan.webp">
-    <link rel="stylesheet" href="css/game.css?v=20261117-ui-palette">
+    <link rel="stylesheet" href="css/game.css?v=20261117-battle-hp-text">
 </head>
 <body>
     <a class="game-home-link" href="../index.html?v=20261027-recovered" aria-label="返回 Rium 主页">← 返回主页</a>
@@ -51,7 +51,8 @@
     <script src="js/characters/moze.js?v=20261115-character-rules"></script>
     <script src="js/characters/knight.js?v=20261116-npc-settlement-order"></script>
     <script src="js/characters/otto.js?v=20261116-defense-effect-order"></script>
-    <script src="js/characters/vixraps.js?v=20261116-defense-effect-order"></script>
+    <script src="js/characters/vixraps.js?v=20261117-vixraps-5-scorch"></script>
+    <script src="js/characters/fenric.js?v=20261117-fenric"></script>
     <script src="js/ai/registry.js?v=20261101-overall-repair"></script>
     <script src="js/ai/knight_ai.js?v=20261115-character-rules"></script>
     <script src="js/ai/leon_ai.js?v=20261115-character-rules"></script>
@@ -63,6 +64,7 @@
     <script src="js/ai/chan_ai.js?v=20261115-character-rules"></script>
     <script src="js/ai/otto_ai.js?v=20261115-ryan-otto-skill"></script>
     <script src="js/ai/vixraps_ai.js?v=20261115-character-rules"></script>
+    <script src="js/ai/fenric_ai.js?v=20261117-fenric"></script>
     <script src="js/combat/protocol.js?v=20261101-overall-repair"></script>
     <script src="js/combat/runtime.js?v=20261101-overall-repair"></script>
     <script src="js/combat/events.js?v=20261101-overall-repair"></script>
@@ -76,22 +78,22 @@
     <script src="js/combat/damage.js?v=20261101-overall-repair"></script>
     <script src="js/combat/modes.js?v=20261101-overall-repair"></script>
     <script src="js/combat/deck_port.js?v=20261101-overall-repair"></script>
-    <script src="js/combat/turn_machine.js?v=20261101-overall-repair"></script>
+    <script src="js/combat/turn_machine.js?v=20261117-dryad-magic-transfer"></script>
     <script src="js/combat/dice.js?v=20261101-overall-repair"></script>
     <script src="js/combat/card_effects.js?v=20261101-overall-repair"></script>
     <script src="js/combat/opponent_hand_policy.js?v=20261115-deck-skills"></script>
     <script src="js/combat/attack_buffs.js?v=20261101-overall-repair"></script>
-    <script src="js/combat/engine.js?v=20261116-npc-stage"></script>
+    <script src="js/combat/engine.js?v=20261117-fenric"></script>
     <script src="js/combat/engine_1v2.js?v=20261116-npc-defense-order"></script>
-    <script src="js/combat/engine_1v2_adapter.js?v=20261101-overall-repair"></script>
+    <script src="js/combat/engine_1v2_adapter.js?v=20261117-chameleon-target"></script>
     <script src="js/combat/engine_turns.js?v=20261101-overall-repair"></script>
-    <script src="js/combat/engine_attack.js?v=20261116-npc-stage"></script>
+    <script src="js/combat/engine_attack.js?v=20261117-dryad-magic-transfer"></script>
     <script src="js/combat/engine_ai.js?v=20261101-overall-repair"></script>
     <script src="js/combat/engine_snapshot.js?v=20261101-overall-repair"></script>
     <script src="js/combat/engine_lord.js?v=20261101-overall-repair"></script>
     <script src="js/combat/bridge.js?v=20261101-overall-repair"></script>
     <script src="js/combat/session.js?v=20261101-overall-repair"></script>
-    <script src="js/ui/skills.js?v=20261116-ryan-zero"></script>
+    <script src="js/ui/skills.js?v=20261117-vixraps-5-scorch"></script>
     <script src="js/ui/dialogs.js?v=20261117-opponent-sheet"></script>
     <script src="js/ui/rules.js?v=20261117-npc-draw-two"></script>
     <script src="adventure/js/content/registry.js?v=20261101-overall-repair"></script>
@@ -104,16 +106,16 @@
     <script src="adventure/js/content/boss.js?v=20261101-overall-repair"></script>
     <script src="adventure/js/content/stage_guide.js?v=20261116-deck-encounters"></script>
     <script src="adventure/js/items/item_defs.js?v=20261116-deck-encounters"></script>
-    <script src="adventure/js/items/combat_effects.js?v=20261116-deck-encounters"></script>
+    <script src="adventure/js/items/combat_effects.js?v=20261117-chameleon-target"></script>
     <script src="adventure/js/monsters/corrupted_ryan.js?v=20261101-overall-repair"></script>
-    <script src="adventure/js/content/monster_registry.js?v=20261116-npc-stage"></script>
+    <script src="adventure/js/content/monster_registry.js?v=20261117-dryad-magic-transfer"></script>
     <script src="adventure/js/engine/loot.js?v=20261101-overall-repair"></script>
-    <script src="js/ui/adventure_codex.js?v=20261116-shared-skill-grid"></script>
+    <script src="js/ui/adventure_codex.js?v=20261117-fenric"></script>
     <script src="js/ui/card_style.js?v=20261101-overall-repair"></script>
     <script src="js/ui/ui_core.js?v=20261101-overall-repair"></script>
       <script src="js/ui/render/runtime.js?v=20261115-instant-consumables"></script>
 <script src="js/ui/render/particles.js?v=20261101-overall-repair"></script>
-    <script src="js/ui/render/home_screen.js?v=20261116-mode-buttons"></script>
+    <script src="js/ui/render/home_screen.js?v=20261117-fenric"></script>
     <script src="js/ui/render/combat_screen.js?v=20261117-ui-palette"></script>
     <script src="js/ui/render/status_render.js?v=20261101-overall-repair"></script>
     <script src="js/ui/hand_discard_picker.js?v=20261101-overall-repair"></script>
