@@ -491,8 +491,8 @@
           '<div class="adv-blacksmith-art">' + (art || '<span class="adv-shop-slot-empty-label">已售罄</span>') + '</div>' +
           '<div class="adv-shop-slot-name">' + (item ? item.displayName : '空槽位') + '</div>' +
           '<div class="adv-shop-slot-desc">' + (item ? item.description || '' : '刷新此槽可重新进货') + '</div>' +
-          '<div class="adv-shop-slot-trade">' + (item ? this._beastCostIconsHtml(item.beastCost) ||
-            '' : this._goldPriceHtml(2) + '<span class="adv-shop-slot-trade-empty-label">刷新</span>') + '</div></button>';
+          (item ? '<div class="adv-shop-slot-trade">' + this._beastCostIconsHtml(item.beastCost) + '</div>' : '') +
+          '</button>';
         return '<div class="' + classes + '" ' + attr + '="' + index + '">' + body +
           this._blacksmithSlotActions(index, snap, slots, isTrophy) + '</div>';
       };

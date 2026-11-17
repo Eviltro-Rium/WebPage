@@ -876,14 +876,17 @@
 }
 .adv-slot-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
   gap: 6px;
   width: 100%;
   margin-top: auto;
   padding-top: 8px;
 }
 .adv-slot-actions .adv-btn {
-  flex: 1 1 7.5rem;
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 40px;
   padding: 6px 8px;
   font-size: .72rem;
