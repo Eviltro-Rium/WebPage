@@ -17,6 +17,7 @@
   const SHOP_REFRESH_COST = 2;
   const SHOP_ACCESSORY_PRICE = 15;
   const CONSUMABLE_SLOT_COUNT = 6;
+  const TROPHY_BACKPACK_MAX = 15;
 
   const Phase = {
     IDLE:        'ADVENTURE_IDLE',
@@ -29,6 +30,7 @@
     BEAST_CHOICE:'ADVENTURE_BEAST_CHOICE',
     BEAST_DISCARD:'ADVENTURE_BEAST_DISCARD',
     ITEM_DISCARD: 'ADVENTURE_ITEM_DISCARD',
+    TROPHY_DISCARD: 'ADVENTURE_TROPHY_DISCARD',
     COMBAT_SETTLE:'ADVENTURE_COMBAT_SETTLE',
     REWARD:      'ADVENTURE_REWARD',
     SHOP:        'ADVENTURE_SHOP',
@@ -50,6 +52,7 @@
     ADVENTURE_BEAST_CHOICE:'选择兽元',
     ADVENTURE_BEAST_DISCARD:'舍弃兽元',
     ADVENTURE_ITEM_DISCARD:'舍弃道具',
+    ADVENTURE_TROPHY_DISCARD:'舍弃战利卡',
     ADVENTURE_COMBAT_SETTLE:'战斗结算',
     ADVENTURE_REWARD:      '领取奖励',
     ADVENTURE_SHOP:        '商店',
@@ -169,6 +172,8 @@
         pendingHandDiscard: null,
         pendingItemDiscard: 0,
         itemDiscardReturn: null,
+        pendingTrophyDiscard: 0,
+        trophyDiscardReturn: null,
         pendingCombatReward: null,
         pendingRoomReward: null,
         activeCombat: null,
@@ -214,6 +219,7 @@
       this.s.discardTop = new AD.DiscardTop(null);
       this.s.discardTopOwner = null;
       if (this.s.consumables.length > CONSUMABLE_SLOT_COUNT) this._beginItemDiscard('map');
+      if ((this.s.trophyWhiteCards || []).length > TROPHY_BACKPACK_MAX) this._beginTrophyDiscard('map');
 
       if (this.s.pos) {
         const room = map.get(this.s.pos.r, this.s.pos.c);
@@ -260,6 +266,8 @@
         pendingHandDiscard: clone(save.pendingHandDiscard) || null,
         pendingItemDiscard: save.pendingItemDiscard || 0,
         itemDiscardReturn: clone(save.itemDiscardReturn) || null,
+        pendingTrophyDiscard: save.pendingTrophyDiscard || 0,
+        trophyDiscardReturn: clone(save.trophyDiscardReturn) || null,
         pendingCombatReward: clone(save.pendingCombatReward) || null,
         pendingRoomReward: clone(save.pendingRoomReward) || null,
         activeCombat: clone(save.activeCombat) || null,
@@ -360,6 +368,8 @@
         this.s.pos = map.start ? {r:map.start.r, c:map.start.c} : null;
       }
       if (!this.s.activeCombat) this.recoverLegacySerenityCards();
+      if ((this.s.consumables || []).length > CONSUMABLE_SLOT_COUNT) this._beginItemDiscard('map');
+      else if ((this.s.trophyWhiteCards || []).length > TROPHY_BACKPACK_MAX) this._beginTrophyDiscard('map');
       this.emit('restore', '已恢复冒险进度', { character: save.characterName });
       return this.s;
     }
@@ -406,7 +416,8 @@
     explorableRooms() {
       if (!this.s || this.s.activeCombat) return new Set();
       const blocked = [Phase.PLAYER_PLAY, Phase.PLAYER_DEFEND, Phase.NPC_TURN,
-        Phase.BEAST_CHOICE, Phase.BEAST_DISCARD, Phase.ITEM_DISCARD, Phase.COMBAT_SETTLE, Phase.GLITCH, Phase.SACRIFICE, Phase.GAME_OVER];
+        Phase.BEAST_CHOICE, Phase.BEAST_DISCARD, Phase.ITEM_DISCARD, Phase.TROPHY_DISCARD,
+        Phase.COMBAT_SETTLE, Phase.GLITCH, Phase.SACRIFICE, Phase.GAME_OVER];
       if (blocked.includes(this.s.phase)) return new Set();
       return this.s.map.explorablePositions();
     }
@@ -1093,6 +1104,8 @@
         }),
         consumables: this.s.consumables.map(itemDetail),
         consumableSlots: CONSUMABLE_SLOT_COUNT,
+        trophyBackpackMax: TROPHY_BACKPACK_MAX,
+        pendingTrophyDiscard: this.s.pendingTrophyDiscard || 0,
         accessories: this.s.accessories.map(itemDetail),
         accessoryStatBonuses: this.getAccessoryStatBonuses(),
         phase: this.s.phase,
@@ -1280,6 +1293,7 @@
     SHOP_SLOT_COUNT,
     SHOP_REFRESH_COST,
     SHOP_ACCESSORY_PRICE,
-    CONSUMABLE_SLOT_COUNT
+    CONSUMABLE_SLOT_COUNT,
+    TROPHY_BACKPACK_MAX
   });
 })();

@@ -158,8 +158,18 @@ test('three online pages share seats, start without spectator readiness and clos
   const opts = {roomCode:'ABCD', nickname:'甲'};
   host.connect('host', opts);
   await tick();
-  guest.connect('guest', {...opts, nickname:'乙'});
+  const joinRoom = (ui, nickname) => {
+    ui.root.querySelector('#online-room-code').value = opts.roomCode;
+    ui.root.querySelector('#online-nickname').value = nickname;
+    assert.equal(ui.root.querySelector('#online-watch'), null);
+    const join = ui.root.querySelector('#online-join');
+    assert.equal(join.textContent, '加入房间');
+    join.disabled = false; // JSDOM provides no native peer connection.
+    join.click();
+  };
+  joinRoom(guest, '乙');
   await tick();
+  assert.equal(guest.role, 'guest');
   assert.equal(host.root.querySelector('button[data-seat]'), null, 'the host cannot leave the battle seat');
   guest.root.querySelector('button[data-seat="spectator"]').click();
   await tick();
@@ -169,19 +179,32 @@ test('three online pages share seats, start without spectator readiness and clos
   assert.equal(occupied.querySelector('.online-player-avatar').textContent, guest.avatar);
   guest.root.querySelector('button[data-seat="guest"]').click();
   await tick();
+  joinRoom(viewer, '丙');
+  await tick();
+  assert.equal(viewer.role, 'spectator');
+  const viewedStatus = role => viewer.root.querySelector(`[data-occupied-seat="${role}"] .online-ready`).textContent;
   for (const ui of [host, guest]) {
+    assert.equal(viewedStatus(ui.role), '未准备');
     ui.root.querySelector('[data-char]').click();
     ui.root.querySelector('#online-ready').click();
     await tick();
+    assert.equal(viewedStatus(ui.role), '已准备');
   }
+  guest.root.querySelector('#online-ready').click();
+  await tick();
+  assert.equal(viewedStatus('guest'), '未准备');
+  guest.root.querySelector('#online-ready').click();
+  viewer.root.querySelector('#online-leave').click();
+  await tick();
   host.root.querySelector('#online-start-match').click();
   await tick();
   assert.ok(host.match && guest.match);
   guest.peer.sendControl('changeSeat', {role:'spectator'});
   await tick();
   assert.equal(room.seat('guest').meta.peerId, guest.peer.peerId);
-  viewer.connect('spectator', {...opts, nickname:'丙'});
+  joinRoom(viewer, '丙');
   await tick();
+  assert.equal(viewer.role, 'spectator');
   assert.ok(viewer.watchView);
   assert.equal(viewer.watchView.state.matchId, host.match.matchId);
   const savedViewer = viewer._readRoomSession();

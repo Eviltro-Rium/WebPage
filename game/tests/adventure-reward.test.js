@@ -1239,6 +1239,20 @@ test('single-item rewards and three-item rewards permit full inventory then disc
   }
 });
 
+test('trophy backpack holds 15 cards then requires player discard overflow', () => {
+  const eng = startEngine();
+  const max = context.AdventureEngineConstants.TROPHY_BACKPACK_MAX;
+  eng.s.trophyWhiteCards = Array(max).fill('ScorchTrophy');
+  eng.s.phase = AdventurePhase.MAP;
+  assert.ok(eng.addItem('DivingTrophy'));
+  assert.equal(eng.s.trophyWhiteCards.length, max + 1);
+  assert.equal(eng.s.phase, AdventurePhase.TROPHY_DISCARD);
+  assert.equal(eng.s.pendingTrophyDiscard, 1);
+  eng.discardTrophyWhiteCard(0);
+  assert.equal(eng.s.phase, AdventurePhase.MAP);
+  assert.equal(eng.s.trophyWhiteCards.length, max);
+});
+
 test('item drop pool excludes mutually exclusive dice without excluding full-slot rewards', () => {
   const eng = startEngine();
   eng.addItem('Magician');

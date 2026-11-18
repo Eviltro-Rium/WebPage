@@ -311,6 +311,8 @@
       } else if (button.hasAttribute('data-beast-discard')) {
         eng.discardBeastToken(button.getAttribute('data-beast-discard'));
         refresh();
+      } else if (button.hasAttribute('data-trophy-discard')) {
+        eng.discardTrophyWhiteCard(Number(button.getAttribute('data-trophy-discard')));
       } else if (button.hasAttribute('data-item-discard')) {
         eng.discardConsumable(Number(button.getAttribute('data-item-discard')));
         refresh();
@@ -475,7 +477,7 @@
 
   function mountSettleTrophyCards(root) {
     if (!root || !window.renderCard || !window.AdventureDeck) return;
-    root.querySelectorAll('.adv-settle-sidebar [data-trophy-card]').forEach(slot => {
+    root.querySelectorAll('.adv-settle-sidebar [data-trophy-card], .adv-trophy-pack-list [data-trophy-card]').forEach(slot => {
       const card = window.AdventureDeck.trophyWhite(slot.getAttribute('data-trophy-card'));
       if (!card) return;
       if (slot.getAttribute('data-trophy-black') === '1') window.AdventureDeck.upgradeTrophy(card);
@@ -501,7 +503,7 @@
     let html = '<div class="adv-settle-sidebar" tabindex="0" role="region" aria-label="当前持有的战利白卡">';
     html += '<div class="adv-sidebar-title">当前持有</div>';
     html += '<div class="adv-sidebar-section">';
-    html += '<div class="adv-sidebar-subtitle">战利白卡 (' + cards.length + ')</div>';
+    html += '<div class="adv-sidebar-subtitle">战利白卡 (' + cards.length + '/' + (snap.trophyBackpackMax || 15) + ')</div>';
     if (!cards.length) {
       html += '<div class="adv-sidebar-empty">暂无战利白卡</div>';
     } else {
@@ -635,6 +637,17 @@
           html += '<button class="adv-beast-pick adv-item-discard-slot" data-item-discard="' + index + '" title="丢弃 ' + item.displayName + '">' + icon + '<span>' + item.displayName + '</span><small>丢弃</small></button>';
         });
         html += '</div></div>';
+      } else if (snap.phase === Phase.TROPHY_DISCARD) {
+        html += '<div class="adv-settle-section-title">战利卡背包超过上限</div>';
+        html += '<div class="adv-settle-row">请丢弃 ' + snap.pendingTrophyDiscard + ' 张战利卡（保留 ' + (snap.trophyBackpackMax || 15) + ' 张）</div>';
+        html += '<div class="adv-trophy-pack-list">';
+        (snap.trophyWhiteCards || []).forEach(card => {
+          const art = trophyCardPlaceholder(card.name, !!card.trophyBlack, 36, 52);
+          html += '<div class="adv-trophy-pack-row"><div class="adv-trophy-pack-card">' + art +
+            '<span>' + card.displayName + '</span></div>' +
+            '<button class="adv-beast-pick adv-trophy-pack-discard" data-trophy-discard="' + card.index + '">丢弃</button></div>';
+        });
+        html += '</div></div>';
       } else if (snap.phase === Phase.COMBAT_SETTLE && pending && pending.stage === 'beast' && pending.beast && pending.beast.auto) {
         html += '<div class="adv-settle-section-title">兽元结算</div>';
         html += beastAutoRewardHtml(pending.beast, AC);
@@ -682,7 +695,7 @@
   function resumeSettlement(eng, callback) {
     if (!eng || !eng.s) return false;
     const Phase = window.AdventurePhase || {};
-    const resumable = [Phase.COMBAT_SETTLE, Phase.BEAST_CHOICE, Phase.BEAST_DISCARD, Phase.ITEM_DISCARD];
+    const resumable = [Phase.COMBAT_SETTLE, Phase.BEAST_CHOICE, Phase.BEAST_DISCARD, Phase.ITEM_DISCARD, Phase.TROPHY_DISCARD];
     const adventureWon = eng.s.phase === Phase.CLEAR && eng.s.stage >= 4;
     if (!adventureWon && resumable.indexOf(eng.s.phase) < 0) return false;
     if (adventureWon) clearCombatSession();

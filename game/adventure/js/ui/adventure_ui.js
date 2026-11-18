@@ -214,7 +214,8 @@
             window.AdventurePhase.COMBAT_SETTLE,
             window.AdventurePhase.BEAST_CHOICE,
             window.AdventurePhase.BEAST_DISCARD,
-            window.AdventurePhase.ITEM_DISCARD
+            window.AdventurePhase.ITEM_DISCARD,
+            window.AdventurePhase.TROPHY_DISCARD
           ];
           if (settlementPhases.includes(this.eng.s.phase) &&
               window.AdventureBattleController &&
@@ -577,6 +578,8 @@
         const recycleIndex = recycleBtn ? parseInt(recycleBtn.getAttribute('data-recycle-index'), 10) : -1;
         const itemDiscardBtn = e.target.closest('[data-item-discard]');
         const itemDiscardIndex = itemDiscardBtn ? parseInt(itemDiscardBtn.getAttribute('data-item-discard'), 10) : -1;
+        const trophyDiscardBtn = e.target.closest('[data-trophy-discard]');
+        const trophyDiscardIndex = trophyDiscardBtn ? parseInt(trophyDiscardBtn.getAttribute('data-trophy-discard'), 10) : -1;
         const beastDiscardBtn = e.target.closest('[data-beast-discard]');
         const testItemBtn = e.target.closest('[data-test-item]');
         const testTrophyBtn = e.target.closest('[data-test-trophy]');
@@ -594,6 +597,11 @@
         }
         if (itemDiscardBtn) {
           this.eng.discardConsumable(itemDiscardIndex);
+          this.render();
+          return;
+        }
+        if (trophyDiscardBtn) {
+          this.eng.discardTrophyWhiteCard(trophyDiscardIndex);
           this.render();
           return;
         }

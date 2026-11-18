@@ -161,8 +161,7 @@
             const emojiButtons = PLAYER_EMOJIS.map(em => '<button class="online-emoji' + (currentAvatar === em ? ' selected' : '') + '" data-emoji="' + em + '" type="button" aria-label="选择头像 ' + em + '">' + em + '</button>').join('');
             this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial</div><div class="online-brand-sub">在线对决 · WebRTC P2P</div></div></div><a class="online-link" id="online-home-link" href="../index.html">← 返回游戏主页</a></div>' +
                 '<section class="online-panel online-landing"><div class="online-intro"><h1>与你的朋友<br><span>面对面出牌</span></h1><p>建立一个小型房间，优先使用浏览器原生 WebRTC 直接传输战斗指令；直连尚未建立时自动通过信令连接同步。房主运行单机同一套战斗引擎，双方只交换必要的同步状态。</p><div class="online-notice"><div><b>01</b><span>不需要安装客户端，分享 4 位房间码即可加入。</span></div><div><b>02</b><span>当前版本不配置 TURN，适合小规模测试。</span></div><div><b>03</b><span>请使用 HTTPS 域名；本地调试可用 Wrangler Dev。</span></div></div></div>' +
-                '<form class="online-form" id="online-connect-form"><h2>进入在线房间</h2><label class="online-label">房间码（加入时填写）<input class="online-input" id="online-room-code" maxlength="4" placeholder="ABCD" autocapitalize="characters"></label><div class="online-identity-row"><label class="online-label">昵称<input class="online-input" id="online-nickname" maxlength="18" placeholder="例如：Rium" autocomplete="nickname"></label><div class="online-avatar-field"><button class="online-avatar-toggle" id="online-avatar-toggle" type="button" aria-expanded="false"><span>头像</span><strong id="online-avatar-current">' + currentAvatar + '</strong><small>展开</small></button><div class="online-avatar-card" id="online-avatar-card" hidden><div class="online-emojis">' + emojiButtons + '</div></div></div></div><div class="online-form-row"><button class="online-btn primary" id="online-create" type="button">创建房间</button><button class="online-btn" id="online-join" type="button">加入对战</button><button class="online-btn" id="online-watch" type="button">加入观战</button></div><div class="online-status" id="online-landing-status"></div></form></section>';
-            this.root.querySelector('#online-watch').addEventListener('click', () => this.connect('spectator'));
+                '<form class="online-form" id="online-connect-form"><h2>进入在线房间</h2><label class="online-label">房间码（加入时填写）<input class="online-input" id="online-room-code" maxlength="4" placeholder="ABCD" autocapitalize="characters"></label><div class="online-identity-row"><label class="online-label">昵称<input class="online-input" id="online-nickname" maxlength="18" placeholder="例如：Rium" autocomplete="nickname"></label><div class="online-avatar-field"><button class="online-avatar-toggle" id="online-avatar-toggle" type="button" aria-expanded="false"><span>头像</span><strong id="online-avatar-current">' + currentAvatar + '</strong><small>展开</small></button><div class="online-avatar-card" id="online-avatar-card" hidden><div class="online-emojis">' + emojiButtons + '</div></div></div></div><div class="online-form-row"><button class="online-btn primary" id="online-create" type="button">创建房间</button><button class="online-btn" id="online-join" type="button">加入房间</button></div><div class="online-status" id="online-landing-status"></div></form></section>';
             const name = this.root.querySelector('#online-nickname');
             if (name) {
                 try { name.value = localStorage.getItem('furry-online-name') || ''; } catch (_) { name.value = ''; }
@@ -186,7 +185,7 @@
                 this.root.querySelector('#online-avatar-current').textContent = this.avatar;
             }));
             this.root.querySelector('#online-create').addEventListener('click', () => this.connect('host'));
-            this.root.querySelector('#online-join').addEventListener('click', () => this.connect('guest'));
+            this.root.querySelector('#online-join').addEventListener('click', () => this.connect('guest', { autoSeat: true }));
             const homeLink = this.root.querySelector('#online-home-link');
             if (homeLink) homeLink.addEventListener('click', () => {
                 this._clearRoomSession();
@@ -205,7 +204,6 @@
                 this.root.querySelector('#online-join').disabled = true;
                 this.setLandingStatus('在线模式需要 HTTPS（localhost 可用于本地调试）', 'error');
             }
-            this.root.querySelector('#online-watch').disabled = !secure || typeof global.WebSocket !== 'function';
         }
         setLandingStatus(text, kind) {
             const el = this.root.querySelector('#online-landing-status');
@@ -255,7 +253,7 @@
             // called a removed showRoom() method and also tried to register the
             // local player before this.peer existed, so clicking "创建房间"
             // stopped here without opening a WebSocket.
-            this.peer = new global.OnlinePeer({ signalUrl, roomCode: code, role, nickname: this.nickname, avatar: this.avatar, reconnectToken: this.reconnectToken });
+            this.peer = new global.OnlinePeer({ signalUrl, roomCode: code, role, nickname: this.nickname, avatar: this.avatar, reconnectToken: this.reconnectToken, autoSeat: reconnect.autoSeat });
             this._ensureOwnPlayer(); this.renderRoom(); this.setRoomStatus('正在连接信令服务…');
             this.peer.on('hello', message => {
                 this._restoringRoom = false;
@@ -281,7 +279,7 @@
                 // Publish restored character/ready state immediately instead
                 // of waiting for the WebRTC channel to open.
                 this._sendLobbyUpdate();
-                this.setRoomStatus(this.role === 'host' ? '房间已创建，等待朋友加入' : '已加入房间，等待房主开始'); this.renderRoom();
+                this.setRoomStatus(this.role === 'host' ? '房间已创建，等待朋友加入' : this.role === 'spectator' ? '已加入观战席' : '已加入房间，等待房主开始'); this.renderRoom();
             });
             this.peer.on('roster', players => {
                 this._handleRoster(players);
@@ -375,7 +373,7 @@
                 const messages = {
                     'upgrade-required': '房间协议版本不一致，请更新页面和信令服务',
                     'room-not-found': '未找到对应房间，请检查房间码',
-                    'room-full': '该席位已满',
+                    'room-full': reconnect.autoSeat ? '房间已满' : '该席位已满',
                     'host-exists': '该房间已有房主，请重新创建房间',
                     'message-too-large': '信令消息过大，连接已拒绝'
                 };
@@ -385,6 +383,12 @@
                 if (this._restoringRoom && ['upgrade-required', 'room-not-found', 'room-full', 'host-exists'].includes(reason)) {
                     this._restoringRoom = false;
                     this._clearRoomSession();
+                }
+                if (reconnect.autoSeat && !this.reconnectToken) {
+                    this.leaveSpectator(detail);
+                    this.root.querySelector('#online-room-code').value = connectedPeer.roomCode;
+                    this.setLandingStatus(detail, 'error');
+                    return;
                 }
                 this.setRoomStatus(detail, 'error');
             });
@@ -732,13 +736,14 @@
                 ['ai', 'watch-guest-hand', '客方', state.onlineOpponentNickname, state.aiHand]
             ]) {
                 const fighter = state[key];
+                const charName = view._combatDisplayName(fighter && fighter.name);
                 view._updateHpBar(key, fighter);
                 view._updateAvatar(key, fighter.name);
                 view._updateBuffs(key, fighter);
-                document.getElementById(key + '-name').textContent = nickname + ' · ' + fighter.name;
+                document.getElementById(key + '-name').textContent = nickname + ' · ' + charName;
                 const row = document.getElementById(id);
                 row.closest('.player-hand-zone').querySelector('.zone-title').textContent = label + '手牌 · ' + nickname;
-                this.updateWatchHand(row, hand, fighter.name, state);
+                this.updateWatchHand(row, hand, charName, state);
             }
             view._updateAttackerIndicator(state.activeAttacker);
             view._renderDiscardTop();

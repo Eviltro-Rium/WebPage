@@ -80,7 +80,7 @@ export class Room {
         if (message.roomProtocol !== ROOM_PROTOCOL) { close(1008, 'upgrade-required'); return; }
         clearTimeout(helloTimer);
         helloTimer = null;
-        const role = message.role || 'host';
+        let role = message.role || 'host';
         const reconnectToken = String(message.reconnectToken || '').trim().slice(0, 128);
         // A refresh opens a new WebSocket before the browser has finished
         // delivering the old socket's close event.  A server-issued token
@@ -108,6 +108,9 @@ export class Room {
         } else {
           if (role === 'spectator' && reconnectToken) { close(1008, 'room-closed'); return; }
           if (!['host', 'guest', 'spectator'].includes(role)) { close(1008, 'invalid-seat'); return; }
+          if (role === 'guest' && message.autoSeat === true && !reconnectToken && (this.playing || this.seat('guest'))) {
+            role = 'spectator';
+          }
           if (role !== 'host' && (this.seat(role) || (role === 'guest' && this.playing))) { close(1008, 'room-full'); return; }
           // Never trust a client supplied peerId. Identity is generated here;
           // the reconnect token below is the only way to replace that entry.
@@ -177,10 +180,13 @@ export class Room {
           metadata.avatar = incoming.avatar == null ? metadata.avatar : String(incoming.avatar).slice(0, 16);
           metadata.character = incoming.character == null ? null : String(incoming.character).slice(0, 40);
           metadata.ready = !!incoming.ready;
-          this.broadcast({ type: 'roomMessage', from: clientId, payload: {
+          const update = { type: 'roomMessage', from: clientId, payload: {
             type: 'lobbyUpdate', peerId: clientId, role: metadata.role,
             nickname: metadata.nickname, avatar: metadata.avatar, character: metadata.character, ready: metadata.ready
-          }});
+          }};
+          this.broadcast(update);
+          // 观众只接收 Worker 确认过的大厅更新，普通战斗和信令转发仍与观战隔离。
+          this.send(this.seat('spectator')?.socket, update);
         } else {
           // Game packets are point-to-point. Do not send the relay envelope
           // back to its sender; it only wastes bandwidth and makes the

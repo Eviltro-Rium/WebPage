@@ -117,14 +117,16 @@ test('spectator seat isolates relay and ICE, survives reconnect and closes after
   });
   const source = fs.readFileSync(path.join(__dirname, '../online_game/signaling/worker.js'), 'utf8');
   const room = vm.runInContext(source.replace('export default', 'const worker =').replace('export class Room', 'class Room') + '\nnew Room({})', context);
-  const join = (role, reconnectToken) => {
+  const join = (role, reconnectToken, autoSeat) => {
     room.fetch({ headers:{get:() => 'websocket'} });
     const socket = servers.at(-1);
-    socket.receive({type:'hello', roomProtocol:3, role, reconnectToken});
+    socket.receive({type:'hello', roomProtocol:3, role, reconnectToken, autoSeat});
     return socket;
   };
-  const host = join('host'), guest = join('guest'), spectator = join('spectator');
-  assert.equal(join('spectator').reason, 'room-full');
+  const host = join('host'), guest = join('guest', null, true), spectator = join('guest', null, true);
+  assert.equal(room.seat('guest').socket, guest);
+  assert.equal(room.seat('spectator').socket, spectator);
+  assert.equal(join('guest', null, true).reason, 'room-full');
   for (const p of [host, guest]) p.receive({type:'roomMessage', payload:{type:'lobbyUpdate', ready:true, character:'Ryan'}});
   host.receive({type:'lockSeats'});
   for (const s of [host, guest, spectator]) s.messages.length = 0;

@@ -325,6 +325,7 @@
     if (adv && adv.s) {
       if (!Array.isArray(adv.s.trophyWhiteCards)) adv.s.trophyWhiteCards = [];
       adv.s.trophyWhiteCards.push(trophyName);
+      if (typeof adv._beginTrophyDiscard === 'function') adv._beginTrophyDiscard('map');
     }
     if (Array.isArray(eng.s.trophyDrops)) eng.s.trophyDrops.push(trophyName);
     else eng.s.trophyDrops = [trophyName];

@@ -19,6 +19,7 @@
     'ADVENTURE_BEAST_CHOICE',
     'ADVENTURE_BEAST_DISCARD',
     'ADVENTURE_ITEM_DISCARD',
+    'ADVENTURE_TROPHY_DISCARD',
     'ADVENTURE_COMBAT_SETTLE',
     'ADVENTURE_CLEAR'
   ];
@@ -173,6 +174,8 @@
       pendingDiscard: s.pendingDiscard || 0,
       pendingItemDiscard: s.pendingItemDiscard || 0,
       itemDiscardReturn: CLONE(s.itemDiscardReturn) || null,
+      pendingTrophyDiscard: s.pendingTrophyDiscard || 0,
+      trophyDiscardReturn: CLONE(s.trophyDiscardReturn) || null,
       pendingCombatReward: CLONE(s.pendingCombatReward) || null,
       pendingRoomReward: CLONE(s.pendingRoomReward) || null,
       activeCombat: CLONE(s.activeCombat) || null,

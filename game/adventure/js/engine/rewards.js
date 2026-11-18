@@ -7,6 +7,7 @@
   const SHOP_REFRESH_COST = C.SHOP_REFRESH_COST || 2;
   const SHOP_ACCESSORY_PRICE = C.SHOP_ACCESSORY_PRICE || 15;
   const CONSUMABLE_SLOT_COUNT = C.CONSUMABLE_SLOT_COUNT || 6;
+  const TROPHY_BACKPACK_MAX = C.TROPHY_BACKPACK_MAX || 15;
   const random = () => window.FurryGame && window.FurryGame.CombatRuntime
     ? window.FurryGame.CombatRuntime.random() : Math.random();
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
@@ -241,8 +242,44 @@
       const returnTo = this.s.itemDiscardReturn;
       this.s.pendingItemDiscard = 0;
       this.s.itemDiscardReturn = null;
+      if (this._beginTrophyDiscard(returnTo)) return true;
       if (returnTo === 'combat-basic') {
         const pending = this.s.pendingCombatReward;
+        const room = this.currentRoom();
+        if (room && room.type === window.RoomType.BOSS) return this._finishBossRewardSettlement(room);
+        return this._beginDedicatedBeastSettlement(room);
+      }
+      if (returnTo === 'combat-bonus') return this._beginChallengeBeastSettlement(this.currentRoom());
+      this.s.phase = Phase.MAP;
+      return true;
+    },
+    _beginTrophyDiscard(returnTo) {
+      const count = (this.s.trophyWhiteCards || []).length;
+      const overflow = Math.max(0, count - TROPHY_BACKPACK_MAX);
+      if (!overflow) return false;
+      if (this.s.phase === Phase.ITEM_DISCARD) {
+        this.s.pendingTrophyDiscard = overflow;
+        if (!this.s.trophyDiscardReturn) this.s.trophyDiscardReturn = returnTo || 'map';
+        return false;
+      }
+      this.s.pendingTrophyDiscard = overflow;
+      this.s.trophyDiscardReturn = returnTo || 'map';
+      this.s.phase = Phase.TROPHY_DISCARD;
+      this._log('战利卡超过上限(' + TROPHY_BACKPACK_MAX + ')，需丢弃' + overflow + '张');
+      this.emit('trophyOverflow', '战利卡超上限，需丢弃' + overflow + '张', {
+        overflow,
+        total: count,
+        max: TROPHY_BACKPACK_MAX,
+        returnTo: this.s.trophyDiscardReturn
+      });
+      return true;
+    },
+    _resumeAfterTrophyDiscard() {
+      const returnTo = this.s.trophyDiscardReturn;
+      this.s.pendingTrophyDiscard = 0;
+      this.s.trophyDiscardReturn = null;
+      if (this._beginTrophyDiscard(returnTo)) return true;
+      if (returnTo === 'combat-basic') {
         const room = this.currentRoom();
         if (room && room.type === window.RoomType.BOSS) return this._finishBossRewardSettlement(room);
         return this._beginDedicatedBeastSettlement(room);
@@ -273,12 +310,13 @@
       this._lastRewardNotice = result.message || null;
       if (result.message) this._log(result.message);
       this.emit('reward', '领取奖励房奖励', { loot: result.granted || loot, remaining: result.remaining || null });
-      if (result.itemOverflow) {
-        this._beginItemDiscard('map');
+        if (result.itemOverflow) {
+          this._beginItemDiscard('map');
+          return true;
+        }
+        if (this._beginTrophyDiscard('map')) return true;
+        this.s.phase = Phase.MAP;
         return true;
-      }
-      this.s.phase = Phase.MAP;
-      return true;
     },
     deferRoomReward() {
       if (!this.s || this.s.phase !== Phase.REWARD) return false;
@@ -325,6 +363,7 @@
           this._beginItemDiscard('combat-basic');
           return true;
         }
+        if (this._beginTrophyDiscard('combat-basic')) return true;
         if (result.beastAdded) {
           const overflow = this.s.currency.overflowAfter(0);
           if (overflow > 0) {
@@ -362,6 +401,7 @@
           this._beginItemDiscard('combat-bonus');
           return true;
         }
+        if (this._beginTrophyDiscard('combat-bonus')) return true;
         return this._beginChallengeBeastSettlement(room);
       }
 
@@ -787,6 +827,7 @@
           this._beginItemDiscard('map');
           return loot;
         }
+        if (this._beginTrophyDiscard('map')) return loot;
         if (result.beastAdded) {
           this._checkBeastOverflow(room);
           if (this.s.phase === Phase.BEAST_DISCARD) return loot;
@@ -833,6 +874,8 @@
       this.s.pendingDiscard = 0;
       this.s.pendingItemDiscard = 0;
       this.s.itemDiscardReturn = null;
+      this.s.pendingTrophyDiscard = 0;
+      this.s.trophyDiscardReturn = null;
       this.s.phase = Phase.MAP;
       this.emit('returnToMap', '返回地图', {});
       return true;

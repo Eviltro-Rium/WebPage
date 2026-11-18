@@ -143,6 +143,8 @@
       this.s.pendingDiscard = 0;
       this.s.pendingItemDiscard = 0;
       this.s.itemDiscardReturn = null;
+      this.s.pendingTrophyDiscard = 0;
+      this.s.trophyDiscardReturn = null;
       this.s.phase = Phase.CLEAR;
       this._log('冒险胜利：已通关全部四层');
       this.emit('adventureVictory', '冒险胜利：已通关全部四层', { stage: this.s.stage, scene: this.s.scene });

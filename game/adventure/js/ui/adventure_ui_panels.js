@@ -324,7 +324,27 @@
       const cards = snap.trophyWhiteCards || [];
       return '<div class="adv-trophy-backpack-section">' +
         '<button type="button" class="adv-trophy-backpack-btn" id="adv-trophy-pack" title="查看和丢弃已获得的战利白卡">' +
-        '<span class="adv-trophy-backpack-icon">◇</span><span>战利卡背包</span><b>' + cards.length + '</b></button></div>';
+        '<span class="adv-trophy-backpack-icon">◇</span><span>战利卡背包</span><b>' + cards.length + '/' + (snap.trophyBackpackMax || 15) + '</b></button></div>';
+    }
+
+    _buildTrophyDiscardPage(snap) {
+      const page = document.createElement('div');
+      page.className = 'adv-reward-page';
+      const cards = snap.trophyWhiteCards || [];
+      const max = snap.trophyBackpackMax || 15;
+      let html = '<div class="adv-reward-page-title">战利卡背包超过上限</div>';
+      html += '<div class="adv-settle-section-title">请丢弃 ' + (snap.pendingTrophyDiscard || 0) + ' 张战利卡（保留 ' + max + ' 张）</div>';
+      html += '<div class="adv-trophy-pack-list">';
+      cards.forEach(card => {
+        const art = this._trophyCardMarkup(card.name, 46, 68, !!card.trophyBlack);
+        html += '<div class="adv-trophy-pack-row"><div class="adv-trophy-pack-card">' + art +
+          '<div><b>' + card.displayName + '</b><small>' + (card.description || '') + '</small></div></div>' +
+          '<button type="button" class="adv-btn adv-trophy-pack-discard" data-trophy-discard="' + card.index + '">丢弃</button></div>';
+      });
+      html += '</div>';
+      page.innerHTML = html;
+      this._mountTrophyCards(page);
+      return page;
     }
     
     _buildAccessoryPanel(snap) {

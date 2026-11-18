@@ -7,6 +7,7 @@
   const SHOP_REFRESH_COST = C.SHOP_REFRESH_COST || 2;
   const SHOP_ACCESSORY_PRICE = C.SHOP_ACCESSORY_PRICE || 15;
   const CONSUMABLE_SLOT_COUNT = C.CONSUMABLE_SLOT_COUNT || 6;
+  const TROPHY_BACKPACK_MAX = C.TROPHY_BACKPACK_MAX || 15;
   const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
   const random = () => window.FurryGame && window.FurryGame.CombatRuntime
     ? window.FurryGame.CombatRuntime.random() : Math.random();
@@ -233,6 +234,9 @@
         if (!Array.isArray(this.s.trophyWhiteCards)) this.s.trophyWhiteCards = [];
         this.s.trophyWhiteCards.push(itemName);
         if (this.s.playerPile) this.s.playerPile.hand.push(window.AdventureDeck.trophyWhite(itemName));
+        if (typeof this._beginTrophyDiscard === 'function') {
+          this._beginTrophyDiscard(opts.trophyDiscardReturn || this.s.trophyDiscardReturn || this.s.itemDiscardReturn || 'map');
+        }
       } else if (def.kind === 'consumable') {
         if (itemName === 'DiceController' && this.hasAccessory && this.hasAccessory('Magician')) {
           this._log('已持有魔术师，不能同时持有遥控骰子');
@@ -295,6 +299,8 @@
     },
     discardTrophyWhiteCard(index) {
       if (!this.s || !Array.isArray(this.s.trophyWhiteCards)) return { ok: false, message: '没有战利白卡' };
+      const forced = this.s.phase === Phase.TROPHY_DISCARD && (this.s.pendingTrophyDiscard || 0) > 0;
+      if (!forced && this.s.phase === Phase.TROPHY_DISCARD) return { ok: false, message: '请先完成战利卡丢弃' };
       if (!Number.isInteger(index) || index < 0 || index >= this.s.trophyWhiteCards.length) return { ok: false, message: '无效卡牌' };
       const entry = this._trophyInventory()[index];
       const itemName = entry.name;
@@ -312,6 +318,13 @@
       const def = window.AdventureRegistry.getItem(itemName);
       this._log('丢弃战利白卡：' + (def ? def.displayName : itemName));
       this.emit('trophyDiscard', '丢弃战利白卡', { itemName, index });
+      if (forced) {
+        this.s.pendingTrophyDiscard = Math.max(0, (this.s.pendingTrophyDiscard || 0) - 1);
+        this._log('战利卡背包还需丢弃' + this.s.pendingTrophyDiscard + '张');
+        if (this.s.pendingTrophyDiscard <= 0 && typeof this._resumeAfterTrophyDiscard === 'function') {
+          this._resumeAfterTrophyDiscard();
+        }
+      }
       return { ok: true };
     },
     _applyAccessoryOnAdd(def) {

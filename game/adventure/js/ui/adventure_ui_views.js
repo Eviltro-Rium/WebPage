@@ -43,6 +43,8 @@
         wrap.appendChild(ui._buildBeastDiscardPage(snap));
       } else if (snap.phase === Phase.ITEM_DISCARD) {
         wrap.appendChild(ui._buildItemDiscardPage(snap));
+      } else if (snap.phase === Phase.TROPHY_DISCARD) {
+        wrap.appendChild(ui._buildTrophyDiscardPage(snap));
       } else {
         const mapPanel = document.createElement('div');
         mapPanel.className = 'adv-map-panel';
