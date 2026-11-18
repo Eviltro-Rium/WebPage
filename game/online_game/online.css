@@ -91,7 +91,11 @@ body {
 .online-roster, .online-select { padding: 16px; border: 1px solid rgba(165,207,255,.17); border-radius: 13px; background: rgba(4, 18, 34, .44); }
 .online-roster h3, .online-select h3 { margin: 0 0 11px; font-size: .86rem; }
 .online-player { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px; background: rgba(255,255,255,.045); margin-bottom: 8px; }
-.online-player-avatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: rgba(125,211,252,.18); color: #bae6fd; font-size: .73rem; font-weight: 820; }
+.online-empty-seat { width: 100%; border: 1px dashed var(--line); text-align: left; color: inherit; }
+button.online-empty-seat { font: inherit; cursor: pointer; }
+button.online-empty-seat:hover, button.online-empty-seat:focus-visible { border-color: var(--accent); background: #302446; }
+.online-empty-seat .online-player-avatar { font-size: 1rem; }
+.online-player-avatar { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; border-radius: 9px; background: rgba(125,211,252,.18); color: #bae6fd; font-size: .73rem; font-weight: 820; }
 .online-player-meta { min-width: 0; display: grid; gap: 2px; }
 .online-player-meta strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; }
 .online-player-meta small { color: var(--muted); font-size: .64rem; }
@@ -161,8 +165,15 @@ body {
 }
 
 #watch-card-desc:not(:empty) { display: block; text-align: center; }
-#game-screen.watch-screen .hand-row { flex-wrap: wrap; }
+#game-screen.watch-screen :is(#player-hand, #watch-guest-hand) {
+    flex: 1;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 12px 6px;
+}
 @media (max-width: 768px) {
+    #game-screen.watch-screen :is(#player-hand, #watch-guest-hand) { padding: 10px 3px; }
     #game-screen.watch-screen .ai-area { grid-template-rows: auto auto; }
     #game-screen.watch-screen :is(.attack-zone, .defend-zone) { grid-row: 1; }
     #game-screen.watch-screen :is(.reveal-zone, .discard-zone) { grid-row: 2; }

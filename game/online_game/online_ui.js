@@ -607,8 +607,31 @@
             if (this.match || this.state) return;
             if (this._pendingBattleRestore) { this.showBattleRestoring(this.roomCode); return; }
             const cards = this.chars().map(ch => '<button class="online-char' + (this.character === ch.name ? ' selected' : '') + '" data-char="' + safeText(ch.name) + '" type="button"><img class="online-char-avatar" src="../avatars/' + safeText(ch.name) + '.webp" alt="' + safeText(ch.name) + '"><strong>' + safeText(ch.name) + '</strong><small>' + safeText(ch.type || '角色') + ' · HP ' + (Number(ch.hp) || 0) + '</small></button>').join('');
-            const playerMarkup = (player, revealCharacter) => player ? '<div class="online-player"><div class="online-player-avatar">' + safeText(player.avatar || (player.nickname || '?').slice(0, 1).toUpperCase()) + '</div><div class="online-player-meta"><strong>' + safeText(player.nickname || 'Player') + (player.role === 'host' ? ' · 房主' : '') + '</strong><small>' + (player.character ? (revealCharacter ? safeText(player.character) : '已选择角色') : '尚未选择角色') + '</small></div><span class="online-ready' + (player.ready ? ' yes' : '') + '">' + (player.ready ? '已准备' : '未准备') + '</span></div>' : '<div class="online-help">等待另一位玩家加入…</div>';
-            this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线房间</div><div class="online-brand-sub">' + safeText(this.connectionState || '连接中') + '</div></div></div><a class="online-link" id="online-home-link" href="../index.html">退出房间</a></div><section class="online-panel online-room"><div class="online-room-head"><div><div class="online-brand-sub">房间码</div><div class="online-room-code"><strong>' + safeText(this.roomCode) + '</strong><button class="online-copy-code" id="online-copy-code" type="button">复制</button></div></div><div class="online-status" id="online-room-status">' + safeText(this.roomStatus || '等待连接') + '</div></div><div class="online-room-grid"><div class="online-roster"><h3>玩家</h3>' + playerMarkup(this.players.find(p => p.role === 'host'), this.role === 'host') + playerMarkup(this.players.find(p => p.role === 'guest'), this.role === 'guest') + '<p>观战席 · ' + safeText(this.players.find(p => p.role === 'spectator')?.nickname || '空席') + '</p>' + '<div class="online-help">观众可以看到双方手牌。</div></div><div class="online-select"><h3>选择你的角色</h3><div class="online-chars">' + cards + '</div><div class="online-room-actions"><button class="online-btn ghost" id="online-leave" type="button">离开房间</button><button class="online-btn ghost" id="online-retry" type="button">重试连接</button><button class="online-btn good" id="online-ready" type="button" ' + (this.character ? '' : 'disabled') + '>' + (this.ready ? '取消准备' : '准备') + '</button>' + (this.role === 'host' ? '<button class="online-btn primary" id="online-start-match" type="button">开始对战</button>' : '') + '</div><div class="online-status error" id="online-room-error">' + safeText(this.error) + '</div></div></div></section>';
+            const seatMarkup = (role, label) => {
+                const player = this.players.find(item => item.role === role);
+                if (!player) {
+                    const canMove = this.role === 'guest' && role === 'spectator'
+                        || this.role === 'spectator' && role === 'guest';
+                    const content = '<span class="online-player-avatar" aria-hidden="true">＋</span>'
+                        + '<span class="online-player-meta"><strong>' + label + '</strong><small>空席</small></span>';
+                    return canMove
+                        ? '<button type="button" class="online-player online-empty-seat" data-seat="' + role
+                            + '" aria-label="转入' + label + '">' + content + '</button>'
+                        : '<div class="online-player online-empty-seat">' + content + '</div>';
+                }
+                const avatar = player.avatar || (player.nickname || '?').slice(0, 1).toUpperCase();
+                const watching = role === 'spectator';
+                const detail = watching ? label : label + ' · ' + (player.character
+                    ? (this.role === role ? safeText(player.character) : '已选择角色') : '尚未选择角色');
+                const status = player.connected === false ? '等待重连' : watching ? '已入座' : player.ready ? '已准备' : '未准备';
+                return '<div class="online-player" data-occupied-seat="' + role + '"><div class="online-player-avatar">'
+                    + safeText(avatar) + '</div><div class="online-player-meta"><strong>'
+                    + safeText(player.nickname || 'Player') + '</strong><small>' + detail
+                    + '</small></div><span class="online-ready' + (!watching && player.ready ? ' yes' : '') + '">'
+                    + status + '</span></div>';
+            };
+            const seats = seatMarkup('host', '房主') + seatMarkup('guest', '对战席') + seatMarkup('spectator', '观战席');
+            this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线房间</div><div class="online-brand-sub">' + safeText(this.connectionState || '连接中') + '</div></div></div><a class="online-link" id="online-home-link" href="../index.html">退出房间</a></div><section class="online-panel online-room"><div class="online-room-head"><div><div class="online-brand-sub">房间码</div><div class="online-room-code"><strong>' + safeText(this.roomCode) + '</strong><button class="online-copy-code" id="online-copy-code" type="button">复制</button></div></div><div class="online-status" id="online-room-status">' + safeText(this.roomStatus || '等待连接') + '</div></div><div class="online-room-grid"><div class="online-roster"><h3>席位</h3>' + seats + '<div class="online-help">观众可以看到双方手牌。</div></div><div class="online-select"><h3>选择你的角色</h3><div class="online-chars">' + cards + '</div><div class="online-room-actions"><button class="online-btn ghost" id="online-leave" type="button">离开房间</button><button class="online-btn ghost" id="online-retry" type="button">重试连接</button><button class="online-btn good" id="online-ready" type="button" ' + (this.character ? '' : 'disabled') + '>' + (this.ready ? '取消准备' : '准备') + '</button>' + (this.role === 'host' ? '<button class="online-btn primary" id="online-start-match" type="button">开始对战</button>' : '') + '</div><div class="online-status error" id="online-room-error">' + safeText(this.error) + '</div></div></div></section>';
             this.root.querySelectorAll('[data-char]').forEach(button => button.addEventListener('click', () => { this.character = button.dataset.char; this.ready = false; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); }));
             this.root.querySelector('#online-ready').addEventListener('click', () => { if (!this.character) return; this.ready = !this.ready; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); });
             this.root.querySelector('#online-leave').addEventListener('click', () => {
@@ -627,22 +650,15 @@
                 character: this.character, ready: this.ready, reconnectToken: this.reconnectToken,
                 battle: this._captureBattleSession()
             }));
-            if (this.role !== 'host') {
-                const watching = this.role === 'spectator';
-                const seat = watching ? 'guest' : 'spectator';
+            if (this.role === 'spectator') {
                 const select = this.root.querySelector('.online-select');
-                if (watching) {
-                    select.querySelector('h3').textContent = '观战席';
-                    select.querySelector('.online-chars').remove();
-                    select.querySelector('#online-ready').remove();
-                }
-                const button = document.createElement('button');
-                button.className = 'online-btn';
-                button.textContent = watching ? '转入对战席' : '转入观战席';
-                button.disabled = this.players.some(player => player.role === seat);
-                button.onclick = () => this.peer.sendControl('changeSeat', { role: seat });
-                select.querySelector('.online-room-actions').prepend(button);
+                select.querySelector('h3').textContent = '观战席';
+                select.querySelector('.online-chars').remove();
+                select.querySelector('#online-ready').remove();
             }
+            this.root.querySelectorAll('[data-seat]').forEach(button => button.addEventListener('click', () => {
+                this.peer?.sendControl('changeSeat', { role: button.dataset.seat });
+            }));
             const start = this.root.querySelector('#online-start-match'); if (start) start.addEventListener('click', () => this.startMatch());
             const copyButton = this.root.querySelector('#online-copy-code'); if (copyButton) copyButton.addEventListener('click', async () => { try { await navigator.clipboard.writeText(this.roomCode); copyButton.textContent = '已复制'; setTimeout(() => { copyButton.textContent = '复制'; }, 1200); } catch (_) { copyButton.textContent = this.roomCode; } });
         }

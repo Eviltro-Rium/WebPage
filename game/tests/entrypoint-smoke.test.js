@@ -160,10 +160,14 @@ test('three online pages share seats, start without spectator readiness and clos
   await tick();
   guest.connect('guest', {...opts, nickname:'乙'});
   await tick();
-  guest.peer.sendControl('changeSeat', {role:'spectator'});
+  assert.equal(host.root.querySelector('button[data-seat]'), null, 'the host cannot leave the battle seat');
+  guest.root.querySelector('button[data-seat="spectator"]').click();
   await tick();
   assert.equal(guest.role, 'spectator');
-  guest.peer.sendControl('changeSeat', {role:'guest'});
+  const occupied = host.root.querySelector('[data-occupied-seat="spectator"]');
+  assert.equal(occupied.querySelector('strong').textContent, '乙');
+  assert.equal(occupied.querySelector('.online-player-avatar').textContent, guest.avatar);
+  guest.root.querySelector('button[data-seat="guest"]').click();
   await tick();
   for (const ui of [host, guest]) {
     ui.root.querySelector('[data-char]').click();
