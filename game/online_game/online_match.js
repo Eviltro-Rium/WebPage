@@ -590,9 +590,11 @@
             return projectEvents(events, viewer, source);
         }
 
-        projectSpectator() {
+        projectSpectator(events = []) {
             const engine = this.engine;
             const s = engine.s;
+            // 联机结算会在生成快照前清空防御区。只向观众转发已公开的防御牌。
+            const defense = events.findLast(event => (event.type === 'defend' || event.type === 'aiDefend') && event.card);
             const fighter = entity => {
                 const visible = { name: entity.name, hp: entity.hp, maxHp: entity.maxHp };
                 for (const def of global.StatusRegistry.list(entity)) visible[def.property] = entity[def.property];
@@ -607,6 +609,7 @@
                 onlineNickname: this.hostNickname, onlineOpponentNickname: this.guestNickname,
                 atkCard: s.pendingBlackPlay?.mode === 'attack' ? null : s.atkCard,
                 defCard: s.pendingBlackPlay?.mode === 'defend' ? null : s.defCard,
+                defensePlay: defense ? { card: defense.card, owner: defense.type === 'aiDefend' ? 'ai' : 'player' } : null,
                 atkOwner: s.atkOwner, defOwner: s.defOwner, discardTop: s.discardTop,
                 revealCards: s.revealCards, diceRoll: s.diceRoll && { value: s.diceRoll.value }
             });

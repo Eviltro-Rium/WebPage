@@ -120,6 +120,51 @@ test('spectator sees both real hands below the battlefield without action contro
   assert.equal(rows[1].querySelectorAll('canvas').length, 0);
 });
 
+test('spectator shows a settled defense in the defense zone before revealing the discard top', async t => {
+  const { w } = await boot(t, 'online_game/index.html');
+  const ui = w.onlineUI;
+  ui.role = 'spectator';
+  let finishDefense;
+  const setTimeout = w.setTimeout;
+  w.setTimeout = (fn, ms) => {
+    if (ms === 850) finishDefense = fn;
+    return setTimeout(fn, ms);
+  };
+  for (const [attacker, defender, eventType, owner] of [
+    ['host', 'guest', 'aiDefend', 'ai'],
+    ['guest', 'host', 'defend', 'player']
+  ]) {
+    ui.watchView = null;
+    const match = new w.OnlineMatchHost('Ryan', 'Chan', attacker, 4);
+    match.setStarted(true);
+    const attack = w.FurryGame.Card.number('RED', 2);
+    const defense = w.FurryGame.Card.number('RED', 1);
+    match.engine.h.player = [attacker === 'host' ? attack : defense];
+    match.engine.h.ai = [attacker === 'guest' ? attack : defense];
+    match.engine.s.discardTop = w.FurryGame.Card.number('RED', 4);
+    const command = (actor, method, card) => match.dispatch(actor, method, {
+      cardId: w.cardMatchKey(card), index: 0
+    });
+    const attackResult = command(attacker, 'playCard', attack);
+    assert.equal(attackResult.ok, true, attackResult.error);
+    ui.renderSpectator(match.projectSpectator());
+    const result = command(defender, 'defendCard', defense);
+    assert.equal(result.ok, true, result.error);
+    const events = match.eventsForViewer(result.events, 'host', defender);
+    assert.ok(events.some(event => event.type === eventType));
+    const snapshot = match.projectSpectator(events);
+    assert.equal(snapshot.defCard, null);
+    assert.equal(snapshot.defensePlay.owner, owner);
+    ui.renderSpectator(snapshot);
+    ui.renderSpectator(match.projectSpectator());
+    assert.ok(w.document.querySelector('#def-cards canvas'));
+    assert.equal(ui.watchView.state.discardTop.uid, attack.uid);
+    finishDefense();
+    assert.equal(w.document.querySelector('#def-cards canvas'), null);
+    assert.equal(ui.watchView.state.discardTop.uid, defense.uid);
+  }
+});
+
 test('three online pages share seats, start without spectator readiness and close together', async t => {
   const pages = await Promise.all(Array.from({length:3}, () => boot(t, 'online_game/index.html')));
   // Use the real room and browser adapters with asynchronous in-memory WebSockets.

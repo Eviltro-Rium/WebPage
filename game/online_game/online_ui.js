@@ -504,7 +504,7 @@
                         state: this.state,
                         onStateChange: result => {
                             if (result && result.state) this.state = clone(result.state);
-                            this.publishSpectator();
+                            this.publishSpectator(result?.events);
                             this._persistRoomSession();
                         }
                     });
@@ -682,9 +682,9 @@
             this._restoreBattleIfPossible();
             this.renderRoom();
         }
-        publishSpectator() {
+        publishSpectator(events) {
             if (this.role !== 'host' || !this.match?.projectSpectator || !this.players?.some(p => p.role === 'spectator')) return;
-            this.peer.sendControl('watchState', { state: this.match.projectSpectator() });
+            this.peer.sendControl('watchState', { state: this.match.projectSpectator(events) });
         }
 
         leaveSpectator(message = '双方已离开，观战结束') {
@@ -730,7 +730,27 @@
                 hostHand.after(guestHand);
                 this.watchView = view;
             }
-            view.state = state;
+            const defense = state.defensePlay;
+            const runtime = global.FurryGame.CombatRuntime;
+            if (defense && view.watchDefenseVersion !== state.stateVersion) {
+                view.watchDefenseVersion = state.stateVersion;
+                view.watchDefense = { ...defense, previousTop: view.watchSnapshot?.discardTop || null };
+                runtime.schedule(view, () => {
+                    if (this.watchView !== view) return;
+                    view.watchDefense = null;
+                    view.state = view.watchSnapshot;
+                    view._renderZones();
+                    view._renderDiscardTop();
+                }, 850, 'watch-defense');
+            }
+            view.watchSnapshot = state;
+            const hold = view.watchDefense;
+            view.state = hold && !state.defCard
+                ? {
+                    ...state, defCard: hold.card, defOwner: hold.owner,
+                    discardTop: state.discardTop && cardId(state.discardTop) === cardId(hold.card)
+                        ? hold.previousTop : state.discardTop
+                } : state;
             for (const [key, id, label, nickname, hand] of [
                 ['player', 'player-hand', '房主', state.onlineNickname, state.playerHand],
                 ['ai', 'watch-guest-hand', '客方', state.onlineOpponentNickname, state.aiHand]
@@ -743,7 +763,7 @@
                 document.getElementById(key + '-name').textContent = nickname + ' · ' + charName;
                 const row = document.getElementById(id);
                 row.closest('.player-hand-zone').querySelector('.zone-title').textContent = label + '手牌 · ' + nickname;
-                this.updateWatchHand(row, hand, charName, state);
+                this.updateWatchHand(row, hand, charName, view.state);
             }
             view._updateAttackerIndicator(state.activeAttacker);
             view._renderDiscardTop();
@@ -825,7 +845,7 @@
                     state: hostState,
                     onStateChange: result => {
                         if (result && result.state) this.state = clone(result.state);
-                        this.publishSpectator();
+                        this.publishSpectator(result?.events);
                     }
                 });
                 this._mountSharedBattle(this.battleSession, hostState, events);
