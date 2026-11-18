@@ -18,7 +18,7 @@
 
 ## 在线模式
 
-- [在线文档索引](online/README.md)
+- [在线文档索引](online/README.md) · [观战席与手牌同步](online/spectator_plan.md)
 - [功能清单](online/function_list.md)：当前在线 MVP 的功能范围。
 - [风险审查](online/bug_risk_review.md)：安全、断线、状态同步和部署风险。
 - [延迟与性能审查](online/latency_performance_review.md)：传输、渲染和重连优化建议。

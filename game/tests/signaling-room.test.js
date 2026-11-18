@@ -29,7 +29,7 @@ test('departing host promotes remaining player and permits rejoining the same ro
   const join = role => {
     room.fetch({ headers: { get: () => 'websocket' } });
     const socket = servers.at(-1);
-    socket.receive({ type: 'hello', role });
+    socket.receive({ type: 'hello', roomProtocol: 3, role });
     return socket;
   };
   const host = join('host');
@@ -69,7 +69,7 @@ test('reconnect token replaces a refreshed socket without duplicating the player
   const join = ({ role, reconnectToken } = {}) => {
     room.fetch({ headers: { get: () => 'websocket' } });
     const socket = servers.at(-1);
-    socket.receive({ type: 'hello', role, nickname: role === 'host' ? 'Host' : 'Guest', reconnectToken });
+    socket.receive({ type: 'hello', roomProtocol: 3, role, nickname: role === 'host' ? 'Host' : 'Guest', reconnectToken });
     return socket;
   };
   const host = join({ role: 'host' });
@@ -96,4 +96,57 @@ test('reconnect token replaces a refreshed socket without duplicating the player
   assert.equal(room.clients.size, 2);
   const latestRoster = [...guest.messages].reverse().find(message => Array.isArray(message.players));
   assert.equal(latestRoster.players.filter(player => player.role === 'host').length, 1);
+});
+
+test('spectator seat isolates relay and ICE, survives reconnect and closes after both seats expire', () => {
+  const servers = [], timers = new Map();
+  let nextId = 0;
+  class Socket {
+    constructor() { this.handlers = {}; this.messages = []; }
+    accept() {}
+    addEventListener(type, fn) { this.handlers[type] = fn; }
+    send(data) { this.messages.push(JSON.parse(data)); }
+    close(code, reason) { this.reason = reason; this.handlers.close?.(); }
+    receive(data) { this.handlers.message({data:JSON.stringify(data)}); }
+  }
+  const context = vm.createContext({
+    TextEncoder, crypto:require('node:crypto'), Response:class {},
+    setTimeout(fn, ms) { timers.set(++nextId, {fn, ms}); return nextId; },
+    clearTimeout(id) { timers.delete(id); },
+    WebSocketPair:class { constructor() { this[0] = new Socket(); this[1] = new Socket(); servers.push(this[1]); } }
+  });
+  const source = fs.readFileSync(path.join(__dirname, '../online_game/signaling/worker.js'), 'utf8');
+  const room = vm.runInContext(source.replace('export default', 'const worker =').replace('export class Room', 'class Room') + '\nnew Room({})', context);
+  const join = (role, reconnectToken) => {
+    room.fetch({ headers:{get:() => 'websocket'} });
+    const socket = servers.at(-1);
+    socket.receive({type:'hello', roomProtocol:3, role, reconnectToken});
+    return socket;
+  };
+  const host = join('host'), guest = join('guest'), spectator = join('spectator');
+  assert.equal(join('spectator').reason, 'room-full');
+  for (const p of [host, guest]) p.receive({type:'roomMessage', payload:{type:'lobbyUpdate', ready:true, character:'Ryan'}});
+  host.receive({type:'lockSeats'});
+  for (const s of [host, guest, spectator]) s.messages.length = 0;
+  host.receive({type:'signal', signal:{type:'ice'}});
+  host.receive({type:'roomMessage', payload:{__onlineTransport:1}});
+  assert.deepEqual(guest.messages.map(m => m.type), ['signal', 'roomMessage']);
+  spectator.receive({type:'signal', signal:{type:'ice'}});
+  spectator.receive({type:'roomMessage', payload:{__onlineTransport:1}});
+  assert.equal(host.messages.length, 0);
+  assert.equal(spectator.messages.length, 0);
+  host.receive({type:'watchState', state:{matchId:'live', stateVersion:42}});
+  assert.equal(spectator.messages.at(-1).state.stateVersion, 42);
+  assert.equal(guest.messages.length, 2);
+  const token = room.seat('guest').meta.reconnectToken;
+  guest.close();
+  const restored = join('guest', token);
+  host.close();
+  for (const {fn, ms} of [...timers.values()]) if (ms === 15000) fn();
+  assert.equal(room.seat('host').socket, restored);
+  assert.ok(!spectator.messages.some(m => m.type === 'roomClosed'));
+  restored.close();
+  for (const {fn, ms} of [...timers.values()]) if (ms === 15000) fn();
+  assert.ok(spectator.messages.some(m => m.type === 'roomClosed'));
+  assert.equal(room.clients.size, 0);
 });

@@ -590,6 +590,28 @@
             return projectEvents(events, viewer, source);
         }
 
+        projectSpectator() {
+            const engine = this.engine;
+            const s = engine.s;
+            const fighter = entity => {
+                const visible = { name: entity.name, hp: entity.hp, maxHp: entity.maxHp };
+                for (const def of global.StatusRegistry.list(entity)) visible[def.property] = entity[def.property];
+                return visible;
+            };
+            return clone({
+                matchId: this.matchId, stateVersion: this.stateVersion, isOnline: true,
+                turn: s.turn, phase: s.phase, activeAttacker: s.activeAttacker,
+                deck: engine.deck.length, discard: engine.discardBottom.length + Number(!!s.discardTop),
+                player: fighter(s.player), ai: fighter(s.ai),
+                playerHand: engine.h.player, aiHand: engine.h.ai,
+                onlineNickname: this.hostNickname, onlineOpponentNickname: this.guestNickname,
+                atkCard: s.pendingBlackPlay?.mode === 'attack' ? null : s.atkCard,
+                defCard: s.pendingBlackPlay?.mode === 'defend' ? null : s.defCard,
+                atkOwner: s.atkOwner, defOwner: s.defOwner, discardTop: s.discardTop,
+                revealCards: s.revealCards, diceRoll: s.diceRoll && { value: s.diceRoll.value }
+            });
+        }
+
         project(viewer = 'host') {
             const e = this.engine;
             const state = F.CombatState && F.CombatState.project

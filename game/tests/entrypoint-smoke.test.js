@@ -97,3 +97,112 @@ test('online entry boots and keeps the shared combat UI available', async t => {
   assert.equal(typeof w.GameUI.prototype._renderDiceControl, 'function');
   assert.equal(typeof w.appendParsedSegments, 'function');
 });
+
+test('spectator sees both real hands below the battlefield without action controls', async t => {
+  const { w } = await boot(t, 'online_game/index.html');
+  const match = new w.OnlineMatchHost('Ryan', 'Chan', 'host', 4, {hostNickname:'甲', guestNickname:'乙'});
+  const ui = w.onlineUI;
+  ui.role = 'spectator';
+  const state = match.projectSpectator();
+  assert.ok(!('pendingDialog' in state) && !('chanFiveCards' in state));
+  assert.equal(typeof state.deck, 'number');
+  assert.equal(match.project('host').aiHand, null);
+  assert.equal(match.project('guest').aiHand, null);
+  state.atkCard = state.playerHand[0];
+  ui.renderSpectator(state);
+  const rows = [...w.document.querySelectorAll('.watch-screen .player-hand-zone')];
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map(row => row.querySelector('.zone-title').textContent), ['房主手牌 · 甲', '客方手牌 · 乙']);
+  assert.deepEqual(rows.map(row => row.querySelectorAll('canvas').length), [match.engine.h.player.length, match.engine.h.ai.length]);
+  assert.ok(!w.document.querySelector('.watch-screen .ai-hands-stack, .watch-screen button'));
+  ui.renderSpectator({...state, stateVersion: state.stateVersion + 1, aiHand: []});
+  ui.renderSpectator(state);
+  assert.equal(rows[1].querySelectorAll('canvas').length, 0);
+});
+
+test('three online pages share seats, start without spectator readiness and close together', async t => {
+  const pages = await Promise.all(Array.from({length:3}, () => boot(t, 'online_game/index.html')));
+  // Use the real room and browser adapters with asynchronous in-memory WebSockets.
+  class Socket {
+    constructor() { this.listeners = {}; this.readyState = 1; }
+    accept() {}
+    addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
+    emit(type, data) { for (const fn of this.listeners[type] || []) fn(data); }
+    send(data) { queueMicrotask(() => this.other.emit('message', {data})); }
+    close(code = 1000, reason = '') {
+      if (this.readyState === 3) return;
+      this.readyState = this.other.readyState = 3;
+      queueMicrotask(() => { this.emit('close', {code, reason}); this.other.emit('close', {code, reason}); });
+    }
+  }
+  let browser;
+  const ctx = vm.createContext({ TextEncoder, crypto: require('node:crypto'), setTimeout, clearTimeout,
+    Response: class {}, WebSocketPair: class {
+      constructor() { this[0] = browser; this[1] = new Socket(); this[1].other = browser; browser.other = this[1]; }
+    }
+  });
+  const source = fs.readFileSync(path.join(gameRoot, 'online_game/signaling/worker.js'), 'utf8');
+  const room = vm.runInContext(source.replace('export default', 'const worker =').replace('export class Room', 'class Room') + '\nnew Room({})', ctx);
+  for (const { w } of pages) {
+    w.WebSocket = class extends Socket {
+      static OPEN = 1;
+      constructor() {
+        super(); browser = this;
+        room.fetch({headers:{get:() => 'websocket'}});
+        queueMicrotask(() => this.emit('open', {}));
+      }
+    };
+  }
+  const [host, guest, viewer] = pages.map(p => p.w.onlineUI);
+  const tick = () => new Promise(resolve => setImmediate(resolve));
+  const opts = {roomCode:'ABCD', nickname:'甲'};
+  host.connect('host', opts);
+  await tick();
+  guest.connect('guest', {...opts, nickname:'乙'});
+  await tick();
+  guest.peer.sendControl('changeSeat', {role:'spectator'});
+  await tick();
+  assert.equal(guest.role, 'spectator');
+  guest.peer.sendControl('changeSeat', {role:'guest'});
+  await tick();
+  for (const ui of [host, guest]) {
+    ui.root.querySelector('[data-char]').click();
+    ui.root.querySelector('#online-ready').click();
+    await tick();
+  }
+  host.root.querySelector('#online-start-match').click();
+  await tick();
+  assert.ok(host.match && guest.match);
+  guest.peer.sendControl('changeSeat', {role:'spectator'});
+  await tick();
+  assert.equal(room.seat('guest').meta.peerId, guest.peer.peerId);
+  viewer.connect('spectator', {...opts, nickname:'丙'});
+  await tick();
+  assert.ok(viewer.watchView);
+  assert.equal(viewer.watchView.state.matchId, host.match.matchId);
+  const savedViewer = viewer._readRoomSession();
+  viewer.connect('spectator', { ...savedViewer, autoRestore: true });
+  await tick();
+  assert.ok(viewer.watchView);
+  assert.equal(room.clients.size, 3);
+  const actor = host.match.project('host').onlineActor === 'host' ? host : guest;
+  const outcome = await actor.battleSession.dispatch('doEnterDiscard');
+  assert.equal(outcome.ok, true, outcome.error);
+  await tick();
+  const version = host.match.stateVersion;
+  assert.equal(viewer.watchView.state.stateVersion, version);
+  assert.equal(viewer.watchView.state.phase, host.match.engine.s.phase);
+  viewer.peer.sendRoom({__onlineTransport:1, data:{kind:'returnLobby'}});
+  viewer.peer.sendControl('changeSeat', {role:'guest'});
+  await tick();
+  assert.equal(viewer.role, 'spectator');
+  assert.equal(host.match.stateVersion, version);
+  host.peer.close();
+  await tick();
+  assert.equal(viewer.role, 'spectator');
+  guest.peer.close();
+  await tick();
+  assert.equal(room.clients.size, 0);
+  assert.equal(viewer.role, null);
+  assert.ok(viewer.root.querySelector('#online-connect-form'));
+});

@@ -878,6 +878,18 @@
   });
 
   R.registerItem({
+    name: 'VibeCloak',
+    displayName: '氛围斗篷',
+    kind: 'accessory',
+    description: '对手[先手攻击]被动失效：战斗开始时正常补起始手牌，对手不抢先进攻',
+    icon: ICON + 'vibe_cloak.webp',
+    beastTradeCost: ['huo', 'huo', 'huo', 'cao', 'ben'],
+    price: 15,
+    maxStacks: 1,
+    negatesMonsterFirstStrike: true
+  });
+
+  R.registerItem({
     name: 'Bind',
     displayName: '捆缚',
     kind: 'consumable',

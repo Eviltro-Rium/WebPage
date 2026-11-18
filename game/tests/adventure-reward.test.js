@@ -479,6 +479,16 @@ test('Furnace on map discards color card and grants trophy white', () => {
   assert.equal(eng.s.playerPile.hand.some(c => c.color === 'BLUE' && c.value === 4), false);
 });
 
+test('VibeCloak accessory trade and shop price', () => {
+  const def = context.AdventureRegistry.getItem('VibeCloak');
+  assert.ok(def);
+  assert.equal(def.kind, 'accessory');
+  assert.equal(def.price, 15);
+  assert.equal(def.maxStacks, 1);
+  assert.equal(def.beastTradeCost.join(','), 'huo,huo,huo,cao,ben');
+  assert.equal(def.negatesMonsterFirstStrike, true);
+});
+
 test('shop offers 3 item + 2 beast + 1 accessory slots', () => {
   const map = new AdventureMap([[0, 4]]);
   const eng = new AdventureEngine();

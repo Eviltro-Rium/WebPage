@@ -159,3 +159,11 @@ body {
     .online-resume-orb { width: 56px; height: 56px; border-radius: 18px; font-size: 1.7rem; }
     .online-resume > .online-btn { grid-column: 1 / -1; width: 100%; }
 }
+
+#watch-card-desc:not(:empty) { display: block; text-align: center; }
+#game-screen.watch-screen .hand-row { flex-wrap: wrap; }
+@media (max-width: 768px) {
+    #game-screen.watch-screen .ai-area { grid-template-rows: auto auto; }
+    #game-screen.watch-screen :is(.attack-zone, .defend-zone) { grid-row: 1; }
+    #game-screen.watch-screen :is(.reveal-zone, .discard-zone) { grid-row: 2; }
+}

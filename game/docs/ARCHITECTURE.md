@@ -301,7 +301,7 @@ close()
 - `controls.js`：按钮、对话框动作、冒险道具和在线结算按钮。
 - `mode_1v2.js` / `mode_lord.js`：多目标 UI 组合，不承载战斗规则。
 
-`GameUI.mountBattle(session, state, gameScreen)` 是单机、冒险、在线共用的装配入口。在线 UI 通过 `_onlineResultSink` 把本地/远端结果送入同一个版本队列；在线页面不应再创建一套卡牌渲染器。
+`GameUI.mountBattle(session, state, gameScreen)` 是单机、冒险、在线共用的装配入口。在线 UI 通过 `_onlineResultSink` 把本地/远端结果送入同一个版本队列；观战席复用战场、牌面与状态渲染，由房主生成只读快照，Worker 按席位定向转发。观众的动画不参与事件确认。
 
 卡牌能否出牌由快照中的 `legalHand` 决定。不可出的牌应不可选中，但悬停仍可显示技能说明；选中、动画和状态反馈只能影响 DOM/CSS，不能直接修改 `engine.s`。
 

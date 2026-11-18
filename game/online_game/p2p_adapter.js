@@ -76,7 +76,7 @@
         constructor({ signalUrl, roomCode, role, nickname, avatar, peerId, reconnectToken } = {}) {
             this.signalUrl = signalUrl;
             this.roomCode = String(roomCode || '').toUpperCase();
-            this.role = role === 'guest' ? 'guest' : 'host';
+            this.role = role || 'host';
             this.nickname = String(nickname || 'Player').trim().slice(0, 18) || 'Player';
             this.avatar = String(avatar || '').slice(0, 16);
             this.peerId = peerId || makeId();
@@ -135,7 +135,7 @@
             catch (error) { this.emit('error', error); return; }
             this.ws = socket;
             socket.addEventListener('open', () => {
-                const hello = { type: 'hello', role: this.role, nickname: this.nickname, avatar: this.avatar, peerId: this.peerId };
+                const hello = { type: 'hello', roomProtocol: 3, role: this.role, nickname: this.nickname, avatar: this.avatar, peerId: this.peerId };
                 if (this.reconnectToken) hello.reconnectToken = this.reconnectToken;
                 this._sendSignal(hello);
                 this.heartbeat = setInterval(() => this._sendSignal({ type: 'ping' }), 20000);
@@ -144,7 +144,7 @@
             socket.addEventListener('message', event => {
                 let payload;
                 try { payload = JSON.parse(event.data); } catch (_) { return; }
-                this._onSignal(payload);
+                if (!this.closed) this._onSignal(payload);
             });
             socket.addEventListener('close', event => {
                 if (this.heartbeat) clearInterval(this.heartbeat);
@@ -176,6 +176,10 @@
         _onSignal(message) {
             if (!message || typeof message.type !== 'string') return;
             if (message.type === 'helloAck') {
+                if (message.roomProtocol !== 3) {
+                    this.ws?.close(4001, 'upgrade-required');
+                    return;
+                }
                 // The signaling Worker is authoritative for connection
                 // identity. Keep its id for relay self-echo filtering.
                 const previousPeerId = this.peerId;
@@ -184,13 +188,16 @@
                 this._flushSignalQueue();
                 this.emit('hello', Object.assign({}, message, { previousPeerId }));
                 if (Array.isArray(message.players)) this.emit('roster', message.players);
-                if (this.role === 'host' && Array.isArray(message.players) && message.players.length > 1) this._startOffer();
+                if (this.role === 'host' && Array.isArray(message.players) && message.players.some(p => p.role === 'guest')) this._startOffer();
                 return;
             }
             if (message.type === 'roster') {
                 const players = message.players || [];
                 const own = players.find(player => player.peerId === this.peerId);
-                if (own) this.role = own.role;
+                if (own && own.role !== this.role) {
+                    this.role = own.role;
+                    this._resetConnection();
+                }
                 this.emit('roster', players);
                 return;
             }
@@ -237,6 +244,10 @@
                     return;
                 }
                 this.emit('roomMessage', payload, message.from);
+                return;
+            }
+            if (['watchState', 'watchLobby', 'seatsLocked', 'roomClosed'].includes(message.type)) {
+                this.emit(message.type, message.state);
                 return;
             }
             if (message.type === 'error') { this.emit('error', new Error(message.message || '房间服务错误')); }
@@ -584,6 +595,8 @@
             }
             if (this.dataQueue.length) this._scheduleDataFlush();
         }
+
+        sendControl(type, fields = {}) { this._sendSignal({ ...fields, type }); }
 
         sendRoom(payload) { this._sendSignal({ type: 'roomMessage', payload }); }
 

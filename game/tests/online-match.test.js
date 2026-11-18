@@ -36,7 +36,7 @@ vm.runInContext(fs.readFileSync(path.join(root, 'online_game/online_ui.js'), 'ut
 
 test('online room session persists refresh credentials and clears on intentional exit', () => {
   const values = new Map();
-  context.localStorage = {
+  context.sessionStorage = {
     getItem(key) { return values.has(key) ? values.get(key) : null; },
     setItem(key, value) { values.set(key, String(value)); },
     removeItem(key) { values.delete(key); }
@@ -77,7 +77,7 @@ test('online host match snapshots restore the authoritative battle state', () =>
 
 test('refresh preserves pending battle across reconnect writes and late opponent metadata', () => {
   const values = new Map();
-  context.localStorage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) };
+  context.sessionStorage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) };
   const original = new context.OnlineMatchHost('Saiki', 'Ryan');
   original.setStarted(true);
   const ui = Object.create(context.OnlineUI.prototype);

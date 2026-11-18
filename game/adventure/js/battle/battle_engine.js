@@ -431,7 +431,7 @@
 
       const monsterDef = window.AdventureRegistry.getMonster(opponentName) ||
         window.AdventureRegistry.getBoss(opponentName);
-      if (monsterDef && monsterDef.firstStrike) {
+      if (this._monsterFirstStrikeActive(monsterDef)) {
         // First-strike rooms: no player opening refill/turnStart; go straight
         // into NPC attack → defend, then resume normal endAi refill flow.
         this.s.skipOpeningPlayerFill = true;
@@ -442,6 +442,10 @@
         this.emit('desc', '先攻：对手先行进攻，玩家不补起始手牌');
         this.later(() => this.startAITurn());
       } else {
+        if (monsterDef && monsterDef.firstStrike && this._hasAccessory('VibeCloak')) {
+          this._flashAccessory('VibeCloak');
+          this.emit('desc', '氛围斗篷：对手先攻被动失效');
+        }
         const openingHands = this.handCounts();
         this.silentDraws(function () { this.turnStart('player'); });
         this.emitDrawDiff(openingHands);
@@ -462,13 +466,14 @@
       this.testMode = !!config.testMode;
       if (!window.CharacterRegistry.get(playerName)) throw new Error('未知冒险角色：' + playerName);
 
-      const _fsDef = (n) => {
-        const d = window.AdventureRegistry.getMonster(n) || window.AdventureRegistry.getBoss(n);
-        return !!(d && d.firstStrike);
-      };
-      const _fs1 = _fsDef(opponent1Name);
-      const _fs2 = _fsDef(opponent2Name);
+      const _fs1 = this._monsterFirstStrikeActive(opponent1Name);
+      const _fs2 = this._monsterFirstStrikeActive(opponent2Name);
       const hasFirstStrike = _fs1 || _fs2;
+      const rawFs1 = !!(window.AdventureRegistry.getMonster(opponent1Name) ||
+        window.AdventureRegistry.getBoss(opponent1Name))?.firstStrike;
+      const rawFs2 = !!(window.AdventureRegistry.getMonster(opponent2Name) ||
+        window.AdventureRegistry.getBoss(opponent2Name))?.firstStrike;
+      const vibeCloakSuppressed = this._hasAccessory('VibeCloak') && (rawFs1 || rawFs2) && !hasFirstStrike;
       const opponents = [
         { name: opponent1Name, stage: config.opponent1Stage || stage },
         { name: opponent2Name, stage: config.opponent2Stage || stage }
@@ -566,6 +571,10 @@
         this.emit('desc', '先攻：对手先行进攻，玩家不补起始手牌');
         this.later(() => this.startAITurn());
       } else {
+        if (vibeCloakSuppressed) {
+          this._flashAccessory('VibeCloak');
+          this.emit('desc', '氛围斗篷：对手先攻被动失效');
+        }
         const openingHands = this.handCounts();
         this.silentDraws(function () { this.turnStart('player'); });
         this.emitDrawDiff(openingHands);

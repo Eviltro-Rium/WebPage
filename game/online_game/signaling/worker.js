@@ -1,6 +1,6 @@
 /* Cloudflare Worker signaling relay for Furry Trial online rooms.
  *
- * A Durable Object keeps at most two WebSocket clients for a room and relays
+ * A Durable Object keeps two players and one spectator for a room and relays
  * lobby/SDP/ICE messages. If WebRTC is unavailable, the same socket also
  * carries the host-authoritative game packets for that small room.
  * 
@@ -10,6 +10,7 @@
  * - Optimized message parsing
  * - Direct peer-to-peer signaling without queuing
  */
+const ROOM_PROTOCOL = 3;
 const CODE = /^[A-Z0-9]{4}$/;
 
 export default {
@@ -43,8 +44,9 @@ export class Room {
     // send its reconnect token. Keep the authenticated room slot for a short
     // grace period so that close/hello ordering cannot turn a refresh into a
     // room exit. Explicit `leave` still removes the slot immediately.
-    this.reconnectGraceMs = 10000;  // Reduced from 15000ms for faster cleanup
+    this.reconnectGraceMs = 15000;
     // Signal forwarding performance
+    this.playing = false;
     this._signalBuffer = new Map();  // Pre-allocated buffer for ICE candidates
   }
 
@@ -73,20 +75,12 @@ export class Room {
       try { message = JSON.parse(event.data); } catch (_) { return; }
       if (!message || typeof message.type !== 'string') return;
 
-      // Fast path for ICE candidates - relay immediately without queue
-      if (message.type === 'signal' && message.signal && message.signal.type === 'ice') {
-        // Direct relay for ICE candidates - highest priority
-        this.broadcast({ type: 'signal', from: clientId, signal: message.signal }, clientId);
-        // Respond with pong immediately
-        this.send(server, { type: 'pong', at: Date.now() });
-        return;
-      }
-
       if (message.type === 'hello') {
         if (clientId) return;
+        if (message.roomProtocol !== ROOM_PROTOCOL) { close(1008, 'upgrade-required'); return; }
         clearTimeout(helloTimer);
         helloTimer = null;
-        const role = message.role === 'guest' ? 'guest' : 'host';
+        const role = message.role || 'host';
         const reconnectToken = String(message.reconnectToken || '').trim().slice(0, 128);
         // A refresh opens a new WebSocket before the browser has finished
         // delivering the old socket's close event.  A server-issued token
@@ -112,11 +106,13 @@ export class Room {
           // the latest character/ready values back to the room.
           try { if (oldSocket && oldSocket !== server) oldSocket.close(1000, 'replaced'); } catch (_) {}
         } else {
-          if (this.clients.size >= 2) { close(1008, 'room-full'); return; }
+          if (role === 'spectator' && reconnectToken) { close(1008, 'room-closed'); return; }
+          if (!['host', 'guest', 'spectator'].includes(role)) { close(1008, 'invalid-seat'); return; }
+          if (role !== 'host' && (this.seat(role) || (role === 'guest' && this.playing))) { close(1008, 'room-full'); return; }
           // Never trust a client supplied peerId. Identity is generated here;
           // the reconnect token below is the only way to replace that entry.
           clientId = crypto.randomUUID();
-          if (role === 'guest' && ![...this.clients.values()].some(item => item.meta.role === 'host')) {
+          if (role !== 'host' && ![...this.clients.values()].some(item => item.meta.role === 'host')) {
             close(1008, 'room-not-found'); return;
           }
           if (role === 'host' && [...this.clients.values()].some(item => item.meta.role === 'host')) {
@@ -134,13 +130,44 @@ export class Room {
           this.clients.set(clientId, { socket: server, meta: metadata });
         }
         const players = [...this.clients.values()].map(item => this.publicMeta(item.meta));
-        this.send(server, { type: 'helloAck', peerId: clientId, reconnectToken: metadata.reconnectToken, players });
+        this.send(server, { type: 'helloAck', roomProtocol: ROOM_PROTOCOL, peerId: clientId, reconnectToken: metadata.reconnectToken, players });
         this.broadcast({ type: 'roster', players });
-        if (players.length > 1) this.broadcast({ type: 'peerJoined', player: this.publicMeta(metadata) }, clientId);
+        if (players.length > 1 && metadata.role !== 'spectator') this.broadcast({ type: 'peerJoined', player: this.publicMeta(metadata) }, clientId);
         return;
       }
 
-      if (!clientId || !metadata) return;
+      if (!metadata || this.clients.get(clientId)?.socket !== server) return;
+      if (message.type === 'changeSeat') {
+        const role = message.role;
+        if (metadata.role === 'host' || !['guest', 'spectator'].includes(role) || this.playing || this.seat(role)) {
+          this.send(server, { type: 'error', message: '该席位当前不可切换' }); return;
+        }
+        const previous = this.publicMeta(metadata);
+        Object.assign(metadata, { role, ready: false, character: null });
+        if (previous.role === 'guest') this.broadcast({ type: 'peerLeft', player: previous }, clientId);
+        this.broadcastRoster();
+        if (role === 'guest') this.broadcast({ type: 'peerJoined', player: this.publicMeta(metadata) }, clientId);
+        return;
+      }
+      if (message.type === 'lockSeats' && metadata.role === 'host') {
+        const guest = this.seat('guest');
+        if (this.playing || !metadata.character || !metadata.ready || !guest?.socket || !guest.meta.character || !guest.meta.ready) {
+          this.send(server, { type: 'error', message: '请等双方准备后开局' }); return;
+        }
+        this.playing = true;
+        this.send(server, { type: 'seatsLocked' });
+        return;
+      }
+      if (message.type === 'resetSeats' && metadata.role === 'host') {
+        this.playing = false;
+        this.send(this.seat('spectator')?.socket, { type: 'watchLobby' });
+        return;
+      }
+      if (message.type === 'watchState' && metadata.role === 'host' && this.playing) {
+        this.send(this.seat('spectator')?.socket, { type: 'watchState', state: message.state });
+        return;
+      }
+      if (metadata.role === 'spectator' && !['ping', 'leave'].includes(message.type)) return;
       if (message.type === 'roomMessage') {
         // Lobby updates are stamped from the authenticated connection. Do not
         // forward a payload that can impersonate the other participant.
@@ -191,6 +218,7 @@ export class Room {
       // refreshed page may still be racing this callback with its hello.
       if (!current.intentionalLeave) {
         current.socket = null;
+        this.broadcastRoster();
         current.disconnectedAt = Date.now();
         current.disconnectTimer = setTimeout(() => {
           const latest = this.clients.get(clientId);
@@ -208,13 +236,20 @@ export class Room {
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  send(socket, payload) { try { socket.send(JSON.stringify(payload)); } catch (_) {} }
+  send(socket, payload) { try { socket?.send(JSON.stringify(payload)); } catch (_) {} }
+
+  seat(role) { return [...this.clients.values()].find(entry => entry.meta.role === role); }
+
+  broadcastRoster() {
+    this.broadcast({ type: 'roster', players: [...this.clients.values()].map(entry => this.publicMeta(entry.meta)) });
+  }
 
   publicMeta(meta) {
     if (!meta) return null;
     return {
       peerId: meta.peerId,
       role: meta.role,
+      connected: !!this.clients.get(meta.peerId)?.socket,
       nickname: meta.nickname,
       avatar: meta.avatar,
       ready: !!meta.ready,
@@ -228,13 +263,25 @@ export class Room {
       // reconnect grace window.  When that player refreshes later, its token
       // then restores an authoritative host role instead of becoming a
       // stranded guest with no host in the room.
-      const successor = [...this.clients.values()][0];
+      const successor = this.seat('guest');
+      this.playing = false;
+      this.send(this.seat('spectator')?.socket, { type: 'watchLobby' });
       if (successor) {
         successor.meta.role = 'host';
         successor.meta.ready = false;
       }
     }
-    this.broadcast({ type: 'peerLeft', player: this.publicMeta(metadata) });
+    if (!this.seat('host') && !this.seat('guest')) {
+      const observer = this.seat('spectator');
+      if (observer) {
+        this.clients.delete(observer.meta.peerId);
+        clearTimeout(observer.disconnectTimer);
+        this.send(observer.socket, { type: 'roomClosed' });
+        observer.socket?.close(1000, 'room-closed');
+      }
+      this.playing = false;
+    }
+    if (metadata.role !== 'spectator') this.broadcast({ type: 'peerLeft', player: this.publicMeta(metadata) });
     this.broadcast({ type: 'roster', players: [...this.clients.values()].map(item => this.publicMeta(item.meta)) });
   }
 
@@ -245,6 +292,9 @@ export class Room {
     const exceptSocket = typeof except === 'string'
       ? (this.clients.get(except) || {}).socket
       : except;
-    for (const { socket } of this.clients.values()) if (socket && socket !== exceptSocket) this.send(socket, payload);
+    for (const { socket, meta } of this.clients.values()) {
+      if (meta.role === 'spectator' && payload.type !== 'roster') continue;
+      if (socket && socket !== exceptSocket) this.send(socket, payload);
+    }
   }
 }

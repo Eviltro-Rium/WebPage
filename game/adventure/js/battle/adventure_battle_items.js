@@ -328,6 +328,17 @@
       return !!(eng && typeof eng.hasAccessory === 'function' && eng.hasAccessory(name));
     },
 
+    _monsterFirstStrikeActive(nameOrDef) {
+      let def = nameOrDef;
+      if (typeof nameOrDef === 'string') {
+        def = window.AdventureRegistry.getMonster(nameOrDef) ||
+          window.AdventureRegistry.getBoss(nameOrDef);
+      }
+      if (!def || !def.firstStrike) return false;
+      if (this._hasAccessory('VibeCloak')) return false;
+      return true;
+    },
+
     /** Emit accessory bar flash before applying the accessory effect / buff float. */
     _flashAccessory(itemName) {
       if (!itemName || !this._hasAccessory(itemName)) return;

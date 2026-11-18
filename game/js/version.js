@@ -1,6 +1,6 @@
 /* Shared release identifier: update together with deployment cache keys. */
 (function (global) {
-    const version = '3.5';
+    const version = '3.6';
     const IS_TEST = true; // 正式上线时改为 false
     global.FURRY_TRIAL_VERSION = version;
     function mount() {

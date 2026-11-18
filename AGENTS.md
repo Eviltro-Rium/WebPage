@@ -22,7 +22,7 @@
 | 冒险地图页 UI（商店、铁匠、地图格、奖励房、商人） | [点击与路由](game/adventure/js/ui/adventure_ui.js)、[房间页 HTML](game/adventure/js/ui/adventure_ui_panels.js)、[地图格/库存视图](game/adventure/js/ui/adventure_ui_map_view.js)、[样式](game/adventure/css/adventure.css) | 房间规则与价格逻辑在 [冒险引擎](game/adventure/js/engine/adventure_engine.js)；商店/铁匠交互与补丁渲染测 [render-performance.test.js](game/tests/render-performance.test.js) |
 | 冒险特殊房间页（故障、献祭） | [故障 UI](game/adventure/js/ui/adventure_ui_glitch.js)、[献祭 UI](game/adventure/js/ui/adventure_ui_sacrifice.js) | 规则分别在 [glitch.js](game/adventure/js/engine/glitch.js)、[sacrifice.js](game/adventure/js/engine/sacrifice.js) |
 | 战斗 UI、动画和弹窗 | [渲染模块](game/js/ui/render/)、[事件播放](game/js/ui/events.js)、[弹窗](game/js/ui/dialogs.js) | [对战样式](game/css/game.css)、[RENDER_PERFORMANCE.md](game/docs/reference/RENDER_PERFORMANCE.md)；对手选牌等测 [dialog-ui.test.js](game/tests/dialog-ui.test.js) |
-| 在线对战、重连或视角同步 | [对战会话](game/online_game/online_match.js)、[P2P 适配](game/online_game/p2p_adapter.js) | [在线规则](game/docs/online/README.md)、[在线对战检查](game/tests/online-match.test.js) |
+| 在线对战、观战席、重连或视角同步 | [对战会话](game/online_game/online_match.js)、[P2P 适配](game/online_game/p2p_adapter.js) | [观战席规则](game/docs/online/spectator_plan.md)、[房间席位与路由](game/online_game/signaling/worker.js)、[在线对战检查](game/tests/online-match.test.js) |
 | 个人网站导航、主题或背景 | [共享页面壳](site-shell.html)、[导航](js/site-navigation.js)、[3D 背景](js/hill-background.js)、[公共样式](styles.css) | [首页维护说明](docs/homepage.md)；个人网站和游戏有独立入口 |
 
 ### 按需阅读的规则文档
@@ -73,7 +73,7 @@
 - `game/docs/`：规则、架构、角色、冒险、在线文档。
 - `game/tests/`：Node 内置 `node:test` 测试。
 - `game/scripts/`：统一检查和静态脚本加载顺序校验。
-- 当前版本标识在 `game/js/version.js`（`3.5`，`IS_TEST = true`）。
+- 当前版本标识在 `game/js/version.js`（`3.6`，`IS_TEST = true`）。
 
 ## 3. 仓库地图
 

@@ -50,11 +50,18 @@
 
         _readRoomSession() {
             try {
-                const raw = localStorage.getItem(ROOM_SESSION_KEY);
+                let raw = sessionStorage.getItem(ROOM_SESSION_KEY);
+                if (!raw && this._isReloadNavigation()) {
+                    raw = localStorage.getItem(ROOM_SESSION_KEY);
+                    if (raw) {
+                        sessionStorage.setItem(ROOM_SESSION_KEY, raw);
+                        localStorage.removeItem(ROOM_SESSION_KEY);
+                    }
+                }
                 if (!raw) return null;
                 const saved = JSON.parse(raw);
                 if (!saved || !/^[A-Z0-9]{4}$/.test(String(saved.roomCode || '').toUpperCase())) return null;
-                if (!['host', 'guest'].includes(saved.role) || !String(saved.nickname || '').trim()) return null;
+                if (!['host', 'guest', 'spectator'].includes(saved.role) || !String(saved.nickname || '').trim()) return null;
                 return saved;
             } catch (_) { return null; }
         }
@@ -62,7 +69,7 @@
         _persistRoomSession() {
             if (this._sessionPersistenceDisabled || !this.role || !this.roomCode || !this.nickname) return;
             try {
-                localStorage.setItem(ROOM_SESSION_KEY, JSON.stringify({
+                sessionStorage.setItem(ROOM_SESSION_KEY, JSON.stringify({
                     roomCode: String(this.roomCode).toUpperCase(),
                     role: this.role,
                     nickname: String(this.nickname).slice(0, 18),
@@ -101,7 +108,7 @@
         _clearRoomSession() {
             this._clearBattleResumeRetry();
             this._sessionPersistenceDisabled = true;
-            try { localStorage.removeItem(ROOM_SESSION_KEY); } catch (_) {}
+            try { sessionStorage.removeItem(ROOM_SESSION_KEY); } catch (_) {}
         }
 
         _isReloadNavigation() {
@@ -154,7 +161,8 @@
             const emojiButtons = PLAYER_EMOJIS.map(em => '<button class="online-emoji' + (currentAvatar === em ? ' selected' : '') + '" data-emoji="' + em + '" type="button" aria-label="选择头像 ' + em + '">' + em + '</button>').join('');
             this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial</div><div class="online-brand-sub">在线对决 · WebRTC P2P</div></div></div><a class="online-link" id="online-home-link" href="../index.html">← 返回游戏主页</a></div>' +
                 '<section class="online-panel online-landing"><div class="online-intro"><h1>与你的朋友<br><span>面对面出牌</span></h1><p>建立一个小型房间，优先使用浏览器原生 WebRTC 直接传输战斗指令；直连尚未建立时自动通过信令连接同步。房主运行单机同一套战斗引擎，双方只交换必要的同步状态。</p><div class="online-notice"><div><b>01</b><span>不需要安装客户端，分享 4 位房间码即可加入。</span></div><div><b>02</b><span>当前版本不配置 TURN，适合小规模测试。</span></div><div><b>03</b><span>请使用 HTTPS 域名；本地调试可用 Wrangler Dev。</span></div></div></div>' +
-                '<form class="online-form" id="online-connect-form"><h2>进入在线房间</h2><label class="online-label">房间码（加入时填写）<input class="online-input" id="online-room-code" maxlength="4" placeholder="ABCD" autocapitalize="characters"></label><div class="online-identity-row"><label class="online-label">昵称<input class="online-input" id="online-nickname" maxlength="18" placeholder="例如：Rium" autocomplete="nickname"></label><div class="online-avatar-field"><button class="online-avatar-toggle" id="online-avatar-toggle" type="button" aria-expanded="false"><span>头像</span><strong id="online-avatar-current">' + currentAvatar + '</strong><small>展开</small></button><div class="online-avatar-card" id="online-avatar-card" hidden><div class="online-emojis">' + emojiButtons + '</div></div></div></div><div class="online-form-row"><button class="online-btn primary" id="online-create" type="button">创建房间</button><button class="online-btn" id="online-join" type="button">加入房间</button></div><div class="online-status" id="online-landing-status"></div></form></section>';
+                '<form class="online-form" id="online-connect-form"><h2>进入在线房间</h2><label class="online-label">房间码（加入时填写）<input class="online-input" id="online-room-code" maxlength="4" placeholder="ABCD" autocapitalize="characters"></label><div class="online-identity-row"><label class="online-label">昵称<input class="online-input" id="online-nickname" maxlength="18" placeholder="例如：Rium" autocomplete="nickname"></label><div class="online-avatar-field"><button class="online-avatar-toggle" id="online-avatar-toggle" type="button" aria-expanded="false"><span>头像</span><strong id="online-avatar-current">' + currentAvatar + '</strong><small>展开</small></button><div class="online-avatar-card" id="online-avatar-card" hidden><div class="online-emojis">' + emojiButtons + '</div></div></div></div><div class="online-form-row"><button class="online-btn primary" id="online-create" type="button">创建房间</button><button class="online-btn" id="online-join" type="button">加入对战</button><button class="online-btn" id="online-watch" type="button">加入观战</button></div><div class="online-status" id="online-landing-status"></div></form></section>';
+            this.root.querySelector('#online-watch').addEventListener('click', () => this.connect('spectator'));
             const name = this.root.querySelector('#online-nickname');
             if (name) {
                 try { name.value = localStorage.getItem('furry-online-name') || ''; } catch (_) { name.value = ''; }
@@ -197,6 +205,7 @@
                 this.root.querySelector('#online-join').disabled = true;
                 this.setLandingStatus('在线模式需要 HTTPS（localhost 可用于本地调试）', 'error');
             }
+            this.root.querySelector('#online-watch').disabled = !secure || typeof global.WebSocket !== 'function';
         }
         setLandingStatus(text, kind) {
             const el = this.root.querySelector('#online-landing-status');
@@ -240,7 +249,7 @@
             this._restoringRoom = !!reconnect.autoRestore;
             this._pendingBattleRestore = reconnect.battle || null;
             this._battleResumeRequested = false;
-            this.error = ''; this.match = null; this.state = null;
+            this.error = ''; this.match = null; this.state = null; this.watchView = null;
             this._persistRoomSession();
             // Create the peer before rendering the room.  The previous order
             // called a removed showRoom() method and also tried to register the
@@ -259,7 +268,7 @@
                 // not briefly render as a guest or send a stale role update.
                 const authoritative = message && Array.isArray(message.players)
                     ? message.players.find(player => player && player.peerId === message.peerId) : null;
-                if (authoritative && (authoritative.role === 'host' || authoritative.role === 'guest')) {
+                if (authoritative && ['host', 'guest', 'spectator'].includes(authoritative.role)) {
                     this.role = authoritative.role;
                     if (this.peer) this.peer.role = this.role;
                     if (authoritative.character != null) this.character = authoritative.character || null;
@@ -277,6 +286,15 @@
             this.peer.on('roster', players => {
                 this._handleRoster(players);
             });
+            this.peer.on('seatsLocked', () => this.startMatch(true));
+            this.peer.on('watchState', state => {
+                if (this.role === 'spectator' && state) this.renderSpectator(state);
+            });
+            this.peer.on('watchLobby', () => {
+                this.watchView = null;
+                this.renderRoom();
+            });
+            this.peer.on('roomClosed', () => this.leaveSpectator());
             this.peer.on('peerJoined', player => { this._upsertPlayer(player); this.setRoomStatus('对手已连接，选择角色并准备'); this.renderRoom(); });
             this.peer.on('peerLeft', player => {
                 if (player && player.peerId) this.players = this.players.filter(item => item.peerId !== player.peerId);
@@ -344,20 +362,27 @@
                 if (this.battleUI) this.battleUI.showError(this.error);
                 else this.renderRoom();
             });
+            const connectedPeer = this.peer;
             this.peer.on('close', event => {
+                if (this.peer !== connectedPeer) return;
+                if (this.role === 'spectator' && ['room-closed', 'room-not-found', 'room-full'].includes(event?.reason)) {
+                    this.leaveSpectator(event.reason === 'room-full' ? '观战席已满' : '房间已关闭');
+                    return;
+                }
                 if (this.match) return;
                 const code = Number(event && event.code) || 0;
                 const reason = String(event && event.reason || '').trim();
                 const messages = {
+                    'upgrade-required': '房间协议版本不一致，请更新页面和信令服务',
                     'room-not-found': '未找到对应房间，请检查房间码',
-                    'room-full': '房间已满（最多两名玩家）',
+                    'room-full': '该席位已满',
                     'host-exists': '该房间已有房主，请重新创建房间',
                     'message-too-large': '信令消息过大，连接已拒绝'
                 };
                 const detail = messages[reason] || (code ? `信令连接已关闭（${code}${reason ? ' · ' + reason : ''}）` : '信令连接已关闭');
                 // A stale saved session must not cause an endless restore
                 // loop after the room was actually destroyed or filled.
-                if (this._restoringRoom && ['room-not-found', 'room-full', 'host-exists'].includes(reason)) {
+                if (this._restoringRoom && ['upgrade-required', 'room-not-found', 'room-full', 'host-exists'].includes(reason)) {
                     this._restoringRoom = false;
                     this._clearRoomSession();
                 }
@@ -378,10 +403,15 @@
             const savedReady = this.ready;
             const savedAvatar = this.avatar;
             const own = this.peer && roster.find(player => player && player.peerId === this.peer.peerId);
+            const previousRole = this.role;
             const wasHost = this.role === 'host';
             const promoted = !!(own && own.role === 'host' && !wasHost);
             if (own) {
-                this.role = own.role === 'host' ? 'host' : 'guest';
+                if (this.role !== own.role && !promoted) {
+                    this.character = null;
+                    this.ready = false;
+                }
+                this.role = own.role;
                 // OnlinePeer also reconciles its role, but keep the UI and
                 // transport explicitly aligned.  Without this assignment a
                 // promoted guest could keep sending a guest lobby update and
@@ -390,7 +420,7 @@
             }
             this.players = [];
             for (const player of roster) this._upsertPlayer(player);
-            if (own && !this.character && savedCharacter) {
+            if (own && previousRole === this.role && !this.character && savedCharacter) {
                 this.character = savedCharacter;
                 this.ready = savedReady && !!savedCharacter;
                 this.avatar = normalizeAvatar(savedAvatar);
@@ -409,6 +439,7 @@
             this._ensureOwnPlayer();
             this._persistRoomSession();
             this._restoreBattleIfPossible();
+            this.publishSpectator();
             this.renderRoom();
         }
 
@@ -469,6 +500,7 @@
                         state: this.state,
                         onStateChange: result => {
                             if (result && result.state) this.state = clone(result.state);
+                            this.publishSpectator();
                             this._persistRoomSession();
                         }
                     });
@@ -536,10 +568,11 @@
             const isOwn = this.peer && id === this.peer.peerId;
             let existing = this.players.find(item => item.peerId === id);
             if (!existing) {
-                existing = { peerId: id, role: incoming.role === 'host' ? 'host' : 'guest', nickname: 'Player', character: null, ready: false, avatar: '' };
+                existing = { peerId: id, role: incoming.role || 'guest', nickname: 'Player', character: null, ready: false, avatar: '' };
                 this.players.push(existing);
             }
-            if (incoming.role) existing.role = incoming.role === 'host' ? 'host' : 'guest';
+            if (incoming.role) existing.role = incoming.role;
+            if (incoming.connected != null) existing.connected = incoming.connected;
             if (incoming.nickname) existing.nickname = String(incoming.nickname).slice(0, 18);
             if (!isOwn || incoming.character != null) existing.character = incoming.character || null;
             if (!isOwn || incoming.ready != null) existing.ready = !!incoming.ready;
@@ -547,7 +580,7 @@
             if (isOwn) { this.character = existing.character; this.ready = existing.ready; this.avatar = existing.avatar; }
         }
         get ownPlayer() { return this.peer && this.players.find(item => item.peerId === this.peer.peerId); }
-        get opponentPlayer() { return this.players.find(item => item.peerId !== (this.peer && this.peer.peerId)); }
+        get opponentPlayer() { return this.players.find(item => item.role !== 'spectator' && item.peerId !== (this.peer && this.peer.peerId)); }
         setRoomStatus(text, kind) {
             this.roomStatus = text || ''; const el = this.root.querySelector('#online-room-status');
             if (el) { el.textContent = this.roomStatus; el.className = 'online-status' + (kind ? ' ' + kind : ''); }
@@ -567,13 +600,15 @@
             });
         }
         renderRoom() {
+            if (this.watchView) {
+                this.updateWatchConnection();
+                return;
+            }
             if (this.match || this.state) return;
             if (this._pendingBattleRestore) { this.showBattleRestoring(this.roomCode); return; }
-            const own = this.ownPlayer || { nickname: this.nickname, role: this.role, character: this.character, ready: this.ready };
-            const opponent = this.opponentPlayer;
             const cards = this.chars().map(ch => '<button class="online-char' + (this.character === ch.name ? ' selected' : '') + '" data-char="' + safeText(ch.name) + '" type="button"><img class="online-char-avatar" src="../avatars/' + safeText(ch.name) + '.webp" alt="' + safeText(ch.name) + '"><strong>' + safeText(ch.name) + '</strong><small>' + safeText(ch.type || '角色') + ' · HP ' + (Number(ch.hp) || 0) + '</small></button>').join('');
             const playerMarkup = (player, revealCharacter) => player ? '<div class="online-player"><div class="online-player-avatar">' + safeText(player.avatar || (player.nickname || '?').slice(0, 1).toUpperCase()) + '</div><div class="online-player-meta"><strong>' + safeText(player.nickname || 'Player') + (player.role === 'host' ? ' · 房主' : '') + '</strong><small>' + (player.character ? (revealCharacter ? safeText(player.character) : '已选择角色') : '尚未选择角色') + '</small></div><span class="online-ready' + (player.ready ? ' yes' : '') + '">' + (player.ready ? '已准备' : '未准备') + '</span></div>' : '<div class="online-help">等待另一位玩家加入…</div>';
-            this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线房间</div><div class="online-brand-sub">' + safeText(this.connectionState || '连接中') + '</div></div></div><a class="online-link" id="online-home-link" href="../index.html">退出房间</a></div><section class="online-panel online-room"><div class="online-room-head"><div><div class="online-brand-sub">房间码</div><div class="online-room-code"><strong>' + safeText(this.roomCode) + '</strong><button class="online-copy-code" id="online-copy-code" type="button">复制</button></div></div><div class="online-status" id="online-room-status">' + safeText(this.roomStatus || '等待连接') + '</div></div><div class="online-room-grid"><div class="online-roster"><h3>玩家</h3>' + playerMarkup(own, true) + playerMarkup(opponent, false) + '<div class="online-help">房主负责运行战斗引擎；双方的手牌只发送给自己。</div></div><div class="online-select"><h3>选择你的角色</h3><div class="online-chars">' + cards + '</div><div class="online-room-actions"><button class="online-btn ghost" id="online-leave" type="button">离开房间</button><button class="online-btn ghost" id="online-retry" type="button">重试连接</button><button class="online-btn good" id="online-ready" type="button" ' + (this.character ? '' : 'disabled') + '>' + (this.ready ? '取消准备' : '准备') + '</button>' + (this.role === 'host' ? '<button class="online-btn primary" id="online-start-match" type="button">开始对战</button>' : '') + '</div><div class="online-status error" id="online-room-error">' + safeText(this.error) + '</div></div></div></section>';
+            this.root.innerHTML = '<div class="online-topbar"><div class="online-brand"><div class="online-brand-mark">FT</div><div><div class="online-brand-title">Furry Trial · 在线房间</div><div class="online-brand-sub">' + safeText(this.connectionState || '连接中') + '</div></div></div><a class="online-link" id="online-home-link" href="../index.html">退出房间</a></div><section class="online-panel online-room"><div class="online-room-head"><div><div class="online-brand-sub">房间码</div><div class="online-room-code"><strong>' + safeText(this.roomCode) + '</strong><button class="online-copy-code" id="online-copy-code" type="button">复制</button></div></div><div class="online-status" id="online-room-status">' + safeText(this.roomStatus || '等待连接') + '</div></div><div class="online-room-grid"><div class="online-roster"><h3>玩家</h3>' + playerMarkup(this.players.find(p => p.role === 'host'), this.role === 'host') + playerMarkup(this.players.find(p => p.role === 'guest'), this.role === 'guest') + '<p>观战席 · ' + safeText(this.players.find(p => p.role === 'spectator')?.nickname || '空席') + '</p>' + '<div class="online-help">观众可以看到双方手牌。</div></div><div class="online-select"><h3>选择你的角色</h3><div class="online-chars">' + cards + '</div><div class="online-room-actions"><button class="online-btn ghost" id="online-leave" type="button">离开房间</button><button class="online-btn ghost" id="online-retry" type="button">重试连接</button><button class="online-btn good" id="online-ready" type="button" ' + (this.character ? '' : 'disabled') + '>' + (this.ready ? '取消准备' : '准备') + '</button>' + (this.role === 'host' ? '<button class="online-btn primary" id="online-start-match" type="button">开始对战</button>' : '') + '</div><div class="online-status error" id="online-room-error">' + safeText(this.error) + '</div></div></div></section>';
             this.root.querySelectorAll('[data-char]').forEach(button => button.addEventListener('click', () => { this.character = button.dataset.char; this.ready = false; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); }));
             this.root.querySelector('#online-ready').addEventListener('click', () => { if (!this.character) return; this.ready = !this.ready; this._ensureOwnPlayer(); this._sendLobbyUpdate(); this.renderRoom(); });
             this.root.querySelector('#online-leave').addEventListener('click', () => {
@@ -592,11 +627,27 @@
                 character: this.character, ready: this.ready, reconnectToken: this.reconnectToken,
                 battle: this._captureBattleSession()
             }));
+            if (this.role !== 'host') {
+                const watching = this.role === 'spectator';
+                const seat = watching ? 'guest' : 'spectator';
+                const select = this.root.querySelector('.online-select');
+                if (watching) {
+                    select.querySelector('h3').textContent = '观战席';
+                    select.querySelector('.online-chars').remove();
+                    select.querySelector('#online-ready').remove();
+                }
+                const button = document.createElement('button');
+                button.className = 'online-btn';
+                button.textContent = watching ? '转入对战席' : '转入观战席';
+                button.disabled = this.players.some(player => player.role === seat);
+                button.onclick = () => this.peer.sendControl('changeSeat', { role: seat });
+                select.querySelector('.online-room-actions').prepend(button);
+            }
             const start = this.root.querySelector('#online-start-match'); if (start) start.addEventListener('click', () => this.startMatch());
             const copyButton = this.root.querySelector('#online-copy-code'); if (copyButton) copyButton.addEventListener('click', async () => { try { await navigator.clipboard.writeText(this.roomCode); copyButton.textContent = '已复制'; setTimeout(() => { copyButton.textContent = '复制'; }, 1200); } catch (_) { copyButton.textContent = this.roomCode; } });
         }
         _sendLobbyUpdate() {
-            if (!this.peer) return;
+            if (this.role === 'spectator' || !this.peer) return;
             this._ensureOwnPlayer();
             this._persistRoomSession();
             const player = { peerId: this.peer.peerId, role: this.role, nickname: this.nickname, character: this.character, ready: this.ready, avatar: this.avatar };
@@ -611,12 +662,125 @@
             this._restoreBattleIfPossible();
             this.renderRoom();
         }
-        startMatch() {
+        publishSpectator() {
+            if (this.role !== 'host' || !this.match?.projectSpectator || !this.players?.some(p => p.role === 'spectator')) return;
+            this.peer.sendControl('watchState', { state: this.match.projectSpectator() });
+        }
+
+        leaveSpectator(message = '双方已离开，观战结束') {
+            this._clearRoomSession();
+            const peer = this.peer;
+            this.peer = null;
+            this.watchView = null;
+            this.role = null;
+            this.players = [];
+            this.roomCode = '';
+            peer?.close();
+            this.showLanding();
+            this.setLandingStatus(message);
+        }
+
+        updateWatchConnection() {
+            const offline = this.players.filter(p => p.role !== 'spectator' && p.connected === false);
+            const hint = this.root.querySelector('#error-hint');
+            if (hint) hint.textContent = offline.map(p => p.nickname + ' 掉线，等待重连').join(' · ')
+                || (this.players.some(p => p.role === 'guest') ? '' : '对战方已离席');
+        }
+
+        renderSpectator(state) {
+            let view = this.watchView;
+            if (view && (view.state.matchId !== state.matchId || view.state.stateVersion > state.stateVersion)) return;
+            if (!view) {
+                this.root.innerHTML = '<button class="online-btn" id="watch-leave">退出观战</button><section class="online-shared-game"><div id="game-screen" class="watch-screen"></div></section>';
+                this.root.querySelector('#watch-leave').onclick = () => this.leaveSpectator('已退出观战');
+                view = Object.create(global.GameUI.prototype);
+                view.gameScreen = this.root.querySelector('#game-screen');
+                view.state = state;
+                view._bindMenuButton = null;
+                view._buildGameScreen();
+                view.gameScreen.classList.add('active');
+                view.gameScreen.querySelector('#action-desc').id = 'watch-card-desc';
+                view.gameScreen.querySelector('.game-title').textContent = '在线对决 · 观战';
+                view.gameScreen.querySelector('.hud-side-tools').remove();
+                view.gameScreen.querySelector('.ai-hands-stack').remove();
+                const hostHand = view.gameScreen.querySelector('.player-hand-zone');
+                const guestHand = hostHand.cloneNode(true);
+                guestHand.querySelector('.hand-row').id = 'watch-guest-hand';
+                guestHand.querySelector('.reserve-zone').remove();
+                hostHand.after(guestHand);
+                this.watchView = view;
+            }
+            view.state = state;
+            for (const [key, id, label, nickname, hand] of [
+                ['player', 'player-hand', '房主', state.onlineNickname, state.playerHand],
+                ['ai', 'watch-guest-hand', '客方', state.onlineOpponentNickname, state.aiHand]
+            ]) {
+                const fighter = state[key];
+                view._updateHpBar(key, fighter);
+                view._updateAvatar(key, fighter.name);
+                view._updateBuffs(key, fighter);
+                document.getElementById(key + '-name').textContent = nickname + ' · ' + fighter.name;
+                const row = document.getElementById(id);
+                row.closest('.player-hand-zone').querySelector('.zone-title').textContent = label + '手牌 · ' + nickname;
+                this.updateWatchHand(row, hand, fighter.name, state);
+            }
+            view._updateAttackerIndicator(state.activeAttacker);
+            view._renderDiscardTop();
+            view._renderZones();
+            view._renderReveal();
+            view._drawDeckIcon(state.deck);
+            document.getElementById('deck-info').textContent = '牌堆 ' + state.deck + ' · 弃牌库 ' + state.discard;
+            document.getElementById('turn-info').textContent = '回合 ' + state.turn;
+            document.getElementById('phase-info').textContent = (PHASE_NAMES[state.phase] || state.phase).replace(/AI/g, '客方');
+            this.updateWatchConnection();
+        }
+
+        updateWatchHand(row, cards, name, state) {
+            const old = new Map(Array.from(row.children, node => [node.dataset.cardKey, node]));
+            const animate = typeof row.animate === 'function' && !global.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+            const positions = new Map();
+            if (animate) for (const node of old.values()) positions.set(node, node.getBoundingClientRect());
+            for (const card of cards) {
+                const key = cardVisualKey(card);
+                let node = old.get(key);
+                if (node) old.delete(key);
+                else {
+                    node = renderCard(card, 76, 108, false);
+                    node.dataset.cardKey = key;
+                    node.dataset.cardId = cardId(card);
+                    const attack = getSkillDesc(name, card, false);
+                    const defense = getSkillDesc(name, card, true);
+                    node.title = [cardLabel(card), attack && '进攻 · ' + attack, defense && '防御 · ' + defense].filter(Boolean).join(' / ');
+                    node.setAttribute('aria-label', node.title);
+                    node.onclick = () => { this.root.querySelector('#watch-card-desc').textContent = node.title; };
+                    if (animate) node.animate([{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1 }], 180);
+                }
+                row.appendChild(node);
+            }
+            for (const node of old.values()) {
+                const rect = positions.get(node);
+                node.remove();
+                if (!rect) continue;
+                const zone = [[state.atkCard, 'atk-cards'], [state.defCard, 'def-cards']]
+                    .find(([card]) => card && cardId(card) === node.dataset.cardId);
+                const dest = document.getElementById(zone ? zone[1] : 'discard-top').getBoundingClientRect();
+                Object.assign(node.style, { position: 'fixed', left: rect.x + 'px', top: rect.y + 'px',
+                    width: rect.width + 'px', height: rect.height + 'px', pointerEvents: 'none', zIndex: 5 });
+                this.watchView.gameScreen.appendChild(node);
+                const dx = dest.x + dest.width / 2 - rect.x - rect.width / 2;
+                const dy = dest.y + dest.height / 2 - rect.y - rect.height / 2;
+                const animation = node.animate([{ opacity: 1 }, { opacity: 0, transform: 'translate(' + dx + 'px,' + dy + 'px) scale(.65)' }], 220);
+                animation.onfinish = animation.oncancel = () => node.remove();
+            }
+        }
+
+        startMatch(locked = false) {
             if (this.role !== 'host' || !this.peer) return;
             const host = this.players.find(item => item.role === 'host') || this.ownPlayer;
             const guest = this.players.find(item => item.role === 'guest' && item.peerId !== this.peer.peerId) || this.opponentPlayer;
             if (!host || !guest) { this.error = '需要等待另一位玩家加入'; this.renderRoom(); return; }
             if (!host.character || !guest.character || !host.ready || !guest.ready) { this.error = '双方选择角色并准备后才能开始'; this.renderRoom(); return; }
+            if (!locked) { this.peer.sendControl('lockSeats'); return; }
             try {
                 const runtime = global.FurryGame && global.FurryGame.CombatRuntime;
                 const firstRoll = runtime && typeof runtime.randomInt === 'function' ? runtime.randomInt(12) + 1 : Math.floor(Math.random() * 12) + 1;
@@ -640,6 +804,7 @@
                     state: hostState,
                     onStateChange: result => {
                         if (result && result.state) this.state = clone(result.state);
+                        this.publishSpectator();
                     }
                 });
                 this._mountSharedBattle(this.battleSession, hostState, events);
@@ -656,9 +821,10 @@
                 this._matchStartAttempts = 0;
                 this._persistRoomSession();
                 this._sendMatchStart();
-            } catch (error) { this.error = error && error.message ? error.message : String(error); this.match = null; this.state = null; this.renderRoom(); }
+            } catch (error) { this._resetToLobby(false); this.error = error && error.message ? error.message : String(error); this.renderRoom(); }
         }
         _handlePeerMessage(message) {
+            if (this.role === 'spectator') return;
             if (!message || typeof message.kind !== 'string') return;
             if (message.kind === 'lobby') {
                 // Direct DataChannel payloads have no authenticated `from`.
@@ -866,6 +1032,7 @@
                 this.battleUI._initParticles();
             }
             this.battleUI.mountBattle(session, clone(state), screen);
+            this.publishSpectator();
             const title = screen && screen.querySelector('.game-title');
             if (title) title.textContent = 'Furry Trial · 在线对决';
             this.battleUI.onBattleExit = () => this.exitBattle();
@@ -1024,6 +1191,7 @@
             }, 350);
         }
         _resetToLobby(notify) {
+            if (this.role === 'host') this.peer?.sendControl?.('resetSeats');
             this._clearBattleResumeRetry();
             if (this._matchStartRetryTimer) clearTimeout(this._matchStartRetryTimer);
             if (this._matchReadyRetryTimer) clearTimeout(this._matchReadyRetryTimer);

@@ -625,6 +625,48 @@ test('the next room keeps the exact player hand, deck and discard snapshot', () 
   assert.equal(second.tableTopOwner, 'player');
 });
 
+test('VibeCloak negates opponent first-strike opening', () => {
+  const eng = new AdventureBattleEngine();
+  eng._adventureEngine = {
+    hasAccessory(name) { return name === 'VibeCloak'; },
+    accessoryCount(name) { return name === 'VibeCloak' ? 1 : 0; }
+  };
+  eng.startAdventure({
+    player: 'Ryan',
+    opponent: 'CastleTiger',
+    playerPile: {
+      deck: [number(4, 'BLUE'), number(5, 'GREEN')],
+      hand: [number(1, 'YELLOW')],
+      discard: [],
+      handLimit: 5
+    },
+    discardTop: number(2, 'RED'),
+    discardTopOwner: 'player'
+  });
+  assert.equal(eng.s.phase, 'PLAYER_PLAY');
+  assert.notEqual(eng.s.skipOpeningPlayerFill, true);
+  assert.ok(eng.events.some(e => e.type === 'desc' && /氛围斗篷/.test(e.desc)));
+});
+
+test('first-strike monsters still open on AI turn without VibeCloak', () => {
+  const eng = new AdventureBattleEngine();
+  eng._adventureEngine = { hasAccessory() { return false; }, accessoryCount() { return 0; } };
+  eng.startAdventure({
+    player: 'Ryan',
+    opponent: 'CastleTiger',
+    playerPile: {
+      deck: [number(4, 'BLUE')],
+      hand: [number(1, 'YELLOW')],
+      discard: [],
+      handLimit: 5
+    },
+    discardTop: number(2, 'RED'),
+    discardTopOwner: 'player'
+  });
+  assert.equal(eng.s.phase, 'AI_TURN');
+  assert.equal(eng.s.skipOpeningPlayerFill, true);
+});
+
 test('adventure attack mod waits until damage is confirmed after Otto 4 judge', () => {
   const engine = new AdventureBattleEngine();
   engine.startAdventure({
