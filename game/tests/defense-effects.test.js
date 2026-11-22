@@ -87,3 +87,33 @@ test('UI reads defense event status snapshots instead of later final status',asy
     {id:2,type:'heal',desc:'+4❤️',target:'player',hpAfter:44,statusAfter:{burn:0}}]);
   assert.deepEqual(frames,[{side:'ai',burn:4},{side:'player',burn:0}]);assert.equal(floats.length,2);dom.window.close();
 });
+
+test('colored item bridges honor symbol matching and preserve the selected top color', () => {
+  const engine = new context.Engine();
+  engine.start('Ryan', 'Otto');
+  const redPotion = Card.item('RED', 'potion');
+  const bluePotion = Card.item('BLUE', 'potion');
+  const yellowDraw = Card.item('YELLOW', 'drawTwo');
+  const blackDraw = Card.item('BLACK', 'drawThree');
+  engine.s.player.hp = 35;
+  engine.s.discardTop = redPotion;
+  engine.h.player = [bluePotion, yellowDraw, blackDraw];
+
+  assert.equal(engine.aiDefendLegal(bluePotion, redPotion, {}), true);
+  assert.equal(engine.aiDefendLegal(yellowDraw, redPotion, {}), false);
+  engine.s.selectedCard = 0;
+  engine.dispatch('doPlay');
+  assert.equal(engine.s.player.hp, 40);
+  assert.equal(engine.s.discardTop.color, 'BLUE');
+  assert.equal(engine.s.phase, 'PLAYER_PLAY');
+
+  const index = engine.h.player.findIndex(card => card.uid === blackDraw.uid);
+  const count = engine.h.player.length;
+  engine.s.selectedCard = index;
+  engine.dispatch('doPlay');
+  assert.equal(engine.s.needColorChoice, true);
+  engine.dispatch('chooseColor', { color: 'YELLOW' });
+  assert.equal(engine.s.discardTop.chosenColor, 'YELLOW');
+  assert.equal(engine.h.player.length, count + 2);
+  assert.equal(engine.legal(yellowDraw), true);
+});

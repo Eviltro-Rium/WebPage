@@ -11,7 +11,8 @@ for (const file of [
   'js/combat/protocol.js',
   'js/combat/events.js',
   'js/combat/state.js',
-  'js/combat/deck.js'
+  'js/combat/deck.js',
+  'adventure/js/deck/adventure_deck.js'
 ]) {
   const fullPath = path.join(gameRoot, file);
   vm.runInContext(fs.readFileSync(fullPath, 'utf8'), context, { filename: fullPath });
@@ -84,8 +85,45 @@ test('standard deck service builds the classic deck and a numeric opening top', 
   const { CombatDeck } = context.FurryGame;
   const initial = CombatDeck.createStandard();
 
-  assert.equal(initial.deck.length + 1, 72);
+  assert.equal(initial.deck.length + 1, 77);
   assert.equal(initial.discardBottom.length, 0);
   assert.ok(initial.discardTop && initial.discardTop.isNumberCard);
   assert.ok(initial.deck.every(card => card && card.isNumberCard !== undefined));
+});
+
+test('player decks carry five colors of potion and +2, and two black +3 cards', () => {
+  const colors = ['BLUE', 'GREEN', 'RED', 'WHITE', 'YELLOW'];
+  const { CombatDeck } = context.FurryGame;
+  for (const [deck, count] of [
+    [CombatDeck.makeStandard(), 77], [context.AdventureDeck.makePlayerDeck({ shuffle: false }), 75]
+  ]) {
+    assert.equal(deck.length, count);
+    for (const flag of ['potion', 'drawTwo', 'drawThree']) {
+      const cards = deck.filter(card => card[flag]);
+      assert.deepEqual(Array.from(cards, card => card.color).sort(), flag === 'drawThree' ? ['BLACK', 'BLACK'] : colors);
+      assert.ok(cards.every(card => card.isItemCard && !card.isNumberCard));
+    }
+  }
+});
+
+test('item symbols match across colors without treating placeholder values as points', () => {
+  const { Card } = context.FurryGame;
+  const plusTwo = Card.item('RED', 'drawTwo');
+  const potion = Card.item('RED', 'potion');
+  for (const [top, playable, rejected] of [
+    [plusTwo, Card.item('BLUE', 'drawTwo'), Card.item('BLUE', 'potion')],
+    [potion, Card.item('BLUE', 'potion'), Card.item('BLUE', 'drawTwo')]
+  ]) {
+    const discard = new context.AdventureDeck.DiscardTop(top);
+    assert.equal(Card.matchesTop(playable, top), true);
+    assert.equal(discard.legal(playable, true), true);
+    assert.equal(discard.legal(rejected, true), false);
+    assert.equal(discard.legal(Card.number('RED', 2), true), true);
+    assert.equal(discard.legal(Card.number('BLUE', 2), true), false);
+    assert.equal(discard.legal(Card.number('RED', 3), true), false);
+    assert.equal(discard.legal(Card.item('WHITE', 'purify'), true), true);
+    assert.equal(discard.legal(Card.item('BLACK', 'drawThree'), true), true);
+  }
+  const coloredTop = Card.item('WHITE', 'drawTwo', { chosenColor: 'GREEN' });
+  assert.equal(Card.matchesTop(Card.number('GREEN', 1), coloredTop), true);
 });

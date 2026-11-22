@@ -98,8 +98,8 @@
     for (let v = 1; v <= 5; v++) d.push(num('WHITE', v, true));
 
     for (let i = 0; i < 2; i++) d.push(item('BLACK', 'black'));
-    for (let i = 0; i < 2; i++) d.push(item('BLACK', 'drawTwo'), item('WHITE', 'drawThree'));
-    for (let i = 0; i < 3; i++) d.push(item('WHITE', 'potion'));
+    for (let i = 0; i < 2; i++) d.push(item('BLACK', 'drawThree'));
+    for (const color of [...COLORS, 'WHITE']) d.push(item(color, 'potion'), item(color, 'drawTwo'));
     // 除交换牌外，道具牌数量与对战牌组相同。
     for (let i = 0; i < 2; i++) d.push(item('BLACK', 'shuffle'), item('WHITE', 'superPurify'));
     for (let i = 0; i < 4; i++) d.push(item('WHITE', 'purify'));
@@ -230,12 +230,8 @@
     }
 
     legal(card, def = false) {
-      if (!this.top) return true;
-      if (card.isItemCard) return true;
-      if (def && card.isNumberCard && card.value > 2) return false;
-      const tc = this.top.chosenColor || this.top.color;
-      const cc = card.chosenColor || card.color;
-      return card.isWhite || tc === cc || this.top.value === card.value;
+      if (def && card?.isNumberCard && card.value > 2) return false;
+      return window.FurryGame.Card.matchesTop(card, this.top);
     }
   }
 
@@ -244,7 +240,7 @@
     for (let i = 0; i < attempts; i++) {
       const top = deck.pop();
       if (!top) return null;
-      if (!top.isBlack && !top.isWhite) return top;
+      if (top.isNumberCard && !top.isBlack && !top.isWhite) return top;
       deck.unshift(top);
     }
     // A degenerate deck containing only special cards still needs a valid

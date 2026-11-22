@@ -497,6 +497,43 @@ test('online guest defense settles against the real attacker', () => {
   assert.equal(outcome.state.onlineActor, 'host');
 });
 
+test('Otto can commit one defense skill per attack from either online seat', () => {
+  const Card = context.FurryGame.Card;
+  for (const [attacker, defender, defenderKey] of [['host', 'guest', 'ai'], ['guest', 'host', 'player']]) {
+    for (const value of [0, 1]) {
+      const match = new context.OnlineMatchHost(
+        defender === 'host' ? 'Otto' : 'Ryan', defender === 'guest' ? 'Otto' : 'Ryan', attacker
+      );
+      const attack = Card.number('RED', 2);
+      const defense = Card.number('RED', value);
+      const other = Card.number('RED', 2);
+      match.engine.h[defenderKey === 'player' ? 'ai' : 'player'] = [attack];
+      match.engine.h[defenderKey] = [defense, other];
+      match.engine.s.discardTop = Card.number('RED', 3);
+
+      const played = match.dispatch(attacker, 'playCard', { cardId: cardIdentity(attack), index: 0 });
+      assert.equal(played.state.phase, 'PLAYER_DEFEND');
+      const defended = match.dispatch(defender, 'defendCard', { cardId: cardIdentity(defense), index: 0 });
+      assert.equal(defended.ok, true, defended.error);
+      assert.equal(defended.state.phase, 'GUARD_CHOICE');
+      assert.equal(defended.state.player.guard, value === 0 ? 5 : 1);
+      assert.deepEqual(defended.events.filter(event => event.type === 'defend').map(event => event.card.uid), [defense.uid]);
+
+      const second = match.dispatch(defender, 'defendCard', { cardId: cardIdentity(other), index: 0 });
+      assert.equal(second.ok, false);
+      assert.equal(match.engine.h[defenderKey][0].uid, other.uid);
+      assert.equal(match.engine.s.discardTop.uid, defense.uid);
+
+      const settled = match.dispatch(defender, 'chooseGuard', { stacks: 0 });
+      assert.equal(settled.ok, true, settled.error);
+      assert.equal(settled.state.ai.hp, 50 - (value === 0 ? 4 : 2));
+      assert.equal(settled.state.player.hp, 76);
+      assert.equal(settled.state.onlineActor, attacker);
+      assert.ok(!settled.events.some(event => event.type === 'defend'));
+    }
+  }
+});
+
 test('online sleeping defender skips PLAYER_DEFEND and takes full damage', () => {
   const Card = context.FurryGame.Card;
 

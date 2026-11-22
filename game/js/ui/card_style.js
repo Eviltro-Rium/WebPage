@@ -451,7 +451,8 @@
         g.fillText(meta.label, centerX, labelY);
       }
 
-      const cornerMark = (card.isBlack || card.isWhite) ? '◆' : meta.fallback;
+      const isDraw = kind === 'draw_two' || kind === 'draw_three';
+      const cornerMark = isBwItem && !isDraw ? '◆' : meta.fallback;
       g.font = `600 ${Math.max(6, w * 0.105)}px "Inter", "Segoe UI Symbol", sans-serif`;
       g.textAlign = 'left'; g.textBaseline = 'top';
       g.fillStyle = isSurfaceLight ? 'rgba(35,39,46,0.76)' : 'rgba(255,255,255,0.84)';

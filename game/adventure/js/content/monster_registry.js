@@ -110,7 +110,7 @@
       attackEffectTiming(v) {
         return attackTiming(mod, v);
       },
-      damageAtSettlement(eng, v, a, t, attackerBeforeEffects) {
+      damageAtSettlement(eng, v, a, t, attackerBeforeEffects, formula) {
         const active = mod; // Do not replace the staged definition with the raw registry entry.
         const card = eng.s.atkCard;
         if (isPassNumber(mod, card)) return 0;
@@ -125,7 +125,9 @@
           (ent.guard || 0) + (ent.fly || 0) + (ent.crit || 0) + (ent.lush || 0) + (ent.parasite || 0) +
           (ent.diving ? 1 : 0) + (ent.bloodthirst ? 1 : 0) +
           (ent.chaos_red ? 1 : 0) + (ent.chaos_yellow ? 1 : 0) + (ent.chaos_blue ? 1 : 0) + (ent.chaos_green ? 1 : 0);
-        const ctx = {playerHandSize:(eng.h.player||[]).length,attackerHandSize:hand.length,attackerHand:hand,
+        // 四个按手牌计伤的分支均为每张 1 点。旧快照的预估伤害已保存该张数。
+        const playerHandSize = formula?.targetHandSize ?? formula?.preview ?? (eng.h[eng._who(t)] || []).length;
+        const ctx = {playerHandSize,attackerHandSize:hand.length,attackerHand:hand,
           playerBleed:t.bleed||0,playerPoison:t.poison||0,playerBurn:t.burn||0,attackerLush:a.lush||0,playerBuffTotal:total,
           playerPositiveBuffStacks: positiveStacks(t)};
         const drain = typeof active.attackDrain==='function' ? Number(active.attackDrain(card,ctx)) || 0 : 0;
@@ -215,7 +217,7 @@
           }
         }
         const ctx = {
-          playerHandSize: eng.h.player ? eng.h.player.length : 0,
+          playerHandSize: (eng.h[_statusWho(eng, t)] || []).length,
           attackerHandSize: eng.h[attackerKey] ? eng.h[attackerKey].length : 0,
           attackerHand: eng.h[attackerKey] || [],
           playerBleed: (t.bleed || 0), playerPoison: (t.poison || 0), playerBurn: (t.burn || 0), attackerLush: (a.lush || 0),
@@ -999,9 +1001,9 @@
       attackEffectTiming(value, eng, attacker) {
         return atStage(attackingStage(eng, eng.s?.atkCard, attacker)).attackEffectTiming(value, eng);
       },
-      damageAtSettlement(eng, value, attacker, target, attackerBeforeEffects) {
+      damageAtSettlement(eng, value, attacker, target, attackerBeforeEffects, formula) {
         return atStage(attackingStage(eng, eng.s?.atkCard, attacker))
-          .damageAtSettlement(eng, value, attacker, target, attackerBeforeEffects);
+          .damageAtSettlement(eng, value, attacker, target, attackerBeforeEffects, formula);
       },
       damageAfterDefense(value, damage, defender, eng) {
         return atStage(defender.encounterStage).damageAfterDefense(value, damage, defender, eng);
@@ -1387,11 +1389,11 @@
           const dmg = v + 1 + (stage >= 3 ? 1 : 0);
           return '造成' + dmg + '点[伤害]（不可防御）';
         }
-        if (v >= 3 && v <= 4) return '造成玩家手牌数点[伤害]';
+        if (v >= 3 && v <= 4) return '按防御前的对手手牌数造成[伤害]';
         return '无进攻效果';
       }
       if (v >= 1 && v <= 2) {
-        return '造成对手手牌张数点[伤害]' + (stage >= 3 ? '（不可防御）' : '');
+        return '按防御前的对手手牌数造成[伤害]' + (stage >= 3 ? '（不可防御）' : '');
       }
       if (v >= 3 && v <= 4) {
         return '造成5点[伤害]；玩家先选择1张手牌弃掉再防御（无手牌则不弃）';
@@ -1456,7 +1458,7 @@
         return '抽取玩家牌库1张牌判定：彩色牌造成对应数字点[伤害]，黑白牌不造成伤害；伤害为0时置入玩家弃牌堆、跳过防御、获得[潜水]、施加[冰封]，否则放回牌库底';
       }
       if (v >= 3 && v <= 4) {
-        return '造成玩家手牌数点[伤害]，获得[暴击]，施加1层[失温]';
+        return '按防御前的对手手牌数造成[伤害]，获得[暴击]，施加1层[失温]';
       }
       if (v === 0) {
         return '施加1层[失温]，清除自身所有负面效果，造成3+清除层数点[伤害]（<5不可防御）';
@@ -1531,7 +1533,7 @@
         return '造成3+[流血]层数点[伤害]' + yellowNote;
       }
       if (v >= 3 && v <= 4) {
-        return '施加1层[流血]，获得[暴击]，造成玩家手牌数点[伤害]' + yellowNote;
+        return '施加1层[流血]，获得[暴击]，按防御前的对手手牌数造成[伤害]' + yellowNote;
       }
       if (v === 0) {
         return '翻开牌库顶1🃏：数字牌（非0）→点数×2点[伤害]' + yellowNote + '；否则2层[流血]+[荆棘]，抽1🃏';
@@ -1617,7 +1619,7 @@
         const per = dmgPoison1 - dmg;
         scaleDmgDesc = (dmg > 0 ? '造成' + dmg + '+' : '造成') + '玩家[中毒]层数' + (per === 1 ? '' : '×' + per) + '点[伤害]';
       } else if (dmg !== dmgHand1) {
-        scaleDmgDesc = '造成对手手牌张数点[伤害]';
+        scaleDmgDesc = '按防御前的对手手牌数造成[伤害]';
       }
     } else if (card.isNumberCard) dmg = card.value || 0;
     if (scaleDmgDesc) {

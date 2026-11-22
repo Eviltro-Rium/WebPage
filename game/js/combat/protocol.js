@@ -138,6 +138,16 @@
         return true;
     };
 
+    const matchesTop = (card, top) => {
+        if (!card) return false;
+        if (!top || card.isWhite || card.isBlack) return true;
+        if ((card.chosenColor || card.color) === (top.chosenColor || top.color)) return true;
+        if (card.isNumberCard && top.isNumberCard) return card.value === top.value;
+        // 道具的占位点数不是牌面符号。
+        return !!(card.isItemCard && top.isItemCard &&
+            ((card.drawTwo && top.drawTwo) || (card.potion && top.potion)));
+    };
+
     const Card = Object.freeze({
         COLORS,
         number,
@@ -145,6 +155,7 @@
         clone,
         normalize,
         isValid,
+        matchesTop,
         kind: card => card && card.isNumberCard ? 'number' : card && card.isItemCard ? 'item' : 'unknown'
     });
 

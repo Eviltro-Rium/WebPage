@@ -24,6 +24,7 @@
 - 夜巡幽魂判定成功和其他明确免疫来袭状态的防御技能，也能拦截待施加的失温。克拉肯进攻 0 按防御后实际可净化的负面状态层数计算伤害。
 - 防御出牌触发流血时，只记录出牌前已有层数。本次新施加流血不追溯触发这次防御伤害。既有流血是独立伤害，不被守护对主攻击的完全格挡抹掉。
 - 灼伤、中毒等独立状态伤害保持自己的触发规则，不自动当成可防御攻击。技能明确要求施加灼伤后立即结算时，该结算位于状态提交步骤。
+- NPC 技能按目标手牌数计伤时，在进攻牌打出后、防御开始前锁定张数。防御期间的出牌、弃牌、抽牌和换手牌均不改变该伤害基数，格挡等减伤照常结算。
 - 判定牌、骰子结果、已消耗的牌与已选定分支锁定；状态重算不能再次判定或重新执行技能。
 - 没有攻击伤害的纯效果技能直接提交效果并跳过防御。出牌阶段治疗、抽牌与资源操作保持其明确规则，不会为重算伤害而再次执行。
 
@@ -31,7 +32,7 @@
 
 - engine_attack.js：captureAttackSkill()记录待施加状态；prepareAttackSettlement()在防御后提交并重算；settlePreparedHit()执行统一命中。
 - pendingSkillStatuses仅保存目标键、状态ID、操作方法、参数与timing（beforeDamage/afterDamage），不保存闭包。层数已满也记录施加意图，防御净化后可重新正确施加。
-- pendingDamageFormula记录角色、牌值和预估伤害。角色damageAtSettlement()为无副作用公式；怪物注册桥用当前阶段的纯attackDamage()重算，翻牌/骰子伤害保留原结果。
+- pendingDamageFormula记录角色、牌值、预估伤害和进攻时目标手牌数。角色damageAtSettlement()为无副作用公式；怪物注册桥用当前阶段的纯attackDamage()重算，翻牌/骰子伤害保留原结果。
 - damageAfterDefense()只重算格挡数字（包括怪物阶段规则），不重放反击/抽牌/回血。
 - pendingAttack.effectsPrepared、divingHandled/divingBlocked与avoidanceHandled分别保证前置效果、潜水和特殊减伤不重复；状态提交先移除队列项再执行。角色attackEffectTiming显式声明后置技能，不分析描述文本；未标记的旧快照默认beforeDamage。
 - TurnMachine、1v2及领主适配器保留回合路由，主目标命中共用同一接口。整批命中收尾的performAttack调用显式携带commitAttackEffects；道具AOE、反击不能提前清空当前攻击的后置状态。

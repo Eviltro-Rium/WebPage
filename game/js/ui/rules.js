@@ -25,6 +25,22 @@
       ]
     },
     {
+      category: '药水与抽二',
+      color: '#93c5fd',
+      cards: [
+        {
+          name: '五色药水',
+          desc: '红、黄、蓝、绿、白各一张。恢复5点生命，道具牌。',
+          samples: ['RED', 'YELLOW', 'BLUE', 'GREEN', 'WHITE'].map(color => item(color, 'potion'))
+        },
+        {
+          name: '五色+2',
+          desc: '红、黄、蓝、绿、白各一张。抽2张牌，道具牌。',
+          samples: ['RED', 'YELLOW', 'BLUE', 'GREEN', 'WHITE'].map(color => item(color, 'drawTwo'))
+        }
+      ]
+    },
+    {
       category: '白色牌',
       color: '#e8e8ed',
       cards: [
@@ -32,11 +48,6 @@
           name: '白 1~5',
           desc: '匹配任意牌，自动继承当前颜色。1~2可攻可守，3~5仅能进攻。',
           samples: [num('WHITE', 2, true), num('WHITE', 3, true), num('WHITE', 5, true)]
-        },
-        {
-          name: '白色药水',
-          desc: '恢复5点生命。',
-          samples: [item('WHITE', 'potion')]
         },
         {
           name: '白色净化',
@@ -47,11 +58,6 @@
           name: '白色超级净化',
           desc: '选择自己或一名对手，移除其全部可净化状态。',
           samples: [item('WHITE', 'superPurify')]
-        },
-        {
-          name: '白色+3',
-          desc: '抽3张牌。',
-          samples: [item('WHITE', 'drawThree')]
         },
         {
           name: '白色交换',
@@ -70,9 +76,9 @@
           samples: [item('BLACK', 'black')]
         },
         {
-          name: '黑色+2',
-          desc: '指定颜色，并抽2张牌。',
-          samples: [item('BLACK', 'drawTwo')]
+          name: '黑色+3',
+          desc: '指定颜色，并抽3张牌。',
+          samples: [item('BLACK', 'drawThree')]
         },
         {
           name: '黑色洗入',
@@ -84,17 +90,17 @@
   ];
 
   const GAMEPLAY_RULES = [
-    { title: '怎样出牌', desc: '数字牌需与弃牌库顶同色或同点数；白牌自动继承当前颜色，黑牌由你指定颜色。道具牌不受颜色、点数限制。' },
-    { title: '怎样防御', desc: '防御时可出0~2点数字牌或道具牌。数字牌触发防御技能并结算本次攻击；也可跳过防御。角色与怪物的特殊规则以技能说明为准。' },
+    { title: '怎样出牌', desc: '彩色牌可按颜色匹配，数字牌之间也可按点数匹配。不同颜色的+2之间、药水之间可按符号匹配。白牌自动继承当前颜色，黑牌由你指定颜色。' },
+    { title: '怎样防御', desc: '防御时可出符合匹配条件的0~2点数字牌或道具牌。数字牌触发防御技能并结算本次攻击；也可跳过防御。角色与怪物的特殊规则以技能说明为准。' },
     { title: '什么是搭桥', desc: '在进攻或防御出牌阶段打出道具牌，先执行效果，再继续选牌。搭桥本身不会结束本次进攻或防御。' },
     { title: '何时结束回合', desc: '一次进攻结算后可以继续出牌，或点击“结束回合”。补牌后换对手进攻；击败所有对手获胜。' }
   ];
 
   const DECK_COMPARISON = [
-    ['初始牌组', '72张 · 全体共用', '70张 · 玩家独立牌组'],
+    ['初始牌组', '77张 · 全体共用', '75张 · 玩家独立牌组'],
     ['四色数字牌 / 白色数字牌', '48张 / 5张', '48张 / 5张'],
-    ['黑色指定颜色 / ＋2 / 洗入', '2张 / 2张 / 2张', '2张 / 2张 / 2张'],
-    ['药水 / 白色＋3', '3张 / 2张', '3张 / 2张'],
+    ['黑色指定颜色 / ＋3 / 洗入', '2张 / 2张 / 2张', '2张 / 2张 / 2张'],
+    ['五色药水 / 五色＋2', '5张 / 5张', '5张 / 5张'],
     ['净化 / 超级净化', '4张 / 2张', '4张 / 2张'],
     ['交换手牌', '2张', '不含'],
     ['战利白卡', '不含', '冒险中获得，加入玩家牌组循环']
@@ -160,7 +166,7 @@
       html += '<div class="rule-item rules-npc-row"><span id="' + id + '"></span><div><h4 class="rule-item-title">' + label + ' <small>' + count + '</small></h4><p class="rule-item-desc">' + effect + '</p></div></div>';
     }
     html += '</div><p class="rules-table-note">怪物牌库少于3张时回收其弃牌。挑战房怪物出局后，手牌进入怪物弃牌库。</p></div></details>';
-    html += '<details class="rules-disclosure"><summary><span>牌组数量与回收</span><small>单机72张 · 冒险玩家70张</small></summary><div class="rules-disclosure-body">';
+    html += '<details class="rules-disclosure"><summary><span>牌组数量与回收</span><small>单机77张 · 冒险玩家75张</small></summary><div class="rules-disclosure-body">';
     html += '<div class="rules-table-wrap" role="region" aria-label="两种模式牌库对照表" tabindex="0"><table class="rules-deck-table"><thead><tr><th scope="col">卡牌</th><th scope="col">单机对战</th><th scope="col">冒险玩家</th></tr></thead><tbody>';
     for (const [label, classic, player] of DECK_COMPARISON) {
       html += '<tr><th scope="row">' + label + '</th><td>' + classic + '</td><td>' + player + '</td></tr>';

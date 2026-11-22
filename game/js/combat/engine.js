@@ -325,7 +325,16 @@
       if(this.s&&this.s.is1v2&&typeof this._curAI==='function')return this._curAI();
       return 'ai';
     }
-    cardText(c){if(c.trophyWhite)return '战利白卡';if(c.isBlack)return '黑牌';if(c.isWhite)return c.isNumberCard?`白${c.value}`:'白色道具牌';return `${({RED:'红',YELLOW:'黄',BLUE:'蓝',GREEN:'绿'})[c.color]||''}${c.value}`}
+    cardText(c){
+      if (c.trophyWhite) return '战利白卡';
+      const color = ({RED:'红',YELLOW:'黄',BLUE:'蓝',GREEN:'绿',WHITE:'白',BLACK:'黑'})[c.color] || '';
+      if (c.drawTwo) return color + '+2';
+      if (c.drawThree) return color + '+3';
+      if (c.potion) return color + '色药水';
+      if (c.isBlack) return '黑牌';
+      if (c.isItemCard) return c.isWhite ? '白色道具牌' : '道具牌';
+      return color + c.value;
+    }
     colorName(c){return({RED:'红色',YELLOW:'黄色',BLUE:'蓝色',GREEN:'绿色',BLACK:'黑色',WHITE:'白色'})[c]||'当前颜色'}
     chooseAIColor(){let counts=Object.fromEntries(C.map(x=>[x,0]));for(const card of this.h.ai){let color=this.effective(card);if(C.includes(color))counts[color]++}return C.reduce((a,b)=>counts[b]>counts[a]?b:a)}
     setAIWildColor(card,top,announce=true){if(card.isBlack)card.chosenColor=this.chooseAIColor();else if(card.isWhite)card.chosenColor=this.effective(top);if(announce)this.announceAIColor(card)}
@@ -361,7 +370,14 @@
     }
     aiAttackScore(c,top){let x=this.aiContext();if(c.isItemCard){if(this.s.isAdventure&&this._getAdventureMod(x.name)){if(c.magic||c.magicColor==='purple')return 200;if(c.greenMagic||c.magicColor==='green')return 190}return this.baseAttackScore(c,top,x)}if(this.aiSkip(x.name,c,x,'attack'))return-100;let m=AIRegistry.get(x.name),role=m?m.attackScore(this,c.value,c,x):null;return role!=null?role:this.baseAttackScore(c,top,x)}
     chooseAIPlay(top){let best=null,score=-Infinity;for(const c of this.h.ai){if(!this.legal(c))continue;let s=this.aiAttackScore(c,top);if(s>score){score=s;best=c}}return score<=-100?null:best}
-    aiDefendLegal(c,top,x){if(c.isBlack||c.drawThree||c.drawTwo||c.potion||c.swapHand||c.shuffleToDeck)return true;if(c.superPurify)return x.debuff||x.oppGuard>0;if(c.purify)return x.debuff;if(this.s.isAdventure&&(c.value>=3&&c.value<=5)){let mod=this._getAdventureMod(this.name(this.s.ai));if(mod&&mod.canDefendHigh)return this.legal(c,false);return false}if(c.isWhite)return c.value<=2&&this.legal(c,true);if(c.value<=2)return this.legal(c,true);return false}
+    aiDefendLegal(c,top,x){
+      if (!Card.matchesTop(c, top)) return false;
+      if (c.superPurify) return x.debuff || x.oppGuard > 0;
+      if (c.purify) return x.debuff;
+      if (c.isItemCard || c.value <= 2) return true;
+      const mod = this.s.isAdventure && this._getAdventureMod(this.name(this.s.ai));
+      return !!(mod && mod.canDefendHigh && c.value <= 5);
+    }
     baseDefendScore(c,top,x){
       if(c.magic||c.magicColor==='purple')return 100;
       if(c.greenMagic||c.magicColor==='green')return 90;
@@ -963,7 +979,10 @@
       // 荆棘：进入进攻回合时重置本回合剩余触发次数（有荆棘则为 2，否则 0）
       {const S=this._status();if(S&&S.resetThornsTriggersForAttackTurn)S.resetThornsTriggersForAttackTurn(x);else if((x.thorns||0)>0)x.thornsTriggersLeft=2;else x.thornsTriggersLeft=0;}
       if((x.poison||0)>0){let dmg=x.poison,who=w==='player'?'player':(w==='ai2'?'ai2':'ai');this.emit('poisonSettle',`[中毒]🗡️${dmg}`,null,{who,amount:dmg,hpBefore:x.hp,hpAfter:Math.max(0,x.hp-dmg)});this.hurt(x,dmg,'poison',{silent:true});if(this.name(x)==='Serenity'&&x.hp<25)x.bloodthirst=true}if((x.parasite||0)>0){let opp=null;if(w==='player'){opp=(this.s.ai&&this.s.ai.alive)?this.s.ai:((this.s.ai2&&this.s.ai2.alive)?this.s.ai2:null)}else opp=this.s.player;if(opp&&opp.alive)this.drainAttack(x,opp,1,{allowAvoidance:false,damageSource:'buff'})}if((x.lush||0)>0){const amt=Math.min(2,x.lush);this.heal(x,amt,'lush')}let n=this.name(x),m=CharacterRegistry.get(n);if(m)m.turnStart(this,x,w)}
-    legal(c,def=false){let t=this.s.discardTop,tc=t.chosenColor||t.color,cc=c.chosenColor||c.color;if(c.isItemCard)return true;if(def&&c.value>2)return false;return c.isWhite||tc===cc||t.value===c.value}
+    legal(c,def=false){
+      if (def && c?.isNumberCard && c.value > 2) return false;
+      return Card.matchesTop(c, this.s.discardTop);
+    }
     select(i){
       const card=this.h.player[i];
       if(!card)throw Error('无效卡牌');
@@ -1409,7 +1428,7 @@
     play(){
       let i=this.s.selectedCard,c=this.h.player[i];
       if(!c)throw Error('请先选择卡牌');
-      if(!this.legal(c))throw Error('颜色或数字不匹配');
+      if(!this.legal(c))throw Error('颜色、点数或符号不匹配');
       let who=this.name(this.s.player);
       const needsNumberFollowup = !c.borrowedMonster && ((who==='Ryan'&&c.value===3)||(who==='Otto'&&c.value===4));
       if(c.isBlack&&!c.chosenColor)return this._stagePendingBlackCard(i,c,'attack');

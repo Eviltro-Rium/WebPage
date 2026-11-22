@@ -31,12 +31,11 @@
         for (let value = 1; value <= 5; value++) deck.push(Card.number('WHITE', value, true));
         for (let n = 0; n < 2; n++) deck.push(Card.item('BLACK', 'black'));
         for (let n = 0; n < 2; n++) {
-            deck.push(Card.item('BLACK', 'drawTwo'));
-            deck.push(Card.item('WHITE', 'drawThree'));
+            deck.push(Card.item('BLACK', 'drawThree'));
             deck.push(Card.item('WHITE', 'swap'));
         }
         for (let n = 0; n < 2; n++) deck.push(Card.item('BLACK', 'shuffle'));
-        for (let n = 0; n < 3; n++) deck.push(Card.item('WHITE', 'potion'));
+        for (const color of [...COLORS, 'WHITE']) deck.push(Card.item(color, 'potion'), Card.item(color, 'drawTwo'));
         for (let n = 0; n < 2; n++) deck.push(Card.item('WHITE', 'superPurify'));
         for (let n = 0; n < 4; n++) deck.push(Card.item('WHITE', 'purify'));
         return shuffle(deck);
@@ -47,7 +46,7 @@
         for (let i = 0; i < attempts; i++) {
             const top = deck.pop();
             if (!top) return null;
-            if (!top.isBlack && !top.isWhite) return top;
+            if (top.isNumberCard && !top.isBlack && !top.isWhite) return top;
             deck.unshift(top);
         }
         // A custom/degenerate deck still needs a finite result.

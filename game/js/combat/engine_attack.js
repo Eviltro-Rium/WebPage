@@ -27,7 +27,7 @@
       const afterRecovery = character?.attackHealAfterDamage?.(this, formula.value, attacker, target);
       if (afterRecovery > 0) this.queueAttackRecovery(attacker, afterRecovery);
       if (!character || typeof character.damageAtSettlement !== 'function') return this.prepareDivingMitigation(remaining, defenderKey);
-      const live = character.damageAtSettlement(this, formula.value, attacker, target, attackerBeforeEffects);
+      const live = character.damageAtSettlement(this, formula.value, attacker, target, attackerBeforeEffects, formula);
       if (live == null) return this.prepareDivingMitigation(remaining, defenderKey);
       const basePreview = Math.max(0, Number(attack.damage) || 0);
       const preview = attack.ottoCoveredDamage ? Math.min(6, basePreview) : basePreview;
@@ -145,6 +145,7 @@
     captureAttackSkill(callback, name, value, attacker, target) {
       const registry = Combat.StatusRegistry;
       if (!registry) return callback();
+      const targetHandSize = (this.h[this._who(target)] || []).length;
       const keys = ['player','ai','ai2'].filter(key => this.s[key]);
       const snapshots = keys.map(key => ({key, entity:this.s[key], values:registry.all.map(def => registry.amount(this.s[key],def.id))}));
       const firstEvent = this.ver;
@@ -208,7 +209,7 @@
       this.events = this.events.filter(event => !(event.id > firstEvent && event.type==='buff' &&
         queued.some(effect => (effect.id===event.kind || effect.method===event.kind) &&
           effect.target===(event.target||event.who))));
-      this.s.pendingDamageFormula = {name,value,preview:Math.max(0,Number(result.d)||0)};
+      this.s.pendingDamageFormula = {name,value,preview:Math.max(0,Number(result.d)||0),targetHandSize};
       return result;
     },
 

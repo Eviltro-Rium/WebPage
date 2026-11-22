@@ -66,3 +66,31 @@ test('diving full block still settles bleed after a defense skill (card <=3)',()
  e.settlePreparedHit(e.s.ai,e.s.player,e.pendingSettlement);
  assert.equal(e.s.player.hp,hp-2);assert.equal(e.s.player.bleed,1);assert.equal(e.s.player.guard,2);
 });
+
+test('NPC hand-count attacks lock the target hand before defense, including after restoring a snapshot', () => {
+ for (const [name, value, stage] of [
+   ['CastleFox', 3, 1], ['FrozenOceanSamoyed', 1, 1], ['FrozenKraken', 4, 3], ['DesertHyena', 3, 4]
+ ]) {
+   const e = new ctx.Engine();
+   e.start('Ryan', name);
+   const attack = card(value, 'RED');
+   const defense = card(1, 'RED');
+   e.s.ai.encounterStage = stage;
+   e.s.atkOwner = 'ai';
+   e.s.atkCard = attack;
+   e.h.player = [defense, card(2), card(3), card(4)];
+   const preview = e.effect(name, value, attack, e.s.ai, e.s.player);
+   assert.equal(preview.d, 4, name);
+   assert.equal(preview.unblock, false, name);
+   e.s.pendingAttack = { damage: preview.d };
+   e.s.defCard = e.h.player.shift();
+   // 已合法打出防御 1，余下 3 张手牌。应格挡原伤害的一半，仍受 2 点。
+   for (const legacy of [false, true]) {
+     const snapshot = e.combatSnapshot();
+     if (legacy) delete snapshot.state.pendingDamageFormula.targetHandSize;
+     const restored = new ctx.Engine();
+     restored.restoreCombatSnapshot(snapshot);
+     assert.equal(restored.prepareAttackSettlement(2, 'player'), 2, name);
+   }
+ }
+});

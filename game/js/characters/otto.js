@@ -51,13 +51,13 @@
       return null;
     },
     defend(eng, n, v, d, c, defender, opponent, owner, inheritedColor, helpers) {
-      const { hurt, heal, bleed, guard } = helpers;
+      const { hurt, heal, bleed } = helpers;
       const counter = helpers.counter || ((target, amount) => hurt(target, amount));
       let remaining = d;
       let desc = '';
       if (v === 1) {
         counter(opponent, 2);
-        guard(1);
+        eng.addGuard(defender, 1);
         remaining = d;
         desc = 'Otto 1牌：反击2点+获得1层守护';
       } else if (v === 2) {
@@ -66,7 +66,7 @@
         remaining = d;
         desc = 'Otto 2牌：恢复2点+施加2层流血';
       } else if (v === 0) {
-        guard(5);
+        eng.addGuard(defender, 5);
         counter(opponent, d);
         remaining = d;
         desc = `Otto 0牌：获得5层守护+反击${d}点`;
