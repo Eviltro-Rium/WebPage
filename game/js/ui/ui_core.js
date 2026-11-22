@@ -74,7 +74,7 @@ const TAG_COLORS = {
 };
 
 const PHASE_NAMES = {
-    PLAYER_PLAY: '出牌阶段', PLAYER_DISCARD: '弃牌阶段', LEON_ZERO_DISCARD: '选择对手弃牌',
+    PLAYER_PLAY: '出牌阶段', PLAYER_DISCARD: '弃牌阶段', LEON_ZERO_DISCARD: '选择对手弃牌', REDFLAG_REDRAW_CHOICE: '防御前换牌',
     PLAYER_DEFEND: '防御阶段', ATTACK_MOD_CHOICE: '攻击修正', CRIT_CHOICE: '暴击选择', PLAYER_FIVE_CHOICE: '选择5效果',
     PLAYER_SEVEN_CHOICE: '处理抽取牌', SAIKI_THREE_CHOICE: '处理抽取牌', OPPONENT_CARD_CHOICE: '选择对手手牌',
     SAIKI_SIX_JUDGE: '判定选择', AI_TURN: 'AI回合', AI2_TURN: 'AI2回合',
@@ -625,6 +625,7 @@ class GameUI {
                 { name: 'Otto', hp: 80, type: '战士', passive: '进攻伤害>4时可消耗1层[暴击]使攻击不可防御' },
                 { name: 'Vixraps', hp: 65, type: '法师', passive: '打出黑牌后须弃1张（无手牌可免），然后回复2生命并对对手施加1层灼伤' },
                 { name: 'Fenric', hp: 65, type: '战士', passive: '受到的技能伤害超过7点时会截断为7点' },
+                { name: 'RedFlag', hp: 60, type: '战士', passive: '对手因[失温]实际弃牌时，抽1张牌' },
             ];
         }
         this._buildSelectScreen();

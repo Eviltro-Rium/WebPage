@@ -55,6 +55,8 @@ test('classic entry boots and renders the restored combat controls', async t => 
   const { w, context } = await boot(t, 'index.html');
   assert.ok(w.document.querySelector('#select-screen button'));
   const ui = vm.runInContext('ui', context);
+  w.document.querySelector('#mode-1v1').click();
+  assert.match(w.document.querySelector('[data-name="RedFlag"] img').getAttribute('src'), /avatars\/RedFlag\.webp$/);
   ui._buildGameScreen();
   assert.ok(w.document.querySelector('#player-reserve'));
   assert.ok(w.document.querySelector('#skill-book-btn'));
@@ -62,12 +64,16 @@ test('classic entry boots and renders the restored combat controls', async t => 
   assert.equal(typeof w.appendParsedSegments, 'function');
   assert.equal(w.CharacterRegistry.get('Moze').hp, 80);
   assert.equal(w.CharacterRegistry.get('Vixraps').hp, 65);
+  assert.equal(w.CharacterRegistry.get('RedFlag').hp, 60);
+  ui._updateAvatar('player', 'RedFlag');
+  assert.match(w.document.querySelector('#player-avatar').getAttribute('src'), /avatars\/RedFlag\.webp$/);
 });
 
 test('adventure entry boots, starts an embedded map and renders the new sacrifice room', async t => {
   const { w } = await boot(t, 'adventure/adventure.html');
   const picks = w.document.querySelectorAll('.adv-char-pick');
-  assert.equal(picks.length, 10);
+  assert.equal(picks.length, w.CharacterRegistry.all().filter(character => !character.adventureNpc).length);
+  assert.equal(w.document.querySelector('.adv-char-pick img[alt="RedFlag"]').getAttribute('src'), '../avatars/RedFlag.webp');
   picks[0].click();
   w.document.querySelector('#adv-start').click();
   await new Promise(resolve => setImmediate(resolve));
@@ -203,6 +209,7 @@ test('three online pages share seats, start without spectator readiness and clos
   const opts = {roomCode:'ABCD', nickname:'甲'};
   host.connect('host', opts);
   await tick();
+  assert.equal(host.root.querySelector('[data-char="RedFlag"] img').getAttribute('src'), '../avatars/RedFlag.webp');
   const joinRoom = (ui, nickname) => {
     ui.root.querySelector('#online-room-code').value = opts.roomCode;
     ui.root.querySelector('#online-nickname').value = nickname;

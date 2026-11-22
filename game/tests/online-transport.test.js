@@ -64,11 +64,11 @@ test('late acknowledgements settle pending commands without rolling back state',
   for (const error of [false, true]) {
     const {ctx} = setup(); let packet;
     const session = new ctx.OnlineGuestSession({peer: {send(p) {packet=p; return true;}},
-      state: {protocolVersion: 2, matchId: 'match', stateVersion: 10}});
+      state: {protocolVersion: 3, matchId: 'match', stateVersion: 10}});
     const pending = session.dispatch('doPlay');
-    session.receiveState({protocolVersion: 2, matchId: 'match', stateVersion: 12,
-      guestState: {protocolVersion: 2, matchId: 'match', stateVersion: 12}});
-    session[error ? 'receiveCommandError' : 'receiveState']({protocolVersion: 2, matchId: 'match',
+    session.receiveState({protocolVersion: 3, matchId: 'match', stateVersion: 12,
+      guestState: {protocolVersion: 3, matchId: 'match', stateVersion: 12}});
+    session[error ? 'receiveCommandError' : 'receiveState']({protocolVersion: 3, matchId: 'match',
       requestId: packet.requestId, stateVersion: 11, error: 'rejected'});
     const result = await pending;
     assert.equal(result.ok, !error); assert.equal(result.state.stateVersion, 12);
@@ -78,7 +78,7 @@ test('late acknowledgements settle pending commands without rolling back state',
 test('guest retries retain request id and back off instead of flooding', () => {
   const {ctx, timers} = setup(); const packets = [];
   const session = new ctx.OnlineGuestSession({peer: {send(p) {packets.push(p); return true;}},
-    state: {protocolVersion: 2, matchId: 'match', stateVersion: 1}});
+    state: {protocolVersion: 3, matchId: 'match', stateVersion: 1}});
   session.dispatch('doPlay');
   const retry = [...timers.entries()].find(([, t]) => t.ms === 800);
   assert.ok(retry); timers.delete(retry[0]); retry[1].fn();
@@ -88,7 +88,7 @@ test('guest retries retain request id and back off instead of flooding', () => {
 });
 test('host retries preserve packet version, events and FIFO order', () => {
   const {ctx} = setup(); let blocked = true; const sent = [];
-  const match = {protocolVersion: 2, matchId: 'm', stateVersion: 1,
+  const match = {protocolVersion: 3, matchId: 'm', stateVersion: 1,
     project() {return {stateVersion: this.stateVersion};}};
   const session = new ctx.OnlineHostSession({match, peer: {send(p) {if (blocked) return false; sent.push(p); return true;}}});
   session._broadcast({events: [{id: 'first'}]});

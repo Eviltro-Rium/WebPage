@@ -11,7 +11,8 @@
     "js/characters/knight.js",
     "js/characters/otto.js",
     "js/characters/vixraps.js",
-    "js/characters/fenric.js"
+    "js/characters/fenric.js",
+    "js/characters/red_flag.js"
   ],
   "ai": [
     "js/ai/registry.js",
@@ -25,7 +26,8 @@
     "js/ai/chan_ai.js",
     "js/ai/otto_ai.js",
     "js/ai/vixraps_ai.js",
-    "js/ai/fenric_ai.js"
+    "js/ai/fenric_ai.js",
+    "js/ai/red_flag_ai.js"
   ],
   "combat": [
     "js/combat/protocol.js",

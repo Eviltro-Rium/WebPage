@@ -9,6 +9,7 @@
 - [Leon](Leon.md)
 - [Moze](Moze.md)
 - [Otto](Otto.md)
+- [RedFlag](RedFlag.md)
 - [Ryan](Ryan.md)
 - [Saiki](Saiki.md)
 - [Serenity](Serenity.md)

@@ -59,7 +59,8 @@
     { name: 'Knight', hp: 70, type: '法师', passive: '进攻前清除混沌；打出数字/白道具牌获得对应颜色混沌', avatar: 'avatars/Knight.webp', color: '#8e44ad' },
     { name: 'Otto', hp: 80, type: '战士', passive: '进攻伤害>4时可消耗1层[暴击]使攻击不可防御', avatar: 'avatars/Otto.webp', color: '#d35400' },
     { name: 'Vixraps', hp: 65, type: '法师', passive: '打出黑牌后须弃1张（无手牌可免），然后回复2生命并对对手施加1层灼伤', avatar: 'avatars/Vixraps.webp', color: '#c0392b' },
-    { name: 'Fenric', hp: 65, type: '战士', passive: '受到的技能伤害超过7点时会截断为7点', avatar: 'avatars/Fenric.webp', color: '#5d6d7e' }
+    { name: 'Fenric', hp: 65, type: '战士', passive: '受到的技能伤害超过7点时会截断为7点', avatar: 'avatars/Fenric.webp', color: '#5d6d7e' },
+    { name: 'RedFlag', hp: 60, type: '战士', passive: '对手因[失温]实际弃牌时，抽1张牌', avatar: 'avatars/RedFlag.webp', color: '#ad484e' }
   ];
 
   function stripPrefix(s) {

@@ -369,8 +369,9 @@
     let ch=this.s[key],hand=this.h[key];
     
     const asleep=!!ch.sleep;
-    let frozen=this._freezeBlocksDefend(ch,atk),
-        chosen=(frozen||asleep)?null:this._chooseAIDefend1v2(key,this.s.discardTop,d),
+    const frozen=this._freezeBlocksDefend(ch,atk);
+    this.tryAIRedFlagRedraw(key, !frozen && !asleep);
+    let chosen=(frozen||asleep)?null:this._chooseAIDefend1v2(key,this.s.discardTop,d),
         i=chosen?hand.indexOf(chosen):-1;
     if(i>=0){
       let top=this.s.discardTop,c=hand.splice(i,1)[0];
@@ -424,7 +425,7 @@
   };
 
   Engine.prototype.defend1v2=function(skip=false){
-    
+    if(this.s.phase==='REDFLAG_REDRAW_CHOICE')throw Error('请选择是否更换手牌');
     if(this.s.player.sleep)skip=true;
     let d=this.s.pendingAttack.damage;
     let target=this._incomingNpcKey();

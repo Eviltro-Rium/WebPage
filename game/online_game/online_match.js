@@ -9,9 +9,9 @@
 (function (global) {
     const F = global.FurryGame || {};
     const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
-    const PROTOCOL_VERSION = 2;
+    const PROTOCOL_VERSION = 3;
     const COMMANDS = new Set([
-        'selectCard', 'playCard', 'defendCard', 'doPlay', 'doDefend', 'doSkipDefend', 'doEndTurn',
+        'selectCard', 'playCard', 'defendCard', 'doPlay', 'doDefend', 'doSkipDefend', 'doEndTurn', 'chooseRedFlagRedraw',
         'doEnterDiscard', 'doCancelDiscard', 'doConfirmDiscard',
         'doFiveHeal', 'doFiveDamage', 'doSaikiSixConfirm',
         'resolveAttackModChoice', 'resolveCritChoice', 'resolveAttackBuffChoice', 'chooseTarget',
@@ -80,6 +80,12 @@
         }
         if (Array.isArray(state.pendingJudgmentMoves)) {
             state.pendingJudgmentMoves = projectEvents(state.pendingJudgmentMoves, 'guest', 'host');
+        }
+        if (state.pendingRedFlagJudgment) {
+            state.pendingRedFlagJudgment.targetKey = swapKey(state.pendingRedFlagJudgment.targetKey);
+        }
+        if (state.pendingRedFlagRedraw) {
+            state.pendingRedFlagRedraw.defenderKey = swapKey(state.pendingRedFlagRedraw.defenderKey);
         }
         if (Array.isArray(state.pendingSkillStatuses)) {
             state.pendingSkillStatuses.forEach(effect => { effect.target = swapKey(effect.target); });
@@ -226,11 +232,16 @@
                 this.s.unblockDefend = false;
                 this.s.selectedCard = -1;
                 this.s.selectedAICard = -1;
+                this.offerRedFlagRedraw('ai', d, true);
                 return this.check();
             };
             e.continueAIAttack = function () {
                 this.finishJudgmentPresentation();
                 if (!this.s.player.alive || !this.s.ai.alive) return this.check();
+                if (this._openHypothermiaDiscardIfPending('AI_TURN')) {
+                    this.s.onlineActor = self._actorFor(this.s.player);
+                    return this.check();
+                }
                 this.s.phase = 'PLAYER_PLAY';
                 this.s.busy = false;
                 this.s.onlineActor = self._actorFor(this.s.ai);
@@ -246,6 +257,10 @@
             };
             e.endAi = function () {
                 this.finishJudgmentPresentation();
+                if (this.s.player.alive && this.s.ai.alive && this._openHypothermiaDiscardIfPending('END_AI_TURN')) {
+                    this.s.onlineActor = self._actorFor(this.s.player);
+                    return this.check();
+                }
                 this.s.turn++;
                 this.s.phase = 'PLAYER_PLAY';
                 this.s.busy = false;
@@ -398,6 +413,8 @@
                 if (defender && defender.sleep) return '沉睡中无法防御';
             }
             if (method === 'doSkipDefend' && s.phase !== 'PLAYER_DEFEND') return '当前不是防御阶段';
+            if (method === 'chooseRedFlagRedraw' &&
+                (s.phase !== 'REDFLAG_REDRAW_CHOICE' || typeof params.replace !== 'boolean')) return '当前没有换牌选择';
             if (method === 'doEndTurn' && s.phase !== 'PLAYER_PLAY') return '当前不能结束回合';
             // The discard button is shown during PLAYER_PLAY and is the
             // transition into PLAYER_DISCARD.  Only cancel/confirm actions
@@ -692,5 +709,6 @@
         }
     }
 
+    OnlineMatchHost.protocolVersion = PROTOCOL_VERSION;
     global.OnlineMatchHost = OnlineMatchHost;
 })(window);

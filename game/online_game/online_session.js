@@ -9,7 +9,7 @@
 (function (global) {
     const Base = global.CombatSession || class {};
     const clone = value => value == null ? value : JSON.parse(JSON.stringify(value));
-    const PROTOCOL_VERSION = 2;  // Must match OnlineMatchHost.
+    const PROTOCOL_VERSION = 3;  // Must match OnlineMatchHost.
     const BASE_REQUEST_TIMEOUT = 12000;
     const MIN_REQUEST_TIMEOUT = 6000;   // Allow transient browser/network stalls.
     const BASE_RETRY_DELAY = 1800;

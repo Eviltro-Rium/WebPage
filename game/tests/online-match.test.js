@@ -218,7 +218,7 @@ test('online protocol keeps guest packets private and rejects stale or duplicate
 
   // A host update contains only the recipient's private projection. The
   // previous implementation sent both hostState and guestState.
-  session.handleCommand({ requestId: 'select-1', protocolVersion: 2, matchId: match.matchId,
+  session.handleCommand({ requestId: 'select-1', protocolVersion: match.protocolVersion, matchId: match.matchId,
     expectedStateVersion: match.stateVersion, method: 'selectCard', params: { index: 0 } });
   const packet = sent.at(-1);
   assert.equal(packet.hostState, undefined);
@@ -236,10 +236,10 @@ test('online protocol keeps guest packets private and rejects stale or duplicate
   const guest = new context.OnlineGuestSession({ state: match.project('guest'), peer: { send() { return true; } } });
   const latest = match.project('guest');
   guest.receiveState({ guestState: Object.assign({}, latest, { stateVersion: latest.stateVersion + 2 }),
-    stateVersion: latest.stateVersion + 2, matchId: match.matchId, protocolVersion: 2 });
+    stateVersion: latest.stateVersion + 2, matchId: match.matchId, protocolVersion: match.protocolVersion });
   const currentVersion = guest.getState().stateVersion;
   guest.receiveState({ guestState: Object.assign({}, latest, { stateVersion: currentVersion - 1 }),
-    stateVersion: currentVersion - 1, matchId: match.matchId, protocolVersion: 2 });
+    stateVersion: currentVersion - 1, matchId: match.matchId, protocolVersion: match.protocolVersion });
   assert.equal(guest.getState().stateVersion, currentVersion);
   assert.equal(Card.number('RED', 1).value, 1);
 });
@@ -367,7 +367,7 @@ test('online guest applies matchReady and acknowledges the opening snapshot', ()
   ui.match = { remote: true };
   ui.peer = { send(message) { sent.push(message); return true; } };
   ui.battleSession = new context.OnlineGuestSession({ peer: ui.peer, state: opening });
-  ui._handlePeerMessage({ kind: 'matchReady', protocolVersion: 2, matchId: match.matchId,
+  ui._handlePeerMessage({ kind: 'matchReady', protocolVersion: match.protocolVersion, matchId: match.matchId,
     stateVersion: ready.stateVersion, guestState: ready });
   assert.equal(ui.battleSession.getState().onlineCanAct, true);
   assert.ok(sent.some(message => message.kind === 'matchReadyAck' && message.matchId === match.matchId));
@@ -683,7 +683,7 @@ test('online sessions expose the shared GameUI result shape', async () => {
   const pending = guestSession.dispatch('selectCard', { index: 0 });
   const received = guestSession.receiveState({
     requestId: guestRequestId,
-    protocolVersion: 2, matchId: match.matchId, stateVersion: match.stateVersion,
+    protocolVersion: match.protocolVersion, matchId: match.matchId, stateVersion: match.stateVersion,
     guestState: match.project('guest'),
     events: []
   });

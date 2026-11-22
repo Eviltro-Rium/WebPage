@@ -982,6 +982,7 @@
     }
 
     finishAdventureBattle() {
+      if (this.s?.pendingRedFlagJudgment) this.finishJudgmentPresentation();
       // 1v1 没有中途出局回调，胜利结算时补做一次唯一掉落判定；1v2
       // 的出局回调已即时处理，下面的兜底只会命中未处理的怪物。
       if (this.s && this.s.isAdventure && this.s.player && this.s.player.alive) {

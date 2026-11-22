@@ -890,6 +890,10 @@
             }
             if (message.kind === 'matchResume') {
                 if (this.role !== 'guest' || !message.guestState) return;
+                if (Number(message.protocolVersion) !== global.OnlineMatchHost.protocolVersion) {
+                    this.setRoomStatus('恢复对战失败：双方需要刷新页面以同步对战协议', 'error');
+                    return;
+                }
                 if (this.match && this.match.remote && this.battleSession
                     && this.battleSession._matchId === message.matchId) {
                     this.battleSession.receiveState({
@@ -978,7 +982,7 @@
                 this.match = { remote: true };
                 const guestState = clone(message.guestState || message.state);
                 try {
-                    if (message.protocolVersion != null && Number(message.protocolVersion) !== 2) {
+                    if (Number(message.protocolVersion) !== global.OnlineMatchHost.protocolVersion) {
                         throw new Error('协议版本不兼容，请刷新页面');
                     }
                     if (!guestState) throw new Error('未收到对战初始状态');
@@ -1005,7 +1009,7 @@
             }
             if (message.kind === 'matchReady') {
                 if (this.role !== 'guest' || !this.match || !this.match.remote || !this.battleSession) return;
-                if (message.protocolVersion != null && Number(message.protocolVersion) !== 2) return;
+                if (Number(message.protocolVersion) !== global.OnlineMatchHost.protocolVersion) return;
                 if (!message.matchId || !this.battleSession._matchId || message.matchId !== this.battleSession._matchId) return;
                 const result = this.battleSession.receiveState({
                     kind: 'state', protocolVersion: message.protocolVersion,

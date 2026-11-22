@@ -16,7 +16,8 @@
         Chan: Object.freeze([5]),
         Saiki: Object.freeze([4]),
         Moze: Object.freeze([3]),
-        Leon: Object.freeze([5])
+        Leon: Object.freeze([5]),
+        RedFlag: Object.freeze([5])
     });
 
     const stateOf = value => value && value.s && typeof value.s === 'object'

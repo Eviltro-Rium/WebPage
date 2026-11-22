@@ -15,17 +15,17 @@
   const CARD_RADIUS = 11;
   const RIM = 4;
   const ITEM_META = {
-    shuffle:      { label: 'SHUFFLE', aria: '洗牌', fallback: '↻' },
-    draw_two:     { label: 'DRAW 2', aria: '抽二', fallback: '+2' },
-    draw_three:   { label: 'DRAW 3', aria: '抽三', fallback: '+3' },
-    super_purify: { label: 'PURIFY+', aria: '超级净化', fallback: 'P+' },
-    purify:       { label: 'PURIFY', aria: '净化', fallback: 'P' },
-    potion:       { label: 'POTION', aria: '药剂', fallback: '+' },
-    magic:        { label: 'PURPLE MAGIC', aria: '紫魔法', fallback: '✦' },
-    green_magic:  { label: 'GREEN MAGIC', aria: '绿魔法', fallback: '✦' },
-    swap:         { label: 'SWAP', aria: '换牌', fallback: '⇄' },
-    wild:         { label: 'WILD', aria: '指定颜色', fallback: '◆' },
-    trophyWhite:  { label: 'BURN TROPHY', aria: '灼伤战利白卡', fallback: '♨' }
+    shuffle:      { aria: '洗牌', fallback: '↻' },
+    draw_two:     { aria: '抽二', fallback: '+2' },
+    draw_three:   { aria: '抽三', fallback: '+3' },
+    super_purify: { aria: '超级净化', fallback: '✦+' },
+    purify:       { aria: '净化', fallback: '✦' },
+    potion:       { aria: '药剂', fallback: '+' },
+    magic:        { aria: '紫魔法', fallback: '✦' },
+    green_magic:  { aria: '绿魔法', fallback: '✦' },
+    swap:         { aria: '换牌', fallback: '⇄' },
+    wild:         { aria: '指定颜色', fallback: '◆' },
+    trophyWhite:  { aria: '灼伤战利白卡', fallback: '♨' }
   };
   const ASSET_ROOT = (() => {
     if (typeof document === 'undefined' || !document.currentScript || !document.currentScript.src) return '';
@@ -259,7 +259,6 @@
     const isBlack = card.color === 'BLACK' || card.isBlack;
     const isLight = card.color === 'WHITE' || card.isWhite || card.color === 'YELLOW';
     const isSurfaceLight = isLight;
-    const compact = w < 52;
 
     g.save();
     roundRect(g, 0.5, 0.5, w - 1, h - 1, r);
@@ -426,10 +425,8 @@
       const meta = ITEM_META[kind];
       const icon = iconForCard(card);
       const isBwItem = card.isBlack || card.isWhite;
-      const iconSize = isBwItem
-        ? Math.min(w * 0.5, ovalRY * 1.4)
-        : Math.min(w * 0.34, ovalRY * 0.95);
-      const iconY = centerY - iconSize * (isBwItem ? 0.5 : 0.64);
+      const iconSize = Math.min(w * 0.5, ovalRY * 1.4);
+      const iconY = centerY - iconSize / 2;
 
       if (icon && icon.complete && icon.naturalWidth) {
         g.save();
@@ -440,15 +437,7 @@
         g.font = `700 ${Math.max(12, w * 0.25)}px "Inter", "Segoe UI Symbol", sans-serif`;
         g.textAlign = 'center'; g.textBaseline = 'middle';
         g.fillStyle = isBlack ? '#F7F8FA' : col.ink;
-        g.fillText(meta.fallback, centerX, centerY - ovalRY * 0.12);
-      }
-
-      if (!compact && !isBwItem && !card.trophyWhite) {
-        g.font = `600 ${Math.max(6, w * 0.09)}px "Inter", "Segoe UI", sans-serif`;
-        g.textAlign = 'center'; g.textBaseline = 'bottom';
-        g.fillStyle = isBlack ? 'rgba(248,250,252,0.78)' : 'rgba(42,47,55,0.76)';
-        const labelY = centerY + ovalRY * 0.72;
-        g.fillText(meta.label, centerX, labelY);
+        g.fillText(meta.fallback, centerX, centerY);
       }
 
       const isDraw = kind === 'draw_two' || kind === 'draw_three';

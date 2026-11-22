@@ -241,9 +241,70 @@
       return result;
     },
 
-    // This queue contains only visual copies, never physical pile ownership.
+    isRedFlagRedrawAttack() {
+      const attacker = this.s[this.s.atkOwner];
+      const card = this.s.atkCard;
+      return attacker && this.name(attacker) === 'RedFlag' && card &&
+        (card.isNumberCard && card.value === 0 || card.trophyEffect === 'zero') &&
+        this.s.pendingAttack;
+    },
+
+    replaceRedFlagDefenseHand(owner) {
+      const cards = this.h[owner].splice(0);
+      this.discardManyWithEvent(cards, owner, { desc: '弃掉全部手牌，重新抽取等量卡牌' });
+      this.draw(owner, cards.length, true);
+    },
+
+    offerRedFlagRedraw(defenderKey, damage, online = false) {
+      const attack = this.isRedFlagRedrawAttack();
+      if (!attack || attack.redFlagRedrawResolved || !this.h[defenderKey].length) return false;
+      this.s.pendingRedFlagRedraw = { defenderKey, damage, online };
+      this.s.phase = 'REDFLAG_REDRAW_CHOICE';
+      this.s.busy = false;
+      this.s.selectedCard = -1;
+      this.s.selectedCards = [];
+      this.emit('desc', 'RedFlag 0牌：防御前可以更换整手牌');
+      return true;
+    },
+
+    chooseRedFlagRedraw(replace) {
+      const pending = this.s.pendingRedFlagRedraw;
+      if (!pending || this.s.phase !== 'REDFLAG_REDRAW_CHOICE' || typeof replace !== 'boolean') {
+        throw Error('当前没有换牌选择');
+      }
+      this.s.pendingRedFlagRedraw = null;
+      this.s.pendingAttack.redFlagRedrawResolved = true;
+      if (replace) this.replaceRedFlagDefenseHand(pending.defenderKey);
+      if (pending.online) {
+        this.s.phase = 'PLAYER_DEFEND';
+        return this.check();
+      }
+      this._enterPlayerDefend(pending.damage);
+      return this.check();
+    },
+
+    tryAIRedFlagRedraw(defenderKey, mayDefend) {
+      const attack = this.isRedFlagRedrawAttack();
+      if (!attack || attack.redFlagRedrawResolved) return;
+      attack.redFlagRedrawResolved = true;
+      const hand = this.h[defenderKey];
+      if (!mayDefend || !hand.length) return;
+      const hasDefense = this._swapAIContext(defenderKey, () => {
+        const context = this.aiContext();
+        return hand.some(card => this.aiDefendLegal(card, this.s.discardTop, context));
+      });
+      if (!hasDefense) this.replaceRedFlagDefenseHand(defenderKey);
+    },
+
     finishJudgmentPresentation() {
       if(!this.s)return;
+      const held = this.s.pendingRedFlagJudgment;
+      if (held) {
+        this.s.pendingRedFlagJudgment = null;
+        this.discardWithEvent(held.card, held.targetKey, {
+          from: 'reveal', faceUp: true, desc: 'RedFlag 5牌：将判定牌置入弃牌库'
+        });
+      }
       const cards=clone(this.s.revealCards||[]), moves=clone(this.s.pendingJudgmentMoves||[]);
       this.s.pendingJudgmentMoves=[];
       if(!cards.length&&!moves.length)return;

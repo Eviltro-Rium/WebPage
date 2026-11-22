@@ -31,6 +31,12 @@
   function physicalCollections(engine, view = adapterView(engine)) {
     const result = { player: [], npc: [], shared: !!(view && view.topology === 'shared') };
     if (!view) return result;
+    const judgment = engine.s && engine.s.pendingRedFlagJudgment;
+    if (judgment && judgment.card) {
+      const source = judgment.card.borrowedFrom || judgment.targetKey;
+      const pool = view.topology === 'isolated' && source === 'player' ? result.player : result.npc;
+      pool.push(judgment.card);
+    }
 
     if (view.topology === 'isolated') {
       const player = view.playerPile;

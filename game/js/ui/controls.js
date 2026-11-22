@@ -155,6 +155,10 @@ _renderControls() {
             const canCancelDiscard = !s.forcedDiscard && !s.pendingVixrapsPassive && !s.pendingDiscardBeforeDefend && !s.pendingHypothermiaDiscard && !s.pendingSerenitySixDiscard && !s.pendingKrakenDefendDiscard;
             if (canCancelDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
         }
+    } else if (phase === 'REDFLAG_REDRAW_CHOICE' && canAct) {
+        html += '<span class="ctrl-hint">防御前可弃掉全部手牌并抽取等量卡牌</span>';
+        html += '<button class="ctrl-btn btn-play" id="btn-red-flag-redraw">更换手牌</button>';
+        html += '<button class="ctrl-btn btn-skip" id="btn-red-flag-keep">保留手牌</button>';
     } else if ((phase === 'LEON_ZERO_DISCARD' || phase === 'OPPONENT_CARD_CHOICE') && canAct) {
         html += '<span class="ctrl-hint">请在弹窗中选择对手手牌</span>';
     } else if (phase === 'ATTACK_MOD_CHOICE' && canAct) {
@@ -275,6 +279,8 @@ async _bindControls() {
     bind('btn-use-item', async () => { await this._useSelectedCombatItem(); });
     bind('btn-demon-pact', async () => { await this._apiAction('useDemonPact'); });
     bind('btn-confirm-discard', async () => { await this._apiAction('doConfirmDiscard'); });
+    bind('btn-red-flag-redraw', () => this._apiAction('chooseRedFlagRedraw', { replace: true }));
+    bind('btn-red-flag-keep', () => this._apiAction('chooseRedFlagRedraw', { replace: false }));
     bind('btn-cancel-discard', async () => { await this._apiAction('doCancelDiscard'); });
     bind('btn-five-heal', async () => { await this._apiAction('doFiveHeal'); });
     bind('btn-five-damage', async () => { await this._apiAction('doFiveDamage'); });
@@ -634,7 +640,7 @@ async _apiAction(method, params) {
 
 _isDecisionAction(method) {
     return new Set([
-        'doDefend', 'doSkipDefend', 'doConfirmDiscard', 'doCancelDiscard',
+        'doDefend', 'doSkipDefend', 'doConfirmDiscard', 'doCancelDiscard', 'chooseRedFlagRedraw',
         'doFiveHeal', 'doFiveDamage',
         'doChanSevenKeep', 'doChanSevenDiscard', 'doSaikiThreeKeep',
         'doSaikiThreeDiscard', 'doChanFourDiscard', 'doChanFourSwap',
@@ -649,7 +655,7 @@ _isInteractiveDecisionPhase(phase) {
         'PLAYER_FIVE_CHOICE', 'PLAYER_SEVEN_CHOICE',
         'SAIKI_THREE_CHOICE', 'SAIKI_SIX_JUDGE', 'ATTACK_MOD_CHOICE', 'CRIT_CHOICE', 'ATTACK_BUFF_CHOICE', 'PLAYER_DISCARD',
         'CHAN_FIVE_REORDER', 'GUARD_CHOICE', 'TARGET_CHOICE', 'PURIFY_CRYSTAL_CHOICE', 'OPPONENT_CARD_CHOICE',
-        'TROPHY_DISARM_CHOICE', 'TROPHY_PURIFY_CHOICE', 'DICE_CHOICE', 'LEON_ZERO_DISCARD'
+        'TROPHY_DISARM_CHOICE', 'TROPHY_PURIFY_CHOICE', 'DICE_CHOICE', 'LEON_ZERO_DISCARD', 'REDFLAG_REDRAW_CHOICE'
     ]).has(phase);
 },
 

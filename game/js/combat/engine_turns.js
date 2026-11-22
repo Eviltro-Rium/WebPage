@@ -81,6 +81,7 @@
         const card = this.h.player.splice(i, 1)[0];
         this.discardWithEvent(card, 'player', { handIndex: i, desc: `玩家弃掉${this.cardText(card)}` });
         if (vixrapsPassive) vixrapsPassive.discarded = true;
+        if (this.s.pendingHypothermiaDiscard) this._notifyHypothermiaDiscard('player');
       }
       this.s.selectedCard = -1;
       this.s.selectedCards = [];
