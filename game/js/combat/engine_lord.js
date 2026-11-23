@@ -109,6 +109,10 @@
       this._on1v2OpponentEliminated(targetKey);
       this.emit('desc',target.name+'被击败！玩家回合结束，另一方进攻');
       this.s.lordPlayerTargetIdx=1-(this.s.lordPlayerTargetIdx||0);
+      if(this.s.pendingRedFlagDiscard){
+        this.s.pendingRedFlagDiscard.nextLordTurn = true;
+        return;
+      }
       this._lordStartNextAI()
     }
   };

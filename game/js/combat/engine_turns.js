@@ -66,6 +66,9 @@
     },
 
     confirmDiscard() {
+      if (this.s.pendingRedFlagDiscard?.owner === 'player' && this.s.phase === 'PLAYER_DISCARD') {
+        return this.confirmRedFlagDefenseDiscard();
+      }
       const selected = this.s.selectedCards || [];
       const vixrapsPassive = this.s.pendingVixrapsPassive;
       const discardBeforeDefend = this.s.pendingDiscardBeforeDefend;

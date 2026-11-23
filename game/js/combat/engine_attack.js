@@ -241,59 +241,94 @@
       return result;
     },
 
-    isRedFlagRedrawAttack() {
-      const attacker = this.s[this.s.atkOwner];
+    offerRedFlagRedraw() {
       const card = this.s.atkCard;
-      return attacker && this.name(attacker) === 'RedFlag' && card &&
-        (card.isNumberCard && card.value === 0 || card.trophyEffect === 'zero') &&
-        this.s.pendingAttack;
+      if (this.s.atkOwner !== 'player' || this.name(this.s.player) !== 'RedFlag' ||
+          !this.h.player.length || this.s.pendingAttack.skillDamage <= 0 ||
+          !card || !(card.isNumberCard && card.value === 0 || card.trophyEffect === 'zero')) return false;
+      this.s.pendingRedFlagRedraw = true;
+      this.s.phase = 'REDFLAG_REDRAW_CHOICE';
+      this.s.busy = false;
+      this.s.selectedCard = -1;
+      this.s.selectedCards = [];
+      this.emit('desc', 'RedFlag 0牌：可保留或更换自己的手牌');
+      return true;
     },
 
-    replaceRedFlagDefenseHand(owner) {
+    redrawRedFlagHand(owner) {
       const cards = this.h[owner].splice(0);
       this.discardManyWithEvent(cards, owner, { desc: '弃掉全部手牌，重新抽取等量卡牌' });
       this.draw(owner, cards.length, true);
     },
 
-    offerRedFlagRedraw(defenderKey, damage, online = false) {
-      const attack = this.isRedFlagRedrawAttack();
-      if (!attack || attack.redFlagRedrawResolved || !this.h[defenderKey].length) return false;
-      this.s.pendingRedFlagRedraw = { defenderKey, damage, online };
-      this.s.phase = 'REDFLAG_REDRAW_CHOICE';
-      this.s.busy = false;
-      this.s.selectedCard = -1;
-      this.s.selectedCards = [];
-      this.emit('desc', 'RedFlag 0牌：防御前可以更换整手牌');
-      return true;
-    },
-
     chooseRedFlagRedraw(replace) {
-      const pending = this.s.pendingRedFlagRedraw;
-      if (!pending || this.s.phase !== 'REDFLAG_REDRAW_CHOICE' || typeof replace !== 'boolean') {
+      if (!this.s.pendingRedFlagRedraw || this.s.phase !== 'REDFLAG_REDRAW_CHOICE' || typeof replace !== 'boolean') {
         throw Error('当前没有换牌选择');
       }
       this.s.pendingRedFlagRedraw = null;
-      this.s.pendingAttack.redFlagRedrawResolved = true;
-      if (replace) this.replaceRedFlagDefenseHand(pending.defenderKey);
-      if (pending.online) {
-        this.s.phase = 'PLAYER_DEFEND';
-        return this.check();
-      }
-      this._enterPlayerDefend(pending.damage);
-      return this.check();
+      if (replace) this.redrawRedFlagHand('player');
+      return this._beginGatedAttack();
     },
 
-    tryAIRedFlagRedraw(defenderKey, mayDefend) {
-      const attack = this.isRedFlagRedrawAttack();
-      if (!attack || attack.redFlagRedrawResolved) return;
-      attack.redFlagRedrawResolved = true;
-      const hand = this.h[defenderKey];
-      if (!mayDefend || !hand.length) return;
-      const hasDefense = this._swapAIContext(defenderKey, () => {
-        const context = this.aiContext();
-        return hand.some(card => this.aiDefendLegal(card, this.s.discardTop, context));
+    queueRedFlagDefenseDiscard(owner) {
+      const hand = this.h[owner];
+      const count = Math.ceil(hand.length / 2);
+      if (!count) return;
+      if (owner === 'player' || this.s.onlineActor) {
+        this.s.pendingRedFlagDiscard = { owner, count };
+        return;
+      }
+      const original = hand.slice();
+      const order = this.s.isAdventure ? global.AdventureNpcStrategy?.attackOrder(original) : null;
+      const discarded = this._swapAIContext(owner, () => {
+        const cards = [];
+        for (let i = 0; i < count; i++) {
+          const index = order ? hand.indexOf(original[order.pop()]) : this.chooseAIDiscard(hand);
+          cards.push(hand.splice(index, 1)[0]);
+        }
+        return cards;
       });
-      if (!hasDefense) this.replaceRedFlagDefenseHand(defenderKey);
+      this.discardManyWithEvent(discarded, owner, {
+        handIndices: discarded.map(card => original.indexOf(card)),
+        desc: 'RedFlag 防御0：进攻方弃掉' + count + '张手牌'
+      });
+    },
+
+    openRedFlagDefenseDiscard(owner) {
+      const pending = this.s.pendingRedFlagDiscard;
+      if (!pending || pending.owner !== owner) return false;
+      pending.count = Math.min(pending.count, this.h[owner].length);
+      if (!this.s[owner].alive || !pending.count) {
+        this.s.pendingRedFlagDiscard = null;
+        return false;
+      }
+      this.s.phase = 'PLAYER_DISCARD';
+      this.s.busy = false;
+      this.s.forcedDiscard = true;
+      this.s.selectedCard = -1;
+      this.s.selectedCards = [];
+      this.emit('desc', 'RedFlag 防御0：请选择' + pending.count + '张手牌弃掉');
+      return true;
+    },
+
+    confirmRedFlagDefenseDiscard() {
+      const pending = this.s.pendingRedFlagDiscard;
+      const hand = this.h.player;
+      const indices = [...new Set(this.s.selectedCards || [])].sort((a, b) => b - a);
+      if (this.s.phase !== 'PLAYER_DISCARD' || pending.owner !== 'player' ||
+          indices.length !== pending.count || indices.some(index => !hand[index])) {
+        throw Error('请选择' + pending.count + '张手牌弃掉');
+      }
+      const cards = indices.map(index => hand.splice(index, 1)[0]);
+      this.discardManyWithEvent(cards, 'player', { handIndices: indices, desc: 'RedFlag 防御0：已弃掉' + cards.length + '张手牌' });
+      this.s.pendingRedFlagDiscard = null;
+      this.s.forcedDiscard = false;
+      this.s.selectedCard = -1;
+      this.s.selectedCards = [];
+      if (pending.nextLordTurn) return this._lordStartNextAI();
+      if (this._openHypothermiaDiscardIfPending('PLAYER_PLAY')) return this.check();
+      this.s.phase = 'PLAYER_PLAY';
+      return this.check();
     },
 
     finishJudgmentPresentation() {

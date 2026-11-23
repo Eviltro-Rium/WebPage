@@ -216,6 +216,7 @@
   };
 
   Engine.prototype.play1v2=function(){
+    if(this.s.pendingRedFlagRedraw || (this.s.pendingRedFlagDiscard && this.s.phase==='PLAYER_DISCARD')) throw Error('请先完成 RedFlag 技能选择');
     let i=this.s.selectedCard,c=this.h.player[i];
     if(!c)throw Error('请选择要打出的牌');
     if(!this.legal(c))throw Error('该牌不能用于进攻');
@@ -370,7 +371,6 @@
     
     const asleep=!!ch.sleep;
     const frozen=this._freezeBlocksDefend(ch,atk);
-    this.tryAIRedFlagRedraw(key, !frozen && !asleep);
     let chosen=(frozen||asleep)?null:this._chooseAIDefend1v2(key,this.s.discardTop,d),
         i=chosen?hand.indexOf(chosen):-1;
     if(i>=0){

@@ -44,22 +44,28 @@ function play(match, actor) {
 }
 
 for (const [attacker, defender] of [['host', 'guest'], ['guest', 'host']]) {
-  test(`RedFlag 0 lets only the ${defender} defender replace or keep cards before defense`, () => {
+  test(`RedFlag 0 lets only the ${attacker} attacker replace or keep their own cards before defense`, () => {
     for (const replace of [false, true]) {
       const match = matchFor(attacker, 0, [number(1), number(4, 'GREEN')]);
       const { engine } = match;
       const handKey = defender === 'host' ? 'player' : 'ai';
       const hp = engine.s[handKey].hp;
-      const oldIds = engine.h[handKey].map(card => card.uid);
+      const attackerKey = attacker === 'host' ? 'player' : 'ai';
+      const attackHand = engine.h[attackerKey];
+      attackHand.push(number(3, 'BLUE'), number(5));
+      const oldIds = attackHand.slice(1).map(card => card.uid);
+      const defenderIds = engine.h[handKey].map(card => card.uid);
       const started = play(match, attacker);
       assert.equal(started.state.phase, 'REDFLAG_REDRAW_CHOICE');
-      assert.equal(started.state.onlineActor, defender);
-      assert.equal(match.dispatch(attacker, 'chooseRedFlagRedraw', { replace }).ok, false);
+      assert.equal(started.state.onlineActor, attacker);
+      assert.equal(match.dispatch(defender, 'chooseRedFlagRedraw', { replace }).ok, false);
       assert.equal(match.dispatch(defender, 'doSkipDefend').ok, false);
-      const chosen = dispatch(match, defender, 'chooseRedFlagRedraw', { replace });
+      const chosen = dispatch(match, attacker, 'chooseRedFlagRedraw', { replace });
       assert.equal(chosen.state.phase, 'PLAYER_DEFEND');
-      assert.equal(engine.h[handKey].length, oldIds.length);
-      assert.equal(engine.h[handKey].some(card => oldIds.includes(card.uid)), !replace);
+      assert.equal(chosen.state.onlineActor, defender);
+      assert.equal(attackHand.length, oldIds.length);
+      assert.equal(attackHand.some(card => oldIds.includes(card.uid)), !replace);
+      assert.deepEqual(engine.h[handKey].map(card => card.uid), defenderIds);
       assert.equal(match.dispatch(defender, 'chooseRedFlagRedraw', { replace }).ok, false);
       dispatch(match, defender, 'doSkipDefend');
       assert.equal(engine.s[handKey].hp, hp - 7);
@@ -212,21 +218,40 @@ test('RedFlag defense 2 heals, applies hypothermia and draws', () => {
   assert.equal(engine.h.ai.length, 1);
 });
 
-test('RedFlag defense 0 counters the full attack and discards half the attacker hand rounded up', () => {
-  const match = new w.OnlineMatchHost('Leon', 'RedFlag');
-  const { engine } = match;
-  engine.h.player = [number(2), number(4), number(5), number(1)];
-  engine.h.ai = [number(0)];
-  engine.s.discardTop = redTop();
-  const hp = [engine.s.player.hp, engine.s.ai.hp];
-  const attack = play(match, 'host');
-  const damage = attack.state.pendingAttack.damage;
-  dispatch(match, 'guest', 'selectCard', { index: 0 });
-  dispatch(match, 'guest', 'doDefend');
-  assert.equal(engine.h.player.length, 1);
-  assert.equal(engine.s.player.hp, hp[0] - damage);
-  assert.equal(engine.s.ai.hp, hp[1] - damage);
-});
+for (const [attacker, defender] of [['host', 'guest'], ['guest', 'host']]) {
+  test(`RedFlag defense 0 lets the ${attacker} attacker choose exactly half their hand rounded up`, () => {
+    const hostAttacks = attacker === 'host';
+    const match = new w.OnlineMatchHost(hostAttacks ? 'Leon' : 'RedFlag', hostAttacks ? 'RedFlag' : 'Leon', attacker);
+    const { engine } = match;
+    const attackerKey = hostAttacks ? 'player' : 'ai';
+    const defenderKey = hostAttacks ? 'ai' : 'player';
+    const keep = number(5);
+    engine.h[attackerKey] = [number(2), number(4), keep, number(1)];
+    engine.h[defenderKey] = [number(0)];
+    engine.s.discardTop = redTop();
+    const hp = [engine.s[attackerKey].hp, engine.s[defenderKey].hp];
+    const attack = play(match, attacker);
+    const damage = attack.state.pendingAttack.damage;
+    dispatch(match, defender, 'selectCard', { index: 0 });
+    const result = dispatch(match, defender, 'doDefend');
+    assert.equal(result.state.phase, 'PLAYER_DISCARD');
+    assert.equal(result.state.onlineActor, attacker);
+    assert.equal(engine.s.pendingRedFlagDiscard.count, 2);
+    assert.equal(engine.h[attackerKey].length, 3);
+    assert.equal(engine.s[attackerKey].hp, hp[0] - damage);
+    assert.equal(engine.s[defenderKey].hp, hp[1] - damage);
+    assert.equal(match.dispatch(defender, 'selectCard', { index: 0 }).ok, false);
+    dispatch(match, attacker, 'selectCard', { index: 0 });
+    assert.equal(match.dispatch(attacker, 'doConfirmDiscard').ok, false);
+    assert.equal(match.dispatch(attacker, 'doCancelDiscard').ok, false);
+    dispatch(match, attacker, 'selectCard', { index: 2 });
+    const confirmed = dispatch(match, attacker, 'doConfirmDiscard');
+    assert.equal(engine.h[attackerKey].length, 1);
+    assert.equal(engine.h[attackerKey][0].uid, keep.uid);
+    assert.equal(confirmed.state.phase, 'PLAYER_PLAY');
+    assert.equal(confirmed.state.onlineActor, attacker);
+  });
+}
 
 test('RedFlag draws after the online defender confirms a threshold discard', () => {
   const match = matchFor('host', 3, [number(1), number(4, 'GREEN')]);
@@ -244,18 +269,61 @@ test('RedFlag draws after the online defender confirms a threshold discard', () 
   assert.equal(discarded.state.onlineActor, 'host');
 });
 
+test('single-player RedFlag defense 0 waits for the human attacker to discard', () => {
+  const engine = new w.Engine();
+  engine.later = callback => callback();
+  engine.start('Leon', 'RedFlag');
+  const keep = number(5);
+  engine.h.player = [number(2), keep, number(1)];
+  engine.h.ai = [number(0)];
+  engine.s.discardTop = redTop();
+  engine.dispatch('selectCard', { index: 0 });
+  engine.dispatch('doPlay');
+  engine.acknowledgeEvents(engine.ver);
+  assert.equal(engine.s.phase, 'PLAYER_DISCARD');
+  engine.dispatch('selectCard', { index: 1 });
+  engine.dispatch('doConfirmDiscard');
+  assert.equal(engine.s.phase, 'PLAYER_PLAY');
+  assert.equal(engine.h.player.length, 1);
+  assert.equal(engine.h.player[0].uid, keep.uid);
+});
+
+test('Adventure defense 0 removes the active NPC’s lowest-priority cards', () => {
+  const engine = new w.AdventureBattleEngine();
+  engine.later = () => {};
+  engine.startAdventure1v2({ player: 'RedFlag', opponent1: 'CastleWolf', opponent2: 'CastleWolf', stage: 1,
+    playerPile: { deck: [], hand: [number(0)], discard: [], handLimit: 5 } });
+  const white = value => Object.assign(Card.number('WHITE', value, true), { npcCard: true });
+  const magic = Object.assign(Card.item('WHITE', 'greenMagic'), { npcCard: true });
+  const low = [white(0), white(1)];
+  const otherHand = engine.h.ai.map(card => card.uid);
+  engine.h.ai2.splice(0, engine.h.ai2.length, magic, ...low);
+  engine.setDiscardTop(number(2), 'ai2');
+  Object.assign(engine.s, {
+    phase: 'PLAYER_DEFEND', atkOwner: 'ai2', atkCard: engine.s.discardTop, pendingAttack: { damage: 4 }
+  });
+  engine.dispatch('selectCard', { index: 0 });
+  engine.dispatch('doDefend');
+  engine.acknowledgeEvents(engine.ver);
+  assert.equal(engine.h.ai2.length, 1);
+  assert.equal(engine.h.ai2[0].uid, magic.uid);
+  assert.deepEqual(engine.h.ai.map(card => card.uid), otherHand);
+  assert.ok(low.every(card => engine.piles.ai2.discard.some(item => item.uid === card.uid)));
+});
+
 test('online snapshots resume the RedFlag redraw choice and preserve a held judgment card', () => {
   for (const value of [0, 5]) {
     const match = matchFor('host', value, [number(4, 'GREEN')]);
+    match.engine.h.player.push(number(1));
     play(match, 'host');
     const restored = new w.OnlineMatchHost('RedFlag', 'Leon');
     restored.restoreSnapshot(match.captureSnapshot());
-    const state = restored.project('guest');
+    const state = restored.project(value === 0 ? 'host' : 'guest');
     assert.equal(state.protocolVersion, 3);
     assert.equal(state.onlineCanAct, true);
     if (value === 0) {
       assert.equal(state.phase, 'REDFLAG_REDRAW_CHOICE');
-      dispatch(restored, 'guest', 'chooseRedFlagRedraw', { replace: false });
+      dispatch(restored, 'host', 'chooseRedFlagRedraw', { replace: false });
     } else {
       assert.equal(state.revealCards.length, 1);
       assert.equal(restored.engine.discardBottom.some(card => card.uid === state.revealCards[0].uid), false);
@@ -265,4 +333,17 @@ test('online snapshots resume the RedFlag redraw choice and preserve a held judg
       assert.equal(restored.engine.discardBottom.filter(card => card.uid === state.revealCards[0].uid).length, 1);
     }
   }
+});
+
+test('old snapshots waiting on the defender’s former redraw prompt resume defense', () => {
+  const match = matchFor('host', 0, [number(1)]);
+  play(match, 'host');
+  const snapshot = match.captureSnapshot();
+  Object.assign(snapshot.engine.state, {
+    phase: 'REDFLAG_REDRAW_CHOICE', pendingRedFlagRedraw: { defenderKey: 'ai', damage: 7, online: true }
+  });
+  match.restoreSnapshot(snapshot);
+  assert.equal(match.project('guest').phase, 'PLAYER_DEFEND');
+  assert.equal(match.engine.s.pendingRedFlagRedraw, null);
+  dispatch(match, 'guest', 'doSkipDefend');
 });

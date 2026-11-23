@@ -28,6 +28,7 @@
         opponentHandTarget: null,
         pendingOpponentSkill: null,
         pendingRedFlagRedraw: null,
+        pendingRedFlagDiscard: null,
         pendingRedFlagJudgment: null,
         handLimit: 5,
         forcedDiscard: false,
@@ -87,10 +88,19 @@
         state.selectedCards = [];
         state.revealCards = [];
         state.pendingJudgmentMoves = [];
-        return Object.assign(state, overrides, {
+        return restoreRedFlagRedraw(Object.assign(state, overrides, {
             selectedCards: Array.isArray(overrides.selectedCards) ? overrides.selectedCards : state.selectedCards,
             revealCards: Array.isArray(overrides.revealCards) ? overrides.revealCards : state.revealCards
-        });
+        }));
+    }
+
+    function restoreRedFlagRedraw(state) {
+        // 旧快照已经进入对手的防御流程，跳过旧版换牌提示即可继续防御。
+        if (state?.phase === 'REDFLAG_REDRAW_CHOICE' && state.pendingRedFlagRedraw?.defenderKey) {
+            state.phase = 'PLAYER_DEFEND';
+            state.pendingRedFlagRedraw = null;
+        }
+        return state;
     }
 
     function project(source, options = {}) {
@@ -130,5 +140,5 @@
         return !!state.player && !!state.ai;
     }
 
-    root.CombatState = Object.freeze({ PHASES, DEFAULTS, create, project, clone, validate });
+    root.CombatState = Object.freeze({ PHASES, DEFAULTS, create, project, clone, validate, restoreRedFlagRedraw });
 })(window);

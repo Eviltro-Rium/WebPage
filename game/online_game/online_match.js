@@ -84,8 +84,8 @@
         if (state.pendingRedFlagJudgment) {
             state.pendingRedFlagJudgment.targetKey = swapKey(state.pendingRedFlagJudgment.targetKey);
         }
-        if (state.pendingRedFlagRedraw) {
-            state.pendingRedFlagRedraw.defenderKey = swapKey(state.pendingRedFlagRedraw.defenderKey);
+        if (state.pendingRedFlagDiscard) {
+            state.pendingRedFlagDiscard.owner = swapKey(state.pendingRedFlagDiscard.owner);
         }
         if (Array.isArray(state.pendingSkillStatuses)) {
             state.pendingSkillStatuses.forEach(effect => { effect.target = swapKey(effect.target); });
@@ -232,7 +232,6 @@
                 this.s.unblockDefend = false;
                 this.s.selectedCard = -1;
                 this.s.selectedAICard = -1;
-                this.offerRedFlagRedraw('ai', d, true);
                 return this.check();
             };
             e.continueAIAttack = function () {
@@ -253,6 +252,7 @@
                 this.s.revealCards = [];
                 this.s.selectedCard = -1;
                 this.s.selectedAICard = -1;
+                this.openRedFlagDefenseDiscard('ai');
                 return this.check();
             };
             e.endAi = function () {
@@ -320,6 +320,7 @@
                 throw new Error('无效的联机战斗快照');
             }
             this.engine.restoreCombatSnapshot(snapshot.engine);
+            F.CombatState.restoreRedFlagRedraw(this.engine.s);
             // EngineSnapshot replaces `s` and `h`, so cached entity references
             // must be rebound before the next projection or guest dispatch.
             this.hostEntity = this.engine.s.player;
@@ -677,6 +678,7 @@
                 for (const key of ['activeAttacker', 'atkOwner', 'defOwner', 'attackTarget', 'discardTopOwner']) {
                     if (state[key] === 'player' || state[key] === 'ai') state[key] = swapKey(state[key]);
                 }
+                if (state.pendingRedFlagDiscard) state.pendingRedFlagDiscard.owner = swapKey(state.pendingRedFlagDiscard.owner);
                 // The guest's own selection is still meaningful after the
                 // participant projection. Only hide the opponent's transient
                 // selection from this view.

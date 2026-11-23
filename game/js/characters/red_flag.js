@@ -22,7 +22,13 @@
     },
 
     effect(eng, v, card, attacker, target, owner, { draw }) {
-      if (v === 0) return { d: 7 };
+      if (v === 0) {
+        const hand = eng.h[owner];
+        if (owner !== 'player' && hand.length && !hand.some(next => eng.legal(next))) {
+          eng.redrawRedFlagHand(owner);
+        }
+        return { d: 7 };
+      }
       if (v === 1) {
         draw(owner, 1, true);
         eng.hypothermia(target, 1);
@@ -61,18 +67,7 @@
       }
       if (v === 0) {
         counter(opponent, d);
-        const target = eng._who(opponent);
-        const hand = eng.h[target];
-        const candidates = hand.map((_, index) => index);
-        const indices = [];
-        const count = Math.ceil(hand.length / 2);
-        while (indices.length < count) {
-          const random = window.FurryGame.OpponentHandPolicy.randomIndex(eng, candidates.length);
-          indices.push(candidates.splice(random, 1)[0]);
-        }
-        indices.sort((a, b) => b - a);
-        const discarded = indices.map(index => hand.splice(index, 1)[0]);
-        eng.discardManyWithEvent(discarded, target, { handIndices: indices, desc: 'RedFlag 0牌：对手弃掉' + count + '张手牌' });
+        eng.queueRedFlagDefenseDiscard(eng._who(opponent));
         return { remaining: d, desc: 'RedFlag 0牌：反击' + d + '点伤害' };
       }
       return { remaining: d, desc: '' };

@@ -133,7 +133,10 @@ _renderControls() {
         }
     } else if (phase === 'PLAYER_DISCARD' && canAct) {
         const handPending = s.pendingHandDiscard;
-        const discardHint = s.pendingVixrapsPassive
+        const redFlagDiscard = s.pendingRedFlagDiscard?.owner === 'player' ? s.pendingRedFlagDiscard : null;
+        const discardHint = redFlagDiscard
+            ? `RedFlag 防御0：请选择 ${redFlagDiscard.count} 张手牌弃掉`
+            : s.pendingVixrapsPassive
             ? 'Vixraps被动：必须弃掉1张牌，然后恢复2点生命并施加1层灼伤'
             : handPending
                 ? (handPending.hint || '请选择手牌弃掉')
@@ -151,12 +154,14 @@ _renderControls() {
         html += `<span class="ctrl-hint">${discardHint}</span>`;
         // pendingHandDiscard: HandDiscardPicker owns confirm/cancel buttons.
         if (!handPending) {
-            html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!hasDiscardCards ? 'disabled' : ''}>确认弃牌 (${(s.selectedCards || []).length})</button>`;
+            const selectedCount = (s.selectedCards || []).length;
+            const canConfirm = redFlagDiscard ? selectedCount === redFlagDiscard.count : hasDiscardCards;
+            html += `<button class="ctrl-btn btn-discard" id="btn-confirm-discard" ${!canConfirm ? 'disabled' : ''}>确认弃牌 (${selectedCount})</button>`;
             const canCancelDiscard = !s.forcedDiscard && !s.pendingVixrapsPassive && !s.pendingDiscardBeforeDefend && !s.pendingHypothermiaDiscard && !s.pendingSerenitySixDiscard && !s.pendingKrakenDefendDiscard;
             if (canCancelDiscard) html += `<button class="ctrl-btn btn-skip" id="btn-cancel-discard">取消</button>`;
         }
     } else if (phase === 'REDFLAG_REDRAW_CHOICE' && canAct) {
-        html += '<span class="ctrl-hint">防御前可弃掉全部手牌并抽取等量卡牌</span>';
+        html += '<span class="ctrl-hint">RedFlag 进攻0：可弃掉自己的全部手牌并抽取等量卡牌</span>';
         html += '<button class="ctrl-btn btn-play" id="btn-red-flag-redraw">更换手牌</button>';
         html += '<button class="ctrl-btn btn-skip" id="btn-red-flag-keep">保留手牌</button>';
     } else if ((phase === 'LEON_ZERO_DISCARD' || phase === 'OPPONENT_CARD_CHOICE') && canAct) {
